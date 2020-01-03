@@ -213,7 +213,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   }
 
   @Override
-  public int findColumn(String columnName) throws SQLException {
+  public int findColumn(String columnName) {
     return columnInfoMap.get(columnName);
   }
 
@@ -249,7 +249,7 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public BigDecimal getBigDecimal(String columnName) throws SQLException {
-    return new BigDecimal(getValueByName(columnName));
+    return new BigDecimal(Objects.requireNonNull(getValueByName(columnName)));
   }
 
   @Override
@@ -341,7 +341,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   }
 
   @Override
-  public int getConcurrency() throws SQLException {
+  public int getConcurrency() {
     return ResultSet.CONCUR_READ_ONLY;
   }
 
@@ -587,11 +587,11 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public short getShort(String columnName) throws SQLException {
-    return Short.parseShort(getValueByName(columnName));
+    return Short.parseShort(Objects.requireNonNull(getValueByName(columnName)));
   }
 
   @Override
-  public Statement getStatement() throws SQLException {
+  public Statement getStatement() {
     return this.statement;
   }
 
@@ -671,7 +671,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   }
 
   @Override
-  public SQLWarning getWarnings() throws SQLException {
+  public SQLWarning getWarnings() {
     return warningChain;
   }
 
@@ -691,7 +691,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   }
 
   @Override
-  public boolean isClosed() throws SQLException {
+  public boolean isClosed() {
     return isClosed;
   }
 

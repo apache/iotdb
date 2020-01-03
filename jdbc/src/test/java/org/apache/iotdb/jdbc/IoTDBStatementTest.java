@@ -19,18 +19,11 @@
 package org.apache.iotdb.jdbc;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
 
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
@@ -38,7 +31,6 @@ import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSStatusType;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -74,149 +66,6 @@ public class IoTDBStatementTest {
   public void tearDown() throws Exception {
   }
 
-  @SuppressWarnings({"resource", "serial"})
-  @Test
-  public void testExecuteSQL1() throws SQLException {
-    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessionId, zoneID);
-    List<List<String>> tsList = new ArrayList<>();
-    tsList.add(new ArrayList<String>(4) {
-      {
-        add("root.vehicle.d0.s0");
-        add("root.vehicle");
-        add("INT32");
-        add("RLE");
-      }
-    });
-    tsList.add(new ArrayList<String>(4) {
-      {
-        add("root.vehicle.d0.s1");
-        add("root.vehicle");
-        add("INT64");
-        add("RLE");
-      }
-    });
-    tsList.add(new ArrayList<String>(4) {
-      {
-        add("root.vehicle.d0.s2");
-        add("root.vehicle");
-        add("FLOAT");
-        add("RLE");
-      }
-    });
-    String standard = "Timeseries,Storage Group,DataType,Encoding,\n"
-            + "root.vehicle.d0.s0,root.vehicle,INT32,RLE,\n"
-            + "root.vehicle.d0.s1,root.vehicle,INT64,RLE,\n"
-            + "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
-    when(fetchMetadataResp.getTimeseriesList()).thenReturn(tsList);
-    boolean res = stmt.execute("show timeseries");
-    assertTrue(res);
-    try (ResultSet resultSet = stmt.getResultSet()) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      int colCount = resultSetMetaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 1; i < colCount + 1; i++) {
-        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
-      }
-      resultStr.append("\n");
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
-        }
-        resultStr.append("\n");
-      }
-      Assert.assertEquals(resultStr.toString(), standard);
-    } catch (SQLException e) {
-      e.printStackTrace();
-      Assert.fail(e.getMessage());
-    }
-  }
-
-  @SuppressWarnings({"resource", "serial"})
-  @Test
-  public void testExecuteSQL2() throws SQLException {
-    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessionId, zoneID);
-    List<List<String>> tsList = new ArrayList<>();
-    tsList.add(new ArrayList<String>(4) {
-      {
-        add("root.vehicle.d0.s0");
-        add("root.vehicle");
-        add("INT32");
-        add("RLE");
-      }
-    });
-    tsList.add(new ArrayList<String>(4) {
-      {
-        add("root.vehicle.d0.s1");
-        add("root.vehicle");
-        add("INT64");
-        add("RLE");
-      }
-    });
-    tsList.add(new ArrayList<String>(4) {
-      {
-        add("root.vehicle.d0.s2");
-        add("root.vehicle");
-        add("FLOAT");
-        add("RLE");
-      }
-    });
-    String standard = "Timeseries,Storage Group,DataType,Encoding,\n"
-        + "root.vehicle.d0.s0,root.vehicle,INT32,RLE,\n"
-        + "root.vehicle.d0.s1,root.vehicle,INT64,RLE,\n"
-        + "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
-    when(fetchMetadataResp.getTimeseriesList()).thenReturn(tsList);
-    boolean res = stmt.execute("show timeseries root.vehicle.d0");
-    assertTrue(res);
-    try (ResultSet resultSet = stmt.getResultSet()) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      int colCount = resultSetMetaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 1; i < colCount + 1; i++) {
-        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
-      }
-      resultStr.append("\n");
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
-        }
-        resultStr.append("\n");
-      }
-      Assert.assertEquals(resultStr.toString(), standard);
-    } catch (SQLException e) {
-      e.printStackTrace();
-    }
-  }
-
-  @SuppressWarnings({"resource"})
-  @Test
-  public void testExecuteSQL3() throws SQLException {
-    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessionId, zoneID);
-    Set<String> sgSet = new HashSet<>();
-    sgSet.add("root.vehicle");
-    when(fetchMetadataResp.getStorageGroups()).thenReturn(sgSet);
-    String standard = "Storage Group,\nroot.vehicle,\n";
-    boolean res = stmt.execute("show storage group");
-    assertTrue(res);
-    try (ResultSet resultSet = stmt.getResultSet()) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      int colCount = resultSetMetaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 1; i < colCount + 1; i++) {
-        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
-      }
-      resultStr.append("\n");
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
-        }
-        resultStr.append("\n");
-      }
-      Assert.assertEquals(resultStr.toString(), standard);
-    } catch (SQLException e) {
-      e.printStackTrace();
-      Assert.fail(e.getMessage());
-    }
-  }
 
   @SuppressWarnings("resource")
   @Test

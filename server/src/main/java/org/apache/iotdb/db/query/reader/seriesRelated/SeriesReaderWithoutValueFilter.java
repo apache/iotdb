@@ -23,7 +23,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.NewUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -40,7 +40,7 @@ import java.io.IOException;
  *
  * "without value filter" is equivalent to "with global time filter or without any filter".
  */
-public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReader {
+public class SeriesReaderWithoutValueFilter implements ManagedSeriesReader {
 
   private IBatchReader seqResourceIterateReader;
   private IBatchReader unseqResourceMergeReader;
@@ -111,18 +111,22 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
     this.unseqResourceMergeReader = unseqResourceMergeReader;
   }
 
+  @Override
   public boolean isManagedByQueryManager() {
     return managedByQueryManager;
   }
 
+  @Override
   public void setManagedByQueryManager(boolean managedByQueryManager) {
     this.managedByQueryManager = managedByQueryManager;
   }
 
+  @Override
   public boolean hasRemaining() {
     return hasRemaining;
   }
 
+  @Override
   public void setHasRemaining(boolean hasRemaining) {
     this.hasRemaining = hasRemaining;
   }

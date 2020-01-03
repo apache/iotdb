@@ -53,9 +53,9 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -355,31 +355,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSFetchMetadataResp resp = new TSFetchMetadataResp();
     try {
       switch (req.getType()) {
-        case "SHOW_TIMESERIES":
-          String path = req.getColumnPath();
-          List<List<String>> timeseriesList = getTimeSeriesForPath(path);
-          resp.setTimeseriesList(timeseriesList);
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
-        case "SHOW_STORAGE_GROUP":
-          Set<String> storageGroups = new HashSet<>(getAllStorageGroups());
-          resp.setStorageGroups(storageGroups);
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
         case "METADATA_IN_JSON":
           String metadataInJson = getMetadataInString();
           resp.setMetadataInJson(metadataInJson);
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
-        case "SHOW_DEVICES":
-          Set<String> devices = getAllDevices();
-          resp.setDevices(devices);
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
-        case "SHOW_CHILD_PATHS":
-          path = req.getColumnPath();
-          Set<String> childPaths = getChildPaths(path);
-          resp.setChildPaths(childPaths);
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
@@ -390,24 +368,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setColumnsList(getPaths(req.getColumnPath()));
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
-        case "COUNT_TIMESERIES":
-          resp.setTimeseriesNum(getPaths(req.getColumnPath()).size());
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
-        case "COUNT_NODES":
-          resp.setNodesList(getNodesList(req.getColumnPath(), req.getNodeLevel()));
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
-        case "COUNT_NODE_TIMESERIES":
-          resp.setNodeTimeseriesNum(
-              getNodeTimeseriesNum(getNodesList(req.getColumnPath(), req.getNodeLevel())));
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
         default:
           status = getStatus(TSStatusCode.METADATA_ERROR, req.getType());
           break;
       }
-    } catch (QueryProcessException | MetadataException | OutOfMemoryError | SQLException e) {
+    } catch (QueryProcessException | MetadataException | OutOfMemoryError e) {
       logger
           .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()), e);
       status = getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
@@ -416,36 +381,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     resp.setStatus(status);
     return resp;
-  }
-
-  private Map<String, String> getNodeTimeseriesNum(List<String> nodes)
-      throws MetadataException {
-    Map<String, String> nodeColumnsNum = new HashMap<>();
-    for (String columnPath : nodes) {
-      nodeColumnsNum.put(columnPath, Integer.toString(getPaths(columnPath).size()));
-    }
-    return nodeColumnsNum;
-  }
-
-  private List<String> getNodesList(String schemaPattern, int level) throws SQLException {
-    return MManager.getInstance().getNodesList(schemaPattern, level);
-  }
-
-  private List<String> getAllStorageGroups() {
-    return MManager.getInstance().getAllStorageGroupNames();
-  }
-
-  private Set<String> getAllDevices() throws SQLException {
-    return MManager.getInstance().getAllDevices();
-  }
-
-  private Set<String> getChildPaths(String path) throws PathException {
-    return MManager.getInstance().getChildNodePathInNextLevel(path);
-  }
-
-  private List<List<String>> getTimeSeriesForPath(String path)
-      throws PathException {
-    return MManager.getInstance().getShowTimeseriesPath(path);
   }
 
   private String getMetadataInString() {
@@ -470,10 +405,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return false;
     }
     statement = statement.toLowerCase();
+    if (statement.startsWith("flush")) {
+      try {
+        execFlush(statement);
+      } catch (StorageGroupNotSetException e) {
+        throw new StorageEngineException(e);
+      }
+      return true;
+    }
     switch (statement) {
-      case "flush":
-        StorageEngine.getInstance().syncCloseAllProcessor();
-        return true;
       case "merge":
         StorageEngine.getInstance()
             .mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
@@ -483,6 +423,25 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return true;
       default:
         return false;
+    }
+  }
+
+  private void execFlush(String statement) throws StorageGroupNotSetException {
+    String[] args = statement.split("\\s+");
+    if (args.length == 1) {
+      StorageEngine.getInstance().syncCloseAllProcessor();
+    } else if (args.length == 2){
+      String[] storageGroups = args[1].split(",");
+      for (String storageGroup : storageGroups) {
+        StorageEngine.getInstance().asyncCloseProcessor(storageGroup, true);
+        StorageEngine.getInstance().asyncCloseProcessor(storageGroup, false);
+      }
+    } else {
+      String[] storageGroups = args[1].split(",");
+      boolean isSeq = Boolean.parseBoolean(args[2]);
+      for (String storageGroup : storageGroups) {
+        StorageEngine.getInstance().asyncCloseProcessor(storageGroup, isSeq);
+      }
     }
   }
 
@@ -709,6 +668,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return StaticResps.DYNAMIC_PARAMETER_RESP;
       case VERSION:
         return StaticResps.SHOW_VERSION_RESP;
+      case TIMESERIES:
+        return StaticResps.SHOW_TIMESERIES_RESP;
+      case STORAGE_GROUP:
+        return StaticResps.SHOW_STORAGE_GROUP;
+      case CHILD_PATH:
+        return StaticResps.SHOW_CHILD_PATHS;
+      case DEVICES:
+        return StaticResps.SHOW_DEVICES;
+      case COUNT_NODE_TIMESERIES:
+        return StaticResps.COUNT_NODE_TIMESERIES;
+      case COUNT_NODES:
+        return StaticResps.COUNT_NODES;
+      case COUNT_TIMESERIES:
+        return StaticResps.COUNT_TIMESERIES;
       default:
         logger.error("Unsupported show content type: {}", showPlan.getShowContentType());
         throw new QueryProcessException(
@@ -806,7 +779,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private void getGroupByDeviceQueryHeaders(QueryPlan plan, List<String> respColumns,
       List<String> columnTypes) {
     // set columns in TSExecuteStatementResp. Note this is without deduplication.
-    List<String> measurementColumns = plan.getMeasurementColumnList();
+    List<String> measurementColumns = plan.getMeasurements();
     respColumns.add(SQLConstant.GROUPBY_DEVICE_COLUMN_NAME);
     respColumns.addAll(measurementColumns);
 
@@ -831,7 +804,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     // save deduplicated measurementColumn names and types in QueryPlan for the next stage to use.
     // i.e., used by DeviceIterateDataSet constructor in `fetchResults` stage.
-    plan.setMeasurementColumnList(deduplicatedMeasurementColumns);
+    plan.setMeasurements(deduplicatedMeasurementColumns);
     plan.setDataTypes(deduplicatedColumnsType);
 
     // set these null since they are never used henceforth in GROUP_BY_DEVICE query processing.
@@ -947,7 +920,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * create QueryDataSet and buffer it for fetchResults
    */
   private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan) throws
-      QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException {
+      QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException, SQLException {
 
     QueryContext context = new QueryContext(queryId);
     QueryDataSet queryDataSet = processor.getExecutor().processQuery(physicalPlan, context);

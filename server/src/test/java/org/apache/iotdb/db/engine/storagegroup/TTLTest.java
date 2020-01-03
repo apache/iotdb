@@ -25,12 +25,14 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StartupException;
@@ -90,7 +92,7 @@ public class TTLTest {
     MManager.getInstance().setStorageGroupToMTree(sg1);
     MManager.getInstance().setStorageGroupToMTree(sg2);
     storageGroupProcessor = new StorageGroupProcessor(IoTDBDescriptor.getInstance().getConfig()
-        .getSystemDir(), sg1);
+        .getSystemDir(), sg1, new DirectFlushPolicy());
     MManager.getInstance().addPathToMTree(g1s1, TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.emptyMap());
     storageGroupProcessor.addMeasurement("s1", TSDataType.INT64, TSEncoding.PLAIN,
@@ -277,7 +279,7 @@ public class TTLTest {
 
   @Test
   public void testShowTTL()
-      throws IOException, QueryProcessException, QueryFilterOptimizationException, StorageEngineException {
+      throws IOException, QueryProcessException, QueryFilterOptimizationException, StorageEngineException, MetadataException, SQLException {
     MManager.getInstance().setTTL(sg1, ttl);
 
     ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());
