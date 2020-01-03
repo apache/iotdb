@@ -718,7 +718,7 @@ public class StorageGroupProcessor {
   /**
    * thread-safety should be ensured by caller
    */
-  private void moveOneWorkProcessorToClosingList(boolean sequence,
+  public void moveOneWorkProcessorToClosingList(boolean sequence,
       TsFileProcessor tsFileProcessor) {
     //for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
     //for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.

@@ -42,6 +42,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -273,7 +274,18 @@ public class StorageEngine implements IService {
     if (processor != null) {
       processor.writeLock();
       try {
-        processor.moveOneWorkProcessorToClosingList(isSeq);
+        if(isSeq) {
+          // to avoid concurrent modification problem, we need a new array list
+          for (TsFileProcessor tsfileProcessor : new ArrayList<>(processor.getWorkSequenceTsFileProcessors())) {
+            processor.moveOneWorkProcessorToClosingList(true, tsfileProcessor);
+          }
+        }
+        else {
+          // to avoid concurrent modification problem, we need a new array list
+          for (TsFileProcessor tsfileProcessor : new ArrayList<>(processor.getWorkUnsequenceTsFileProcessor())) {
+            processor.moveOneWorkProcessorToClosingList(false, tsfileProcessor);
+          }
+        }
       } finally {
         processor.writeUnlock();
       }
