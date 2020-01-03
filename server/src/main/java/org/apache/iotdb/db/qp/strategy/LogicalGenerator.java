@@ -41,6 +41,7 @@ import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
+import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
@@ -53,14 +54,19 @@ import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AddLabelContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AutoCreateSchemaContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountNodesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreatePropertyContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateTimeseriesContext;
@@ -119,7 +125,11 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetColContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetStorageGroupContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowAllTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowChildPathsContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowDevicesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowStorageGroupContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTimeseriesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowVersionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SlimitClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
@@ -166,6 +176,51 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   RootOperator getLogicalPlan() {
     return initializedOperator;
+  }
+
+  @Override
+  public void enterCountTimeseries(CountTimeseriesContext ctx) {
+    super.enterCountTimeseries(ctx);
+    if(ctx.INT() != null) {
+      initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODE_TIMESERIES,
+          parsePrefixPath(ctx.prefixPath()), Integer.parseInt(ctx.INT().getText()));
+    } else {
+      initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
+          parsePrefixPath(ctx.prefixPath()));
+    }
+  }
+
+  @Override
+  public void enterCountNodes(CountNodesContext ctx) {
+    super.enterCountNodes(ctx);
+    initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODES,
+        parsePrefixPath(ctx.prefixPath()), Integer.parseInt(ctx.INT().getText()));
+  }
+
+  @Override
+  public void enterShowDevices(ShowDevicesContext ctx) {
+    super.enterShowDevices(ctx);
+    if(ctx.prefixPath() != null) {
+      initializedOperator = new ShowDevicesOperator(SQLConstant.TOK_DEVICES, parsePrefixPath(ctx.prefixPath()));
+    } else {
+      initializedOperator = new ShowDevicesOperator(SQLConstant.TOK_DEVICES, new Path(SQLConstant.ROOT));
+    }
+  }
+
+  @Override
+  public void enterShowChildPaths(ShowChildPathsContext ctx) {
+    super.enterShowChildPaths(ctx);
+    if(ctx.prefixPath()!= null) {
+      initializedOperator = new ShowChildPathsOperator(SQLConstant.TOK_CHILD_PATHS, parsePrefixPath(ctx.prefixPath()));
+    } else {
+      initializedOperator = new ShowChildPathsOperator(SQLConstant.TOK_CHILD_PATHS, new Path(SQLConstant.ROOT));
+    }
+  }
+
+  @Override
+  public void enterShowStorageGroup(ShowStorageGroupContext ctx) {
+    super.enterShowStorageGroup(ctx);
+    initializedOperator = new ShowOperator(SQLConstant.TOK_STORAGE_GROUP);
   }
 
   @Override
@@ -224,6 +279,17 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterShowFlushTaskInfo(SqlBaseParser.ShowFlushTaskInfoContext ctx) {
     super.enterShowFlushTaskInfo(ctx);
     initializedOperator = new ShowOperator(SQLConstant.TOK_FLUSH_TASK_INFO);
+  }
+
+  @Override
+  public void enterShowTimeseries(ShowTimeseriesContext ctx) {
+    super.enterShowTimeseries(ctx);
+    if(ctx.prefixPath() != null) {
+      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES,
+          parsePrefixPath(ctx.prefixPath()));
+    } else {
+      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES, new Path("root"));
+    }
   }
 
   @Override
@@ -944,7 +1010,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     List<FunctionCallContext> functionCallContextList = ctx.functionCall();
     for (FunctionCallContext functionCallContext : functionCallContextList) {
       Path path = parseSuffixPath(functionCallContext.suffixPath());
-      selectOp.addClusterPath(path, functionCallContext.ID().getText());
+      selectOp.addClusterPath(path, functionCallContext.functionName().getText());
     }
     queryOp.setSelectOperator(selectOp);
   }
