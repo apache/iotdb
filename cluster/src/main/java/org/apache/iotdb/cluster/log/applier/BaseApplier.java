@@ -34,27 +34,7 @@ abstract class BaseApplier implements LogApplier {
 
   void applyPhysicalPlan(PhysicalPlan plan) throws QueryProcessException {
     if (plan instanceof InsertPlan) {
-      try {
-        getQueryExecutor().processNonQuery(plan);
-      } catch (QueryProcessException e) {
-        if (e.getCause() instanceof PathNotExistException) {
-          logger.debug("Timeseries is not found locally, try pulling it from another group: {}",
-              e.getCause().getMessage());
-          InsertPlan insertPlan = ((InsertPlan) plan);
-          try {
-            List<MeasurementSchema> schemas = metaGroupMember
-                .pullTimeSeriesSchemas(insertPlan.getDeviceId());
-            for (MeasurementSchema schema : schemas) {
-              SchemaUtils.registerTimeseries(schema);
-            }
-          } catch (StorageGroupNotSetException e1) {
-            throw new QueryProcessException(e1);
-          }
-          getQueryExecutor().processNonQuery(plan);
-        } else {
-          throw e;
-        }
-      }
+      processInsertPlan((InsertPlan) plan);
     } else if (!plan.isQuery()) {
       getQueryExecutor().processNonQuery(plan);
     } else {
@@ -63,7 +43,34 @@ abstract class BaseApplier implements LogApplier {
     }
   }
 
-  private QueryProcessExecutor getQueryExecutor() {
+  private void processInsertPlan(InsertPlan plan) throws QueryProcessException {
+    try {
+      getQueryExecutor().processNonQuery(plan);
+    } catch (QueryProcessException e) {
+      if (e.getCause() instanceof PathNotExistException) {
+        logger.debug("Timeseries is not found locally, try pulling it from another group: {}",
+            e.getCause().getMessage());
+        try {
+          List<MeasurementSchema> schemas = metaGroupMember
+              .pullTimeSeriesSchemas(plan.getDeviceId());
+          for (MeasurementSchema schema : schemas) {
+            registerMeasurement(schema);
+          }
+        } catch (StorageGroupNotSetException e1) {
+          throw new QueryProcessException(e1);
+        }
+        getQueryExecutor().processNonQuery(plan);
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  protected void registerMeasurement(MeasurementSchema schema) {
+    SchemaUtils.registerTimeseries(schema);
+  }
+
+  protected QueryProcessExecutor getQueryExecutor() {
     if (queryExecutor == null) {
       queryExecutor = new QueryProcessExecutor();
     }

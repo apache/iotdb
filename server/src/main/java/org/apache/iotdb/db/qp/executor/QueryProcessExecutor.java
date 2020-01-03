@@ -44,6 +44,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
@@ -372,9 +373,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     // check if timeseries exists
     if (!node.hasChild(measurement)) {
       if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
-        throw new QueryProcessException(
-            String.format("Current deviceId[%s] does not contain measurement:%s", deviceId,
-                measurement));
+        throw new PathNotExistException(deviceId + IoTDBConstant.PATH_SEPARATOR + measurement);
       }
       try {
         addPathToMTree(deviceId, measurement, strValue);

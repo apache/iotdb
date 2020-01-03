@@ -117,7 +117,6 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -155,6 +154,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private MetaSingleSnapshotLogManager logManager;
 
   private ClientPool dataClientPool;
+
+  public MetaGroupMember() {
+  }
 
   public MetaGroupMember(TProtocolFactory factory, Node thisNode)
       throws IOException {

@@ -38,6 +38,13 @@ public class PhysicalPlanLog extends Log {
   private static final Logger logger = LoggerFactory.getLogger(PhysicalPlanLog.class);
   private PhysicalPlan plan;
 
+  public PhysicalPlanLog() {
+  }
+
+  public PhysicalPlanLog(PhysicalPlan plan) {
+    this.plan = plan;
+  }
+
   @Override
   public ByteBuffer serialize() {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);

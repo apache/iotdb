@@ -89,6 +89,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   // know if this node is synchronized with the leader
   private Object syncLock = new Object();
 
+  public RaftMember() {
+  }
+
   RaftMember(String name, ClientPool pool) {
     this.name = name;
     this.clientPool = pool;
