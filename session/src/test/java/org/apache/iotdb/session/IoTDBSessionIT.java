@@ -70,7 +70,7 @@ public class IoTDBSessionIT {
     EnvironmentUtils.cleanEnv();
   }
 
-  @Test
+  // it's will output too much to travis, so ignore it
   public void testTime()
       throws IoTDBSessionException, SQLException, ClassNotFoundException, TException, IoTDBRPCException {
     session = new Session("127.0.0.1", 6667, "root", "root");
