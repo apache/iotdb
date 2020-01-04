@@ -569,7 +569,7 @@ public class IoTDBSessionIT {
     long[] timestamps = rowBatch.timestamps;
     Object[] values = rowBatch.values;
 
-    for (long time = 0; time < count; time++) {
+    for (long time = 1579414903000L; time < count + 1579414903000L; time++) {
       int row = rowBatch.batchSize++;
       timestamps[row] = time;
       for (int i = 0; i < 6; i++) {
