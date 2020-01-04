@@ -25,6 +25,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -319,7 +320,7 @@ public class TTLTest {
 
   @Test
   public void testShowTTL()
-      throws IOException, QueryProcessException, QueryFilterOptimizationException, StorageEngineException {
+      throws IOException, QueryProcessException, QueryFilterOptimizationException, StorageEngineException, MetadataException, SQLException {
     MManager.getInstance().setTTL(sg1, ttl);
 
     ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());

@@ -19,7 +19,7 @@
 
 -->
 
-# How to validate a staged release (如何给发布版本投票)
+# How to vote for a release (如何给发布版本投票)
 
 For non-Chinese users, please read https://cwiki.apache.org/confluence/display/IOTDB/Validating+a+staged+Release
 

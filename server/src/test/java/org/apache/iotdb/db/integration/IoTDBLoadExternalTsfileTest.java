@@ -394,7 +394,7 @@ public class IoTDBLoadExternalTsfileTest {
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           timeseriesPath.append(
-              resultSet.getString(1) + "," + resultSet.getString(2) + "," + resultSet.getString(3));
+              resultSet.getString(2) + "," + resultSet.getString(3) + "," + resultSet.getString(4));
           timeseriesPath.append(' ');
         }
       }
