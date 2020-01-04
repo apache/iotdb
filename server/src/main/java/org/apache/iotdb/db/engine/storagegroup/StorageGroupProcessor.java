@@ -386,9 +386,8 @@ public class StorageGroupProcessor {
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
           schema, getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, false,
           i == tsFiles.size() - 1);
-      recoverPerformer.recover();
       RestorableTsFileIOWriter writer = recoverPerformer.recover();
-      if (i != tsFiles.size() - 1) {
+      if (i != tsFiles.size() - 1 || writer == null) {
         // not the last file, just close it
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
@@ -412,10 +411,8 @@ public class StorageGroupProcessor {
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
           schema, getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, true,
           i == tsFiles.size() - 1);
-      recoverPerformer.recover();
       RestorableTsFileIOWriter writer = recoverPerformer.recover();
-      if (i != tsFiles.size() - 1) {
-        // not the last file, just close it
+      if (i != tsFiles.size() - 1 || writer == null) {
         // not the last file, just close it
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
