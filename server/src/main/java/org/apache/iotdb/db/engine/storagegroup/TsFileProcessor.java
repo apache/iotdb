@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.storagegroup;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -164,7 +163,7 @@ public class TsFileProcessor {
     return true;
   }
 
-  public boolean insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes,
+  public boolean insertBatch(BatchInsertPlan batchInsertPlan, int start, int end,
       Integer[] results) throws QueryProcessException {
 
     if (workMemTable == null) {
@@ -172,16 +171,17 @@ public class TsFileProcessor {
     }
 
     // insert insertPlan to the work memtable
-    workMemTable.insertBatch(batchInsertPlan, indexes);
+    workMemTable.insertBatch(batchInsertPlan, start, end);
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
-        batchInsertPlan.setIndex(new HashSet<>(indexes));
+        batchInsertPlan.setStart(start);
+        batchInsertPlan.setEnd(end);
         getLogNode().write(batchInsertPlan);
       } catch (IOException e) {
         logger.error("write WAL failed", e);
-        for (int index : indexes) {
-          results[index] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
+        for (int i = start; i < end; i++) {
+          results[i] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
         }
         return false;
       }

@@ -48,9 +48,13 @@ public class BatchInsertPlan extends PhysicalPlan {
   private Long maxTime = null;
   private Long minTime = null;
   private List<Path> paths;
+  private int start;
+  private int end;
+
   public BatchInsertPlan() {
     super(false, OperatorType.BATCHINSERT);
   }
+
   public BatchInsertPlan(String deviceId, List<String> measurements) {
     super(false, OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
@@ -62,6 +66,22 @@ public class BatchInsertPlan extends PhysicalPlan {
     this.deviceId = deviceId;
     this.measurements = measurements;
     setDataTypes(dataTypes);
+  }
+
+  public int getStart() {
+    return start;
+  }
+
+  public void setStart(int start) {
+    this.start = start;
+  }
+
+  public int getEnd() {
+    return end;
+  }
+
+  public void setEnd(int end) {
+    this.end = end;
   }
 
   public Set<Integer> getIndex() {
@@ -101,11 +121,11 @@ public class BatchInsertPlan extends PhysicalPlan {
       buffer.putShort(dataType.serialize());
     }
 
-    buffer.putInt(index.size());
+    buffer.putInt(end - start);
 
     if (timeBuffer == null) {
-      for(int loc : index){
-        buffer.putLong(times[loc]);
+      for (int i = start; i < end; i++) {
+        buffer.putLong(times[i]);
       }
     } else {
       buffer.put(timeBuffer.array());
@@ -118,39 +138,39 @@ public class BatchInsertPlan extends PhysicalPlan {
         switch (dataType) {
           case INT32:
             int[] intValues = (int[]) columns[i];
-            for(int loc : index){
-              buffer.putInt(intValues[loc]);
+            for (int j = start; j < end; i++) {
+              buffer.putInt(intValues[j]);
             }
             break;
           case INT64:
             long[] longValues = (long[]) columns[i];
-            for(int loc : index){
-              buffer.putLong(longValues[loc]);
+            for (int j = start; j < end; i++) {
+              buffer.putLong(longValues[j]);
             }
             break;
           case FLOAT:
             float[] floatValues = (float[]) columns[i];
-            for(int loc : index){
-              buffer.putFloat(floatValues[loc]);
+            for (int j = start; j < end; i++) {
+              buffer.putFloat(floatValues[j]);
             }
             break;
           case DOUBLE:
             double[] doubleValues = (double[]) columns[i];
-            for(int loc : index){
-              buffer.putDouble(doubleValues[loc]);
+            for (int j = start; j < end; i++) {
+              buffer.putDouble(doubleValues[j]);
             }
             break;
           case BOOLEAN:
             boolean[] boolValues = (boolean[]) columns[i];
-            for(int loc : index){
-              buffer.put(BytesUtils.boolToByte(boolValues[loc]));
+            for (int j = start; j < end; i++) {
+              buffer.putInt(BytesUtils.boolToByte(boolValues[j]));
             }
             break;
           case TEXT:
             Binary[] binaryValues = (Binary[]) columns[i];
-            for(int loc : index){
-              buffer.putInt(binaryValues[loc].getLength());
-              buffer.put(binaryValues[loc].getValues());
+            for (int j = start; j < end; i++) {
+              buffer.putInt(binaryValues[j].getLength());
+              buffer.put(binaryValues[j].getValues());
             }
             break;
           default:
@@ -236,6 +256,10 @@ public class BatchInsertPlan extends PhysicalPlan {
 
   public void setColumns(Object[] columns) {
     this.columns = columns;
+  }
+
+  public void setColumn(int index, Object column) {
+    columns[index] = column;
   }
 
   public long getMinTime() {

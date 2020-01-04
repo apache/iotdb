@@ -203,4 +203,34 @@ public class LongTVList extends TVList {
       }
     }
   }
+
+  @Override
+  public void putLongs(long[] time, long[] value, int start, int end) {
+    checkExpansion();
+    int idx = 0;
+
+    updateMinTimeAndSorted(time);
+
+    while (idx < end) {
+      int inputRemaining = end - idx;
+      int arrayIdx = size / ARRAY_SIZE;
+      int elementIdx = size % ARRAY_SIZE;
+      int internalRemaining  = ARRAY_SIZE - elementIdx;
+      if (internalRemaining >= inputRemaining) {
+        // the remaining inputs can fit the last array, copy all remaining inputs into last array
+        System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
+        System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, inputRemaining);
+        size += inputRemaining;
+        break;
+      } else {
+        // the remaining inputs cannot fit the last array, fill the last array and create a new
+        // one and enter the next loop
+        System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
+        System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
+        idx += internalRemaining;
+        size += internalRemaining;
+        checkExpansion();
+      }
+    }
+  }
 }
