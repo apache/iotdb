@@ -27,7 +27,7 @@ When the time series is written and encoded as binary data according to the spec
 
 IoTDB allows you to specify the compression method of the column when creating a time series, and now supports two compression methods: 
 
-* UMCOMPRESSED
+* UNCOMPRESSED
 
 * SNAPPY
 

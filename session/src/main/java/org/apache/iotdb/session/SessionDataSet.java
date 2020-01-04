@@ -18,42 +18,48 @@
  */
 package org.apache.iotdb.session;
 
+import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.thrift.TException;
+
+import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.rpc.IoTDBRPCException;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.thrift.TException;
 
 public class SessionDataSet {
 
-  private boolean getFlag = false;
+  private boolean hasCachedRecord = false;
   private String sql;
   private long queryId;
-  private RowRecord record;
-  private Iterator<RowRecord> recordItr;
-  private TSIService.Iface client = null;
-  private TSOperationHandle operationHandle;
-  private int batchSize = 512;
+  private long sessionId;
+  private TSIService.Iface client;
+  private int batchSize = 1024;
   private List<String> columnTypeDeduplicatedList;
 
+  private int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
+  private TSQueryDataSet tsQueryDataSet;
+  private RowRecord rowRecord = null;
+  private byte[] currentBitmap; // used to cache the current bitmap for every column
+  private static final int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
+
+
   public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
-      long queryId, TSIService.Iface client, TSOperationHandle operationHandle) {
+      long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet) {
+    this.sessionId = sessionId;
     this.sql = sql;
     this.queryId = queryId;
     this.client = client;
-    this.operationHandle = operationHandle;
+    currentBitmap = new byte[columnNameList.size()];
 
     // deduplicate columnTypeList according to columnNameList
     this.columnTypeDeduplicatedList = new ArrayList<>();
@@ -65,6 +71,8 @@ public class SessionDataSet {
         columnTypeDeduplicatedList.add(columnTypeList.get(i));
       }
     }
+
+    this.tsQueryDataSet = queryDataSet;
   }
 
   public int getBatchSize() {
@@ -76,56 +84,113 @@ public class SessionDataSet {
   }
 
   public boolean hasNext() throws SQLException, IoTDBRPCException {
-    return getFlag || nextWithoutConstraints(sql, queryId);
-  }
-
-  public RowRecord next() throws SQLException, IoTDBRPCException {
-    if (!getFlag) {
-      nextWithoutConstraints(sql, queryId);
-    }
-
-    getFlag = false;
-    return record;
-  }
-
-
-  private boolean nextWithoutConstraints(String sql, long queryId)
-      throws SQLException, IoTDBRPCException {
-    if ((recordItr == null || !recordItr.hasNext())) {
-      TSFetchResultsReq req = new TSFetchResultsReq(sql, batchSize, queryId);
-
+    if (hasCachedRecord)
+      return true;
+    if (tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining()) {
+      TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, batchSize, queryId);
       try {
         TSFetchResultsResp resp = client.fetchResults(req);
-
         RpcUtils.verifySuccess(resp.getStatus());
 
         if (!resp.hasResultSet) {
           return false;
         } else {
-          TSQueryDataSet tsQueryDataSet = resp.getQueryDataSet();
-          List<RowRecord> records = SessionUtils
-              .convertRowRecords(tsQueryDataSet, columnTypeDeduplicatedList);
-          recordItr = records.iterator();
+          tsQueryDataSet = resp.getQueryDataSet();
+          rowsIndex = 0;
         }
       } catch (TException e) {
         throw new SQLException(
-            "Cannot fetch result from server, because of network connection : {} ", e);
+                "Cannot fetch result from server, because of network connection: {} ", e);
       }
 
     }
 
-    record = recordItr.next();
-    getFlag = true;
+    constructOneRow();
+    hasCachedRecord = true;
     return true;
+  }
+
+  private void constructOneRow() {
+    rowRecord = new RowRecord(tsQueryDataSet.time.getLong());
+
+    for (int i = 0; i < tsQueryDataSet.bitmapList.size(); i++) {
+      ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(i);
+      // another new 8 row, should move the bitmap buffer position to next byte
+      if (rowsIndex % 8 == 0) {
+        currentBitmap[i] = bitmapBuffer.get();
+      }
+      Field field;
+      if (!isNull(i, rowsIndex)) {
+        ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(i);
+        TSDataType dataType = TSDataType.valueOf(columnTypeDeduplicatedList.get(i));
+        field = new Field(dataType);
+        switch (dataType) {
+          case BOOLEAN:
+            boolean booleanValue = BytesUtils.byteToBool(valueBuffer.get());
+            field.setBoolV(booleanValue);
+            break;
+          case INT32:
+            int intValue = valueBuffer.getInt();
+            field.setIntV(intValue);
+            break;
+          case INT64:
+            long longValue = valueBuffer.getLong();
+            field.setLongV(longValue);
+            break;
+          case FLOAT:
+            float floatValue = valueBuffer.getFloat();
+            field.setFloatV(floatValue);
+            break;
+          case DOUBLE:
+            double doubleValue = valueBuffer.getDouble();
+            field.setDoubleV(doubleValue);
+            break;
+          case TEXT:
+            int binarySize = valueBuffer.getInt();
+            byte[] binaryValue = new byte[binarySize];
+            valueBuffer.get(binaryValue);
+            field.setBinaryV(new Binary(binaryValue));
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                    String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+        }
+      }
+      else {
+        field = new Field(null);
+      }
+      rowRecord.addField(field);
+    }
+    rowsIndex++;
+  }
+
+  /**
+   * judge whether the specified column value is null in the current position
+   * @param index column index
+   * @return
+   */
+  private boolean isNull(int index, int rowNum) {
+    byte bitmap = currentBitmap[index];
+    int shift = rowNum % 8;
+    return ((flag >>> shift) & bitmap) == 0;
+  }
+
+  public RowRecord next() throws SQLException, IoTDBRPCException {
+    if (!hasCachedRecord) {
+      if (!hasNext())
+        return null;
+    }
+
+    hasCachedRecord = false;
+    return rowRecord;
   }
 
   public void closeOperationHandle() throws SQLException {
     try {
-      if (operationHandle != null) {
-        TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle, queryId);
-        TSStatus closeResp = client.closeOperation(closeReq);
-        RpcUtils.verifySuccess(closeResp);
-      }
+      TSCloseOperationReq closeReq = new TSCloseOperationReq(sessionId);
+      closeReq.setQueryId(queryId);
+      TSStatus closeResp = client.closeOperation(closeReq);
+      RpcUtils.verifySuccess(closeResp);
     } catch (IoTDBRPCException e) {
       throw new SQLException("Error occurs for close opeation in server side. The reason is " + e);
     } catch (TException e) {

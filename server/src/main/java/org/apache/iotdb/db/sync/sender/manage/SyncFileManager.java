@@ -35,6 +35,8 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.slf4j.Logger;
@@ -73,7 +75,7 @@ public class SyncFileManager implements ISyncFileManager {
   private Map<String, Set<File>> toBeSyncedFilesMap;
 
   private SyncFileManager() {
-
+    MManager.getInstance().init();
   }
 
   public static final SyncFileManager getInstance() {
@@ -94,7 +96,18 @@ public class SyncFileManager implements ISyncFileManager {
         dataDir + File.separatorChar + IoTDBConstant.SEQUENCE_FLODER_NAME)
         .listFiles();
     for (File sgFolder : allSGFolders) {
-      if (sgFolder.getName().equals(TsFileConstant.PATH_UPGRADE)){
+      if (!sgFolder.getName().startsWith(IoTDBConstant.PATH_ROOT) || sgFolder.getName()
+          .equals(TsFileConstant.PATH_UPGRADE)) {
+        continue;
+      }
+      try {
+        if (!MManager.getInstance().getStorageGroupNameByPath(sgFolder.getName())
+            .equals(sgFolder.getName())) {
+          // the folder is not a sg folder
+          continue;
+        }
+      } catch (StorageGroupException e) {
+        // the folder is not a sg folder
         continue;
       }
       allSGs.add(sgFolder.getName());

@@ -32,6 +32,13 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Delete struct TSSetStorageGroupReq | Jialin Qiao        |
 | Remove struct TSDataValue          | Lei Rui            |
 | Remove struct TSRowRecord          | Lei Rui            |
+| Remove optional string version in TSFetchMetadataResp | Genius_pig |
+| Remove optional set<string> childPaths, nodesList, storageGroups, devices in TSFetchMetadataResp | Genius_pig |
+| Remove optional map<string, string> nodeTimeseriesNum in TSFetchMetadataResp | Genius_pig |
+| Remove optional list<list<string>> timeseriesList in TSFetchMetadataResp | Genius_pig |
+| Remove optinoal optional i32 timeseriesNum in TSFetchMetadataResp | Genius_pig |
+| Remove optional i32 nodeLevel in TSFetchMetadataReq | Genius_pig |
+
 
 
 
@@ -53,6 +60,9 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add method TSStatus deleteStorageGroups(1:list\<string> storageGroup) | Yi Tao                             |
 | Add Struct TSExecuteInsertRowInBatchResp                     | Kaifeng Xue |
 | Add method insertRowInBatch(1:TSInsertInBatchReq req);       | Kaifeng Xue |
+| Add method testInsertRowInBatch(1:TSInsertInBatchReq req);   | Kaifeng Xue |
+| Add method testInsertRow(1:TSInsertReq req);                 | Kaifeng Xue |
+| Add method testInsertBatch(1:TSBatchInsertionReq req);       | Kaifeng Xue |
 
 
 ## 3. Update
@@ -77,6 +87,29 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add optional set\<string> childPaths in TSFetchMetadataResp     | Haonan Hou             |
 | Add optional string version in TSFetchMetadataResp           | Genius_pig             |
 | Add required i64 statementId in TSExecuteStatementReq        | Yuan Tian |
+| Add required binary time, required list<binary> valueList, required list<binary> bitmapList and remove required binary values, required i32 rowCount in TSQueryDataSet| Yuan Tian |
+| Add optional i32 fetchSize in TSExecuteStatementReq,<br />Add optional TSQueryDataSet in TSExecuteStatementResp| liutaohua |
 
 
+# 0.10.0 (version-1) -> version-2
 
+Last Updated on November 12th, 2019 by Tian Jiang.
+
+
+## 1. Delete Old
+
+| Latest Changes                     | Related Committers |
+| ---------------------------------- | ------------------ |
+| Remove TS_SessionHandle,TSHandleIdentifier            | Tian Jiang         |
+
+## 2. Add New
+
+| Latest Changes                                               | Related Committers                 |
+| ------------------------------------------------------------ | ---------------------------------- |
+| Add parameter sessionId in getTimeZone, getProperties, setStorageGroup, createTimeseries... | Tian Jiang|
+
+## 3. Update
+
+| Latest Changes                                               | Related Committers     |
+| ------------------------------------------------------------ | ---------------------- |
+| Replace TS_SessionHandles with SessionIds, TSOperationHandle with queryIds  | Tian Jiang  |

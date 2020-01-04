@@ -69,7 +69,17 @@ statement
     | SHOW ALL TTL #showAllTTLStatement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
+    | SHOW VERSION #showVersion
+    | SHOW TIMESERIES prefixPath? #showTimeseries
+    | SHOW STORAGE GROUP #showStorageGroup
+    | SHOW CHILD PATHS prefixPath? #showChildPaths
+    | SHOW DEVICES prefixPath? #showDevices
+    | COUNT TIMESERIES prefixPath (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
+    | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION #loadConfigurationStatement
+    | LOAD FILE autoCreateSchema? #loadFiles
+    | REMOVE FILE #removeFile
+    | MOVE FILE FILE #moveFile
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
     p1=timeseriesPath COMMA p2=timeseriesPath COMMA n1=timeValue COMMA n2=timeValue COMMA
@@ -90,7 +100,19 @@ selectElements
     ;
 
 functionCall
-    : ID LR_BRACKET suffixPath RR_BRACKET
+    : functionName LR_BRACKET suffixPath RR_BRACKET
+    ;
+
+functionName
+    : MIN_TIME
+    | MAX_TIME
+    | MIN_VALUE
+    | MAX_VALUE
+    | COUNT
+    | AVG
+    | FIRST_VALUE
+    | SUM
+    | LAST_VALUE
     ;
 
 attributeClauses
@@ -126,13 +148,13 @@ fromClause
 specialClause
     : specialLimit
     | groupByClause specialLimit?
-    | fillClause slimitClause? groupByDeviceClause?
+    | fillClause slimitClause? groupByDeviceClauseOrDisableAlign?
     ;
 
 specialLimit
-    : limitClause slimitClause? groupByDeviceClause?
-    | slimitClause limitClause? groupByDeviceClause?
-    | groupByDeviceClause
+    : limitClause slimitClause? groupByDeviceClauseOrDisableAlign?
+    | slimitClause limitClause? groupByDeviceClauseOrDisableAlign?
+    | groupByDeviceClauseOrDisableAlign
     ;
 
 limitClause
@@ -154,6 +176,15 @@ soffsetClause
 groupByDeviceClause
     :
     GROUP BY DEVICE
+    ;
+
+disableAlign
+    : DISABLE ALIGN
+    ;
+
+groupByDeviceClauseOrDisableAlign
+    : groupByDeviceClause
+    | disableAlign
     ;
 
 fillClause
@@ -298,6 +329,11 @@ realLiteral
 
 property
     : name=ID OPERATOR_EQ value=propertyValue
+    ;
+
+autoCreateSchema
+    : ID
+    | ID INT
     ;
 
 //============================
@@ -611,6 +647,82 @@ DYNAMIC
 PARAMETER
     : P A R A M E T E R
     ;
+
+
+VERSION
+    : V E R S I O N
+    ;
+
+REMOVE
+    : R E M O V E
+    ;
+MOVE
+    : M O V E
+    ;
+
+CHILD
+    : C H I L D
+    ;
+
+PATHS
+    : P A T H S
+    ;
+
+DEVICES
+    : D E V I C E S
+    ;
+
+COUNT
+    : C O U N T
+    ;
+
+NODES
+    : N O D E S
+    ;
+
+LEVEL
+    : L E V E L
+    ;
+
+MIN_TIME
+    : M I N UNDERLINE T I M E
+    ;
+
+MAX_TIME
+    : M A X UNDERLINE T I M E
+    ;
+
+MIN_VALUE
+    : M I N UNDERLINE V A L U E
+    ;
+
+MAX_VALUE
+    : M A X UNDERLINE V A L U E
+    ;
+
+AVG
+    : A V G
+    ;
+
+FIRST_VALUE
+    : F I R S T UNDERLINE V A L U E
+    ;
+
+SUM
+    : S U M
+    ;
+
+LAST_VALUE
+    : L A S T UNDERLINE V A L U E
+    ;
+
+DISABLE
+    : D I S A B L E
+    ;
+
+ALIGN
+    : A L I G N
+    ;
 //============================
 // End of the keywords list
 //============================
@@ -664,6 +776,8 @@ L_BRACKET : '{';
 
 R_BRACKET : '}';
 
+UNDERLINE : '_';
+
 STRING_LITERAL
    : DOUBLE_QUOTE_STRING_LITERAL
    | SINGLE_QUOTE_STRING_LITERAL
@@ -686,6 +800,10 @@ DATETIME
     ;
 /** Allow unicode rule/token names */
 ID			:	NameStartChar NameChar*;
+
+FILE
+    :  (('a'..'z'| 'A'..'Z')(':')?)* (('\\' | '/')+ PATH_FRAGMENT) +
+    ;
 
 fragment
 NameChar
@@ -826,6 +944,10 @@ fragment Y
 fragment Z
 	: 'z' | 'Z'
 	;
+
+fragment PATH_FRAGMENT
+    : ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'-'|'.')*
+    ;
 
 WS
     : [ \r\n\t]+ -> channel(HIDDEN)

@@ -215,7 +215,7 @@ public class MManagerImproveTest {
 
   private void doCacheTest(String deviceId, List<String> measurementList)
       throws CacheException, PathException {
-    MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
+    MNode node = mManager.getNodeByPathFromCache(deviceId);
     for (String s : measurementList) {
       assertTrue(node.hasChild(s));
       MNode measurementNode = node.getChild(s);

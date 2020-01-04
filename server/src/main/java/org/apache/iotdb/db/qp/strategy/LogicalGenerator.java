@@ -18,16 +18,129 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
+import java.io.File;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
-import org.apache.iotdb.db.qp.logical.crud.*;
-import org.apache.iotdb.db.qp.logical.sys.*;
+import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
+import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.*;
+import org.apache.iotdb.db.qp.logical.sys.CountOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
+import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
+import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
+import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AddLabelContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AutoCreateSchemaContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountNodesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountTimeseriesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreatePropertyContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateTimeseriesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DateExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteLabelContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStorageGroupContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteTimeseriesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DropRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DropUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FillClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FromClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionCallContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionElementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleToUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantWatermarkEmbeddingContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByDeviceClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertColumnSpecContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertValuesSpecContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LimitClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LinkPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllRoleOfUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllUserOfRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListPrivilegesRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListPrivilegesUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListRolePrivilegesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListUserPrivilegesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LoadConfigurationStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LoadFilesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LoadStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.MoveFileContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.NodeNameContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.NodeNameWithoutStarContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.OffsetClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.OrExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PredicateContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PrefixPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PrivilegesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PropertyContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RemoveFileContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeRoleFromUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeWatermarkEmbeddingContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RootOrIdContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectElementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetColContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetStorageGroupContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowAllTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowChildPathsContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowDevicesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowStorageGroupContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTimeseriesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowVersionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SlimitClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeIntervalContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeseriesPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TypeClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnlinkPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnsetTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UpdateStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.WhereClauseContext;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
@@ -38,9 +151,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.StringContainer;
-
-import java.time.ZoneId;
-import java.util.*;
 
 /**
  * This class is a listener and you can get an operator which is a logical plan.
@@ -69,9 +179,94 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   @Override
+  public void enterCountTimeseries(CountTimeseriesContext ctx) {
+    super.enterCountTimeseries(ctx);
+    if(ctx.INT() != null) {
+      initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODE_TIMESERIES,
+          parsePrefixPath(ctx.prefixPath()), Integer.parseInt(ctx.INT().getText()));
+    } else {
+      initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
+          parsePrefixPath(ctx.prefixPath()));
+    }
+  }
+
+  @Override
+  public void enterCountNodes(CountNodesContext ctx) {
+    super.enterCountNodes(ctx);
+    initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODES,
+        parsePrefixPath(ctx.prefixPath()), Integer.parseInt(ctx.INT().getText()));
+  }
+
+  @Override
+  public void enterShowDevices(ShowDevicesContext ctx) {
+    super.enterShowDevices(ctx);
+    if(ctx.prefixPath() != null) {
+      initializedOperator = new ShowDevicesOperator(SQLConstant.TOK_DEVICES, parsePrefixPath(ctx.prefixPath()));
+    } else {
+      initializedOperator = new ShowDevicesOperator(SQLConstant.TOK_DEVICES, new Path(SQLConstant.ROOT));
+    }
+  }
+
+  @Override
+  public void enterShowChildPaths(ShowChildPathsContext ctx) {
+    super.enterShowChildPaths(ctx);
+    if(ctx.prefixPath()!= null) {
+      initializedOperator = new ShowChildPathsOperator(SQLConstant.TOK_CHILD_PATHS, parsePrefixPath(ctx.prefixPath()));
+    } else {
+      initializedOperator = new ShowChildPathsOperator(SQLConstant.TOK_CHILD_PATHS, new Path(SQLConstant.ROOT));
+    }
+  }
+
+  @Override
+  public void enterShowStorageGroup(ShowStorageGroupContext ctx) {
+    super.enterShowStorageGroup(ctx);
+    initializedOperator = new ShowOperator(SQLConstant.TOK_STORAGE_GROUP);
+  }
+
+  @Override
+  public void enterLoadFiles(LoadFilesContext ctx) {
+    super.enterLoadFiles(ctx);
+    AutoCreateSchemaContext acsc = ctx.autoCreateSchema();
+    if (acsc != null) {
+      if (!acsc.ID().getText().equalsIgnoreCase("true") && !acsc.ID().getText()
+          .equalsIgnoreCase("false")) {
+        initializedOperator = new LoadFilesOperator(true,
+            "Please check the statement: load [FILE] true/false [storage group level]");
+      } else {
+        int sgLevel = acsc.INT() == null ? IoTDBDescriptor.getInstance().getConfig()
+            .getDefaultStorageGroupLevel() : Integer.parseInt(acsc.INT().getText());
+        initializedOperator = new LoadFilesOperator(new File(ctx.FILE().getText()), Boolean
+            .parseBoolean(acsc.ID().getText()), sgLevel);
+      }
+    } else {
+      initializedOperator = new LoadFilesOperator(new File(ctx.getChild(1).getText()), true,
+          IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel());
+    }
+  }
+
+  @Override
+  public void enterMoveFile(MoveFileContext ctx) {
+    super.enterMoveFile(ctx);
+    initializedOperator = new MoveFileOperator(new File(ctx.FILE(0).getText()),
+        new File(ctx.FILE(1).getText()));
+  }
+
+  @Override
+  public void enterRemoveFile(RemoveFileContext ctx) {
+    super.enterRemoveFile(ctx);
+    initializedOperator = new RemoveFileOperator(new File(ctx.FILE().getText()));
+  }
+
+  @Override
   public void enterLoadConfigurationStatement(LoadConfigurationStatementContext ctx) {
     super.enterLoadConfigurationStatement(ctx);
     initializedOperator = new LoadConfigurationOperator();
+  }
+
+  @Override
+  public void enterShowVersion(ShowVersionContext ctx) {
+    super.enterShowVersion(ctx);
+    initializedOperator = new ShowOperator(SQLConstant.TOK_VERSION);
   }
 
   @Override
@@ -84,6 +279,17 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterShowFlushTaskInfo(SqlBaseParser.ShowFlushTaskInfoContext ctx) {
     super.enterShowFlushTaskInfo(ctx);
     initializedOperator = new ShowOperator(SQLConstant.TOK_FLUSH_TASK_INFO);
+  }
+
+  @Override
+  public void enterShowTimeseries(ShowTimeseriesContext ctx) {
+    super.enterShowTimeseries(ctx);
+    if(ctx.prefixPath() != null) {
+      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES,
+          parsePrefixPath(ctx.prefixPath()));
+    } else {
+      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES, new Path("root"));
+    }
   }
 
   @Override
@@ -508,6 +714,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   @Override
+  public void enterDisableAlign(SqlBaseParser.DisableAlignContext ctx) {
+    super.enterDisableAlign(ctx);
+    queryOp.setAlign(false);
+  }
+
+  @Override
   public void enterGroupByClause(GroupByClauseContext ctx) {
     super.enterGroupByClause(ctx);
     queryOp.setGroupBy(true);
@@ -518,19 +730,21 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     // parse sliding step
     if (ctx.DURATION().size() == 2) {
       queryOp.setSlidingStep(parseDuration(ctx.DURATION(1).getText()));
-      if (queryOp.getSlidingStep() < queryOp.getUnit())
-        throw new SQLParserException("The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
+      if (queryOp.getSlidingStep() < queryOp.getUnit()) {
+        throw new SQLParserException(
+            "The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
+      }
     }
 
     long startTime;
     long endTime;
     TimeIntervalContext timeInterval = ctx.timeInterval();
-    if(timeInterval.timeValue(0).INT() != null) {
+    if (timeInterval.timeValue(0).INT() != null) {
       startTime = Long.parseLong(timeInterval.timeValue(0).INT().getText());
     } else {
       startTime = parseTimeFormat(timeInterval.timeValue(0).dateFormat().getText());
     }
-    if(timeInterval.timeValue(1).INT() != null) {
+    if (timeInterval.timeValue(1).INT() != null) {
       endTime = Long.parseLong(timeInterval.timeValue(1).INT().getText());
     } else {
       endTime = parseTimeFormat(timeInterval.timeValue(1).dateFormat().getText());
@@ -796,7 +1010,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     List<FunctionCallContext> functionCallContextList = ctx.functionCall();
     for (FunctionCallContext functionCallContext : functionCallContextList) {
       Path path = parseSuffixPath(functionCallContext.suffixPath());
-      selectOp.addClusterPath(path, functionCallContext.ID().getText());
+      selectOp.addClusterPath(path, functionCallContext.functionName().getText());
     }
     queryOp.setSelectOperator(selectOp);
   }
@@ -835,6 +1049,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   /**
    * parse duration to time value.
+   *
    * @param durationStr represent duration string like: 12d8m9ns, 1y1mo, etc.
    * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
    */
@@ -980,11 +1195,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     }
     return new Path(
         new StringContainer(path.toArray(new String[0]), TsFileConstant.PATH_SEPARATOR));
-  }
-
-
-  void setZoneId(ZoneId zoneId) {
-    this.zoneId = zoneId;
   }
 
   /**

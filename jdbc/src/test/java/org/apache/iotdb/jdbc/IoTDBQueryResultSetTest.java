@@ -34,6 +34,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
@@ -43,13 +44,10 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSHandleIdentifier;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSStatusType;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Before;
@@ -107,16 +105,12 @@ public class IoTDBQueryResultSetTest {
 
   @Mock
   TSExecuteStatementResp execResp;
-  @Mock
-  TSOperationHandle operationHandle;
-  @Mock
-  TSHandleIdentifier handleIdentifier;
+  private long queryId;
+  private long sessionId;
   @Mock
   private IoTDBConnection connection;
   @Mock
   private TSIService.Iface client;
-  @Mock
-  private TS_SessionHandle sessHandle;
   @Mock
   private Statement statement;
   @Mock
@@ -133,16 +127,13 @@ public class IoTDBQueryResultSetTest {
   public void before() throws Exception {
     MockitoAnnotations.initMocks(this);
 
-    statement = new IoTDBStatement(connection, client, sessHandle, zoneID);
+    statement = new IoTDBStatement(connection, client, sessionId, zoneID);
+
+    execResp.queryDataSet = FakedFirstFetchResult();
 
     when(connection.isClosed()).thenReturn(false);
     when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execResp);
-    operationHandle.hasResultSet = true;
-    operationHandle.operationId = handleIdentifier;
-    handleIdentifier.queryId = 1L;
-    when(execResp.getOperationHandle()).thenReturn(operationHandle);
-    when(operationHandle.getOperationId()).thenReturn(handleIdentifier);
-    when(handleIdentifier.getQueryId()).thenReturn(1L);
+    when(execResp.getQueryId()).thenReturn(queryId);
     when(execResp.getStatus()).thenReturn(Status_SUCCESS);
 
     when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
@@ -151,8 +142,7 @@ public class IoTDBQueryResultSetTest {
     when(client.fetchResults(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
     when(fetchResultsResp.getStatus()).thenReturn(Status_SUCCESS);
 
-    TSStatus closeResp = new TSStatus();
-    closeResp = Status_SUCCESS;
+    TSStatus closeResp = Status_SUCCESS;
     when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(closeResp);
   }
 
@@ -161,7 +151,7 @@ public class IoTDBQueryResultSetTest {
   public void testQuery() throws Exception {
 
     String testSql = "select *,s1,s0,s2 from root.vehicle.d0 where s1 > 190 or s2 < 10.0 "
-        + "limit 20 offset 1 slimit 4 soffset 2";
+        + "limit 20 slimit 4 soffset 2";
 
     /*
      * step 1: execute statement
@@ -173,16 +163,19 @@ public class IoTDBQueryResultSetTest {
     columns.add("root.vehicle.d0.s2");
 
     List<String> dataTypeList = new ArrayList<>();
-//    //BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT
-//    dataTypeList.add(TSDataType.INT64.toString());
     dataTypeList.add("FLOAT");
     dataTypeList.add("INT64");
     dataTypeList.add("INT32");
     dataTypeList.add("FLOAT");
 
+    when(execResp.isSetColumns()).thenReturn(true);
     when(execResp.getColumns()).thenReturn(columns);
+    when(execResp.isSetDataTypeList()).thenReturn(true);
     when(execResp.getDataTypeList()).thenReturn(dataTypeList);
+    when(execResp.isSetOperationType()).thenReturn(true);
     when(execResp.getOperationType()).thenReturn("QUERY");
+    when(execResp.isSetQueryId()).thenReturn(true);
+    when(execResp.getQueryId()).thenReturn(queryId);
     doReturn("FLOAT").doReturn("INT64").doReturn("INT32").doReturn("FLOAT").when(fetchMetadataResp)
         .getDataType();
 
@@ -195,8 +188,6 @@ public class IoTDBQueryResultSetTest {
      * step 2: fetch result
      */
     fetchResultsResp.hasResultSet = true; // at the first time to fetch
-    TSQueryDataSet tsQueryDataSet = FakedFirstFetchResult();
-    when(fetchResultsResp.getQueryDataSet()).thenReturn(tsQueryDataSet);
 
     try (ResultSet resultSet = statement.getResultSet()) {
       // check columnInfoMap
@@ -230,7 +221,6 @@ public class IoTDBQueryResultSetTest {
           resultStr.append(resultSet.getString(i)).append(",");
         }
         resultStr.append("\n");
-
         fetchResultsResp.hasResultSet = false; // at the second time to fetch
       }
       String standard =
@@ -247,8 +237,8 @@ public class IoTDBQueryResultSetTest {
       Assert.assertEquals(standard, resultStr.toString());
     }
 
-    // The client issues 2 fetchResultReq in total. The last fetchResultReq get empty resultSet.
-    verify(fetchResultsResp, times(2)).getStatus();
+    // The client get TSQueryDataSet at the first request
+    verify(fetchResultsResp, times(1)).getStatus();
   }
 
   // fake the first-time fetched result of 'testSql' from an IoTDB server
@@ -269,12 +259,10 @@ public class IoTDBQueryResultSetTest {
         {105L, 11.11F, 199L, 33333,},
         {1000L, 1000.11F, 55555L, 22222,}};
 
-    TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
-    int rowCount = input.length;
-    tsQueryDataSet.setRowCount(rowCount);
-
     int columnNum = tsDataTypeList.size();
-    int columnNumWithTime = columnNum + 1;
+    TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
+    // one time column and each value column has a actual value buffer and a bitmap value to indicate whether it is a null
+    int columnNumWithTime = columnNum * 2 + 1;
     DataOutputStream[] dataOutputStreams = new DataOutputStream[columnNumWithTime];
     ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[columnNumWithTime];
     for (int i = 0; i < columnNumWithTime; i++) {
@@ -282,43 +270,74 @@ public class IoTDBQueryResultSetTest {
       dataOutputStreams[i] = new DataOutputStream(byteArrayOutputStreams[i]);
     }
 
-    int valueOccupation = 0;
+    int rowCount = input.length;
+    int[] valueOccupation = new int[columnNum];
+    // used to record a bitmap for every 8 row record
+    int[] bitmap = new int[columnNum];
     for (int i = 0; i < rowCount; i++) {
       Object[] row = input[i];
       // use columnOutput to write byte array
       dataOutputStreams[0].writeLong((long) row[0]);
       for (int k = 0; k < columnNum; k++) {
-        DataOutputStream dataOutputStream = dataOutputStreams[k + 1]; // DO NOT FORGET +1
         Object value = row[1 + k];
+        DataOutputStream dataOutputStream = dataOutputStreams[2 * k + 1]; // DO NOT FORGET +1
         if (value == null) {
-          dataOutputStream.writeBoolean(true); // is_empty true
+          bitmap[k] = (bitmap[k] << 1);
         } else {
-          dataOutputStream.writeBoolean(false); // is_empty false
+          bitmap[k] = (bitmap[k] << 1) | 0x01;
           if (k == 0) { // TSDataType.FLOAT
             dataOutputStream.writeFloat((float) value);
-            valueOccupation += 4;
+            valueOccupation[k] += 4;
           } else if (k == 1) { // TSDataType.INT64
             dataOutputStream.writeLong((long) value);
-            valueOccupation += 8;
+            valueOccupation[k] += 8;
           } else { // TSDataType.INT32
             dataOutputStream.writeInt((int) value);
-            valueOccupation += 4;
+            valueOccupation[k] += 4;
           }
+        }
+      }
+      if (i % 8 == 7) {
+        for (int j = 0; j < bitmap.length; j++) {
+          DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (j + 1)];
+          dataBitmapOutputStream.writeByte(bitmap[j]);
+          // we should clear the bitmap every 8 row record
+          bitmap[j] = 0;
         }
       }
     }
 
-    // calculate total valueOccupation
-    valueOccupation += rowCount * 8; // note the timestamp column needn't the boolean is_empty
-    valueOccupation += rowCount * columnNum; // for all is_empty
-
-    ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation);
-    for (ByteArrayOutputStream byteArrayOutputStream : byteArrayOutputStreams) {
-      valueBuffer.put(byteArrayOutputStream.toByteArray());
+    // feed the remaining bitmap
+    for (int j = 0; j < bitmap.length; j++) {
+      DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (j + 1)];
+      dataBitmapOutputStream.writeByte(bitmap[j] << (8 - rowCount % 8));
     }
-    valueBuffer.flip(); // PAY ATTENTION TO HERE
-    tsQueryDataSet.setValues(valueBuffer);
-    tsQueryDataSet.setRowCount(rowCount);
+
+    // calculate the time buffer size
+    int timeOccupation = rowCount * 8;
+    ByteBuffer timeBuffer = ByteBuffer.allocate(timeOccupation);
+    timeBuffer.put(byteArrayOutputStreams[0].toByteArray());
+    timeBuffer.flip();
+    tsQueryDataSet.setTime(timeBuffer);
+
+    // calculate the bitmap buffer size
+    int bitmapOccupation = rowCount / 8 + 1;
+
+    List<ByteBuffer> bitmapList = new LinkedList<>();
+    List<ByteBuffer> valueList = new LinkedList<>();
+    for (int i = 1; i < byteArrayOutputStreams.length; i += 2) {
+      ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation[(i - 1) / 2]);
+      valueBuffer.put(byteArrayOutputStreams[i].toByteArray());
+      valueBuffer.flip();
+      valueList.add(valueBuffer);
+
+      ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapOccupation);
+      bitmapBuffer.put(byteArrayOutputStreams[i + 1].toByteArray());
+      bitmapBuffer.flip();
+      bitmapList.add(bitmapBuffer);
+    }
+    tsQueryDataSet.setBitmapList(bitmapList);
+    tsQueryDataSet.setValueList(valueList);
     return tsQueryDataSet;
   }
 }

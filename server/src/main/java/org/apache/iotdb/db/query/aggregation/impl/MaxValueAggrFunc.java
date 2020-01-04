@@ -55,7 +55,7 @@ public class MaxValueAggrFunc extends AggregateFunction {
       throws IOException {
     Comparable<Object> maxVal = null;
     Object tmpVal = null;
-    while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+    while (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
       if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
         tmpVal = dataInThisPage.currentValue();
         dataInThisPage.next();
@@ -73,7 +73,7 @@ public class MaxValueAggrFunc extends AggregateFunction {
       }
     }
 
-    while (dataInThisPage.hasNext()) {
+    while (dataInThisPage.hasCurrent()) {
       if (maxVal == null || maxVal.compareTo(dataInThisPage.currentValue()) < 0) {
         maxVal = (Comparable<Object>) dataInThisPage.currentValue();
       }
@@ -86,7 +86,7 @@ public class MaxValueAggrFunc extends AggregateFunction {
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
       long bound) throws IOException {
     Object tmpVal = null;
-    while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+    while (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
       long time = Math.min(dataInThisPage.currentTime(), unsequenceReader.current().getTimestamp());
       if (time >= bound) {
         break;
@@ -104,7 +104,7 @@ public class MaxValueAggrFunc extends AggregateFunction {
       updateResult((Comparable<Object>) tmpVal);
     }
 
-    while (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
+    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       updateResult((Comparable<Object>) dataInThisPage.currentValue());
       dataInThisPage.next();
     }

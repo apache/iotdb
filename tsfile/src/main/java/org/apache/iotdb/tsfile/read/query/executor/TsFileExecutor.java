@@ -38,9 +38,8 @@ import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.query.dataset.DataSetWithoutTimeGenerator;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.series.EmptyFileSeriesReader;
+import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -163,27 +162,25 @@ public class TsFileExecutor implements QueryExecutor {
 
   /**
    * @param selectedPathList completed path
-   * @param timeFilter a GlobalTimeExpression or null
+   * @param timeExpression a GlobalTimeExpression or null
    * @return DataSetWithoutTimeGenerator
    */
   private QueryDataSet executeMayAttachTimeFiler(List<Path> selectedPathList,
-      GlobalTimeExpression timeFilter)
-      throws IOException, NoMeasurementException {
-    List<FileSeriesReader> readersOfSelectedSeries = new ArrayList<>();
+      GlobalTimeExpression timeExpression) throws IOException, NoMeasurementException {
+    List<AbstractFileSeriesReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
     for (Path path : selectedPathList) {
       List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(path);
-      FileSeriesReader seriesReader;
+      AbstractFileSeriesReader seriesReader;
       if (chunkMetaDataList.isEmpty()) {
         seriesReader = new EmptyFileSeriesReader();
         dataTypes.add(metadataQuerier.getDataType(path.getMeasurement()));
       } else {
-        if (timeFilter == null) {
-          seriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, chunkMetaDataList);
+        if (timeExpression == null) {
+          seriesReader = new FileSeriesReader(chunkLoader, chunkMetaDataList, null);
         } else {
-          seriesReader = new FileSeriesReaderWithFilter(chunkLoader, chunkMetaDataList,
-              timeFilter.getFilter());
+          seriesReader = new FileSeriesReader(chunkLoader, chunkMetaDataList, timeExpression.getFilter());
         }
         dataTypes.add(chunkMetaDataList.get(0).getDataType());
       }

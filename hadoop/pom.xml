@@ -98,4 +98,32 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>skipHadoopTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <hadoop.test.skip>true</hadoop.test.skip>
+                <hadoop.ut.skip>true</hadoop.ut.skip>
+                <hadoop.it.skip>true</hadoop.it.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>skipUT_HadoopTests</id>
+            <activation>
+                <property>
+                    <name>skipUTs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <hadoop.ut.skip>true</hadoop.ut.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>

@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read.filter.basic;
 
+import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
 /**
  * Filter is a top level filter abstraction.
@@ -63,4 +66,10 @@ public interface Filter {
   boolean containStartEndTime(long startTime, long endTime);
 
   Filter clone();
+
+  void serialize(DataOutputStream outputStream);
+
+  void deserialize(ByteBuffer buffer);
+
+  FilterSerializeId getSerializeId();
 }

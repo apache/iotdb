@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -39,6 +40,7 @@ public abstract class ReaderTestHelper {
   private String storageGroup = "storage_group1";
   protected String deviceId = "root.vehicle.d0";
   protected String measurementId = "s0";
+  protected TSDataType dataType = TSDataType.INT32;
   protected StorageGroupProcessor storageGroupProcessor;
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
 
@@ -51,7 +53,7 @@ public abstract class ReaderTestHelper {
     EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-    storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup);
+    storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup, new DirectFlushPolicy());
     insertData();
   }
 
@@ -66,7 +68,7 @@ public abstract class ReaderTestHelper {
 
   protected void insertOneRecord(long time, int num) throws QueryProcessException {
     TSRecord record = new TSRecord(time, deviceId);
-    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(num)));
+    record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(num)));
     storageGroupProcessor.insert(new InsertPlan(record));
   }
 

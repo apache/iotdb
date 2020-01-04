@@ -647,7 +647,8 @@ public class MManager {
           mNodeCache.clear();
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
           mgraph.deleteStorageGroup(delStorageGroup);
-          seriesNumberInStorageGroups.remove(delStorageGroup);
+          IoTDBConfigDynamicAdapter.getInstance()
+              .addOrDeleteTimeSeries(seriesNumberInStorageGroups.remove(delStorageGroup) * (-1));
           ActiveTimeSeriesCounter.getInstance().delete(delStorageGroup);
         } catch (PathException e) {
           try {
@@ -867,13 +868,28 @@ public class MManager {
   /**
    * Get the full devices info.
    *
-   * @return A HashSet instance which stores all devices info
+   * @return A list instance which stores all device names
    */
-  public Set<String> getAllDevices() throws SQLException {
-
+  public List<String> getAllDevices() throws PathException {
+    
     lock.readLock().lock();
     try {
       return mgraph.getAllDevices();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get devices info with given prefixPath.
+   *
+   * @return A HashSet instance which stores devices names with given prefixPath.
+   */
+  public List<String> getDevices(String prefixPath) throws PathException {
+
+    lock.readLock().lock();
+    try {
+      return mgraph.getDevices(prefixPath);
     } finally {
       lock.readLock().unlock();
     }
@@ -1162,18 +1178,26 @@ public class MManager {
   }
 
   /**
-   * function for getting node by deviceId from cache.
+   * function for getting node by path from cache.
    */
-  public MNode getNodeByDeviceIdFromCache(String deviceId) throws CacheException, PathException {
-    lock.readLock().lock();
+  public MNode getNodeByPathFromCache(String path) throws CacheException, PathException {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    return getNodeByPathFromCache(path, conf.isAutoCreateSchemaEnabled(),
+        conf.getDefaultStorageGroupLevel());
+  }
+
+    /**
+     * function for getting node by deviceId from cache.
+     */
+  public MNode getNodeByPathFromCache(String deviceID, boolean autoCreateSchema, int sgLevel) throws CacheException, PathException {
+    lock.readLock().lock();
     MNode node = null;
     boolean createSchema = false;
     boolean setStorageGroup = false;
     try {
-      node = mNodeCache.get(deviceId);
+      node = mNodeCache.get(deviceID);
     } catch (CacheException e) {
-      if (!conf.isAutoCreateSchemaEnabled()) {
+      if (!autoCreateSchema) {
         throw e;
       } else {
         createSchema = true;
@@ -1184,14 +1208,13 @@ public class MManager {
       if (createSchema) {
         if (setStorageGroup) {
           try {
-            String storageGroupName = getStorageGroupNameByAutoLevel(
-                deviceId, conf.getDefaultStorageGroupLevel());
+            String storageGroupName = getStorageGroupNameByAutoLevel(deviceID, sgLevel);
             setStorageGroupToMTree(storageGroupName);
           } catch (MetadataException | PathException e1) {
             throw new CacheException(e1);
           }
         }
-        node = addDeviceIdToMTree(deviceId);
+        node = addDeviceIdToMTree(deviceID);
       }
     }
     return node;

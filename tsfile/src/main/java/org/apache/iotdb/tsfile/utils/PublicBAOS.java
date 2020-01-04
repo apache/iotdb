@@ -24,7 +24,13 @@ import java.io.ByteArrayOutputStream;
 /**
  * A subclass extending <code>ByteArrayOutputStream</code>. It's used to return the byte array directly. Note that the
  * size of byte array is large than actual size of valid contents, thus it's used cooperating with <code>size()</code>
- * or <code>capacity = size</code>
+ *
+ * For example, put buf in PublicBAOS into a ByteBuffer
+ *
+ * PublicBAOS pbos = new PublicBAOS();
+ * ByteBuffer buffer = ByteBuffer.allocate(pbos.size());
+ * buffer.put(pbos, 0, pbos.size());
+ *
  */
 public class PublicBAOS extends ByteArrayOutputStream {
 

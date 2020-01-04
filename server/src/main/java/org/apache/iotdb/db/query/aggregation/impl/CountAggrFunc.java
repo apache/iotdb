@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
-import java.io.IOException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -29,6 +28,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 public class CountAggrFunc extends AggregateFunction {
 
@@ -77,7 +78,7 @@ public class CountAggrFunc extends AggregateFunction {
   private void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
       boolean hasBound, long bound) throws IOException {
     int cnt = 0;
-    while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+    while (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
       long minTimestamp = Math
           .min(dataInThisPage.currentTime(), unsequenceReader.current().getTimestamp());
       if (hasBound && minTimestamp >= bound) {
@@ -94,7 +95,7 @@ public class CountAggrFunc extends AggregateFunction {
       cnt++;
     }
 
-    while (dataInThisPage.hasNext()) {
+    while (dataInThisPage.hasCurrent()) {
       if (hasBound && dataInThisPage.currentTime() >= bound) {
         break;
       }

@@ -25,7 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
@@ -39,7 +41,6 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -72,17 +73,18 @@ public class DeviceIterateDataSet extends QueryDataSet {
   private String currentDevice;
   private QueryDataSet currentDataSet;
   private int[] currentColumnMapRelation;
+  private Map<Path, TSDataType> tsDataTypeMap;
 
   public DeviceIterateDataSet(QueryPlan queryPlan, QueryContext context,
       IEngineQueryRouter queryRouter) {
     super(null, queryPlan.getDataTypes());
 
     // get deduplicated measurement columns (already deduplicated in TSServiceImpl.executeDataQuery)
-    this.deduplicatedMeasurementColumns = queryPlan.getMeasurementColumnList();
-
+    this.deduplicatedMeasurementColumns = queryPlan.getMeasurements();
+    this.tsDataTypeMap = queryPlan.getDataTypeMapping();
     this.queryRouter = queryRouter;
     this.context = context;
-    this.measurementColumnsGroupByDevice = queryPlan.getMeasurementColumnsGroupByDevice();
+    this.measurementColumnsGroupByDevice = queryPlan.getMeasurementsGroupByDevice();
 
     if (queryPlan instanceof GroupByPlan) {
       this.dataSetType = DataSetType.GROUPBY;
@@ -148,35 +150,57 @@ public class DeviceIterateDataSet extends QueryDataSet {
       }
       // extract paths and aggregations if exist from executeColumns
       List<Path> executePaths = new ArrayList<>();
+      List<TSDataType> tsDataTypes = new ArrayList<>();
       List<String> executeAggregations = new ArrayList<>();
       for (String column : executeColumns) {
         if (dataSetType == DataSetType.GROUPBY || dataSetType == DataSetType.AGGREGATE) {
-          executePaths.add(new Path(currentDevice,
-              column.substring(column.indexOf("(") + 1, column.indexOf(")"))));
+          Path path = new Path(currentDevice,
+              column.substring(column.indexOf("(") + 1, column.indexOf(")")));
+          tsDataTypes.add(tsDataTypeMap.get(path));
+          executePaths.add(path);
           executeAggregations.add(column.substring(0, column.indexOf("(")));
         } else {
-          executePaths.add(new Path(currentDevice, column));
+          Path path = new Path(currentDevice, column);
+          tsDataTypes.add(tsDataTypeMap.get(path));
+          executePaths.add(path);
         }
       }
 
       try {
         switch (dataSetType) {
           case GROUPBY:
-            currentDataSet = queryRouter
-                .groupBy(executePaths, executeAggregations, expression, unit, slidingStep,
-                        startTime, endTime, context);
+            GroupByPlan groupByPlan = new GroupByPlan();
+            groupByPlan.setEndTime(endTime);
+            groupByPlan.setStartTime(startTime);
+            groupByPlan.setSlidingStep(slidingStep);
+            groupByPlan.setUnit(unit);
+            groupByPlan.setDeduplicatedPaths(executePaths);
+            groupByPlan.setDeduplicatedDataTypes(dataTypes);
+            groupByPlan.setDeduplicatedAggregations(executeAggregations);
+            currentDataSet = queryRouter.groupBy(groupByPlan, context);
             break;
           case AGGREGATE:
-            currentDataSet = queryRouter
-                .aggregate(executePaths, executeAggregations, expression, context);
+            AggregationPlan aggregationPlan = new AggregationPlan();
+            aggregationPlan.setDeduplicatedPaths(executePaths);
+            aggregationPlan.setDeduplicatedAggregations(executeAggregations);
+            aggregationPlan.setDeduplicatedDataTypes(dataTypes);
+            aggregationPlan.setExpression(expression);
+            currentDataSet = queryRouter.aggregate(aggregationPlan, context);
             break;
           case FILL:
-            currentDataSet = queryRouter.fill(executePaths, queryTime, fillType, context);
+            FillQueryPlan fillQueryPlan = new FillQueryPlan();
+            fillQueryPlan.setFillType(fillType);
+            fillQueryPlan.setQueryTime(queryTime);
+            fillQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
+            fillQueryPlan.setDeduplicatedPaths(executePaths);
+            currentDataSet = queryRouter.fill(fillQueryPlan, context);
             break;
           case QUERY:
-            QueryExpression queryExpression = QueryExpression.create()
-                .setSelectSeries(executePaths).setExpression(expression);
-            currentDataSet = queryRouter.query(queryExpression, context);
+            QueryPlan queryPlan = new QueryPlan();
+            queryPlan.setDeduplicatedPaths(executePaths);
+            queryPlan.setDeduplicatedDataTypes(tsDataTypes);
+            queryPlan.setExpression(expression);
+            currentDataSet = queryRouter.query(queryPlan, context);
             break;
           default:
             throw new IOException("unsupported DataSetType");
