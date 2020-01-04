@@ -230,6 +230,12 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.s4", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.s5", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.s6", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d2.s1", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d2.s2", TSDataType.INT64, TSEncoding.RLE,
