@@ -71,6 +71,19 @@ public class IoTDBSessionIT {
   }
 
   @Test
+  public void testTime()
+      throws IoTDBSessionException, SQLException, ClassNotFoundException, TException, IoTDBRPCException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    session.setStorageGroup("root.sg1");
+
+    createTimeseries();
+
+    insertRowBatchTestForTime("root.sg1.d1");
+  }
+
+  @Test
   public void testBatchInsert()
       throws IoTDBSessionException, SQLException, ClassNotFoundException, TException, IoTDBRPCException {
     session = new Session("127.0.0.1", 6667, "root", "root");
@@ -532,6 +545,50 @@ public class IoTDBSessionIT {
       session.insertBatch(rowBatch);
       rowBatch.reset();
     }
+  }
+
+  private void insertRowBatchTestForTime(String deviceId) throws IoTDBSessionException {
+    Schema schema = new Schema();
+    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerMeasurement(new MeasurementSchema("s5", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerMeasurement(new MeasurementSchema("s6", TSDataType.INT64, TSEncoding.RLE));
+    long countTime = 0;
+    int count = 10000000;
+
+    RowBatch rowBatch = schema.createRowBatch(deviceId, 1000);
+
+    long[] timestamps = rowBatch.timestamps;
+    Object[] values = rowBatch.values;
+
+    for (long time = 0; time < count; time++) {
+      int row = rowBatch.batchSize++;
+      timestamps[row] = time;
+      for (int i = 0; i < 6; i++) {
+        long[] sensor = (long[]) values[i];
+        sensor[row] = i;
+      }
+      if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
+        long start = System.currentTimeMillis();
+        session.insertBatch(rowBatch);
+        long val = System.currentTimeMillis() - start;
+        // System.out.println("!!! " + val);
+        countTime += val;
+        rowBatch.reset();
+      }
+    }
+
+    if (rowBatch.batchSize != 0) {
+      long start = System.currentTimeMillis();
+      session.insertBatch(rowBatch);
+      System.out.println(start);
+      countTime += System.currentTimeMillis() - start;
+      rowBatch.reset();
+    }
+
+    System.out.println("???" + countTime + " " + countTime / (count / 1000));
   }
 
   private void queryForBatch() throws ClassNotFoundException, SQLException {
