@@ -53,20 +53,20 @@ public class MaxValueAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage) throws IOException {
+    calculateValueFromPageData(dataInThisPage, Long.MAX_VALUE);
+  }
+
+  @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
     Comparable<Object> maxVal = null;
 
-    while (dataInThisPage.hasCurrent()) {
+    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       if (maxVal == null || maxVal.compareTo(dataInThisPage.currentValue()) < 0) {
         maxVal = (Comparable<Object>) dataInThisPage.currentValue();
       }
       dataInThisPage.next();
     }
     updateResult(maxVal);
-  }
-
-  @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
-
   }
 
   @Override

@@ -64,7 +64,10 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
-
+    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+      updateMaxTimeResult(0, dataInThisPage.currentTime());
+      dataInThisPage.next();
+    }
   }
 
   @Override

@@ -56,18 +56,18 @@ public class MinTimeAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage) throws IOException {
-    if (resultData.isSetValue()) {
-      return;
-    }
-    if (dataInThisPage.hasCurrent()) {
-      resultData.setTimestamp(0);
-      resultData.setLongRet(dataInThisPage.currentTime());
-    }
+    calculateValueFromPageData(dataInThisPage, Long.MAX_VALUE);
   }
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
-
+    if (resultData.isSetValue()) {
+      return;
+    }
+    if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+      resultData.setTimestamp(0);
+      resultData.setLongRet(dataInThisPage.currentTime());
+    }
   }
 
   @Override

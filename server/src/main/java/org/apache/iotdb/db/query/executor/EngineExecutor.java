@@ -29,7 +29,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.NewEngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.seriesRelated.NewSeriesReaderWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -71,18 +71,13 @@ public class EngineExecutor {
       timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
     }
 
-    List<NewSeriesReaderWithoutValueFilter> readersOfSelectedSeries = new ArrayList<>();
+    List<SeriesDataReaderWithoutValueFilter> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
       Path path = deduplicatedPaths.get(i);
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSource(path, context);
-      // add additional time filter if TTL is set
-      timeFilter = queryDataSource.setTTL(timeFilter);
-
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
-      NewSeriesReaderWithoutValueFilter reader = new NewSeriesReaderWithoutValueFilter(
-          queryDataSource, dataType, timeFilter, context);
+      SeriesDataReaderWithoutValueFilter reader = new SeriesDataReaderWithoutValueFilter(
+          path, dataType, timeFilter, context);
       readersOfSelectedSeries.add(reader);
     }
 

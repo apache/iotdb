@@ -59,9 +59,14 @@ public class LastValueAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage) throws IOException {
+    calculateValueFromPageData(dataInThisPage, Long.MAX_VALUE);
+  }
+
+  @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
     long time = -1;
     Object lastVal = null;
-    while (dataInThisPage.hasCurrent()) {
+    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       time = dataInThisPage.currentTime();
       lastVal = dataInThisPage.currentValue();
       dataInThisPage.next();
@@ -70,11 +75,6 @@ public class LastValueAggrFunc extends AggregateFunction {
     if (time != -1) {
       updateLastResult(time, lastVal);
     }
-  }
-
-  @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
-
   }
 
   @Override

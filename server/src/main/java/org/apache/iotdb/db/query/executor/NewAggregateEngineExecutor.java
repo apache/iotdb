@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -34,16 +33,14 @@ import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrFunc;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
 import org.apache.iotdb.db.query.dataset.OldEngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.factory.AggreFuncFactory;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.seriesRelated.NewSeriesReaderWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -85,7 +82,7 @@ public class NewAggregateEngineExecutor {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
 
-    List<NewSeriesReaderWithoutValueFilter> readersOfSequenceData = new ArrayList<>();
+    List<SeriesDataReaderWithoutValueFilter> readersOfSequenceData = new ArrayList<>();
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       // construct AggregateFunction
@@ -95,14 +92,9 @@ public class NewAggregateEngineExecutor {
       function.init();
       aggregateFunctions.add(function);
 
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSource(selectedSeries.get(i), context);
-      // add additional time filter if TTL is set
-      timeFilter = queryDataSource.setTTL(timeFilter);
-
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      NewSeriesReaderWithoutValueFilter newSeriesReaderWithoutValueFilter = new NewSeriesReaderWithoutValueFilter(
-          queryDataSource, tsDataType, timeFilter, context);
+      SeriesDataReaderWithoutValueFilter newSeriesReaderWithoutValueFilter = new SeriesDataReaderWithoutValueFilter(
+          selectedSeries.get(i), tsDataType, timeFilter, context);
       readersOfSequenceData.add(newSeriesReaderWithoutValueFilter);
     }
 
@@ -122,7 +114,7 @@ public class NewAggregateEngineExecutor {
    * @return one series aggregate result data
    */
   private AggreResultData aggregateWithoutValueFilter(AggregateFunction function,
-      NewSeriesReaderWithoutValueFilter newSeriesReader, Filter filter)
+      SeriesDataReaderWithoutValueFilter newSeriesReader, Filter filter)
       throws IOException, QueryProcessException {
     if (function instanceof MaxTimeAggrFunc || function instanceof LastValueAggrFunc) {
       return handleLastMaxTimeWithOutTimeGenerator(function, newSeriesReader, filter);
@@ -130,21 +122,23 @@ public class NewAggregateEngineExecutor {
 
     while (newSeriesReader.hasNextChunk()) {
       if (newSeriesReader.canUseChunkStatistics()) {
-        Statistics chunkStatistics = newSeriesReader.nextChunkStatistics();
+        Statistics chunkStatistics = newSeriesReader.currentChunkStatistics();
         function.calculateValueFromStatistics(chunkStatistics);
         if (function.isCalculatedAggregationResult()) {
           return function.getResult();
         }
+        newSeriesReader.skipChunkData();
         continue;
       }
       while (newSeriesReader.hasNextPage()) {
         //cal by pageheader
         if (newSeriesReader.canUsePageStatistics()) {
-          Statistics pageStatistic = newSeriesReader.nextPageStatistic();
+          Statistics pageStatistic = newSeriesReader.currentPageStatistics();
           function.calculateValueFromStatistics(pageStatistic);
           if (function.isCalculatedAggregationResult()) {
             return function.getResult();
           }
+          newSeriesReader.skipPageData();
           continue;
         }
         //cal by pagedata
@@ -172,25 +166,27 @@ public class NewAggregateEngineExecutor {
    * @return BatchData-aggregate result
    */
   private AggreResultData handleLastMaxTimeWithOutTimeGenerator(AggregateFunction function,
-      NewSeriesReaderWithoutValueFilter newSeriesReader, Filter filter)
+      SeriesDataReaderWithoutValueFilter newSeriesReader, Filter filter)
       throws IOException, QueryProcessException {
     while (newSeriesReader.hasNextChunk()) {
       if (newSeriesReader.canUseChunkStatistics()) {
-        Statistics chunkStatistics = newSeriesReader.nextChunkStatistics();
+        Statistics chunkStatistics = newSeriesReader.currentChunkStatistics();
         function.calculateValueFromStatistics(chunkStatistics);
         if (function.isCalculatedAggregationResult()) {
           return function.getResult();
         }
+        newSeriesReader.skipChunkData();
         continue;
       }
       while (newSeriesReader.hasNextPage()) {
         //cal by pageheader
         if (newSeriesReader.canUsePageStatistics()) {
-          Statistics pageStatistic = newSeriesReader.nextPageStatistic();
+          Statistics pageStatistic = newSeriesReader.currentPageStatistics();
           function.calculateValueFromStatistics(pageStatistic);
           if (function.isCalculatedAggregationResult()) {
             return function.getResult();
           }
+          newSeriesReader.skipPageData();
           continue;
         }
         //cal by pagedata

@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.dataset.groupby;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -30,8 +29,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.seriesRelated.NewSeriesReaderWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderWithoutValueFilter;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -44,7 +42,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
-  private List<NewSeriesReaderWithoutValueFilter> sequenceReaderList;
+  private List<SeriesDataReaderWithoutValueFilter> sequenceReaderList;
   private List<BatchData> batchDataList;
   private List<Boolean> hasCachedSequenceDataList;
   private Filter timeFilter;
@@ -80,13 +78,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSource(path, context);
-      timeFilter = queryDataSource.setTTL(timeFilter);
-
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      NewSeriesReaderWithoutValueFilter seqResourceIterateReader = new NewSeriesReaderWithoutValueFilter(
-          queryDataSource, dataTypes.get(i), timeFilter, context);
+      SeriesDataReaderWithoutValueFilter seqResourceIterateReader = new SeriesDataReaderWithoutValueFilter(
+          path, dataTypes.get(i), timeFilter, context);
       sequenceReaderList.add(seqResourceIterateReader);
     }
   }
@@ -121,7 +115,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * @param idx series id
    */
   private AggreResultData nextSeries(int idx) throws IOException, QueryProcessException {
-    NewSeriesReaderWithoutValueFilter sequenceReader = sequenceReaderList.get(idx);
+    SeriesDataReaderWithoutValueFilter sequenceReader = sequenceReaderList.get(idx);
     AggregateFunction function = functions.get(idx);
     function.init();
     TimeRange timeRange = new TimeRange(startTime, endTime - 1);
@@ -129,32 +123,36 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     BatchData lastBatch = batchDataList.get(idx);
     calcBatchData(idx, function, lastBatch);
     while (sequenceReader.hasNextChunk()) {
-      if (!sequenceReader.canUseNextChunkData(endTime)) {
+      Statistics chunkStatistics = sequenceReader.currentChunkStatistics();
+      if (chunkStatistics.getStartTime() > endTime) {
         break;
       }
-      if (sequenceReader.canUseChunkStatistics(timeRange)) {
-        Statistics chunkStatistics = sequenceReader.nextChunkStatistics();
+      if (sequenceReader.canUseChunkStatistics() && timeRange.contains(
+          new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
         function.calculateValueFromStatistics(chunkStatistics);
         if (function.isCalculatedAggregationResult()) {
           break;
         }
+        sequenceReader.skipChunkData();
         continue;
       }
 
       while (sequenceReader.hasNextPage()) {
-        if (!sequenceReader.canUseNextPageData(endTime)) {
+        Statistics pageStatistics = sequenceReader.currentPageStatistics();
+        if (pageStatistics.getStartTime() > endTime) {
           break;
         }
-        if (sequenceReader.canUsePageStatistics(timeRange)) {
-          Statistics pageStatistic = sequenceReader.nextPageStatistic();
-          function.calculateValueFromStatistics(pageStatistic);
+        if (sequenceReader.canUsePageStatistics() && timeRange.contains(
+            new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
+          function.calculateValueFromStatistics(pageStatistics);
           if (function.isCalculatedAggregationResult()) {
             break;
           }
+          sequenceReader.skipPageData();
           continue;
         }
-        while (sequenceReader.hasNextSatisfiedPage()) {
-          BatchData batchData = sequenceReader.nextPageData();
+        while (sequenceReader.hasNextBatch()) {
+          BatchData batchData = sequenceReader.nextBatch();
           calcBatchData(idx, function, batchData);
           if (function.isCalculatedAggregationResult()) {
             break;

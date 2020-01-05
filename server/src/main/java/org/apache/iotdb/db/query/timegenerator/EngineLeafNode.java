@@ -20,45 +20,27 @@
 package org.apache.iotdb.db.query.timegenerator;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.NewSeriesReaderWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderWithValueFilter;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.NodeType;
 
 public class EngineLeafNode implements Node {
 
-  private NewSeriesReaderWithoutValueFilter reader;
+  private SeriesDataReaderWithValueFilter reader;
 
-  private BatchData data = new BatchData();
-
-  public EngineLeafNode(NewSeriesReaderWithoutValueFilter reader) {
+  public EngineLeafNode(SeriesDataReaderWithValueFilter reader) {
     this.reader = reader;
   }
 
   @Override
   public boolean hasNext() throws IOException {
-    return data.hasCurrent() || reader.hasNextBatch();
+    return reader.hasNext();
   }
 
   @Override
   public long next() throws IOException {
-    if (!data.hasCurrent()) {
-      data = reader.nextBatch();
-    }
-    long currentTime = data.currentTime();
-    data.next();
-    return currentTime;
-  }
-
-  /**
-   * check if current value is equals to input value.
-   */
-  public Object currentValue(long time) {
-    if (data.currentTime() == time) {
-      return data.currentValue();
-    }
-    return null;
+    return reader.next().getTimestamp();
   }
 
   @Override

@@ -55,15 +55,15 @@ public class MinValueAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage) throws IOException {
-    while (dataInThisPage.hasCurrent()) {
-      updateResult((Comparable<Object>) dataInThisPage.currentValue());
-      dataInThisPage.next();
-    }
+    calculateValueFromPageData(dataInThisPage, Long.MAX_VALUE);
   }
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
-
+    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+      updateResult((Comparable<Object>) dataInThisPage.currentValue());
+      dataInThisPage.next();
+    }
   }
 
   @Override
