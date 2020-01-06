@@ -38,7 +38,7 @@ public class NVMMemtableRecoverPerformer {
   private Map<String, Map<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>>> recoverDataInNVM()
       throws IOException {
     Map<String, Map<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>>> dataMap = new HashMap<>();
-    Map<String, Map<String, Map<String, Pair<List<Integer>, List<Integer>>>>> indexMap = NVMSpaceMetadataManager.getInstance().getValidSpaceIndexMap();
+    Map<String, Map<String, Map<String, Pair<List<Integer>, List<Integer>>>>> indexMap = NVMSpaceMetadataManager.getInstance().getTimeseriesTVIndexMap();
     List<NVMDataSpace> dataList = NVMSpaceManager.getInstance().getAllNVMData();
 
     for (Entry<String, Map<String, Map<String, Pair<List<Integer>, List<Integer>>>>> sgIndexEntry : indexMap

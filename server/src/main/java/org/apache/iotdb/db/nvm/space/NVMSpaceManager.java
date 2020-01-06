@@ -92,6 +92,12 @@ public class NVMSpaceManager {
     return nvmSpace;
   }
 
+  public synchronized NVMStringSpace allocateStringSpace(long size) throws IOException {
+    NVMStringSpace nvmSpace = new NVMStringSpace(curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size));
+    curOffset += size;
+    return nvmSpace;
+  }
+
   public synchronized NVMDataSpace allocateDataSpace(long size, TSDataType dataType) {
     checkIsFull();
 

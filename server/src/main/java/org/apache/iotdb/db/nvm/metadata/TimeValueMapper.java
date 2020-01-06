@@ -11,4 +11,8 @@ public class TimeValueMapper extends NVMSpaceMetadata {
   public void map(int timeSpaceIndex, int valueSpaceIndex) {
     space.getByteBuffer().putInt(timeSpaceIndex, valueSpaceIndex);
   }
+
+  public int get(int timeSpaceIndex) {
+    return space.getByteBuffer().getInt(timeSpaceIndex);
+  }
 }
