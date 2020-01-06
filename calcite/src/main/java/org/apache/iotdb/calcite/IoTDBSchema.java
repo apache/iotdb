@@ -56,19 +56,19 @@ public class IoTDBSchema extends AbstractSchema {
 
     // get one device in this storage group
     Statement statement = connection.createStatement();
-/*    boolean hasResultSet = statement.execute("show devices" + storageGroup);
-    if(hasResultSet){
-      ResultSet resultSet = statement.getResultSet();
-    }*/
-
-    boolean hasResultSet = statement.execute("show timeseries root.vehicle.d0");
-    if(hasResultSet){
-      ResultSet timeseries = statement.getResultSet();
-      while (timeseries.next()) {
-        String sensorName = timeseries.getString(1);
-        IoTDBFieldType sensorType = IoTDBFieldType.of(timeseries.getString(3));
-        int index = sensorName.lastIndexOf('.');
-        fieldInfo.add(sensorName.substring(index + 1), typeFactory.createSqlType(sensorType.getSqlType()));
+    boolean hasDevices = statement.execute("show devices " + storageGroup);
+    if(hasDevices){
+      ResultSet devices = statement.getResultSet();
+      devices.next();
+      boolean hasTS = statement.execute("show timeseries " + devices.getString(2));
+      if(hasTS){
+        ResultSet timeseries = statement.getResultSet();
+        while (timeseries.next()) {
+          String sensorName = timeseries.getString(2);
+          IoTDBFieldType sensorType = IoTDBFieldType.of(timeseries.getString(4));
+          int index = sensorName.lastIndexOf('.');
+          fieldInfo.add(sensorName.substring(index + 1), typeFactory.createSqlType(sensorType.getSqlType()));
+        }
       }
     }
 
@@ -114,7 +114,7 @@ public class IoTDBSchema extends AbstractSchema {
     if(hasResultSet) {
       ResultSet resultSet = statement.getResultSet();
       while (resultSet.next()) {
-        storageGroups.add(resultSet.getString(1).toLowerCase());
+        storageGroups.add(resultSet.getString(2).toLowerCase());
       }
     }
     for (String storageGroup : storageGroups) {

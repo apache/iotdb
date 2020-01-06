@@ -20,7 +20,7 @@ public class IoTDBClient {
       rootSchema.add("IoTDBSchema", new IoTDBSchema("127.0.0.1", 6667, "root","root", rootSchema, "IoTDBSchema"));
       calciteConnection.setSchema("IoTDBSchema");
       Statement statement = calciteConnection.createStatement();
-      String sql = "SELECT \"Time\" AS \"t\", \"Device\", \"s0\", \"s1\" FROM \"root.vehicle\"";
+      String sql = "SELECT * FROM \"root.ln\"";
       ResultSet resultSet = statement.executeQuery(sql);
 
       final ResultSetMetaData metaData = resultSet.getMetaData();

@@ -170,4 +170,14 @@ public class IoTDBAdapterTest {
                       "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
   }
 
+  @Test public void testLimitOffset() {
+    CalciteAssert.that()
+            .with(MODEL)
+            .query("select \"Time\", \"s2\" from \"root.vehicle\" limit 3 offset 2")
+            .explainContains("IoTDBLimit(limit=[3], offset=[2])\n")
+            .returns("Time=3; s2=3.33\n" +
+                     "Time=4; s2=4.44\n" +
+                     "Time=50; s2=null\n");
+  }
+
 }

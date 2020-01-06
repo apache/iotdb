@@ -1,5 +1,6 @@
 package org.apache.iotdb.calcite;
 
+import org.apache.calcite.adapter.enumerable.EnumerableLimit;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.plan.Convention;
 import org.apache.calcite.plan.RelOptRule;
@@ -31,7 +32,8 @@ public class IoTDBRules {
   private IoTDBRules() {}
 
   public static final RelOptRule[] RULES = {
-      IoTDBProjectRule.INSTANCE
+      IoTDBProjectRule.INSTANCE,
+      IoTDBLimitRule.INSTANCE
   };
 
   static List<String> IoTDBFieldNames(final RelDataType rowType) {
@@ -154,6 +156,34 @@ public class IoTDBRules {
               convert(project.getInput(), out), project.getProjects(),
               project.getRowType());
     }
+  }
 
+  /**
+   * Rule to convert a {@link org.apache.calcite.adapter.enumerable.EnumerableLimit} to a
+   * {@link IoTDBLimit}.
+   */
+  private static class IoTDBLimitRule extends RelOptRule {
+    private static final IoTDBLimitRule INSTANCE = new IoTDBLimitRule();
+
+    private IoTDBLimitRule() {
+      super(operand(EnumerableLimit.class, operand(IoTDBToEnumerableConverter.class, any())),
+              "IoTDBLimitRule");
+    }
+
+    public RelNode convert(EnumerableLimit limit) {
+      final RelTraitSet traitSet =
+              limit.getTraitSet().replace(IoTDBRel.CONVENTION);
+      return new IoTDBLimit(limit.getCluster(), traitSet,
+              convert(limit.getInput(), IoTDBRel.CONVENTION), limit.offset, limit.fetch);
+    }
+
+    /** @see org.apache.calcite.rel.convert.ConverterRule */
+    public void onMatch(RelOptRuleCall call) {
+      final EnumerableLimit limit = call.rel(0);
+      final RelNode converted = convert(limit);
+      if (converted != null) {
+        call.transformTo(converted);
+      }
+    }
   }
 }
