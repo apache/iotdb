@@ -249,6 +249,7 @@ public class IoTDBSeriesReaderIT {
     //System.out.println("Test >>> " + selectSql);
 
     EngineQueryRouter engineExecutor = new EngineQueryRouter();
+
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     pathList.add(new Path(Constant.d0s0));

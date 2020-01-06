@@ -84,7 +84,7 @@ public class LinearFill extends IFill {
     TimeValuePair beforePair = null;
     TimeValuePair afterPair = null;
     while (batchData.hasCurrent() || allDataReader.hasNextBatch()) {
-      if (batchData.isEmpty()) {
+      if (!batchData.hasCurrent()) {
         batchData = allDataReader.nextBatch();
       }
       afterPair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());

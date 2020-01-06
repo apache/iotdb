@@ -140,6 +140,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
       }
       batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
     }
+    overlappedChunkMetadata = null;
     return batchData;
   }
 
@@ -172,6 +173,11 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
       chunkMetaData = null;
     }
 
+    chunkReader = initChunkReader(chunkMetaData);
+    initNextOverlappedChunk();
+  }
+
+  private void initNextOverlappedChunk() throws IOException {
     if (!seqChunkMetadatas.isEmpty() && chunkMetaData.getEndTime() >= seqChunkMetadatas
         .first().getStartTime()) {
       overlappedChunkMetadata = seqChunkMetadatas.pollFirst();
@@ -182,7 +188,6 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     } else {
       overlappedChunkMetadata = null;
     }
-    chunkReader = initChunkReader(chunkMetaData);
     overlappedChunkReader = initChunkReader(overlappedChunkMetadata);
   }
 
