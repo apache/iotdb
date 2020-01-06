@@ -175,7 +175,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
             groupByPlan.setSlidingStep(slidingStep);
             groupByPlan.setUnit(unit);
             groupByPlan.setDeduplicatedPaths(executePaths);
-            groupByPlan.setDeduplicatedDataTypes(dataTypes);
+            groupByPlan.setDeduplicatedDataTypes(tsDataTypes);
             groupByPlan.setDeduplicatedAggregations(executeAggregations);
             currentDataSet = queryRouter.groupBy(groupByPlan, context);
             break;
@@ -183,7 +183,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
             AggregationPlan aggregationPlan = new AggregationPlan();
             aggregationPlan.setDeduplicatedPaths(executePaths);
             aggregationPlan.setDeduplicatedAggregations(executeAggregations);
-            aggregationPlan.setDeduplicatedDataTypes(dataTypes);
+            aggregationPlan.setDeduplicatedDataTypes(tsDataTypes);
             aggregationPlan.setExpression(expression);
             currentDataSet = queryRouter.aggregate(aggregationPlan, context);
             break;

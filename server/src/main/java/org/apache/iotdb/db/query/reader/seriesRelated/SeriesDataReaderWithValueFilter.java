@@ -16,6 +16,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  */
 public class SeriesDataReaderWithValueFilter extends SeriesDataReaderWithoutValueFilter {
 
+  private final Filter valueFilter;
   private boolean hasCachedTimeValuePair;
   private BatchData batchData;
   private TimeValuePair timeValuePair;
@@ -23,7 +24,7 @@ public class SeriesDataReaderWithValueFilter extends SeriesDataReaderWithoutValu
   public SeriesDataReaderWithValueFilter(Path seriesPath, TSDataType dataType, Filter valueFilter,
       QueryContext context) throws StorageEngineException, IOException {
     super(seriesPath, dataType, null, context);
-    super.filter = valueFilter;
+    this.valueFilter = valueFilter;
   }
 
   @Override
@@ -64,7 +65,7 @@ public class SeriesDataReaderWithValueFilter extends SeriesDataReaderWithoutValu
 
   private boolean hasNextSatisfiedInCurrentBatch() {
     while (batchData != null && batchData.hasCurrent()) {
-      if (filter.satisfy(batchData.currentTime(), batchData.currentValue())) {
+      if (valueFilter.satisfy(batchData.currentTime(), batchData.currentValue())) {
         timeValuePair = new TimeValuePair(batchData.currentTime(),
             batchData.currentTsPrimitiveType());
         hasCachedTimeValuePair = true;

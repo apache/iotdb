@@ -138,7 +138,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
 
       while (sequenceReader.hasNextPage()) {
-        Statistics pageStatistics = sequenceReader.currentPageStatistics();
+        Statistics pageStatistics = sequenceReader.currentChunkStatistics();
         if (pageStatistics.getStartTime() > endTime) {
           break;
         }

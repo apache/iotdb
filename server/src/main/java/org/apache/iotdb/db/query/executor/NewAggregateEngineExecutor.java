@@ -133,7 +133,7 @@ public class NewAggregateEngineExecutor {
       while (newSeriesReader.hasNextPage()) {
         //cal by pageheader
         if (newSeriesReader.canUsePageStatistics()) {
-          Statistics pageStatistic = newSeriesReader.currentPageStatistics();
+          Statistics pageStatistic = newSeriesReader.currentChunkStatistics();
           function.calculateValueFromStatistics(pageStatistic);
           if (function.isCalculatedAggregationResult()) {
             return function.getResult();
@@ -181,7 +181,7 @@ public class NewAggregateEngineExecutor {
       while (newSeriesReader.hasNextPage()) {
         //cal by pageheader
         if (newSeriesReader.canUsePageStatistics()) {
-          Statistics pageStatistic = newSeriesReader.currentPageStatistics();
+          Statistics pageStatistic = newSeriesReader.currentChunkStatistics();
           function.calculateValueFromStatistics(pageStatistic);
           if (function.isCalculatedAggregationResult()) {
             return function.getResult();

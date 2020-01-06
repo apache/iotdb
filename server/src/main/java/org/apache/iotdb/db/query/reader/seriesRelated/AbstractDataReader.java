@@ -43,21 +43,31 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
   private final TSDataType dataType;
   protected Filter filter;
 
-  private final TreeSet<ChunkMetaData> seqChunkMetadatas;
-  private final TreeSet<ChunkMetaData> unseqChunkMetadatas;
+  private final List<TsFileResource> seqFileResource;
+  private final TreeSet<TsFileResource> unseqFileResource;
 
+  private final List<ChunkMetaData> seqChunkMetadatas = new ArrayList<>();
+  private final TreeSet<ChunkMetaData> unseqChunkMetadatas = new TreeSet<>(
+      Comparator.comparingLong(ChunkMetaData::getStartTime));
+
+  protected boolean hasCachedNextChunk;
+  private boolean isCurrentChunkReaderInit;
   protected IChunkReader chunkReader;
   protected ChunkMetaData chunkMetaData;
 
-  protected IChunkReader overlappedChunkReader;
-  protected ChunkMetaData overlappedChunkMetadata;
+  protected List<IChunkReader> overlappedChunkReader = new ArrayList<>();
+  protected List<DiskChunkReader> overlappedPages = new ArrayList<>();
 
+  protected boolean hasCachedNextPage;
   protected PageHeader currentPage;
+
+  private boolean hasCachedNextBatch;
   protected PriorityMergeReader priorityMergeReader = new PriorityMergeReader();
-  private long latestDirectlyOverlappedPageEndTime;
+  private long latestDirectlyOverlappedPageEndTime = Long.MAX_VALUE;
 
   private boolean hasRemaining;
   private boolean managedByQueryManager;
+
 
   public AbstractDataReader(Path seriesPath, TSDataType dataType,
       Filter filter, QueryContext context) throws StorageEngineException, IOException {
@@ -70,66 +80,182 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
       filter = queryDataSource.setTTL(filter);
       this.filter = filter;
     }
-    seqChunkMetadatas = initSeqMetadatas();
-    unseqChunkMetadatas = initUnSeqMetadatas();
 
-    nextChunkReader();
+    seqFileResource = queryDataSource.getSeqResources();
+    unseqFileResource = sortUnSeqFileResources();
+
+    //过滤所有不能使用的文件
+    while (!seqFileResource.isEmpty()) {
+      TsFileResource tsFileResource = seqFileResource.get(0);
+      long startTime = tsFileResource.getStartTimeMap()
+          .getOrDefault(seriesPath.getDevice(), Long.MIN_VALUE);
+      //防止未封口文件
+      long endTime = tsFileResource.getEndTimeMap()
+          .getOrDefault(seriesPath.getDevice(), Long.MAX_VALUE);
+      if (filter != null && !filter.satisfyStartEndTime(startTime, endTime)) {
+        seqFileResource.remove(0);
+        continue;
+      }
+      break;
+    }
+    while (!unseqFileResource.isEmpty()) {
+      TsFileResource tsFileResource = unseqFileResource.first();
+      Long startTime = tsFileResource.getStartTimeMap()
+          .getOrDefault(seriesPath.getDevice(), Long.MIN_VALUE);
+      Long endTime = tsFileResource.getEndTimeMap()
+          .getOrDefault(seriesPath.getDevice(), Long.MAX_VALUE);
+      if (filter != null && !filter.satisfyStartEndTime(startTime, endTime)) {
+        unseqFileResource.pollFirst();
+        continue;
+      }
+      break;
+    }
+    if (!seqFileResource.isEmpty()) {
+      seqChunkMetadatas.addAll(loadChunkMetadatas(seqFileResource.remove(0)));
+    }
+    if (!unseqFileResource.isEmpty()) {
+      unseqChunkMetadatas.addAll(loadChunkMetadatas(unseqFileResource.pollFirst()));
+    }
   }
 
+
   protected boolean hasNextChunk() throws IOException {
-    if (chunkReader == null) {
-      nextChunkReader();
+    if (hasCachedNextChunk) {
+      return true;
     }
-    return chunkReader != null || overlappedChunkReader != null;
+
+    if (seqChunkMetadatas.isEmpty() && !seqFileResource.isEmpty()) {
+      seqChunkMetadatas.addAll(loadChunkMetadatas(seqFileResource.remove(0)));
+    }
+    if (unseqChunkMetadatas.isEmpty() && !unseqFileResource.isEmpty()) {
+      unseqChunkMetadatas.addAll(loadChunkMetadatas(unseqFileResource.pollFirst()));
+    }
+    //删除所有不能用的chunk
+    while (!seqChunkMetadatas.isEmpty()) {
+      if (seqChunkMetadatas.isEmpty() && !seqFileResource.isEmpty()) {
+        seqChunkMetadatas.addAll(loadChunkMetadatas(seqFileResource.remove(0)));
+      }
+
+      ChunkMetaData metaData = seqChunkMetadatas.get(0);
+      if (filter != null && !filter.satisfy(metaData.getStatistics())) {
+        seqChunkMetadatas.remove(0);
+        continue;
+      }
+      break;
+    }
+    while (!unseqChunkMetadatas.isEmpty()) {
+      if (unseqChunkMetadatas.isEmpty() && !unseqFileResource.isEmpty()) {
+        unseqChunkMetadatas.addAll(loadChunkMetadatas(unseqFileResource.pollFirst()));
+      }
+      ChunkMetaData metaData = unseqChunkMetadatas.first();
+      if (filter != null && !filter.satisfy(metaData.getStatistics())) {
+        unseqChunkMetadatas.pollFirst();
+        continue;
+      }
+      break;
+    }
+
+    hasCachedNextChunk = true;
+    if (!seqChunkMetadatas.isEmpty() && unseqChunkMetadatas.isEmpty()) {
+      chunkMetaData = seqChunkMetadatas.remove(0);
+    } else if (seqChunkMetadatas.isEmpty() && !unseqChunkMetadatas.isEmpty()) {
+      chunkMetaData = unseqChunkMetadatas.pollFirst();
+    } else if (!seqChunkMetadatas.isEmpty()) {
+      // seq 和 unseq 的 chunk metadata 都不为空
+      if (seqChunkMetadatas.get(0).getStartTime() <= unseqChunkMetadatas.first().getStartTime()) {
+        chunkMetaData = seqChunkMetadatas.remove(0);
+      } else {
+        chunkMetaData = unseqChunkMetadatas.pollFirst();
+      }
+    } else {
+      hasCachedNextChunk = false;
+    }
+    //查找所有可能存在相交点的无序文件
+    while (!unseqFileResource.isEmpty()) {
+      Map<String, Long> startTimeMap = unseqFileResource.first().getStartTimeMap();
+      Long unSeqStartTime = startTimeMap.getOrDefault(seriesPath.getDevice(), Long.MIN_VALUE);
+      if (chunkMetaData.getEndTime() > unSeqStartTime) {
+        unseqChunkMetadatas.addAll(loadChunkMetadatas(unseqFileResource.pollFirst()));
+        continue;
+      }
+      break;
+    }
+
+    //找到所有的相交的chunk
+    while (!unseqChunkMetadatas.isEmpty()) {
+      long startTime = unseqChunkMetadatas.first().getStartTime();
+
+      if (chunkMetaData.getEndTime() > startTime) {
+        overlappedChunkReader.add(initChunkReader(unseqChunkMetadatas.pollFirst()));
+        continue;
+      }
+      break;
+    }
+    while (!seqChunkMetadatas.isEmpty()) {
+      long startTime = seqChunkMetadatas.get(0).getStartTime();
+
+      if (chunkMetaData.getEndTime() > startTime) {
+        overlappedChunkReader.add(initChunkReader(seqChunkMetadatas.remove(0)));
+        continue;
+      }
+      break;
+    }
+    return hasCachedNextChunk;
   }
 
   protected boolean hasNextPage() throws IOException {
-    if (currentPage != null) {
+    if (hasCachedNextPage) {
       return true;
     }
-    if (chunkReader == null || !chunkReader.hasNextSatisfiedPage()) {
-      chunkReader = null;
-      currentPage = null;
-      return false;
+    if (!isCurrentChunkReaderInit) {
+      chunkReader = initChunkReader(chunkMetaData);
+      isCurrentChunkReaderInit = true;
     }
-    currentPage = chunkReader.nextPageHeader();
-    return true;
+
+    if (isCurrentChunkReaderInit && chunkReader.hasNextSatisfiedPage()) {
+      currentPage = chunkReader.nextPageHeader();
+      hasCachedNextPage = true;
+      latestDirectlyOverlappedPageEndTime = Long.MAX_VALUE;
+      while (!overlappedChunkReader.isEmpty()) {
+        IChunkReader iChunkReader = overlappedChunkReader.get(0);
+        if (currentPage.getEndTime() > iChunkReader.nextPageHeader().getStartTime()) {
+          latestDirectlyOverlappedPageEndTime = currentPage.getEndTime();
+          overlappedPages.add(new DiskChunkReader(overlappedChunkReader.remove(0)));
+          continue;
+        }
+        break;
+      }
+      return hasCachedNextPage;
+    }
+    isCurrentChunkReaderInit = false;
+    hasCachedNextChunk = hasCachedNextPage;
+    return hasCachedNextPage;
   }
 
   protected boolean hasNextBatch() throws IOException {
-    if (!hasNextChunk() || !hasNextPage()) {
-      return false;
+    if (hasCachedNextBatch) {
+      return true;
     }
-    if (overlappedChunkMetadata != null) {
-      initPriorityMergeReader();
+    if (chunkReader.hasNextSatisfiedPage()) {
+      priorityMergeReader.addReaderWithPriority(new DiskChunkReader(chunkReader), 0);
+      hasCachedNextBatch = true;
     }
-    if (!chunkReader.hasNextSatisfiedPage() && !priorityMergeReader.hasNext()) {
-      currentPage = null;
-      return false;
+    for (int i = 0; i < overlappedPages.size(); i++) {
+      priorityMergeReader.addReaderWithPriority(overlappedPages.remove(0), i + 1);
+      hasCachedNextBatch = true;
     }
-    return true;
+    hasCachedNextPage = hasCachedNextBatch;
+    return hasCachedNextBatch;
   }
 
   protected BatchData nextBatch() throws IOException {
     if (priorityMergeReader.hasNext()) {
+      hasCachedNextBatch = false;
       return nextOverlappedPage();
-    }
-    if (chunkReader.hasNextSatisfiedPage()) {
-      return chunkReader.nextPageData();
     }
     return null;
   }
 
-  protected void initPriorityMergeReader() throws IOException {
-    while (overlappedChunkReader != null && overlappedChunkReader.hasNextSatisfiedPage()) {
-      PageHeader overlappedPage = overlappedChunkReader.nextPageHeader();
-      if (currentPage.getEndTime() >= overlappedPage.getStartTime()) {
-        latestDirectlyOverlappedPageEndTime = currentPage.getEndTime();
-        priorityMergeReader.addReaderWithPriority(new DiskChunkReader(chunkReader), 1);
-        priorityMergeReader.addReaderWithPriority(new DiskChunkReader(overlappedChunkReader), 2);
-      }
-    }
-  }
 
   protected BatchData nextOverlappedPage() throws IOException {
     BatchData batchData = new BatchData(dataType);
@@ -140,7 +266,6 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
       }
       batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
     }
-    overlappedChunkMetadata = null;
     return batchData;
   }
 
@@ -148,77 +273,17 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     if (metaData == null) {
       return null;
     }
+    IChunkReader chunkReader = null;
     IChunkLoader chunkLoader = metaData.getChunkLoader();
     if (chunkLoader instanceof MemChunkLoader) {
       MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
-      return new MemChunkReader(memChunkLoader.getChunk(), filter);
-    }
-    Chunk chunk = chunkLoader.getChunk(metaData);
-    return new ChunkReader(chunk, filter);
-  }
-
-  protected void nextChunkReader() throws IOException {
-    if (!seqChunkMetadatas.isEmpty() && unseqChunkMetadatas.isEmpty()) {
-      chunkMetaData = seqChunkMetadatas.pollFirst();
-    } else if (seqChunkMetadatas.isEmpty() && !unseqChunkMetadatas.isEmpty()) {
-      chunkMetaData = unseqChunkMetadatas.pollFirst();
-    } else if (!seqChunkMetadatas.isEmpty()) {
-      // seq 和 unseq 的 chunk metadata 都不为空
-      if (seqChunkMetadatas.first().getStartTime() <= unseqChunkMetadatas.first().getStartTime()) {
-        chunkMetaData = seqChunkMetadatas.pollFirst();
-      } else {
-        chunkMetaData = unseqChunkMetadatas.pollFirst();
-      }
+      chunkReader = new MemChunkReader(memChunkLoader.getChunk(), filter);
     } else {
-      chunkMetaData = null;
+      Chunk chunk = chunkLoader.getChunk(metaData);
+      chunkReader = new ChunkReader(chunk, filter);
     }
-
-    chunkReader = initChunkReader(chunkMetaData);
-    initNextOverlappedChunk();
-  }
-
-  private void initNextOverlappedChunk() throws IOException {
-    if (!seqChunkMetadatas.isEmpty() && chunkMetaData.getEndTime() >= seqChunkMetadatas
-        .first().getStartTime()) {
-      overlappedChunkMetadata = seqChunkMetadatas.pollFirst();
-    } else if (!unseqChunkMetadatas.isEmpty()
-        && chunkMetaData.getEndTime() >= unseqChunkMetadatas
-        .first().getStartTime()) {
-      overlappedChunkMetadata = unseqChunkMetadatas.pollFirst();
-    } else {
-      overlappedChunkMetadata = null;
-    }
-    overlappedChunkReader = initChunkReader(overlappedChunkMetadata);
-  }
-
-  private TreeSet<ChunkMetaData> initSeqMetadatas() throws IOException {
-    List<TsFileResource> seqResources = queryDataSource.getSeqResources();
-
-    TreeSet<ChunkMetaData> chunkMetaDataSet = new TreeSet<>(
-        Comparator.comparingLong(ChunkMetaData::getStartTime));
-    for (TsFileResource resource : seqResources) {
-      chunkMetaDataSet.addAll(loadChunkMetadatas(resource));
-    }
-    return chunkMetaDataSet;
-  }
-
-  private TreeSet<ChunkMetaData> initUnSeqMetadatas() throws IOException {
-    TreeSet<TsFileResource> unseqTsFilesSet = new TreeSet<>((o1, o2) -> {
-      Map<String, Long> startTimeMap = o1.getStartTimeMap();
-      Long minTimeOfO1 = startTimeMap.get(seriesPath.getDevice());
-      Map<String, Long> startTimeMap2 = o2.getStartTimeMap();
-      Long minTimeOfO2 = startTimeMap2.get(seriesPath.getDevice());
-
-      return Long.compare(minTimeOfO1, minTimeOfO2);
-    });
-    unseqTsFilesSet.addAll(queryDataSource.getUnseqResources());
-
-    TreeSet<ChunkMetaData> chunkMetaDataSet = new TreeSet<>(
-        Comparator.comparingLong(ChunkMetaData::getStartTime));
-    for (TsFileResource resource : unseqTsFilesSet) {
-      chunkMetaDataSet.addAll(loadChunkMetadatas(resource));
-    }
-    return chunkMetaDataSet;
+    chunkReader.hasNextSatisfiedPage();
+    return chunkReader;
   }
 
   private List<ChunkMetaData> loadChunkMetadatas(TsFileResource resource) throws IOException {
@@ -249,6 +314,18 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     return currentChunkMetaDataList;
   }
 
+  private TreeSet<TsFileResource> sortUnSeqFileResources() {
+    TreeSet<TsFileResource> unseqTsFilesSet = new TreeSet<>((o1, o2) -> {
+      Map<String, Long> startTimeMap = o1.getStartTimeMap();
+      Long minTimeOfO1 = startTimeMap.get(seriesPath.getDevice());
+      Map<String, Long> startTimeMap2 = o2.getStartTimeMap();
+      Long minTimeOfO2 = startTimeMap2.get(seriesPath.getDevice());
+
+      return Long.compare(minTimeOfO1, minTimeOfO2);
+    });
+    unseqTsFilesSet.addAll(queryDataSource.getUnseqResources());
+    return unseqTsFilesSet;
+  }
 
   @Override
   public boolean isManagedByQueryManager() {

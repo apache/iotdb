@@ -28,8 +28,8 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
   }
 
   public boolean canUseChunkStatistics() {
-    Statistics statistics = currentChunkStatistics();
-    return overlappedChunkMetadata != null && canUseStatistics(statistics);
+    Statistics statistics = chunkMetaData.getStatistics();
+    return !overlappedChunkReader.isEmpty() && canUseStatistics(statistics);
   }
 
   @Override
@@ -39,8 +39,9 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
 
   @Override
   public void skipChunkData() throws IOException {
-    nextChunkReader();
+    hasCachedNextChunk = false;
   }
+
 
   @Override
   public boolean hasNextPage() throws IOException {
@@ -49,8 +50,8 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
 
   @Override
   public boolean canUsePageStatistics() {
-    Statistics pageStatistics = currentPageStatistics();
-    return overlappedChunkMetadata != null && canUseStatistics(pageStatistics);
+    Statistics pageStatistics = currentPage.getStatistics();
+    return !overlappedPages.isEmpty() && canUseStatistics(pageStatistics);
   }
 
   @Override
@@ -60,13 +61,9 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
 
   @Override
   public void skipPageData() throws IOException {
-    if (chunkReader != null && chunkReader.hasNextSatisfiedPage()) {
-      currentPage = chunkReader.nextPageHeader();
-      return;
-    }
-    currentPage = null;
-    chunkReader = null;
+    hasCachedNextPage = false;
   }
+
 
   @Override
   public boolean hasNextBatch() throws IOException {
