@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool;
 import org.apache.iotdb.db.nvm.space.NVMDataSpace;
-import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
+import org.apache.iotdb.db.nvm.space.NVMSpaceMetadataManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -141,7 +141,7 @@ public abstract class NVMTVList extends AbstractTVList {
       NVMDataSpace valueSpace = expandValues();
       NVMDataSpace timeSpace = NVMPrimitiveArrayPool.getInstance().getPrimitiveDataListByType(TSDataType.INT64);
       timestamps.add(timeSpace);
-      NVMSpaceManager.getInstance().addSpaceToTimeSeries(sgId, deviceId, measurementId, timestamps.get(timestamps.size() - 1).getIndex(), values.get(values.size() - 1).getIndex());
+      NVMSpaceMetadataManager.getInstance().registerTVSpace(timeSpace, valueSpace, sgId, deviceId, measurementId);
     }
   }
 
@@ -168,5 +168,41 @@ public abstract class NVMTVList extends AbstractTVList {
         return new NVMBooleanTVList(sgId, deviceId, measurementId);
     }
     return null;
+  }
+
+  public void loadData(List<NVMDataSpace> timeSpaceList, List<NVMDataSpace> valueSpaceList) {
+    this.timestamps.addAll(timeSpaceList);
+    this.values.addAll(valueSpaceList);
+
+    refreshMetadata(timeSpaceList);
+  }
+
+  private void refreshMetadata(List<NVMDataSpace> spaceList) {
+    if (spaceList.isEmpty()) {
+      return;
+    }
+
+    NVMDataSpace lastSpace = spaceList.get(spaceList.size() - 1);
+    int lastSpaceUnitSize = lastSpace.getValidUnitNum();
+
+    // size
+    for (int i = 0; i < spaceList.size() - 1; i++) {
+      size += spaceList.get(i).getUnitNum();
+    }
+    size += lastSpaceUnitSize;
+
+    // minTime
+    for (int i = 0; i < spaceList.size() - 1; i++) {
+      NVMDataSpace space = spaceList.get(i);
+      for (int j = 0; j < space.getUnitNum(); j++) {
+        minTime = Math.min(minTime, (Long) space.get(j));
+      }
+    }
+    for (int i = 0; i < lastSpaceUnitSize; i++) {
+      minTime = Math.min(minTime, (Long) lastSpace.get(i));
+    }
+
+    // sorted
+    sorted = false;
   }
 }

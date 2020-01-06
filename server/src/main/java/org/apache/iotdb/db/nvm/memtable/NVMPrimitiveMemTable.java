@@ -1,15 +1,19 @@
 package org.apache.iotdb.db.nvm.memtable;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.utils.datastructure.NVMTVList;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public class NVMPrimitiveMemTable extends AbstractMemTable {
 
@@ -62,5 +66,22 @@ public class NVMPrimitiveMemTable extends AbstractMemTable {
       sorter = chunkCopy;
     }
     return new ReadOnlyMemChunk(dataType, sorter, props);
+  }
+
+  public void loadData(Map<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>> dataMap) {
+    for (Entry<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>> deviceDataEntry : dataMap
+        .entrySet()) {
+      String deviceId = deviceDataEntry.getKey();
+      Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>> dataOfDevice = deviceDataEntry.getValue();
+      for (Entry<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>> measurementDataEntry : dataOfDevice
+          .entrySet()) {
+        String measurementId = measurementDataEntry.getKey();
+        Pair<List<NVMDataSpace>, List<NVMDataSpace>> tvListPair = measurementDataEntry.getValue();
+        TSDataType dataType = tvListPair.right.get(0).getDataType();
+
+        NVMWritableMemChunk memChunk = (NVMWritableMemChunk) createIfNotExistAndGet(deviceId, measurementId, dataType);
+        memChunk.loadData(tvListPair.left, tvListPair.right);
+      }
+    }
   }
 }

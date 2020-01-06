@@ -5,32 +5,49 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class NVMDataSpace extends NVMSpace {
 
+  private final long INVALID_VALUE = 0;
+
   private int index;
   private TSDataType dataType;
+  private int unitSize;
 
   NVMDataSpace(long offset, long size, ByteBuffer byteBuffer, int index, TSDataType dataType) {
     super(offset, size, byteBuffer);
     this.index = index;
     this.dataType = dataType;
+    unitSize = NVMSpaceManager.getPrimitiveTypeByteSize(dataType);
   }
 
-  @Override
-  public NVMDataSpace clone() {
-    return new NVMDataSpace(offset, size, cloneByteBuffer(), index, dataType);
+  public int getUnitNum() {
+    return (int) (size / unitSize);
+  }
+  
+  public void refreshData() {
+    // TODO only for Long
+    for (int i = 0; i < size / NVMSpaceManager.getPrimitiveTypeByteSize(TSDataType.INT64); i++) {
+      byteBuffer.putLong(i, INVALID_VALUE);
+    }
   }
 
-  public ByteBuffer cloneByteBuffer() {
-    ByteBuffer clone = ByteBuffer.allocate(byteBuffer.capacity());
-    byteBuffer.rewind();
-    clone.put(byteBuffer);
-    byteBuffer.rewind();
-    clone.flip();
-    return clone;
+  /**
+   * for Long only
+   * @return
+   */
+  public int getValidUnitNum() {
+    int count = 0;
+    while (true) {
+      long v = byteBuffer.getLong(count);
+      if (v == INVALID_VALUE) {
+        break;
+      }
+
+      count++;
+    }
+    return count;
   }
 
   public Object get(int index) {
-    int objectSize = NVMSpaceManager.getPrimitiveTypeByteSize(dataType);
-    index *= objectSize;
+    index *= unitSize;
     Object object = null;
     switch (dataType) {
       case BOOLEAN:
@@ -56,8 +73,7 @@ public class NVMDataSpace extends NVMSpace {
   }
 
   public void set(int index, Object object) {
-    int objectSize = NVMSpaceManager.getPrimitiveTypeByteSize(dataType);
-    index *= objectSize;
+    index *= unitSize;
     switch (dataType) {
       case BOOLEAN:
         byteBuffer.put(index, (byte) object);

@@ -1,12 +1,12 @@
 package org.apache.iotdb.db.nvm.metadata;
 
-import java.nio.ByteBuffer;
+import org.apache.iotdb.db.nvm.space.NVMSpace;
 
 public abstract class NVMSpaceMetadata {
 
-  protected ByteBuffer byteBuffer;
+  protected NVMSpace space;
 
-  public NVMSpaceMetadata(ByteBuffer byteBuffer) {
-    this.byteBuffer = byteBuffer;
+  public NVMSpaceMetadata(NVMSpace space) {
+    this.space = space;
   }
 }

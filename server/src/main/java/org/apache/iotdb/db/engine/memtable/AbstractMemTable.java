@@ -33,7 +33,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -264,5 +263,9 @@ public abstract class AbstractMemTable implements IMemTable {
         TVListAllocator.getInstance().release(subEntry.getValue().getTVList());
       }
     }
+  }
+
+  public String getStorageGroupId() {
+    return storageGroupId;
   }
 }

@@ -174,6 +174,7 @@ public class LogReplayer {
     insertPlan.setDataTypes(dataTypes);
     try {
       recoverMemTable.insert(insertPlan);
+      // TODO how about NVM
     } catch (Exception e) {
       logger.error(
           "occurs exception when replaying the record {} at timestamp {}: {}.(Will ignore the record)",

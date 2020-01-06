@@ -1,24 +1,24 @@
 package org.apache.iotdb.db.nvm.metadata;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.nvm.space.NVMSpace;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class DataTypeMemo extends NVMSpaceMetadata {
 
-  public DataTypeMemo(ByteBuffer byteBuffer) {
-    super(byteBuffer);
+  public DataTypeMemo(NVMSpace space) {
+    super(space);
   }
   
   public void set(int index, TSDataType dataType) {
-    byteBuffer.putShort(index, dataType.serialize());
+    space.getByteBuffer().putShort(index, dataType.serialize());
   }
 
-  public List<TSDataType> getDataTypeList() {
-    List<TSDataType> dataTypeList = new ArrayList<>();
-    for (int i = 0; i < byteBuffer.capacity(); i++) {
-      TSDataType dataType = TSDataType.deserialize(byteBuffer.getShort(i));
+  public List<TSDataType> getDataTypeList(int num) {
+    List<TSDataType> dataTypeList = new ArrayList<>(num);
+    for (int i = 0; i < num; i++) {
+      TSDataType dataType = TSDataType.deserialize(space.getByteBuffer().getShort(i));
       dataTypeList.add(dataType);
     }
     return dataTypeList;

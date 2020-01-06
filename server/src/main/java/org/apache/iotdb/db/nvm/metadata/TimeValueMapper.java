@@ -1,15 +1,14 @@
 package org.apache.iotdb.db.nvm.metadata;
 
-import java.nio.ByteBuffer;
+import org.apache.iotdb.db.nvm.space.NVMSpace;
 
 public class TimeValueMapper extends NVMSpaceMetadata {
 
-  public TimeValueMapper(ByteBuffer byteBuffer) {
-    super(byteBuffer);
+  public TimeValueMapper(NVMSpace space) {
+    super(space);
   }
 
   public void map(int timeSpaceIndex, int valueSpaceIndex) {
-    byteBuffer.putInt(timeSpaceIndex);
-    byteBuffer.putInt(valueSpaceIndex);
+    space.getByteBuffer().putInt(timeSpaceIndex, valueSpaceIndex);
   }
 }

@@ -3,6 +3,7 @@ package org.apache.iotdb.db.nvm.memtable;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.utils.datastructure.NVMTVList;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsBinary;
@@ -266,5 +267,10 @@ public class NVMWritableMemChunk implements IWritableMemChunk {
   @Override
   public void delete(long upperBound) {
     list.delete(upperBound);
+  }
+
+  public void loadData(List<NVMDataSpace> timeSpaceList, List<NVMDataSpace> valueSpaceList) {
+    // TODO how about abstract
+    list.loadData(timeSpaceList, valueSpaceList);
   }
 }

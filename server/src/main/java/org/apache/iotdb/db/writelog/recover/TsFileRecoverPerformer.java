@@ -26,13 +26,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
+import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
+import org.apache.iotdb.db.nvm.memtable.NVMPrimitiveMemTable;
+import org.apache.iotdb.db.nvm.recover.NVMMemtableRecoverPerformer;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -140,15 +144,20 @@ public class TsFileRecoverPerformer {
       recoverResourceFromWriter(restorableTsFileIOWriter);
     }
 
-    // redo logs
-    redoLogs(restorableTsFileIOWriter);
+    // recover data in memory
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableNVM()) {
+      reloadNVMData(restorableTsFileIOWriter);
+    } else {
+      redoLogs(restorableTsFileIOWriter);
 
-    // clean logs
-    try {
-      MultiFileLogNodeManager.getInstance()
-          .deleteNode(logNodePrefix + SystemFileFactory.INSTANCE.getFile(insertFilePath).getName());
-    } catch (IOException e) {
-      throw new StorageGroupProcessorException(e);
+      // clean logs
+      try {
+        MultiFileLogNodeManager.getInstance()
+            .deleteNode(
+                logNodePrefix + SystemFileFactory.INSTANCE.getFile(insertFilePath).getName());
+      } catch (IOException e) {
+        throw new StorageGroupProcessorException(e);
+      }
     }
   }
 
@@ -220,7 +229,21 @@ public class TsFileRecoverPerformer {
     }
   }
 
-  private void recoverNVMData() {
-
+  private void reloadNVMData(RestorableTsFileIOWriter restorableTsFileIOWriter)
+      throws StorageGroupProcessorException {
+    NVMPrimitiveMemTable recoverMemTable = new NVMPrimitiveMemTable(storageGroupId);
+    NVMMemtableRecoverPerformer.getInstance().reconstructMemtable(recoverMemTable, tsFileResource);
+    try {
+      if (!recoverMemTable.isEmpty()) {
+        MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, schema,
+            restorableTsFileIOWriter, tsFileResource.getFile().getParentFile().getName());
+        tableFlushTask.syncFlushMemTable();
+      }
+      // close file
+      restorableTsFileIOWriter.endFile(schema);
+      tsFileResource.serialize();
+    } catch (IOException | InterruptedException | ExecutionException e) {
+      throw new StorageGroupProcessorException(e);
+    }
   }
 }
