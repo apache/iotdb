@@ -815,7 +815,6 @@ public abstract class AbstractClient {
         }
       }
     } catch (Exception e) {
-      e.printStackTrace();
       println("Msg: " + e.getMessage());
       handleException(e);
     }
