@@ -101,7 +101,6 @@ public class TsFileResource {
     this.file = file;
     this.startTimeMap = new ConcurrentHashMap<>();
     this.endTimeMap = new HashMap<>();
-    this.closed = true;
   }
 
   public TsFileResource(File file, TsFileProcessor processor) {
@@ -382,5 +381,9 @@ public class TsFileResource {
 
   public void setHistoricalVersions(Set<Long> historicalVersions) {
     this.historicalVersions = historicalVersions;
+  }
+  
+  public void setProcessor(TsFileProcessor processor) {
+    this.processor = processor;
   }
 }
