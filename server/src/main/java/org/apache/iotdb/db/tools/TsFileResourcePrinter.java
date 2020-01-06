@@ -56,8 +56,14 @@ public class TsFileResourcePrinter {
     System.err.println(String.format("analyzing %s ...", filename));
     resource.deSerialize();
 
+    System.out.println("historicalVersions: " + resource.getHistoricalVersions());
+
     for (String device : resource.getStartTimeMap().keySet()) {
-      System.out.println(String.format("device %s, start time %d (%s), end time %d (%s)", device,
+      System.out.println(String.format(
+          "device %s, "
+              + "start time %d (%s), "
+              + "end time %d (%s)",
+          device,
           resource.getStartTimeMap().get(device),
           DatetimeUtils.convertMillsecondToZonedDateTime(resource.getStartTimeMap().get(device)),
           resource.getEndTimeMap().get(device),

@@ -46,9 +46,9 @@ public class QueryPlan extends PhysicalPlan {
   private int rowOffset = 0;
 
   private boolean isGroupByDevice = false; // for group by device sql
-  private List<String> measurementColumnList; // for group by device sql
-  private Map<String, Set<String>> measurementColumnsGroupByDevice; // for group by device sql
-  private Map<String, TSDataType> dataTypeConsistencyChecker; // for group by device sql
+  private List<String> measurements; // for group by device sql, e.g. temperature
+  private Map<String, Set<String>> measurementsGroupByDevice; // for group by device sql, e.g. root.ln.d1 -> temperature
+  private Map<String, TSDataType> dataTypeConsistencyChecker; // for group by device sql, e.g. root.ln.d1.temperature -> Float
   private Map<Path, TSDataType> dataTypeMapping = new HashMap<>(); // for group by device sql
 
   public QueryPlan() {
@@ -140,21 +140,21 @@ public class QueryPlan extends PhysicalPlan {
     isGroupByDevice = groupByDevice;
   }
 
-  public void setMeasurementColumnList(List<String> measurementColumnList) {
-    this.measurementColumnList = measurementColumnList;
+  public void setMeasurements(List<String> measurements) {
+    this.measurements = measurements;
   }
 
-  public List<String> getMeasurementColumnList() {
-    return measurementColumnList;
+  public List<String> getMeasurements() {
+    return measurements;
   }
 
-  public void setMeasurementColumnsGroupByDevice(
-      Map<String, Set<String>> measurementColumnsGroupByDevice) {
-    this.measurementColumnsGroupByDevice = measurementColumnsGroupByDevice;
+  public void setMeasurementsGroupByDevice(
+      Map<String, Set<String>> measurementsGroupByDevice) {
+    this.measurementsGroupByDevice = measurementsGroupByDevice;
   }
 
-  public Map<String, Set<String>> getMeasurementColumnsGroupByDevice() {
-    return measurementColumnsGroupByDevice;
+  public Map<String, Set<String>> getMeasurementsGroupByDevice() {
+    return measurementsGroupByDevice;
   }
 
   public void setDataTypeConsistencyChecker(

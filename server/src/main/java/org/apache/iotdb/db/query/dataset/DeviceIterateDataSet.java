@@ -80,11 +80,11 @@ public class DeviceIterateDataSet extends QueryDataSet {
     super(null, queryPlan.getDataTypes());
 
     // get deduplicated measurement columns (already deduplicated in TSServiceImpl.executeDataQuery)
-    this.deduplicatedMeasurementColumns = queryPlan.getMeasurementColumnList();
+    this.deduplicatedMeasurementColumns = queryPlan.getMeasurements();
     this.tsDataTypeMap = queryPlan.getDataTypeMapping();
     this.queryRouter = queryRouter;
     this.context = context;
-    this.measurementColumnsGroupByDevice = queryPlan.getMeasurementColumnsGroupByDevice();
+    this.measurementColumnsGroupByDevice = queryPlan.getMeasurementsGroupByDevice();
 
     if (queryPlan instanceof GroupByPlan) {
       this.dataSetType = DataSetType.GROUPBY;

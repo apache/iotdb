@@ -16,13 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.jdbc;
 
-public class Constant {
+package org.apache.iotdb.db.query.reader;
 
-  private Constant(){}
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
-  public static final String GLOBAL_DB_NAME = "IoTDB";
+/**
+ * ManagedSeriesReader is a combination of IBatchReader and IPointReader that provides
+ * additional interfaces to make it able to be run in a thread pool concurrently within a query.
+ */
+public interface ManagedSeriesReader extends IBatchReader, IPointReader {
 
-  static final String METHOD_NOT_SUPPORTED = "Method not supported";
+  boolean isManagedByQueryManager();
+
+  void setManagedByQueryManager(boolean managedByQueryManager);
+
+  boolean hasRemaining();
+
+  void setHasRemaining(boolean hasRemaining);
 }

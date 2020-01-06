@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -45,10 +45,10 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
   private static class ReadTask implements Runnable {
 
-    private final SeriesReaderWithoutValueFilter reader;
+    private final ManagedSeriesReader reader;
     private BlockingQueue<BatchData> blockingQueue;
 
-    public ReadTask(SeriesReaderWithoutValueFilter reader, BlockingQueue<BatchData> blockingQueue) {
+    public ReadTask(ManagedSeriesReader reader, BlockingQueue<BatchData> blockingQueue) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
     }
@@ -95,7 +95,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     }
   }
 
-  private List<SeriesReaderWithoutValueFilter> seriesReaderWithoutValueFilterList;
+  private List<ManagedSeriesReader> seriesReaderWithoutValueFilterList;
 
   private TreeSet<Long> timeHeap;
 
@@ -130,7 +130,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
    * @param readers readers in List(IPointReader) structure
    */
   public NewEngineDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-                                            List<SeriesReaderWithoutValueFilter> readers) throws InterruptedException {
+                                            List<ManagedSeriesReader> readers) throws InterruptedException {
     super(paths, dataTypes);
     this.seriesReaderWithoutValueFilterList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
@@ -145,7 +145,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
   private void init() throws InterruptedException {
     timeHeap = new TreeSet<>();
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
-      SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(i);
+      ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
       pool.submit(new ReadTask(reader, blockingQueueArray[i]));
@@ -341,7 +341,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       synchronized (seriesReaderWithoutValueFilterList.get(seriesIndex)) {
         // we only need to judge whether to submit another task when the queue is not full
         if (blockingQueueArray[seriesIndex].remainingCapacity() > 0) {
-          SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(seriesIndex);
+          ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(seriesIndex);
           // if the reader isn't being managed and still has more data,
           // that means this read task leave the pool before because the queue has no more space
           // now we should submit it again
