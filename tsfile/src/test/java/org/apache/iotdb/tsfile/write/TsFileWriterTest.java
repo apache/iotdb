@@ -27,7 +27,6 @@ import static org.junit.Assert.fail;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Arrays;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
@@ -37,6 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -71,7 +71,7 @@ public class TsFileWriterTest {
       closeFile();
     }
     try {
-      Files.deleteIfExists(Path.of("target/tsfileWriter-" + fileName));
+      Files.deleteIfExists(new File("target/tsfileWriter-" + fileName).toPath());
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -222,8 +222,8 @@ public class TsFileWriterTest {
       ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(
           new TsFileSequenceReader("target/tsfileWriter-" + fileName));
       QueryDataSet dataSet = readOnlyTsFile.query(QueryExpression.create()
-          .addSelectedPath(new org.apache.iotdb.tsfile.read.common.Path("d1.s1"))
-          .addSelectedPath(new org.apache.iotdb.tsfile.read.common.Path("d1.s2")));
+          .addSelectedPath(new Path("d1.s1"))
+          .addSelectedPath(new Path("d1.s2")));
       assertFalse(dataSet.hasNext());
       readOnlyTsFile.close();
     } catch (IOException e) {
@@ -236,9 +236,9 @@ public class TsFileWriterTest {
       ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(
           new TsFileSequenceReader("target/tsfileWriter-" + fileName));
       QueryDataSet dataSet = readOnlyTsFile.query(QueryExpression.create()
-          .addSelectedPath(new org.apache.iotdb.tsfile.read.common.Path("d1.s1"))
-          .addSelectedPath(new org.apache.iotdb.tsfile.read.common.Path("d1.s2"))
-          .addSelectedPath(new org.apache.iotdb.tsfile.read.common.Path("d1.s3")));
+          .addSelectedPath(new Path("d1.s1"))
+          .addSelectedPath(new Path("d1.s2"))
+          .addSelectedPath(new Path("d1.s3")));
       while(dataSet.hasNext()) {
         RowRecord result = dataSet.next();
         assertEquals(2, result.getFields().size());
