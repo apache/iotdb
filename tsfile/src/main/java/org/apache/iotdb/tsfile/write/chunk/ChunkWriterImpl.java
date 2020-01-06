@@ -231,6 +231,9 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public long getCurrentChunkSize() {
+    if (this.getCurrentDataSize() == 0) {
+      return 0;
+    }
     // return the serialized size of the chunk header + all pages
     return ChunkHeader.getSerializedSize(measurementSchema.getMeasurementId()) + this
         .getCurrentDataSize();
