@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "defaultSchema": "IoTDBSchema",
+  "schemas": [
+    {
+      "name": "IoTDBSchema",
+      "type": "custom",
+      "factory": "org.apache.iotdb.calcite.IoTDBSchemaFactory",
+      "operand": {
+        "host": "localhost",
+        "port": 6667,
+        "userName": "root",
+        "password": "root"
+      }
+    }
+  ]
+}
