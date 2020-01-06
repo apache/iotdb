@@ -130,13 +130,12 @@ public class TsFileSketchTool {
       }
 
       // metadata begins
-      if (tsDeviceMetadataIndexSortedList.size() != 0) {
-        printlnBoth(pw,
-            String.format("%20s", tsDeviceMetadataIndexSortedList.get(0).getOffset() - 1)
+      if (tsDeviceMetadataIndexSortedList.isEmpty()) {
+        printlnBoth(pw, String.format("%20s",  reader.getFileMetadataPos() - 1)
                 + "|\t[marker] 2");
       } else {
         printlnBoth(pw,
-            String.format("%20s",  reader.getFileMetadataPos() - 1)
+            String.format("%20s", tsDeviceMetadataIndexSortedList.get(0).getOffset() - 1)
                 + "|\t[marker] 2");
       }
       for (

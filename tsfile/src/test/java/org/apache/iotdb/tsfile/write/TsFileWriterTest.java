@@ -150,6 +150,7 @@ public class TsFileWriterTest {
       //do nothing
     }
     closeFile();
+    readNothing();
   }
 
   @Test
@@ -194,18 +195,23 @@ public class TsFileWriterTest {
     writer.write(rowBatch);
     closeFile();
     //in this case, the value of s2 = 0 at time 10000.
+    readOneRow(0);
   }
 
   @Test
   public void getIOWriter() throws IOException {
     //The interface is just for test
     writer.getIOWriter();
+    closeFile();
+    readNothing();
   }
 
   @Test
   public void flushForTest() throws IOException {
     //The interface is just for test
     writer.flushForTest();
+    closeFile();
+    readNothing();
   }
 
   private void closeFile() {
@@ -232,6 +238,10 @@ public class TsFileWriterTest {
     }
   }
   private void readOneRow() {
+    readOneRow(5);
+  }
+
+  private void readOneRow(int s2Value) {
     try {
       ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(
           new TsFileSequenceReader("target/tsfileWriter-" + fileName));
@@ -244,7 +254,7 @@ public class TsFileWriterTest {
         assertEquals(2, result.getFields().size());
         assertEquals(10000, result.getTimestamp());
         assertEquals(5.0f, result.getFields().get(0).getFloatV(), 0.00001);
-        assertEquals(5, result.getFields().get(1).getIntV());
+        assertEquals(s2Value, result.getFields().get(1).getIntV());
       }
       readOnlyTsFile.close();
     } catch (IOException e) {
