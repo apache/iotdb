@@ -64,10 +64,10 @@ public interface LogManager {
   void commitLog(Log log) throws QueryProcessException;
 
   /**
-   * Get all logs whose index in [startIndex, endIndex].
+   * Get all logs whose index in [startIndex, endIndex).
    * @param startIndex
    * @param endIndex
-   * @return logs whose index in [startIndex, endIndex].
+   * @return logs whose index in [startIndex, endIndex).
    */
   List<Log> getLogs(long startIndex, long endIndex);
 

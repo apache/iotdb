@@ -31,8 +31,8 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  */
 public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
-  private Set<MeasurementSchema> timeseriesSchemas;
-  private List<RemoteTsFileResource> dataFiles;
+  protected Set<MeasurementSchema> timeseriesSchemas;
+  protected List<RemoteTsFileResource> dataFiles;
 
   public FileSnapshot() {
     dataFiles = new ArrayList<>();

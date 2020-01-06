@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
+import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -37,13 +38,13 @@ public class DataLogApplierTest extends IoTDBTest {
     @Override
     public List<MeasurementSchema> pullTimeSeriesSchemas(String prefixPath)
         throws StorageGroupNotSetException {
-      if (prefixPath.equals(getTestSg(4))) {
+      if (prefixPath.equals(TestUtils.getTestSg(4))) {
         List<MeasurementSchema> ret = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
-          ret.add(getTestSchema(4, i));
+          ret.add(TestUtils.getTestSchema(4, i));
         }
         return ret;
-      } else if (prefixPath.equals(getTestSg(5))) {
+      } else if (prefixPath.equals(TestUtils.getTestSg(5))) {
         return Collections.emptyList();
       } else {
         throw new StorageGroupNotSetException(prefixPath);
@@ -61,13 +62,13 @@ public class DataLogApplierTest extends IoTDBTest {
     log.setPlan(insertPlan);
 
     // this series is already created
-    insertPlan.setDeviceId(getTestSg(1));
+    insertPlan.setDeviceId(TestUtils.getTestSg(1));
     insertPlan.setTime(1);
     insertPlan.setDataTypes(new TSDataType[] {TSDataType.BOOLEAN});
-    insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
+    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     insertPlan.setValues(new String[] {"1.0"});
     applier.apply(log);
-    QueryDataSet dataSet = query(Collections.singletonList(getTestSeries(1, 0)), null);
+    QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(1, 0)), null);
     assertTrue(dataSet.hasNext());
     RowRecord record = dataSet.next();
     assertEquals(1, record.getTimestamp());
@@ -76,9 +77,9 @@ public class DataLogApplierTest extends IoTDBTest {
     assertFalse(dataSet.hasNext());
 
     // this series is not created but can be fetched
-    insertPlan.setDeviceId(getTestSg(4));
+    insertPlan.setDeviceId(TestUtils.getTestSg(4));
     applier.apply(log);
-    dataSet = query(Collections.singletonList(getTestSeries(4, 0)), null);
+    dataSet = query(Collections.singletonList(TestUtils.getTestSeries(4, 0)), null);
     assertTrue(dataSet.hasNext());
     record = dataSet.next();
     assertEquals(1, record.getTimestamp());
@@ -87,7 +88,7 @@ public class DataLogApplierTest extends IoTDBTest {
     assertFalse(dataSet.hasNext());
 
     // this series does not exists any where
-    insertPlan.setDeviceId(getTestSg(5));
+    insertPlan.setDeviceId(TestUtils.getTestSg(5));
     try {
       applier.apply(log);
       fail("exception should be thrown");
@@ -96,7 +97,7 @@ public class DataLogApplierTest extends IoTDBTest {
     }
 
     // this storage group is not even set
-    insertPlan.setDeviceId(getTestSg(6));
+    insertPlan.setDeviceId(TestUtils.getTestSg(6));
     try {
       applier.apply(log);
       fail("exception should be thrown");
@@ -109,10 +110,10 @@ public class DataLogApplierTest extends IoTDBTest {
   public void testApplyDeletion()
       throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException {
     DeletePlan deletePlan = new DeletePlan();
-    deletePlan.setPaths(Collections.singletonList(new Path(getTestSeries(0, 0))));
+    deletePlan.setPaths(Collections.singletonList(new Path(TestUtils.getTestSeries(0, 0))));
     deletePlan.setDeleteTime(50);
     applier.apply(new PhysicalPlanLog(deletePlan));
-    QueryDataSet dataSet = query(Collections.singletonList(getTestSeries(0, 0)), null);
+    QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(0, 0)), null);
     int cnt = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();

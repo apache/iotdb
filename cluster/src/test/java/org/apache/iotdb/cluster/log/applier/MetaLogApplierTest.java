@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.Set;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
+import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
@@ -79,10 +80,10 @@ public class MetaLogApplierTest extends IoTDBTest {
   @Test
   public void testApplyCloseFile() throws StorageEngineException, QueryProcessException {
     StorageGroupProcessor storageGroupProcessor =
-        StorageEngine.getInstance().getProcessor(getTestSg(0));
+        StorageEngine.getInstance().getProcessor(TestUtils.getTestSg(0));
     assertNotNull(storageGroupProcessor.getWorkSequenceTsFileProcessor());
 
-    CloseFileLog closeFileLog = new CloseFileLog(getTestSg(0), true);
+    CloseFileLog closeFileLog = new CloseFileLog(TestUtils.getTestSg(0), true);
     applier.apply(closeFileLog);
     assertNull(storageGroupProcessor.getWorkSequenceTsFileProcessor());
   }

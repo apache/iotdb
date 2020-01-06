@@ -53,7 +53,7 @@ public class PartitionUtils {
         try {
           storageGroup = MManager.getInstance()
               .getStorageGroupNameByPath(((CreateTimeSeriesPlan) plan).getPath().getFullPath());
-          return Math.abs(Objects.hash(storageGroup, 0));
+          return calculateStorageGroupSlot(storageGroup, 0);
         } catch (MetadataException e) {
           logger.error("Cannot find the storage group of {}", ((CreateTimeSeriesPlan) plan).getPath());
           return 0;

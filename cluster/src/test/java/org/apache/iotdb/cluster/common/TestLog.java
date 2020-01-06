@@ -10,6 +10,8 @@ import org.apache.iotdb.cluster.log.Log;
 
 public class TestLog extends Log {
 
+  private int partitionNum;
+
   @Override
   public ByteBuffer serialize() {
     int totalSize = Long.BYTES * 4;
@@ -50,5 +52,13 @@ public class TestLog extends Log {
   public int hashCode() {
     return Objects.hash(getCurrLogIndex(), getCurrLogTerm(), getPreviousLogIndex(),
         getPreviousLogTerm());
+  }
+
+  public int getPartitionNum() {
+    return partitionNum;
+  }
+
+  public void setPartitionNum(int partitionNum) {
+    this.partitionNum = partitionNum;
   }
 }

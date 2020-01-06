@@ -107,7 +107,7 @@ public abstract class MemoryLogManager implements LogManager {
     List<Log> ret = new ArrayList<>();
     for (Log log : logBuffer) {
       long i = log.getCurrLogIndex();
-      if (startIndex <= i && i <= endIndex) {
+      if (startIndex <= i && i < endIndex) {
         ret.add(log);
       }
     }

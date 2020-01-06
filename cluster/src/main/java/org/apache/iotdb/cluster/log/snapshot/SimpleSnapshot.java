@@ -28,7 +28,7 @@ public class SimpleSnapshot extends Snapshot {
   public SimpleSnapshot() {
   }
 
-  SimpleSnapshot(List<Log> snapshot) {
+  public SimpleSnapshot(List<Log> snapshot) {
     this.snapshot = snapshot;
     this.lastLogId = snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogIndex();
     this.lastLogTerm = snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogTerm();

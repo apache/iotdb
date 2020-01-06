@@ -551,7 +551,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       Snapshot snapshot = null;
       synchronized (logManager) {
         allLogsValid = logManager.logValid(followerLastLogIndex);
-        logs = logManager.getLogs(followerLastLogIndex, logManager.getLastLogIndex());
+        logs = logManager.getLogs(followerLastLogIndex, Long.MAX_VALUE);
         if (!allLogsValid) {
           snapshot = logManager.getSnapshot();
         }

@@ -5,10 +5,18 @@
 package org.apache.iotdb.cluster.common;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class TestUtils {
   private TestUtils() {
@@ -37,4 +45,31 @@ public class TestUtils {
     return logList;
   }
 
+  public static PartitionTable getPartitionTable(int nodeNum) {
+    List<Node> nodes = new ArrayList<>();
+    for (int i = 0; i < nodeNum; i++) {
+      nodes.add(getNode(i));
+    }
+    return new SlotPartitionTable(nodes, getNode(0));
+  }
+
+  public static String getTestSg(int i) {
+    return "root.test" + i;
+  }
+
+  public static String getTestSeries(int sgNum, int seriesNum) {
+    return getTestSg(sgNum) + "." + getTestMeasurement(seriesNum);
+  }
+
+  public static String getTestMeasurement(int seriesNum) {
+    return "s" + seriesNum;
+  }
+
+  public static MeasurementSchema getTestSchema(int sgNum, int seriesNum) {
+    String path = getTestSeries(sgNum, seriesNum);
+    TSDataType dataType = TSDataType.DOUBLE;
+    TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
+    return new MeasurementSchema(path, dataType, encoding, CompressionType.UNCOMPRESSED,
+        Collections.emptyMap());
+  }
 }

@@ -37,7 +37,7 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
   Map<Integer, Collection<MeasurementSchema>> slotTimeseries = new HashMap<>();
   long snapshotLastLogId;
   long snapshotLastLogTerm;
-  PartitionTable partitionTable;
+  private PartitionTable partitionTable;
   Node header;
 
   public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
