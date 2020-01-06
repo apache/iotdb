@@ -7,9 +7,8 @@ package org.apache.iotdb.cluster.utils;
 import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
 import static org.apache.iotdb.cluster.partition.SlotPartitionTable.PARTITION_INTERVAL;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
+import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
@@ -24,7 +23,7 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.Murmur128Hash;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,17 +47,31 @@ public class PartitionUtils {
     if (log instanceof PhysicalPlanLog) {
       PhysicalPlanLog physicalPlanLog = ((PhysicalPlanLog) log);
       PhysicalPlan plan = physicalPlanLog.getPlan();
+      String storageGroup = null;
       if (plan instanceof CreateTimeSeriesPlan) {
-        String storageGroup;
         try {
           storageGroup = MManager.getInstance()
               .getStorageGroupNameByPath(((CreateTimeSeriesPlan) plan).getPath().getFullPath());
           return calculateStorageGroupSlot(storageGroup, 0);
         } catch (MetadataException e) {
           logger.error("Cannot find the storage group of {}", ((CreateTimeSeriesPlan) plan).getPath());
-          return 0;
+          return -1;
         }
+      } else if (plan instanceof InsertPlan || plan instanceof BatchInsertPlan) {
+        try {
+          storageGroup = MManager.getInstance()
+              .getStorageGroupNameByPath(((InsertPlan) plan).getDeviceId());
+        } catch (StorageGroupNotSetException e) {
+          logger.error("Cannot find the storage group of {}", ((CreateTimeSeriesPlan) plan).getPath());
+          return -1;
+        }
+      } else if (plan instanceof DeletePlan) {
+        //TODO deleteplan may have many SGs.
+        logger.error("not implemented for DeletePlan in cluster {}", plan);
+        return -1;
       }
+
+      return Math.abs(Objects.hash(storageGroup, 0));
     }
     return 0;
   }
@@ -96,14 +109,14 @@ public class PartitionUtils {
    *
    * @UsedBy NodeTool
    */
-  public static Map<Pair<Long, Long>, PartitionGroup> partitionByPathRangeTime(String path,
+  public static MultiKeyMap<Long, PartitionGroup> partitionByPathRangeTime(String path,
       long startTime, long endTime, PartitionTable partitionTable)
       throws StorageGroupNotSetException {
-    Map<Pair<Long, Long>, PartitionGroup> timeRangeMapRaftGroup = new HashMap<>();
+    MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = new MultiKeyMap<>();
     String storageGroup = MManager.getInstance().getStorageGroupNameByPath(path);
     while (startTime <= endTime) {
-      long nextTime = (startTime / PARTITION_INTERVAL + 1) * PARTITION_INTERVAL;
-      timeRangeMapRaftGroup.put(new Pair<>(startTime, Math.min(nextTime - 1, endTime)),
+      long nextTime = (startTime / PARTITION_INTERVAL + 1) * PARTITION_INTERVAL; //FIXME considering the time unit
+      timeRangeMapRaftGroup.put(startTime, Math.min(nextTime - 1, endTime),
           partitionTable.route(storageGroup, startTime));
       startTime = nextTime;
     }
@@ -111,8 +124,8 @@ public class PartitionUtils {
   }
 
   public static int calculateStorageGroupSlot(String storageGroupName, long timestamp) {
-    long partitionInstance = timestamp / PARTITION_INTERVAL;
-    int hash = Objects.hash(storageGroupName, partitionInstance * HASH_SALT);
+    long partitionInstance = timestamp / PARTITION_INTERVAL; //FIXME considering the time unit
+    int hash = Murmur128Hash.hash(storageGroupName, partitionInstance, HASH_SALT);
     return Math.abs(hash % ClusterConstant.SLOT_NUM);
   }
 }
