@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.service;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.THRIFT_SERVER_WAIT_TIME_FOR_STOP;
-
 import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
@@ -211,7 +209,9 @@ public class JDBCService implements JDBCServiceMBean, IService {
         serverTransport = new TServerSocket(new InetSocketAddress(config.getRpcAddress(),
             config.getRpcPort()));
         poolArgs = new Args(serverTransport).maxWorkerThreads(IoTDBDescriptor.
-            getInstance().getConfig().getRpcMaxConcurrentClientNum()).minWorkerThreads(1).stopTimeoutVal(THRIFT_SERVER_WAIT_TIME_FOR_STOP);
+            getInstance().getConfig().getRpcMaxConcurrentClientNum()).minWorkerThreads(1)
+            .stopTimeoutVal(
+                IoTDBDescriptor.getInstance().getConfig().getThriftServerAwaitTimeForStopService());
         poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,
             ThreadName.JDBC_CLIENT.getName());
         poolArgs.processor(processor);
@@ -227,7 +227,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
       } finally {
         close();
         // TODO debug log, will be deleted in production env
-        if(threadStopLatch == null) {
+        if (threadStopLatch == null) {
           logger.info("Stop Count Down latch is null");
         } else {
           logger.info("Stop Count Down latch is {}", threadStopLatch.getCount());

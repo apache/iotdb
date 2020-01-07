@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.session.utils;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.METRIC_SERVICE_WAIT_TIME_FOR_STOP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.THRIFT_SERVER_WAIT_TIME_FOR_STOP;
 import static org.junit.Assert.fail;
 
 import java.io.File;
@@ -151,8 +149,8 @@ public class EnvironmentUtils {
    * this function should be called before all code in the setup
    */
   public static void envSetUp() throws StartupException {
-    METRIC_SERVICE_WAIT_TIME_FOR_STOP = 0;
-    THRIFT_SERVER_WAIT_TIME_FOR_STOP = 0;
+    IoTDBDescriptor.getInstance().getConfig().setMetricServiceAwaitTimeForStopService(0);
+    IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(0);
     if (daemon == null) {
       daemon = new IoTDB();
       try {

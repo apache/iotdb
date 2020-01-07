@@ -458,6 +458,13 @@ public class IoTDBConfig {
    */
   private long defaultTTL = Long.MAX_VALUE;
 
+  //just for test
+  //wait for 60 second by default.
+  private int thriftServerAwaitTimeForStopService = 60;
+
+  //wait for 60 ms by default.
+  private int MetricServiceAwaitTimeForStopService = 60;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -1279,5 +1286,21 @@ public class IoTDBConfig {
 
   public void setDefaultTTL(long defaultTTL) {
     this.defaultTTL = defaultTTL;
+  }
+
+  public int getThriftServerAwaitTimeForStopService() {
+    return thriftServerAwaitTimeForStopService;
+  }
+
+  public void setThriftServerAwaitTimeForStopService(int thriftServerAwaitTimeForStopService) {
+    this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
+  }
+
+  public int getMetricServiceAwaitTimeForStopService() {
+    return MetricServiceAwaitTimeForStopService;
+  }
+
+  public void setMetricServiceAwaitTimeForStopService(int metricServiceAwaitTimeForStopService) {
+    MetricServiceAwaitTimeForStopService = metricServiceAwaitTimeForStopService;
   }
 }
