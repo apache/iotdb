@@ -5,6 +5,7 @@
 package org.apache.iotdb.cluster.common;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -107,7 +108,7 @@ public class IoTDBTest {
   }
 
   protected QueryDataSet query(List<String> pathStrs, IExpression expression)
-      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException {
+      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException, SQLException {
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     QueryPlan queryPlan = new QueryPlan();
     queryPlan.setExpression(expression);

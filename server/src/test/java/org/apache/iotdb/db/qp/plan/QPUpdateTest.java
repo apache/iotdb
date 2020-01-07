@@ -24,11 +24,13 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -108,7 +110,7 @@ public class QPUpdateTest {
 
   private void testUpdate()
       throws QueryProcessException, IOException,
-      StorageEngineException, QueryFilterOptimizationException {
+      StorageEngineException, QueryFilterOptimizationException, MetadataException, SQLException {
     String sqlStr = "update root.qp_update_test.device_1.sensor_1 set value = 33000 where time >= 10 and time <= 10";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
     boolean upRet = processor.getExecutor().processNonQuery(plan1);
@@ -129,7 +131,7 @@ public class QPUpdateTest {
 
   private void testDeletePaths()
       throws QueryProcessException, IOException,
-      StorageEngineException, QueryFilterOptimizationException {
+      StorageEngineException, QueryFilterOptimizationException, MetadataException, SQLException {
     String sqlStr = "delete from root.qp_update_test.device_1 where time < 15";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
     boolean upRet = processor.getExecutor().processNonQuery(plan1);
@@ -153,7 +155,7 @@ public class QPUpdateTest {
 
   private void testDelete()
       throws QueryProcessException, IOException,
-      StorageEngineException, QueryFilterOptimizationException {
+      StorageEngineException, QueryFilterOptimizationException, MetadataException, SQLException {
     String sqlStr = "delete from root.qp_update_test.device_1.sensor_1 where time < 15";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
     boolean upRet = processor.getExecutor().processNonQuery(plan1);
@@ -177,7 +179,7 @@ public class QPUpdateTest {
 
   private void testInsert()
       throws QueryProcessException, IOException,
-      StorageEngineException, QueryFilterOptimizationException {
+      StorageEngineException, QueryFilterOptimizationException, MetadataException, SQLException {
     String sqlStr = "insert into root.qp_update_test.device_1 (timestamp, sensor_1, sensor_2) values (13, 50, 40)";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
 

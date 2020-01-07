@@ -25,6 +25,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -38,7 +39,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
@@ -74,7 +74,7 @@ public class TTLTest {
 
   @Before
   public void setUp()
-      throws MetadataException, IOException, StartupException, MetadataException, StorageGroupProcessorException {
+      throws IOException, StartupException, MetadataException, StorageGroupProcessorException {
     EnvironmentUtils.envSetUp();
     createSchemas();
   }
@@ -86,7 +86,7 @@ public class TTLTest {
   }
 
   private void createSchemas()
-      throws MetadataException, MetadataException, StorageGroupProcessorException {
+      throws MetadataException, StorageGroupProcessorException {
     MManager.getInstance().setStorageGroupToMTree(sg1);
     MManager.getInstance().setStorageGroupToMTree(sg2);
     storageGroupProcessor = new StorageGroupProcessor(IoTDBDescriptor.getInstance().getConfig()
@@ -98,7 +98,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testSetMetaTTL() throws IOException, MetadataException, StorageGroupException {
+  public void testSetMetaTTL() throws IOException, MetadataException {
     // exception is expected when setting ttl to a non-exist storage group
     boolean caught = false;
     try {
@@ -247,7 +247,7 @@ public class TTLTest {
 
   @Test
   public void testParseSetTTL()
-      throws MetadataException, QueryProcessException {
+      throws QueryProcessException {
     QueryProcessor queryProcessor = new QueryProcessor(new QueryProcessExecutor());
     SetTTLPlan plan = (SetTTLPlan) queryProcessor
         .parseSQLToPhysicalPlan("SET TTL TO " + sg1 + " 10000");
@@ -261,7 +261,7 @@ public class TTLTest {
 
   @Test
   public void testParseShowTTL()
-      throws MetadataException, QueryProcessException {
+      throws QueryProcessException {
     QueryProcessor queryProcessor = new QueryProcessor(new QueryProcessExecutor());
     ShowTTLPlan plan = (ShowTTLPlan) queryProcessor.parseSQLToPhysicalPlan("SHOW ALL TTL");
     assertTrue(plan.getStorageGroups().isEmpty());
@@ -277,7 +277,7 @@ public class TTLTest {
 
   @Test
   public void testShowTTL()
-      throws IOException, QueryProcessException, QueryFilterOptimizationException, StorageEngineException, MetadataException {
+      throws IOException, QueryProcessException, QueryFilterOptimizationException, StorageEngineException, MetadataException, SQLException {
     MManager.getInstance().setTTL(sg1, ttl);
 
     ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());

@@ -20,7 +20,6 @@ package org.apache.iotdb.cluster.partition;
 
 import static org.junit.Assert.assertEquals;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -28,7 +27,6 @@ import java.util.stream.IntStream;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -38,7 +36,7 @@ public class SlotPartitionTableTest {
   int replica_size = 5;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     List<Node> nodes = new ArrayList<>();
     IntStream.range(0, 20).forEach(i -> nodes.add(new Node("localhost", 30000 + i, i, 40000 + i)));
     ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(replica_size);
@@ -46,7 +44,7 @@ public class SlotPartitionTableTest {
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
     ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(3);
   }
 

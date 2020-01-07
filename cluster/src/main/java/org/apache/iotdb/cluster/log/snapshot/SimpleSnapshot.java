@@ -26,7 +26,7 @@ public class SimpleSnapshot extends Snapshot {
   private static final Logger logger = LoggerFactory.getLogger(SimpleSnapshot.class);
   List<Log> snapshot;
 
-  SimpleSnapshot() {
+  public SimpleSnapshot() {
   }
 
   public SimpleSnapshot(List<Log> snapshot) {

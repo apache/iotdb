@@ -26,6 +26,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -84,13 +85,13 @@ public class BasicDaoImpl implements BasicDao {
   public List<String> getMetaData() {
     ConnectionCallback<Object> connectionCallback = new ConnectionCallback<Object>() {
       public Object doInConnection(Connection connection) throws SQLException {
-        DatabaseMetaData databaseMetaData = connection.getMetaData();
-        ResultSet resultSet = databaseMetaData
-            .getColumns(Constant.CATALOG_TIMESERIES, "root.*", "root.*", null);
+        Statement statement = connection.createStatement();
+        statement.execute("show timeseries" + "root *");
+        ResultSet resultSet = statement.getResultSet();
         logger.info("Start to get timeseries");
         List<String> columnsName = new ArrayList<>();
         while (resultSet.next()) {
-          String timeseries = resultSet.getString(1);
+          String timeseries = resultSet.getString(2);
           columnsName.add(timeseries.substring(5));
         }
         return columnsName;

@@ -135,6 +135,20 @@ public class TsFileProcessor {
     this.tsFileResource.setHistoricalVersions(Collections.singleton(versionController.currVersion()));
   }
 
+  public TsFileProcessor(String storageGroupName, TsFileResource tsFileResource, Schema schema,
+      VersionController versionController, CloseTsFileCallBack closeUnsealedTsFileProcessor,
+      Supplier updateLatestFlushTimeCallback, boolean sequence, RestorableTsFileIOWriter writer) {
+    this.storageGroupName =storageGroupName;
+    this.tsFileResource = tsFileResource;
+    this.schema = schema;
+    this.versionController = versionController;
+    this.writer = writer;
+    this.closeTsFileCallback = closeUnsealedTsFileProcessor;
+    this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
+    this.sequence = sequence;
+    logger.info("reopen a tsfile processor {}", tsFileResource.getFile());
+  }
+
   /**
    * insert data in an InsertPlan into the workingMemtable.
    *
@@ -286,6 +300,7 @@ public class TsFileProcessor {
         return;
       }
       shouldClose = true;
+      tsFileResource.setCloseFlag();
       // when a flush thread serves this TsFileProcessor (because the processor is submitted by
       // registerTsFileProcessor()), the thread will seal the corresponding TsFile and
       // execute other cleanup works if (shouldClose == true and flushingMemTables is empty).
@@ -494,6 +509,7 @@ public class TsFileProcessor {
 
     tsFileResource.serialize();
     writer.endFile(schema);
+    tsFileResource.cleanCloseFlag();
 
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore

@@ -9,9 +9,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +29,8 @@ public class RemoteDataSimpleSnapshot extends DataSimpleSnapshot implements Remo
   private List<Log> tempList = new ArrayList<>();
   private int slot;
 
-  RemoteDataSimpleSnapshot() {
+  @TestOnly
+  public RemoteDataSimpleSnapshot() {
   }
 
   public RemoteDataSimpleSnapshot(Future<Map<Integer, DataSimpleSnapshot>> remoteSnapshotFuture,
@@ -93,5 +96,23 @@ public class RemoteDataSimpleSnapshot extends DataSimpleSnapshot implements Remo
         snapshot = tempList;
       }
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    getRemoteSnapshot();
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    return super.equals(o);
+  }
+
+  @Override
+  public int hashCode() {
+    getRemoteSnapshot();
+    return Objects.hash(super.hashCode());
   }
 }

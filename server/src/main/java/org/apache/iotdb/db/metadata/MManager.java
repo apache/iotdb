@@ -853,7 +853,6 @@ public class MManager {
    * @return A list instance which stores all device names
    */
   public List<String> getAllDevices() throws MetadataException {
-
     lock.readLock().lock();
     try {
       return mgraph.getAllDevices();

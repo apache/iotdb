@@ -29,7 +29,7 @@ public class DataClient extends AsyncClient {
   }
 
   @Override
-  protected void onComplete() {
+  public void onComplete() {
     super.onComplete();
     // return itself to the pool if the job is done
     pool.putClient(node, this);

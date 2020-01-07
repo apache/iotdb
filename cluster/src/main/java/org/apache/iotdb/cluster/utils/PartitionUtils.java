@@ -5,11 +5,11 @@
 package org.apache.iotdb.cluster.utils;
 
 import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
-import static org.apache.iotdb.cluster.partition.SlotPartitionTable.PARTITION_INTERVAL;
 
 import java.util.Objects;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 public class PartitionUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(PartitionUtils.class);
+  private static final long PARTITION_INTERVAL = ClusterDescriptor.getINSTANCE().getConfig().getPartitionInterval();
 
   private PartitionUtils() {
     // util class

@@ -33,11 +33,11 @@ public class NodeStatus implements Comparable<NodeStatus> {
     return lastResponseLatency;
   }
 
-  TNodeStatus getStatus() {
+  public TNodeStatus getStatus() {
     return status;
   }
 
-  void setStatus(TNodeStatus status) {
+  public void setStatus(TNodeStatus status) {
     this.status = status;
   }
 
@@ -45,7 +45,7 @@ public class NodeStatus implements Comparable<NodeStatus> {
     this.lastUpdateTime = lastUpdateTime;
   }
 
-  void setLastResponseLatency(long lastResponseLatency) {
+  public void setLastResponseLatency(long lastResponseLatency) {
     this.lastResponseLatency = lastResponseLatency;
   }
 }

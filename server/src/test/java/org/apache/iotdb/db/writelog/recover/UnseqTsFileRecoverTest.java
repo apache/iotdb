@@ -82,7 +82,7 @@ public class UnseqTsFileRecoverTest {
   @Before
   public void setup() throws IOException, WriteProcessException {
     FlushSubTaskPoolManager.getInstance().start();
-    tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "test.ts");
+    tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
 
     schema = new Schema();
@@ -146,7 +146,7 @@ public class UnseqTsFileRecoverTest {
   @Test
   public void test() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, schema,
-        versionController, resource, true);
+        versionController, resource, true, false);
     ActiveTimeSeriesCounter.getInstance().init(logNodePrefix);
     performer.recover();
 

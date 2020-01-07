@@ -312,31 +312,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSFetchMetadataResp resp = new TSFetchMetadataResp();
     try {
       switch (req.getType()) {
-        case "SHOW_TIMESERIES":
-          String path = req.getColumnPath();
-          List<List<String>> timeseriesList = getTimeSeriesForPath(path);
-          resp.setTimeseriesList(timeseriesList);
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
-        case "SHOW_STORAGE_GROUP":
-          Set<String> storageGroups = new HashSet<>(getAllStorageGroups());
-          resp.setStorageGroups(storageGroups);
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
         case "METADATA_IN_JSON":
           String metadataInJson = getMetadataInString();
           resp.setMetadataInJson(metadataInJson);
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
-        case "SHOW_DEVICES":
-          List<String> devices = getAllDevices();
-          resp.setDevices(new HashSet<>(devices));
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
-        case "SHOW_CHILD_PATHS":
-          path = req.getColumnPath();
-          Set<String> childPaths = getChildPaths(path);
-          resp.setChildPaths(childPaths);
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
@@ -347,24 +325,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setColumnsList(getPaths(req.getColumnPath()));
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
-        case "COUNT_TIMESERIES":
-          resp.setTimeseriesNum(getPaths(req.getColumnPath()).size());
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
-        case "COUNT_NODES":
-          resp.setNodesList(getNodesList(req.getColumnPath(), req.getNodeLevel()));
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
-        case "COUNT_NODE_TIMESERIES":
-          resp.setNodeTimeseriesNum(
-              getNodeTimeseriesNum(getNodesList(req.getColumnPath(), req.getNodeLevel())));
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
         default:
           status = getStatus(TSStatusCode.METADATA_ERROR, req.getType());
           break;
       }
-    } catch (MetadataException | OutOfMemoryError | SQLException e) {
+    } catch (MetadataException | OutOfMemoryError e) {
       logger
           .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()), e);
       status = getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
@@ -373,36 +338,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     resp.setStatus(status);
     return resp;
-  }
-
-  private Map<String, String> getNodeTimeseriesNum(List<String> nodes)
-      throws MetadataException {
-    Map<String, String> nodeColumnsNum = new HashMap<>();
-    for (String columnPath : nodes) {
-      nodeColumnsNum.put(columnPath, Integer.toString(getPaths(columnPath).size()));
-    }
-    return nodeColumnsNum;
-  }
-
-  private List<String> getNodesList(String schemaPattern, int level) throws SQLException {
-    return MManager.getInstance().getNodesList(schemaPattern, level);
-  }
-
-  private List<String> getAllStorageGroups() {
-    return MManager.getInstance().getAllStorageGroupNames();
-  }
-
-  private List<String> getAllDevices() throws MetadataException {
-    return MManager.getInstance().getAllDevices();
-  }
-
-  private Set<String> getChildPaths(String path) throws MetadataException {
-    return MManager.getInstance().getChildNodePathInNextLevel(path);
-  }
-
-  private List<List<String>> getTimeSeriesForPath(String path)
-      throws MetadataException {
-    return MManager.getInstance().getShowTimeseriesPath(path);
   }
 
   private String getMetadataInString() {
@@ -453,13 +388,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (args.length == 1) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     } else if (args.length == 2){
-      String[] storageGroups = args[1].split(",\\s*");
+      String[] storageGroups = args[1].split(",");
       for (String storageGroup : storageGroups) {
         StorageEngine.getInstance().asyncCloseProcessor(storageGroup, true);
         StorageEngine.getInstance().asyncCloseProcessor(storageGroup, false);
       }
     } else {
-      String[] storageGroups = args[1].split(",\\s*");
+      String[] storageGroups = args[1].split(",");
       boolean isSeq = Boolean.parseBoolean(args[2]);
       for (String storageGroup : storageGroups) {
         StorageEngine.getInstance().asyncCloseProcessor(storageGroup, isSeq);
@@ -673,6 +608,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return StaticResps.DYNAMIC_PARAMETER_RESP;
       case VERSION:
         return StaticResps.SHOW_VERSION_RESP;
+      case TIMESERIES:
+        return StaticResps.SHOW_TIMESERIES_RESP;
+      case STORAGE_GROUP:
+        return StaticResps.SHOW_STORAGE_GROUP;
+      case CHILD_PATH:
+        return StaticResps.SHOW_CHILD_PATHS;
+      case DEVICES:
+        return StaticResps.SHOW_DEVICES;
+      case COUNT_NODE_TIMESERIES:
+        return StaticResps.COUNT_NODE_TIMESERIES;
+      case COUNT_NODES:
+        return StaticResps.COUNT_NODES;
+      case COUNT_TIMESERIES:
+        return StaticResps.COUNT_TIMESERIES;
       default:
         logger.error("Unsupported show content type: {}", showPlan.getShowContentType());
         throw new QueryProcessException(
@@ -874,8 +823,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * create QueryDataSet and buffer it for fetchResults
    */
   private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan) throws
-      QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException {
-    QueryContext context = genQueryContext(queryId);
+      QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException, SQLException {
+
+    QueryContext context = new QueryContext(queryId);
     QueryDataSet queryDataSet = processor.getExecutor().processQuery(physicalPlan, context);
     queryId2DataSet.put(queryId, queryDataSet);
     return queryDataSet;

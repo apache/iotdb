@@ -46,7 +46,7 @@ public class ClientPool {
    * @param node
    * @param client
    */
-  void putClient(Node node, AsyncClient client) {
+  public void putClient(Node node, AsyncClient client) {
     synchronized (node) {
       Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(node, n -> new ArrayDeque<>());
       clientStack.push(client);

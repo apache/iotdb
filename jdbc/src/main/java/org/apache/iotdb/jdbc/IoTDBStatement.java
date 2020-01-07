@@ -39,12 +39,6 @@ import java.util.List;
 
 public class IoTDBStatement implements Statement {
 
-  private static final String SHOW_TIMESERIES_COMMAND_LOWERCASE = "show timeseries";
-  private static final String SHOW_STORAGE_GROUP_COMMAND_LOWERCASE = "show storage group";
-  private static final String SHOW_DEVICES_COMMAND_LOWERCASE = "show devices";
-  private static final String SHOW_CHILD_PATHS_COMMAND_LOWERCASE = "show child paths";
-  private static final String COUNT_TIMESERIES_COMMAND_LOWERCASE = "count timeseries";
-  private static final String COUNT_NODES_COMMAND_LOWERCASE = "count nodes";
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
 
   ZoneId zoneId;
@@ -227,98 +221,22 @@ public class IoTDBStatement implements Statement {
    */
   private boolean executeSQL(String sql) throws TException, SQLException {
     isCancelled = false;
-    String sqlToLowerCase = sql.toLowerCase().trim();
-    // TODO: use normal query instead of metadata query
-    if (sqlToLowerCase.startsWith(SHOW_TIMESERIES_COMMAND_LOWERCASE)) {
-      if (sqlToLowerCase.equals(SHOW_TIMESERIES_COMMAND_LOWERCASE)) {
-        DatabaseMetaData databaseMetaData = connection.getMetaData();
-        resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, "root", null, null);
-        return true;
-      } else {
-        String[] cmdSplit = sql.split("\\s+");
-        if (cmdSplit.length != 3) {
-          throw new SQLException("Error format of \'SHOW TIMESERIES <PATH>\'");
-        } else {
-          String path = cmdSplit[2];
-          DatabaseMetaData databaseMetaData = connection.getMetaData();
-          resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, path, null, null);
-          return true;
-        }
-      }
-    } else if (sqlToLowerCase.equals(SHOW_STORAGE_GROUP_COMMAND_LOWERCASE)) {
-      DatabaseMetaData databaseMetaData = connection.getMetaData();
-      resultSet = databaseMetaData.getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);
-      return true;
-    } else if (sqlToLowerCase.startsWith(SHOW_CHILD_PATHS_COMMAND_LOWERCASE)) {
-      if (sqlToLowerCase.equals(SHOW_CHILD_PATHS_COMMAND_LOWERCASE)) {
-        DatabaseMetaData databaseMetaData = connection.getMetaData();
-        resultSet = databaseMetaData.getColumns(Constant.CATALOG_CHILD_PATHS, "root", null, null);
-        return true;
-      } else {
-        String[] cmdSplit = sql.split("\\s+");
-        if (cmdSplit.length != 4) {
-          throw new SQLException("Error format of \'SHOW CHILD PATHS <PATH>\'");
-        } else {
-          String path = cmdSplit[3];
-          DatabaseMetaData databaseMetaData = connection.getMetaData();
-          resultSet = databaseMetaData.getColumns(Constant.CATALOG_CHILD_PATHS, path, null, null);
-          return true;
-        }
-      }
-    } else if (sqlToLowerCase.equals(SHOW_DEVICES_COMMAND_LOWERCASE)) {
-      DatabaseMetaData databaseMetaData = connection.getMetaData();
-      resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICES, null, null, null);
-      return true;
-    } else if (sqlToLowerCase.startsWith(COUNT_TIMESERIES_COMMAND_LOWERCASE)) {
-      String[] cmdSplit = sqlToLowerCase.split("\\s+", 4);
-      if (cmdSplit.length != 3 && !(cmdSplit.length == 4 && cmdSplit[3]
-          .startsWith("group by level"))) {
-        throw new SQLException(
-            "Error format of \'COUNT TIMESERIES <PATH>\' or \'COUNT TIMESERIES <PATH> GROUP BY LEVEL=<INTEGER>\'");
-      }
-      if (cmdSplit.length == 3) {
-        String path = cmdSplit[2];
-        DatabaseMetaData databaseMetaData = connection.getMetaData();
-        resultSet = databaseMetaData.getColumns(Constant.COUNT_TIMESERIES, path, null, null);
-        return true;
-      } else {
-
-        String path = cmdSplit[2];
-        int level = Integer.parseInt(cmdSplit[3].replaceAll(" ", "").substring(13));
-        IoTDBDatabaseMetadata databaseMetadata = (IoTDBDatabaseMetadata) connection.getMetaData();
-        resultSet = databaseMetadata
-            .getNodes(Constant.COUNT_NODE_TIMESERIES, path, null, null, level);
-        return true;
-      }
-    } else if (sqlToLowerCase.startsWith(COUNT_NODES_COMMAND_LOWERCASE)) {
-      String[] cmdSplit = sqlToLowerCase.split("\\s+", 4);
-      if (!(cmdSplit.length == 4 && cmdSplit[3].startsWith("level"))) {
-        throw new SQLException("Error format of \'COUNT NODES <PATH> LEVEL=<INTEGER>\'");
-      } else {
-        String path = cmdSplit[2];
-        int level = Integer.parseInt(cmdSplit[3].replaceAll(" ", "").substring(6));
-        IoTDBDatabaseMetadata databaseMetaData = (IoTDBDatabaseMetadata) connection.getMetaData();
-        resultSet = databaseMetaData.getNodes(Constant.COUNT_NODES, path, null, null, level);
-        return true;
-      }
-    } else {
-      TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
-      execReq.setFetchSize(fetchSize);
-      TSExecuteStatementResp execResp = client.executeStatement(execReq);
-      try {
-        RpcUtils.verifySuccess(execResp.getStatus());
-      } catch (IoTDBRPCException e) {
-        throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
-      }
-      if (execResp.isSetColumns()) {
-        queryId = execResp.getQueryId();
-        this.resultSet = new IoTDBQueryResultSet(this,
-            execResp.getColumns(), execResp.getDataTypeList(),
-            execResp.ignoreTimeStamp, client, sql, queryId, sessionId, execResp.queryDataSet);
-        return true;
-      }
-      return false;
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
+    execReq.setFetchSize(fetchSize);
+    TSExecuteStatementResp execResp = client.executeStatement(execReq);
+    try {
+      RpcUtils.verifySuccess(execResp.getStatus());
+    } catch (IoTDBRPCException e) {
+      throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
+    if (execResp.isSetColumns()) {
+      queryId = execResp.getQueryId();
+      this.resultSet = new IoTDBQueryResultSet(this,
+          execResp.getColumns(), execResp.getDataTypeList(),
+          execResp.ignoreTimeStamp, client, sql, queryId, sessionId, execResp.queryDataSet);
+      return true;
+    }
+    return false;
   }
 
   @Override

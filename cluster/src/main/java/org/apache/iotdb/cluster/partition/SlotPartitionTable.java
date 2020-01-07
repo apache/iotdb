@@ -32,9 +32,9 @@ public class SlotPartitionTable implements PartitionTable {
 
   private static final Logger logger = LoggerFactory.getLogger(SlotPartitionTable.class);
 
-  private static final int REPLICATION_NUM =
+  private int replicationNum =
       ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
-  public static final long PARTITION_INTERVAL =
+  private long partitionInterval =
       ClusterDescriptor.getINSTANCE().getConfig().getPartitionInterval();
 
   private List<Node> nodeRing = new ArrayList<>();
@@ -94,13 +94,13 @@ public class SlotPartitionTable implements PartitionTable {
   }
 
 
-  // find REPLICATION_NUM groups that a node is in
+  // find replicationNum groups that a node is in
   private List<PartitionGroup> getPartitionGroups(Node node) {
     List<PartitionGroup> ret = new ArrayList<>();
 
     int nodeIndex = nodeRing.indexOf(node);
-    for (int i = 0; i < REPLICATION_NUM; i++) {
-      // the previous REPLICATION_NUM nodes (including the node itself) are the headers of the
+    for (int i = 0; i < replicationNum; i++) {
+      // the previous replicationNum nodes (including the node itself) are the headers of the
       // groups the node is in
       int startIndex = nodeIndex - i;
       if (startIndex < 0) {
@@ -119,7 +119,7 @@ public class SlotPartitionTable implements PartitionTable {
 
     // assuming the nodes are [1,2,3,4,5]
     int nodeIndex = nodeRing.indexOf(node);
-    int endIndex = nodeIndex + REPLICATION_NUM;
+    int endIndex = nodeIndex + replicationNum;
     if (endIndex > nodeRing.size()) {
       // for startIndex = 4, we concat [4, 5] and [1] to generate the group
       ret.addAll(nodeRing.subList(nodeIndex, nodeRing.size()));

@@ -271,7 +271,7 @@ public class StorageEngine implements IService {
   public void asyncCloseProcessor(String storageGroupName, boolean isSeq)
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupName);
-    if (storageGroupName != null) {
+    if (processor != null) {
       processor.writeLock();
       try {
         processor.moveOneWorkProcessorToClosingList(isSeq);

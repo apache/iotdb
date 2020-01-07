@@ -10,6 +10,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -56,7 +57,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyInsert()
-      throws QueryProcessException, IOException, QueryFilterOptimizationException, StorageEngineException, MetadataException {
+      throws QueryProcessException, IOException, QueryFilterOptimizationException, StorageEngineException, MetadataException, SQLException {
     InsertPlan insertPlan = new InsertPlan();
     PhysicalPlanLog log = new PhysicalPlanLog();
     log.setPlan(insertPlan);
@@ -108,7 +109,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyDeletion()
-      throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException {
+      throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException, SQLException {
     DeletePlan deletePlan = new DeletePlan();
     deletePlan.setPaths(Collections.singletonList(new Path(TestUtils.getTestSeries(0, 0))));
     deletePlan.setDeleteTime(50);

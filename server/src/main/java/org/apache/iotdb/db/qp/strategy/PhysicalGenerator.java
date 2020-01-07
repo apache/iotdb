@@ -133,6 +133,25 @@ public class PhysicalGenerator {
             return new ShowPlan(ShowContentType.FLUSH_TASK_INFO);
           case SQLConstant.TOK_VERSION:
             return new ShowPlan(ShowContentType.VERSION);
+          case SQLConstant.TOK_TIMESERIES:
+            return new ShowTimeSeriesPlan(ShowContentType.TIMESERIES,
+                ((ShowTimeSeriesOperator) operator).getPath());
+          case SQLConstant.TOK_STORAGE_GROUP:
+            return new ShowPlan(ShowContentType.STORAGE_GROUP);
+          case SQLConstant.TOK_DEVICES:
+            return new ShowDevicesPlan(ShowContentType.DEVICES, ((ShowDevicesOperator) operator).getPath());
+          case SQLConstant.TOK_COUNT_NODE_TIMESERIES:
+            return new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,
+                ((CountOperator) operator).getPath(), ((CountOperator) operator).getLevel());
+          case SQLConstant.TOK_COUNT_NODES:
+            return new CountPlan(ShowContentType.COUNT_NODES,
+                ((CountOperator) operator).getPath(), ((CountOperator) operator).getLevel());
+          case SQLConstant.TOK_COUNT_TIMESERIES:
+            return new CountPlan(ShowContentType.COUNT_TIMESERIES,
+                ((CountOperator) operator).getPath());
+          case SQLConstant.TOK_CHILD_PATHS:
+            return new ShowChildPathsPlan(ShowContentType.CHILD_PATH,
+                ((ShowChildPathsOperator) operator).getPath());
           default:
             throw new LogicalOperatorException(String
                 .format("not supported operator type %s in show operation.", operator.getType()));
