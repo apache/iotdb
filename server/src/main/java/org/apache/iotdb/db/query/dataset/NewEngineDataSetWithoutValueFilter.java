@@ -92,6 +92,8 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
         LOGGER.error("Interrupted while putting into the blocking queue: ", e);
       } catch (IOException e) {
         LOGGER.error("Something gets wrong while reading from the series reader: ", e);
+      } catch (Exception e) {
+        LOGGER.error("Something gets wrong: ", e);
       }
     }
   }

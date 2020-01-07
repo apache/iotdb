@@ -308,14 +308,16 @@ public class StorageGroupProcessor {
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
           , schema, versionController, tsFileResource, false, i == tsFiles.size() - 1);
       RestorableTsFileIOWriter writer = recoverPerformer.recover();
-      if (i != tsFiles.size() - 1) {
-        // not the last file, just close it
+      if (i != tsFiles.size() - 1 || !writer.canWrite()) {
+        // not the last file or cannot write, just close it
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
         workSequenceTsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
             schema, versionController, this::closeUnsealedTsFileProcessor,
             this::updateLatestFlushTimeCallback, true, writer);
+        tsFileResource.setProcessor(workSequenceTsFileProcessor);
+        writer.makeMetadataVisible();
       }
     }
   }
@@ -328,16 +330,17 @@ public class StorageGroupProcessor {
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
           , schema, versionController, tsFileResource, true, i == tsFiles.size() - 1);
       RestorableTsFileIOWriter writer = recoverPerformer.recover();
-      if (i != tsFiles.size() - 1) {
-        // not the last file, just close it
+      if (i != tsFiles.size() - 1 || !writer.canWrite()) {
+        // not the last file or cannot write, just close it
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
         workUnSequenceTsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
             schema, versionController, this::closeUnsealedTsFileProcessor,
             () -> true, false, writer);
+        tsFileResource.setProcessor(workUnSequenceTsFileProcessor);
+        writer.makeMetadataVisible();
       }
-
     }
   }
 
