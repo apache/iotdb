@@ -309,7 +309,7 @@ public class StorageGroupProcessor {
           , schema, versionController, tsFileResource, false, i == tsFiles.size() - 1);
       RestorableTsFileIOWriter writer = recoverPerformer.recover();
       if (i != tsFiles.size() - 1 || !writer.canWrite()) {
-        // not the last file, just close it
+        // not the last file or cannot write, just close it
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
@@ -331,7 +331,7 @@ public class StorageGroupProcessor {
           , schema, versionController, tsFileResource, true, i == tsFiles.size() - 1);
       RestorableTsFileIOWriter writer = recoverPerformer.recover();
       if (i != tsFiles.size() - 1 || !writer.canWrite()) {
-        // not the last file, just close it
+        // not the last file or cannot write, just close it
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
