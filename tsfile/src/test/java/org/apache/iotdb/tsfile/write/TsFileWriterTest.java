@@ -152,6 +152,21 @@ public class TsFileWriterTest {
     closeFile();
     readNothing();
   }
+  @Test
+  public void writeIncorrectTSRecords() throws IOException, WriteProcessException {
+    //incorrect data type
+    for(int i = 2; i < 3; i++) {
+      TSRecord record = new TSRecord(10000 + i, "d"+i);
+      record.addTuple(new IntDataPoint("s1", 5));
+      try {
+        writer.write(record);
+      } catch (TsFileEncodingException e) {
+        //do nothing
+      }
+    }
+    closeFile();
+    readNothing();
+  }
 
   @Test
   public void writeIncorrectTSRecord() throws IOException, WriteProcessException {
