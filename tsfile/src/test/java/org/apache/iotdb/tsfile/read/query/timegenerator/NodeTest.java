@@ -104,12 +104,12 @@ public class NodeTest {
     }
 
     @Override
-    public boolean hasNextSatisfiedPage() {
+    public boolean hasNextBatch() {
       return hasCachedData;
     }
 
     @Override
-    public BatchData nextPageData() {
+    public BatchData nextBatch() {
       hasCachedData = false;
       return data;
     }

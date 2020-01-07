@@ -25,7 +25,6 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -79,9 +78,9 @@ public class ChunkMetaData {
    * constructor of ChunkMetaData.
    *
    * @param measurementUid measurement id
-   * @param tsDataType     time series data type
-   * @param fileOffset     file offset
-   * @param statistics     value statistics
+   * @param tsDataType time series data type
+   * @param fileOffset file offset
+   * @param statistics value statistics
    */
   public ChunkMetaData(String measurementUid, TSDataType tsDataType, long fileOffset,
       Statistics statistics) {

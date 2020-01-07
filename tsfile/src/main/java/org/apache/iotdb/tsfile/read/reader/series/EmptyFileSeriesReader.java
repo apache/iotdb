@@ -43,12 +43,12 @@ public class EmptyFileSeriesReader extends AbstractFileSeriesReader {
   }
 
   @Override
-  public boolean hasNextSatisfiedPage() {
+  public boolean hasNextBatch() {
     return false;
   }
 
   @Override
-  public BatchData nextPageData() {
+  public BatchData nextBatch() {
     return data;
   }
 

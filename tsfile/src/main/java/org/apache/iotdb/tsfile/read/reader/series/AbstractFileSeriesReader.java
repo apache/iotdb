@@ -60,7 +60,7 @@ public abstract class AbstractFileSeriesReader implements IAggregateReader {
    *
    * @return True if current chunk has next batch data
    */
-  public boolean hasNextSatisfiedPage() throws IOException {
+  public boolean hasNextBatch() throws IOException {
 
     // current chunk has additional batch
     if (chunkReader != null && chunkReader.hasNextSatisfiedPage()) {
@@ -86,7 +86,7 @@ public abstract class AbstractFileSeriesReader implements IAggregateReader {
   /**
    * get next batch data.
    */
-  public BatchData nextPageData() throws IOException {
+  public BatchData nextBatch() throws IOException {
     data = chunkReader.nextPageData();
     return data;
   }

@@ -120,13 +120,11 @@ public class IntegerStatistics extends Statistics<Integer> {
   protected void mergeStatisticsValue(Statistics stats) {
     IntegerStatistics intStats = (IntegerStatistics) stats;
     if (isEmpty) {
-      initializeStats(intStats.getMinValue(), intStats.getMaxValue(), intStats.getFirstValue(),
-          intStats.getLastValue(),
+      initializeStats(intStats.getMinValue(), intStats.getMaxValue(), intStats.getFirstValue(), intStats.getLastValue(),
           intStats.getSumValue());
       isEmpty = false;
     } else {
-      updateStats(intStats.getMinValue(), intStats.getMaxValue(), intStats.getFirstValue(),
-          intStats.getLastValue(),
+      updateStats(intStats.getMinValue(), intStats.getMaxValue(), intStats.getFirstValue(), intStats.getLastValue(),
           intStats.getSumValue());
     }
 

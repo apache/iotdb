@@ -74,11 +74,11 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
 
     for (int i = 0; i < paths.size(); i++) {
       AbstractFileSeriesReader reader = readers.get(i);
-      if (!reader.hasNextSatisfiedPage()) {
+      if (!reader.hasNextBatch()) {
         batchDataList.add(new BatchData());
         hasDataRemaining.add(false);
       } else {
-        batchDataList.add(reader.nextPageData());
+        batchDataList.add(reader.nextBatch());
         hasDataRemaining.add(true);
       }
     }
@@ -118,8 +118,8 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
 
         if (!data.hasCurrent()) {
           AbstractFileSeriesReader reader = readers.get(i);
-          if (reader.hasNextSatisfiedPage()) {
-            data = reader.nextPageData();
+          if (reader.hasNextBatch()) {
+            data = reader.nextBatch();
             if (data.hasCurrent()) {
               batchDataList.set(i, data);
               timeHeapPut(data.currentTime());

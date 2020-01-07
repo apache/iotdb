@@ -18,6 +18,18 @@
  */
 package org.apache.iotdb.tsfile.read.reader;
 
-public interface IAggregateReader extends IChunkReader {
+import java.io.IOException;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 
+public interface IAggregateReader extends IBatchReader {
+
+  /**
+   * Returns meta-information of batch data.
+   * <p>
+   * Returns null if batch data comes from memory. Returns pageHeader if batch data comes from page
+   * data.
+   */
+  PageHeader nextPageHeader() throws IOException;
+
+  void skipPageData() throws IOException;
 }
