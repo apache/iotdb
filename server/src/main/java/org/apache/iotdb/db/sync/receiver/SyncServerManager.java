@@ -133,7 +133,7 @@ public class SyncServerManager implements IService {
           protocolFactory = new TBinaryProtocol.Factory();
         }
         processor = new SyncService.Processor<>(new SyncServiceImpl());
-        poolArgs = new TThreadPoolServer.Args(serverTransport);
+        poolArgs = new TThreadPoolServer.Args(serverTransport).stopTimeoutVal(IoTDBConstant.THRIFT_SERVER_WAIT_TIME_FOR_STOP);
         poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,
             ThreadName.SYNC_CLIENT.getName());
         poolArgs.protocolFactory(protocolFactory);

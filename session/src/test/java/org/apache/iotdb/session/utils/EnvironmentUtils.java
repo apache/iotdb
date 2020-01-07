@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.session.utils;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.THRIFT_SERVER_WAIT_TIME_FOR_STOP;
+import static org.junit.Assert.fail;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -40,6 +43,7 @@ import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.MetricsService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.junit.Assert;
@@ -67,6 +71,8 @@ public class EnvironmentUtils {
 
   private static long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
+  private static IoTDB daemon;
+
   public static void cleanEnv() throws IOException, StorageEngineException {
 
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
@@ -77,14 +83,17 @@ public class EnvironmentUtils {
     // clean storage group manager
     if (!StorageEngine.getInstance().deleteAll()) {
       logger.error("Can't close the storage group manager in EnvironmentUtils");
-      Assert.fail();
+      fail();
     }
-    StorageEngine.getInstance().reset();
+
+
+    if (daemon != null) {
+      daemon.stop();
+      daemon = null;
+    }
+
     IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
 
-    StatMonitor.getInstance().close();
-    // clean wal
-    MultiFileLogNodeManager.getInstance().stop();
     // clean cache
     if (config.isMetaDataCacheEnable()) {
       TsFileMetaDataCache.getInstance().clear();
@@ -92,8 +101,8 @@ public class EnvironmentUtils {
     }
     // close metadata
     MManager.getInstance().clear();
-    MetricsService.getInstance().stop();
-    // deleteData all directory
+
+    // delete all directory
     cleanAllDir();
 
     config.setMaxMemtableNumber(oldMaxMemTableNumber);
@@ -103,20 +112,22 @@ public class EnvironmentUtils {
   }
 
   private static void cleanAllDir() throws IOException {
-    // deleteData sequential files
+    // delete sequential files
     for (String path : directoryManager.getAllSequenceFileFolders()) {
       cleanDir(path);
     }
-    // deleteData unsequence files
+    // delete unsequence files
     for (String path : directoryManager.getAllUnSequenceFileFolders()) {
       cleanDir(path);
     }
-    // deleteData system info
+    // delete system info
     cleanDir(config.getSystemDir());
-    // deleteData wal
+    // delete wal
     cleanDir(config.getWalFolder());
+    // delete query
+    cleanDir(config.getQueryDir());
     cleanDir(config.getBaseDir());
-    // deleteData data files
+    // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
     }
@@ -139,28 +150,22 @@ public class EnvironmentUtils {
    * this function should be called before all code in the setup
    */
   public static void envSetUp() throws StartupException {
+    if (daemon == null) {
+      daemon = new IoTDB();
+      try {
+        daemon.active();
+      } catch (Exception e) {
+        fail(e.getMessage());
+      }
+    }
+
     IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(false);
-    MManager.getInstance().init();
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
 
     createAllDir();
     // disable the system monitor
     config.setEnableStatMonitor(false);
-    IAuthorizer authorizer;
-    try {
-      authorizer = LocalFileAuthorizer.getInstance();
-    } catch (AuthException e) {
-      throw new StartupException(e);
-    }
-    try {
-      authorizer.reset();
-    } catch (AuthException e) {
-      throw new StartupException(e);
-    }
-    StorageEngine.getInstance().reset();
-    MultiFileLogNodeManager.getInstance().start();
-    FlushManager.getInstance().start();
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID  = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 
@@ -177,9 +182,17 @@ public class EnvironmentUtils {
     createDir(config.getSystemDir());
     // create wal
     createDir(config.getWalFolder());
+    // create query
+    createDir(config.getQueryDir());
     // create data
-    for (String dataDir: config.getDataDirs()) {
+    for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);
+    }
+    //create user and roles folder
+    try {
+      LocalFileAuthorizer.getInstance().reset();
+    } catch (AuthException e) {
+      e.printStackTrace();
     }
   }
 

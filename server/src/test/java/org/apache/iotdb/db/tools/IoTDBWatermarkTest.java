@@ -32,7 +32,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.integration.Constant;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.tools.watermark.WatermarkDetector;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -47,7 +46,6 @@ import org.junit.Test;
  */
 public class IoTDBWatermarkTest {
 
-  private static IoTDB daemon;
   private static String filePath1 = TestConstant.BASE_OUTPUT_PATH.concat("watermarked_query_result.csv");
   private static String filePath2 = TestConstant.BASE_OUTPUT_PATH.concat("notWatermarked_query_result.csv");
   private static PrintWriter writer1;
@@ -65,8 +63,7 @@ public class IoTDBWatermarkTest {
     IoTDBDescriptor.getInstance().getConfig().setWatermarkBitString(watermarkBitString);
     IoTDBDescriptor.getInstance().getConfig().setWatermarkMethod(String.format("GroupBasedLSBMethod"
         + "(embed_row_cycle=%d,embed_lsb_num=%d)", embed_row_cycle, embed_lsb_num));
-    daemon = IoTDB.getInstance();
-    daemon.active();
+
     EnvironmentUtils.envSetUp();
     insertData();
 
@@ -95,7 +92,6 @@ public class IoTDBWatermarkTest {
     if (file2.exists()) {
       file2.delete();
     }
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
