@@ -104,7 +104,7 @@ public class IoTDBSessionIT {
     //
     insertRowBatchTest3("root.sg1.d1");
 
-    queryForBatch();
+    queryForBatchSeqAndUnseq();
   }
 
   @Test
@@ -245,21 +245,6 @@ public class IoTDBSessionIT {
     conf.setAutoCreateSchemaEnabled(false);
 
     session.close();
-  }
-
-  private void createTimeseriesForTime() throws IoTDBSessionException {
-    session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE,
-        CompressionType.SNAPPY);
-    session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE,
-        CompressionType.SNAPPY);
-    session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE,
-        CompressionType.SNAPPY);
-    session.createTimeseries("root.sg1.d2.s1", TSDataType.INT64, TSEncoding.RLE,
-        CompressionType.SNAPPY);
-    session.createTimeseries("root.sg1.d2.s2", TSDataType.INT64, TSEncoding.RLE,
-        CompressionType.SNAPPY);
-    session.createTimeseries("root.sg1.d2.s3", TSDataType.INT64, TSEncoding.RLE,
-        CompressionType.SNAPPY);
   }
 
 
@@ -614,7 +599,7 @@ public class IoTDBSessionIT {
     schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
     schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
-    RowBatch rowBatch = schema.createRowBatch(deviceId, 256);
+    RowBatch rowBatch = schema.createRowBatch(deviceId, 200);
 
     long[] timestamps = rowBatch.timestamps;
     Object[] values = rowBatch.values;
@@ -730,6 +715,9 @@ public class IoTDBSessionIT {
       int count = 0;
       while (resultSet.next()) {
         for (int i = 1; i <= colCount; i++) {
+          if(i == 1){
+            System.out.println(resultSet.getString("Time"));
+          }
           count++;
         }
       }

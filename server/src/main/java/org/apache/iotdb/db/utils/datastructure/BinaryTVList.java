@@ -210,7 +210,7 @@ public class BinaryTVList extends TVList {
     checkExpansion();
     int idx = start;
 
-    updateMinTimeAndSorted(time);
+    updateMinTimeAndSorted(time, start, end);
 
     while (idx < end) {
       int inputRemaining = end - idx;

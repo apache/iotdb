@@ -443,10 +443,14 @@ public abstract class TVList {
   }
 
   void updateMinTimeAndSorted(long[] time) {
+    updateMinTimeAndSorted(time, 0, time.length);
+  }
+
+  void updateMinTimeAndSorted(long[] time, int start, int end) {
     int length = time.length;
     long inPutMinTime = Long.MAX_VALUE;
     boolean inputSorted = true;
-    for (int i = 0; i < length; i++) {
+    for (int i = start; i < end; i++) {
       inPutMinTime = inPutMinTime <= time[i] ? inPutMinTime : time[i];
       if (inputSorted && i < length - 1 && time[i] > time[i+1]) {
         inputSorted = false;

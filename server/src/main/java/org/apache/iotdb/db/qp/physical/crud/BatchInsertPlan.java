@@ -138,37 +138,37 @@ public class BatchInsertPlan extends PhysicalPlan {
         switch (dataType) {
           case INT32:
             int[] intValues = (int[]) columns[i];
-            for (int j = start; j < end; i++) {
+            for (int j = start; j < end; j++) {
               buffer.putInt(intValues[j]);
             }
             break;
           case INT64:
             long[] longValues = (long[]) columns[i];
-            for (int j = start; j < end; i++) {
+            for (int j = start; j < end; j++) {
               buffer.putLong(longValues[j]);
             }
             break;
           case FLOAT:
             float[] floatValues = (float[]) columns[i];
-            for (int j = start; j < end; i++) {
+            for (int j = start; j < end; j++) {
               buffer.putFloat(floatValues[j]);
             }
             break;
           case DOUBLE:
             double[] doubleValues = (double[]) columns[i];
-            for (int j = start; j < end; i++) {
+            for (int j = start; j < end; j++) {
               buffer.putDouble(doubleValues[j]);
             }
             break;
           case BOOLEAN:
             boolean[] boolValues = (boolean[]) columns[i];
-            for (int j = start; j < end; i++) {
+            for (int j = start; j < end; j++) {
               buffer.putInt(BytesUtils.boolToByte(boolValues[j]));
             }
             break;
           case TEXT:
             Binary[] binaryValues = (Binary[]) columns[i];
-            for (int j = start; j < end; i++) {
+            for (int j = start; j < end; j++) {
               buffer.putInt(binaryValues[j].getLength());
               buffer.put(binaryValues[j].getValues());
             }

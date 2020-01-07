@@ -25,10 +25,8 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -81,7 +79,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -89,7 +86,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -493,63 +489,6 @@ public class StorageGroupProcessor {
     }
   }
 
-  /**
-   * sort value list by index
-   *
-   * @param valueList value list
-   * @param dataType data type
-   * @param index index
-   * @return sorted list
-   */
-  private Object sortList(Object valueList, TSDataType dataType, Integer[] index) {
-    switch (dataType) {
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) valueList;
-        boolean[] sortedValues = new boolean[boolValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedValues[index[i]] = boolValues[i];
-        }
-        return sortedValues;
-      case INT32:
-        int[] intValues = (int[]) valueList;
-        int[] sortedIntValues = new int[intValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedIntValues[index[i]] = intValues[i];
-        }
-        return sortedIntValues;
-      case INT64:
-        long[] longValues = (long[]) valueList;
-        long[] sortedLongValues = new long[longValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedLongValues[index[i]] = longValues[i];
-        }
-        return sortedLongValues;
-      case FLOAT:
-        float[] floatValues = (float[]) valueList;
-        float[] sortedFloatValues = new float[floatValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedFloatValues[index[i]] = floatValues[i];
-        }
-        return sortedFloatValues;
-      case DOUBLE:
-        double[] doubleValues = (double[]) valueList;
-        double[] sortedDoubleValues = new double[doubleValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedDoubleValues[index[i]] = doubleValues[i];
-        }
-        return sortedDoubleValues;
-      case TEXT:
-        Binary[] binaryValues = (Binary[]) valueList;
-        Binary[] sortedBinaryValues = new Binary[binaryValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedBinaryValues[index[i]] = binaryValues[i];
-        }
-        return sortedBinaryValues;
-      default:
-        throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
-    }
-  }
-
   public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
     writeLock();
     try {
@@ -560,27 +499,8 @@ public class StorageGroupProcessor {
       long lastFlushTime = latestFlushedTimeForEachDevice.get(batchInsertPlan.getDeviceId());
 
       /*
-       * following part of code sort the batch data by time,
-       * so we can insert continuous data in value list to get a better performance
+       * assume that batch has been sorted
        */
-      // sort to get index, and use index to sort value list
-      long[] times = batchInsertPlan.getTimes();
-      Integer[] index = new Integer[batchInsertPlan.getRowCount()];
-      for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
-        index[i] = i;
-      }
-      Arrays.sort(index, new Comparator<Integer>() {
-        @Override
-        public int compare(Integer o1, Integer o2) {
-          return Long.compare(times[o1], times[o2]);
-        }
-      });
-      Arrays.sort(times);
-      for (int i = 0; i < batchInsertPlan.getMeasurements().length; i++) {
-        batchInsertPlan.setColumn(i,
-            sortList(batchInsertPlan.getColumns()[i], batchInsertPlan.getDataTypes()[i], index));
-      }
-
       int loc = 0;
       while (loc < batchInsertPlan.getRowCount()) {
         long currTime = batchInsertPlan.getTimes()[loc];
@@ -640,20 +560,15 @@ public class StorageGroupProcessor {
           }
           loc++;
         }
-      }
-      // last sequence part
-      if (loc > before) {
-        insertBatchToTsFileProcessor(batchInsertPlan, before, loc, true, results,
-            beforeTimePartition);
+
+        // last sequence part
+        if (loc > before) {
+          insertBatchToTsFileProcessor(batchInsertPlan, before, loc, true, results,
+              beforeTimePartition);
+        }
       }
 
-      // set result as original order
-      Integer[] out = new Integer[results.length];
-      for (int i = 0; i < results.length; i++) {
-        out[i] = results[index[i]];
-      }
-
-      return out;
+      return results;
     } finally {
       writeUnlock();
     }
@@ -694,10 +609,9 @@ public class StorageGroupProcessor {
         .putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
     // try to update the latest time of the device of this tsRecord
     if (result && latestTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId())
-        < batchInsertPlan
-        .getMaxTime()) {
+        < batchInsertPlan.getTimes()[end - 1]) {
       latestTimeForEachDevice.get(timePartitionId)
-          .put(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
+          .put(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
     }
 
     // check memtable size and may async try to flush the work memtable

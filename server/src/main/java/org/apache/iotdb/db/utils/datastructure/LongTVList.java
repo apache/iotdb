@@ -207,9 +207,9 @@ public class LongTVList extends TVList {
   @Override
   public void putLongs(long[] time, long[] value, int start, int end) {
     checkExpansion();
-    int idx = 0;
+    int idx = start;
 
-    updateMinTimeAndSorted(time);
+    updateMinTimeAndSorted(time, start, end);
 
     while (idx < end) {
       int inputRemaining = end - idx;
