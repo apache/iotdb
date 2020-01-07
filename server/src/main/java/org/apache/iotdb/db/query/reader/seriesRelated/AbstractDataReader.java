@@ -4,6 +4,7 @@ package org.apache.iotdb.db.query.reader.seriesRelated;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
@@ -55,8 +56,10 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
   protected IChunkReader chunkReader;
   protected ChunkMetaData chunkMetaData;
 
+  private Map<Integer, Long> metaDataVersionCache = new HashMap<>();
+
   protected List<IChunkReader> overlappedChunkReader = new ArrayList<>();
-  protected List<DiskChunkReader> overlappedPages = new ArrayList<>();
+  protected List<IChunkReader> overlappedPages = new ArrayList<>();
 
   protected boolean hasCachedNextPage;
   protected PageHeader currentPage;
@@ -85,76 +88,64 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     unseqFileResource = sortUnSeqFileResources();
 
     //过滤所有不能使用的文件
-    while (!seqFileResource.isEmpty()) {
+    while (filter != null && !seqFileResource.isEmpty()) {
       TsFileResource tsFileResource = seqFileResource.get(0);
       long startTime = tsFileResource.getStartTimeMap()
           .getOrDefault(seriesPath.getDevice(), Long.MIN_VALUE);
       //防止未封口文件
       long endTime = tsFileResource.getEndTimeMap()
           .getOrDefault(seriesPath.getDevice(), Long.MAX_VALUE);
-      if (filter != null && !filter.satisfyStartEndTime(startTime, endTime)) {
+      if (!filter.satisfyStartEndTime(startTime, endTime)) {
         seqFileResource.remove(0);
         continue;
       }
       break;
     }
-    while (!unseqFileResource.isEmpty()) {
+    while (filter != null && !unseqFileResource.isEmpty()) {
       TsFileResource tsFileResource = unseqFileResource.first();
       Long startTime = tsFileResource.getStartTimeMap()
           .getOrDefault(seriesPath.getDevice(), Long.MIN_VALUE);
       Long endTime = tsFileResource.getEndTimeMap()
           .getOrDefault(seriesPath.getDevice(), Long.MAX_VALUE);
-      if (filter != null && !filter.satisfyStartEndTime(startTime, endTime)) {
+      if (!filter.satisfyStartEndTime(startTime, endTime)) {
         unseqFileResource.pollFirst();
         continue;
       }
       break;
     }
-    if (!seqFileResource.isEmpty()) {
-      seqChunkMetadatas.addAll(loadChunkMetadatas(seqFileResource.remove(0)));
-    }
-    if (!unseqFileResource.isEmpty()) {
-      unseqChunkMetadatas.addAll(loadChunkMetadatas(unseqFileResource.pollFirst()));
-    }
+    fillMetadataContainer();
   }
-
 
   protected boolean hasNextChunk() throws IOException {
     if (hasCachedNextChunk) {
       return true;
     }
-
-    if (seqChunkMetadatas.isEmpty() && !seqFileResource.isEmpty()) {
-      seqChunkMetadatas.addAll(loadChunkMetadatas(seqFileResource.remove(0)));
-    }
-    if (unseqChunkMetadatas.isEmpty() && !unseqFileResource.isEmpty()) {
-      unseqChunkMetadatas.addAll(loadChunkMetadatas(unseqFileResource.pollFirst()));
-    }
+    fillMetadataContainer();
     //删除所有不能用的chunk
-    while (!seqChunkMetadatas.isEmpty()) {
-      if (seqChunkMetadatas.isEmpty() && !seqFileResource.isEmpty()) {
+    while (filter != null && (!seqChunkMetadatas.isEmpty() || !seqFileResource.isEmpty())) {
+      if (seqChunkMetadatas.isEmpty()) {
         seqChunkMetadatas.addAll(loadChunkMetadatas(seqFileResource.remove(0)));
       }
 
       ChunkMetaData metaData = seqChunkMetadatas.get(0);
-      if (filter != null && !filter.satisfy(metaData.getStatistics())) {
+      if (!filter.satisfy(metaData.getStatistics())) {
         seqChunkMetadatas.remove(0);
         continue;
       }
       break;
     }
-    while (!unseqChunkMetadatas.isEmpty()) {
-      if (unseqChunkMetadatas.isEmpty() && !unseqFileResource.isEmpty()) {
+    while (filter != null && (!unseqChunkMetadatas.isEmpty() || !unseqFileResource.isEmpty())) {
+      if (unseqChunkMetadatas.isEmpty()) {
         unseqChunkMetadatas.addAll(loadChunkMetadatas(unseqFileResource.pollFirst()));
       }
       ChunkMetaData metaData = unseqChunkMetadatas.first();
-      if (filter != null && !filter.satisfy(metaData.getStatistics())) {
+      if (!filter.satisfy(metaData.getStatistics())) {
         unseqChunkMetadatas.pollFirst();
         continue;
       }
       break;
     }
-
+    fillMetadataContainer();
     hasCachedNextChunk = true;
     if (!seqChunkMetadatas.isEmpty() && unseqChunkMetadatas.isEmpty()) {
       chunkMetaData = seqChunkMetadatas.remove(0);
@@ -186,21 +177,44 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
       long startTime = unseqChunkMetadatas.first().getStartTime();
 
       if (chunkMetaData.getEndTime() > startTime) {
-        overlappedChunkReader.add(initChunkReader(unseqChunkMetadatas.pollFirst()));
+        ChunkMetaData metaData = unseqChunkMetadatas.pollFirst();
+        IChunkReader chunkReader = initChunkReader(metaData);
+        metaDataVersionCache.put(chunkReader.hashCode(), metaData.getVersion());
+        overlappedChunkReader.add(chunkReader);
         continue;
       }
       break;
     }
-    while (!seqChunkMetadatas.isEmpty()) {
+    while (!seqChunkMetadatas.isEmpty() || !seqFileResource.isEmpty()) {
+      //需要注意的是有可能文件里不存在这个测点的数据
+      while (seqChunkMetadatas.isEmpty() && !seqChunkMetadatas.isEmpty()) {
+        seqChunkMetadatas.addAll(loadChunkMetadatas(seqFileResource.remove(0)));
+      }
+      if (seqChunkMetadatas.isEmpty()) {
+        break;
+      }
       long startTime = seqChunkMetadatas.get(0).getStartTime();
 
       if (chunkMetaData.getEndTime() > startTime) {
-        overlappedChunkReader.add(initChunkReader(seqChunkMetadatas.remove(0)));
+        ChunkMetaData metaData = seqChunkMetadatas.remove(0);
+        IChunkReader chunkReader = initChunkReader(metaData);
+        metaDataVersionCache.put(chunkReader.hashCode(), metaData.getVersion());
+        overlappedChunkReader.add(chunkReader);
         continue;
       }
       break;
     }
     return hasCachedNextChunk;
+  }
+
+  private void fillMetadataContainer() throws IOException {
+    //补充一次防止为空
+    if (seqChunkMetadatas.isEmpty() && !seqFileResource.isEmpty()) {
+      seqChunkMetadatas.addAll(loadChunkMetadatas(seqFileResource.remove(0)));
+    }
+    if (unseqChunkMetadatas.isEmpty() && !unseqFileResource.isEmpty()) {
+      unseqChunkMetadatas.addAll(loadChunkMetadatas(unseqFileResource.pollFirst()));
+    }
   }
 
   protected boolean hasNextPage() throws IOException {
@@ -215,20 +229,19 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     if (isCurrentChunkReaderInit && chunkReader.hasNextSatisfiedPage()) {
       currentPage = chunkReader.nextPageHeader();
       hasCachedNextPage = true;
-      latestDirectlyOverlappedPageEndTime = Long.MAX_VALUE;
+      latestDirectlyOverlappedPageEndTime = currentPage.getEndTime();
       while (!overlappedChunkReader.isEmpty()) {
         IChunkReader iChunkReader = overlappedChunkReader.get(0);
         if (currentPage.getEndTime() > iChunkReader.nextPageHeader().getStartTime()) {
-          latestDirectlyOverlappedPageEndTime = currentPage.getEndTime();
-          overlappedPages.add(new DiskChunkReader(overlappedChunkReader.remove(0)));
-          continue;
+          overlappedPages.add(overlappedChunkReader.remove(0));
         }
-        break;
       }
       return hasCachedNextPage;
     }
+
     isCurrentChunkReaderInit = false;
     hasCachedNextChunk = hasCachedNextPage;
+    metaDataVersionCache.clear();
     return hasCachedNextPage;
   }
 
@@ -237,13 +250,18 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
       return true;
     }
     if (chunkReader.hasNextSatisfiedPage()) {
-      priorityMergeReader.addReaderWithPriority(new DiskChunkReader(chunkReader), 0);
+      priorityMergeReader.addReaderWithPriority(new DiskChunkReader(chunkReader),
+          Long.valueOf(chunkMetaData.getVersion()).intValue());
       hasCachedNextBatch = true;
     }
     for (int i = 0; i < overlappedPages.size(); i++) {
-      priorityMergeReader.addReaderWithPriority(overlappedPages.remove(0), i + 1);
+      IChunkReader reader = overlappedPages.get(i);
+      priorityMergeReader.addReaderWithPriority(new DiskChunkReader(reader),
+          metaDataVersionCache.getOrDefault(reader.hashCode(), 0L).intValue());
       hasCachedNextBatch = true;
     }
+    overlappedPages.clear();
+
     hasCachedNextPage = hasCachedNextBatch;
     return hasCachedNextBatch;
   }
@@ -260,11 +278,12 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
   protected BatchData nextOverlappedPage() throws IOException {
     BatchData batchData = new BatchData(dataType);
     while (priorityMergeReader.hasNext()) {
-      TimeValuePair timeValuePair = priorityMergeReader.next();
+      TimeValuePair timeValuePair = priorityMergeReader.current();
       if (timeValuePair.getTimestamp() > latestDirectlyOverlappedPageEndTime) {
         break;
       }
       batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
+      priorityMergeReader.next();
     }
     return batchData;
   }
@@ -347,4 +366,16 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     this.hasRemaining = hasRemaining;
   }
 
+
+  private class VersionChunkKvPair {
+
+    private long version;
+    private IChunkReader reader;
+  }
+
+  private class VersionPageKvPair {
+
+    private long version;
+    private DiskChunkReader reader;
+  }
 }
