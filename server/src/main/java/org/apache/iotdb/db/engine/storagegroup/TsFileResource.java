@@ -96,13 +96,19 @@ public class TsFileResource {
   private ReentrantReadWriteLock writeQueryLock = new ReentrantReadWriteLock();
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
-
+  
+  /**
+   * for sealed TsFile, call setClosed to close TsFileResource
+   */
   public TsFileResource(File file) {
     this.file = file;
     this.startTimeMap = new ConcurrentHashMap<>();
     this.endTimeMap = new HashMap<>();
   }
-
+  
+  /**
+   * unsealed TsFile
+   */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
     this.startTimeMap = new ConcurrentHashMap<>();
