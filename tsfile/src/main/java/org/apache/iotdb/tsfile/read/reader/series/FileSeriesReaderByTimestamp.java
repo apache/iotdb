@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read.reader.series;
 
 import java.io.IOException;
 import java.util.List;
+
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -30,8 +31,8 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 
 /**
  * <p>
- * Series reader is used to query one series of one tsfile, using this reader to query the value of
- * a series with given timestamps.
+ * Series reader is used to query one series of one tsfile, using this reader to
+ * query the value of a series with given timestamps.
  * </p>
  */
 public class FileSeriesReaderByTimestamp {
@@ -69,15 +70,15 @@ public class FileSeriesReaderByTimestamp {
         return null;
       }
 
-      if (chunkReader.hasNextSatisfiedPage()) {
-        data = chunkReader.nextPageData();
+      if (chunkReader.hasNextBatch()) {
+        data = chunkReader.nextBatch();
       } else {
         return null;
       }
     }
 
     while (data != null) {
-      while (data.hasCurrent()) {
+      while (data.hasNext()) {
         if (data.currentTime() < timestamp) {
           data.next();
         } else {
@@ -85,7 +86,7 @@ public class FileSeriesReaderByTimestamp {
         }
       }
 
-      if (data.hasCurrent()) {
+      if (data.hasNext()) {
         if (data.currentTime() == timestamp) {
           Object value = data.currentValue();
           data.next();
@@ -93,8 +94,8 @@ public class FileSeriesReaderByTimestamp {
         }
         return null;
       } else {
-        if (chunkReader.hasNextSatisfiedPage()) {
-          data = chunkReader.nextPageData();
+        if (chunkReader.hasNextBatch()) {
+          data = chunkReader.nextBatch();
         } else if (!constructNextSatisfiedChunkReader()) {
           return null;
         }
@@ -112,20 +113,20 @@ public class FileSeriesReaderByTimestamp {
   public boolean hasNext() throws IOException {
 
     if (chunkReader != null) {
-      if (data != null && data.hasCurrent()) {
+      if (data != null && data.hasNext()) {
         return true;
       }
-      while (chunkReader.hasNextSatisfiedPage()) {
-        data = chunkReader.nextPageData();
-        if (data != null && data.hasCurrent()) {
+      while (chunkReader.hasNextBatch()) {
+        data = chunkReader.nextBatch();
+        if (data != null && data.hasNext()) {
           return true;
         }
       }
     }
     while (constructNextSatisfiedChunkReader()) {
-      while (chunkReader.hasNextSatisfiedPage()) {
-        data = chunkReader.nextPageData();
-        if (data != null && data.hasCurrent()) {
+      while (chunkReader.hasNextBatch()) {
+        data = chunkReader.nextBatch();
+        if (data != null && data.hasNext()) {
           return true;
         }
       }

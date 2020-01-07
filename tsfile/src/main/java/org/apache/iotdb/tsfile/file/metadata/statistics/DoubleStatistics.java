@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -47,11 +48,11 @@ public class DoubleStatistics extends Statistics<Double> {
   /**
    * initialize double statistics.
    *
-   * @param min min value
-   * @param max max value
+   * @param min   min value
+   * @param max   max value
    * @param first the first value
-   * @param last the last value
-   * @param sum sum value
+   * @param last  the last value
+   * @param sum   sum value
    */
   private void initializeStats(double min, double max, double first, double last, double sum) {
     this.minValue = min;
@@ -61,8 +62,7 @@ public class DoubleStatistics extends Statistics<Double> {
     this.sumValue = sum;
   }
 
-  private void updateStats(double minValue, double maxValue, double firstValue, double lastValue,
-      double sumValue) {
+  private void updateStats(double minValue, double maxValue, double firstValue, double lastValue, double sumValue) {
     if (minValue < this.minValue) {
       this.minValue = minValue;
     }
@@ -215,7 +215,7 @@ public class DoubleStatistics extends Statistics<Double> {
 
   @Override
   public String toString() {
-    return "[minValue:" + minValue + ",maxValue:" + maxValue + ",firstValue:" + firstValue +
-        ",lastValue:" + lastValue + ",sumValue:" + sumValue + "]";
+    return "[minValue:" + minValue + ",maxValue:" + maxValue + ",firstValue:" + firstValue + ",lastValue:" + lastValue
+        + ",sumValue:" + sumValue + "]";
   }
 }

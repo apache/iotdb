@@ -19,7 +19,7 @@
 package org.apache.iotdb.tsfile.write.chunk;
 
 import java.io.IOException;
-import java.math.BigDecimal;
+
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -100,9 +100,9 @@ public interface IChunkWriter {
   long estimateMaxSeriesMemSize();
 
   /**
-   * return the serialized size of the chunk header + all pages (not including the un-sealed page).
-   * Notice, call this method before calling writeToFileWriter(), otherwise the page buffer in
-   * memory will be cleared.
+   * return the serialized size of the chunk header + all pages (not including the
+   * un-sealed page). Notice, call this method before calling writeToFileWriter(),
+   * otherwise the page buffer in memory will be cleared.
    */
   long getCurrentChunkSize();
 

@@ -23,6 +23,9 @@ import static org.junit.Assert.assertFalse;
 
 import org.junit.Test;
 
+import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+
 public class DoubleStatisticsTest {
 
   private static final double maxError = 0.0001d;

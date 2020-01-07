@@ -24,20 +24,21 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
+
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 
 /**
  * multi-way merging data set, no need to use TimeGenerator.
  */
 public class DataSetWithoutTimeGenerator extends QueryDataSet {
 
-  private List<AbstractFileSeriesReader> readers;
+  private List<FileSeriesReader> readers;
 
   private List<BatchData> batchDataList;
 
@@ -53,13 +54,12 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
   /**
    * constructor of DataSetWithoutTimeGenerator.
    *
-   * @param paths paths in List structure
+   * @param paths     paths in List structure
    * @param dataTypes TSDataTypes in List structure
-   * @param readers readers in List(FileSeriesReaderByTimestamp) structure
+   * @param readers   readers in List(FileSeriesReaderByTimestamp) structure
    * @throws IOException IOException
    */
-  public DataSetWithoutTimeGenerator(List<Path> paths, List<TSDataType> dataTypes,
-      List<AbstractFileSeriesReader> readers)
+  public DataSetWithoutTimeGenerator(List<Path> paths, List<TSDataType> dataTypes, List<FileSeriesReader> readers)
       throws IOException {
     super(paths, dataTypes);
     this.readers = readers;
@@ -73,7 +73,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
     timeSet = new HashSet<>();
 
     for (int i = 0; i < paths.size(); i++) {
-      AbstractFileSeriesReader reader = readers.get(i);
+      FileSeriesReader reader = readers.get(i);
       if (!reader.hasNextBatch()) {
         batchDataList.add(new BatchData());
         hasDataRemaining.add(false);
@@ -84,19 +84,19 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
     }
 
     for (BatchData data : batchDataList) {
-      if (data.hasCurrent()) {
+      if (data.hasNext()) {
         timeHeapPut(data.currentTime());
       }
     }
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() {
+  public boolean hasNext() {
     return timeHeap.size() > 0;
   }
 
   @Override
-  protected RowRecord nextWithoutConstraint() throws IOException {
+  public RowRecord next() throws IOException {
     long minTime = timeHeapGet();
 
     RowRecord record = new RowRecord(minTime);
@@ -112,15 +112,15 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
 
       BatchData data = batchDataList.get(i);
 
-      if (data.hasCurrent() && data.currentTime() == minTime) {
+      if (data.hasNext() && data.currentTime() == minTime) {
         putValueToField(data, field);
         data.next();
 
-        if (!data.hasCurrent()) {
-          AbstractFileSeriesReader reader = readers.get(i);
+        if (!data.hasNext()) {
+          FileSeriesReader reader = readers.get(i);
           if (reader.hasNextBatch()) {
             data = reader.nextBatch();
-            if (data.hasCurrent()) {
+            if (data.hasNext()) {
               batchDataList.set(i, data);
               timeHeapPut(data.currentTime());
             } else {
@@ -158,26 +158,26 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
 
   private void putValueToField(BatchData col, Field field) {
     switch (col.getDataType()) {
-      case BOOLEAN:
-        field.setBoolV(col.getBoolean());
-        break;
-      case INT32:
-        field.setIntV(col.getInt());
-        break;
-      case INT64:
-        field.setLongV(col.getLong());
-        break;
-      case FLOAT:
-        field.setFloatV(col.getFloat());
-        break;
-      case DOUBLE:
-        field.setDoubleV(col.getDouble());
-        break;
-      case TEXT:
-        field.setBinaryV(col.getBinary());
-        break;
-      default:
-        throw new UnSupportedDataTypeException("UnSupported" + String.valueOf(col.getDataType()));
+    case BOOLEAN:
+      field.setBoolV(col.getBoolean());
+      break;
+    case INT32:
+      field.setIntV(col.getInt());
+      break;
+    case INT64:
+      field.setLongV(col.getLong());
+      break;
+    case FLOAT:
+      field.setFloatV(col.getFloat());
+      break;
+    case DOUBLE:
+      field.setDoubleV(col.getDouble());
+      break;
+    case TEXT:
+      field.setBinaryV(col.getBinary());
+      break;
+    default:
+      throw new UnSupportedDataTypeException("UnSupported" + String.valueOf(col.getDataType()));
     }
   }
 }

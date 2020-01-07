@@ -18,12 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import java.util.Objects;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 
 /**
@@ -34,9 +32,6 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
 
   private static final long serialVersionUID = -6668083116644568248L;
-
-  public Eq() {
-  }
 
   public Eq(T value, FilterType filterType) {
     super(value, filterType);
@@ -50,8 +45,7 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return true;
       }
-      return value.compareTo((T) statistics.getMinValue()) >= 0
-          && value.compareTo((T) statistics.getMaxValue()) <= 0;
+      return value.compareTo((T) statistics.getMinValue()) >= 0 && value.compareTo((T) statistics.getMaxValue()) <= 0;
     }
   }
 
@@ -65,7 +59,10 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
   public boolean satisfyStartEndTime(long startTime, long endTime) {
     if (filterType == FilterType.TIME_FILTER) {
       long time = (Long) value;
-      return time <= endTime && time >= startTime;
+      if (time > endTime || time < startTime) {
+        return false;
+      }
+      return true;
     } else {
       return true;
     }
@@ -75,7 +72,11 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
   public boolean containStartEndTime(long startTime, long endTime) {
     if (filterType == FilterType.TIME_FILTER) {
       long time = (Long) value;
-      return time == startTime && time == endTime;
+      if (time == startTime && time == endTime) {
+        return true;
+      } else {
+        return false;
+      }
     } else {
       return true;
     }
@@ -91,8 +92,4 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
     return getFilterType() + " == " + value;
   }
 
-  @Override
-  public FilterSerializeId getSerializeId() {
-    return FilterSerializeId.EQ;
-  }
 }

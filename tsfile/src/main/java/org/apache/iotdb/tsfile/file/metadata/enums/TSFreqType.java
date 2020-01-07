@@ -30,14 +30,14 @@ public enum TSFreqType {
    */
   public static TSFreqType deserialize(short i) {
     switch (i) {
-      case 0:
-        return SINGLE_FREQ;
-      case 1:
-        return MULTI_FREQ;
-      case 2:
-        return IRREGULAR_FREQ;
-      default:
-        return IRREGULAR_FREQ;
+    case 0:
+      return SINGLE_FREQ;
+    case 1:
+      return MULTI_FREQ;
+    case 2:
+      return IRREGULAR_FREQ;
+    default:
+      return IRREGULAR_FREQ;
     }
   }
 
@@ -48,14 +48,14 @@ public enum TSFreqType {
    */
   public short serialize() {
     switch (this) {
-      case SINGLE_FREQ:
-        return 0;
-      case MULTI_FREQ:
-        return 1;
-      case IRREGULAR_FREQ:
-        return 2;
-      default:
-        return 2;
+    case SINGLE_FREQ:
+      return 0;
+    case MULTI_FREQ:
+      return 1;
+    case IRREGULAR_FREQ:
+      return 2;
+    default:
+      return 2;
     }
   }
 }

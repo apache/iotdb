@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
+import java.io.IOException;
+
+import org.junit.Assert;
+import org.junit.Test;
+
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -25,19 +30,15 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
-import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
-import org.junit.Assert;
-import org.junit.Test;
-
-import java.io.IOException;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 
 public class NodeTest {
 
   @Test
   public void testLeafNode() throws IOException {
     int index = 0;
-    long[] timestamps = new long[]{1, 2, 3, 4, 5, 6, 7};
-    AbstractFileSeriesReader seriesReader = new FakedFileSeriesReader(timestamps);
+    long[] timestamps = new long[] { 1, 2, 3, 4, 5, 6, 7 };
+    FileSeriesReader seriesReader = new FakedFileSeriesReader(timestamps);
     Node leafNode = new LeafNode(seriesReader);
     while (leafNode.hasNext()) {
       Assert.assertEquals(timestamps[index++], leafNode.next());
@@ -46,16 +47,16 @@ public class NodeTest {
 
   @Test
   public void testOrNode() throws IOException {
-    long[] ret = new long[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20};
-    long[] left = new long[]{1, 3, 5, 7, 9, 10, 20};
-    long[] right = new long[]{2, 3, 4, 5, 6, 7, 8};
+    long[] ret = new long[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20 };
+    long[] left = new long[] { 1, 3, 5, 7, 9, 10, 20 };
+    long[] right = new long[] { 2, 3, 4, 5, 6, 7, 8 };
     testOr(ret, left, right);
-    testOr(new long[]{}, new long[]{}, new long[]{});
-    testOr(new long[]{1}, new long[]{1}, new long[]{});
-    testOr(new long[]{1}, new long[]{1}, new long[]{1});
-    testOr(new long[]{1, 2}, new long[]{1}, new long[]{1, 2});
-    testOr(new long[]{1, 2}, new long[]{1, 2}, new long[]{1, 2});
-    testOr(new long[]{1, 2, 3}, new long[]{1, 2}, new long[]{1, 2, 3});
+    testOr(new long[] {}, new long[] {}, new long[] {});
+    testOr(new long[] { 1 }, new long[] { 1 }, new long[] {});
+    testOr(new long[] { 1 }, new long[] { 1 }, new long[] { 1 });
+    testOr(new long[] { 1, 2 }, new long[] { 1 }, new long[] { 1, 2 });
+    testOr(new long[] { 1, 2 }, new long[] { 1, 2 }, new long[] { 1, 2 });
+    testOr(new long[] { 1, 2, 3 }, new long[] { 1, 2 }, new long[] { 1, 2, 3 });
   }
 
   private void testOr(long[] ret, long[] left, long[] right) throws IOException {
@@ -71,11 +72,11 @@ public class NodeTest {
 
   @Test
   public void testAndNode() throws IOException {
-    testAnd(new long[]{}, new long[]{1, 2, 3, 4}, new long[]{});
-    testAnd(new long[]{}, new long[]{1, 2, 3, 4, 8}, new long[]{5, 6, 7});
-    testAnd(new long[]{2}, new long[]{1, 2, 3, 4}, new long[]{2, 5, 6});
-    testAnd(new long[]{1, 2, 3}, new long[]{1, 2, 3, 4}, new long[]{1, 2, 3});
-    testAnd(new long[]{1, 2, 3, 9}, new long[]{1, 2, 3, 4, 9}, new long[]{1, 2, 3, 8, 9});
+    testAnd(new long[] {}, new long[] { 1, 2, 3, 4 }, new long[] {});
+    testAnd(new long[] {}, new long[] { 1, 2, 3, 4, 8 }, new long[] { 5, 6, 7 });
+    testAnd(new long[] { 2 }, new long[] { 1, 2, 3, 4 }, new long[] { 2, 5, 6 });
+    testAnd(new long[] { 1, 2, 3 }, new long[] { 1, 2, 3, 4 }, new long[] { 1, 2, 3 });
+    testAnd(new long[] { 1, 2, 3, 9 }, new long[] { 1, 2, 3, 4, 9 }, new long[] { 1, 2, 3, 8, 9 });
   }
 
   private void testAnd(long[] ret, long[] left, long[] right) throws IOException {
@@ -89,16 +90,16 @@ public class NodeTest {
     Assert.assertEquals(ret.length, index);
   }
 
-  private static class FakedFileSeriesReader extends AbstractFileSeriesReader {
+  private static class FakedFileSeriesReader extends FileSeriesReader {
 
     BatchData data;
     boolean hasCachedData;
 
     public FakedFileSeriesReader(long[] timestamps) {
-      super(null, null, null);
-      data = new BatchData(TSDataType.INT32);
+      super(null, null);
+      data = new BatchData(TSDataType.INT32, true);
       for (long time : timestamps) {
-        data.putInt(time, 1);
+        data.putTime(time);
       }
       hasCachedData = true;
     }

@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
@@ -30,7 +31,8 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 /**
  * interval [min,max] of long data type
  *
- * Reference: http://www.java2s.com/Code/Java/Collections-Data-Structure/Anumericalinterval.htm
+ * Reference:
+ * http://www.java2s.com/Code/Java/Collections-Data-Structure/Anumericalinterval.htm
  */
 public class TimeRange implements Comparable<TimeRange> {
 
@@ -97,7 +99,6 @@ public class TimeRange implements Comparable<TimeRange> {
     return min <= r.min && max >= r.max;
   }
 
-
   /**
    * Set a closed interval [min,max].
    *
@@ -125,7 +126,6 @@ public class TimeRange implements Comparable<TimeRange> {
   public long getMax() {
     return max;
   }
-
 
   /**
    * Here are some examples.
@@ -211,7 +211,7 @@ public class TimeRange implements Comparable<TimeRange> {
    * @return the union of time ranges
    */
   public static List<TimeRange> sortAndMerge(List<TimeRange> unionCandidates) {
-    //sort the time ranges in ascending order of the start time
+    // sort the time ranges in ascending order of the start time
     Collections.sort(unionCandidates);
 
     ArrayList<TimeRange> unionResult = new ArrayList<>();
@@ -239,10 +239,11 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   /**
-   * Get the remaining time ranges in the current ranges but not in timeRangesPrev.
+   * Get the remaining time ranges in the current ranges but not in
+   * timeRangesPrev.
    *
-   * NOTE the primitive timeRange is always a closed interval [min,max] and only in this function
-   * are leftClose and rightClose changed.
+   * NOTE the primitive timeRange is always a closed interval [min,max] and only
+   * in this function are leftClose and rightClose changed.
    *
    * @param timeRangesPrev time ranges union in ascending order of the start time
    * @return the remaining time ranges
@@ -251,7 +252,8 @@ public class TimeRange implements Comparable<TimeRange> {
     List<TimeRange> remains = new ArrayList<>();
 
     for (TimeRange prev : timeRangesPrev) {
-      // +2 is to keep consistent with the definition of `intersects` of two closed intervals
+      // +2 is to keep consistent with the definition of `intersects` of two closed
+      // intervals
       if (prev.min >= max + 2) {
         // break early since timeRangesPrev is sorted
         break;
@@ -260,7 +262,8 @@ public class TimeRange implements Comparable<TimeRange> {
       if (intersects(prev)) {
         if (prev.contains(this)) {
           // e.g., this=[3,5], prev=[1,10]
-          // e.g., this=[3,5], prev=[3,5] Note that in this case, prev contains this and vice versa.
+          // e.g., this=[3,5], prev=[3,5] Note that in this case, prev contains this and
+          // vice versa.
           return remains;
         } else if (this.contains(prev)) {
           if (prev.min > this.min && prev.max == this.max) {

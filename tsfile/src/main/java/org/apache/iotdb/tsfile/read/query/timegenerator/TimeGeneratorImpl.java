@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -35,8 +36,8 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
-import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
 
 public class TimeGeneratorImpl implements TimeGenerator {
 
@@ -49,12 +50,11 @@ public class TimeGeneratorImpl implements TimeGenerator {
   /**
    * construct function for TimeGeneratorImpl.
    *
-   * @param iexpression -construct param
-   * @param chunkLoader -construct param
+   * @param iexpression     -construct param
+   * @param chunkLoader     -construct param
    * @param metadataQuerier -construct param
    */
-  public TimeGeneratorImpl(IExpression iexpression, IChunkLoader chunkLoader,
-      IMetadataQuerier metadataQuerier)
+  public TimeGeneratorImpl(IExpression iexpression, IChunkLoader chunkLoader, IMetadataQuerier metadataQuerier)
       throws IOException {
     this.chunkLoader = chunkLoader;
     this.metadataQuerier = metadataQuerier;
@@ -93,7 +93,7 @@ public class TimeGeneratorImpl implements TimeGenerator {
 
     if (expression.getType() == ExpressionType.SERIES) {
       SingleSeriesExpression singleSeriesExp = (SingleSeriesExpression) expression;
-      AbstractFileSeriesReader seriesReader = generateSeriesReader(singleSeriesExp);
+      FileSeriesReader seriesReader = generateSeriesReader(singleSeriesExp);
       Path path = singleSeriesExp.getSeriesPath();
 
       if (!leafCache.containsKey(path)) {
@@ -120,11 +120,8 @@ public class TimeGeneratorImpl implements TimeGenerator {
         "Unsupported ExpressionType when construct OperatorNode: " + expression.getType());
   }
 
-  private AbstractFileSeriesReader generateSeriesReader(SingleSeriesExpression singleSeriesExp)
-      throws IOException {
-    List<ChunkMetaData> chunkMetaDataList = metadataQuerier
-        .getChunkMetaDataList(singleSeriesExp.getSeriesPath());
-    return new FileSeriesReader(chunkLoader, chunkMetaDataList,
-        singleSeriesExp.getFilter());
+  private FileSeriesReader generateSeriesReader(SingleSeriesExpression singleSeriesExp) throws IOException {
+    List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(singleSeriesExp.getSeriesPath());
+    return new FileSeriesReaderWithFilter(chunkLoader, chunkMetaDataList, singleSeriesExp.getFilter());
   }
 }

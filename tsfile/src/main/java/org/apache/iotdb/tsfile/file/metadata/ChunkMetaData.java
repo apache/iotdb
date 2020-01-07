@@ -23,12 +23,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * MetaData of one chunk.
@@ -37,19 +38,20 @@ public class ChunkMetaData {
 
   private static final Logger LOG = LoggerFactory.getLogger(ChunkMetaData.class);
 
-
-  private String measurementUid;
+  private String measurementId;
 
   /**
-   * Byte offset of the corresponding data in the file Notice: include the chunk header and marker.
+   * Byte offset of the corresponding data in the file Notice: include the chunk
+   * header and marker.
    */
   private long offsetOfChunkHeader;
 
   private TSDataType tsDataType;
 
   /**
-   * version is used to define the order of operations(insertion, deletion, update). version is set
-   * according to its belonging ChunkGroup only when being queried, so it is not persisted.
+   * version is used to define the order of operations(insertion, deletion,
+   * update). version is set according to its belonging ChunkGroup only when being
+   * queried, so it is not persisted.
    */
   private long version;
 
@@ -57,17 +59,6 @@ public class ChunkMetaData {
    * All data with timestamp <= deletedAt are considered deleted.
    */
   private long deletedAt = Long.MIN_VALUE;
-
-  /**
-   * Priority of chunk metadata, used in unsequence resource merge reader to identify the priority
-   * of reader
-   */
-  private int priority;
-
-  /**
-   * ChunkLoader of metadata, used to create ChunkReaderWrap
-   */
-  private ChunkLoaderImpl chunkLoader;
 
   private Statistics statistics;
 
@@ -78,13 +69,12 @@ public class ChunkMetaData {
    * constructor of ChunkMetaData.
    *
    * @param measurementUid measurement id
-   * @param tsDataType time series data type
-   * @param fileOffset file offset
-   * @param statistics value statistics
+   * @param tsDataType     time series data type
+   * @param fileOffset     file offset
+   * @param statistics     value statistics
    */
-  public ChunkMetaData(String measurementUid, TSDataType tsDataType, long fileOffset,
-      Statistics statistics) {
-    this.measurementUid = measurementUid;
+  public ChunkMetaData(String measurementId, TSDataType tsDataType, long fileOffset, Statistics statistics) {
+    this.measurementId = measurementId;
     this.tsDataType = tsDataType;
     this.offsetOfChunkHeader = fileOffset;
     this.statistics = statistics;
@@ -92,8 +82,7 @@ public class ChunkMetaData {
 
   @Override
   public String toString() {
-    return String.format("measurementId: %s, datatype: %s, version: %d, deletedAt: %d, "
-        + "Statistics: %s", measurementUid, tsDataType, version, deletedAt, statistics);
+    return String.format("numPoints %d", statistics.getCount());
   }
 
   public long getNumOfPoints() {
@@ -109,8 +98,8 @@ public class ChunkMetaData {
     return offsetOfChunkHeader;
   }
 
-  public String getMeasurementUid() {
-    return measurementUid;
+  public String getMeasurementId() {
+    return measurementId;
   }
 
   public Statistics getStatistics() {
@@ -139,7 +128,7 @@ public class ChunkMetaData {
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
 
-    byteLen += ReadWriteIOUtils.write(measurementUid, outputStream);
+    byteLen += ReadWriteIOUtils.write(measurementId, outputStream);
     byteLen += ReadWriteIOUtils.write(offsetOfChunkHeader, outputStream);
     byteLen += ReadWriteIOUtils.write(tsDataType, outputStream);
     byteLen += statistics.serialize(outputStream);
@@ -155,7 +144,7 @@ public class ChunkMetaData {
   public static ChunkMetaData deserializeFrom(ByteBuffer buffer) {
     ChunkMetaData chunkMetaData = new ChunkMetaData();
 
-    chunkMetaData.measurementUid = ReadWriteIOUtils.readString(buffer);
+    chunkMetaData.measurementId = ReadWriteIOUtils.readString(buffer);
     chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
     chunkMetaData.tsDataType = ReadWriteIOUtils.readDataType(buffer);
 
@@ -180,22 +169,6 @@ public class ChunkMetaData {
     this.deletedAt = deletedAt;
   }
 
-  public int getPriority() {
-    return priority;
-  }
-
-  public void setPriority(int priority) {
-    this.priority = priority;
-  }
-
-  public ChunkLoaderImpl getChunkLoader() {
-    return chunkLoader;
-  }
-
-  public void setChunkLoader(ChunkLoaderImpl chunkLoader) {
-    this.chunkLoader = chunkLoader;
-  }
-
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -205,11 +178,8 @@ public class ChunkMetaData {
       return false;
     }
     ChunkMetaData that = (ChunkMetaData) o;
-    return offsetOfChunkHeader == that.offsetOfChunkHeader &&
-        version == that.version &&
-        deletedAt == that.deletedAt &&
-        Objects.equals(measurementUid, that.measurementUid) &&
-        tsDataType == that.tsDataType &&
-        Objects.equals(statistics, that.statistics);
+    return offsetOfChunkHeader == that.offsetOfChunkHeader && version == that.version && deletedAt == that.deletedAt
+        && Objects.equals(measurementId, that.measurementId) && tsDataType == that.tsDataType
+        && Objects.equals(statistics, that.statistics);
   }
 }

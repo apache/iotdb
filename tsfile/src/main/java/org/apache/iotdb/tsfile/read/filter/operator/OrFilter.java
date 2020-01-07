@@ -19,20 +19,18 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import java.io.Serializable;
+
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
 /**
- * Either of the left and right operators of AndExpression must satisfy the condition.
+ * Either of the left and right operators of AndExpression must satisfy the
+ * condition.
  */
 public class OrFilter extends BinaryFilter implements Serializable {
 
   private static final long serialVersionUID = -968055896528472694L;
-
-  public OrFilter() {
-  }
 
   public OrFilter(Filter left, Filter right) {
     super(left, right);
@@ -60,18 +58,12 @@ public class OrFilter extends BinaryFilter implements Serializable {
 
   @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
-    return left.satisfyStartEndTime(startTime, endTime) || right
-        .satisfyStartEndTime(startTime, endTime);
+    return left.satisfyStartEndTime(startTime, endTime) || right.satisfyStartEndTime(startTime, endTime);
   }
 
   @Override
   public boolean containStartEndTime(long startTime, long endTime) {
-    return left.containStartEndTime(startTime, endTime) || right
-        .containStartEndTime(startTime, endTime);
+    return left.containStartEndTime(startTime, endTime) || right.containStartEndTime(startTime, endTime);
   }
 
-  @Override
-  public FilterSerializeId getSerializeId() {
-    return FilterSerializeId.OR;
-  }
 }

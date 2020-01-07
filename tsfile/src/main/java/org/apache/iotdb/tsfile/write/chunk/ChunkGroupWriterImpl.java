@@ -23,18 +23,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * a implementation of IChunkGroupWriter.
@@ -55,7 +55,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public void tryToAddSeriesWriter(MeasurementSchema schema, int pageSizeThreshold) {
+  public void tryToAddSeriesWriter(TimeseriesSchema schema, int pageSizeThreshold) {
     if (!chunkWriters.containsKey(schema.getMeasurementId())) {
       IChunkWriter seriesWriter = new ChunkWriterImpl(schema);
       this.chunkWriters.put(schema.getMeasurementId(), seriesWriter);
@@ -67,8 +67,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
     for (DataPoint point : data) {
       String measurementId = point.getMeasurementId();
       if (!chunkWriters.containsKey(measurementId)) {
-        throw new NoMeasurementException(
-            "time " + time + ", measurement id " + measurementId + " not found!");
+        throw new NoMeasurementException("time " + time + ", measurement id " + measurementId + " not found!");
       }
       point.writeTo(time, chunkWriters.get(measurementId));
 
@@ -77,10 +76,10 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
 
   @Override
   public void write(RowBatch rowBatch) throws WriteProcessException, IOException {
-    List<MeasurementSchema> measurements = rowBatch.measurements;
-    for (int i = 0; i < measurements.size(); i++) {
-      String measurementId = measurements.get(i).getMeasurementId();
-      TSDataType dataType = measurements.get(i).getType();
+    List<TimeseriesSchema> timeseries = rowBatch.timeseries;
+    for (int i = 0; i < timeseries.size(); i++) {
+      String measurementId = timeseries.get(i).getMeasurementId();
+      TSDataType dataType = timeseries.get(i).getType();
       if (!chunkWriters.containsKey(measurementId)) {
         throw new NoMeasurementException("measurement id" + measurementId + " not found!");
       }
@@ -88,38 +87,38 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
     }
   }
 
-  private void writeByDataType(
-          RowBatch rowBatch, String measurementId, TSDataType dataType, int index) throws IOException {
+  private void writeByDataType(RowBatch rowBatch, String measurementId, TSDataType dataType, int index)
+      throws IOException {
     int batchSize = rowBatch.batchSize;
     switch (dataType) {
-      case INT32:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (int[]) rowBatch.values[index], batchSize);
-        break;
-      case INT64:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (long[]) rowBatch.values[index], batchSize);
-        break;
-      case FLOAT:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (float[]) rowBatch.values[index], batchSize);
-        break;
-      case DOUBLE:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (double[]) rowBatch.values[index], batchSize);
-        break;
-      case BOOLEAN:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (boolean[]) rowBatch.values[index], batchSize);
-        break;
-      case TEXT:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (Binary[]) rowBatch.values[index], batchSize);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataType));
+    case INT32:
+      chunkWriters.get(measurementId).write(rowBatch.timestamps, (int[]) rowBatch.values[index], batchSize);
+      break;
+    case INT64:
+      chunkWriters.get(measurementId).write(rowBatch.timestamps, (long[]) rowBatch.values[index], batchSize);
+      break;
+    case FLOAT:
+      chunkWriters.get(measurementId).write(rowBatch.timestamps, (float[]) rowBatch.values[index], batchSize);
+      break;
+    case DOUBLE:
+      chunkWriters.get(measurementId).write(rowBatch.timestamps, (double[]) rowBatch.values[index], batchSize);
+      break;
+    case BOOLEAN:
+      chunkWriters.get(measurementId).write(rowBatch.timestamps, (boolean[]) rowBatch.values[index], batchSize);
+      break;
+    case TEXT:
+      chunkWriters.get(measurementId).write(rowBatch.timestamps, (Binary[]) rowBatch.values[index], batchSize);
+      break;
+    default:
+      throw new UnSupportedDataTypeException(String.format("Data type %s is not supported.", dataType));
     }
   }
 
   @Override
   public long flushToFileWriter(TsFileIOWriter fileWriter) throws IOException {
-    LOG.debug("start flush device id:{}", deviceId);
-    // make sure all the pages have been compressed into buffers, so that we can get correct
+    //LOG.debug("start flush device id:{}", deviceId);
+    // make sure all the pages have been compressed into buffers, so that we can get
+    // correct
     // groupWriter.getCurrentChunkGroupSize().
     sealAllChunks();
     long currentChunkGroupSize = getCurrentChunkGroupSize();

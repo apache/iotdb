@@ -27,8 +27,9 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 /**
- * a TsFileOutput implementation with FileOutputStream. If the file is not existed, it will be
- * created. Otherwise the file will be written from position 0.
+ * a TsFileOutput implementation with FileOutputStream. If the file is not
+ * existed, it will be created. Otherwise the file will be written from position
+ * 0.
  */
 public class DefaultTsFileOutput implements TsFileOutput {
 

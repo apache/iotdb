@@ -22,6 +22,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -38,11 +42,9 @@ import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.query.dataset.DataSetWithoutTimeGenerator;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.series.EmptyFileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 
 public class TsFileExecutor implements QueryExecutor {
 
@@ -58,15 +60,16 @@ public class TsFileExecutor implements QueryExecutor {
   @Override
   public QueryDataSet execute(QueryExpression queryExpression) throws IOException {
     // bloom filter
-    BloomFilter bloomFilter = metadataQuerier.getWholeFileMetadata().getBloomFilter();
+    // BloomFilter bloomFilter =
+    // metadataQuerier.getWholeFileMetadata().getBloomFilter();
     List<Path> filteredSeriesPath = new ArrayList<>();
-    if (bloomFilter != null) {
-      for (Path path : queryExpression.getSelectedSeries()) {
-        if (bloomFilter.contains(path.getFullPath())) {
-          filteredSeriesPath.add(path);
-        }
-      }
+    // if (bloomFilter != null) {
+    for (Path path : queryExpression.getSelectedSeries()) {
+      // if (bloomFilter.contains(path.getFullPath())) {
+      filteredSeriesPath.add(path);
+      // }
     }
+    // }
 
     queryExpression.setSelectSeries(filteredSeriesPath);
     metadataQuerier.loadChunkMetaDatas(queryExpression.getSelectedSeries());
@@ -78,11 +81,9 @@ public class TsFileExecutor implements QueryExecutor {
         queryExpression.setExpression(regularIExpression);
 
         if (regularIExpression instanceof GlobalTimeExpression) {
-          return execute(queryExpression.getSelectedSeries(),
-              (GlobalTimeExpression) regularIExpression);
+          return execute(queryExpression.getSelectedSeries(), (GlobalTimeExpression) regularIExpression);
         } else {
-          return new ExecutorWithTimeGenerator(metadataQuerier, chunkLoader)
-              .execute(queryExpression);
+          return new ExecutorWithTimeGenerator(metadataQuerier, chunkLoader).execute(queryExpression);
         }
       } catch (QueryFilterOptimizationException | NoMeasurementException e) {
         throw new IOException(e);
@@ -99,41 +100,41 @@ public class TsFileExecutor implements QueryExecutor {
   /**
    * Query with the space partition constraint.
    *
-   * @param queryExpression query expression
+   * @param queryExpression        query expression
    * @param spacePartitionStartPos the start position of the space partition
-   * @param spacePartitionEndPos the end position of the space partition
+   * @param spacePartitionEndPos   the end position of the space partition
    * @return QueryDataSet
    */
-  public QueryDataSet execute(QueryExpression queryExpression, long spacePartitionStartPos,
-      long spacePartitionEndPos) throws IOException {
+  public QueryDataSet execute(QueryExpression queryExpression, long spacePartitionStartPos, long spacePartitionEndPos)
+      throws IOException {
     // convert the space partition constraint to the time partition constraint
     ArrayList<TimeRange> resTimeRanges = new ArrayList<>(metadataQuerier
-        .convertSpace2TimePartition(queryExpression.getSelectedSeries(), spacePartitionStartPos,
-            spacePartitionEndPos));
+        .convertSpace2TimePartition(queryExpression.getSelectedSeries(), spacePartitionStartPos, spacePartitionEndPos));
 
     // check if resTimeRanges is empty
     if (resTimeRanges.isEmpty()) {
-      return new DataSetWithoutTimeGenerator(Collections.emptyList(), Collections.emptyList(),
-          Collections.emptyList()); // return an empty QueryDataSet
+      return new DataSetWithoutTimeGenerator(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()); // return
+                                                                                                                         // an
+                                                                                                                         // empty
+                                                                                                                         // QueryDataSet
     }
 
     // construct an additional time filter based on the time partition constraint
     IExpression addTimeExpression = resTimeRanges.get(0).getExpression();
     for (int i = 1; i < resTimeRanges.size(); i++) {
-      addTimeExpression = BinaryExpression
-          .or(addTimeExpression, resTimeRanges.get(i).getExpression());
+      addTimeExpression = BinaryExpression.or(addTimeExpression, resTimeRanges.get(i).getExpression());
     }
 
     // combine the original query expression and the additional time filter
     if (queryExpression.hasQueryFilter()) {
-      IExpression combinedExpression = BinaryExpression
-          .and(queryExpression.getExpression(), addTimeExpression);
+      IExpression combinedExpression = BinaryExpression.and(queryExpression.getExpression(), addTimeExpression);
       queryExpression.setExpression(combinedExpression);
     } else {
       queryExpression.setExpression(addTimeExpression);
     }
 
-    // Having converted the space partition constraint to an additional time filter, we can now query as normal.
+    // Having converted the space partition constraint to an additional time filter,
+    // we can now query as normal.
     return execute(queryExpression);
   }
 
@@ -143,8 +144,7 @@ public class TsFileExecutor implements QueryExecutor {
    * @param selectedPathList all selected paths
    * @return DataSet without TimeGenerator
    */
-  private QueryDataSet execute(List<Path> selectedPathList)
-      throws IOException, NoMeasurementException {
+  private QueryDataSet execute(List<Path> selectedPathList) throws IOException, NoMeasurementException {
     return executeMayAttachTimeFiler(selectedPathList, null);
   }
 
@@ -152,7 +152,8 @@ public class TsFileExecutor implements QueryExecutor {
    * has a GlobalTimeExpression, can use multi-way merge.
    *
    * @param selectedPathList all selected paths
-   * @param timeFilter GlobalTimeExpression that takes effect to all selected paths
+   * @param timeFilter       GlobalTimeExpression that takes effect to all
+   *                         selected paths
    * @return DataSet without TimeGenerator
    */
   private QueryDataSet execute(List<Path> selectedPathList, GlobalTimeExpression timeFilter)
@@ -162,25 +163,25 @@ public class TsFileExecutor implements QueryExecutor {
 
   /**
    * @param selectedPathList completed path
-   * @param timeExpression a GlobalTimeExpression or null
+   * @param timeFilter       a GlobalTimeExpression or null
    * @return DataSetWithoutTimeGenerator
    */
-  private QueryDataSet executeMayAttachTimeFiler(List<Path> selectedPathList,
-      GlobalTimeExpression timeExpression) throws IOException, NoMeasurementException {
-    List<AbstractFileSeriesReader> readersOfSelectedSeries = new ArrayList<>();
+  private QueryDataSet executeMayAttachTimeFiler(List<Path> selectedPathList, GlobalTimeExpression timeFilter)
+      throws IOException, NoMeasurementException {
+    List<FileSeriesReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
     for (Path path : selectedPathList) {
       List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(path);
-      AbstractFileSeriesReader seriesReader;
+      FileSeriesReader seriesReader;
       if (chunkMetaDataList.isEmpty()) {
         seriesReader = new EmptyFileSeriesReader();
-        dataTypes.add(metadataQuerier.getDataType(path.getMeasurement()));
+        dataTypes.add(metadataQuerier.getDataType(path));
       } else {
-        if (timeExpression == null) {
-          seriesReader = new FileSeriesReader(chunkLoader, chunkMetaDataList, null);
+        if (timeFilter == null) {
+          seriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, chunkMetaDataList);
         } else {
-          seriesReader = new FileSeriesReader(chunkLoader, chunkMetaDataList, timeExpression.getFilter());
+          seriesReader = new FileSeriesReaderWithFilter(chunkLoader, chunkMetaDataList, timeFilter.getFilter());
         }
         dataTypes.add(chunkMetaDataList.get(0).getDataType());
       }

@@ -25,13 +25,16 @@ import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.encoding.encoder.BitmapEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.iotdb.tsfile.encoding.decoder.BitmapDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.BitmapEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 
 @Deprecated
 public class BitmapDecoderTest {
@@ -44,7 +47,7 @@ public class BitmapDecoderTest {
   @Before
   public void setUp() throws Exception {
     intList = new ArrayList<Integer>();
-    int[] int_array = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+    int[] int_array = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
     int int_len = int_array.length;
     int int_num = 100000;
     for (int i = 0; i < int_num; i++) {
@@ -52,7 +55,7 @@ public class BitmapDecoderTest {
     }
 
     booleanList = new ArrayList<Boolean>();
-    boolean[] boolean_array = {true, false, true, true, false, true, false, false};
+    boolean[] boolean_array = { true, false, true, true, false, true, false, false };
     int boolean_len = boolean_array.length;
     int boolean_num = 100000;
     for (int i = 0; i < boolean_num; i++) {

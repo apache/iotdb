@@ -18,6 +18,14 @@
  */
 package org.apache.iotdb.tsfile.read.reader;
 
+import java.io.IOException;
+import java.util.List;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -30,16 +38,10 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.io.IOException;
-import java.util.List;
 
 public class ReaderTest {
 
@@ -66,17 +68,15 @@ public class ReaderTest {
   public void readTest() throws IOException {
     int count = 0;
     ChunkLoaderImpl seriesChunkLoader = new ChunkLoaderImpl(fileReader);
-    List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
-        .getChunkMetaDataList(new Path("d1.s1"));
+    List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile.getChunkMetaDataList(new Path("d1.s1"));
 
-    AbstractFileSeriesReader seriesReader = new FileSeriesReader(seriesChunkLoader,
-        chunkMetaDataList, null);
+    FileSeriesReader seriesReader = new FileSeriesReaderWithoutFilter(seriesChunkLoader, chunkMetaDataList);
     long startTime = TsFileGeneratorForTest.START_TIMESTAMP;
     BatchData data = null;
 
     while (seriesReader.hasNextBatch()) {
       data = seriesReader.nextBatch();
-      while (data.hasCurrent()) {
+      while (data.hasNext()) {
         Assert.assertEquals(startTime, data.currentTime());
         data.next();
         startTime++;
@@ -86,12 +86,12 @@ public class ReaderTest {
     Assert.assertEquals(rowCount, count);
 
     chunkMetaDataList = metadataQuerierByFile.getChunkMetaDataList(new Path("d1.s4"));
-    seriesReader = new FileSeriesReader(seriesChunkLoader, chunkMetaDataList, null);
+    seriesReader = new FileSeriesReaderWithoutFilter(seriesChunkLoader, chunkMetaDataList);
     count = 0;
 
     while (seriesReader.hasNextBatch()) {
       data = seriesReader.nextBatch();
-      while (data.hasCurrent()) {
+      while (data.hasNext()) {
         data.next();
         startTime++;
         count++;
@@ -102,15 +102,13 @@ public class ReaderTest {
   @Test
   public void readWithFilterTest() throws IOException {
     ChunkLoaderImpl seriesChunkLoader = new ChunkLoaderImpl(fileReader);
-    List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
-        .getChunkMetaDataList(new Path("d1.s1"));
+    List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile.getChunkMetaDataList(new Path("d1.s1"));
 
     Filter filter = new FilterFactory().or(
         FilterFactory.and(TimeFilter.gt(1480563570029L), TimeFilter.lt(1480563570033L)),
         FilterFactory.and(ValueFilter.gtEq(9520331), ValueFilter.ltEq(9520361)));
     SingleSeriesExpression singleSeriesExp = new SingleSeriesExpression(new Path("d1.s1"), filter);
-    AbstractFileSeriesReader seriesReader = new FileSeriesReader(seriesChunkLoader,
-        chunkMetaDataList,
+    FileSeriesReader seriesReader = new FileSeriesReaderWithFilter(seriesChunkLoader, chunkMetaDataList,
         singleSeriesExp.getFilter());
 
     BatchData data;
@@ -119,7 +117,7 @@ public class ReaderTest {
 
     while (seriesReader.hasNextBatch()) {
       data = seriesReader.nextBatch();
-      while (data.hasCurrent()) {
+      while (data.hasNext()) {
         Assert.assertEquals(aimedTimestamp++, data.currentTime());
         data.next();
       }

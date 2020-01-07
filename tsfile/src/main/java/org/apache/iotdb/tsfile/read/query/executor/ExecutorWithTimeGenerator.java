@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -48,8 +49,9 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
   }
 
   /**
-   * All leaf nodes of queryFilter in queryExpression are SeriesFilters, We use a TimeGenerator to
-   * control query processing. for more information, see DataSetWithTimeGenerator
+   * All leaf nodes of queryFilter in queryExpression are SeriesFilters, We use a
+   * TimeGenerator to control query processing. for more information, see
+   * DataSetWithTimeGenerator
    *
    * @return DataSet with TimeGenerator
    */
@@ -62,7 +64,8 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
     // get TimeGenerator by IExpression
     TimeGenerator timeGenerator = new TimeGeneratorImpl(expression, chunkLoader, metadataQuerier);
 
-    // the size of hasFilter is equal to selectedPathList, if a series has a filter, it is true,
+    // the size of hasFilter is equal to selectedPathList, if a series has a filter,
+    // it is true,
     // otherwise false
     List<Boolean> cached = removeFilteredPaths(expression, selectedPathList);
     List<FileSeriesReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
@@ -81,8 +84,7 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
           readersOfSelectedSeries.add(null);
           continue;
         }
-        FileSeriesReaderByTimestamp seriesReader = new FileSeriesReaderByTimestamp(chunkLoader,
-            chunkMetaDataList);
+        FileSeriesReaderByTimestamp seriesReader = new FileSeriesReaderByTimestamp(chunkLoader, chunkMetaDataList);
         readersOfSelectedSeries.add(seriesReader);
       } else {
         selectedPathIterator.remove();
@@ -90,8 +92,7 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
       }
     }
 
-    return new DataSetWithTimeGenerator(selectedPathList, cached, dataTypes, timeGenerator,
-        readersOfSelectedSeries);
+    return new DataSetWithTimeGenerator(selectedPathList, cached, dataTypes, timeGenerator, readersOfSelectedSeries);
   }
 
   private List<Boolean> removeFilteredPaths(IExpression expression, List<Path> selectedPaths) {

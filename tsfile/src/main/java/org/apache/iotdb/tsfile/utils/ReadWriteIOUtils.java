@@ -19,15 +19,6 @@
 
 package org.apache.iotdb.tsfile.utils;
 
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BINARY;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BOOLEAN;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.DOUBLE;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.FLOAT;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.INTEGER;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.LONG;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.STRING;
-
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -36,8 +27,8 @@ import java.nio.charset.CharacterCodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -45,7 +36,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSFreqType;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 /**
- * ConverterUtils is a utility class. It provide conversion between normal datatype and byte array.
+ * ConverterUtils is a utility class. It provide conversion between normal
+ * datatype and byte array.
  */
 public class ReadWriteIOUtils {
 
@@ -84,7 +76,7 @@ public class ReadWriteIOUtils {
    * read bytes array in given size
    *
    * @param buffer buffer
-   * @param size size
+   * @param size   size
    * @return bytes array
    */
   public static byte[] readBytes(ByteBuffer buffer, int size) {
@@ -94,14 +86,16 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * write if the object not equals null. Eg, object eauals null, then write false.
+   * write if the object not equals null. Eg, object eauals null, then write
+   * false.
    */
   public static int writeIsNotNull(Object object, OutputStream outputStream) throws IOException {
     return write(object != null, outputStream);
   }
 
   /**
-   * write if the object not equals null. Eg, object eauals null, then write false.
+   * write if the object not equals null. Eg, object eauals null, then write
+   * false.
    */
   public static int writeIsNotNull(Object object, ByteBuffer buffer) {
     return write(object != null, buffer);
@@ -122,7 +116,8 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * write a int value to outputStream according to flag. If flag is true, write 1, else write 0.
+   * write a int value to outputStream according to flag. If flag is true, write
+   * 1, else write 0.
    */
   public static int write(Boolean flag, OutputStream outputStream) throws IOException {
     if (flag) {
@@ -134,7 +129,8 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * write a byte to byteBuffer according to flag. If flag is true, write 1, else write 0.
+   * write a byte to byteBuffer according to flag. If flag is true, write 1, else
+   * write 0.
    */
   public static int write(Boolean flag, ByteBuffer buffer) {
     byte a;
@@ -151,8 +147,8 @@ public class ReadWriteIOUtils {
   /**
    * write a byte n.
    *
-   * @return The number of bytes used to represent a {@code byte} value in two's complement binary
-   * form.
+   * @return The number of bytes used to represent a {@code byte} value in two's
+   *         complement binary form.
    */
   public static int write(byte n, OutputStream outputStream) throws IOException {
     outputStream.write(n);
@@ -173,8 +169,8 @@ public class ReadWriteIOUtils {
   /**
    * write a byte n to byteBuffer.
    *
-   * @return The number of bytes used to represent a {@code byte} value in two's complement binary
-   * form.
+   * @return The number of bytes used to represent a {@code byte} value in two's
+   *         complement binary form.
    */
   public static int write(byte n, ByteBuffer buffer) {
     buffer.put(n);
@@ -199,10 +195,8 @@ public class ReadWriteIOUtils {
   public static int write(int n, OutputStream outputStream) throws IOException {
     byte[] bytes = BytesUtils.intToBytes(n);
     outputStream.write(bytes);
-    return INT_LEN;
+    return bytes.length;
   }
-
-
 
   /**
    * write the size (int) of the binary and then the bytes in binary
@@ -254,7 +248,7 @@ public class ReadWriteIOUtils {
   public static int write(long n, OutputStream outputStream) throws IOException {
     byte[] bytes = BytesUtils.longToBytes(n);
     outputStream.write(bytes);
-    return LONG_LEN;
+    return bytes.length;
   }
 
   /**
@@ -320,8 +314,7 @@ public class ReadWriteIOUtils {
   /**
    * CompressionType.
    */
-  public static int write(CompressionType compressionType, OutputStream outputStream)
-      throws IOException {
+  public static int write(CompressionType compressionType, OutputStream outputStream) throws IOException {
     short n = compressionType.serialize();
     return write(n, outputStream);
   }
@@ -380,8 +373,7 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[SHORT_LEN];
     int readLen = inputStream.read(bytes);
     if (readLen != SHORT_LEN) {
-      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
-          SHORT_LEN, readLen));
+      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", SHORT_LEN, readLen));
     }
     return BytesUtils.bytesToShort(bytes);
   }
@@ -400,8 +392,7 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[FLOAT_LEN];
     int readLen = inputStream.read(bytes);
     if (readLen != FLOAT_LEN) {
-      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
-          FLOAT_LEN, readLen));
+      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", FLOAT_LEN, readLen));
     }
     return BytesUtils.bytesToFloat(bytes);
   }
@@ -422,8 +413,7 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[DOUBLE_LEN];
     int readLen = inputStream.read(bytes);
     if (readLen != DOUBLE_LEN) {
-      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
-          DOUBLE_LEN, readLen));
+      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", DOUBLE_LEN, readLen));
     }
     return BytesUtils.bytesToDouble(bytes);
   }
@@ -444,8 +434,7 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[INT_LEN];
     int readLen = inputStream.read(bytes);
     if (readLen != INT_LEN) {
-      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
-          INT_LEN, readLen));
+      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", INT_LEN, readLen));
     }
     return BytesUtils.bytesToInt(bytes);
   }
@@ -476,8 +465,7 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[LONG_LEN];
     int readLen = inputStream.read(bytes);
     if (readLen != LONG_LEN) {
-      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
-          LONG_LEN, readLen));
+      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", LONG_LEN, readLen));
     }
     return BytesUtils.bytesToLong(bytes);
   }
@@ -497,8 +485,7 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[strLength];
     int readLen = inputStream.read(bytes, 0, strLength);
     if (readLen != strLength) {
-      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
-          strLength, readLen));
+      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", strLength, readLen));
     }
     return new String(bytes, 0, strLength);
   }
@@ -546,33 +533,29 @@ public class ReadWriteIOUtils {
     return ByteBuffer.allocate(1).put(i ? (byte) 1 : (byte) 0);
   }
 
-  public static String readStringFromDirectByteBuffer(ByteBuffer buffer)
-      throws CharacterCodingException {
-    return java.nio.charset.StandardCharsets.UTF_8.newDecoder().decode(buffer.duplicate())
-        .toString();
+  public static String readStringFromDirectByteBuffer(ByteBuffer buffer) throws CharacterCodingException {
+    return java.nio.charset.StandardCharsets.UTF_8.newDecoder().decode(buffer.duplicate()).toString();
   }
 
   /**
-   * unlike InputStream.read(bytes), this method makes sure that you can read length bytes or reach
-   * to the end of the stream.
+   * unlike InputStream.read(bytes), this method makes sure that you can read
+   * length bytes or reach to the end of the stream.
    */
   public static byte[] readBytes(InputStream inputStream, int length) throws IOException {
     byte[] bytes = new byte[length];
     int offset = 0;
     int len = 0;
-    while (bytes.length - offset > 0
-        && (len = inputStream.read(bytes, offset, bytes.length - offset)) != -1) {
+    while (bytes.length - offset > 0 && (len = inputStream.read(bytes, offset, bytes.length - offset)) != -1) {
       offset += len;
     }
     return bytes;
   }
 
   /**
-   * unlike InputStream.read(bytes), this method makes sure that you can read length bytes or reach
-   * to the end of the stream.
+   * unlike InputStream.read(bytes), this method makes sure that you can read
+   * length bytes or reach to the end of the stream.
    */
-  public static byte[] readBytesWithSelfDescriptionLength(InputStream inputStream)
-      throws IOException {
+  public static byte[] readBytesWithSelfDescriptionLength(InputStream inputStream) throws IOException {
     int length = readInt(inputStream);
     return readBytes(inputStream, length);
   }
@@ -590,8 +573,8 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * read bytes from byteBuffer, this method makes sure that you can read length bytes or reach to
-   * the end of the buffer.
+   * read bytes from byteBuffer, this method makes sure that you can read length
+   * bytes or reach to the end of the buffer.
    *
    * read a int + buffer
    */
@@ -608,8 +591,7 @@ public class ReadWriteIOUtils {
   /**
    * read bytes from buffer with offset position to the end of buffer.
    */
-  public static int readAsPossible(TsFileInput input, long position, ByteBuffer buffer)
-      throws IOException {
+  public static int readAsPossible(TsFileInput input, long position, ByteBuffer buffer) throws IOException {
     int length = 0;
     int read;
     while (buffer.hasRemaining() && (read = input.read(buffer, position)) != -1) {
@@ -633,10 +615,10 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * read bytes from buffer with offset position to the end of buffer or up to len.
+   * read bytes from buffer with offset position to the end of buffer or up to
+   * len.
    */
-  public static int readAsPossible(TsFileInput input, ByteBuffer target, long offset, int len)
-      throws IOException {
+  public static int readAsPossible(TsFileInput input, ByteBuffer target, long offset, int len) throws IOException {
     int length = 0;
     int limit = target.limit();
     if (target.remaining() > len) {
@@ -756,8 +738,8 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * to check whether the byte buffer is reach the magic string
-   * this method doesn't change the position of the byte buffer
+   * to check whether the byte buffer is reach the magic string this method
+   * doesn't change the position of the byte buffer
    *
    * @param byteBuffer byte buffer
    * @return whether the byte buffer is reach the magic string
@@ -770,8 +752,8 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * to check whether the inputStream is reach the magic string
-   * this method doesn't change the position of the inputStream
+   * to check whether the inputStream is reach the magic string this method
+   * doesn't change the position of the inputStream
    *
    * @param inputStream inputStream
    * @return whether the inputStream is reach the magic string
@@ -779,70 +761,4 @@ public class ReadWriteIOUtils {
   public static boolean checkIfMagicString(InputStream inputStream) throws IOException {
     return inputStream.available() <= magicStringBytes.length;
   }
-
-  enum ClassSerializeId {
-    LONG, DOUBLE, INTEGER, FLOAT, BINARY, BOOLEAN, STRING
-  }
-
-  public static void writeObject(Object value, DataOutputStream outputStream) {
-      try {
-        if (value instanceof Long) {
-          outputStream.write(LONG.ordinal());
-          outputStream.writeLong((Long) value);
-        } else if (value instanceof Double) {
-          outputStream.write(DOUBLE.ordinal());
-          outputStream.writeDouble((Double) value);
-        } else if (value instanceof Integer) {
-          outputStream.write(INTEGER.ordinal());
-          outputStream.writeInt((Integer) value);
-        } else if (value instanceof Float) {
-          outputStream.write(FLOAT.ordinal());
-          outputStream.writeFloat((Float) value);
-        } else if (value instanceof Binary) {
-          outputStream.write(BINARY.ordinal());
-          byte[] bytes = ((Binary) value).getValues();
-          outputStream.writeInt(bytes.length);
-          outputStream.write(bytes);
-        } else if (value instanceof Boolean) {
-          outputStream.write(BOOLEAN.ordinal());
-          outputStream.write(((Boolean) value) ? 1 : 0);
-        } else {
-          outputStream.write(STRING.ordinal());
-          byte[] bytes = value.toString().getBytes();
-          outputStream.writeInt(bytes.length);
-          outputStream.write(bytes);
-        }
-      } catch (IOException ignored) {
-        // ignored
-      }
-  }
-
-  public static Object readObject(ByteBuffer buffer) {
-    ClassSerializeId serializeId = ClassSerializeId.values()[buffer.get()];
-    switch (serializeId) {
-      case BOOLEAN:
-        return buffer.get() == 1;
-      case FLOAT:
-        return buffer.getFloat();
-      case DOUBLE:
-        return buffer.getDouble();
-      case LONG:
-        return buffer.getLong();
-      case INTEGER:
-        return buffer.getInt();
-      case BINARY:
-        int length = buffer.getInt();
-        byte[] bytes = new byte[length];
-        buffer.get(bytes);
-        return new Binary(bytes);
-      case STRING:
-      default:
-        length = buffer.getInt();
-        bytes = new byte[length];
-        buffer.get(bytes);
-        return new String(bytes);
-    }
-  }
-
-
 }

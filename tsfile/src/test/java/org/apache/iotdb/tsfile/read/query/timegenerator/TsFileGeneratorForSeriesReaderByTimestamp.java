@@ -24,31 +24,32 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Scanner;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.FileUtils;
-import org.apache.iotdb.tsfile.utils.FileUtils.Unit;
-import org.apache.iotdb.tsfile.utils.RecordUtils;
-import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.utils.FileUtils;
+import org.apache.iotdb.tsfile.utils.FileUtils.Unit;
+import org.apache.iotdb.tsfile.utils.RecordUtils;
+
 @Ignore
 public class TsFileGeneratorForSeriesReaderByTimestamp {
 
   public static final long START_TIMESTAMP = 1480562618000L;
-  private static final Logger LOG = LoggerFactory
-      .getLogger(TsFileGeneratorForSeriesReaderByTimestamp.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TsFileGeneratorForSeriesReaderByTimestamp.class);
   public static TsFileWriter innerWriter;
   public static String inputDataFile;
   public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("testTsFile.tsfile");
@@ -137,9 +138,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
       fw.write(d2 + "\r\n");
     }
     // write error
-    String d =
-        "d2,3," + (startTime + rowCount) + ",s2," + (rowCount * 10 + 2) + ",s3," + (rowCount * 10
-            + 3);
+    String d = "d2,3," + (startTime + rowCount) + ",s2," + (rowCount * 10 + 2) + ",s3," + (rowCount * 10 + 3);
     fw.write(d + "\r\n");
     d = "d2," + (startTime + rowCount + 1) + ",2,s-1," + (rowCount * 10 + 2);
     fw.write(d + "\r\n");
@@ -175,17 +174,26 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
   private static void generateTestData() {
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
     schema = new Schema();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder()), CompressionType.UNCOMPRESSED));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder()), CompressionType.SNAPPY));
-    schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
-    schema.registerMeasurement(new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
-    schema.registerMeasurement(new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d1.s1"),
+        new TimeseriesSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d1.s2"), new TimeseriesSchema("s2", TSDataType.INT64,
+        TSEncoding.valueOf(conf.getValueEncoder()), CompressionType.UNCOMPRESSED));
+    schema.registerTimeseries(new Path("d1.s3"), new TimeseriesSchema("s3", TSDataType.INT64,
+        TSEncoding.valueOf(conf.getValueEncoder()), CompressionType.SNAPPY));
+    schema.registerTimeseries(new Path("d1.s4"), new TimeseriesSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d1.s5"), new TimeseriesSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d1.s6"), new TimeseriesSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d1.s7"), new TimeseriesSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d2.s1"),
+        new TimeseriesSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d2.s2"), new TimeseriesSchema("s2", TSDataType.INT64,
+        TSEncoding.valueOf(conf.getValueEncoder()), CompressionType.UNCOMPRESSED));
+    schema.registerTimeseries(new Path("d2.s3"), new TimeseriesSchema("s3", TSDataType.INT64,
+        TSEncoding.valueOf(conf.getValueEncoder()), CompressionType.SNAPPY));
+    schema.registerTimeseries(new Path("d2.s4"), new TimeseriesSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
   }
 
-  static public void writeToFile(Schema schema)
-      throws InterruptedException, IOException, WriteProcessException {
+  static public void writeToFile(Schema schema) throws InterruptedException, IOException, WriteProcessException {
     Scanner in = getDataFile(inputDataFile);
     long lineCount = 0;
     long startTime = System.currentTimeMillis();

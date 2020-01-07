@@ -33,10 +33,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
-import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
-import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
+
 import org.junit.Before;
 import org.junit.Test;
+
+import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
 
 public class DeltaBinaryEncoderLongTest {
 
@@ -97,7 +99,7 @@ public class DeltaBinaryEncoderLongTest {
   }
 
   @Test
-  public void testRegularEncoding() throws IOException{
+  public void testRegularEncoding() throws IOException {
     List<String> dates = getBetweenDate("1970-01-08", "1978-01-08");
 
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
@@ -105,10 +107,10 @@ public class DeltaBinaryEncoderLongTest {
     ROW_NUM = dates.size();
 
     long[] data = new long[ROW_NUM];
-    for(int i = 0; i < dates.size(); i++) {
+    for (int i = 0; i < dates.size(); i++) {
       try {
         Date date = dateFormat.parse(dates.get(i));
-        data[i] =date.getTime();
+        data[i] = date.getTime();
       } catch (ParseException e) {
         e.printStackTrace();
       }
@@ -117,17 +119,16 @@ public class DeltaBinaryEncoderLongTest {
     shouldReadAndWrite(data, ROW_NUM);
   }
 
-
   @Test
-  public void testRegularWithMissingPoints() throws IOException{
+  public void testRegularWithMissingPoints() throws IOException {
     List<String> dates = getBetweenDate("1970-01-08", "1978-01-08");
 
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
     int kong = 0;
-    for(int i = 0; i < dates.size(); i++) {
-      if(i % 500 == 0) {
-        kong ++;
+    for (int i = 0; i < dates.size(); i++) {
+      if (i % 500 == 0) {
+        kong++;
       }
     }
 
@@ -135,8 +136,8 @@ public class DeltaBinaryEncoderLongTest {
 
     long[] data = new long[ROW_NUM];
     int j = 0;
-    for(int i = 0; i < dates.size(); i++) {
-      if(i % 500 == 0) {
+    for (int i = 0; i < dates.size(); i++) {
+      if (i % 500 == 0) {
         continue;
       }
 
@@ -151,7 +152,7 @@ public class DeltaBinaryEncoderLongTest {
     shouldReadAndWrite(data, ROW_NUM);
   }
 
-  private List<String> getBetweenDate(String start, String end){
+  private List<String> getBetweenDate(String start, String end) {
     List<String> list = new ArrayList<>();
     LocalDate startDate = LocalDate.parse(start);
     LocalDate endDate = LocalDate.parse(end);

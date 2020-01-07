@@ -25,16 +25,16 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 /**
  * this is for those series which has no data points
  */
-public class EmptyFileSeriesReader extends AbstractFileSeriesReader {
+public class EmptyFileSeriesReader extends FileSeriesReader {
   BatchData data = new BatchData();
 
   public EmptyFileSeriesReader() {
-    super(null, null, null);
+    super(null, null);
   }
 
   @Override
   protected void initChunkReader(ChunkMetaData chunkMetaData) {
-    //do nothing
+    // do nothing
   }
 
   @Override

@@ -21,9 +21,11 @@ package org.apache.iotdb.tsfile.fileSystem.fileOutputFactory;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
 public class HDFSOutputFactory implements FileOutputFactory {
 
@@ -35,9 +37,7 @@ public class HDFSOutputFactory implements FileOutputFactory {
       Class<?> clazz = Class.forName("org.apache.iotdb.hadoop.fileSystem.HDFSOutput");
       constructor = clazz.getConstructor(String.class, boolean.class);
     } catch (ClassNotFoundException | NoSuchMethodException e) {
-      logger.error(
-          "Failed to get HDFSInput in Hadoop file system. Please check your dependency of Hadoop module.",
-          e);
+      logger.error("Failed to get HDFSInput in Hadoop file system. Please check your dependency of Hadoop module.", e);
     }
   }
 
@@ -46,9 +46,8 @@ public class HDFSOutputFactory implements FileOutputFactory {
     try {
       return (TsFileOutput) constructor.newInstance(filePath, !append);
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
-      logger.error(
-          "Failed to get TsFile output of file: {}. Please check your dependency of Hadoop module.",
-          filePath, e);
+      logger.error("Failed to get TsFile output of file: {}. Please check your dependency of Hadoop module.", filePath,
+          e);
       return null;
     }
   }

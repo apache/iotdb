@@ -26,7 +26,7 @@ public class ChunkReaderByTimestamp extends ChunkReader {
   private long currentTimestamp;
 
   public ChunkReaderByTimestamp(Chunk chunk) {
-    super(chunk, null);
+    super(chunk);
   }
 
   @Override

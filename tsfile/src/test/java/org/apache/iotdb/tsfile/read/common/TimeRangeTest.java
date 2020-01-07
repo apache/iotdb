@@ -23,8 +23,11 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+
 import org.junit.Assert;
 import org.junit.Test;
+
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 public class TimeRangeTest {
 
@@ -131,7 +134,7 @@ public class TimeRangeTest {
 
   @Test
   /*
-     no overlap
+   * no overlap
    */
   public void getRemainsTest0() {
     TimeRange r = new TimeRange(1, 10);
@@ -149,7 +152,7 @@ public class TimeRangeTest {
 
   @Test
   /*
-     previous ranges contains current ranges
+   * previous ranges contains current ranges
    */
   public void getRemainsTest1() {
     TimeRange r = new TimeRange(1, 10);
@@ -163,8 +166,7 @@ public class TimeRangeTest {
 
   @Test
   /*
-     current ranges contains previous ranges.
-     subcase 1
+   * current ranges contains previous ranges. subcase 1
    */
   public void getRemainsTest2() {
     TimeRange r = new TimeRange(1, 10);
@@ -182,8 +184,7 @@ public class TimeRangeTest {
 
   @Test
   /*
-     current ranges contains previous ranges.
-     subcase 2
+   * current ranges contains previous ranges. subcase 2
    */
   public void getRemainsTest3() {
     TimeRange r = new TimeRange(1, 10);
@@ -201,8 +202,7 @@ public class TimeRangeTest {
 
   @Test
   /*
-     current ranges contains previous ranges.
-     subcase 3
+   * current ranges contains previous ranges. subcase 3
    */
   public void getRemainsTest4() {
     TimeRange r = new TimeRange(1, 10);
@@ -222,11 +222,9 @@ public class TimeRangeTest {
     assertTrue(remainRanges.get(1).getRightClose());
   }
 
-
   @Test
   /*
-     current ranges overlap with previous ranges.
-     subcase 1
+   * current ranges overlap with previous ranges. subcase 1
    */
   public void getRemainsTest5() {
     TimeRange r = new TimeRange(1, 10);
@@ -244,8 +242,7 @@ public class TimeRangeTest {
 
   @Test
   /*
-     current ranges overlap with previous ranges.
-     subcase 2
+   * current ranges overlap with previous ranges. subcase 2
    */
   public void getRemainsTest6() {
     TimeRange r = new TimeRange(3, 10);
@@ -263,8 +260,7 @@ public class TimeRangeTest {
 
   @Test
   /*
-     current ranges overlap with previous ranges.
-     subcase 3
+   * current ranges overlap with previous ranges. subcase 3
    */
   public void getRemainsTest7() {
     TimeRange r = new TimeRange(1, 10);
@@ -282,8 +278,7 @@ public class TimeRangeTest {
 
   @Test
   /*
-     current ranges overlap with previous ranges.
-     subcase 4
+   * current ranges overlap with previous ranges. subcase 4
    */
   public void getRemainsTest8() {
     TimeRange r = new TimeRange(1, 10);
@@ -301,7 +296,7 @@ public class TimeRangeTest {
 
   @Test
   /*
-     more than one time ranges in previous ranges
+   * more than one time ranges in previous ranges
    */
   public void getRemainsTest9() {
     TimeRange r = new TimeRange(1, 10);
@@ -328,7 +323,7 @@ public class TimeRangeTest {
 
   @Test
   /*
-     more than one time ranges in previous ranges
+   * more than one time ranges in previous ranges
    */
   public void getRemainsTest10() {
     TimeRange r = new TimeRange(1, 10);
@@ -351,7 +346,7 @@ public class TimeRangeTest {
 
   @Test
   /*
-     current ranges DO NOT overlap with previous ranges.
+   * current ranges DO NOT overlap with previous ranges.
    */
   public void getRemainsTest11() {
     TimeRange r = new TimeRange(4, 10);

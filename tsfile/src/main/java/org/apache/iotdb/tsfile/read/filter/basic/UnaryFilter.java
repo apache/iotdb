@@ -18,14 +18,9 @@
  */
 package org.apache.iotdb.tsfile.read.filter.basic;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.io.Serializable;
-import java.nio.ByteBuffer;
-import java.util.Objects;
+
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
-import org.apache.iotdb.tsfile.read.filter.operator.Eq;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Definition for unary filter operations.
@@ -35,12 +30,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 public abstract class UnaryFilter<T extends Comparable<T>> implements Filter, Serializable {
 
   private static final long serialVersionUID = 1431606024929453556L;
-  protected T value;
+  protected final T value;
 
   protected FilterType filterType;
-
-  public UnaryFilter() {
-  }
 
   protected UnaryFilter(T value, FilterType filterType) {
     this.value = value;
@@ -60,36 +52,4 @@ public abstract class UnaryFilter<T extends Comparable<T>> implements Filter, Se
 
   @Override
   public abstract Filter clone();
-
-  @Override
-  public void serialize(DataOutputStream outputStream) {
-    try {
-      outputStream.write(getSerializeId().ordinal());
-      outputStream.write(filterType.ordinal());
-      ReadWriteIOUtils.writeObject(value, outputStream);
-    } catch (IOException ignored) {
-      // ignored
-    }
-  }
-
-  @Override
-  public void deserialize(ByteBuffer buffer) {
-    filterType = FilterType.values()[buffer.get()];
-    value = (T) ReadWriteIOUtils.readObject(buffer);
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (!(obj instanceof UnaryFilter)) {
-      return false;
-    }
-    UnaryFilter other = ((UnaryFilter) obj);
-    return this.value.equals(other.value) && this.filterType.equals(other.filterType)
-        && this.getSerializeId().equals(other.getSerializeId());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(value, filterType, getSerializeId());
-  }
 }

@@ -20,24 +20,27 @@ package org.apache.iotdb.tsfile.write;
 
 import java.io.File;
 import java.io.IOException;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.exception.NotCompatibleException;
-import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.metadata.TimeSeriesMetadataTest;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.exception.NotCompatibleException;
+import org.apache.iotdb.tsfile.file.MetaMarker;
+import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.file.metadata.TimeSeriesMetadataTest;
+import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 
 public class TsFileIOWriterTest {
 
@@ -49,18 +52,18 @@ public class TsFileIOWriterTest {
     TsFileIOWriter writer = new TsFileIOWriter(new File(tsfile));
 
     // file schema
-    MeasurementSchema measurementSchema = TestHelper.createSimpleMeasurementSchema();
+    TimeseriesSchema timeseriesSchema = TestHelper.createSimpleTimeseriesSchema("sensor01");
     Schema schema = new Schema();
-    schema.registerMeasurement(measurementSchema);
+    schema.registerTimeseries(new Path(deviceId, "sensor01"), timeseriesSchema);
 
     // chunk statistics
-    Statistics statistics = Statistics.getStatsByType(measurementSchema.getType());
+    Statistics statistics = Statistics.getStatsByType(timeseriesSchema.getType());
     statistics.updateStats(0L, 0L);
 
     // chunk group 1
     writer.startChunkGroup(deviceId);
-    writer.startFlushChunk(measurementSchema, measurementSchema.getCompressor(),
-        measurementSchema.getType(), measurementSchema.getEncodingType(), statistics, 0, 0);
+    writer.startFlushChunk(timeseriesSchema, timeseriesSchema.getCompressionType(), timeseriesSchema.getType(),
+        timeseriesSchema.getEncodingType(), statistics, 0, 0);
     writer.endCurrentChunk();
     writer.endChunkGroup(0);
 
@@ -101,9 +104,6 @@ public class TsFileIOWriterTest {
 
     // FileMetaData
     TsFileMetaData metaData = reader.readFileMetadata();
-    MeasurementSchema actual = metaData.getMeasurementSchema()
-        .get(TimeSeriesMetadataTest.measurementUID);
-    Assert.assertEquals(TimeSeriesMetadataTest.measurementUID, actual.getMeasurementId());
-    Assert.assertEquals(1, metaData.getDeviceMap().size());
+    Assert.assertEquals(2, metaData.getTsOffsets().length);
   }
 }

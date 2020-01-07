@@ -18,15 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.io.Serializable;
-import java.nio.ByteBuffer;
-import java.util.Objects;
+
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
 /**
  * NotFilter necessary. Use InvertExpressionVisitor
@@ -35,9 +30,6 @@ public class NotFilter implements Filter, Serializable {
 
   private static final long serialVersionUID = 584860326604020881L;
   private Filter that;
-
-  public NotFilter() {
-  }
 
   public NotFilter(Filter that) {
     this.that = that;
@@ -54,8 +46,8 @@ public class NotFilter implements Filter, Serializable {
   }
 
   /**
-   * Notice that, if the not filter only contains value filter, this method may return false, this
-   * may cause misunderstanding.
+   * Notice that, if the not filter only contains value filter, this method may
+   * return false, this may cause misunderstanding.
    */
   @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
@@ -81,37 +73,4 @@ public class NotFilter implements Filter, Serializable {
     return "NotFilter: " + that;
   }
 
-  @Override
-  public void serialize(DataOutputStream outputStream) {
-    try {
-      outputStream.write(getSerializeId().ordinal());
-      that.serialize(outputStream);
-    } catch (IOException ignored) {
-      // ignored
-    }
-  }
-
-  @Override
-  public void deserialize(ByteBuffer buffer) {
-    that = FilterFactory.deserialize(buffer);
-  }
-
-  @Override
-  public FilterSerializeId getSerializeId() {
-    return FilterSerializeId.NOT;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (!(obj instanceof NotFilter)) {
-      return false;
-    }
-    NotFilter other = ((NotFilter) obj);
-    return this.that.equals(other.that);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(that);
-  }
 }

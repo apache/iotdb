@@ -22,7 +22,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 
 /**
@@ -33,9 +32,6 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 public class Lt<T extends Comparable<T>> extends UnaryFilter<T> {
 
   private static final long serialVersionUID = -2088181659871608986L;
-
-  public Lt() {
-  }
 
   public Lt(T value, FilterType filterType) {
     super(value, filterType);
@@ -94,10 +90,5 @@ public class Lt<T extends Comparable<T>> extends UnaryFilter<T> {
   @Override
   public String toString() {
     return getFilterType() + " < " + value;
-  }
-
-  @Override
-  public FilterSerializeId getSerializeId() {
-    return FilterSerializeId.LT;
   }
 }

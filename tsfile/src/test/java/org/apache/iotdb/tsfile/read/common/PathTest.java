@@ -23,8 +23,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import java.util.Arrays;
-
 public class PathTest {
 
   private void testPath(Path path, String device, String measurement, String full) {

@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read.query.dataset;
 
 import java.io.IOException;
 import java.util.List;
+
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -27,8 +28,8 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
 /**
- * query processing: (1) generate time by series that has filter (2) get value of series that does
- * not have filter (3) construct RowRecord.
+ * query processing: (1) generate time by series that has filter (2) get value
+ * of series that does not have filter (3) construct RowRecord.
  */
 public class DataSetWithTimeGenerator extends QueryDataSet {
 
@@ -39,14 +40,13 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
   /**
    * constructor of DataSetWithTimeGenerator.
    *
-   * @param paths paths in List structure
-   * @param cached cached boolean in List(boolean) structure
-   * @param dataTypes TSDataTypes in List structure
+   * @param paths         paths in List structure
+   * @param cached        cached boolean in List(boolean) structure
+   * @param dataTypes     TSDataTypes in List structure
    * @param timeGenerator TimeGenerator object
-   * @param readers readers in List(FileSeriesReaderByTimestamp) structure
+   * @param readers       readers in List(FileSeriesReaderByTimestamp) structure
    */
-  public DataSetWithTimeGenerator(List<Path> paths, List<Boolean> cached,
-      List<TSDataType> dataTypes,
+  public DataSetWithTimeGenerator(List<Path> paths, List<Boolean> cached, List<TSDataType> dataTypes,
       TimeGenerator timeGenerator, List<FileSeriesReaderByTimestamp> readers) {
     super(paths, dataTypes);
     this.cached = cached;
@@ -55,12 +55,12 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() throws IOException {
+  public boolean hasNext() throws IOException {
     return timeGenerator.hasNext();
   }
 
   @Override
-  protected RowRecord nextWithoutConstraint() throws IOException {
+  public RowRecord next() throws IOException {
     long timestamp = timeGenerator.next();
     RowRecord rowRecord = new RowRecord(timestamp);
 

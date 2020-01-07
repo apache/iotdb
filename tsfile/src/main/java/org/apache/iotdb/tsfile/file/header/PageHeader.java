@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -43,8 +44,7 @@ public class PageHeader {
     return 2 * Integer.BYTES; // uncompressedSize, compressedSize
   }
 
-  public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType)
-      throws IOException {
+  public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType) throws IOException {
     int uncompressedSize = ReadWriteIOUtils.readInt(inputStream);
     int compressedSize = ReadWriteIOUtils.readInt(inputStream);
     Statistics statistics = Statistics.deserialize(inputStream, dataType);
@@ -98,7 +98,7 @@ public class PageHeader {
 
   @Override
   public String toString() {
-    return "PageHeader{" + "uncompressedSize=" + uncompressedSize + ", compressedSize="
-        + compressedSize + ", statistics=" + statistics + "}";
+    return "PageHeader{" + "uncompressedSize=" + uncompressedSize + ", compressedSize=" + compressedSize
+        + ", statistics=" + statistics + "}";
   }
 }

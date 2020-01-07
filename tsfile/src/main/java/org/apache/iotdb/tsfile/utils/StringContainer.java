@@ -22,8 +22,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * this class is used to contact String effectively.It contains a StringBuider and initialize it
- * until {@code toString} is called. Note:it's not thread safety
+ * this class is used to contact String effectively.It contains a StringBuider
+ * and initialize it until {@code toString} is called. Note:it's not thread
+ * safety
  */
 public class StringContainer {
 
@@ -105,8 +106,10 @@ public class StringContainer {
   }
 
   /**
-   * add a Strings array at this container's tail.<br> strings:"a","b","c",<br> StringContainer
-   * this:["d","e","f"],<br> result:this:["d","e","f","a","b","c"],<br>
+   * add a Strings array at this container's tail.<br>
+   * strings:"a","b","c",<br>
+   * StringContainer this:["d","e","f"],<br>
+   * result:this:["d","e","f","a","b","c"],<br>
    *
    * @param strings - to be added
    * @return - this object
@@ -122,8 +125,10 @@ public class StringContainer {
   }
 
   /**
-   * add a StringContainer at this container's tail.<br> param StringContainer:["a","b","c"],<br>
-   * this StringContainer :["d","e","f"],<br> result:this:["d","e","f","a","b","c"],<br>
+   * add a StringContainer at this container's tail.<br>
+   * param StringContainer:["a","b","c"],<br>
+   * this StringContainer :["d","e","f"],<br>
+   * result:this:["d","e","f","a","b","c"],<br>
    *
    * @param myContainer - to be added
    * @return - this object
@@ -148,8 +153,10 @@ public class StringContainer {
   }
 
   /**
-   * add a Strings array from this container's header.<br> strings:"a","b","c",<br> StringContainer
-   * this:["d","e","f"],<br> result:this:["a","b","c","d","e","f"],<br>
+   * add a Strings array from this container's header.<br>
+   * strings:"a","b","c",<br>
+   * StringContainer this:["d","e","f"],<br>
+   * result:this:["a","b","c","d","e","f"],<br>
    *
    * @param strings - to be added
    * @return - this object
@@ -165,8 +172,10 @@ public class StringContainer {
   }
 
   /**
-   * add a StringContainer from this container's header.<br> StringContainer m:["a","b","c"],<br>
-   * StringContainer this:["d","e","f"],<br> result:this:["a","b","c","d","e","f"],<br>
+   * add a StringContainer from this container's header.<br>
+   * StringContainer m:["a","b","c"],<br>
+   * StringContainer this:["d","e","f"],<br>
+   * result:this:["a","b","c","d","e","f"],<br>
    *
    * @param myContainer - given StringContainer to be add in head
    * @return - this object
@@ -247,8 +256,9 @@ public class StringContainer {
   }
 
   /**
-   * return a sub-string in this container.<br> e.g. this container is ["aa","bbb","cc","d","ee"];
-   * this.getSubString(0) = "a"; this.getSubString(2) ="c";this.getSubString(-1) = "ee";
+   * return a sub-string in this container.<br>
+   * e.g. this container is ["aa","bbb","cc","d","ee"]; this.getSubString(0) =
+   * "a"; this.getSubString(2) ="c";this.getSubString(-1) = "ee";
    *
    * @param index - the index of wanted sub-string
    * @return - substring result
@@ -256,8 +266,7 @@ public class StringContainer {
   public String getSubString(int index) {
     int realIndex = index >= 0 ? index : count + index;
     if (realIndex < 0 || realIndex >= count) {
-      throw new IndexOutOfBoundsException(
-          "Index: " + index + ", Real Index: " + realIndex + ", Size: " + count);
+      throw new IndexOutOfBoundsException("Index: " + index + ", Real Index: " + realIndex + ", Size: " + count);
     }
     if (realIndex < reverseList.size()) {
       return reverseList.get(reverseList.size() - 1 - realIndex);
@@ -267,13 +276,15 @@ public class StringContainer {
   }
 
   /**
-   * /** return a sub-container consist of several continuous strings in this {@code container.If
-   * start <= end, return a empty container} e.g. this container is ["aa","bbb","cc","d","ee"];
-   * this.getSubString(0,0) = ["aa"]<br> this.getSubString(1,3) = ["bbb","cc","d"]<br>
+   * /** return a sub-container consist of several continuous strings in this
+   * {@code container.If
+   * start <= end, return a empty container} e.g. this container is
+   * ["aa","bbb","cc","d","ee"]; this.getSubString(0,0) = ["aa"]<br>
+   * this.getSubString(1,3) = ["bbb","cc","d"]<br>
    * this.getSubString(1,-1) = ["bbb","cc","d", "ee"]<br>
    *
    * @param start - the start index of wanted sub-string
-   * @param end - the end index of wanted sub-string
+   * @param end   - the end index of wanted sub-string
    * @return - substring result
    */
   public StringContainer getSubStringContainer(int start, int end) {
@@ -281,8 +292,7 @@ public class StringContainer {
     int realEndIndex = end >= 0 ? end : count + end;
     if (realStartIndex < 0 || realStartIndex >= count) {
       throw new IndexOutOfBoundsException(
-          "start Index: " + start + ", Real start Index: " + realStartIndex + ", Size: "
-              + count);
+          "start Index: " + start + ", Real start Index: " + realStartIndex + ", Size: " + count);
     }
     if (realEndIndex < 0 || realEndIndex >= count) {
       throw new IndexOutOfBoundsException(
@@ -296,8 +306,7 @@ public class StringContainer {
       }
     }
     if (realEndIndex >= reverseList.size()) {
-      for (int i = Math.max(0, realStartIndex - reverseList.size()); i <= realEndIndex
-          - reverseList.size(); i++) {
+      for (int i = Math.max(0, realStartIndex - reverseList.size()); i <= realEndIndex - reverseList.size(); i++) {
         ret.addTail(this.sequenceList.get(i));
       }
     }
@@ -332,7 +341,8 @@ public class StringContainer {
   /**
    * judge whether the param is equal to this container.
    *
-   * @param sc -StringContainer Object to judge whether the object is equal to this container
+   * @param sc -StringContainer Object to judge whether the object is equal to
+   *           this container
    * @return boolean value to judge whether is equal
    */
   public boolean equals(StringContainer sc) {

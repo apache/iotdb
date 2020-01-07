@@ -21,9 +21,10 @@ package org.apache.iotdb.tsfile.file.header;
 /**
  * CHUNK_GROUP_FOOTER and CHUNK_HEADER are used for parsing file.
  *
- * ChunkGroupMetadata and ChunkMetadata are used for locating the positions of ChunkGroup (footer)
- * and chunk (header),filtering data quickly, and thereby they have statistics information.
+ * ChunkGroupMetadata and ChunkMetadata are used for locating the positions of
+ * ChunkGroup (footer) and chunk (header),filtering data quickly, and thereby
+ * they have statistics information.
  *
- * However, because Page has only the header structure, therefore, PageHeader has the both two
- * functions.
+ * However, because Page has only the header structure, therefore, PageHeader
+ * has the both two functions.
  */
