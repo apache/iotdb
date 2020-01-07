@@ -70,7 +70,7 @@ public class IoTDBSessionIT {
     EnvironmentUtils.cleanEnv();
   }
 
-  @Test
+  // it's will output too much to travis, so ignore it
   public void testTime()
       throws IoTDBSessionException, SQLException, ClassNotFoundException, TException, IoTDBRPCException {
     session = new Session("127.0.0.1", 6667, "root", "root");
@@ -247,7 +247,7 @@ public class IoTDBSessionIT {
     session.close();
   }
 
-  private void createTimeseries() throws IoTDBSessionException {
+  private void createTimeseriesForTime() throws IoTDBSessionException {
     session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE,
@@ -275,6 +275,21 @@ public class IoTDBSessionIT {
     session.createTimeseries("root.sg1.d1.s5", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d1.s6", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d2.s1", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d2.s2", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d2.s3", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+  }
+
+  private void createTimeseries() throws IoTDBSessionException {
+    session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d2.s1", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);

@@ -19,14 +19,23 @@
 package org.apache.iotdb.db.qp.executor;
 
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COLUMN;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COUNT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -37,6 +46,7 @@ import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
@@ -47,8 +57,12 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.DeviceIterateDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -69,7 +83,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
 
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException {
+      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException, MetadataException, SQLException {
     if (queryPlan instanceof QueryPlan) {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
@@ -81,7 +95,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     }
   }
 
-  private QueryDataSet processShowQuery(ShowPlan showPlan) throws QueryProcessException {
+  private QueryDataSet processShowQuery(ShowPlan showPlan)
+      throws QueryProcessException, MetadataException, SQLException {
     switch (showPlan.getShowContentType()) {
       case TTL:
         return processShowTTLQuery((ShowTTLPlan) showPlan);
@@ -91,20 +106,145 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
         return processShowFlushTaskInfo();
       case VERSION:
         return processShowVersion();
+      case TIMESERIES:
+        return processShowTimeseries((ShowTimeSeriesPlan) showPlan);
+      case STORAGE_GROUP:
+        return processShowStorageGroup();
+      case DEVICES:
+        return processShowDevices((ShowDevicesPlan) showPlan);
+      case CHILD_PATH:
+        return processShowChildPaths((ShowChildPathsPlan) showPlan);
+      case COUNT_TIMESERIES:
+        return processCountTimeSeries((CountPlan) showPlan);
+      case COUNT_NODE_TIMESERIES:
+        return processCountNodeTimeSeries((CountPlan) showPlan);
+      case COUNT_NODES:
+        return processCountNodes((CountPlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
   }
 
-  private QueryDataSet processShowTTLQuery(ShowTTLPlan showTTLPlan) {
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path(COLUMN_STORAGE_GROUP));
-    paths.add(new Path(COLUMN_TTL));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.TEXT);
-    dataTypes.add(TSDataType.INT64);
-    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+  private QueryDataSet processCountNodes(CountPlan countPlan) throws SQLException {
+    List<String> nodes = getNodesList(countPlan.getPath().toString(), countPlan.getLevel());
+    int num = nodes.size();
+    SingleDataSet singleDataSet = new SingleDataSet(Collections.singletonList(new Path(COLUMN_COUNT)),
+        Collections.singletonList(TSDataType.INT32));
+    Field field = new Field(TSDataType.INT32);
+    field.setIntV(num);
+    RowRecord record = new RowRecord(0);
+    record.addField(field);
+    singleDataSet.setRecord(record);
+    return singleDataSet;
+  }
 
+  private QueryDataSet processCountNodeTimeSeries(CountPlan countPlan)
+      throws SQLException, MetadataException {
+    List<String> nodes = getNodesList(countPlan.getPath().toString(), countPlan.getLevel());
+    ListDataSet listDataSet = new ListDataSet(Arrays.asList(new Path(COLUMN_COLUMN), new Path(COLUMN_COUNT)),
+        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
+    for (String columnPath : nodes) {
+      RowRecord record = new RowRecord(0);
+      Field field = new Field(TSDataType.TEXT);
+      field.setBinaryV(new Binary(columnPath));
+      Field field1 = new Field(TSDataType.TEXT);
+      field1.setBinaryV(new Binary(Integer.toString(getPaths(columnPath).size())));
+      record.addField(field);
+      record.addField(field1);
+      listDataSet.putRecord(record);
+    }
+    return listDataSet;
+  }
+
+  protected List<String> getPaths(String path) throws MetadataException {
+    return MManager.getInstance().getPaths(path);
+  }
+
+  private List<String> getNodesList(String schemaPattern, int level) throws SQLException {
+    return MManager.getInstance().getNodesList(schemaPattern, level);
+  }
+
+  private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {
+    int num = getPaths(countPlan.getPath().toString()).size();
+    SingleDataSet singleDataSet = new SingleDataSet(Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
+        Collections.singletonList(TSDataType.INT32));
+    Field field = new Field(TSDataType.INT32);
+    field.setIntV(num);
+    RowRecord record = new RowRecord(0);
+    record.addField(field);
+    singleDataSet.setRecord(record);
+    return singleDataSet;
+  }
+
+  private QueryDataSet processShowDevices(ShowDevicesPlan showDevicesPlan) throws PathException {
+    ListDataSet listDataSet = new ListDataSet(Collections.singletonList(new Path(COLUMN_DEVICES)),
+        Collections.singletonList(TSDataType.TEXT));
+    List<String> devices;
+    devices = MManager.getInstance().getDevices(showDevicesPlan.getPath().toString());
+    for(String s: devices) {
+      RowRecord record = new RowRecord(0);
+      Field field = new Field(TSDataType.TEXT);
+      field.setBinaryV(new Binary(s));
+      record.addField(field);
+      listDataSet.putRecord(record);
+    }
+    return listDataSet;
+  }
+
+  private QueryDataSet processShowChildPaths(ShowChildPathsPlan showChildPathsPlan)
+      throws PathException {
+    Set<String> childPathsList = MManager.getInstance()
+        .getChildNodePathInNextLevel(showChildPathsPlan.getPath().toString());
+    ListDataSet listDataSet = new ListDataSet(Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
+        Collections.singletonList(TSDataType.TEXT));
+    for(String s: childPathsList) {
+      RowRecord record = new RowRecord(0);
+      Field field = new Field(TSDataType.TEXT);
+      field.setBinaryV(new Binary(s));
+      record.addField(field);
+      listDataSet.putRecord(record);
+    }
+    return listDataSet;
+  }
+
+  private QueryDataSet processShowStorageGroup() {
+    ListDataSet listDataSet = new ListDataSet(Collections.singletonList(new Path(COLUMN_STORAGE_GROUP)),
+        Collections.singletonList(TSDataType.TEXT));
+    List<String> storageGroupList = MManager.getInstance().getAllStorageGroupNames();
+    for(String s: storageGroupList) {
+      RowRecord record = new RowRecord(0);
+      Field field = new Field(TSDataType.TEXT);
+      field.setBinaryV(new Binary(s));
+      record.addField(field);
+      listDataSet.putRecord(record);
+    }
+    return listDataSet;
+  }
+
+  private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan timeSeriesPlan) throws PathException {
+    ListDataSet listDataSet = new ListDataSet(Arrays.asList(
+        new Path(COLUMN_TIMESERIES),
+        new Path(COLUMN_STORAGE_GROUP),
+        new Path(COLUMN_TIMESERIES_DATATYPE),
+        new Path(COLUMN_TIMESERIES_ENCODING)),
+        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
+    List<List<String>> timeseriesList = MManager.getInstance()
+        .getShowTimeseriesPath(timeSeriesPlan.getPath().toString());
+    for(List<String> list : timeseriesList) {
+      RowRecord record = new RowRecord(0);
+      for(String s : list) {
+        Field field = new Field(TSDataType.TEXT);
+        field.setBinaryV(new Binary(s));
+        record.addField(field);
+      }
+      listDataSet.putRecord(record);
+    }
+    return listDataSet;
+  }
+
+  private QueryDataSet processShowTTLQuery(ShowTTLPlan showTTLPlan) {
+    ListDataSet listDataSet = new ListDataSet(Arrays.asList(new Path(COLUMN_STORAGE_GROUP),new Path(COLUMN_TTL))
+        , Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
     List<String> selectedSgs = showTTLPlan.getStorageGroups();
 
     List<MNode> storageGroups = MManager.getInstance().getAllStorageGroups();
@@ -133,11 +273,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   }
 
   private QueryDataSet processShowVersion() {
-    List<Path> paths = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    paths.add(new Path("root"));
-    dataTypes.add(TSDataType.TEXT);
-    SingleDataSet singleDataSet = new SingleDataSet(paths, dataTypes);
+    SingleDataSet singleDataSet = new SingleDataSet(Collections.singletonList(new Path(IoTDBConstant.COLUMN_VERSION)),
+        Collections.singletonList(TSDataType.TEXT));
     Field field = new Field(TSDataType.TEXT);
     field.setBinaryV(new Binary(IoTDBConstant.VERSION));
     RowRecord rowRecord = new RowRecord(0);
@@ -147,13 +284,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   }
 
   private QueryDataSet processShowDynamicParameterQuery() {
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path(COLUMN_PARAMETER));
-    paths.add(new Path(COLUMN_VALUE));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.TEXT);
-    dataTypes.add(TSDataType.TEXT);
-    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    ListDataSet listDataSet = new ListDataSet(Arrays.asList(new Path(COLUMN_PARAMETER), new Path(COLUMN_VALUE)),
+        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
     int timestamp = 0;
     addRowRecordForShowQuery(listDataSet, timestamp++, "memtable size threshold",
@@ -175,13 +307,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   }
 
   private QueryDataSet processShowFlushTaskInfo() {
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path(COLUMN_ITEM));
-    paths.add(new Path(COLUMN_VALUE));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.TEXT);
-    dataTypes.add(TSDataType.TEXT);
-    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    ListDataSet listDataSet = new ListDataSet(Arrays.asList(new Path(COLUMN_ITEM), new Path(COLUMN_VALUE)),
+        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
     int timestamp = 0;
     addRowRecordForShowQuery(listDataSet, timestamp++, "total number of flush tasks",
