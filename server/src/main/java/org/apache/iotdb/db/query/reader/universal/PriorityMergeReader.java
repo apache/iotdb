@@ -32,19 +32,20 @@ public class PriorityMergeReader implements IPointReader {
   PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
     int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
         o2.timeValuePair.getTimestamp());
-    return timeCompare != 0 ? timeCompare : Integer.compare(o2.priority, o1.priority);
+    return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
   });
 
   public PriorityMergeReader() {
   }
 
-  public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority) throws IOException {
+  public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority)
+      throws IOException {
     for (IPointReader reader : prioritySeriesReaders) {
       addReaderWithPriority(reader, startPriority++);
     }
   }
 
-  public void addReaderWithPriority(IPointReader reader, int priority) throws IOException {
+  public void addReaderWithPriority(IPointReader reader, long priority) throws IOException {
     if (reader.hasNext()) {
       heap.add(new Element(reader, reader.next(), priority));
     } else {
@@ -116,9 +117,9 @@ public class PriorityMergeReader implements IPointReader {
 
     IPointReader reader;
     TimeValuePair timeValuePair;
-    int priority;
+    long priority;
 
-    Element(IPointReader reader, TimeValuePair timeValuePair, int priority) {
+    Element(IPointReader reader, TimeValuePair timeValuePair, long priority) {
       this.reader = reader;
       this.timeValuePair = timeValuePair;
       this.priority = priority;
