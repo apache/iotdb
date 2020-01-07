@@ -84,12 +84,12 @@ public class QueryCoordinator {
           long responseTime = System.nanoTime() - startTime;
           nodeStatus.setStatus(status);
           nodeStatus.setLastUpdateTime(System.currentTimeMillis());
-          nodeStatus.setLastResponseTime(responseTime);
+          nodeStatus.setLastResponseLatency(responseTime);
         } else {
-          nodeStatus.setLastResponseTime(Long.MAX_VALUE);
+          nodeStatus.setLastResponseLatency(Long.MAX_VALUE);
         }
         logger.info("NodeStatus of {} is updated, status: {}, response time: {}", node,
-            nodeStatus.getStatus(), nodeStatus.getLastResponseTime());
+            nodeStatus.getStatus(), nodeStatus.getLastResponseLatency());
       } catch (TException | InterruptedException e) {
         logger.error("Cannot query the node status of {}", node, e);
       }

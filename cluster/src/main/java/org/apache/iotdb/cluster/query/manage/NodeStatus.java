@@ -17,20 +17,20 @@ public class NodeStatus implements Comparable<NodeStatus> {
   private long lastUpdateTime;
   // how long does it take to get the status in the last attempt, in nanoseconds, which partially
   // reflect the node's load or network condition
-  private long lastResponseTime;
+  private long lastResponseLatency;
 
   //TODO-Cluster: decide what should be contained in NodeStatus and how two compare two NodeStatus
   @Override
   public int compareTo(NodeStatus o) {
-    return Long.compare(this.lastResponseTime, o.lastResponseTime);
+    return Long.compare(this.lastResponseLatency, o.lastResponseLatency);
   }
 
   long getLastUpdateTime() {
     return lastUpdateTime;
   }
 
-  long getLastResponseTime() {
-    return lastResponseTime;
+  long getLastResponseLatency() {
+    return lastResponseLatency;
   }
 
   TNodeStatus getStatus() {
@@ -45,7 +45,7 @@ public class NodeStatus implements Comparable<NodeStatus> {
     this.lastUpdateTime = lastUpdateTime;
   }
 
-  void setLastResponseTime(long lastResponseTime) {
-    this.lastResponseTime = lastResponseTime;
+  void setLastResponseLatency(long lastResponseLatency) {
+    this.lastResponseLatency = lastResponseLatency;
   }
 }

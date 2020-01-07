@@ -113,6 +113,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -155,6 +156,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   private ClientPool dataClientPool;
 
+  @TestOnly
   public MetaGroupMember() {
   }
 
