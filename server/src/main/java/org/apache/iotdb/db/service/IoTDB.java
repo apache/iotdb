@@ -83,9 +83,9 @@ public class IoTDB implements IoTDBMBean {
     setUncaughtExceptionHandler();
 
     initMManager();
+    registerManager.register(JMXService.getInstance());
     registerManager.register(StorageEngine.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
-    registerManager.register(JMXService.getInstance());
     registerManager.register(JDBCService.getInstance());
     registerManager.register(Monitor.getInstance());
     registerManager.register(StatMonitor.getInstance());

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.service;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.THRIFT_SERVER_WAIT_TIME_FOR_STOP;
+
 import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
@@ -33,6 +35,7 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TThreadPoolServer;
+import org.apache.thrift.server.TThreadPoolServer.Args;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -207,8 +210,8 @@ public class JDBCService implements JDBCServiceMBean, IService {
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
         serverTransport = new TServerSocket(new InetSocketAddress(config.getRpcAddress(),
             config.getRpcPort()));
-        poolArgs = new TThreadPoolServer.Args(serverTransport).maxWorkerThreads(IoTDBDescriptor.
-            getInstance().getConfig().getRpcMaxConcurrentClientNum()).minWorkerThreads(1);
+        poolArgs = new Args(serverTransport).maxWorkerThreads(IoTDBDescriptor.
+            getInstance().getConfig().getRpcMaxConcurrentClientNum()).minWorkerThreads(1).stopTimeoutVal(THRIFT_SERVER_WAIT_TIME_FOR_STOP);
         poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,
             ThreadName.JDBC_CLIENT.getName());
         poolArgs.processor(processor);

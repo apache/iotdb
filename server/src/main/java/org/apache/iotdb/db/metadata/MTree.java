@@ -245,7 +245,7 @@ public class MTree implements Serializable {
    * Check whether the input path is storage group or not
    *
    * @param path input path
-   * @return if it is storage group, return true. Else return false
+   * @return if the whole path is a storage group, return true. Else return false
    * @apiNote :for cluster
    */
   boolean checkStorageGroup(String path) {

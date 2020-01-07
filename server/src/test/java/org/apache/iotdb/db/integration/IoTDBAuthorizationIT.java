@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.integration;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.sql.Connection;
@@ -28,7 +27,6 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -45,7 +43,6 @@ import org.slf4j.LoggerFactory;
 public class IoTDBAuthorizationIT {
   private static Logger logger = LoggerFactory.getLogger(IoTDBAuthorizationIT.class);
 
-  private IoTDB daemon;
 
   public static void main(String[] args) throws Exception {
     for (int i = 0; i < 10; i++) {
@@ -59,14 +56,11 @@ public class IoTDBAuthorizationIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -617,8 +611,8 @@ public class IoTDBAuthorizationIT {
             "temppw");
     Statement userStmt = userCon.createStatement();
 
-    int insertCnt = 2000000;
-    int batchSize = 5000;
+    int insertCnt = 20000;
+    int batchSize = 500;
     long time;
 
     time = System.currentTimeMillis();
@@ -631,8 +625,8 @@ public class IoTDBAuthorizationIT {
       userStmt.executeBatch();
       userStmt.clearBatch();
     }
-    if (logger.isDebugEnabled()) {
-      logger.debug("User inserted {} data points used {} ms with {} privileges.", insertCnt,
+    if (logger.isInfoEnabled()) {
+      logger.info("User inserted {} data points used {} ms with {} privileges.", insertCnt,
           System.currentTimeMillis() - time, privilegeCnt);
     }
 
@@ -645,8 +639,8 @@ public class IoTDBAuthorizationIT {
       adminStmt.executeBatch();
       adminStmt.clearBatch();
     }
-    if (logger.isDebugEnabled()) {
-      logger.debug("User inserted {} data points used {} ms with {} privileges.", insertCnt,
+    if (logger.isInfoEnabled()) {
+      logger.info("User inserted {} data points used {} ms with {} privileges.", insertCnt,
           System.currentTimeMillis() - time, privilegeCnt);
     }
     adminCon.close();

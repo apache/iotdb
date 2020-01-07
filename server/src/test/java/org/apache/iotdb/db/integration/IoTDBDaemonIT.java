@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
@@ -38,7 +37,6 @@ import static org.junit.Assert.fail;
  */
 public class IoTDBDaemonIT {
 
-  private static IoTDB daemon;
   private static String[] sqls = new String[]{
 
       "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
@@ -102,8 +100,6 @@ public class IoTDBDaemonIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertData();
@@ -112,7 +108,7 @@ public class IoTDBDaemonIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
+
     EnvironmentUtils.cleanEnv();
   }
 

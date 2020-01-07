@@ -31,7 +31,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -46,8 +45,6 @@ import org.junit.Test;
  */
 public class IoTDBFloatPrecisionIT {
 
-  private static IoTDB daemon;
-
   private static final String CREATE_TEMPLATE_SQL = "CREATE TIMESERIES root.vehicle.%s.%s WITH DATATYPE=%s, ENCODING=%s, MAX_POINT_NUMBER=%d";
   private static final String INSERT_TEMPLATE_SQL = "insert into root.vehicle.%s(timestamp,%s) values(%d,%s)";
   private static List<String> sqls = new ArrayList<>();
@@ -61,15 +58,12 @@ public class IoTDBFloatPrecisionIT {
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     initCreateSQLStatement();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

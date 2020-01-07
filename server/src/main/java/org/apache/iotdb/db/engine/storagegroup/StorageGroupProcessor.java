@@ -24,6 +24,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -632,7 +633,12 @@ public class StorageGroupProcessor {
         try {
           FileUtils.deleteDirectory(storageGroupFolder);
         } catch (IOException e) {
-          logger.error("Delete TsFiles failed", e);
+          logger.warn("Delete TsFiles failed: {}", e.getMessage());
+          try {
+            Files.delete(storageGroupFolder.toPath());
+          } catch (IOException e1) {
+            logger.error("Delete TsFiles folder failed", e1);
+          }
         }
       }
     }

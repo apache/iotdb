@@ -29,7 +29,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
 
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -38,7 +37,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 public class IoTDBDeletionIT {
-  private static IoTDB daemon;
 
   private static String[] creationSqls = new String[]{
           "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
@@ -58,8 +56,6 @@ public class IoTDBDeletionIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareSeries();
@@ -67,8 +63,6 @@ public class IoTDBDeletionIT {
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
-
     EnvironmentUtils.cleanEnv();
   }
 

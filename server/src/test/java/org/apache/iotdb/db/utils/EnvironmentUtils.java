@@ -18,8 +18,11 @@
  */
 package org.apache.iotdb.db.utils;
 
+import static org.junit.Assert.fail;
+
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -41,6 +44,7 @@ import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.MetricsService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.junit.Assert;
@@ -68,6 +72,8 @@ public class EnvironmentUtils {
 
   private static long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
+  private static IoTDB daemon;
+
   public static void cleanEnv() throws IOException, StorageEngineException {
 
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
@@ -78,14 +84,21 @@ public class EnvironmentUtils {
     // clean storage group manager
     if (!StorageEngine.getInstance().deleteAll()) {
       logger.error("Can't close the storage group manager in EnvironmentUtils");
-      Assert.fail();
+      fail();
     }
-    StorageEngine.getInstance().reset();
+
+
+    if (daemon != null) {
+      daemon.stop();
+      daemon = null;
+    }
+
+    //StorageEngine.getInstance().reset();
     IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
 
-    StatMonitor.getInstance().close();
+    //StatMonitor.getInstance().close();
     // clean wal
-    MultiFileLogNodeManager.getInstance().stop();
+    //MultiFileLogNodeManager.getInstance().stop();
     // clean cache
     if (config.isMetaDataCacheEnable()) {
       TsFileMetaDataCache.getInstance().clear();
@@ -94,8 +107,8 @@ public class EnvironmentUtils {
     // close metadata
     MManager.getInstance().clear();
 
-    MergeManager.getINSTANCE().stop();
-    MetricsService.getInstance().stop();
+    //MergeManager.getINSTANCE().stop();
+    //MetricsService.getInstance().stop();
     // delete all directory
     cleanAllDir();
 
@@ -142,28 +155,22 @@ public class EnvironmentUtils {
    * disable memory control</br> this function should be called before all code in the setup
    */
   public static void envSetUp() throws StartupException {
+    if (daemon == null) {
+      daemon = new IoTDB();
+      try {
+        daemon.active();
+      } catch (Exception e) {
+        fail(e.getMessage());
+      }
+    }
+
     IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(false);
-    MManager.getInstance().init();
+    //MManager.getInstance().init();
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
 
     createAllDir();
     // disable the system monitor
     config.setEnableStatMonitor(false);
-    IAuthorizer authorizer;
-    try {
-      authorizer = LocalFileAuthorizer.getInstance();
-    } catch (AuthException e) {
-      throw new StartupException(e);
-    }
-    try {
-      authorizer.reset();
-    } catch (AuthException e) {
-      throw new StartupException(e);
-    }
-    StorageEngine.getInstance().reset();
-    MultiFileLogNodeManager.getInstance().start();
-    FlushManager.getInstance().start();
-    MergeManager.getINSTANCE().start();
     TEST_QUERY_JOB_ID  = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
@@ -187,6 +194,12 @@ public class EnvironmentUtils {
     // create data
     for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);
+    }
+    //create user and roles folder
+    try {
+      LocalFileAuthorizer.getInstance().reset();
+    } catch (AuthException e) {
+      e.printStackTrace();
     }
   }
 

@@ -131,6 +131,7 @@ public class StorageEngine implements IService {
       try {
         future.get();
       } catch (InterruptedException | ExecutionException e) {
+        e.printStackTrace();
         throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
       }
     }
@@ -160,6 +161,7 @@ public class StorageEngine implements IService {
     syncCloseAllProcessor();
     ttlCheckThread.shutdownNow();
     recoveryThreadPool.shutdownNow();
+    this.reset();
     try {
       ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
