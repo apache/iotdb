@@ -372,7 +372,7 @@ public class TsFileResource {
     try {
       Files.delete(new File(file.getAbsoluteFile() + CLOSING_SUFFIX).toPath());
     } catch (IOException e) {
-      logger.error("Cannot delete the file.", new File(file.getAbsoluteFile() + CLOSING_SUFFIX));
+      logger.error("Cannot delete the file: {}", new File(file.getAbsoluteFile() + CLOSING_SUFFIX), e);
     }
   }
 

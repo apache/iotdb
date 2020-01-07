@@ -131,7 +131,6 @@ public class StorageEngine implements IService {
       try {
         future.get();
       } catch (InterruptedException | ExecutionException e) {
-        e.printStackTrace();
         throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
       }
     }
