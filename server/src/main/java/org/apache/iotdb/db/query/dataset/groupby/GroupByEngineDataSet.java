@@ -83,7 +83,8 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
 
     startTime = usedIndex * slidingStep + intervalStartTime;
     usedIndex++;
-    if (startTime <= intervalEndTime) {
+    //This is an open interval , [0-100)
+    if (startTime < intervalEndTime) {
       hasCachedTimeInterval = true;
       endTime = Math.min(startTime + unit, intervalEndTime + 1);
       return true;

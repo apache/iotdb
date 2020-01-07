@@ -79,6 +79,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     this.seriesPath = seriesPath;
     this.context = context;
     this.dataType = dataType;
+
     if (filter != null) {
       filter = queryDataSource.setTTL(filter);
       this.filter = filter;

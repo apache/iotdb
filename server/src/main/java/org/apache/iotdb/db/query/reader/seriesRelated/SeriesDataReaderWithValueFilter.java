@@ -23,7 +23,7 @@ public class SeriesDataReaderWithValueFilter extends SeriesDataReaderWithoutValu
 
   public SeriesDataReaderWithValueFilter(Path seriesPath, TSDataType dataType, Filter valueFilter,
       QueryContext context) throws StorageEngineException, IOException {
-    super(seriesPath, dataType, null, context);
+    super(seriesPath, dataType, valueFilter, context);
     this.valueFilter = valueFilter;
   }
 

@@ -20,6 +20,7 @@
 //package org.apache.iotdb.db.query.reader.seriesRelated;
 //
 //import java.io.IOException;
+//import org.apache.iotdb.db.exception.StorageEngineException;
 //import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 //import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 //import org.apache.iotdb.tsfile.read.filter.ValueFilter;
@@ -29,12 +30,12 @@
 //
 //  private ManagedSeriesReader reader;
 //
-//  private void init() throws IOException {
+//  private void init() throws IOException, StorageEngineException {
 //    // (100,0),(105,1),(110,0),(115,1),(120,0),...
 //    IBatchReader batchReader = new FakedIBatchPoint(100, 1000, 5, 2);
 //    // (100,0),(105,1),(110,2),(115,3),(120,0),...
 //    IBatchReader pointReader = new FakedIBatchPoint(100, 500, 5, 4);
-//    reader = new SeriesReaderWithValueFilter(batchReader, pointReader, ValueFilter.eq(0L));
+//    reader = new SeriesDataReaderWithValueFilter(batchReader, pointReader, ValueFilter.eq(0L));
 //  }
 //
 //  @Test
@@ -42,18 +43,18 @@
 //    init();
 //    int cnt = 0;
 //    long startTime = 100; // 100-20
-////    while (reader.hasNext()) {
-////      TimeValuePair timeValuePair = reader.next();
-////      if (cnt < 125) {
-////        Assert.assertEquals(startTime, timeValuePair.getTimestamp());
-////        startTime += 20;
-////      } else {
-////        Assert.assertEquals(startTime, timeValuePair.getTimestamp());
-////        startTime += 10;
-////      }
-////      cnt++;
-////    }
-////    Assert.assertEquals(375, cnt);
+//    while (reader.hasNext()) {
+//      TimeValuePair timeValuePair = reader.next();
+//      if (cnt < 125) {
+//        Assert.assertEquals(startTime, timeValuePair.getTimestamp());
+//        startTime += 20;
+//      } else {
+//        Assert.assertEquals(startTime, timeValuePair.getTimestamp());
+//        startTime += 10;
+//      }
+//      cnt++;
+//    }
+//    Assert.assertEquals(375, cnt);
 //  }
 //
 //}
