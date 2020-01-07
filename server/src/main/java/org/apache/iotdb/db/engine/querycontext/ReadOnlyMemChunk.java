@@ -145,6 +145,7 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
     }
     statsByType.setEmpty(isEmpty());
     metaData.setChunkLoader(new MemChunkLoader(this));
+    metaData.setVersion(Long.MAX_VALUE);
     return metaData;
   }
 }

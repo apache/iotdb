@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 
 /**
  * This class is used to read metadata(<code>TsFileMetaData</code> and

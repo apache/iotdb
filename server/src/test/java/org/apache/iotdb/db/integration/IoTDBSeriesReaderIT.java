@@ -45,6 +45,7 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
@@ -249,7 +250,6 @@ public class IoTDBSeriesReaderIT {
     //System.out.println("Test >>> " + selectSql);
 
     EngineQueryRouter engineExecutor = new EngineQueryRouter();
-
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     pathList.add(new Path(Constant.d0s0));
@@ -275,6 +275,7 @@ public class IoTDBSeriesReaderIT {
     QueryPlan queryPlan = new QueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPaths(pathList);
+
     QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
@@ -380,7 +381,12 @@ public class IoTDBSeriesReaderIT {
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      queryDataSet.next();
+      RowRecord next = queryDataSet.next();
+      System.out.print(next.getTimestamp() + "\t");
+      for (Field field : next.getFields()) {
+        System.out.print(field.getIntV()+ "\t");
+      }
+      System.out.println();
       cnt++;
     }
     assertEquals(22300, cnt);

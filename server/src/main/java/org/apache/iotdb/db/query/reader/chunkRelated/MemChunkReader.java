@@ -49,12 +49,6 @@ public class MemChunkReader implements IChunkReader, IPointReader {
     this.dataType = readableChunk.getDataType();
   }
 
-  public MemChunkReader(Iterator<TimeValuePair> data, TSDataType dataType, Filter filter) {
-    timeValuePairIterator = data;
-    this.filter = filter;
-    this.dataType = dataType;
-  }
-
   @Override
   public boolean hasNext() {
     if (hasCachedTimeValuePair) {

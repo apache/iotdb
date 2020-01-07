@@ -1,10 +1,27 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
@@ -56,10 +73,8 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
   protected IChunkReader chunkReader;
   protected ChunkMetaData chunkMetaData;
 
-  private Map<Integer, Long> metaDataVersionCache = new HashMap<>();
-
-  protected List<IChunkReader> overlappedChunkReader = new ArrayList<>();
-  protected List<IChunkReader> overlappedPages = new ArrayList<>();
+  protected List<VersionPair<IChunkReader>> overlappedChunkReader = new ArrayList<>();
+  protected List<VersionPair<IChunkReader>> overlappedPages = new ArrayList<>();
 
   protected boolean hasCachedNextPage;
   protected PageHeader currentPage;
@@ -125,8 +140,6 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
 
     isCurrentChunkReaderInit = false;
     hasCachedNextChunk = hasCachedNextPage;
-    //When the chunk no longer has any data, everything in metaDataVersionCache is no longer used
-    metaDataVersionCache.clear();
     return hasCachedNextPage;
   }
 
@@ -136,14 +149,13 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
       return true;
     }
     if (chunkReader.hasNextSatisfiedPage()) {
-      priorityMergeReader.addReaderWithPriority(new DiskChunkReader(chunkReader),
-          metaDataVersionCache.getOrDefault(chunkReader.hashCode(), 0L).intValue());
+      priorityMergeReader
+          .addReaderWithPriority(new DiskChunkReader(chunkReader), chunkMetaData.getVersion());
       hasCachedNextBatch = true;
     }
     for (int i = 0; i < overlappedPages.size(); i++) {
-      IChunkReader reader = overlappedPages.get(i);
-      priorityMergeReader.addReaderWithPriority(new DiskChunkReader(reader),
-          metaDataVersionCache.getOrDefault(reader.hashCode(), 0L).intValue());
+      VersionPair<IChunkReader> reader = overlappedPages.get(i);
+      priorityMergeReader.addReaderWithPriority(new DiskChunkReader(reader.data), reader.version);
       hasCachedNextBatch = true;
     }
     overlappedPages.clear();
@@ -183,12 +195,12 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     IChunkLoader chunkLoader = metaData.getChunkLoader();
     if (chunkLoader instanceof MemChunkLoader) {
       MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
-      chunkReader = new MemChunkReader(memChunkLoader.getChunk(), filter);
+      chunkReader = new MemChunkReader(memChunkLoader.getChunk(),filter);
     } else {
       Chunk chunk = chunkLoader.getChunk(metaData);
       chunkReader = new ChunkReader(chunk, filter);
+      chunkReader.hasNextSatisfiedPage();
     }
-    chunkReader.hasNextSatisfiedPage();
     return chunkReader;
   }
 
@@ -351,7 +363,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
       }
 
       ChunkMetaData metaData = seqChunkMetadatas.get(0);
-      if (!filter.satisfy(metaData.getStatistics())) {
+      if (!filter.satisfyStartEndTime(metaData.getStartTime(), metaData.getEndTime())) {
         seqChunkMetadatas.remove(0);
         continue;
       }
@@ -362,7 +374,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
         unseqChunkMetadatas.addAll(loadChunkMetadatas(unseqFileResource.pollFirst()));
       }
       ChunkMetaData metaData = unseqChunkMetadatas.first();
-      if (!filter.satisfy(metaData.getStatistics())) {
+      if (!filter.satisfyStartEndTime(metaData.getStartTime(), metaData.getEndTime())) {
         unseqChunkMetadatas.pollFirst();
         continue;
       }
@@ -401,8 +413,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
         ChunkMetaData metaData = unseqChunkMetadatas.pollFirst();
         IChunkReader chunkReader = initChunkReader(metaData);
         //When data points overlap, there should be a weight
-        metaDataVersionCache.put(chunkReader.hashCode(), metaData.getVersion());
-        overlappedChunkReader.add(chunkReader);
+        overlappedChunkReader.add(new VersionPair<>(metaData.getVersion(), chunkReader));
         continue;
       }
       break;
@@ -413,8 +424,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
       if (chunkMetaData.getEndTime() > startTime) {
         ChunkMetaData metaData = seqChunkMetadatas.remove(0);
         IChunkReader chunkReader = initChunkReader(metaData);
-        metaDataVersionCache.put(chunkReader.hashCode(), metaData.getVersion());
-        overlappedChunkReader.add(chunkReader);
+        overlappedChunkReader.add(new VersionPair<>(metaData.getVersion(), chunkReader));
         continue;
       }
       break;
@@ -431,11 +441,21 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     hasCachedNextPage = true;
     latestDirectlyOverlappedPageEndTime = currentPage.getEndTime();
     while (!overlappedChunkReader.isEmpty()) {
-      IChunkReader iChunkReader = overlappedChunkReader.get(0);
-      if (currentPage.getEndTime() > iChunkReader.nextPageHeader().getStartTime()) {
+      VersionPair<IChunkReader> iChunkReader = overlappedChunkReader.get(0);
+      if (currentPage.getEndTime() > iChunkReader.data.nextPageHeader().getStartTime()) {
         overlappedPages.add(overlappedChunkReader.remove(0));
       }
     }
   }
 
+  private class VersionPair<T> {
+
+    private long version;
+    private T data;
+
+    public VersionPair(long version, T data) {
+      this.version = version;
+      this.data = data;
+    }
+  }
 }
