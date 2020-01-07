@@ -93,12 +93,8 @@ public class EnvironmentUtils {
       daemon = null;
     }
 
-    //StorageEngine.getInstance().reset();
     IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
 
-    //StatMonitor.getInstance().close();
-    // clean wal
-    //MultiFileLogNodeManager.getInstance().stop();
     // clean cache
     if (config.isMetaDataCacheEnable()) {
       TsFileMetaDataCache.getInstance().clear();
@@ -107,8 +103,6 @@ public class EnvironmentUtils {
     // close metadata
     MManager.getInstance().clear();
 
-    //MergeManager.getINSTANCE().stop();
-    //MetricsService.getInstance().stop();
     // delete all directory
     cleanAllDir();
 
@@ -165,7 +159,6 @@ public class EnvironmentUtils {
     }
 
     IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(false);
-    //MManager.getInstance().init();
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
 
     createAllDir();
