@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.METRIC_SERVICE_WAIT_TIME_FOR_STOP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.THRIFT_SERVER_WAIT_TIME_FOR_STOP;
 import static org.junit.Assert.fail;
 
 import java.io.File;
@@ -149,6 +151,8 @@ public class EnvironmentUtils {
    * disable memory control</br> this function should be called before all code in the setup
    */
   public static void envSetUp() throws StartupException {
+    METRIC_SERVICE_WAIT_TIME_FOR_STOP = 0;
+    THRIFT_SERVER_WAIT_TIME_FOR_STOP = 0;
     if (daemon == null) {
       daemon = new IoTDB();
       try {

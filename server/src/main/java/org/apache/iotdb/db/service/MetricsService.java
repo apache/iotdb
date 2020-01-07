@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.service;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.METRIC_SERVICE_WAIT_TIME_FOR_STOP;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -84,6 +86,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
     metricsWebUI.getHandlers().add(metricsSystem.getServletHandlers());
     metricsWebUI.initialize();
     server = metricsWebUI.getServer(port);
+    server.setStopTimeout(METRIC_SERVICE_WAIT_TIME_FOR_STOP);
     metricsSystem.start();
     executorService.execute(new MetricsServiceThread(server));
     logger.info("{}: start {} successfully, listening on ip {} port {}",
@@ -107,7 +110,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
       }
       if(executorService != null){
         executorService.shutdown();
-        if (!executorService.awaitTermination(60, TimeUnit.MILLISECONDS)) {
+        if (!executorService.awaitTermination(METRIC_SERVICE_WAIT_TIME_FOR_STOP, TimeUnit.MILLISECONDS)) {
           executorService.shutdownNow();
         }
       }

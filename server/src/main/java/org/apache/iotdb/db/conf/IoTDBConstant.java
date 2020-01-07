@@ -82,6 +82,7 @@ public class IoTDBConstant {
   public static final int MEMTABLE_NUM_IN_EACH_STORAGE_GROUP = 4;
 
   //just for test
-  public static int THRIFT_SERVER_WAIT_TIME_FOR_STOP = 60;//wait for 60 second by default.
+  public static int THRIFT_SERVER_WAIT_TIME_FOR_STOP = 60; //wait for 60 second by default.
+  public static int METRIC_SERVICE_WAIT_TIME_FOR_STOP = 60; //wait for 60 ms by default.
 
 }
