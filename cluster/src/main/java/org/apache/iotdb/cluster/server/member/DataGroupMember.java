@@ -73,6 +73,7 @@ import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithValueFilter;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -100,6 +101,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   private PartitionedSnapshotLogManager logManager;
 
   private ClusterQueryManager queryManager;
+
+  @TestOnly
+  public DataGroupMember() {
+    // constructor for test
+  }
 
   private DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
       PartitionedSnapshotLogManager logManager, MetaGroupMember metaGroupMember,

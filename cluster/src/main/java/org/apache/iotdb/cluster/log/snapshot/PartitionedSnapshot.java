@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import org.apache.iotdb.cluster.log.Snapshot;
 
 /**
@@ -23,8 +24,7 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
   private SnapshotFactory<T> factory;
 
   public PartitionedSnapshot(SnapshotFactory<T> factory) {
-    slotSnapshots = new HashMap<>();
-    this.factory = factory;
+    this(new HashMap<>(), factory);
   }
 
   private PartitionedSnapshot(
@@ -94,5 +94,22 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
         ", lastLogId=" + lastLogId +
         ", lastLogTerm=" + lastLogTerm +
         '}';
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PartitionedSnapshot<?> snapshot = (PartitionedSnapshot<?>) o;
+    return Objects.equals(slotSnapshots, snapshot.slotSnapshots);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(slotSnapshots);
   }
 }

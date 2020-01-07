@@ -19,7 +19,7 @@ public class DataClient extends AsyncClient {
   private Node node;
   private ClientPool pool;
 
-  private DataClient(TProtocolFactory protocolFactory,
+  public DataClient(TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager, Node node, ClientPool pool) throws IOException {
     // the difference of the two clients lies in the port
     super(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(), node.getDataPort()

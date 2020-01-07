@@ -31,7 +31,7 @@ public class RemoteFileSnapshot extends Snapshot implements RemoteSnapshot {
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-    // remote snapshot is not serialized
+    // remote file snapshot is not serialized
   }
 
   @Override

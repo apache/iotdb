@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
@@ -25,7 +26,7 @@ public class SimpleSnapshot extends Snapshot {
   private static final Logger logger = LoggerFactory.getLogger(SimpleSnapshot.class);
   List<Log> snapshot;
 
-  public SimpleSnapshot() {
+  SimpleSnapshot() {
   }
 
   public SimpleSnapshot(List<Log> snapshot) {
@@ -84,5 +85,22 @@ public class SimpleSnapshot extends Snapshot {
     snapshot.add(log);
     lastLogId = log.getCurrLogIndex();
     lastLogTerm = log.getCurrLogTerm();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    SimpleSnapshot that = (SimpleSnapshot) o;
+    return Objects.equals(snapshot, that.snapshot);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(snapshot);
   }
 }

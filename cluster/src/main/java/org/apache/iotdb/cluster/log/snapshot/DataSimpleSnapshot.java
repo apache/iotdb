@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Objects;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -50,5 +51,22 @@ public class DataSimpleSnapshot extends SimpleSnapshot {
 
   public Collection<MeasurementSchema> getTimeseriesSchemas() {
     return timeseriesSchemas;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DataSimpleSnapshot that = (DataSimpleSnapshot) o;
+    return Objects.equals(timeseriesSchemas, that.timeseriesSchemas);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(timeseriesSchemas);
   }
 }

@@ -27,10 +27,14 @@ public class RemoteDataSimpleSnapshot extends DataSimpleSnapshot implements Remo
   private List<Log> tempList = new ArrayList<>();
   private int slot;
 
+  RemoteDataSimpleSnapshot() {
+  }
+
   public RemoteDataSimpleSnapshot(Future<Map<Integer, DataSimpleSnapshot>> remoteSnapshotFuture,
       int slot) {
     this.remoteSnapshotFuture = remoteSnapshotFuture;
     this.slot = slot;
+    this.snapshot = null;
   }
 
   @Override

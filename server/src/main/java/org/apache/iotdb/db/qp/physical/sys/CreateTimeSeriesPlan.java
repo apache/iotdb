@@ -24,9 +24,8 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
+import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -126,5 +125,25 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     dataType = TSDataType.values()[buffer.get()];
     encoding = TSEncoding.values()[buffer.get()];
     compressor = CompressionType.values()[buffer.get()];
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    CreateTimeSeriesPlan that = (CreateTimeSeriesPlan) o;
+    return Objects.equals(path, that.path) &&
+        dataType == that.dataType &&
+        encoding == that.encoding &&
+        compressor == that.compressor;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(path, dataType, encoding, compressor);
   }
 }

@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -31,8 +32,8 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  */
 public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
-  protected Set<MeasurementSchema> timeseriesSchemas;
-  protected List<RemoteTsFileResource> dataFiles;
+  private Set<MeasurementSchema> timeseriesSchemas;
+  private List<RemoteTsFileResource> dataFiles;
 
   public FileSnapshot() {
     dataFiles = new ArrayList<>();
@@ -101,5 +102,23 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         ", lastLogId=" + lastLogId +
         ", lastLogTerm=" + lastLogTerm +
         '}';
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    FileSnapshot that = (FileSnapshot) o;
+    return Objects.equals(timeseriesSchemas, that.timeseriesSchemas) &&
+        Objects.equals(dataFiles, that.dataFiles);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(timeseriesSchemas, dataFiles);
   }
 }

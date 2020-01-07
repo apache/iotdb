@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 
@@ -50,5 +51,25 @@ public class MetaSimpleSnapshot extends SimpleSnapshot{
     for (int i = 0; i < size; i++) {
       storageGroups.add(SerializeUtils.deserializeString(buffer));
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    MetaSimpleSnapshot snapshot = (MetaSimpleSnapshot) o;
+    return Objects.equals(storageGroups, snapshot.storageGroups);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), storageGroups);
   }
 }
