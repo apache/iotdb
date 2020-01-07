@@ -122,7 +122,7 @@ public class TsFileRecoverPerformer {
           tsFileResource.setHistoricalVersions(Collections.singleton(fileVersion));
           tsFileResource.serialize();
         }
-        return null;
+        return restorableTsFileIOWriter;
       } catch (IOException e) {
         throw new StorageGroupProcessorException(
             "recover the resource file failed: " + insertFilePath
