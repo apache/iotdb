@@ -139,7 +139,6 @@ public class EnvironmentUtils {
    * disable memory control</br> this function should be called before all code in the setup
    */
   public static void envSetUp() throws StartupException {
-    IoTDBDescriptor.getInstance().getConfig().setMetricServiceAwaitTimeForStopService(1);
     IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(0);
     if (daemon == null) {
       daemon = new IoTDB();
@@ -184,7 +183,8 @@ public class EnvironmentUtils {
     try {
       LocalFileAuthorizer.getInstance().reset();
     } catch (AuthException e) {
-      e.printStackTrace();
+      logger.error("create user and role folders failed", e);
+      fail(e.getMessage());
     }
   }
 

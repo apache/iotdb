@@ -84,8 +84,6 @@ public class MetricsService implements MetricsServiceMBean, IService {
     metricsWebUI.getHandlers().add(metricsSystem.getServletHandlers());
     metricsWebUI.initialize();
     server = metricsWebUI.getServer(port);
-    server.setStopTimeout(
-        IoTDBDescriptor.getInstance().getConfig().getMetricServiceAwaitTimeForStopService());
     metricsSystem.start();
     executorService.execute(new MetricsServiceThread(server));
     logger.info("{}: start {} successfully, listening on ip {} port {}",
@@ -110,8 +108,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
       if (executorService != null) {
         executorService.shutdown();
         if (!executorService.awaitTermination(
-            IoTDBDescriptor.getInstance().getConfig().getMetricServiceAwaitTimeForStopService(),
-            TimeUnit.MILLISECONDS)) {
+            3000, TimeUnit.MILLISECONDS)) {
           executorService.shutdownNow();
         }
       }

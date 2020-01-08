@@ -462,9 +462,6 @@ public class IoTDBConfig {
   //wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
 
-  //wait for 60 ms by default.
-  private int metricServiceAwaitTimeForStopService = 60;
-
   public IoTDBConfig() {
     // empty constructor
   }
@@ -1294,13 +1291,5 @@ public class IoTDBConfig {
 
   public void setThriftServerAwaitTimeForStopService(int thriftServerAwaitTimeForStopService) {
     this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
-  }
-
-  public int getMetricServiceAwaitTimeForStopService() {
-    return metricServiceAwaitTimeForStopService;
-  }
-
-  public void setMetricServiceAwaitTimeForStopService(int metricServiceAwaitTimeForStopService) {
-    this.metricServiceAwaitTimeForStopService = metricServiceAwaitTimeForStopService;
   }
 }
