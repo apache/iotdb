@@ -67,6 +67,11 @@ public class EnvironmentUtils {
   private static IoTDB daemon;
 
   public static void cleanEnv() throws IOException, StorageEngineException {
+    //stop daemon first, and then remove folders.
+    if (daemon != null) {
+      daemon.stop();
+      daemon = null;
+    }
 
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
 
@@ -77,12 +82,6 @@ public class EnvironmentUtils {
     if (!StorageEngine.getInstance().deleteAll()) {
       logger.error("Can't close the storage group manager in EnvironmentUtils");
       fail();
-    }
-
-
-    if (daemon != null) {
-      daemon.stop();
-      daemon = null;
     }
 
     IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
