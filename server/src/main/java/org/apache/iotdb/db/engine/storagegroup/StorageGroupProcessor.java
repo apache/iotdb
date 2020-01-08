@@ -1122,16 +1122,16 @@ public class StorageGroupProcessor {
         for (Modification modification : mergingModification.getModifications()) {
           seqFile.getModFile().write(modification);
         }
+        try {
+          seqFile.getModFile().close();
+        } catch (IOException e) {
+          logger.error("Cannot close the ModificationFile {}", seqFile.getModFile().getFilePath(), e);
+        }
       }
     } catch (IOException e) {
       logger.error("{} cannot clean the ModificationFile of {} after merge", storageGroupName,
           seqFile.getFile(), e);
     } finally {
-      try {
-        seqFile.getModFile().close();
-      } catch (IOException e) {
-        logger.error("Cannot close the ModificationFile {}", seqFile.getModFile().getFilePath(), e);
-      }
       seqFile.getWriteQueryLock().writeLock().unlock();
     }
   }
