@@ -218,7 +218,7 @@ public class PhysicalGenerator {
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix
         Path suffixPath = suffixPaths.get(i);
         Set<String> deviceSetOfGivenSuffix = new HashSet<>();
-        Set<String> measurementSetOfGivenSuffix = new TreeSet<>();
+        List<String> measurementSetOfGivenSuffix = new ArrayList<>();
 
         for (Path prefixPath : prefixPaths) { // per prefix
           Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
