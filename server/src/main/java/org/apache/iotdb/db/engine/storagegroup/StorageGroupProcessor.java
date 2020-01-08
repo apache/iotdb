@@ -24,7 +24,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -599,16 +598,28 @@ public class StorageGroupProcessor {
     }
   }
 
+  public void closeAllResources() {
+    for (TsFileResource tsFileResource : unSequenceFileList) {
+      try {
+        tsFileResource.close();
+      } catch (IOException e) {
+        logger.error("Cannot close a TsFileResource {}", tsFileResource, e);
+      }
+    }
+    for (TsFileResource tsFileResource : sequenceFileList) {
+      try {
+        tsFileResource.close();
+      } catch (IOException e) {
+        logger.error("Cannot close a TsFileResource {}", tsFileResource, e);
+      }
+    }
+  }
+
   public void syncDeleteDataFiles() {
     waitForAllCurrentTsFileProcessorsClosed();
     writeLock();
     try {
-      for (TsFileResource tsFileResource : unSequenceFileList) {
-        tsFileResource.close();
-      }
-      for (TsFileResource tsFileResource : sequenceFileList) {
-        tsFileResource.close();
-      }
+      closeAllResources();
       List<String> folder = DirectoryManager.getInstance().getAllSequenceFileFolders();
       folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
       deleteAllSGFolders(folder);
@@ -619,8 +630,6 @@ public class StorageGroupProcessor {
       this.unSequenceFileList.clear();
       this.latestFlushedTimeForEachDevice.clear();
       this.latestTimeForEachDevice.clear();
-    } catch (IOException e) {
-      logger.error("Cannot delete files in storage group {}", storageGroupName, e);
     } finally {
       writeUnlock();
     }
