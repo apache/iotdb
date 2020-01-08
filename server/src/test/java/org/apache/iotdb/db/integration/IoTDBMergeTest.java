@@ -60,8 +60,12 @@ public class IoTDBMergeTest {
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.mergeTest");
       for (int i = 1; i <= 3; i++) {
-        statement.execute("CREATE TIMESERIES root.mergeTest.s" + i + " WITH DATATYPE=INT64,"
-            + "ENCODING=PLAIN");
+        try {
+          statement.execute("CREATE TIMESERIES root.mergeTest.s" + i + " WITH DATATYPE=INT64,"
+              + "ENCODING=PLAIN");
+        } catch (SQLException e) {
+          // ignore
+        }
       }
 
       for (int i = 0; i < 10; i++) {
@@ -77,21 +81,22 @@ public class IoTDBMergeTest {
         statement.execute("FLUSH");
         statement.execute("MERGE");
 
-        ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest");
-        int cnt = 0;
-        while (resultSet.next()) {
-          long time = resultSet.getLong("Time");
-          long s1 = resultSet.getLong("root.mergeTest.s1");
-          long s2 = resultSet.getLong("root.mergeTest.s2");
-          long s3 = resultSet.getLong("root.mergeTest.s3");
-          assertEquals(time + 10, s1);
-          assertEquals(time + 20, s2);
-          assertEquals(time + 30, s3);
-          cnt++;
+        int cnt;
+        try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
+          cnt = 0;
+          while (resultSet.next()) {
+            long time = resultSet.getLong("Time");
+            long s1 = resultSet.getLong("root.mergeTest.s1");
+            long s2 = resultSet.getLong("root.mergeTest.s2");
+            long s3 = resultSet.getLong("root.mergeTest.s3");
+            assertEquals(time + 10, s1);
+            assertEquals(time + 20, s2);
+            assertEquals(time + 30, s3);
+            cnt++;
+          }
         }
         assertEquals((i + 1) * 10, cnt);
       }
     }
   }
-
 }
