@@ -141,7 +141,7 @@ public class EnvironmentUtils {
    * disable memory control</br> this function should be called before all code in the setup
    */
   public static void envSetUp() throws StartupException {
-    IoTDBDescriptor.getInstance().getConfig().setMetricServiceAwaitTimeForStopService(0);
+    IoTDBDescriptor.getInstance().getConfig().setMetricServiceAwaitTimeForStopService(1);
     IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(0);
     if (daemon == null) {
       daemon = new IoTDB();
