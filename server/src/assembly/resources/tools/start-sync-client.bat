@@ -35,7 +35,7 @@ if NOT DEFINED JAVA_HOME goto :err
 @REM -----------------------------------------------------------------------------
 @REM JVM Opts we'll use in legacy run or installation
 set JAVA_OPTS=-ea^
- -Dlogback.configurationFile="%IOTDB_CONF%\logback.xml"^
+ -Dlogback.configurationFile="%IOTDB_CONF%\logback-sync.xml"^
  -DIOTDB_HOME=%IOTDB_HOME%^
  -DTSFILE_HOME=%IOTDB_HOME%^
  -DIOTDB_CONF=%IOTDB_CONF%

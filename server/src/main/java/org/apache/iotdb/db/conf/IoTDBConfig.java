@@ -128,7 +128,7 @@ public class IoTDBConfig {
   private String schemaDir = "data/system/schema";
 
   /**
-   * Sync directory, including the lock file and uuid file
+   * Sync directory, including the lock file, uuid file, device owner map
    */
   private String syncDir = "data/system/sync";
 

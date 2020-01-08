@@ -24,9 +24,9 @@
     <!-- prevent logback from outputting its own status at the start of every log -->
     <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEERROR">
-        <file>${IOTDB_HOME}/logs/log_error.log</file>
+        <file>${IOTDB_HOME}/logs/sync/log_error.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/sync/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>2MB</maxFileSize>
             </timeBasedFileNamingAndTriggeringPolicy>
@@ -43,9 +43,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEWARN">
-        <file>${IOTDB_HOME}/logs/log_warn.log</file>
+        <file>${IOTDB_HOME}/logs/sync/log_warn.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-warn-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/sync/log-warn-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>2MB</maxFileSize>
             </timeBasedFileNamingAndTriggeringPolicy>
@@ -62,9 +62,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEINFO">
-        <file>${IOTDB_HOME}/logs/log_info.log</file>
+        <file>${IOTDB_HOME}/logs/sync/log_info.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-info-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/sync/log-info-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>200MB</maxFileSize>
             </timeBasedFileNamingAndTriggeringPolicy>
@@ -81,9 +81,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEDEBUG">
-        <file>${IOTDB_HOME}/logs/log_debug.log</file>
+        <file>${IOTDB_HOME}/logs/sync/log_debug.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-debug-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/sync/log-debug-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>200MB</maxFileSize>
             </timeBasedFileNamingAndTriggeringPolicy>
@@ -113,26 +113,9 @@
     <logger level="info" name="org.apache.iotdb.db.conf"/>
     <!-- a log appender that collect all log records whose level is greather than debug-->
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEALL">
-        <file>${IOTDB_HOME}/logs/log_all.log</file>
+        <file>${IOTDB_HOME}/logs/sync/log_all.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-all-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-                <maxFileSize>200MB</maxFileSize>
-            </timeBasedFileNamingAndTriggeringPolicy>
-        </rollingPolicy>
-        <append>true</append>
-        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
-            <charset>utf-8</charset>
-        </encoder>
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>INFO</level>
-        </filter>
-    </appender>
-    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_COST_MEASURE">
-        <file>${IOTDB_HOME}/logs/log_measure.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-measure-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/sync/log-all-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>200MB</maxFileSize>
             </timeBasedFileNamingAndTriggeringPolicy>
@@ -153,7 +136,4 @@
         <appender-ref ref="FILEALL"/>
         <appender-ref ref="stdout"/>
     </root>
-    <logger level="info" name="org.apache.iotdb.db.cost.statistic">
-        <appender-ref ref="FILE_COST_MEASURE"/>
-    </logger>
 </configuration>
