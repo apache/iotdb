@@ -366,14 +366,10 @@ public class TsFileResource {
   }
 
   /**
-   * clean the close flag when the file is successfully closed.
+   * clean the close flag (if existed) when the file is successfully closed.
    */
   public void cleanCloseFlag() {
-    try {
-      Files.delete(new File(file.getAbsoluteFile() + CLOSING_SUFFIX).toPath());
-    } catch (IOException e) {
-      logger.error("Cannot delete the file: {}", new File(file.getAbsoluteFile() + CLOSING_SUFFIX), e);
-    }
+    new File(file.getAbsoluteFile() + CLOSING_SUFFIX).delete();
   }
 
   public boolean isCloseFlagSet() {

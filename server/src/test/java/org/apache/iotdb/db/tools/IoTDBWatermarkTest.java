@@ -35,8 +35,10 @@ import org.apache.iotdb.db.integration.Constant;
 import org.apache.iotdb.db.tools.watermark.WatermarkDetector;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -55,8 +57,8 @@ public class IoTDBWatermarkTest {
   private static int embed_row_cycle = 5;
   private static int embed_lsb_num = 5;
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     IoTDBDescriptor.getInstance().getConfig().setEnableWatermark(true); // default false
     IoTDBDescriptor.getInstance().getConfig().setWatermarkSecretKey(secretKey);
@@ -82,8 +84,8 @@ public class IoTDBWatermarkTest {
     writer2.println("time,root.vehicle.d0.s0,root.vehicle.d0.s1,root.vehicle.d0.s2");
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     File file1 = new File(filePath1);
     if (file1.exists()) {
       file1.delete();

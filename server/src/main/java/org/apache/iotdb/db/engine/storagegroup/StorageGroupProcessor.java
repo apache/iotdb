@@ -590,7 +590,7 @@ public class StorageGroupProcessor {
     try {
       File storageGroupFolder = SystemFileFactory.INSTANCE.getFile(systemDir, storageGroupName);
       if (storageGroupFolder.exists()) {
-        FileUtils.deleteDirectory(storageGroupFolder);
+        org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
       }
     } catch (IOException e) {
       logger.error("Cannot delete the folder in storage group {}, because", storageGroupName, e);
@@ -631,14 +631,9 @@ public class StorageGroupProcessor {
       File storageGroupFolder = fsFactory.getFile(tsfilePath, storageGroupName);
       if (storageGroupFolder.exists()) {
         try {
-          FileUtils.deleteDirectory(storageGroupFolder);
+          org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
         } catch (IOException e) {
-          logger.warn("Delete TsFiles failed: {}", e.getMessage());
-          try {
-            Files.delete(storageGroupFolder.toPath());
-          } catch (IOException e1) {
-            logger.error("Delete TsFiles folder failed", e1);
-          }
+          logger.error("Delete TsFiles failed", e);
         }
       }
     }

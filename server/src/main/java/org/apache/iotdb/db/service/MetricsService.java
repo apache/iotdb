@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.service;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketAddress;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -119,7 +123,25 @@ public class MetricsService implements MetricsServiceMBean, IService {
       executorService.shutdownNow();
       Thread.currentThread().interrupt();
     }
+    checkAndWaitPortIsClosed();
     logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+  }
+
+  private void checkAndWaitPortIsClosed() {
+    SocketAddress socketAddress = new InetSocketAddress("localhost", getMetricsPort());
+    Socket socket = new Socket();
+    int timeout = 1;
+    int count = 10000; // 10 seconds
+    while (count > 0) {
+      try {
+        socket.connect(socketAddress, timeout);
+        count--;
+        socket.close();
+      } catch (IOException e) {
+        return;
+      }
+    }
+    logger.error("Port {} can not be closed.", getMetricsPort());
   }
 
   private static class MetricsServiceHolder {
