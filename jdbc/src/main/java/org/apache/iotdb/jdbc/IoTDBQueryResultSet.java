@@ -83,10 +83,14 @@ public class IoTDBQueryResultSet implements ResultSet {
     currentBitmap = new byte[columnNameList.size()];
 
     this.columnInfoList = new ArrayList<>();
-    this.columnInfoList.add(TIMESTAMP_STR);
+    if(!ignoreTimeStamp) {
+      this.columnInfoList.add(TIMESTAMP_STR);
+    }
     // deduplicate and map
     this.columnInfoMap = new HashMap<>();
-    this.columnInfoMap.put(TIMESTAMP_STR, 1);
+    if(!ignoreTimeStamp) {
+      this.columnInfoMap.put(TIMESTAMP_STR, 1);
+    }
     this.columnTypeDeduplicatedList = new ArrayList<>();
     int index = START_INDEX;
     for (int i = 0; i < columnNameList.size(); i++) {
