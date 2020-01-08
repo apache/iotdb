@@ -101,7 +101,47 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     }
 
     seqFileResource = queryDataSource.getSeqResources();
-    unseqFileResource = sortUnSeqFileResources();
+    unseqFileResource = sortUnSeqFileResources(queryDataSource.getUnseqResources());
+
+    removeInvalidFiles(seriesPath, filter);
+    fillMetadataContainer();
+  }
+
+  //for test
+  public AbstractDataReader(Path seriesPath, TSDataType dataType,
+      Filter filter, QueryContext context, QueryDataSource dataSource)
+      throws IOException {
+    queryDataSource = dataSource;
+    this.seriesPath = seriesPath;
+    this.context = context;
+    this.dataType = dataType;
+
+    if (filter != null) {
+      filter = queryDataSource.setTTL(filter);
+      this.filter = filter;
+    }
+
+    seqFileResource = queryDataSource.getSeqResources();
+    unseqFileResource = sortUnSeqFileResources(queryDataSource.getUnseqResources());
+
+    removeInvalidFiles(seriesPath, filter);
+    fillMetadataContainer();
+  }
+
+  //for test
+  public AbstractDataReader(Path seriesPath, TSDataType dataType,
+      Filter filter, QueryContext context, List<TsFileResource> resources) throws IOException {
+    this.queryDataSource = null;
+    this.seriesPath = seriesPath;
+    this.context = context;
+    this.dataType = dataType;
+
+    if (filter != null) {
+      this.filter = filter;
+    }
+
+    this.seqFileResource = resources;
+    this.unseqFileResource = new TreeSet<>();
 
     removeInvalidFiles(seriesPath, filter);
     fillMetadataContainer();
@@ -195,7 +235,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     IChunkLoader chunkLoader = metaData.getChunkLoader();
     if (chunkLoader instanceof MemChunkLoader) {
       MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
-      chunkReader = new MemChunkReader(memChunkLoader.getChunk(),filter);
+      chunkReader = new MemChunkReader(memChunkLoader.getChunk(), filter);
     } else {
       Chunk chunk = chunkLoader.getChunk(metaData);
       chunkReader = new ChunkReader(chunk, filter);
@@ -232,7 +272,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     return currentChunkMetaDataList;
   }
 
-  private TreeSet<TsFileResource> sortUnSeqFileResources() {
+  private TreeSet<TsFileResource> sortUnSeqFileResources(List<TsFileResource> tsFileResources) {
     TreeSet<TsFileResource> unseqTsFilesSet = new TreeSet<>((o1, o2) -> {
       Map<String, Long> startTimeMap = o1.getStartTimeMap();
       Long minTimeOfO1 = startTimeMap.get(seriesPath.getDevice());
@@ -241,7 +281,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
 
       return Long.compare(minTimeOfO1, minTimeOfO2);
     });
-    unseqTsFilesSet.addAll(queryDataSource.getUnseqResources());
+    unseqTsFilesSet.addAll(tsFileResources);
     return unseqTsFilesSet;
   }
 

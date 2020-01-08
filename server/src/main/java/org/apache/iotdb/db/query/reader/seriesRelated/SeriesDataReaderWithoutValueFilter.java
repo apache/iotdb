@@ -101,4 +101,8 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
     }
     return true;
   }
+
+  public void close() {
+
+  }
 }

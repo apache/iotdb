@@ -19,6 +19,9 @@
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.io.IOException;
+import java.util.List;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -40,6 +43,19 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
     super(seriesPath, dataType, filter, context);
   }
 
+  public RawDataReaderWithoutValueFilter(Path seriesPath, TSDataType dataType,
+      Filter filter, QueryContext context, QueryDataSource dataSource)
+      throws IOException {
+    super(seriesPath, dataType, filter, context, dataSource);
+  }
+
+  public RawDataReaderWithoutValueFilter(Path seriesPath, TSDataType dataType,
+      Filter filter, QueryContext context, List<TsFileResource> resources)
+      throws IOException {
+    super(seriesPath, dataType, filter, context, resources);
+  }
+
+
   @Override
   public boolean hasNextBatch() throws IOException {
     while (hasNextChunk()) {
@@ -55,5 +71,8 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
   @Override
   public BatchData nextBatch() throws IOException {
     return super.nextBatch();
+  }
+
+  public void close() {
   }
 }
