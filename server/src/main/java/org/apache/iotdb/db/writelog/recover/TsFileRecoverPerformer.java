@@ -122,7 +122,7 @@ public class TsFileRecoverPerformer {
           tsFileResource.setHistoricalVersions(Collections.singleton(fileVersion));
           tsFileResource.serialize();
         }
-        return null;
+        return restorableTsFileIOWriter;
       } catch (IOException e) {
         throw new StorageGroupProcessorException(
             "recover the resource file failed: " + insertFilePath
@@ -191,6 +191,9 @@ public class TsFileRecoverPerformer {
         tsFileResource.updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
       }
     }
+    long fileVersion =
+        Long.parseLong(tsFileResource.getFile().getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
+    tsFileResource.setHistoricalVersions(Collections.singleton(fileVersion));
   }
 
   private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter)

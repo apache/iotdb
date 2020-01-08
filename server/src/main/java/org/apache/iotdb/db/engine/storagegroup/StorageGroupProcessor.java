@@ -387,16 +387,19 @@ public class StorageGroupProcessor {
           schema, getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, false,
           i == tsFiles.size() - 1);
       RestorableTsFileIOWriter writer = recoverPerformer.recover();
-      if (i != tsFiles.size() - 1 || writer == null) {
-        // not the last file, just close it
+      if (i != tsFiles.size() - 1 || !writer.canWrite()) {
+        // not the last file or cannot write, just close it
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
+        TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
+            schema, getVersionControllerByTimePartitionId(timePartitionId),
+            this::closeUnsealedTsFileProcessor,
+            this::updateLatestFlushTimeCallback, true, writer);
         workUnsequenceTsFileProcessors
-            .put(timePartitionId, new TsFileProcessor(storageGroupName, tsFileResource,
-                schema, getVersionControllerByTimePartitionId(timePartitionId),
-                this::closeUnsealedTsFileProcessor,
-                this::updateLatestFlushTimeCallback, true, writer));
+            .put(timePartitionId, tsFileProcessor);
+        tsFileResource.setProcessor(tsFileProcessor);
+        writer.makeMetadataVisible();
       }
     }
   }
@@ -412,16 +415,16 @@ public class StorageGroupProcessor {
           schema, getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, true,
           i == tsFiles.size() - 1);
       RestorableTsFileIOWriter writer = recoverPerformer.recover();
-      if (i != tsFiles.size() - 1 || writer == null) {
-        // not the last file, just close it
+      if (i != tsFiles.size() - 1 || !writer.canWrite()) {
+        // not the last file or cannot write, just close it
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
-        workUnsequenceTsFileProcessors
-            .put(timePartitionId, new TsFileProcessor(storageGroupName, tsFileResource,
-                schema, getVersionControllerByTimePartitionId(timePartitionId),
-                this::closeUnsealedTsFileProcessor,
-                this::unsequenceFlushCallback, false, writer));
+        TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
+            schema, getVersionControllerByTimePartitionId(timePartitionId), this::closeUnsealedTsFileProcessor,
+            this::unsequenceFlushCallback, false, writer);
+        tsFileResource.setProcessor(tsFileProcessor);
+        writer.makeMetadataVisible();
       }
     }
   }
