@@ -425,7 +425,7 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public ResultSetMetaData getMetaData() {
-    return new IoTDBResultMetadata(columnInfoList, columnTypeList);
+    return new IoTDBResultMetadata(columnInfoList, columnTypeList, ignoreTimeStamp);
   }
 
   @Override
