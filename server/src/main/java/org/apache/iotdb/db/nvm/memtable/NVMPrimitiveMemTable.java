@@ -8,10 +8,12 @@ import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
+import org.apache.iotdb.db.engine.memtable.WritableMemChunk;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.utils.datastructure.NVMTVList;
 import org.apache.iotdb.db.rescon.TVListAllocator;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -60,8 +62,8 @@ public class NVMPrimitiveMemTable extends AbstractMemTable {
     } else {
       long undeletedTime = findUndeletedTime(deviceId, measurement, timeLowerBound);
       IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
-      IWritableMemChunk chunkCopy = new NVMWritableMemChunk(dataType,
-          (NVMTVList) memChunk.getTVList().clone());
+      IWritableMemChunk chunkCopy = new WritableMemChunk(dataType,
+          (TVList) memChunk.getTVList().clone());
       chunkCopy.setTimeOffset(undeletedTime);
       sorter = chunkCopy;
     }

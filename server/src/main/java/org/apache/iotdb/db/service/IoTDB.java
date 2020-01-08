@@ -83,7 +83,11 @@ public class IoTDB implements IoTDBMBean {
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
-    NVMMemtableRecoverPerformer.getInstance().init();
+
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableNVM()) {
+      NVMSpaceManager.getInstance().init();
+      NVMMemtableRecoverPerformer.getInstance().init();
+    }
 
     initMManager();
     registerManager.register(StorageEngine.getInstance());
@@ -103,14 +107,16 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(MetricsService.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
 
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableNVM()) {
+      NVMMemtableRecoverPerformer.getInstance().close();
+    }
+
     // When registering statMonitor, we should start recovering some statistics
     // with latest values stored
     // Warn: registMonitor() method should be called after systemDataRecovery()
     if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
       StatMonitor.getInstance().recovery();
     }
-
-    NVMSpaceManager.getInstance().init();
 
     logger.info("IoTDB is set up.");
   }

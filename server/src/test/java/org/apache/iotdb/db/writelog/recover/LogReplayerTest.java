@@ -69,7 +69,7 @@ public class LogReplayerTest {
       }
     };
     TsFileResource tsFileResource = new TsFileResource(tsFile);
-    IMemTable memTable = new PrimitiveMemTable();
+    IMemTable memTable = new PrimitiveMemTable("sg");
     Schema schema = new Schema();
 
     try {

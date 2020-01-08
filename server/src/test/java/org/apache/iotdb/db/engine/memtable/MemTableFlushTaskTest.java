@@ -49,7 +49,7 @@ public class MemTableFlushTaskTest {
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     EnvironmentUtils.envSetUp();
     writer = new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(filePath));
-    memTable = new PrimitiveMemTable();
+    memTable = new PrimitiveMemTable(storageGroup);
   }
 
   @After

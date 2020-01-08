@@ -19,6 +19,8 @@ public class NVMMemtableRecoverPerformer {
 
   private final static NVMMemtableRecoverPerformer INSTANCE = new NVMMemtableRecoverPerformer();
 
+  private NVMSpaceManager spaceManager = NVMSpaceManager.getInstance();
+  private NVMSpaceMetadataManager metadataManager = NVMSpaceMetadataManager.getInstance();
   private Map<String, Map<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>>> dataMap;
 
   private NVMMemtableRecoverPerformer() {}
@@ -31,6 +33,10 @@ public class NVMMemtableRecoverPerformer {
     }
   }
 
+  public void close() {
+    dataMap.clear();
+  }
+
   public static NVMMemtableRecoverPerformer getInstance() {
     return INSTANCE;
   }
@@ -38,42 +44,25 @@ public class NVMMemtableRecoverPerformer {
   private Map<String, Map<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>>> recoverDataInNVM()
       throws IOException {
     Map<String, Map<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>>> dataMap = new HashMap<>();
-    Map<String, Map<String, Map<String, Pair<List<Integer>, List<Integer>>>>> indexMap = NVMSpaceMetadataManager.getInstance().getTimeseriesTVIndexMap();
-    List<NVMDataSpace> dataList = NVMSpaceManager.getInstance().getAllNVMData();
+    List<Integer> validTimeSpaceIndexList = metadataManager.getValidTimeSpaceIndexList();
+    for (Integer timeSpaceIndex : validTimeSpaceIndexList) {
+      int valueSpaceIndex = metadataManager.getValueSpaceIndexByTimeSpaceIndex(timeSpaceIndex);
+      NVMDataSpace timeSpace = spaceManager.getNVMDataSpaceByIndex(timeSpaceIndex);
+      NVMDataSpace valueSpace = spaceManager.getNVMDataSpaceByIndex(valueSpaceIndex);
 
-    for (Entry<String, Map<String, Map<String, Pair<List<Integer>, List<Integer>>>>> sgIndexEntry : indexMap
-        .entrySet()) {
-      Map<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>> deviceDataMap = new HashMap<>(sgIndexEntry.getValue().size());
-      dataMap.put(sgIndexEntry.getKey(), deviceDataMap);
-
-      for (Entry<String, Map<String, Pair<List<Integer>, List<Integer>>>> deviceIndexEntry : sgIndexEntry
-          .getValue().entrySet()) {
-        Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>> measurementDataMap = new HashMap<>(deviceIndexEntry.getValue().size());
-        deviceDataMap.put(deviceIndexEntry.getKey(), measurementDataMap);
-
-        for (Entry<String, Pair<List<Integer>, List<Integer>>> measurementIndexEntry : deviceIndexEntry
-            .getValue().entrySet()) {
-          List<NVMDataSpace> timeList = convertIndexListToDataList(measurementIndexEntry.getValue().left, dataList);
-          List<NVMDataSpace> valueList = convertIndexListToDataList(measurementIndexEntry.getValue().right, dataList);
-          Pair<List<NVMDataSpace>, List<NVMDataSpace>> tvDataListPair = new Pair<>(timeList, valueList);
-          measurementDataMap.put(measurementIndexEntry.getKey(), tvDataListPair);
-        }
-      }
+      String[] timeseries = metadataManager.getTimeseriesBySpaceIndex(timeSpaceIndex);
+      Map<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>> deviceTVMap = dataMap.computeIfAbsent(timeseries[0], k -> new HashMap<>());
+      Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>> measurementTVMap = deviceTVMap.computeIfAbsent(timeseries[1], k -> new HashMap<>());
+      Pair<List<NVMDataSpace>, List<NVMDataSpace>> tvPairList = measurementTVMap.computeIfAbsent(timeseries[2], k -> new Pair<>(new ArrayList<>(), new ArrayList<>()));
+      tvPairList.left.add(timeSpace);
+      tvPairList.right.add(valueSpace);
     }
     return dataMap;
   }
 
-  private List<NVMDataSpace> convertIndexListToDataList(List<Integer> indexList, List<NVMDataSpace> totalDataList) {
-    List<NVMDataSpace> dataList = new ArrayList<>(indexList.size());
-    for (Integer index : indexList) {
-      dataList.add(totalDataList.get(index));
-    }
-    return dataList;
-  }
-
   public void reconstructMemtable(NVMPrimitiveMemTable memTable, TsFileResource tsFileResource) {
     String sgId = memTable.getStorageGroupId();
-    Map<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>> dataOfSG = dataMap.get(sgId);
+    Map<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>> dataOfSG = dataMap.remove(sgId);
     memTable.loadData(dataOfSG);
 
     Map<String, Long>[] maps = getMinMaxTimeMapFromData(dataOfSG);

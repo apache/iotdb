@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
  */
 public class MemtableBenchmark {
 
+  private static String sgId = "sg";
   private static String deviceId = "d0";
   private static int numOfMeasurement = 10000;
   private static int numOfPoint = 1000;
@@ -39,7 +40,7 @@ public class MemtableBenchmark {
   }
 
   public static void main(String[] args) {
-    IMemTable memTable = new PrimitiveMemTable();
+    IMemTable memTable = new PrimitiveMemTable(sgId);
     final long startTime = System.currentTimeMillis();
     // cpu not locality
     for (int i = 0; i < numOfPoint; i++) {

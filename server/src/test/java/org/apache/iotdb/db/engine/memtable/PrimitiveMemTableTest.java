@@ -63,7 +63,7 @@ public class PrimitiveMemTableTest {
 
   @Test
   public void simpleTest() {
-    IMemTable memTable = new PrimitiveMemTable();
+    IMemTable memTable = new PrimitiveMemTable("sg");
     int count = 10;
     String deviceId = "d1";
     String measurementId[] = new String[count];
@@ -129,7 +129,7 @@ public class PrimitiveMemTableTest {
 
   @Test
   public void testFloatType() {
-    IMemTable memTable = new PrimitiveMemTable();
+    IMemTable memTable = new PrimitiveMemTable("sg");
     String deviceId = "d1";
     int size = 100;
     write(memTable, deviceId, "s1", TSDataType.FLOAT, size);
@@ -137,7 +137,7 @@ public class PrimitiveMemTableTest {
 
   @Test
   public void testAllType() {
-    IMemTable memTable = new PrimitiveMemTable();
+    IMemTable memTable = new PrimitiveMemTable("sg");
     int count = 10;
     String deviceId = "d1";
     String measurementId[] = new String[count];

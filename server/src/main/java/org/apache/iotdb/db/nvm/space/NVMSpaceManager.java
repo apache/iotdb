@@ -7,8 +7,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
@@ -42,7 +40,7 @@ public class NVMSpaceManager {
   public void init() throws StartupException {
     try {
       String nvmDir = IoTDBDescriptor.getInstance().getConfig().getNvmDir();
-      nvmFilePath = nvmDir + File.pathSeparatorChar + NVM_FILE_NAME;
+      nvmFilePath = nvmDir + File.separatorChar + NVM_FILE_NAME;
       File nvmDirFile = FSFactoryProducer.getFSFactory().getFile(nvmDir);
       nvmDirFile.mkdirs();
       nvmSize = nvmDirFile.getUsableSpace();
@@ -57,6 +55,56 @@ public class NVMSpaceManager {
 
   public void close() throws IOException {
     nvmFileChannel.close();
+  }
+
+  public synchronized NVMSpace allocateSpace(long size) throws IOException {
+    NVMSpace nvmSpace = new NVMSpace(curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size));
+    curOffset += size;
+    return nvmSpace;
+  }
+
+  public synchronized NVMDataSpace allocateDataSpace(long size, TSDataType dataType) {
+    checkIsFull();
+
+    try {
+      logger.trace("Try to allocate {} nvm space at {}.", size, curOffset);
+      int index = curDataSpaceIndex.getAndIncrement();
+      NVMDataSpace nvmSpace = new NVMDataSpace(
+          curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size), index, dataType);
+      nvmSpace.refreshData();
+      metadataManager.updateCount(curDataSpaceIndex.get());
+      curOffset += size;
+      return nvmSpace;
+    } catch (IOException e) {
+      // TODO deal with error
+      logger.error("Fail to allocate {} nvm space at {}.", size, curOffset);
+      e.printStackTrace();
+      return null;
+    }
+  }
+
+  private void checkIsFull() {
+    // TODO
+  }
+
+  public NVMDataSpace getNVMDataSpaceByIndex(int spaceIndex) throws IOException {
+    long offset = metadataManager.getOffsetBySpaceIndex(spaceIndex);
+    TSDataType dataType = metadataManager.getDatatypeBySpaceIndex(spaceIndex);
+    int size = computeDataSpaceSizeByDataType(dataType);
+    return recoverData(offset, size, spaceIndex, dataType);
+  }
+
+  private int computeDataSpaceSizeByDataType(TSDataType dataType) {
+    return getPrimitiveTypeByteSize(dataType) * ARRAY_SIZE;
+  }
+
+  private synchronized NVMDataSpace recoverData(long offset, long size, int index, TSDataType dataType) throws IOException {
+    NVMDataSpace nvmSpace = new NVMDataSpace(offset, size, nvmFileChannel.map(MAP_MODE, offset, size), index, dataType);
+    return nvmSpace;
+  }
+
+  public static NVMSpaceManager getInstance() {
+    return INSTANCE;
   }
 
   public static int getPrimitiveTypeByteSize(TSDataType dataType) {
@@ -84,67 +132,5 @@ public class NVMSpaceManager {
         throw new UnSupportedDataTypeException("DataType: " + dataType);
     }
     return size;
-  }
-
-  public synchronized NVMSpace allocateSpace(long size) throws IOException {
-    NVMSpace nvmSpace = new NVMSpace(curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size));
-    curOffset += size;
-    return nvmSpace;
-  }
-
-  public synchronized NVMStringSpace allocateStringSpace(long size) throws IOException {
-    NVMStringSpace nvmSpace = new NVMStringSpace(curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size));
-    curOffset += size;
-    return nvmSpace;
-  }
-
-  public synchronized NVMDataSpace allocateDataSpace(long size, TSDataType dataType) {
-    checkIsFull();
-
-    try {
-      logger.trace("Try to allocate {} nvm space at {}.", size, curOffset);
-      int index = curDataSpaceIndex.getAndIncrement();
-      NVMDataSpace nvmSpace = new NVMDataSpace(
-          curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size), index, dataType);
-      nvmSpace.refreshData();
-      metadataManager.updateCount(index);
-      curOffset += size;
-      return nvmSpace;
-    } catch (IOException e) {
-      // TODO deal with error
-      logger.error("Fail to allocate {} nvm space at {}.", size, curOffset);
-      e.printStackTrace();
-      return null;
-    }
-  }
-
-  private void checkIsFull() {
-    // TODO
-  }
-
-  public List<NVMDataSpace> getAllNVMData() throws IOException {
-    int spaceCount = metadataManager.getCount();
-    List<NVMDataSpace> nvmDataList = new ArrayList<>(spaceCount);
-    List<TSDataType> dataTypeList = metadataManager.getDataTypeList(spaceCount);
-    long curOffset = 0;
-    for (int i = 0; i < spaceCount; i++) {
-      TSDataType dataType = dataTypeList.get(i);
-      int spaceSize = NVMSpaceManager.getPrimitiveTypeByteSize(dataType) * ARRAY_SIZE;
-      NVMDataSpace nvmDataSpace = recoverData(curOffset, spaceSize, i, dataType);
-      nvmDataList.add(nvmDataSpace);
-
-      curOffset += spaceSize;
-    }
-    return nvmDataList;
-  }
-
-  private synchronized NVMDataSpace recoverData(long offset, long size, int index, TSDataType dataType) throws IOException {
-    NVMDataSpace nvmSpace = new NVMDataSpace(curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size), index, dataType);
-    curOffset += size;
-    return nvmSpace;
-  }
-
-  public static NVMSpaceManager getInstance() {
-    return INSTANCE;
   }
 }

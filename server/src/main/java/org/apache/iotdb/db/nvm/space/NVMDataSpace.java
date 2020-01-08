@@ -106,10 +106,41 @@ public class NVMDataSpace extends NVMSpace {
 
   public Object toArray() {
     int arraySize = (int) (size / NVMSpaceManager.getPrimitiveTypeByteSize(dataType));
-    Object[] array = new Object[arraySize];
-    for (int i = 0; i < arraySize; i++) {
-      array[i] = get(i);
+    switch (dataType) {
+      case BOOLEAN:
+        boolean[] boolArray = new boolean[arraySize];
+        for (int i = 0; i < arraySize; i++) {
+          boolArray[i] = ((byte) get(i) == 1);
+        }
+        return boolArray;
+      case INT32:
+        int[] intArray = new int[arraySize];
+        for (int i = 0; i < arraySize; i++) {
+          intArray[i] = (int) get(i);
+        }
+        return intArray;
+      case INT64:
+        long[] longArray = new long[arraySize];
+        for (int i = 0; i < arraySize; i++) {
+          longArray[i] = (long) get(i);
+        }
+        return longArray;
+      case FLOAT:
+        float[] floatArray = new float[arraySize];
+        for (int i = 0; i < arraySize; i++) {
+          floatArray[i] = (float) get(i);
+        }
+        return floatArray;
+      case DOUBLE:
+        double[] doubleArray = new double[arraySize];
+        for (int i = 0; i < arraySize; i++) {
+          doubleArray[i] = (double) get(i);
+        }
+        return doubleArray;
+      case TEXT:
+        // TODO
+        break;
     }
-    return array;
+    return null;
   }
 }
