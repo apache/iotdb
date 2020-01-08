@@ -83,7 +83,7 @@ public class SeqTsFileRecoverTest {
   @Before
   public void setup() throws IOException, WriteProcessException {
     FlushSubTaskPoolManager.getInstance().start();
-    tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "test.ts");
+    tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
 
     schema = new Schema();
