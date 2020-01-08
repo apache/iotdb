@@ -14,13 +14,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class NVMSpaceMetadataManager {
 
-  private static final long SPACE_COUNT_FIELD_BYTE_SIZE = Integer.BYTES;
-  private static final long BITMAP_FIELD_BYTE_SIZE = Byte.BYTES * NVMSPACE_NUM_MAX;
-  private static final long OFFSET_FIELD_BYTE_SIZE = Long.BYTES * NVMSPACE_NUM_MAX;
-  private static final long DATATYPE_FIELD_BYTE_SIZE = Short.BYTES * NVMSPACE_NUM_MAX;
-  private static final long TVMAP_FIELD_BYTE_SIZE = NVMSpaceManager.getPrimitiveTypeByteSize(TSDataType.INT32) * NVMSPACE_NUM_MAX;
-  private static final long TSTIMEMAP_FIELD_BYTE_SIZE = NVMSpaceManager.getPrimitiveTypeByteSize(TSDataType.INT32) * 3 * NVMSPACE_NUM_MAX;
-
   private final static NVMSpaceMetadataManager INSTANCE = new NVMSpaceMetadataManager();
 
   private SpaceCount spaceCount;
@@ -30,20 +23,15 @@ public class NVMSpaceMetadataManager {
   private TimeValueMapper timeValueMapper;
   private TimeseriesTimeIndexMapper timeseriesTimeIndexMapper;
 
-  private NVMSpaceManager spaceManager;
-
   private NVMSpaceMetadataManager() {}
 
   public void init() throws IOException {
-    spaceManager = NVMSpaceManager.getInstance();
-
-    spaceCount = new SpaceCount(spaceManager.allocateSpace(SPACE_COUNT_FIELD_BYTE_SIZE));
-    spaceStatusBitMap = new SpaceStatusBitMap(spaceManager.allocateSpace(BITMAP_FIELD_BYTE_SIZE));
-    offsetMemo = new OffsetMemo(spaceManager.allocateSpace(OFFSET_FIELD_BYTE_SIZE));
-    dataTypeMemo = new DataTypeMemo(spaceManager.allocateSpace(DATATYPE_FIELD_BYTE_SIZE));
-    timeValueMapper = new TimeValueMapper(spaceManager.allocateSpace(TVMAP_FIELD_BYTE_SIZE));
-    timeseriesTimeIndexMapper = new TimeseriesTimeIndexMapper(spaceManager.allocateSpace(
-        TSTIMEMAP_FIELD_BYTE_SIZE));
+    spaceCount = new SpaceCount();
+    spaceStatusBitMap = new SpaceStatusBitMap();
+    offsetMemo = new OffsetMemo();
+    dataTypeMemo = new DataTypeMemo();
+    timeValueMapper = new TimeValueMapper();
+    timeseriesTimeIndexMapper = new TimeseriesTimeIndexMapper();
   }
 
   public static NVMSpaceMetadataManager getInstance() {

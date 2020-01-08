@@ -24,8 +24,8 @@ public class NVMDoubleTVList extends NVMTVList {
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
     minTime = minTime <= timestamp ? minTime : timestamp;
-    timestamps.get(arrayIndex).set(elementIndex, timestamp);
-    values.get(arrayIndex).set(elementIndex, value);
+    timestamps.get(arrayIndex).setData(elementIndex, timestamp);
+    values.get(arrayIndex).setData(elementIndex, value);
     size++;
     if (sorted && size > 1 && timestamp < getTime(size - 2)) {
       sorted = false;
@@ -39,7 +39,7 @@ public class NVMDoubleTVList extends NVMTVList {
     }
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
-    return (double) values.get(arrayIndex).get(elementIndex);
+    return (double) values.get(arrayIndex).getData(elementIndex);
   }
 
   @Override

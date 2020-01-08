@@ -36,7 +36,7 @@ public abstract class NVMTVList extends AbstractTVList {
     }
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
-    return (long) timestamps.get(arrayIndex).get(elementIndex);
+    return (long) timestamps.get(arrayIndex).getData(elementIndex);
   }
 
   protected void set(int index, long timestamp, Object value) {
@@ -45,8 +45,8 @@ public abstract class NVMTVList extends AbstractTVList {
     }
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
-    timestamps.get(arrayIndex).set(elementIndex, timestamp);
-    values.get(arrayIndex).set(elementIndex, value);
+    timestamps.get(arrayIndex).setData(elementIndex, timestamp);
+    values.get(arrayIndex).setData(elementIndex, value);
   }
 
   protected Object cloneValue(NVMDataSpace valueSpace) {
@@ -195,11 +195,11 @@ public abstract class NVMTVList extends AbstractTVList {
     for (int i = 0; i < spaceList.size() - 1; i++) {
       NVMDataSpace space = spaceList.get(i);
       for (int j = 0; j < space.getUnitNum(); j++) {
-        minTime = Math.min(minTime, (Long) space.get(j));
+        minTime = Math.min(minTime, (Long) space.getData(j));
       }
     }
     for (int i = 0; i < lastSpaceUnitSize; i++) {
-      minTime = Math.min(minTime, (Long) lastSpace.get(i));
+      minTime = Math.min(minTime, (Long) lastSpace.getData(i));
     }
 
     // sorted

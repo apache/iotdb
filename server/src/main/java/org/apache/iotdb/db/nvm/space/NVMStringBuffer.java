@@ -26,12 +26,12 @@ public class NVMStringBuffer {
   }
 
   private void recover() {
-    int stringListLen = count.getByteBuffer().getInt(0);
+    int stringListLen = count.getInt(0);
     existStringList = new ArrayList<>(stringListLen);
     for (int i = 0; i < stringListLen; i++) {
-      int stringLen = lens.getByteBuffer().getInt(i);
+      int stringLen = lens.getInt(i);
       byte[] bytes = new byte[stringLen];
-      values.getByteBuffer().get(bytes);
+      values.get(bytes);
       existStringList.add(new String(bytes));
     }
   }
@@ -47,9 +47,9 @@ public class NVMStringBuffer {
   }
 
   private void serialize(String s) {
-    count.getByteBuffer().putInt(0, existStringList.size());
-    lens.getByteBuffer().putInt(existStringList.size() - 1, s.length());
-    values.getByteBuffer().put(s.getBytes());
+    count.putInt(0, existStringList.size());
+    lens.putInt(existStringList.size() - 1, s.length());
+    values.put(s.getBytes());
   }
 
   public String get(int index) {

@@ -5,6 +5,7 @@ import static org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool.ARRAY_SIZE;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -58,6 +59,7 @@ public class NVMSpaceManager {
   }
 
   public synchronized NVMSpace allocateSpace(long size) throws IOException {
+    logger.debug("Try to allocate NVMSpace from {} to {}", curOffset, curOffset + size);
     NVMSpace nvmSpace = new NVMSpace(curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size));
     curOffset += size;
     return nvmSpace;
@@ -67,7 +69,7 @@ public class NVMSpaceManager {
     checkIsFull();
 
     try {
-      logger.trace("Try to allocate {} nvm space at {}.", size, curOffset);
+      logger.debug("Try to allocate NVMDataSpace from {} to {}", curOffset, curOffset + size);
       int index = curDataSpaceIndex.getAndIncrement();
       NVMDataSpace nvmSpace = new NVMDataSpace(
           curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size), index, dataType);
@@ -99,6 +101,7 @@ public class NVMSpaceManager {
   }
 
   private synchronized NVMDataSpace recoverData(long offset, long size, int index, TSDataType dataType) throws IOException {
+    logger.debug("Try to recover NVMSpace from {} to {}", offset, offset + size);
     NVMDataSpace nvmSpace = new NVMDataSpace(offset, size, nvmFileChannel.map(MAP_MODE, offset, size), index, dataType);
     return nvmSpace;
   }

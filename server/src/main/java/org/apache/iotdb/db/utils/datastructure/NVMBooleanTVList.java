@@ -24,8 +24,8 @@ public class NVMBooleanTVList extends NVMTVList {
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
     minTime = minTime <= timestamp ? minTime : timestamp;
-    timestamps.get(arrayIndex).set(elementIndex, timestamp);
-    values.get(arrayIndex).set(elementIndex, value ? (byte) 1 : (byte) 0);
+    timestamps.get(arrayIndex).setData(elementIndex, timestamp);
+    values.get(arrayIndex).setData(elementIndex, value);
     size++;
     if (sorted && size > 1 && timestamp < getTime(size - 2)) {
       sorted = false;
@@ -39,7 +39,7 @@ public class NVMBooleanTVList extends NVMTVList {
     }
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
-    return ((byte) values.get(arrayIndex).get(elementIndex)) == 1;
+    return (boolean) values.get(arrayIndex).getData(elementIndex);
   }
 
   @Override

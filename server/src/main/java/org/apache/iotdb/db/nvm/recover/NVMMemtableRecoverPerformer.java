@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.nvm.memtable.NVMPrimitiveMemTable;
@@ -91,7 +90,7 @@ public class NVMMemtableRecoverPerformer {
           }
 
           for (int j = 0; j < unitNum; j++) {
-            long time = (long) timeSpace.get(j);
+            long time = (long) timeSpace.getData(j);
             minTime = Math.min(minTime, time);
             maxTime = Math.max(maxTime, time);
           }

@@ -1,8 +1,7 @@
 package org.apache.iotdb.db.nvm.metadata;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import org.apache.iotdb.db.nvm.space.NVMSpace;
+import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
 import org.apache.iotdb.db.nvm.space.NVMStringBuffer;
 
 public class TimeseriesTimeIndexMapper extends NVMSpaceMetadata {
@@ -14,9 +13,7 @@ public class TimeseriesTimeIndexMapper extends NVMSpaceMetadata {
   private NVMStringBuffer deviceIdBuffer;
   private NVMStringBuffer measurementIdBuffer;
 
-  public TimeseriesTimeIndexMapper(NVMSpace space) throws IOException {
-    super(space);
-
+  public TimeseriesTimeIndexMapper() throws IOException {
     initTimeseriesSpaces();
   }
 
@@ -37,19 +34,27 @@ public class TimeseriesTimeIndexMapper extends NVMSpaceMetadata {
 
   private void mapTimeIndexToTimeSeries(int timeSpaceIndex, int sgIndex, int deviceIndex, int measurementIndex) {
     int index = timeSpaceIndex * 3;
-    ByteBuffer byteBuffer = space.getByteBuffer();
-    byteBuffer.putInt(index, sgIndex);
-    byteBuffer.putInt(index + 1, deviceIndex);
-    byteBuffer.putInt(index + 2, measurementIndex);
+    space.putInt(index, sgIndex);
+    space.putInt(index + 1, deviceIndex);
+    space.putInt(index + 2, measurementIndex);
   }
 
   public String[] getTimeseries(int timeSpaceIndex) {
-    ByteBuffer byteBuffer = space.getByteBuffer();
     int index = timeSpaceIndex * 3;
     String[] timeseries = new String[3];
-    timeseries[0] = sgIdBuffer.get(byteBuffer.getInt(index));
-    timeseries[1] = deviceIdBuffer.get(byteBuffer.getInt(index + 1));
-    timeseries[2] = measurementIdBuffer.get(byteBuffer.getInt(index + 2));
+    timeseries[0] = sgIdBuffer.get(space.getInt(index));
+    timeseries[1] = deviceIdBuffer.get(space.getInt(index + 1));
+    timeseries[2] = measurementIdBuffer.get(space.getInt(index + 2));
     return timeseries;
+  }
+
+  @Override
+  int getUnitSize() {
+    return Integer.BYTES * 3;
+  }
+
+  @Override
+  int getUnitNum() {
+    return NVMSpaceManager.NVMSPACE_NUM_MAX;
   }
 }

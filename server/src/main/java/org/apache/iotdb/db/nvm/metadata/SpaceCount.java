@@ -1,18 +1,27 @@
 package org.apache.iotdb.db.nvm.metadata;
 
-import org.apache.iotdb.db.nvm.space.NVMSpace;
+import java.io.IOException;
 
 public class SpaceCount extends NVMSpaceMetadata {
 
-  public SpaceCount(NVMSpace space) {
-    super(space);
+  public SpaceCount() throws IOException {
   }
 
   public void put(int v) {
-    space.getByteBuffer().putInt(0, v);
+    space.putInt(0, v);
   }
 
   public int get() {
-    return space.getByteBuffer().getInt(0);
+    return space.getInt(0);
+  }
+
+  @Override
+  int getUnitSize() {
+    return Integer.BYTES;
+  }
+
+  @Override
+  int getUnitNum() {
+    return 1;
   }
 }
