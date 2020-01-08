@@ -32,9 +32,12 @@ import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBMergeTest {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBMergeTest.class);
   private static IoTDB daemon;
 
   @Before
@@ -69,6 +72,7 @@ public class IoTDBMergeTest {
       }
 
       for (int i = 0; i < 10; i++) {
+        logger.info("Running the {} round merge", i);
         for (int j = i * 10 + 1; j <= (i+1) * 10; j++) {
           statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
               + "%d,%d)", j, j+1, j+2, j+3));
