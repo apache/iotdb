@@ -5,6 +5,9 @@ import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.util.Sources;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Properties;
 
 public class IoTDBClient {
@@ -20,7 +23,7 @@ public class IoTDBClient {
       rootSchema.add("IoTDBSchema", new IoTDBSchema("127.0.0.1", 6667, "root","root", rootSchema, "IoTDBSchema"));
       calciteConnection.setSchema("IoTDBSchema");
       Statement statement = calciteConnection.createStatement();
-      String sql = "SELECT * FROM \"root.ln\"";
+      String sql = "SELECT * FROM \"root.ln\" WHERE \"temperature\" > 10";
       ResultSet resultSet = statement.executeQuery(sql);
 
       final ResultSetMetaData metaData = resultSet.getMetaData();

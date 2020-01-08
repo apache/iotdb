@@ -2,10 +2,7 @@ package org.apache.iotdb.calcite;
 
 import org.apache.calcite.adapter.enumerable.EnumerableLimit;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
-import org.apache.calcite.plan.Convention;
-import org.apache.calcite.plan.RelOptRule;
-import org.apache.calcite.plan.RelOptRuleCall;
-import org.apache.calcite.plan.RelTraitSet;
+import org.apache.calcite.plan.*;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.convert.ConverterRule;
 import org.apache.calcite.rel.core.RelFactories;
@@ -17,6 +14,8 @@ import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.rex.RexVisitorImpl;
 import org.apache.calcite.sql.validate.SqlValidatorUtil;
+import org.apache.calcite.util.Pair;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import sun.security.util.ObjectIdentifier;
 
 import java.util.ArrayList;
@@ -32,6 +31,7 @@ public class IoTDBRules {
   private IoTDBRules() {}
 
   public static final RelOptRule[] RULES = {
+      IoTDBFilterRule.INSTANCE,
       IoTDBProjectRule.INSTANCE,
       IoTDBLimitRule.INSTANCE
   };
@@ -59,84 +59,69 @@ public class IoTDBRules {
     }
   }
 
-  /** Base class for planner rules that convert a relational expression to
-   * IoTDB calling convention. */
-  abstract static class IoTDBConverterRule extends ConverterRule {
-    protected final Convention out;
-
-    IoTDBConverterRule(Class<? extends RelNode> clazz,
-                           String description) {
-      this(clazz, r -> true, description);
-    }
-
-    <R extends RelNode> IoTDBConverterRule(Class<R> clazz,
-                                           Predicate<? super R> predicate,
-                                           String description) {
-      super(clazz, predicate, Convention.NONE,
-              IoTDBRel.CONVENTION, RelFactories.LOGICAL_BUILDER, description);
-      this.out = IoTDBRel.CONVENTION;
-    }
-  }
-
-  /**
-   * Rule to convert a {@link LogicalFilter} to a
+   /**
+   * Rule to convert a {@link org.apache.calcite.rel.logical.LogicalFilter} to a
    * {@link IoTDBFilter}.
    */
-  private static class IoTDBFilterRule extends IoTDBConverterRule {
+  private static class IoTDBFilterRule extends ConverterRule {
     private static final IoTDBFilterRule INSTANCE = new IoTDBFilterRule();
 
     private IoTDBFilterRule() {
-      super(LogicalFilter.class, "IoTDBFilterRule");
-    }
-
-    @Override public boolean matches(RelOptRuleCall call) {
-      LogicalFilter filter = call.rel(0);
-      RexCall condition = (RexCall) filter.getCondition();
-
-      return containsDeviceId(condition);
-    }
-
-    // check if condition contains deviceid, if true then return false
-    private boolean containsDeviceId(RexCall condition){
-      if(condition == null)
-        return true;
-      // 默认变量在左，value 在右
-      if(condition.getOperands().get(0) instanceof RexInputRef){
-        RexInputRef ref = (RexInputRef) condition.getOperands().get(0);
-        if(ref.getIndex() == 1){
-          return false;
-        }
-        return true;
-      }
-      else{
-        RexCall left = (RexCall) condition.getOperands().get(0);
-        RexCall right = null;
-        if(condition.getOperands().size() == 2){
-          right = (RexCall) condition.getOperands().get(1);
-        }
-        return containsDeviceId(left) && containsDeviceId(right);
-      }
+      super(LogicalFilter.class, Convention.NONE, IoTDBRel.CONVENTION, "IoTDBFilterRule");
     }
 
     public RelNode convert(RelNode rel) {
       final LogicalFilter filter = (LogicalFilter) rel;
-      final RelTraitSet traitSet = filter.getTraitSet().replace(out);
-/*      return new IoTDBFilter(filter.getCluster(), traitSet,
-              convert(filter.getInput(), out), filter.getCondition());*/
-      return new IoTDBFilter(filter.getCluster(), traitSet,
-              filter.getInput(), filter.getCondition());
+      final RelTraitSet traitSet = filter.getTraitSet().replace(IoTDBRel.CONVENTION);
+      try {
+        return new IoTDBFilter(filter.getCluster(), traitSet,
+                convert(filter.getInput(), IoTDBRel.CONVENTION), filter.getCondition());
+      } catch (LogicalOptimizeException e) {
+        throw new AssertionError(e.getMessage());
+      }
     }
-
   }
 
-  /**
-   * Rule to convert a {@link LogicalProject}
-   * to a {@link IoTDBProject}.
+   /**
+   * Rule to convert a {@link org.apache.calcite.rel.logical.LogicalFilter} to a
+   * {@link IoTDBFilter}.
    */
-  private static class IoTDBProjectRule extends IoTDBConverterRule {
+/*  private static class IoTDBFilterRule extends RelOptRule {
+    private static final IoTDBFilterRule INSTANCE = new IoTDBFilterRule();
+
+    private IoTDBFilterRule() {
+      super(operand(LogicalFilter.class, operand(IoTDBTableScan.class, none())),
+              "IoTDBFilterRule");
+    }
+
+    public RelNode convert(LogicalFilter filter) {
+      final RelTraitSet traitSet = filter.getTraitSet().replace(IoTDBRel.CONVENTION);
+      try {
+        return new IoTDBFilter(filter.getCluster(), traitSet,
+                convert(filter.getInput(), IoTDBRel.CONVENTION), filter.getCondition());
+      } catch (LogicalOptimizeException e) {
+        throw new AssertionError(e.getMessage());
+      }
+    }
+
+    public void onMatch(RelOptRuleCall call) {
+      LogicalFilter filter = call.rel(0);
+      if (filter.getTraitSet().contains(Convention.NONE)) {
+        final RelNode converted = convert(filter);
+        if (converted != null) {
+          call.transformTo(converted);
+        }
+      }
+    }
+  }*/
+
+  /**
+   * Rule to convert a {@link LogicalProject} to a {@link IoTDBProject}.
+   */
+  private static class IoTDBProjectRule extends ConverterRule {
     private static final IoTDBProjectRule INSTANCE = new IoTDBProjectRule();
     private IoTDBProjectRule() {
-      super(LogicalProject.class, "IoTDBProjectRule");
+      super(LogicalProject.class, Convention.NONE, IoTDBRel.CONVENTION , "IoTDBProjectRule");
     }
 
     @Override public boolean matches(RelOptRuleCall call) {
@@ -151,9 +136,9 @@ public class IoTDBRules {
 
     public RelNode convert(RelNode rel) {
       final LogicalProject project = (LogicalProject) rel;
-      final RelTraitSet traitSet = project.getTraitSet().replace(out);
+      final RelTraitSet traitSet = project.getTraitSet().replace(IoTDBRel.CONVENTION);
       return new IoTDBProject(project.getCluster(), traitSet,
-              convert(project.getInput(), out), project.getProjects(),
+              convert(project.getInput(), IoTDBRel.CONVENTION), project.getProjects(),
               project.getRowType());
     }
   }
@@ -171,8 +156,7 @@ public class IoTDBRules {
     }
 
     public RelNode convert(EnumerableLimit limit) {
-      final RelTraitSet traitSet =
-              limit.getTraitSet().replace(IoTDBRel.CONVENTION);
+      final RelTraitSet traitSet = limit.getTraitSet().replace(IoTDBRel.CONVENTION);
       return new IoTDBLimit(limit.getCluster(), traitSet,
               convert(limit.getInput(), IoTDBRel.CONVENTION), limit.offset, limit.fetch);
     }

@@ -37,6 +37,10 @@ public class IoTDBAdapterTest {
           "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
 
           "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+          "CREATE TIMESERIES root.vehicle.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE",
+          "CREATE TIMESERIES root.vehicle.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+          "CREATE TIMESERIES root.vehicle.d1.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.vehicle.d1.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
 
           "CREATE TIMESERIES root.other.d1.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
 
@@ -79,14 +83,23 @@ public class IoTDBAdapterTest {
           "insert into root.vehicle.d0(timestamp,s3) values(101,'ddddd')",
           "insert into root.vehicle.d0(timestamp,s3) values(102,'fffff')",
 
+          "insert into root.vehicle.d0(timestamp,s4) values(100, false)",
+          "insert into root.vehicle.d0(timestamp,s4) values(100, true)",
+
           "insert into root.vehicle.d1(timestamp,s0) values(1,999)",
-          "insert into root.vehicle.d1(timestamp,s0) values(1000,888)",
+          "insert into root.vehicle.d1(timestamp,s0) values(1000,10)",
+
+          "insert into root.vehicle.d1(timestamp,s1) values(2,9999)",
+          "insert into root.vehicle.d1(timestamp,s1) values(1000,5)",
+
+          "insert into root.vehicle.d1(timestamp,s2) values(2,12345.6)",
+          "insert into root.vehicle.d1(timestamp,s2) values(2222,2.22)",
+
+          "insert into root.vehicle.d1(timestamp,s3) values(10,'ten')",
+          "insert into root.vehicle.d1(timestamp,s3) values(1000,'thousand')",
 
           "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
           "insert into root.vehicle.d0(timestamp,s3) values(2000-01-01T08:00:00+08:00, 'good')",
-
-          "insert into root.vehicle.d0(timestamp,s4) values(100, false)",
-          "insert into root.vehicle.d0(timestamp,s4) values(100, true)",
 
           "insert into root.other.d1(timestamp,s0) values(2, 3.14)",};
 
@@ -125,7 +138,7 @@ public class IoTDBAdapterTest {
     CalciteAssert.that()
             .with(MODEL)
             .query("select * from \"root.vehicle\"")
-            .returnsCount(19)
+            .returnsCount(22)
             .returnsStartingWith("Time=1; Device=root.vehicle.d0; s0=101; s1=1101; s2=null; s3=null; s4=null")
             .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
                     "  IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
@@ -139,7 +152,8 @@ public class IoTDBAdapterTest {
     CalciteAssert.that()
             .with(MODEL)
             .query("select \"s0\", \"s2\" from \"root.vehicle\"")
-            .returnsStartingWith("s0=101; s2=null")
+            .limit(1)
+            .returns("s0=101; s2=null\n")
             .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
                     "  IoTDBProject(s0=[$2], s2=[$4])\n" +
                     "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
@@ -153,7 +167,8 @@ public class IoTDBAdapterTest {
     CalciteAssert.that()
             .with(MODEL)
             .query("select \"Time\", \"Device\", \"s2\" from \"root.vehicle\"")
-            .returnsStartingWith("Time=2; Device=root.vehicle.d0; s2=2.22")
+            .limit(1)
+            .returns("Time=2; Device=root.vehicle.d0; s2=2.22\n")
             .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
                     "  IoTDBProject(Time=[$0], Device=[$1], s2=[$4])\n" +
                     "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
@@ -180,4 +195,69 @@ public class IoTDBAdapterTest {
                      "Time=50; s2=null\n");
   }
 
+  @Test public void testFilter1() {
+    CalciteAssert.that()
+            .with(MODEL)
+            .query("select * from \"root.vehicle\" " +
+                    "where \"s0\" <= 10")
+            .limit(1)
+            .returns("Time=1000; Device=root.vehicle.d1; s0=10; s1=5\n")
+            .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
+                    "  IoTDBFilter(condition=[<=($2, 10)])\n" +
+                    "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
+  }
+
+  @Test public void testFilter2() {
+    CalciteAssert.that()
+            .with(MODEL)
+            .query("select * from \"root.vehicle\" " +
+                    "where \"Device\" = 'root.vehicle.d1'")
+            .limit(1)
+            .returns("Time=1; Device=root.vehicle.d1; s0=999; s1=null\n")
+            .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
+                    "  IoTDBFilter(condition=[=($1, 'root.vehicle.d1')])\n" +
+                    "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
+  }
+
+  @Test public void testFilter3() {
+    CalciteAssert.that()
+            .with(MODEL)
+            .query("select * from \"root.vehicle\" " +
+                    "where \"Device\" = 'root.vehicle.d1' AND \"Time\" < 10 AND \"s0\" >= 200")
+            .limit(2)
+            .returns("Time=1; Device=root.vehicle.d1; s0=999; s1=null\n" +
+                    "Time=2; Device=root.vehicle.d0; s0=198; s1=198\n")
+            .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
+                    "  IoTDBFilter(condition=[AND(<($0, 2), >=($2,200))])\n" +
+                    "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
+  }
+
+  @Test public void testFilter4() {
+    CalciteAssert.that()
+            .with(MODEL)
+            .query("select * from \"root.vehicle\" " +
+                    "where (\"Device\" = 'root.vehicle.d0' OR \"Device\" = 'root.vehicle.d1')" +
+                    " AND \"Time\" < 10 AND \"s0\" >= 200")
+            .limit(2)
+            .returns("Time=1; Device=root.vehicle.d1; s0=999; s1=null\n" +
+                    "Time=2; Device=root.vehicle.d0; s0=198; s1=198\n")
+            .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
+                             "  IoTDBFilter(condition=[AND(<($0, 2), >=($2,200), " +
+                                  "OR(=($1, 'root.vehicle.d0'), =($1, 'root.vehicle.d1')))])\n" +
+                             "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
+  }
+
+  @Test public void testFilter5() {
+    CalciteAssert.that()
+            .with(MODEL)
+            .query("select * from \"root.vehicle\" " +
+                    "where \"Time\" < 10 AND \"s0\" >= 200")
+            .limit(2)
+            .returns("Time=1; Device=root.vehicle.d1; s0=999; s1=null\n" +
+                    "Time=2; Device=root.vehicle.d0; s0=198; s1=198\n")
+            .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
+                    "  IoTDBFilter(condition=[AND(<($0, 2), >=($2,200), " +
+                    "OR(=($1, 'root.vehicle.d0'), =($1, 'root.vehicle.d1')))])\n" +
+                    "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
+  }
 }

@@ -71,6 +71,9 @@ public class IoTDBToEnumerableConverter extends ConverterImpl
             list.append("table",
                     IoTDBImplementor.table.getExpression(
                             IoTDBTable.IoTDBQueryable.class));
+    final Expression devices =
+            list.append("devices",
+                    constantArrayList(IoTDBImplementor.fromClause, String.class));
     final Expression predicates =
             list.append("predicates",
                     constantArrayList(IoTDBImplementor.whereClause, String.class));
@@ -84,7 +87,7 @@ public class IoTDBToEnumerableConverter extends ConverterImpl
             list.append("enumerable",
                     Expressions.call(table,
                             IoTDBMethod.IoTDB_QUERYABLE_QUERY.method, fields,
-                            selectFields, predicates, limit, offset));
+                            selectFields, devices, predicates, limit, offset));
     if (CalciteSystemProperty.DEBUG.value()) {
       System.out.println("IoTDB: " + predicates);
     }

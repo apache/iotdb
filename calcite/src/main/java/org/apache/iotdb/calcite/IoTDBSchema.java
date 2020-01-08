@@ -75,25 +75,6 @@ public class IoTDBSchema extends AbstractSchema {
     return RelDataTypeImpl.proto(fieldInfo.build());
   }
 
-  public static SqlTypeName toType(TSDataType tsDataType){
-    SqlTypeName typeName = SqlTypeName.ANY;
-    if(tsDataType == TSDataType.INT32){
-      typeName = SqlTypeName.INTEGER;
-    } else if(tsDataType == TSDataType.INT64){
-      typeName = SqlTypeName.BIGINT;
-    } else if(tsDataType == TSDataType.FLOAT){
-      typeName = SqlTypeName.FLOAT;
-    } else if(tsDataType == TSDataType.DOUBLE){
-      typeName = SqlTypeName.DOUBLE;
-    } else if(tsDataType == TSDataType.BOOLEAN){
-      typeName = SqlTypeName.BOOLEAN;
-    } else if(tsDataType == TSDataType.TEXT){
-      typeName = SqlTypeName.VARCHAR;
-    }
-
-    return typeName;
-  }
-
   @Override
   protected Map<String, Table> getTableMap() {
     try {

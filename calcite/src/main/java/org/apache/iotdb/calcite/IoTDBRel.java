@@ -16,6 +16,7 @@ public interface IoTDBRel extends RelNode {
    * {@link IoTDBRel} nodes into a IoTDB SQL query. */
   class Implementor {
     final List<String> selectFields = new ArrayList<>();
+    final List<String> fromClause = new ArrayList<>();
     final List<String> whereClause = new ArrayList<>();
     int limit = 0;
     int offset = 0;
@@ -23,16 +24,26 @@ public interface IoTDBRel extends RelNode {
     RelOptTable table;
     IoTDBTable ioTDBTable;
 
-    /** Adds newly projected fields and restricted predicates.
+    /** Adds newly projected fields and .
      *
      * @param fields New fields to be projected from a query
-     * @param predicates New predicates to be applied to the query
      */
-    public void add(List<String> fields, List<String> predicates) {
+    public void addFields(List<String> fields) {
       if (selectFields != null) {
         selectFields.addAll(fields);
       }
-      if (predicates != null) {
+    }
+
+    /** Adds newly restricted devices and predicates.
+     *
+     * @param devices New devices to be queried in from clause
+     * @param predicates New predicates to be applied to the query
+     */
+    public void add(List<String> devices, List<String> predicates){
+      if(fromClause != null){
+        fromClause.addAll(devices);
+      }
+      if(predicates != null){
         whereClause.addAll(predicates);
       }
     }

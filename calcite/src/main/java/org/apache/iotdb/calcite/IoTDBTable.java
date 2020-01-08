@@ -63,7 +63,7 @@ public class IoTDBTable extends AbstractQueryableTable
   }
 
   public Enumerable<Object> query(final Connection connection) {
-    return query(connection, ImmutableList.of(), ImmutableList.of(),
+    return query(connection, ImmutableList.of(), ImmutableList.of(), ImmutableList.of(),
             ImmutableList.of(),  0, 0);
   }
 
@@ -75,7 +75,7 @@ public class IoTDBTable extends AbstractQueryableTable
    * @return Enumerator of results
    */
   public Enumerable<Object> query(final Connection connection, List<Map.Entry<String, Class>> fields,
-        final List<String> selectFields, List<String> predicates,
+        final List<String> selectFields, final List<String> devices, List<String> predicates,
         final Integer limit, final Integer offset){
     // Build the type of the resulting row based on the provided fields
     final RelDataTypeFactory typeFactory =
@@ -137,18 +137,24 @@ public class IoTDBTable extends AbstractQueryableTable
       }, "", ", ", "");
     }
 
+    String fromClause = " FROM ";
+    if(devices.isEmpty()){
+      fromClause += storageGroup + ".*";
+    } else {
+      fromClause += Util.toString(devices, "", ", ","");
+    }
+
     // Combine all predicates conjunctively
     String whereClause = "";
     if (!predicates.isEmpty()) {
       whereClause = " WHERE ";
-      whereClause += Util.toString(predicates, "", " AND ", "");
+      whereClause += Util.toString(predicates, "", " OR ", "");
     }
 
     // Build and issue the query and return an Enumerator over the results
     StringBuilder queryBuilder = new StringBuilder("SELECT ");
     queryBuilder.append(selectString);
-    // 此处应该怎么处理？
-    queryBuilder.append(" FROM " + storageGroup + ".*");
+    queryBuilder.append(fromClause);
     queryBuilder.append(whereClause);
 
     if(limit > 0) {
@@ -208,9 +214,9 @@ public class IoTDBTable extends AbstractQueryableTable
      */
     @SuppressWarnings("UnusedDeclaration")
     public Enumerable<Object> query(List<Map.Entry<String, Class>> fields,
-           List<String> selectFields, List<String> predicates,
+           List<String> selectFields, List<String> devices, List<String> predicates,
            Integer limit, Integer offset) {
-      return getTable().query(getConnection(), fields, selectFields, predicates, limit, offset);
+      return getTable().query(getConnection(), fields, selectFields, devices, predicates, limit, offset);
     }
   }
 }

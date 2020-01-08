@@ -11,7 +11,7 @@ import java.util.List;
  */
 public enum IoTDBMethod {
   IoTDB_QUERYABLE_QUERY(IoTDBTable.IoTDBQueryable.class, "query",
-          List.class, List.class, List.class, Integer.class, Integer.class);
+          List.class, List.class, List.class, List.class, Integer.class, Integer.class);
 
   public final Method method;
 

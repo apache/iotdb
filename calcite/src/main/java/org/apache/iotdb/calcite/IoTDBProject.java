@@ -49,7 +49,7 @@ public class IoTDBProject extends Project implements IoTDBRel {
       final String originalName = pair.left.accept(translator);
       selectFields.add(originalName);
     }
-    implementor.add(selectFields, null);
+    implementor.addFields(selectFields);
   }
 }
 
