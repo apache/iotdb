@@ -400,6 +400,7 @@ public class StorageEngine implements IService {
    */
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
+    syncCloseAllProcessor();
     for (String storageGroup : MManager.getInstance().getAllStorageGroupNames()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }

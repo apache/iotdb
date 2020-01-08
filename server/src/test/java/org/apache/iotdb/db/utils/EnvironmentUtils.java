@@ -67,12 +67,6 @@ public class EnvironmentUtils {
   private static IoTDB daemon;
 
   public static void cleanEnv() throws IOException, StorageEngineException {
-    //stop daemon first, and then remove folders.
-    if (daemon != null) {
-      daemon.stop();
-      daemon = null;
-    }
-
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
 
     // clear opened file streams
@@ -85,6 +79,11 @@ public class EnvironmentUtils {
     }
 
     IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
+
+    if (daemon != null) {
+      daemon.stop();
+      daemon = null;
+    }
 
     // clean cache
     if (config.isMetaDataCacheEnable()) {
