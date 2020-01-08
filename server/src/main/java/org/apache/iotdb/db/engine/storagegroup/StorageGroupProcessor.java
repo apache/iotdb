@@ -617,6 +617,16 @@ public class StorageGroupProcessor {
 
   public void syncDeleteDataFiles() {
     waitForAllCurrentTsFileProcessorsClosed();
+    //normally, mergingModification is just need to be closed by after a merge task is finished.
+    //we close it here just for IT test.
+    if (this.mergingModification != null) {
+      try {
+        mergingModification.close();
+      } catch (IOException e) {
+        logger.error("Cannot close the mergingMod file {}", mergingModification.getFilePath(), e);
+      }
+
+    }
     writeLock();
     try {
       closeAllResources();
