@@ -201,7 +201,7 @@ public class SyncClient implements ISyncClient {
     executorService.scheduleWithFixedDelay(() -> {
       try {
         syncAll();
-      } catch (SyncConnectionException | IOException | TException e) {
+      } catch (Exception e) {
         logger.error("Sync failed", e);
       }
     }, SyncConstant.SYNC_PROCESS_DELAY, SyncConstant.SYNC_PROCESS_PERIOD, TimeUnit.SECONDS);
