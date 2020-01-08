@@ -128,6 +128,11 @@ public class IoTDBConfig {
   private String schemaDir = "data/system/schema";
 
   /**
+   * Sync directory, including the lock file and uuid file
+   */
+  private String syncDir = "data/system/sync";
+
+  /**
    * Query directory, stores temporary files of query
    */
   private String queryDir = "data/query";
@@ -479,6 +484,7 @@ public class IoTDBConfig {
     baseDir = addHomeDir(baseDir);
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
+    syncDir = addHomeDir(syncDir);
     walFolder = addHomeDir(walFolder);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
@@ -624,6 +630,14 @@ public class IoTDBConfig {
 
   void setSchemaDir(String schemaDir) {
     this.schemaDir = schemaDir;
+  }
+
+  public String getSyncDir() {
+    return syncDir;
+  }
+
+  public void setSyncDir(String syncDir) {
+    this.syncDir = syncDir;
   }
 
   public String getQueryDir() {

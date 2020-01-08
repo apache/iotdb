@@ -74,4 +74,10 @@ public class IoTDBConstant {
 
   public static final int MEMTABLE_NUM_IN_EACH_STORAGE_GROUP = 4;
 
+  // system folder name
+  public static final String SYSTEM_FOLDER_NAME = "system";
+  public static final String SCHEMA_FOLDER_NAME = "schema";
+  public static final String SYNC_FOLDER_NAME = "sync";
+  public static final String QUERY_FOLDER_NAME = "query";
+
 }
