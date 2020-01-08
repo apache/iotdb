@@ -308,7 +308,7 @@ public class ImportCsv extends AbstractCsvTool {
       statement.execute("show timeseries "+ strHeadInfo[i]);
       ResultSet resultSet= statement.getResultSet();
       if (resultSet.next()) {
-        timeseriesDataType.put(strHeadInfo[i], resultSet.getString(3));
+        timeseriesDataType.put(strHeadInfo[i], resultSet.getString(2));
       } else {
         String errorInfo = String.format("Database cannot find %s in %s, stop import!",
             strHeadInfo[i], file.getAbsolutePath());
