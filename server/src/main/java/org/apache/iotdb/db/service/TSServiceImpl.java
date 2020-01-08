@@ -585,7 +585,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         resp = getAuthQueryColumnHeaders(plan);
       } else if (plan instanceof ShowPlan) {
         resp = getShowQueryColumnHeaders((ShowPlan) plan);
-        resp.setIgnoreTimeStamp(true);
       } else {
         resp = getQueryColumnHeaders(plan, username);
       }
