@@ -131,6 +131,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
   private void checkAndWaitPortIsClosed() {
     SocketAddress socketAddress = new InetSocketAddress("localhost", getMetricsPort());
+    @SuppressWarnings("squid:S2095")
     Socket socket = new Socket();
     int timeout = 1;
     int count = 10000; // 10 seconds
@@ -138,9 +139,14 @@ public class MetricsService implements MetricsServiceMBean, IService {
       try {
         socket.connect(socketAddress, timeout);
         count--;
-        socket.close();
       } catch (IOException e) {
         return;
+      } finally {
+        try {
+          socket.close();
+        } catch (IOException e) {
+          //do nothing
+        }
       }
     }
     logger.error("Port {} can not be closed.", getMetricsPort());
@@ -166,13 +172,11 @@ public class MetricsService implements MetricsServiceMBean, IService {
       try {
         Thread.currentThread().setName(ThreadName.METRICS_SERVICE.getName());
         server.start();
-        try {
-          server.join();
-        } catch (InterruptedException e1) {
-          //we do not sure why InterruptedException happens, but it indeed occurs in Travis WinOS
-          logger.error(e1.getMessage(), e1);
-          stopService();
-        }
+        server.join();
+      } catch (InterruptedException e1) {
+        //we do not sure why InterruptedException happens, but it indeed occurs in Travis WinOS
+        logger.error(e1.getMessage(), e1);
+        stopService();
       } catch (Exception e) {
         logger.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
       }
