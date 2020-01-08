@@ -108,6 +108,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
     try {
       if (server != null) {
         server.stop();
+        server = null;
       }
       if (executorService != null) {
         executorService.shutdown();
@@ -115,6 +116,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
             3000, TimeUnit.MILLISECONDS)) {
           executorService.shutdownNow();
         }
+        executorService = null;
       }
     } catch (Exception e) {
       logger
@@ -164,7 +166,13 @@ public class MetricsService implements MetricsServiceMBean, IService {
       try {
         Thread.currentThread().setName(ThreadName.METRICS_SERVICE.getName());
         server.start();
-        server.join();
+        try {
+          server.join();
+        } catch (InterruptedException e1) {
+          //we do not sure why InterruptedException happens, but it indeed occurs in Travis WinOS
+          logger.error(e1.getMessage(), e1);
+          stopService();
+        }
       } catch (Exception e) {
         logger.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
       }

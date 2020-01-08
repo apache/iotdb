@@ -861,6 +861,8 @@ public class StorageGroupProcessor {
    */
   public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
     // TODO: how to avoid partial deletion?
+    //FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
+    //mod files in mergingModification, sequenceFileList, and unsequenceFileList
     writeLock();
     mergeLock.writeLock().lock();
 
@@ -1116,6 +1118,11 @@ public class StorageGroupProcessor {
       logger.error("{} cannot clean the ModificationFile of {} after merge", storageGroupName,
           seqFile.getFile(), e);
     } finally {
+      try {
+        seqFile.getModFile().close();
+      } catch (IOException e) {
+        logger.error("Cannot close the ModificationFile {}", seqFile.getModFile().getFilePath(), e);
+      }
       seqFile.getWriteQueryLock().writeLock().unlock();
     }
   }
@@ -1150,6 +1157,7 @@ public class StorageGroupProcessor {
       try {
         updateMergeModification(seqFile);
         if (i == seqFiles.size() - 1) {
+          //FIXME if there is an exception, the the modification file will be not closed.
           removeMergingModification();
           isMerging = false;
           mergeLog.delete();
