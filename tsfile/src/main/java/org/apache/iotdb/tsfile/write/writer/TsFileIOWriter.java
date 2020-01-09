@@ -136,6 +136,7 @@ public class TsFileIOWriter {
 
   /**
    * end chunk and write some log.
+   * If there is no data in the chunk group, nothing will be flushed.
    */
   public void endChunkGroup(long version) throws IOException {
     if (currentChunkGroupMetaData == null || currentChunkGroupMetaData.getChunkMetaDataList().isEmpty()) {
