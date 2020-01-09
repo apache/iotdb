@@ -528,7 +528,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       for (String statement : statements) {
         long t2 = System.currentTimeMillis();
         isAllSuccessful =
-            isAllSuccessful && executeStatementInBatch(statement, batchErrorMessage, result);
+            executeStatementInBatch(statement, batchErrorMessage, result) && isAllSuccessful;
         Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
       }
       if (isAllSuccessful) {
