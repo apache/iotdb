@@ -23,7 +23,6 @@ import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.*;
@@ -181,7 +180,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       bitmapBAOSList[seriesIndex] = new PublicBAOS();
     }
 
-    // used to record a bitmap for every 8 row record
+    // used to record a bitmap for every 8 row records
     int[] currentBitmapList = new int[seriesNum];
     int rowCount = 0;
     while (rowCount < fetchSize) {
@@ -329,167 +328,6 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     tsQueryDataSet.setBitmapList(bitmapBufferList);
 
     return tsQueryDataSet;
-  }
-  
-  /**
-   * for RPC in RawData query between client and server
-   * fill time buffer, value buffers and bitmap buffers
-   */
-  public TSQueryNonAlignDataSet fillNonAlignBuffer(int fetchSize, WatermarkEncoder encoder) throws IOException, InterruptedException {
-    int seriesNum = seriesReaderWithoutValueFilterList.size();
-    TSQueryNonAlignDataSet tsQueryNonAlignDataSet = new TSQueryNonAlignDataSet();
-
-    PublicBAOS[] timeBAOSList = new PublicBAOS[seriesNum];
-    PublicBAOS[] valueBAOSList = new PublicBAOS[seriesNum];
-    PublicBAOS[] bitmapBAOSList = new PublicBAOS[seriesNum];
-
-    for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-      timeBAOSList[seriesIndex] = new PublicBAOS();
-      valueBAOSList[seriesIndex] = new PublicBAOS();
-      bitmapBAOSList[seriesIndex] = new PublicBAOS();
-    }
-
-    // used to record a bitmap for every 8 row record
-    int[] currentBitmapList = new int[seriesNum];
-    int rowCount = 0;
-    while (rowCount < fetchSize) {
-
-      if ((rowLimit > 0 && alreadyReturnedRowNum >= rowLimit) || timeHeap.isEmpty()) {
-        break;
-      }
-
-      for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-
-        if (cachedBatchDataArray[seriesIndex] == null
-                || !cachedBatchDataArray[seriesIndex].hasCurrent()) {
-          // current batch is empty
-          if (rowOffset == 0) {
-            currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1);
-          }
-        } else {
-          // current batch has value at minTime, consume current value
-          if (rowOffset == 0) {
-            long time = cachedBatchDataArray[seriesIndex].currentTime();
-            ReadWriteIOUtils.write(time, timeBAOSList[seriesIndex]);
-            currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1) | FLAG;
-            TSDataType type = cachedBatchDataArray[seriesIndex].getDataType();
-            switch (type) {
-              case INT32:
-                int intValue = cachedBatchDataArray[seriesIndex].getInt();
-                if (encoder != null && encoder.needEncode(time)) {
-                  intValue = encoder.encodeInt(intValue, time);
-                }
-                ReadWriteIOUtils.write(intValue, valueBAOSList[seriesIndex]);
-                break;
-              case INT64:
-                long longValue = cachedBatchDataArray[seriesIndex].getLong();
-                if (encoder != null && encoder.needEncode(time)) {
-                  longValue = encoder.encodeLong(longValue, time);
-                }
-                ReadWriteIOUtils.write(longValue, valueBAOSList[seriesIndex]);
-                break;
-              case FLOAT:
-                float floatValue = cachedBatchDataArray[seriesIndex].getFloat();
-                if (encoder != null && encoder.needEncode(time)) {
-                  floatValue = encoder.encodeFloat(floatValue, time);
-                }
-                ReadWriteIOUtils.write(floatValue, valueBAOSList[seriesIndex]);
-                break;
-              case DOUBLE:
-                double doubleValue = cachedBatchDataArray[seriesIndex].getDouble();
-                if (encoder != null && encoder.needEncode(time)) {
-                  doubleValue = encoder.encodeDouble(doubleValue, time);
-                }
-                ReadWriteIOUtils.write(doubleValue, valueBAOSList[seriesIndex]);
-                break;
-              case BOOLEAN:
-                ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getBoolean(),
-                        valueBAOSList[seriesIndex]);
-                break;
-              case TEXT:
-                ReadWriteIOUtils
-                        .write(cachedBatchDataArray[seriesIndex].getBinary(),
-                                valueBAOSList[seriesIndex]);
-                break;
-              default:
-                throw new UnSupportedDataTypeException(
-                        String.format("Data type %s is not supported.", type));
-            }
-          }
-
-          // move next
-          cachedBatchDataArray[seriesIndex].next();
-
-          // get next batch if current batch is empty
-          if (!cachedBatchDataArray[seriesIndex].hasCurrent()) {
-            // still have remaining batch data in queue
-            if (!noMoreDataInQueueArray[seriesIndex]) {
-              fillCache(seriesIndex);
-            }
-          }
-
-          // try to put the next timestamp into the heap
-          if (cachedBatchDataArray[seriesIndex].hasCurrent()) {
-            long time = cachedBatchDataArray[seriesIndex].currentTime();
-            timeHeap.add(time);
-          }
-
-        }
-      }
-
-      if (rowOffset == 0) {
-        rowCount++;
-        if (rowCount % 8 == 0) {
-          for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-            ReadWriteIOUtils
-                    .write((byte) currentBitmapList[seriesIndex], bitmapBAOSList[seriesIndex]);
-            // we should clear the bitmap every 8 row record
-            currentBitmapList[seriesIndex] = 0;
-          }
-        }
-        if (rowLimit > 0) {
-          alreadyReturnedRowNum++;
-        }
-      } else {
-        rowOffset--;
-      }
-    }
-
-    /*
-     * feed the bitmap with remaining 0 in the right
-     * if current bitmap is 00011111 and remaining is 3, after feeding the bitmap is 11111000
-     */
-    if (rowCount > 0) {
-      int remaining = rowCount % 8;
-      if (remaining != 0) {
-        for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-          ReadWriteIOUtils.write((byte) (currentBitmapList[seriesIndex] << (8 - remaining)),
-                  bitmapBAOSList[seriesIndex]);
-        }
-      }
-    }
-
-    List<ByteBuffer> timeBufferList = new ArrayList<>();
-    List<ByteBuffer> valueBufferList = new ArrayList<>();
-    List<ByteBuffer> bitmapBufferList = new ArrayList<>();
-
-    for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-      // add time buffer of current series
-      putPBOSToBuffer(timeBAOSList, timeBufferList, seriesIndex);
-
-      // add value buffer of current series
-      putPBOSToBuffer(valueBAOSList, valueBufferList, seriesIndex);
-
-      // add bitmap buffer of current series
-      putPBOSToBuffer(bitmapBAOSList, bitmapBufferList, seriesIndex);
-    }
-
-    // set time buffers, value buffers and bitmap buffers
-    tsQueryNonAlignDataSet.setTimeList(timeBufferList);
-    tsQueryNonAlignDataSet.setValueList(valueBufferList);
-    tsQueryNonAlignDataSet.setBitmapList(bitmapBufferList);
-
-    return tsQueryNonAlignDataSet;
   }
 
   private void fillCache(int seriesIndex) throws InterruptedException {

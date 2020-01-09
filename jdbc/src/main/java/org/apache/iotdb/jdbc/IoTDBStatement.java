@@ -225,7 +225,7 @@ public class IoTDBStatement implements Statement {
     if (execResp.isSetColumns()) {
       queryId = execResp.getQueryId();
       if (execResp.queryDataSet == null) {
-        this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
+        this.resultSet = new IoTDBNonAlignQueryResultSet(this, execResp.getColumns(),
             execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, sql, queryId,
             sessionId, execResp.nonAlignQueryDataSet);
       }
@@ -331,7 +331,7 @@ public class IoTDBStatement implements Statement {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
     if (execResp.queryDataSet == null) {
-      this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
+      this.resultSet = new IoTDBNonAlignQueryResultSet(this, execResp.getColumns(),
           execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, sql, queryId,
           sessionId, execResp.nonAlignQueryDataSet);
     }

@@ -199,7 +199,11 @@ public abstract class AbstractClient {
 
     if (res instanceof IoTDBQueryResultSet) {
       printTimestamp = !((IoTDBQueryResultSet) res).isIgnoreTimeStamp();
-      align = ((IoTDBQueryResultSet) res).isAlign();
+      align = true;
+    }
+    else {
+      printTimestamp = true;
+      align = false;
     }
 
     // Output values
@@ -285,7 +289,7 @@ public abstract class AbstractClient {
           if (printTimestamp) {
             // timeLabel used for indicating the time column.
             String timeLabel = TIMESTAMP_STR + resultSetMetaData.getColumnLabel(2 * i - 2);
-            if (res.getLong(timeLabel) < 0) {
+            if (res.getLong(timeLabel) == 0) {
               // blank space
               printf(formatTime, "");
             }

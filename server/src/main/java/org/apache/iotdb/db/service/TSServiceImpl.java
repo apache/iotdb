@@ -76,6 +76,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.NewEngineDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -826,19 +827,34 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       QueryDataSet queryDataSet = queryId2DataSet.get(req.queryId);
-      TSQueryDataSet result = fillRpcReturnData(req.fetchSize, queryDataSet,
-          sessionIdUsernameMap.get(req.sessionId));
-
-      boolean hasResultSet = result.bufferForTime().limit() != 0;
-      if (!hasResultSet) {
-        queryId2DataSet.remove(req.queryId);
+      if (req.isAlign) {
+        TSQueryDataSet result = fillRpcReturnData(req.fetchSize, queryDataSet,
+            sessionIdUsernameMap.get(req.sessionId));
+        boolean hasResultSet = result.bufferForTime().limit() != 0;
+        if (!hasResultSet) {
+          queryId2DataSet.remove(req.queryId);
+        }
+        TSFetchResultsResp resp = getTSFetchResultsResp(getStatus(TSStatusCode.SUCCESS_STATUS,
+            "FetchResult successfully. Has more result: " + hasResultSet));
+        resp.setHasResultSet(hasResultSet);
+        resp.setQueryDataSet(result);
+        resp.setIsAlign(true);
+        return resp;
       }
-
-      TSFetchResultsResp resp = getTSFetchResultsResp(getStatus(TSStatusCode.SUCCESS_STATUS,
-          "FetchResult successfully. Has more result: " + hasResultSet));
-      resp.setHasResultSet(hasResultSet);
-      resp.setQueryDataSet(result);
-      return resp;
+      else {
+        TSQueryNonAlignDataSet nonAlignResult = fillRpcNonAlignReturnData(req.fetchSize, queryDataSet,
+            sessionIdUsernameMap.get(req.sessionId));
+        boolean hasResultSet = nonAlignResult.getTimeList().get(0).limit() != 0;
+        if (!hasResultSet) {
+          queryId2DataSet.remove(req.queryId);
+        }
+        TSFetchResultsResp resp = getTSFetchResultsResp(getStatus(TSStatusCode.SUCCESS_STATUS,
+            "FetchResult successfully. Has more result: " + hasResultSet));
+        resp.setHasResultSet(hasResultSet);
+        resp.setNonAlignQueryDataSet(nonAlignResult);
+        resp.setIsAlign(false);
+        return resp;
+      }
     } catch (Exception e) {
       logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSFetchResultsResp(getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
@@ -879,6 +895,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     return result;
   }
+  
   private TSQueryNonAlignDataSet fillRpcNonAlignReturnData(int fetchSize, QueryDataSet queryDataSet, 
       String userName) throws TException, AuthException, IOException, InterruptedException {
     IAuthorizer authorizer;
@@ -897,21 +914,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         throw new UnSupportedDataTypeException(String.format(
             "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
       }
-      if (queryDataSet instanceof NewEngineDataSetWithoutValueFilter) {
-        // optimize for query without value filter
-        result = ((NewEngineDataSetWithoutValueFilter) queryDataSet).fillNonAlignBuffer(fetchSize, encoder);
-      } else {
-        result = QueryDataSetUtils.convertQueryNonAlignDataSetByFetchSize(queryDataSet, fetchSize, encoder);
-      }
+      result = ((NonAlignEngineDataSet) queryDataSet).fillBuffer(fetchSize, encoder);
     } else {
-      if (queryDataSet instanceof NewEngineDataSetWithoutValueFilter) {
-        // optimize for query without value filter
-        result = ((NewEngineDataSetWithoutValueFilter) queryDataSet).fillNonAlignBuffer(fetchSize, null);
-      } else {
-        result = QueryDataSetUtils.convertQueryNonAlignDataSetByFetchSize(queryDataSet, fetchSize);
-      }
+      result = ((NonAlignEngineDataSet) queryDataSet).fillBuffer(fetchSize, null);
     }
     return result;
+    
   }
   
   
