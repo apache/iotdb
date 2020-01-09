@@ -91,7 +91,7 @@ public class BasicDaoImpl implements BasicDao {
         logger.info("Start to get timeseries");
         List<String> columnsName = new ArrayList<>();
         while (resultSet.next()) {
-          String timeseries = resultSet.getString(2);
+          String timeseries = resultSet.getString(1);
           columnsName.add(timeseries.substring(5));
         }
         return columnsName;
