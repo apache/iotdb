@@ -236,12 +236,12 @@ public class IoTDBDeletionIT {
 
       // prepare BufferWrite data
       for (int i = 10001; i <= 20000; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
             i % 2 == 0));
       }
       // prepare Overflow data
       for (int i = 1; i <= 10000; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
             i % 2 == 0));
       }
 
