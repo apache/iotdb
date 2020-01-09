@@ -611,7 +611,8 @@ public class StorageGroupProcessor {
     latestTimeForEachDevice.computeIfAbsent(timePartitionId, t -> new HashMap<>())
         .putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
     // try to update the latest time of the device of this tsRecord
-    if (result && latestTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId())
+    if (sequence && result
+        && latestTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId())
         < batchInsertPlan.getTimes()[end - 1]) {
       latestTimeForEachDevice.get(timePartitionId)
           .put(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
@@ -622,6 +623,7 @@ public class StorageGroupProcessor {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
   }
+
 
   private void insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
       throws QueryProcessException {
