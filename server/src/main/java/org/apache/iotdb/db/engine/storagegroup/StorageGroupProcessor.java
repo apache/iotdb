@@ -421,7 +421,8 @@ public class StorageGroupProcessor {
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
         TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
-            schema, getVersionControllerByTimePartitionId(timePartitionId), this::closeUnsealedTsFileProcessor,
+            schema, getVersionControllerByTimePartitionId(timePartitionId),
+            this::closeUnsealedTsFileProcessor,
             this::unsequenceFlushCallback, false, writer);
         tsFileResource.setProcessor(tsFileProcessor);
         writer.makeMetadataVisible();
@@ -580,7 +581,8 @@ public class StorageGroupProcessor {
     boolean result = tsFileProcessor.insertBatch(batchInsertPlan, indexes, results);
 
     // try to update the latest time of the device of this tsRecord
-    if (result && latestTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId())
+    if (sequence && result
+        && latestTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId())
         < batchInsertPlan
         .getMaxTime()) {
       latestTimeForEachDevice.get(timePartitionId)
