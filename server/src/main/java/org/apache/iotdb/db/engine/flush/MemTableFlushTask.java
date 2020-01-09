@@ -160,7 +160,8 @@ public class MemTableFlushTask {
           } catch (InterruptedException e) {
             logger.error("Storage group {} memtable {}, encoding task is interrupted.",
                 storageGroup, memTable.getVersion(), e);
-            Thread.currentThread().interrupt();
+            // generally it is because the thread pool is shutdown so the task should be aborted
+            break;
           }
         } else {
           if (task instanceof StartFlushGroupIOTask) {
@@ -202,7 +203,8 @@ public class MemTableFlushTask {
           } catch (InterruptedException e) {
             logger.error("Storage group {} memtable, io task is interrupted.", storageGroup
                 , memTable.getVersion(), e);
-            Thread.currentThread().interrupt();
+            // generally it is because the thread pool is shutdown so the task should be aborted
+            break;
           }
         } else {
           long starTime = System.currentTimeMillis();
