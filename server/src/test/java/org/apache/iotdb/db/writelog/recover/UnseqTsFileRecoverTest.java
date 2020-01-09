@@ -139,6 +139,7 @@ public class UnseqTsFileRecoverTest {
   @After
   public void tearDown() throws IOException {
     FileUtils.deleteDirectory(tsF.getParentFile());
+    resource.close();
     node.delete();
     FlushSubTaskPoolManager.getInstance().stop();
   }

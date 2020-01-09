@@ -656,24 +656,24 @@ public class IoTDBAuthorizationIT {
 
     try {
       ResultSet resultSet = adminStmt.executeQuery("LIST USER");
-      String ans = String.format("0,root,\n");
+      String ans = String.format("root,\n");
       validateResultSet(resultSet, ans);
 
       for (int i = 0; i < 10; i++) {
         adminStmt.execute("CREATE USER user" + i + " 'password "  + i + "'");
       }
       resultSet = adminStmt.executeQuery("LIST USER");
-      ans = "0,root,\n"
-          + "1,user0,\n"
-          + "2,user1,\n"
-          + "3,user2,\n"
-          + "4,user3,\n"
-          + "5,user4,\n"
-          + "6,user5,\n"
-          + "7,user6,\n"
-          + "8,user7,\n"
-          + "9,user8,\n"
-          + "10,user9,\n";
+      ans = "root,\n"
+          + "user0,\n"
+          + "user1,\n"
+          + "user2,\n"
+          + "user3,\n"
+          + "user4,\n"
+          + "user5,\n"
+          + "user6,\n"
+          + "user7,\n"
+          + "user8,\n"
+          + "user9,\n";
       validateResultSet(resultSet, ans);
 
       for (int i = 0; i < 10; i++) {
@@ -682,12 +682,12 @@ public class IoTDBAuthorizationIT {
         }
       }
       resultSet = adminStmt.executeQuery("LIST USER");
-      ans = "0,root,\n"
-          + "1,user1,\n"
-          + "2,user3,\n"
-          + "3,user5,\n"
-          + "4,user7,\n"
-          + "5,user9,\n";
+      ans = "root,\n"
+          + "user1,\n"
+          + "user3,\n"
+          + "user5,\n"
+          + "user7,\n"
+          + "user9,\n";
       validateResultSet(resultSet, ans);
     } finally {
       adminCon.close();
@@ -711,16 +711,16 @@ public class IoTDBAuthorizationIT {
       }
 
       resultSet = adminStmt.executeQuery("LIST ROLE");
-      ans = "0,role0,\n"
-          + "1,role1,\n"
-          + "2,role2,\n"
-          + "3,role3,\n"
-          + "4,role4,\n"
-          + "5,role5,\n"
-          + "6,role6,\n"
-          + "7,role7,\n"
-          + "8,role8,\n"
-          + "9,role9,\n";
+      ans = "role0,\n"
+          + "role1,\n"
+          + "role2,\n"
+          + "role3,\n"
+          + "role4,\n"
+          + "role5,\n"
+          + "role6,\n"
+          + "role7,\n"
+          + "role8,\n"
+          + "role9,\n";
       validateResultSet(resultSet, ans);
 
       for (int i = 0; i < 10; i++) {
@@ -729,11 +729,11 @@ public class IoTDBAuthorizationIT {
         }
       }
       resultSet = adminStmt.executeQuery("LIST ROLE");
-      ans = "0,role1,\n"
-          + "1,role3,\n"
-          + "2,role5,\n"
-          + "3,role7,\n"
-          + "4,role9,\n";
+      ans = "role1,\n"
+          + "role3,\n"
+          + "role5,\n"
+          + "role7,\n"
+          + "role9,\n";
       validateResultSet(resultSet, ans);
 
     } finally {
@@ -759,29 +759,29 @@ public class IoTDBAuthorizationIT {
       adminStmt.execute("GRANT role1 TO user1");
 
       ResultSet resultSet = adminStmt.executeQuery("LIST USER PRIVILEGES  user1");
-      String ans = "0,,root.a.b : READ_TIMESERIES"
+      String ans = ",root.a.b : READ_TIMESERIES"
           + ",\n"
-          + "1,role1,root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
+          + "role1,root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
           + ",\n"
-          + "2,role1,root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
+          + "role1,root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
           + ",\n";
       validateResultSet(resultSet, ans);
 
       resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.a.b.c");
-      ans = "0,,root.a.b : READ_TIMESERIES"
+      ans = ",root.a.b : READ_TIMESERIES"
           + ",\n"
-          + "1,role1,root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
+          + "role1,root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
           + ",\n";
       validateResultSet(resultSet, ans);
 
       adminStmt.execute("REVOKE role1 from user1");
 
       resultSet = adminStmt.executeQuery("LIST USER PRIVILEGES  user1");
-      ans = "0,,root.a.b : READ_TIMESERIES,\n";
+      ans = ",root.a.b : READ_TIMESERIES,\n";
       validateResultSet(resultSet, ans);
 
       resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.a.b.c");
-      ans = "0,,root.a.b : READ_TIMESERIES,\n";
+      ans = ",root.a.b : READ_TIMESERIES,\n";
       validateResultSet(resultSet, ans);
     } finally {
       adminCon.close();
@@ -803,24 +803,24 @@ public class IoTDBAuthorizationIT {
           "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.d.b.c");
 
       ResultSet resultSet = adminStmt.executeQuery("LIST ROLE PRIVILEGES role1");
-      String ans = "0,root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n"
-          + "1,root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
+      String ans = "root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n"
+          + "root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
       validateResultSet(resultSet, ans);
 
       resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1 ON root.a.b.c");
-      ans = "0,root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
+      ans = "root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
       validateResultSet(resultSet, ans);
 
       adminStmt.execute(
           "REVOKE ROLE role1 PRIVILEGES 'INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.a.b.c");
 
       resultSet = adminStmt.executeQuery("LIST ROLE PRIVILEGES role1");
-      ans = "0,root.a.b.c : READ_TIMESERIES,\n"
-          + "1,root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
+      ans = "root.a.b.c : READ_TIMESERIES,\n"
+          + "root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
       validateResultSet(resultSet, ans);
 
       resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1 ON root.a.b.c");
-      ans = "0,root.a.b.c : READ_TIMESERIES,\n";
+      ans = "root.a.b.c : READ_TIMESERIES,\n";
       validateResultSet(resultSet, ans);
     } finally {
       adminCon.close();
@@ -850,20 +850,20 @@ public class IoTDBAuthorizationIT {
       adminStmt.execute("GRANT hakase TO chenduxiu");
 
       ResultSet resultSet = adminStmt.executeQuery("LIST ALL ROLE OF USER chenduxiu");
-      String ans = "0,xijing,\n"
-          + "1,dalao,\n"
-          + "2,shenshi,\n"
-          + "3,zhazha,\n"
-          + "4,hakase,\n";
+      String ans = "xijing,\n"
+          + "dalao,\n"
+          + "shenshi,\n"
+          + "zhazha,\n"
+          + "hakase,\n";
       validateResultSet(resultSet, ans);
 
       adminStmt.execute("REVOKE dalao FROM chenduxiu");
       adminStmt.execute("REVOKE hakase FROM chenduxiu");
 
       resultSet = adminStmt.executeQuery("LIST ALL ROLE OF USER chenduxiu");
-      ans = "0,xijing,\n"
-          + "1,shenshi,\n"
-          + "2,zhazha,\n";
+      ans = "xijing,\n"
+          + "shenshi,\n"
+          + "zhazha,\n";
       validateResultSet(resultSet, ans);
     } finally {
       adminCon.close();
@@ -895,24 +895,24 @@ public class IoTDBAuthorizationIT {
       adminStmt.execute("GRANT zhazha TO RiverSky");
 
       ResultSet resultSet = adminStmt.executeQuery("LIST ALL USER OF ROLE dalao");
-      String ans = "0,DailySecurity,\n"
-          + "1,DoubleLight,\n"
-          + "2,East,\n"
-          + "3,Eastwards,\n"
-          + "4,GoldLuck,\n"
-          + "5,GoodWoods,\n"
-          + "6,HealthHonor,\n"
-          + "7,HighFly,\n"
-          + "8,Moon,\n"
-          + "9,Persistence,\n"
-          + "10,RayBud,\n"
-          + "11,ScentEffusion,\n"
-          + "12,Smart,\n"
-          + "13,SunComparison,\n";
+      String ans = "DailySecurity,\n"
+          + "DoubleLight,\n"
+          + "East,\n"
+          + "Eastwards,\n"
+          + "GoldLuck,\n"
+          + "GoodWoods,\n"
+          + "HealthHonor,\n"
+          + "HighFly,\n"
+          + "Moon,\n"
+          + "Persistence,\n"
+          + "RayBud,\n"
+          + "ScentEffusion,\n"
+          + "Smart,\n"
+          + "SunComparison,\n";
       validateResultSet(resultSet, ans);
 
       resultSet = adminStmt.executeQuery("LIST ALL USER OF ROLE zhazha");
-      ans = "0,RiverSky,\n";
+      ans = "RiverSky,\n";
       validateResultSet(resultSet, ans);
 
       adminStmt.execute("REVOKE zhazha from RiverSky");

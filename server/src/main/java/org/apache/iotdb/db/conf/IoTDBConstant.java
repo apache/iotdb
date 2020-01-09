@@ -62,6 +62,7 @@ public class IoTDBConstant {
   public static final String COLUMN_TIMESERIES = "timeseries";
   public static final String COLUMN_TIMESERIES_DATATYPE = "dataType";
   public static final String COLUMN_TIMESERIES_ENCODING = "encoding";
+  public static final String COLUMN_TIMESERIES_COMPRESSION = "compression";
   public static final String COLUMN_CHILD_PATHS = "child paths";
   public static final String COLUMN_DEVICES = "devices";
   public static final String COLUMN_COLUMN = "column";

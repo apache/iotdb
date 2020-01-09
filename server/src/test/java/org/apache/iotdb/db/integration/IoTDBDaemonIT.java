@@ -180,7 +180,7 @@ public class IoTDBDaemonIT {
   @Test
   public void selectWithDuplicatedColumnsTest2() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "0,11,11,42988.0,11,"
+        "11,11,42988.0,11,"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -197,7 +197,7 @@ public class IoTDBDaemonIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("Time,count(root.vehicle.d0.s0),count(root.vehicle.d0.s0),"
+        Assert.assertEquals("count(root.vehicle.d0.s0),count(root.vehicle.d0.s0),"
             + "sum(root.vehicle.d0.s0),count(root.vehicle.d0.s1),", header.toString());
 
         int cnt = 0;

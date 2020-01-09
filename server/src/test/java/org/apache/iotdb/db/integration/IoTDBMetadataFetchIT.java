@@ -87,16 +87,16 @@ public class IoTDBMetadataFetchIT {
           "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
       };
       String[] standards = new String[]{
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n",
+          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n",
 
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
-              + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n",
+          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n"
+              + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
 
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
-              + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n",
+          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n"
+              + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
 
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
-                  + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n",
+          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n"
+                  + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
 
           "",
 
@@ -111,7 +111,7 @@ public class IoTDBMetadataFetchIT {
             try (ResultSet resultSet = statement.getResultSet()) {
               ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
               while (resultSet.next()) {
-                for (int i = 2; i <= resultSetMetaData.getColumnCount(); i++) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
                   builder.append(resultSet.getString(i)).append(",");
                 }
                 builder.append("\n");
@@ -145,7 +145,7 @@ public class IoTDBMetadataFetchIT {
             try (ResultSet resultSet = statement.getResultSet()) {
               ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
               while (resultSet.next()) {
-                for (int i = 2; i <= resultSetMetaData.getColumnCount(); i++) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
                   builder.append(resultSet.getString(i)).append(",");
                 }
                 builder.append("\n");
@@ -193,7 +193,7 @@ public class IoTDBMetadataFetchIT {
         if(hasResultSet) {
           try(ResultSet resultSet = statement.getResultSet()) {
             resultSet.next();
-            Assert.assertEquals(resultSet.getString(2), IoTDBConstant.VERSION);
+            Assert.assertEquals(resultSet.getString(1), IoTDBConstant.VERSION);
           }
         }
       } catch (Exception e) {
@@ -220,7 +220,7 @@ public class IoTDBMetadataFetchIT {
             try (ResultSet resultSet = statement.getResultSet()) {
               ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
               while (resultSet.next()) {
-                for (int i = 2; i <= resultSetMetaData.getColumnCount(); i++) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
                   builder.append(resultSet.getString(i)).append(",");
                 }
                 builder.append("\n");
@@ -254,7 +254,7 @@ public class IoTDBMetadataFetchIT {
             try (ResultSet resultSet = statement.getResultSet()) {
               ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
               while (resultSet.next()) {
-                for (int i = 2; i <= resultSetMetaData.getColumnCount(); i++) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
                   builder.append(resultSet.getString(i)).append(",");
                 }
                 builder.append("\n");
@@ -288,7 +288,7 @@ public class IoTDBMetadataFetchIT {
             try (ResultSet resultSet = statement.getResultSet()) {
               ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
               while (resultSet.next()) {
-                for (int i = 2; i <= resultSetMetaData.getColumnCount(); i++) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
                   builder.append(resultSet.getString(i)).append(",");
                 }
                 builder.append("\n");
@@ -322,7 +322,7 @@ public class IoTDBMetadataFetchIT {
             try (ResultSet resultSet = statement.getResultSet()) {
               ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
               while (resultSet.next()) {
-                for (int i = 2; i <= resultSetMetaData.getColumnCount(); i++) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
                   builder.append(resultSet.getString(i)).append(",");
                 }
                 builder.append("\n");
@@ -356,7 +356,7 @@ public class IoTDBMetadataFetchIT {
             try (ResultSet resultSet = statement.getResultSet()) {
               ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
               while (resultSet.next()) {
-                for (int i = 2; i <= resultSetMetaData.getColumnCount(); i++) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
                   builder.append(resultSet.getString(i)).append(",");
                 }
                 builder.append("\n");

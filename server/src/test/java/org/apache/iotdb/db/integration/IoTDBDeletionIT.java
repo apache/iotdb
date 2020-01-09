@@ -79,29 +79,29 @@ public class IoTDBDeletionIT {
           + " WHERE time <= 350");
       statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 150");
 
-      ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0");
-      int cnt = 0;
-      while (set.next()) {
-        cnt++;
+      try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(250, cnt);
       }
-      assertEquals(250, cnt);
-      set.close();
 
-      set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0");
-      cnt = 0;
-      while (set.next()) {
-        cnt++;
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(100, cnt);
       }
-      assertEquals(100, cnt);
-      set.close();
 
-      set = statement.executeQuery("SELECT s1,s2,s3 FROM root.vehicle.d0");
-      cnt = 0;
-      while (set.next()) {
-        cnt++;
+      try (ResultSet set = statement.executeQuery("SELECT s1,s2,s3 FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(50, cnt);
       }
-      assertEquals(50, cnt);
-      set.close();
 
     }
     cleanData();
@@ -119,22 +119,22 @@ public class IoTDBDeletionIT {
       statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 15000");
 
       // before merge completes
-      ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0");
-      int cnt = 0;
-      while (set.next()) {
-        cnt ++;
+      try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(5000, cnt);
       }
-      assertEquals(5000, cnt);
-      set.close();
 
       // after merge completes
-      set = statement.executeQuery("SELECT * FROM root.vehicle.d0");
-      cnt = 0;
-      while (set.next()) {
-        cnt ++;
+      try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(5000, cnt);
       }
-      assertEquals(5000, cnt);
-      set.close();
       cleanData();
     }
   }
