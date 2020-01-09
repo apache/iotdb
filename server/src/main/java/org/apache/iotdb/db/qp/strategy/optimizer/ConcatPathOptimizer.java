@@ -114,6 +114,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     if(!isGroupByDevice){
       sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter));
     }
+    // GROUP_BY_DEVICE leaves the concatFilter to PhysicalGenerator to optimize filter without prefix first
 
     return sfwOperator;
   }
