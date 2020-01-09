@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -36,13 +37,13 @@ public class QueryContext {
    * The outer key is the path of a ModificationFile, the inner key in the name of a timeseries and
    * the value is the Modifications of a timeseries in this file.
    */
-  private Map<String, Map<String, List<Modification>>> filePathModCache = new HashMap<>();
+  private Map<String, Map<String, List<Modification>>> filePathModCache = new ConcurrentHashMap<>();
   /**
    * The key is the path of a ModificationFile and the value is all Modifications in this file. We
    * use this field because each call of Modification.getModifications() return a copy of the
    * Modifications, and we do not want it to create multiple copies within a query.
    */
-  private Map<String, List<Modification>> fileModCache = new HashMap<>();
+  private Map<String, List<Modification>> fileModCache = new ConcurrentHashMap<>();
 
   private long queryId;
 
