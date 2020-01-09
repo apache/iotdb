@@ -140,6 +140,7 @@ public class MemTableFlushTask {
       }
     }
 
+    @SuppressWarnings("squid:S135")
     @Override
     public void run() {
       long memSerializeTime = 0;
@@ -157,7 +158,7 @@ public class MemTableFlushTask {
           }
           try {
             Thread.sleep(10);
-          } catch (InterruptedException e) {
+          } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
             logger.error("Storage group {} memtable {}, encoding task is interrupted.",
                 storageGroup, memTable.getVersion(), e);
             // generally it is because the thread pool is shutdown so the task should be aborted
@@ -185,6 +186,7 @@ public class MemTableFlushTask {
     }
   };
 
+  @SuppressWarnings("squid:S135")
   private Runnable ioTask = () -> {
       long ioTime = 0;
       boolean returnWhenNoTask = false;
@@ -200,7 +202,7 @@ public class MemTableFlushTask {
           }
           try {
             Thread.sleep(10);
-          } catch (InterruptedException e) {
+          } catch (@SuppressWarnings("squid:S2142")  InterruptedException e) {
             logger.error("Storage group {} memtable, io task is interrupted.", storageGroup
                 , memTable.getVersion(), e);
             // generally it is because the thread pool is shutdown so the task should be aborted

@@ -173,7 +173,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
         Thread.currentThread().setName(ThreadName.METRICS_SERVICE.getName());
         server.start();
         server.join();
-      } catch (InterruptedException e1) {
+      } catch (@SuppressWarnings("squid:S2142") InterruptedException e1) {
         //we do not sure why InterruptedException happens, but it indeed occurs in Travis WinOS
         logger.error(e1.getMessage(), e1);
         stopService();

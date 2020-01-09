@@ -1123,6 +1123,7 @@ public class StorageGroupProcessor {
     }
   }
 
+  @SuppressWarnings("squid:S1141")
   private void updateMergeModification(TsFileResource seqFile) {
     seqFile.getWriteQueryLock().writeLock().lock();
     try {
