@@ -48,7 +48,7 @@ public class QueryFileManager {
    * Set job id for current request thread. When a query request is created firstly,
    * this method must be invoked.
    */
-  void addQueryId(long queryId) {
+  synchronized void addQueryId(long queryId) {
     sealedFilePathsMap.computeIfAbsent(queryId, x -> new HashSet<>());
     unsealedFilePathsMap.computeIfAbsent(queryId, x -> new HashSet<>());
   }
@@ -109,10 +109,9 @@ public class QueryFileManager {
    * so <code>sealedFilePathsMap.get(queryId)</code> or <code>unsealedFilePathsMap.get(queryId)</code>
    * must not return null.
    */
-  void addFilePathToMap(long queryId, TsFileResource tsFile, boolean isClosed) {
+  synchronized void addFilePathToMap(long queryId, TsFileResource tsFile, boolean isClosed) {
     Map<Long, Set<TsFileResource>> pathMap = isClosed ? unsealedFilePathsMap :
         sealedFilePathsMap;
-    //TODO this is not an atomic operation, is there concurrent problem?
     if (!pathMap.get(queryId).contains(tsFile)) {
       pathMap.get(queryId).add(tsFile);
       FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);

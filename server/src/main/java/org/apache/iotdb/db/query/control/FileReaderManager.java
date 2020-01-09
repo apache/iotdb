@@ -164,15 +164,12 @@ public class FileReaderManager implements IService {
    * Increase the reference count of the reader specified by filePath. Only when the reference count
    * of a reader equals zero, the reader can be closed and removed.
    */
-  void increaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
-    // TODO : this should be called in get()
+  synchronized void increaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     tsFile.getWriteQueryLock().readLock().lock();
-    synchronized (this) {
-      if (!isClosed) {
-        unclosedReferenceMap.computeIfAbsent(tsFile, k -> new AtomicInteger()).getAndIncrement();
-      } else {
-        closedReferenceMap.computeIfAbsent(tsFile, k -> new AtomicInteger()).getAndIncrement();
-      }
+    if (!isClosed) {
+      unclosedReferenceMap.computeIfAbsent(tsFile, k -> new AtomicInteger()).getAndIncrement();
+    } else {
+      closedReferenceMap.computeIfAbsent(tsFile, k -> new AtomicInteger()).getAndIncrement();
     }
   }
 
@@ -180,13 +177,11 @@ public class FileReaderManager implements IService {
    * Decrease the reference count of the reader specified by filePath. This method is latch-free.
    * Only when the reference count of a reader equals zero, the reader can be closed and removed.
    */
-  void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
-    synchronized (this) {
-      if (!isClosed && unclosedReferenceMap.containsKey(tsFile)) {
-        unclosedReferenceMap.get(tsFile).getAndDecrement();
-      } else if (closedReferenceMap.containsKey(tsFile)){
-        closedReferenceMap.get(tsFile).getAndDecrement();
-      }
+  synchronized void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
+    if (!isClosed && unclosedReferenceMap.containsKey(tsFile)) {
+      unclosedReferenceMap.get(tsFile).getAndDecrement();
+    } else if (closedReferenceMap.containsKey(tsFile)) {
+      closedReferenceMap.get(tsFile).getAndDecrement();
     }
     tsFile.getWriteQueryLock().readLock().unlock();
   }
