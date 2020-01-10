@@ -1,5 +1,10 @@
 package org.apache.iotdb.calcite;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
 import org.apache.calcite.plan.RelOptPlanner;
@@ -19,27 +24,34 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-import java.util.*;
-
 public class IoTDBFilter extends Filter implements IoTDBRel {
+
   private final FilterOperator filterOperator;
   private final List<String> fieldNames;
-  private List<String> predicates;
-  private boolean flag = true; // to check if devices can be added now
-  List<String> devices = new ArrayList<>();
+  private List<String> predicates;  // for global predicate
+  Map<String, String> deviceToFilterMap = new LinkedHashMap<>();  // for device predicate
 
   protected IoTDBFilter(RelOptCluster cluster, RelTraitSet traits, RelNode child, RexNode condition)
-          throws LogicalOptimizeException {
+      throws LogicalOptimizeException {
     super(cluster, traits, child, condition);
     this.fieldNames = IoTDBRules.IoTDBFieldNames(getRowType());
     this.filterOperator = getIoTDBOperator(condition);
     this.predicates = translateWhere(filterOperator);
 
+    // add global predicate to each device if both global and device predicate exist
+    if (!this.predicates.isEmpty() && !this.deviceToFilterMap.isEmpty()) {
+      for (String device : deviceToFilterMap.keySet()) {
+        StringBuilder builder = new StringBuilder(this.deviceToFilterMap.get(device));
+        builder.append(Util.toString(predicates, " OR ", " OR ", ""));
+        this.deviceToFilterMap.put(device, builder.toString());
+      }
+    }
     assert getConvention() == IoTDBRel.CONVENTION;
     assert getConvention() == child.getConvention();
   }
 
-  @Override public RelOptCost computeSelfCost(RelOptPlanner planner,
+  @Override
+  public RelOptCost computeSelfCost(RelOptPlanner planner,
       RelMetadataQuery mq) {
     return super.computeSelfCost(planner, mq).multiplyBy(0.1);
   }
@@ -56,12 +68,14 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
   @Override
   public void implement(Implementor implementor) {
     implementor.visitChild(0, getInput());
-    implementor.add(devices, predicates);
+    implementor.add(deviceToFilterMap, predicates);
   }
 
-  /** Translates {@link RexNode} expressions into IoTDB filter operator. */
-  private FilterOperator getIoTDBOperator(RexNode filter){
-    switch (filter.getKind()){
+  /**
+   * Translates {@link RexNode} expressions into IoTDB filter operator.
+   */
+  private FilterOperator getIoTDBOperator(RexNode filter) {
+    switch (filter.getKind()) {
       case EQUALS:
         return getBasicOperator(SQLConstant.EQUAL, (RexCall) filter);
       case NOT_EQUALS:
@@ -83,22 +97,22 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
     }
   }
 
-  private FilterOperator getBasicOperator(int tokenIntType, RexCall call){
+  private FilterOperator getBasicOperator(int tokenIntType, RexCall call) {
     final RexNode left = call.operands.get(0);
     final RexNode right = call.operands.get(1);
 
     FilterOperator operator = getBasicOperator2(tokenIntType, left, right);
-    if(operator != null){
+    if (operator != null) {
       return operator;
     }
     operator = getBasicOperator2(tokenIntType, right, left);
-    if(operator != null){
+    if (operator != null) {
       return operator;
     }
     throw new AssertionError("cannnot translate basic operator: " + call);
   }
 
-  private FilterOperator getBasicOperator2(int tokenIntType, RexNode left, RexNode right){
+  private FilterOperator getBasicOperator2(int tokenIntType, RexNode left, RexNode right) {
     switch (right.getKind()) {
       case LITERAL:
         break;
@@ -115,7 +129,7 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
     }
   }
 
-  private FilterOperator getBinaryOperator(int tokenIntType, List<RexNode> operands){
+  private FilterOperator getBinaryOperator(int tokenIntType, List<RexNode> operands) {
     FilterOperator filterBinaryTree = new FilterOperator(tokenIntType);
     FilterOperator currentNode = filterBinaryTree;
     for (int i = 0; i < operands.size(); i++) {
@@ -129,43 +143,56 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
     return filterBinaryTree;
   }
 
-  /** Produce the IoTDB predicate string for the given operator.
+  /**
+   * Produce the IoTDB global predicate string and devices' respective predicate for the given
+   * operator.
+   * <p>
+   * e.g. WHERE ( device = 'd1' AND time < 10) OR (device = 'd2' AND s0 < 5) OR s1 > 100 will get
+   * device list [d1,d2] and deviceToFilterMap [d1 -> time < 10, d2 -> d2.s0 < 5], and return global
+   * predicate s1 > 100
    *
    * @param operator Condition to translate
-   * @return IoTDB predicate string
+   * @return IoTDB global predicate string
    */
   private List<String> translateWhere(FilterOperator operator) throws LogicalOptimizeException {
-    List<String> whereClause = new ArrayList<>();
-    if(operator.isLeaf()){
-      if(translateLeaf((BasicFunctionOperator) operator) != null){
-        whereClause.add(translateLeaf((BasicFunctionOperator) operator));
-        return whereClause;
-      } else {
-        return whereClause;
+    List<String> globalPredicate = new ArrayList<>();
+    if (operator.isLeaf()) {
+      if (translateLeaf((BasicFunctionOperator) operator) != null) {
+        globalPredicate.add(translateLeaf((BasicFunctionOperator) operator));
       }
+      return globalPredicate;
     }
     DnfFilterOptimizer dnfFilterOptimizer = new DnfFilterOptimizer();
     FilterOperator dnfOperator = dnfFilterOptimizer.optimize(operator);
 
-    // get conjunction children in disjunction normal form
-    List<FilterOperator> children = dnfOperator.getChildren();
-    for (FilterOperator child : children) {
-      String childAnd = translateAnd(child);
-      if(childAnd != null){
-        whereClause.add(childAnd);
+    if (dnfOperator.getTokenIntType() == SQLConstant.KW_AND) {
+      String strAnd = translateAnd(dnfOperator);
+      if (strAnd != null) {
+        globalPredicate.add(strAnd);
+      }
+    } else {
+      // get conjunction children in disjunction normal form
+      List<FilterOperator> children = dnfOperator.getChildren();
+      for (FilterOperator child : children) {
+        String childAnd = translateAnd(child);
+        if (childAnd != null) {
+          globalPredicate.add(childAnd);
+        }
       }
     }
 
-    return whereClause;
+    return globalPredicate;
   }
 
-  private String translateLeaf(BasicFunctionOperator operator){
-    if(operator.getPath().equals(IoTDBConstant.DeviceColumn)){
-      if(flag){
-        this.devices.add(operator.getValue());
+  private String translateLeaf(BasicFunctionOperator operator) {
+    if (operator.getPath().equals(IoTDBConstant.DeviceColumn)) {
+      // If the device doesn't exist, add it. Otherwise do nothing.
+      if (!this.deviceToFilterMap.containsKey(operator.getValue())) {
+        this.deviceToFilterMap.put(operator.getValue(), null);
       }
       return null;
     } else {
+      // note that leaf node is a global predicate
       return translateBasicOperator(null, operator);
     }
   }
@@ -176,8 +203,8 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
    * @param operator A conjunctive predicate
    * @return IoTDB where clause string for the predicate
    */
-  private String translateAnd(FilterOperator operator){
-    if(operator.isLeaf()){
+  private String translateAnd(FilterOperator operator) {
+    if (operator.isLeaf()) {
       return translateLeaf((BasicFunctionOperator) operator);
     }
     List<String> predicates = new ArrayList<>();
@@ -186,49 +213,56 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
     List<FilterOperator> children = operator.getChildren();
     Iterator<FilterOperator> iter = children.iterator();
 
-    while(iter.hasNext()) {
+    // to check whether the conjunction is with device restriction
+    while (iter.hasNext()) {
       FilterOperator child = iter.next();
-      if(child instanceof BasicFunctionOperator
-        && ((BasicFunctionOperator) child).getPath().equals(IoTDBConstant.DeviceColumn)){
+      if (child instanceof BasicFunctionOperator
+          && ((BasicFunctionOperator) child).getPath().equals(IoTDBConstant.DeviceColumn)) {
 
         String device = ((BasicFunctionOperator) child).getValue();
         // e.g. Device = d1 AND Device = d2
-        if(deviceName != null && !deviceName.equals(device)){
-          throw new AssertionError("Wrong restrictions to device: " + deviceName + " AND " + device);
-        } else if(deviceName == null){
+        if (deviceName != null && !deviceName.equals(device)) {
+          throw new AssertionError(
+              "Wrong restrictions to device: " + deviceName + " AND " + device);
+        } else if (deviceName == null) {
           deviceName = device;
         }
         iter.remove();
       }
     }
-    // if a conjunction has no device restriction which means there is a global restriction,
-    // the devices in from clause will be '*', and don't allow to add deviceName again.
-    if (deviceName == null){
-      this.devices = new ArrayList<>();
-      this.flag = false;
-    } else if (flag) {
-      this.devices.add(deviceName);
-    }
 
+    // translate the operator to string
     for (FilterOperator child : children) {
-      if(child instanceof BasicFunctionOperator){
+      if (child instanceof BasicFunctionOperator) {
         predicates.add(translateBasicOperator(deviceName, (BasicFunctionOperator) child));
       } else {
-        throw new AssertionError( "cannot translate" + child.toString());
+        throw new AssertionError("cannot translate" + child.toString());
       }
     }
 
-    return Util.toString(predicates, "", " AND ", "");
+    // if a conjunction has no device restriction which means it's a global restriction
+    if (deviceName == null) {
+      return Util.toString(predicates, "", " AND ", "");
+    } else {
+      if (this.deviceToFilterMap.get(deviceName) != null) {
+        StringBuilder builder = new StringBuilder(this.deviceToFilterMap.get(deviceName));
+        builder.append(Util.toString(predicates, " OR ", " AND ", ""));
+        this.deviceToFilterMap.put(deviceName, builder.toString());
+      } else {
+        this.deviceToFilterMap.put(deviceName, Util.toString(predicates, "", " AND ", ""));
+      }
+      return null;
+    }
   }
 
-  private String translateBasicOperator(String device, BasicFunctionOperator operator){
+  private String translateBasicOperator(String device, BasicFunctionOperator operator) {
     StringBuilder buf = new StringBuilder();
-    if(device != null && !operator.getPath().equals(IoTDBConstant.TimeColumn)){
+    if (device != null && !operator.getPath().equals(IoTDBConstant.TimeColumn)) {
       buf.append(device + IoTDBConstant.PATH_SEPARATOR);
     }
     buf.append(operator.getPath());
 
-    switch(operator.getTokenIntType()){
+    switch (operator.getTokenIntType()) {
       case SQLConstant.EQUAL:
         return buf.append("=").append(operator.getValue()).toString();
       case SQLConstant.NOTEQUAL:
@@ -246,7 +280,8 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
     }
   }
 
-  /** Convert the value of a literal to a string.
+  /**
+   * Convert the value of a literal to a string.
    *
    * @param literal Literal to translate
    * @return String representation of the literal

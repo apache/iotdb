@@ -1,5 +1,6 @@
 package org.apache.iotdb.calcite;
 
+import java.util.List;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
 import org.apache.calcite.plan.RelOptPlanner;
@@ -11,30 +12,31 @@ import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.rex.RexLiteral;
 import org.apache.calcite.rex.RexNode;
 
-import java.util.List;
-
 /**
  * Implementation of limits in IoTDB.
  */
 public class IoTDBLimit extends SingleRel implements IoTDBRel {
+
   public final RexNode limit;
   public final RexNode offset;
 
   public IoTDBLimit(RelOptCluster cluster, RelTraitSet traitSet,
-                        RelNode input, RexNode offset, RexNode fetch) {
+      RelNode input, RexNode offset, RexNode fetch) {
     super(cluster, traitSet, input);
     this.limit = fetch;
     this.offset = offset;
     assert getConvention() == input.getConvention();
   }
 
-  @Override public RelOptCost computeSelfCost(RelOptPlanner planner,
-                                              RelMetadataQuery mq) {
+  @Override
+  public RelOptCost computeSelfCost(RelOptPlanner planner,
+      RelMetadataQuery mq) {
     // We do this so we get the limit for free
     return planner.getCostFactory().makeZeroCost();
   }
 
-  @Override public IoTDBLimit copy(RelTraitSet traitSet, List<RelNode> newInputs) {
+  @Override
+  public IoTDBLimit copy(RelTraitSet traitSet, List<RelNode> newInputs) {
     return new IoTDBLimit(getCluster(), traitSet, sole(newInputs), offset, limit);
   }
 

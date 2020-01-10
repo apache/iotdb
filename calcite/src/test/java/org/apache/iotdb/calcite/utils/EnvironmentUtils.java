@@ -163,7 +163,7 @@ public class EnvironmentUtils {
     MultiFileLogNodeManager.getInstance().start();
     FlushManager.getInstance().start();
     MergeManager.getINSTANCE().start();
-    TEST_QUERY_JOB_ID  = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 

@@ -1,26 +1,27 @@
 package org.apache.iotdb.calcite;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import org.apache.calcite.jdbc.CalciteConnection;
 import org.apache.calcite.schema.SchemaPlus;
-import org.apache.calcite.util.Sources;
-
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Properties;
 
 public class IoTDBClient {
+
   public static void main(String[] args) {
-    try{
+    try {
       Class.forName("org.apache.calcite.jdbc.Driver");
 /*      Properties info = new Properties();
       String jsonFile = Sources.of(IoTDBClient.class.getResource("/model.json")).file().getAbsolutePath();*/
       Connection connection = DriverManager.getConnection("jdbc:calcite:");
       CalciteConnection calciteConnection =
-              connection.unwrap(CalciteConnection.class);
+          connection.unwrap(CalciteConnection.class);
       SchemaPlus rootSchema = calciteConnection.getRootSchema();
-      rootSchema.add("IoTDBSchema", new IoTDBSchema("127.0.0.1", 6667, "root","root", rootSchema, "IoTDBSchema"));
+      rootSchema.add("IoTDBSchema",
+          new IoTDBSchema("127.0.0.1", 6667, "root", "root", rootSchema, "IoTDBSchema"));
       calciteConnection.setSchema("IoTDBSchema");
       Statement statement = calciteConnection.createStatement();
       String sql = "SELECT * FROM \"root.ln\" WHERE \"temperature\" > 10";
@@ -34,8 +35,8 @@ public class IoTDBClient {
       System.out.println();
 
       while (resultSet.next()) {
-        for(int i = 1; i <= columnCount; i++){
-          System.out.print(resultSet.getObject(i) + "\t| " );
+        for (int i = 1; i <= columnCount; i++) {
+          System.out.print(resultSet.getObject(i) + "\t| ");
         }
         System.out.println();
       }

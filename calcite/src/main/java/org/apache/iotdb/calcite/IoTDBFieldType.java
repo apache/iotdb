@@ -1,8 +1,8 @@
 package org.apache.iotdb.calcite;
 
-import org.apache.calcite.sql.type.SqlTypeName;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.calcite.sql.type.SqlTypeName;
 
 enum IoTDBFieldType {
   TEXT(SqlTypeName.VARCHAR, "TEXT"),
@@ -29,7 +29,9 @@ enum IoTDBFieldType {
     }
   }
 
-  public SqlTypeName getSqlType() { return this.sqlType; }
+  public SqlTypeName getSqlType() {
+    return this.sqlType;
+  }
 
   public static IoTDBFieldType of(String typeString) {
     return MAP.get(typeString);
