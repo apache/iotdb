@@ -6,8 +6,8 @@ import java.sql.DriverManager;
 import java.sql.Statement;
 import org.apache.calcite.test.CalciteAssert;
 import org.apache.calcite.util.Sources;
-import org.apache.iotdb.calcite.utils.EnvironmentUtils;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -78,7 +78,7 @@ public class IoTDBAdapterTest {
       "insert into root.vehicle.d0(timestamp,s3) values(101,'ddddd')",
       "insert into root.vehicle.d0(timestamp,s3) values(102,'fffff')",
 
-      "insert into root.vehicle.d0(timestamp,s4) values(100, false)",
+      "insert into root.vehicle.d0(timestamp,s4) values(23, false)",
       "insert into root.vehicle.d0(timestamp,s4) values(100, true)",
 
       "insert into root.vehicle.d1(timestamp,s0) values(1,999)",
@@ -92,6 +92,9 @@ public class IoTDBAdapterTest {
 
       "insert into root.vehicle.d1(timestamp,s3) values(10,'ten')",
       "insert into root.vehicle.d1(timestamp,s3) values(1000,'thousand')",
+
+      "insert into root.vehicle.d1(timestamp,s4) values(100, false)",
+      "insert into root.vehicle.d1(timestamp,s4) values(10000, true)",
 
       "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
       "insert into root.vehicle.d0(timestamp,s3) values(2000-01-01T08:00:00+08:00, 'good')",
@@ -133,7 +136,7 @@ public class IoTDBAdapterTest {
     CalciteAssert.that()
         .with(MODEL)
         .query("select * from \"root.vehicle\"")
-        .returnsCount(22)
+        .returnsCount(25)
         .returnsStartingWith(
             "time=1; device=root.vehicle.d0; s0=101; s1=1101; s2=null; s3=null; s4=null")
         .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
@@ -189,7 +192,7 @@ public class IoTDBAdapterTest {
         .explainContains("IoTDBLimit(limit=[3], offset=[2])\n")
         .returns("time=3; s2=3.33\n" +
             "time=4; s2=4.44\n" +
-            "time=50; s2=null\n");
+            "time=23; s2=null\n");
   }
 
   @Test
@@ -284,13 +287,12 @@ public class IoTDBAdapterTest {
     CalciteAssert.that()
         .with(MODEL)
         .query("select * from \"root.vehicle\" " +
-            "where (\"device\" = 'root.vehicle.d0' AND \"time\" <= 1) OR \"s0\" > 100")
-        .limit(2)
+            "where (\"device\" = 'root.vehicle.d0' AND \"time\" <= 1) OR \"s4\" = true")
         .returns("time=1; device=root.vehicle.d0; s0=101; s1=1101; s2=null; s3=null; s4=null\n" +
-            "time=1000; device=root.vehicle.d1; s0=10; s1=5; s2=null; s3=thousand; s4=null\n")
+            "time=100; device=root.vehicle.d0; s0=99; s1=199; s2=null; s3=null; s4=true\n" +
+            "time=10000; device=root.vehicle.d1; s0=null; s1=null; s2=null; s3=null; s4=true\n")
         .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
-            "  IoTDBFilter(condition=[OR(AND(=($1, 'root.vehicle.d0'), <=($0, 1)), " +
-            "AND(=($1, 'root.vehicle.d1'), <($2, 100)))])\n" +
+            "  IoTDBFilter(condition=[OR(AND(=($1, 'root.vehicle.d0'), <=($0, 1)), =($6, true))])\n" +
             "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
   }
 

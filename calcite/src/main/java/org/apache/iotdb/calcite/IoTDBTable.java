@@ -6,10 +6,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import org.apache.calcite.adapter.java.AbstractQueryableTable;
 import org.apache.calcite.linq4j.AbstractEnumerable;
 import org.apache.calcite.linq4j.Enumerable;
@@ -158,10 +160,13 @@ public class IoTDBTable extends AbstractQueryableTable
 
     List<String> queryList = new ArrayList<>();
 
+    Set<String> tmpDevices = new HashSet<>(); // to deduplicate in global query
+    // construct query by device
     if (!deviceToFilterList.isEmpty()) {
       for (Entry<String, String> deviceToFilter : deviceToFilterList) {
         String fromClause = " FROM ";
         fromClause += deviceToFilter.getKey();
+        tmpDevices.add(deviceToFilter.getKey());
 
         String whereClause = "";
         if (deviceToFilter.getValue() != null) {
@@ -187,8 +192,23 @@ public class IoTDBTable extends AbstractQueryableTable
         queryList.add(queryBuilder.toString());
       }
     }
-    if (deviceToFilterList.isEmpty() || !globalPredicates.isEmpty()) {  // add global query string
-      String fromClause = " FROM " + storageGroup + IoTDBConstant.PATH_SEPARATOR + "*";
+
+    // construct global query
+    if (deviceToFilterList.isEmpty() || !globalPredicates.isEmpty()) {
+      String fromClause = " FROM ";
+      // deduplicate redundant device
+      if (!deviceToFilterList.isEmpty() && !globalPredicates.isEmpty()) {
+        List<String> deduplicatedDevices = new ArrayList<>();
+        for (String device : IoTDBSchema.sgToDeviceMap.get(storageGroup)) {
+          if (!tmpDevices.contains(device)) {
+            deduplicatedDevices.add(device);
+          }
+        }
+        fromClause += Util.toString(deduplicatedDevices, "", ", ", "");
+      } else {
+        fromClause += storageGroup + IoTDBConstant.PATH_SEPARATOR + "*";
+      }
+
       String whereClause = "";
       if (!globalPredicates.isEmpty()) {
         whereClause = " WHERE ";

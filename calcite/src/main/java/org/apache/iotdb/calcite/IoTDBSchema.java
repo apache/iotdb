@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
@@ -25,6 +26,7 @@ public class IoTDBSchema extends AbstractSchema {
   private Map<String, Table> tableMap;
   private final SchemaPlus parentSchema;
   final String name;
+  public static Map<String, List<String>> sgToDeviceMap = new HashMap<>();
 
   /**
    * Creates a IoTDB schema.
@@ -64,9 +66,13 @@ public class IoTDBSchema extends AbstractSchema {
     boolean hasDevices = statement.execute("show devices " + storageGroup);
     if (hasDevices) {
       ResultSet devices = statement.getResultSet();
+      List<String> deviceList = new ArrayList<>();
+      while (devices.next()) {
+        deviceList.add(devices.getString(1));
+      }
+      this.sgToDeviceMap.put(storageGroup, deviceList);
       // ignore validation here
-      devices.next();
-      boolean hasTS = statement.execute("show timeseries " + devices.getString(1));
+      boolean hasTS = statement.execute("show timeseries " + deviceList.get(0));
       if (hasTS) {
         ResultSet timeseries = statement.getResultSet();
         while (timeseries.next()) {
