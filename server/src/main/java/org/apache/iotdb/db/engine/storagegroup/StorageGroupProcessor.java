@@ -582,8 +582,8 @@ public class StorageGroupProcessor {
 
     // try to update the latest time of the device of this tsRecord
     long maxTime = Long.MIN_VALUE;
-    for (int i : results) {
-      maxTime = Math.min(maxTime, batchInsertPlan.getTimes()[i]);
+    for (int i : indexes) {
+      maxTime = Math.max(maxTime, batchInsertPlan.getTimes()[i]);
     }
     if (sequence && result
         && latestTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId())

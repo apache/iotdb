@@ -201,12 +201,20 @@ public class TsFileProcessor {
       }
     }
 
-    tsFileResource.updateStartTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getMinTime());
+    long minTime = Long.MAX_VALUE;
+    for (int i : indexes) {
+      minTime = Math.min(minTime, batchInsertPlan.getTimes()[i]);
+    }
+    tsFileResource.updateStartTime(batchInsertPlan.getDeviceId(), minTime);
 
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     //for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
-      tsFileResource.updateEndTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
+      long maxTime = Long.MIN_VALUE;
+      for (int i : indexes) {
+        maxTime = Math.max(maxTime, batchInsertPlan.getTimes()[i]);
+      }
+      tsFileResource.updateEndTime(batchInsertPlan.getDeviceId(), maxTime);
     }
 
     return true;
