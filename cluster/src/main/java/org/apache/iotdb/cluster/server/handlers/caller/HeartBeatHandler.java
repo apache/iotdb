@@ -37,14 +37,14 @@ public class HeartBeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
 
   private static final Logger logger = LoggerFactory.getLogger(HeartBeatHandler.class);
 
-  private RaftMember raftMember;
+  private RaftMember localMember;
   private String memberName;
   private Node receiver;
 
-  public HeartBeatHandler(RaftMember raftMember, Node node) {
-    this.raftMember = raftMember;
-    this.receiver = node;
-    this.memberName = raftMember.getName();
+  public HeartBeatHandler(RaftMember localMember, Node receiver) {
+    this.localMember = localMember;
+    this.receiver = receiver;
+    this.memberName = localMember.getName();
   }
 
   @Override
@@ -53,29 +53,29 @@ public class HeartBeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
     long followerTerm = resp.getTerm();
     if (followerTerm == RESPONSE_AGREE) {
       // current leadership is still valid
-      raftMember.processValidHeartbeatResp(resp, receiver);
+      localMember.processValidHeartbeatResp(resp, receiver);
 
       Node follower = resp.getFollower();
       long lastLogIdx = resp.getLastLogIndex();
       long lastLogTerm = resp.getLastLogTerm();
-      long localLastLogIdx = raftMember.getLogManager().getLastLogIndex();
-      long localLastLogTerm = raftMember.getLogManager().getLastLogTerm();
+      long localLastLogIdx = localMember.getLogManager().getLastLogIndex();
+      long localLastLogTerm = localMember.getLogManager().getLastLogTerm();
       logger.debug("{}: Node {} is still alive, log index: {}/{}, log term: {}/{}",
           memberName, follower, lastLogIdx
           ,localLastLogIdx, lastLogTerm, localLastLogTerm);
 
       if (localLastLogIdx > lastLogIdx ||
           lastLogIdx == localLastLogIdx && localLastLogTerm > lastLogTerm) {
-        raftMember.catchUp(follower, lastLogIdx);
+        localMember.catchUp(follower, lastLogIdx);
       }
     } else {
       // current leadership is invalid because the follower has a larger term
-      synchronized (raftMember.getTerm()) {
-        long currTerm = raftMember.getTerm().get();
+      synchronized (localMember.getTerm()) {
+        long currTerm = localMember.getTerm().get();
         if (currTerm < followerTerm) {
           logger.info("{}: Losing leadership because current term {} is smaller than {}",
               memberName, currTerm, followerTerm);
-          raftMember.retireFromLeader(followerTerm);
+          localMember.retireFromLeader(followerTerm);
         }
       }
     }

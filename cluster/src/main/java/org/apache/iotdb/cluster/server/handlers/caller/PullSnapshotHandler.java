@@ -30,10 +30,10 @@ public class PullSnapshotHandler<T extends Snapshot> implements AsyncMethodCallb
   private SnapshotFactory<T> factory;
 
   public PullSnapshotHandler(AtomicReference<Map<Integer, T>> resultRef,
-      Node node, List<Integer> slot, SnapshotFactory factory) {
+      Node owner, List<Integer> slots, SnapshotFactory factory) {
     this.resultRef = resultRef;
-    this.node = node;
-    this.slot = slot;
+    this.node = owner;
+    this.slot = slots;
     this.factory = factory;
   }
 

@@ -91,32 +91,16 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
     }
   }
 
-  public Log getLog() {
-    return log;
-  }
-
   public void setLog(Log log) {
     this.log = log;
-  }
-
-  public AtomicInteger getQuorum() {
-    return quorum;
   }
 
   public void setQuorum(AtomicInteger quorum) {
     this.quorum = quorum;
   }
 
-  public AtomicBoolean getLeaderShipStale() {
-    return leaderShipStale;
-  }
-
   public void setLeaderShipStale(AtomicBoolean leaderShipStale) {
     this.leaderShipStale = leaderShipStale;
-  }
-
-  public Node getReceiver() {
-    return receiver;
   }
 
   public void setReceiver(Node follower) {

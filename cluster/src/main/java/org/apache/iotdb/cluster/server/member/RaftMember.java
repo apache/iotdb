@@ -47,7 +47,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.RequestCommitIdHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -709,7 +709,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     logger.debug("{}: try synchronizing with leader {}", name, leader);
     long startTime = System.currentTimeMillis();
     long waitedTime = 0;
-    AtomicLong commitIdResult = new AtomicLong(Long.MAX_VALUE);
+    AtomicReference<Long> commitIdResult = new AtomicReference<>(Long.MAX_VALUE);
     while (waitedTime < ClusterConstant.SYNC_LEADER_MAX_WAIT_MS) {
       AsyncClient client = connectNode(leader);
       if (client == null) {
@@ -717,7 +717,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       }
       try {
         synchronized (commitIdResult) {
-          client.requestCommitIndex(getHeader(), new RequestCommitIdHandler(leader, commitIdResult));
+          client.requestCommitIndex(getHeader(), new GenericHandler<>(leader, commitIdResult));
           commitIdResult.wait(ClusterConstant.SYNC_LEADER_MAX_WAIT_MS);
         }
         long leaderCommitId = commitIdResult.get();
