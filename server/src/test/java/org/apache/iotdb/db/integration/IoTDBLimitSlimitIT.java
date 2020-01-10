@@ -42,8 +42,6 @@ import org.junit.Test;
  */
 public class IoTDBLimitSlimitIT {
 
-  private static IoTDB daemon;
-
   private static String[] insertSqls = new String[]{"SET STORAGE GROUP TO root.vehicle",
 
       "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -88,14 +86,11 @@ public class IoTDBLimitSlimitIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

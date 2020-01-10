@@ -211,7 +211,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInOverflowFile()
-      throws StorageEngineException, QueryProcessException {
+      throws StorageEngineException, QueryProcessException, IOException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -247,13 +247,14 @@ public class DeletionFileNodeTest {
         -> name.endsWith(ModificationFile.FILE_SUFFIX));
     assertEquals(1, modFiles.length);
 
-    LocalTextModificationAccessor accessor =
-        new LocalTextModificationAccessor(modFiles[0].getPath());
-    Collection<Modification> modifications = accessor.read();
-    assertEquals( 3, modifications.size());
-    int i = 0;
-    for (Modification modification : modifications) {
-      TestCase.assertEquals(modification, realModifications[i++]);
+    try (LocalTextModificationAccessor accessor =
+        new LocalTextModificationAccessor(modFiles[0].getPath())) {
+      Collection<Modification> modifications = accessor.read();
+      assertEquals(3, modifications.size());
+      int i = 0;
+      for (Modification modification : modifications) {
+        TestCase.assertEquals(modification, realModifications[i++]);
+      }
     }
   }
 }

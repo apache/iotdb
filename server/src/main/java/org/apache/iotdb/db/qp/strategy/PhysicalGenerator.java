@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -132,6 +133,25 @@ public class PhysicalGenerator {
             return new ShowPlan(ShowContentType.FLUSH_TASK_INFO);
           case SQLConstant.TOK_VERSION:
             return new ShowPlan(ShowContentType.VERSION);
+          case SQLConstant.TOK_TIMESERIES:
+            return new ShowTimeSeriesPlan(ShowContentType.TIMESERIES,
+                ((ShowTimeSeriesOperator) operator).getPath());
+          case SQLConstant.TOK_STORAGE_GROUP:
+            return new ShowPlan(ShowContentType.STORAGE_GROUP);
+          case SQLConstant.TOK_DEVICES:
+            return new ShowDevicesPlan(ShowContentType.DEVICES, ((ShowDevicesOperator) operator).getPath());
+          case SQLConstant.TOK_COUNT_NODE_TIMESERIES:
+            return new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,
+                ((CountOperator) operator).getPath(), ((CountOperator) operator).getLevel());
+          case SQLConstant.TOK_COUNT_NODES:
+            return new CountPlan(ShowContentType.COUNT_NODES,
+                ((CountOperator) operator).getPath(), ((CountOperator) operator).getLevel());
+          case SQLConstant.TOK_COUNT_TIMESERIES:
+            return new CountPlan(ShowContentType.COUNT_TIMESERIES,
+                ((CountOperator) operator).getPath());
+          case SQLConstant.TOK_CHILD_PATHS:
+            return new ShowChildPathsPlan(ShowContentType.CHILD_PATH,
+                ((ShowChildPathsOperator) operator).getPath());
           default:
             throw new LogicalOperatorException(String
                 .format("not supported operator type %s in show operation.", operator.getType()));
@@ -199,7 +219,7 @@ public class PhysicalGenerator {
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix
         Path suffixPath = suffixPaths.get(i);
         Set<String> deviceSetOfGivenSuffix = new HashSet<>();
-        Set<String> measurementSetOfGivenSuffix = new TreeSet<>();
+        Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
 
         for (Path prefixPath : prefixPaths) { // per prefix
           Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
@@ -294,25 +314,93 @@ public class PhysicalGenerator {
       queryPlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
       queryPlan.setPaths(paths);
       queryPlan.setDeduplicatedPaths(paths);
+
+      // get device to filter map
+      FilterOperator filterOperator = queryOperator.getFilterOperator();
+
+      if(filterOperator != null){
+        queryPlan.setDeviceToFilterMap(concatFilterByDivice(prefixPaths, filterOperator));
+      }
     } else {
       List<Path> paths = queryOperator.getSelectedPaths();
       queryPlan.setPaths(paths);
+
+      // transform filter operator to expression
+      FilterOperator filterOperator = queryOperator.getFilterOperator();
+
+      if (filterOperator != null) {
+        IExpression expression = filterOperator.transformToExpression(executor);
+        queryPlan.setExpression(expression);
+      }
     }
     generateDataTypes(queryPlan);
     deduplicate(queryPlan);
-
-    // transform filter operator to expression
-    FilterOperator filterOperator = queryOperator.getFilterOperator();
-
-    if (filterOperator != null) {
-      IExpression expression = filterOperator.transformToExpression(executor);
-      queryPlan.setExpression(expression);
-    }
 
     queryPlan.setRowLimit(queryOperator.getRowLimit());
     queryPlan.setRowOffset(queryOperator.getRowOffset());
 
     return queryPlan;
+  }
+
+  // e.g. translate "select * from root.ln.d1, root.ln.d2 where s1 < 20 AND s2 > 10" to
+  // [root.ln.d1 -> root.ln.d1.s1 < 20 AND root.ln.d1.s2 > 10,
+  //  root.ln.d2 -> root.ln.d2.s1 < 20 AND root.ln.d2.s2 > 10)]
+  private Map<String, IExpression> concatFilterByDivice(List<Path> fromPaths, FilterOperator operator)
+          throws QueryProcessException {
+    Map<String, IExpression> deviceToFilterMap = new HashMap<>();
+    // remove stars in fromPaths and get deviceId with deduplication
+    List<String> noStarDevices = removeStarsInDeviceWithUnique(fromPaths);
+    for (int i = 0; i < noStarDevices.size(); i++) {
+      FilterOperator newOperator = operator.clone();
+      newOperator = concatFilterPath(noStarDevices.get(i), newOperator);
+
+      deviceToFilterMap.put(noStarDevices.get(i), newOperator.transformToExpression(executor));
+    }
+
+    return deviceToFilterMap;
+  }
+
+  private List<String> removeStarsInDeviceWithUnique(List<Path> paths)
+          throws LogicalOptimizeException {
+    List<String> retDevices;
+    Set<String> deviceSet = new LinkedHashSet<>();
+    try {
+      for (Path path : paths) {
+        List<String> tempDS;
+        tempDS = MManager.getInstance().getDevices(path.getFullPath());
+
+        for (String subDevice : tempDS) {
+          if (!deviceSet.contains(subDevice)) {
+            deviceSet.add(subDevice);
+          }
+        }
+      }
+      retDevices = new ArrayList<>(deviceSet);
+    } catch (PathException e) {
+      throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
+    }
+    return retDevices;
+  }
+
+  private FilterOperator concatFilterPath(String prefix, FilterOperator operator) {
+    if(!operator.isLeaf()){
+      for (FilterOperator child : operator.getChildren()) {
+        concatFilterPath(prefix, child);
+      }
+      return operator;
+    }
+    BasicFunctionOperator basicOperator = (BasicFunctionOperator) operator;
+    Path filterPath = basicOperator.getSinglePath();
+
+    // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
+    if (SQLConstant.isReservedPath(filterPath) || filterPath.startWith(SQLConstant.ROOT)) {
+      return operator;
+    }
+
+    Path concatPath = filterPath.addPrefixPath(filterPath, prefix);
+    basicOperator.setSinglePath(concatPath);
+
+    return basicOperator;
   }
 
   private void generateDataTypes(QueryPlan queryPlan) throws PathException {
