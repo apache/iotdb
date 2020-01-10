@@ -34,14 +34,14 @@ public class NVMPrimitiveArrayPool {
 
   private NVMPrimitiveArrayPool() {}
 
-  public synchronized NVMDataSpace getPrimitiveDataListByType(TSDataType dataType) {
+  public synchronized NVMDataSpace getPrimitiveDataListByType(TSDataType dataType, boolean isTime) {
     long time = System.currentTimeMillis();
     ArrayDeque<NVMDataSpace> dataListQueue = primitiveArraysMap.computeIfAbsent(dataType, k ->new ArrayDeque<>());
     NVMDataSpace nvmSpace = dataListQueue.poll();
 
     long size = NVMSpaceManager.getPrimitiveTypeByteSize(dataType);
     if (nvmSpace == null) {
-      nvmSpace = NVMSpaceManager.getInstance().allocateDataSpace(size * ARRAY_SIZE, dataType);
+      nvmSpace = NVMSpaceManager.getInstance().allocateDataSpace(size * ARRAY_SIZE, dataType, isTime);
     }
 
     PerfMonitor.add("NVM.getDataList", System.currentTimeMillis() - time);
@@ -49,10 +49,7 @@ public class NVMPrimitiveArrayPool {
   }
 
   public synchronized void release(NVMDataSpace nvmSpace, TSDataType dataType) {
-    // TODO freeslotmap?
-
     primitiveArraysMap.get(dataType).add(nvmSpace);
-    NVMSpaceMetadataManager.getInstance().unregisterSpace(nvmSpace);
   }
 
 //  /**

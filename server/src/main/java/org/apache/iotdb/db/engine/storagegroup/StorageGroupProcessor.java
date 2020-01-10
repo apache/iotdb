@@ -65,6 +65,7 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -207,7 +208,9 @@ public class StorageGroupProcessor {
       throw new StorageGroupProcessorException(e);
     }
 
+    long time = System.currentTimeMillis();
     recover();
+    PerfMonitor.add("StoragaGroupProcessor.recocer", System.currentTimeMillis() - time);
   }
 
   private void recover() throws StorageGroupProcessorException {

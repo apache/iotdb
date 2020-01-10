@@ -54,6 +54,22 @@ public abstract class NVMTVList extends AbstractTVList {
   }
 
   @Override
+  public void clear() {
+    size = 0;
+    timeOffset = Long.MIN_VALUE;
+    sorted = true;
+    minTime = Long.MIN_VALUE;
+
+    for (int i = 0; i < timestamps.size(); i++) {
+      NVMSpaceMetadataManager.getInstance().unregisterTVSpace(timestamps.get(i), values.get(i));
+    }
+    clearTime();
+    clearSortedTime();
+    clearValue();
+    clearSortedValue();
+  }
+
+  @Override
   protected void clearValue() {
     if (values != null) {
       for (NVMDataSpace valueSpace : values) {
@@ -66,7 +82,7 @@ public abstract class NVMTVList extends AbstractTVList {
   @Override
   protected NVMDataSpace expandValues() {
     NVMDataSpace dataSpace = NVMPrimitiveArrayPool
-        .getInstance().getPrimitiveDataListByType(dataType);
+        .getInstance().getPrimitiveDataListByType(dataType, false);
     values.add(dataSpace);
     return dataSpace;
   }
@@ -139,7 +155,7 @@ public abstract class NVMTVList extends AbstractTVList {
   protected void checkExpansion() {
     if ((size % ARRAY_SIZE) == 0) {
       NVMDataSpace valueSpace = expandValues();
-      NVMDataSpace timeSpace = NVMPrimitiveArrayPool.getInstance().getPrimitiveDataListByType(TSDataType.INT64);
+      NVMDataSpace timeSpace = NVMPrimitiveArrayPool.getInstance().getPrimitiveDataListByType(TSDataType.INT64, true);
       timestamps.add(timeSpace);
       NVMSpaceMetadataManager.getInstance().registerTVSpace(timeSpace, valueSpace, sgId, deviceId, measurementId);
     }

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.nvm.recover.NVMMemtableRecoverPerformer;
 import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
 import org.apache.iotdb.db.rescon.TVListAllocator;
@@ -85,8 +86,13 @@ public class IoTDB implements IoTDBMBean {
     setUncaughtExceptionHandler();
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableNVM()) {
+      long time = System.currentTimeMillis();
       NVMSpaceManager.getInstance().init();
+      PerfMonitor.add("NVMSpaceManager.init", System.currentTimeMillis() - time);
+
+      time = System.currentTimeMillis();
       NVMMemtableRecoverPerformer.getInstance().init();
+      PerfMonitor.add("NVMMemtableRecoverPerformer.init", System.currentTimeMillis() - time);
     }
 
     initMManager();

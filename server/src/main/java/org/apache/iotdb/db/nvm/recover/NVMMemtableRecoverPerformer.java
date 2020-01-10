@@ -13,8 +13,12 @@ import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
 import org.apache.iotdb.db.nvm.space.NVMSpaceMetadataManager;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class NVMMemtableRecoverPerformer {
+
+  private static final Logger logger = LoggerFactory.getLogger(NVMMemtableRecoverPerformer.class);
 
   private final static NVMMemtableRecoverPerformer INSTANCE = new NVMMemtableRecoverPerformer();
 
@@ -44,6 +48,8 @@ public class NVMMemtableRecoverPerformer {
       throws IOException {
     Map<String, Map<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>>> dataMap = new HashMap<>();
     List<Integer> validTimeSpaceIndexList = metadataManager.getValidTimeSpaceIndexList();
+    logger.debug("Valid time space index num: {}", validTimeSpaceIndexList.size());
+
     for (Integer timeSpaceIndex : validTimeSpaceIndexList) {
       int valueSpaceIndex = metadataManager.getValueSpaceIndexByTimeSpaceIndex(timeSpaceIndex);
       NVMDataSpace timeSpace = spaceManager.getNVMDataSpaceByIndex(timeSpaceIndex);

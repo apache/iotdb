@@ -35,6 +35,7 @@ import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
+import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.nvm.memtable.NVMPrimitiveMemTable;
 import org.apache.iotdb.db.nvm.recover.NVMMemtableRecoverPerformer;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -145,9 +146,13 @@ public class TsFileRecoverPerformer {
     }
 
     // recover data in memory
+    long time;
     if (IoTDBDescriptor.getInstance().getConfig().isEnableNVM()) {
+      time = System.currentTimeMillis();
       reloadNVMData(restorableTsFileIOWriter);
+      PerfMonitor.add("TsFileRecoverPerformer.reloadNVMData", System.currentTimeMillis() - time);
     } else {
+      time = System.currentTimeMillis();
       redoLogs(restorableTsFileIOWriter);
 
       // clean logs
@@ -158,6 +163,7 @@ public class TsFileRecoverPerformer {
       } catch (IOException e) {
         throw new StorageGroupProcessorException(e);
       }
+      PerfMonitor.add("TsFileRecoverPerformer.redoAndCleanLogs", System.currentTimeMillis() - time);
     }
   }
 

@@ -16,7 +16,7 @@ public abstract class AbstractTVList {
   /**
    * this field is effective only in the Tvlist in a RealOnlyMemChunk.
    */
-  private long timeOffset = Long.MIN_VALUE;
+  protected long timeOffset = Long.MIN_VALUE;
 
   protected long pivotTime;
 

@@ -11,36 +11,35 @@ public class NVMDataSpace extends NVMSpace {
   private TSDataType dataType;
   private int unitSize;
 
-  NVMDataSpace(long offset, long size, ByteBuffer byteBuffer, int index, TSDataType dataType) {
+  NVMDataSpace(long offset, long size, ByteBuffer byteBuffer, int index, TSDataType dataType, boolean refresh) {
     super(offset, size, byteBuffer);
     this.index = index;
     this.dataType = dataType;
     unitSize = NVMSpaceManager.getPrimitiveTypeByteSize(dataType);
+
+    if (refresh) {
+      refreshData();
+    }
   }
 
   public int getUnitNum() {
     return (int) (size / unitSize);
   }
   
-  public void refreshData() {
-    // TODO only for Long
+  private void refreshData() {
     for (int i = 0; i < size / NVMSpaceManager.getPrimitiveTypeByteSize(TSDataType.INT64); i++) {
-      byteBuffer.putLong(i, INVALID_VALUE);
+      setData(i, INVALID_VALUE);
     }
   }
 
-  /**
-   * for Long only
-   * @return
-   */
   public int getValidUnitNum() {
+    // TODO only for time
     int count = 0;
     while (true) {
-      long v = byteBuffer.getLong(count);
+      long v = (long) getData(count);
       if (v == INVALID_VALUE) {
         break;
       }
-
       count++;
     }
     return count;

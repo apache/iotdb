@@ -59,22 +59,20 @@ public class NVMSpaceManager {
   }
 
   public synchronized NVMSpace allocateSpace(long size) throws IOException {
-    logger.debug("Try to allocate NVMSpace from {} to {}", curOffset, curOffset + size);
+    logger.trace("Try to allocate NVMSpace from {} to {}", curOffset, curOffset + size);
     NVMSpace nvmSpace = new NVMSpace(curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size));
     curOffset += size;
     return nvmSpace;
   }
 
-  public synchronized NVMDataSpace allocateDataSpace(long size, TSDataType dataType) {
+  public synchronized NVMDataSpace allocateDataSpace(long size, TSDataType dataType, boolean isTime) {
     checkIsFull();
 
     try {
-      logger.debug("Try to allocate NVMDataSpace from {} to {}", curOffset, curOffset + size);
+      logger.trace("Try to allocate NVMDataSpace from {} to {}", curOffset, curOffset + size);
       int index = curDataSpaceIndex.getAndIncrement();
       NVMDataSpace nvmSpace = new NVMDataSpace(
-          curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size), index, dataType);
-      nvmSpace.refreshData();
-      metadataManager.updateCount(curDataSpaceIndex.get());
+          curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size), index, dataType, isTime);
       curOffset += size;
       return nvmSpace;
     } catch (IOException e) {
@@ -101,8 +99,8 @@ public class NVMSpaceManager {
   }
 
   private synchronized NVMDataSpace recoverData(long offset, long size, int index, TSDataType dataType) throws IOException {
-    logger.debug("Try to recover NVMSpace from {} to {}", offset, offset + size);
-    NVMDataSpace nvmSpace = new NVMDataSpace(offset, size, nvmFileChannel.map(MAP_MODE, offset, size), index, dataType);
+    logger.trace("Try to recover NVMSpace from {} to {}", offset, offset + size);
+    NVMDataSpace nvmSpace = new NVMDataSpace(offset, size, nvmFileChannel.map(MAP_MODE, offset, size), index, dataType, false);
     return nvmSpace;
   }
 
@@ -135,5 +133,18 @@ public class NVMSpaceManager {
         throw new UnSupportedDataTypeException("DataType: " + dataType);
     }
     return size;
+  }
+
+  public static void main(String[] args) throws IOException {
+    String nvmDir = IoTDBDescriptor.getInstance().getConfig().getNvmDir();
+    String nvmFilePath = nvmDir + File.separatorChar + NVM_FILE_NAME;
+    File nvmDirFile = FSFactoryProducer.getFSFactory().getFile(nvmDir);
+    nvmDirFile.mkdirs();
+    FileChannel nvmFileChannel = new RandomAccessFile(nvmFilePath, "rw").getChannel();
+
+    ByteBuffer byteBuffer = nvmFileChannel.map(MapMode.READ_WRITE, 0, 4);
+    for (int i = 0; i < 1; i++) {
+      System.out.println(byteBuffer.getInt(i));
+    }
   }
 }

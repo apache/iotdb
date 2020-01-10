@@ -2,12 +2,20 @@ package org.apache.iotdb.db.nvm.metadata;
 
 import java.io.IOException;
 
-public class SpaceCount extends NVMSpaceMetadata {
+public class Counter extends NVMSpaceMetadata {
 
-  public SpaceCount() throws IOException {
+  public Counter() throws IOException {
   }
 
-  public void put(int v) {
+  public void increment() {
+    put(get() + 1);
+  }
+
+  public void decrement() {
+    put(get() - 1);
+  }
+
+  private void put(int v) {
     space.putInt(0, v);
   }
 
