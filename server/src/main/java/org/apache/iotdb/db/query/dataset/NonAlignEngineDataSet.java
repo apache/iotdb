@@ -49,13 +49,21 @@ public class NonAlignEngineDataSet extends QueryDataSet {
     private final ManagedSeriesReader reader;
     private BlockingQueue<Pair<PublicBAOS, PublicBAOS>> blockingQueue;
     private WatermarkEncoder encoder;
+    private int rowOffset;
+    private int fetchSize;
+    private int rowLimit;
+    private int alreadyReturnedRowNum = 0;
     
     public ReadTask(ManagedSeriesReader reader, 
         BlockingQueue<Pair<PublicBAOS, PublicBAOS>> blockingQueue,
-        WatermarkEncoder encoder) {
+        WatermarkEncoder encoder,
+        int rowOffset, int rowLimit, int fetchSize) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
       this.encoder = encoder;
+      this.rowOffset = rowOffset;
+      this.rowLimit = rowLimit;
+      this.fetchSize = fetchSize;
     }
 
     @Override
@@ -67,60 +75,79 @@ public class NonAlignEngineDataSet extends QueryDataSet {
           // if the task is submitted, there must be free space in the queue
           // so here we don't need to check whether the queue has free space
           // the reader has next batch
-          while (reader.hasNextBatch()) {
+          if (reader.hasNextBatch()) {
             BatchData batchData = reader.nextBatch();
-            // iterate until we get first batch data with valid value
-            if (batchData.isEmpty()) {
-              continue;
-            }
-            while (batchData != null && batchData.hasCurrent()) {
-              long time = batchData.currentTime();
-              ReadWriteIOUtils.write(time, timeBAOS);
-              TSDataType type = batchData.getDataType();
-              switch (type) {
-                case INT32:
-                  int intValue = batchData.getInt();
-                  if (encoder != null && encoder.needEncode(time)) {
-                    intValue = encoder.encodeInt(intValue, time);
-                  }
-                  ReadWriteIOUtils.write(intValue, valueBAOS);
-                  break;
-                case INT64:
-                  long longValue = batchData.getLong();
-                  if (encoder != null && encoder.needEncode(time)) {
-                    longValue = encoder.encodeLong(longValue, time);
-                  }
-                  ReadWriteIOUtils.write(longValue, valueBAOS);
-                  break;
-                case FLOAT:
-                  float floatValue = batchData.getFloat();
-                  if (encoder != null && encoder.needEncode(time)) {
-                    floatValue = encoder.encodeFloat(floatValue, time);
-                  }
-                  ReadWriteIOUtils.write(floatValue, valueBAOS);
-                  break;
-                case DOUBLE:
-                  double doubleValue = batchData.getDouble();
-                  if (encoder != null && encoder.needEncode(time)) {
-                    doubleValue = encoder.encodeDouble(doubleValue, time);
-                  }
-                  ReadWriteIOUtils.write(doubleValue, valueBAOS);
-                  break;
-                case BOOLEAN:
-                  ReadWriteIOUtils.write(batchData.getBoolean(),
-                          valueBAOS);
-                  break;
-                case TEXT:
-                  ReadWriteIOUtils
-                          .write(batchData.getBinary(),
-                                  valueBAOS);
-                  break;
-                default:
-                  throw new UnSupportedDataTypeException(
-                          String.format("Data type %s is not supported.", type));
+            
+            int rowCount = 0;
+            while (rowCount < fetchSize) {
+              
+              if ((rowLimit > 0 && alreadyReturnedRowNum >= rowLimit)) {
+                break;
               }
-              batchData.next();
+              
+              if (batchData != null && batchData.hasCurrent()) {
+                if (rowOffset == 0) {
+                  long time = batchData.currentTime();
+                  ReadWriteIOUtils.write(time, timeBAOS);
+                  TSDataType type = batchData.getDataType();
+                  switch (type) {
+                    case INT32:
+                      int intValue = batchData.getInt();
+                      if (encoder != null && encoder.needEncode(time)) {
+                        intValue = encoder.encodeInt(intValue, time);
+                      }
+                      ReadWriteIOUtils.write(intValue, valueBAOS);
+                      break;
+                    case INT64:
+                      long longValue = batchData.getLong();
+                      if (encoder != null && encoder.needEncode(time)) {
+                        longValue = encoder.encodeLong(longValue, time);
+                      }
+                      ReadWriteIOUtils.write(longValue, valueBAOS);
+                      break;
+                    case FLOAT:
+                      float floatValue = batchData.getFloat();
+                      if (encoder != null && encoder.needEncode(time)) {
+                        floatValue = encoder.encodeFloat(floatValue, time);
+                      }
+                      ReadWriteIOUtils.write(floatValue, valueBAOS);
+                      break;
+                    case DOUBLE:
+                      double doubleValue = batchData.getDouble();
+                      if (encoder != null && encoder.needEncode(time)) {
+                        doubleValue = encoder.encodeDouble(doubleValue, time);
+                      }
+                      ReadWriteIOUtils.write(doubleValue, valueBAOS);
+                      break;
+                    case BOOLEAN:
+                      ReadWriteIOUtils.write(batchData.getBoolean(),
+                              valueBAOS);
+                      break;
+                    case TEXT:
+                      ReadWriteIOUtils
+                              .write(batchData.getBinary(),
+                                      valueBAOS);
+                      break;
+                    default:
+                      throw new UnSupportedDataTypeException(
+                              String.format("Data type %s is not supported.", type));
+                  }
+                }
+                batchData.next();
+              }
+              else {
+                break;
+              }
+              if (rowOffset == 0) {
+                rowCount++;
+                if (rowLimit > 0) {
+                  alreadyReturnedRowNum++;
+                }
+              } else {
+                rowOffset--;
+              }
             }
+            
             Pair<PublicBAOS, PublicBAOS> timeValueBAOSPair = new Pair(timeBAOS, valueBAOS);
             
             blockingQueue.put(timeValueBAOSPair);
@@ -160,6 +187,8 @@ public class NonAlignEngineDataSet extends QueryDataSet {
   // Blocking queue list for each time value buffer pair
   private BlockingQueue<Pair<PublicBAOS, PublicBAOS>>[] blockingQueueArray;
   
+  private boolean initialized = false;
+  
   // indicate that there is no more batch data in the corresponding queue
   // in case that the consumer thread is blocked on the queue and won't get runnable any more
   // this field is not same as the `hasRemaining` in SeriesReaderWithoutValueFilter
@@ -189,17 +218,17 @@ public class NonAlignEngineDataSet extends QueryDataSet {
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
       blockingQueueArray[i] = new LinkedBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
     }
-    init();
   }
   
-  private void init() throws InterruptedException {
+  private void init(WatermarkEncoder encoder, int fetchSize) 
+      throws InterruptedException {
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
       ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
-      pool.submit(new ReadTask(reader, blockingQueueArray[i], null));
+      pool.submit(new ReadTask(reader, blockingQueueArray[i], encoder, rowOffset, rowLimit, fetchSize));
     }
-    
+    this.initialized = true;
   }
   
   /**
@@ -207,41 +236,38 @@ public class NonAlignEngineDataSet extends QueryDataSet {
    * fill time buffers and value buffers
    */
   public TSQueryNonAlignDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder) throws IOException, InterruptedException {
+    if (!initialized) {
+      init(encoder, fetchSize);
+    }
     int seriesNum = seriesReaderWithoutValueFilterList.size();
     TSQueryNonAlignDataSet tsQueryNonAlignDataSet = new TSQueryNonAlignDataSet();
 
     PublicBAOS[] timeBAOSList = new PublicBAOS[seriesNum];
     PublicBAOS[] valueBAOSList = new PublicBAOS[seriesNum];
-    int rowCount = 0;
-    while (rowCount < fetchSize) {
-
-      if ((rowLimit > 0 && alreadyReturnedRowNum >= rowLimit) || rowCount >= 1) {
-        break;
-      }
-
-      for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-        synchronized (seriesReaderWithoutValueFilterList.get(seriesIndex)) {
-          if (blockingQueueArray[seriesIndex].remainingCapacity() > 0) {
-            ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(seriesIndex);
-            // if the reader isn't being managed and still has more data,
-            // that means this read task leave the pool before because the queue has no more space
-            // now we should submit it again
-            reader.setHasRemaining(true);
-            if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
-              reader.setManagedByQueryManager(true);
-              pool.submit(new ReadTask(reader, blockingQueueArray[seriesIndex], encoder));
-            }
+    
+    for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+      synchronized (seriesReaderWithoutValueFilterList.get(seriesIndex)) {
+        if (blockingQueueArray[seriesIndex].remainingCapacity() > 0) {
+          ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(seriesIndex);
+          // if the reader isn't being managed and still has more data,
+          // that means this read task leave the pool before because the queue has no more space
+          // now we should submit it again
+          if (reader.isManagedByQueryManager() && reader.hasRemaining()) {
+            reader.setManagedByQueryManager(true);
+            pool.submit(new ReadTask(reader, blockingQueueArray[seriesIndex], 
+                encoder, rowOffset, rowLimit, fetchSize));
           }
         }
-        Pair<PublicBAOS, PublicBAOS> timevalueBAOSPair = blockingQueueArray[seriesIndex].take();
-        timeBAOSList[seriesIndex] = timevalueBAOSPair.left;
-        valueBAOSList[seriesIndex] = timevalueBAOSPair.right;
+        Pair<PublicBAOS, PublicBAOS> timevalueBAOSPair = blockingQueueArray[seriesIndex].poll();
+        if (timevalueBAOSPair != null) {
+          timeBAOSList[seriesIndex] = timevalueBAOSPair.left;
+          valueBAOSList[seriesIndex] = timevalueBAOSPair.right;
+        }
+        else {
+          timeBAOSList[seriesIndex] = new PublicBAOS();
+          valueBAOSList[seriesIndex] = new PublicBAOS();
+        }
       }
-      rowCount++;
-      if (rowLimit > 0) {
-        alreadyReturnedRowNum++;
-      }
-
     }
 
     List<ByteBuffer> timeBufferList = new ArrayList<>();

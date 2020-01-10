@@ -423,7 +423,7 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
 
   @Override
   public ResultSetMetaData getMetaData() {
-    return new IoTDBResultMetadata(columnInfoList, columnTypeList);
+    return new IoTDBResultMetadata(columnInfoList, columnTypeList, false);
   }
 
   @Override

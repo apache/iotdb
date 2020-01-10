@@ -50,6 +50,7 @@ public class QueryPlan extends PhysicalPlan {
   private List<String> measurements; // for group by device sql, e.g. temperature
   private Map<String, Set<String>> measurementsGroupByDevice; // for group by device sql, e.g. root.ln.d1 -> temperature
   private Map<String, TSDataType> dataTypeConsistencyChecker; // for group by device sql, e.g. root.ln.d1.temperature -> Float
+  private Map<String, IExpression> deviceToFilterMap; // for group by device sql
   private Map<Path, TSDataType> dataTypeMapping = new HashMap<>(); // for group by device sql
 
   public QueryPlan() {
@@ -192,4 +193,13 @@ public class QueryPlan extends PhysicalPlan {
       List<TSDataType> deduplicatedDataTypes) {
     this.deduplicatedDataTypes = deduplicatedDataTypes;
   }
+
+  public Map<String, IExpression> getDeviceToFilterMap() {
+    return deviceToFilterMap;
+  }
+
+  public void setDeviceToFilterMap(Map<String, IExpression> deviceToFilterMap) {
+    this.deviceToFilterMap = deviceToFilterMap;
+  }
+
 }

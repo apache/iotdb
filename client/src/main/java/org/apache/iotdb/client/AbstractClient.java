@@ -196,7 +196,6 @@ public abstract class AbstractClient {
 
     int colCount = resultSetMetaData.getColumnCount();
 
-
     if (res instanceof IoTDBQueryResultSet) {
       printTimestamp = !((IoTDBQueryResultSet) res).isIgnoreTimeStamp();
       align = true;
@@ -279,9 +278,13 @@ public abstract class AbstractClient {
       if (align) {
         if (printTimestamp) {
           printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR), zoneId));
-        }
-        for (int i = 2; i <= colCount; i++) {
-          printColumnData(resultSetMetaData, align, res, i, zoneId);
+          for (int i = 2; i <= colCount; i++) {
+            printColumnData(resultSetMetaData, align, res, i, zoneId);
+          }
+        } else {
+          for (int i = 1; i <= colCount; i++) {
+            printColumnData(resultSetMetaData, align, res, i, zoneId);
+          }
         }
       }
       else {
@@ -524,11 +527,17 @@ public abstract class AbstractClient {
         }
         maxValueLength = tmp;
       }
-      for (int i = 2; i <= colCount; i++) {
-        if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
-          blockLine.append(StringUtils.repeat('-', deviceColumnLength)).append("+");
-        } else {
-          blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
+      if (printTimestamp) {
+        for (int i = 2; i <= colCount; i++) {
+          if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
+            blockLine.append(StringUtils.repeat('-', deviceColumnLength)).append("+");
+          } else {
+            blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
+          }
+        }
+      } else {
+        for (int i = 1; i <= colCount; i++) {
+            blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
         }
       }
     }
@@ -558,11 +567,15 @@ public abstract class AbstractClient {
     if (align) {
       if (printTimestamp) {
         printf(formatTime, TIMESTAMP_STR);
-      }
-      for (int i = 2; i <= colCount; i++) {
-        if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
-          printf("%" + deviceColumnLength + "s|", resultSetMetaData.getColumnLabel(i));
-        } else {
+        for (int i = 2; i <= colCount; i++) {
+          if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
+            printf("%" + deviceColumnLength + "s|", resultSetMetaData.getColumnLabel(i));
+          } else {
+            printf(formatValue, resultSetMetaData.getColumnLabel(i));
+          }
+        }
+      } else {
+        for (int i = 1; i <= colCount; i++) {
           printf(formatValue, resultSetMetaData.getColumnLabel(i));
         }
       }
