@@ -26,7 +26,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
@@ -36,7 +35,6 @@ import org.junit.Test;
 
 public class IoTDBFlushQueryMergeTest {
 
-  private static IoTDB daemon;
   private static String[] sqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",
       "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -60,15 +58,12 @@ public class IoTDBFlushQueryMergeTest {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

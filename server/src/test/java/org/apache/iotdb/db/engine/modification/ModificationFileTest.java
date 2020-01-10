@@ -42,8 +42,7 @@ public class ModificationFileTest {
         new Deletion(new Path("d1", "s3"), 3, 3),
         new Deletion(new Path("d1", "s41"), 4, 4)
     };
-    try {
-      ModificationFile mFile = new ModificationFile(tempFileName);
+    try (ModificationFile mFile = new ModificationFile(tempFileName)) {
       for (int i = 0; i < 2; i++) {
         mFile.write(modifications[i]);
       }
@@ -59,7 +58,6 @@ public class ModificationFileTest {
       for (int i = 0; i < 4; i++) {
         assertEquals(modifications[i], modificationList.get(i));
       }
-      mFile.close();
     } catch (IOException e) {
       fail(e.getMessage());
     } finally {
@@ -76,8 +74,7 @@ public class ModificationFileTest {
         new Deletion(new Path("d1", "s3"), 3, 3),
         new Deletion(new Path("d1", "s41"), 4, 4),
     };
-    try {
-      ModificationFile mFile = new ModificationFile(tempFileName);
+    try (ModificationFile mFile = new ModificationFile(tempFileName)) {
       for (int i = 0; i < 2; i++) {
         mFile.write(modifications[i]);
       }
@@ -95,7 +92,6 @@ public class ModificationFileTest {
       for (int i = 0; i < 3; i++) {
         assertEquals(modifications[i], modificationList.get(i));
       }
-      mFile.close();
     } catch (IOException e) {
       fail(e.getMessage());
     } finally {
