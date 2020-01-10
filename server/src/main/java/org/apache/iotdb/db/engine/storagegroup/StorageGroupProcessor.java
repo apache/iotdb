@@ -585,8 +585,12 @@ public class StorageGroupProcessor {
         && latestTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId())
         < batchInsertPlan
         .getMaxTime()) {
+      long maxTime = Long.MIN_VALUE;
+      for (int i : results) {
+        maxTime = Math.min(maxTime, batchInsertPlan.getTimes()[i]);
+      }
       latestTimeForEachDevice.get(timePartitionId)
-          .put(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
+          .put(batchInsertPlan.getDeviceId(), maxTime);
     }
 
     // check memtable size and may async try to flush the work memtable
