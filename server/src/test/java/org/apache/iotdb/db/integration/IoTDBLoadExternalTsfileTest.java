@@ -41,7 +41,6 @@ import static org.junit.Assert.*;
 public class IoTDBLoadExternalTsfileTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLoadExternalTsfileTest.class);
-  private static IoTDB daemon;
   private static String[] insertSequenceSqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle",
       "SET STORAGE GROUP TO root.test",
@@ -115,8 +114,6 @@ public class IoTDBLoadExternalTsfileTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData(insertSequenceSqls);
@@ -124,7 +121,6 @@ public class IoTDBLoadExternalTsfileTest {
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

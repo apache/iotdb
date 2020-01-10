@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -375,7 +376,7 @@ public class TsFileResource {
   }
 
   /**
-   * clean the close flag when the file is successfully closed.
+   * clean the close flag (if existed) when the file is successfully closed.
    */
   public void cleanCloseFlag() {
     new File(file.getAbsoluteFile() + CLOSING_SUFFIX).delete();

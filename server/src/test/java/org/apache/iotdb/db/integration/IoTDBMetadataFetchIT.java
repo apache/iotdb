@@ -38,8 +38,6 @@ import static org.junit.Assert.fail;
  */
 public class IoTDBMetadataFetchIT {
 
-  private static IoTDB daemon;
-
   private DatabaseMetaData databaseMetaData;
 
   private static void insertSQL() throws ClassNotFoundException, SQLException {
@@ -65,9 +63,6 @@ public class IoTDBMetadataFetchIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertSQL();
@@ -75,7 +70,6 @@ public class IoTDBMetadataFetchIT {
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

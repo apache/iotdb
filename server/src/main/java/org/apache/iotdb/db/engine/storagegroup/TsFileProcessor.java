@@ -542,6 +542,7 @@ public class TsFileProcessor {
 
   public void close() throws TsFileProcessorException {
     try {
+      //when closing resource file, its corresponding mod file is also closed.
       tsFileResource.close();
       MultiFileLogNodeManager.getInstance()
           .deleteNode(storageGroupName + "-" + tsFileResource.getFile().getName());

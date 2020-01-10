@@ -817,7 +817,7 @@ public class StorageGroupProcessor {
     try {
       File storageGroupFolder = SystemFileFactory.INSTANCE.getFile(systemDir, storageGroupName);
       if (storageGroupFolder.exists()) {
-        FileUtils.deleteDirectory(storageGroupFolder);
+        org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
       }
     } catch (IOException e) {
       logger.error("Cannot delete the folder in storage group {}, because", storageGroupName, e);
@@ -826,16 +826,38 @@ public class StorageGroupProcessor {
     }
   }
 
+  public void closeAllResources() {
+    for (TsFileResource tsFileResource : unSequenceFileList) {
+      try {
+        tsFileResource.close();
+      } catch (IOException e) {
+        logger.error("Cannot close a TsFileResource {}", tsFileResource, e);
+      }
+    }
+    for (TsFileResource tsFileResource : sequenceFileList) {
+      try {
+        tsFileResource.close();
+      } catch (IOException e) {
+        logger.error("Cannot close a TsFileResource {}", tsFileResource, e);
+      }
+    }
+  }
+
   public void syncDeleteDataFiles() {
     waitForAllCurrentTsFileProcessorsClosed();
+    //normally, mergingModification is just need to be closed by after a merge task is finished.
+    //we close it here just for IT test.
+    if (this.mergingModification != null) {
+      try {
+        mergingModification.close();
+      } catch (IOException e) {
+        logger.error("Cannot close the mergingMod file {}", mergingModification.getFilePath(), e);
+      }
+
+    }
     writeLock();
     try {
-      for (TsFileResource tsFileResource : unSequenceFileList) {
-        tsFileResource.close();
-      }
-      for (TsFileResource tsFileResource : sequenceFileList) {
-        tsFileResource.close();
-      }
+      closeAllResources();
       List<String> folder = DirectoryManager.getInstance().getAllSequenceFileFolders();
       folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
       deleteAllSGFolders(folder);
@@ -846,8 +868,6 @@ public class StorageGroupProcessor {
       this.unSequenceFileList.clear();
       this.latestFlushedTimeForEachDevice.clear();
       this.latestTimeForEachDevice.clear();
-    } catch (IOException e) {
-      logger.error("Cannot delete files in storage group {}", storageGroupName, e);
     } finally {
       writeUnlock();
     }
@@ -858,7 +878,7 @@ public class StorageGroupProcessor {
       File storageGroupFolder = fsFactory.getFile(tsfilePath, storageGroupName);
       if (storageGroupFolder.exists()) {
         try {
-          FileUtils.deleteDirectory(storageGroupFolder);
+          org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
         } catch (IOException e) {
           logger.error("Delete TsFiles failed", e);
         }
@@ -1097,6 +1117,8 @@ public class StorageGroupProcessor {
    */
   public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
     // TODO: how to avoid partial deletion?
+    //FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
+    //mod files in mergingModification, sequenceFileList, and unsequenceFileList
     writeLock();
     mergeLock.writeLock().lock();
 
@@ -1361,6 +1383,7 @@ public class StorageGroupProcessor {
     }
   }
 
+  @SuppressWarnings("squid:S1141")
   private void updateMergeModification(TsFileResource seqFile) {
     seqFile.getWriteQueryLock().writeLock().lock();
     try {
@@ -1369,6 +1392,11 @@ public class StorageGroupProcessor {
       if (mergingModification != null) {
         for (Modification modification : mergingModification.getModifications()) {
           seqFile.getModFile().write(modification);
+        }
+        try {
+          seqFile.getModFile().close();
+        } catch (IOException e) {
+          logger.error("Cannot close the ModificationFile {}", seqFile.getModFile().getFilePath(), e);
         }
       }
     } catch (IOException e) {
@@ -1409,6 +1437,7 @@ public class StorageGroupProcessor {
       try {
         updateMergeModification(seqFile);
         if (i == seqFiles.size() - 1) {
+          //FIXME if there is an exception, the the modification file will be not closed.
           removeMergingModification();
           isMerging = false;
           mergeLog.delete();
