@@ -36,7 +36,6 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -60,7 +59,6 @@ import org.junit.Test;
  */
 public class IoTDBSequenceDataQueryIT {
 
-  private static IoTDB daemon;
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
@@ -85,8 +83,6 @@ public class IoTDBSequenceDataQueryIT {
     tsFileConfig.setGroupSizeInByte(1024 * 1024 * 100);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1024 * 100);
 
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertData();
@@ -94,7 +90,6 @@ public class IoTDBSequenceDataQueryIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     // recovery value
     tsFileConfig.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
     tsFileConfig.setPageSizeInByte(pageSizeInByte);

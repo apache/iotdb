@@ -34,7 +34,6 @@ import org.apache.iotdb.db.sync.receiver.transfer.SyncServiceImpl;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncService.Processor;
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServer;
@@ -126,14 +125,14 @@ public class SyncServerManager implements IService {
       try {
         serverTransport = new TServerSocket(
             new InetSocketAddress(conf.getRpcAddress(), conf.getSyncServerPort()));
-        if(conf.isRpcThriftCompressionEnable()) {
+        if (conf.isRpcThriftCompressionEnable()) {
           protocolFactory = new TCompactProtocol.Factory();
-        }
-        else {
+        } else {
           protocolFactory = new TBinaryProtocol.Factory();
         }
         processor = new SyncService.Processor<>(new SyncServiceImpl());
-        poolArgs = new TThreadPoolServer.Args(serverTransport);
+        poolArgs = new TThreadPoolServer.Args(serverTransport).stopTimeoutVal(
+            IoTDBDescriptor.getInstance().getConfig().getThriftServerAwaitTimeForStopService());
         poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,
             ThreadName.SYNC_CLIENT.getName());
         poolArgs.protocolFactory(protocolFactory);

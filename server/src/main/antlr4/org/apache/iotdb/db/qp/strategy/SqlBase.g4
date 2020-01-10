@@ -70,6 +70,12 @@ statement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
+    | SHOW TIMESERIES prefixPath? #showTimeseries
+    | SHOW STORAGE GROUP #showStorageGroup
+    | SHOW CHILD PATHS prefixPath? #showChildPaths
+    | SHOW DEVICES prefixPath? #showDevices
+    | COUNT TIMESERIES prefixPath (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
+    | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION #loadConfigurationStatement
     | LOAD FILE autoCreateSchema? #loadFiles
     | REMOVE FILE #removeFile
@@ -94,7 +100,19 @@ selectElements
     ;
 
 functionCall
-    : ID LR_BRACKET suffixPath RR_BRACKET
+    : functionName LR_BRACKET suffixPath RR_BRACKET
+    ;
+
+functionName
+    : MIN_TIME
+    | MAX_TIME
+    | MIN_VALUE
+    | MAX_VALUE
+    | COUNT
+    | AVG
+    | FIRST_VALUE
+    | SUM
+    | LAST_VALUE
     ;
 
 attributeClauses
@@ -642,6 +660,62 @@ MOVE
     : M O V E
     ;
 
+CHILD
+    : C H I L D
+    ;
+
+PATHS
+    : P A T H S
+    ;
+
+DEVICES
+    : D E V I C E S
+    ;
+
+COUNT
+    : C O U N T
+    ;
+
+NODES
+    : N O D E S
+    ;
+
+LEVEL
+    : L E V E L
+    ;
+
+MIN_TIME
+    : M I N UNDERLINE T I M E
+    ;
+
+MAX_TIME
+    : M A X UNDERLINE T I M E
+    ;
+
+MIN_VALUE
+    : M I N UNDERLINE V A L U E
+    ;
+
+MAX_VALUE
+    : M A X UNDERLINE V A L U E
+    ;
+
+AVG
+    : A V G
+    ;
+
+FIRST_VALUE
+    : F I R S T UNDERLINE V A L U E
+    ;
+
+SUM
+    : S U M
+    ;
+
+LAST_VALUE
+    : L A S T UNDERLINE V A L U E
+    ;
+
 DISABLE
     : D I S A B L E
     ;
@@ -649,7 +723,6 @@ DISABLE
 ALIGN
     : A L I G N
     ;
-
 //============================
 // End of the keywords list
 //============================
@@ -702,6 +775,8 @@ RS_BRACKET : ']';
 L_BRACKET : '{';
 
 R_BRACKET : '}';
+
+UNDERLINE : '_';
 
 STRING_LITERAL
    : DOUBLE_QUOTE_STRING_LITERAL

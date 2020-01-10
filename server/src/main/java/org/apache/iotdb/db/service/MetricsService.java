@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.service;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketAddress;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -104,19 +108,48 @@ public class MetricsService implements MetricsServiceMBean, IService {
     try {
       if (server != null) {
         server.stop();
+        server = null;
       }
-      if(executorService != null){
+      if (executorService != null) {
         executorService.shutdown();
-        if (!executorService.awaitTermination(60, TimeUnit.MILLISECONDS)) {
+        if (!executorService.awaitTermination(
+            3000, TimeUnit.MILLISECONDS)) {
           executorService.shutdownNow();
         }
+        executorService = null;
       }
     } catch (Exception e) {
-      logger.error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
+      logger
+          .error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(),
+              e);
       executorService.shutdownNow();
       Thread.currentThread().interrupt();
     }
+    checkAndWaitPortIsClosed();
     logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+  }
+
+  private void checkAndWaitPortIsClosed() {
+    SocketAddress socketAddress = new InetSocketAddress("localhost", getMetricsPort());
+    @SuppressWarnings("squid:S2095")
+    Socket socket = new Socket();
+    int timeout = 1;
+    int count = 10000; // 10 seconds
+    while (count > 0) {
+      try {
+        socket.connect(socketAddress, timeout);
+        count--;
+      } catch (IOException e) {
+        return;
+      } finally {
+        try {
+          socket.close();
+        } catch (IOException e) {
+          //do nothing
+        }
+      }
+    }
+    logger.error("Port {} can not be closed.", getMetricsPort());
   }
 
   private static class MetricsServiceHolder {
@@ -140,6 +173,10 @@ public class MetricsService implements MetricsServiceMBean, IService {
         Thread.currentThread().setName(ThreadName.METRICS_SERVICE.getName());
         server.start();
         server.join();
+      } catch (@SuppressWarnings("squid:S2142") InterruptedException e1) {
+        //we do not sure why InterruptedException happens, but it indeed occurs in Travis WinOS
+        logger.error(e1.getMessage(), e1);
+        stopService();
       } catch (Exception e) {
         logger.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
       }

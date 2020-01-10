@@ -25,7 +25,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -34,8 +33,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class IoTDBFillIT {
-
-  private static IoTDB daemon;
 
   private static String[] dataSet1 = new String[]{
       "SET STORAGE GROUP TO root.ln.wf01.wt01",
@@ -106,8 +103,6 @@ public class IoTDBFillIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
@@ -115,7 +110,6 @@ public class IoTDBFillIT {
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

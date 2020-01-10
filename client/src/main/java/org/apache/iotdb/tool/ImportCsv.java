@@ -302,10 +302,11 @@ public class ImportCsv extends AbstractCsvTool {
       Map<String, ArrayList<Integer>> deviceToColumn,
       List<String> colInfo)
       throws SQLException, IOException {
-    DatabaseMetaData databaseMetaData = connection.getMetaData();
+    Statement statement = connection.createStatement();
 
     for (int i = 1; i < strHeadInfo.length; i++) {
-      ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, strHeadInfo[i], null, null);
+      statement.execute("show timeseries "+ strHeadInfo[i]);
+      ResultSet resultSet= statement.getResultSet();
       if (resultSet.next()) {
         timeseriesDataType.put(strHeadInfo[i], resultSet.getString(2));
       } else {

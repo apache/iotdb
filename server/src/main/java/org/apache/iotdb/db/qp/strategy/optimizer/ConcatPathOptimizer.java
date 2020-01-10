@@ -19,10 +19,8 @@
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -113,11 +111,10 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     if (filter == null) {
       return operator;
     }
-    if(isGroupByDevice){
-      sfwOperator.setFilterOperator(concatFilterByDivice(prefixPaths, filter));
-    } else {
+    if(!isGroupByDevice){
       sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter));
     }
+    // GROUP_BY_DEVICE leaves the concatFilter to PhysicalGenerator to optimize filter without prefix first
 
     return sfwOperator;
   }
@@ -241,92 +238,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       // requirement.
       return constructBinaryFilterTreeWithAnd(noStarPaths, operator);
     }
-  }
-
-  // e.g. translate "select * from root.ln.d1, root.ln.d2 where s1 < 20 AND s2 > 10"
-  // to "select * from root.ln.d1, root.ln.d2 where
-  // (root.ln.d1.s1 < 20 AND root.ln.d1.s2 > 10) OR (root.ln.d2.s1 < 20 AND root.ln.d2.s2 > 10)"
-  private FilterOperator concatFilterByDivice(List<Path> fromPaths, FilterOperator operator)
-          throws LogicalOptimizeException {
-    // remove stars in fromPaths and get deviceId
-    List<String> noStarDevices = removeStarsInDeviceWithUnique(fromPaths);
-
-    FilterOperator filterBinaryTree = new FilterOperator(SQLConstant.KW_OR);
-    FilterOperator currentNode = filterBinaryTree;
-    FilterOperator parentNode = currentNode;
-    // to check whether duplicate
-    // e.g. SELECT * FROM root.ln.d1, root.ln.d2 where time < 10
-    // brings two 'time < 10' filter operator
-    Set<FilterOperator> operatorSet = new HashSet<>();
-    for (int i = 0; i < noStarDevices.size(); i++) {
-      FilterOperator newOperator = operator.clone();
-      newOperator = concatFilterPath(noStarDevices.get(i), newOperator);
-
-      if (!operatorSet.contains(newOperator)) {
-        if(currentNode.getChildren().size() > 0){
-          FilterOperator newInnerNode = new FilterOperator(SQLConstant.KW_OR);
-          currentNode.addChildOperator(newInnerNode);
-          parentNode = currentNode;
-          currentNode = newInnerNode;
-        }
-        currentNode.addChildOperator(newOperator);
-        operatorSet.add(newOperator);
-      }
-    }
-
-    // if 'OR' has no enough operands due to duplication
-    if(currentNode.getChildren().size() == 1){
-      if(parentNode == currentNode){
-        filterBinaryTree = currentNode.getChildren().get(0);
-      } else {
-        parentNode.getChildren().set(1, currentNode.getChildren().get(0));
-      }
-    }
-
-    return filterBinaryTree;
-  }
-
-  private List<String> removeStarsInDeviceWithUnique(List<Path> paths)
-          throws LogicalOptimizeException {
-    List<String> retDevices;
-    Set<String> deviceSet = new LinkedHashSet<>();
-    try {
-      for (Path path : paths) {
-        List<String> tempDS;
-        tempDS = MManager.getInstance().getDevices(path.getFullPath());
-
-        for (String subDevice : tempDS) {
-          if (!deviceSet.contains(subDevice)) {
-            deviceSet.add(subDevice);
-          }
-        }
-      }
-      retDevices = new ArrayList<>(deviceSet);
-    } catch (PathException e) {
-      throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
-    }
-    return retDevices;
-  }
-
-  private FilterOperator concatFilterPath(String prefix, FilterOperator operator) {
-    if(!operator.isLeaf()){
-      for (FilterOperator child : operator.getChildren()) {
-        concatFilterPath(prefix, child);
-      }
-      return operator;
-    }
-    BasicFunctionOperator basicOperator = (BasicFunctionOperator) operator;
-    Path filterPath = basicOperator.getSinglePath();
-
-    // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
-    if (SQLConstant.isReservedPath(filterPath) || filterPath.startWith(SQLConstant.ROOT)) {
-      return operator;
-    }
-
-    Path concatPath = filterPath.addPrefixPath(filterPath, prefix);
-    basicOperator.setSinglePath(concatPath);
-
-    return basicOperator;
   }
 
   private FilterOperator constructBinaryFilterTreeWithAnd(List<Path> noStarPaths,

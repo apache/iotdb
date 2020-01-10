@@ -18,19 +18,23 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.service.IoTDB;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import java.sql.*;
-import static org.junit.Assert.fail;
 
 public class IoTDBFlushQueryMergeTest {
 
-  private static IoTDB daemon;
   private static String[] sqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",
       "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -54,15 +58,12 @@ public class IoTDBFlushQueryMergeTest {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -81,7 +82,7 @@ public class IoTDBFlushQueryMergeTest {
   }
 
   @Test
-  public void selectAllSQLTest() throws ClassNotFoundException, SQLException {
+  public void selectAllSQLTest() throws ClassNotFoundException {
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
@@ -100,6 +101,58 @@ public class IoTDBFlushQueryMergeTest {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testFlushGivenGroup() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
+    String insertTemplate =
+        "INSERT INTO root.group%d(timestamp, s1, s2, s3) VALUES (%d, %d, %f, %s)";
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.group1");
+      statement.execute("SET STORAGE GROUP TO root.group2");
+      statement.execute("SET STORAGE GROUP TO root.group3");
+
+      for (int i = 1; i <= 3; i++) {
+        for (int j = 10; j < 20; j++) {
+          statement.execute(String.format(insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
+        }
+      }
+      statement.execute("FLUSH");
+
+      for (int i = 1; i <= 3; i++) {
+        for (int j = 0; j < 10; j++) {
+          statement.execute(String.format(insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
+        }
+      }
+      statement.execute("FLUSH root.group1");
+      statement.execute("FLUSH root.group2,root.group3");
+
+      for (int i = 1; i <= 3; i++) {
+        for (int j = 0; j < 30; j++) {
+          statement.execute(String.format(insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
+        }
+      }
+      statement.execute("FLUSH root.group1 true");
+      statement.execute("FLUSH root.group2,root.group3 false");
+
+      ResultSet resultSet = statement.executeQuery("SELECT * from root.group1,root.group2,root"
+          + ".group3");
+      int i = 0;
+      while (resultSet.next()) {
+        i ++;
+      }
+      assertEquals(30, i);
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
     }
   }
 }

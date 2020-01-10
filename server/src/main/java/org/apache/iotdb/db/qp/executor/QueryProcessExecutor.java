@@ -177,6 +177,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       return;
     }
     TsFileResource tsFileResource = new TsFileResource(file);
+    tsFileResource.setClosed(true);
     try {
       // check file
       RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);

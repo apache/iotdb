@@ -63,8 +63,6 @@ import org.junit.Test;
  */
 public class IoTDBSeriesReaderIT {
 
-  private static IoTDB daemon;
-
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int pageSizeInByte;
   private static int groupSizeInByte;
@@ -86,8 +84,6 @@ public class IoTDBSeriesReaderIT {
     tsFileConfig.setGroupSizeInByte(1024 * 1024 * 150);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
 
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertData();
@@ -99,7 +95,6 @@ public class IoTDBSeriesReaderIT {
   @AfterClass
   public static void tearDown() throws Exception {
     connection.close();
-    daemon.stop();
     // recovery value
     tsFileConfig.setMaxNumberOfPointsInPage(1024 * 1024 * 150);
     tsFileConfig.setPageSizeInByte(pageSizeInByte);

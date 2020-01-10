@@ -96,7 +96,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       } catch (IOException e) {
         LOGGER.error("Something gets wrong while reading from the series reader: ", e);
       } catch (Exception e) {
-        e.printStackTrace();
+        LOGGER.error("Something gets wrong: ", e);
       }
     }
   }
