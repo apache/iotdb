@@ -82,7 +82,7 @@ public class RemoteSimpleSeriesReader implements ManagedSeriesReader {
   }
 
   private void fetchPoint() throws IOException {
-    if (!(cachedBatch == null || !cachedBatch.hasCurrent()) && hasNextBatch()) {
+    if ((cachedBatch == null || !cachedBatch.hasCurrent()) && hasNextBatch()) {
       cachedBatch = nextBatch();
     }
     if (cachedBatch != null && cachedBatch.hasCurrent()) {
@@ -147,6 +147,9 @@ public class RemoteSimpleSeriesReader implements ManagedSeriesReader {
       }
     }
     cachedBatch = SerializeUtils.deserializeBatchData(fetchResult.get());
-    logger.debug("Fetched a batch from {}, size:{}", source, cachedBatch.length());
+    if (logger.isDebugEnabled()) {
+      logger.debug("Fetched a batch from {}, size:{}", source,
+          cachedBatch == null ? 0 : cachedBatch.length());
+    }
   }
 }

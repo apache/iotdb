@@ -137,6 +137,10 @@ public class SerializeUtils {
   }
 
   public static BatchData deserializeBatchData(ByteBuffer buffer) {
+    if (buffer == null || buffer.limit() == 0) {
+      return null;
+    }
+
     int length = buffer.getInt();
     TSDataType dataType = TSDataType.values()[buffer.get()];
     BatchData batchData = new BatchData(dataType);

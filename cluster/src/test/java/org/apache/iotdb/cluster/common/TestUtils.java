@@ -16,6 +16,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class TestUtils {
@@ -71,5 +73,62 @@ public class TestUtils {
     TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
     return new MeasurementSchema(path, dataType, encoding, CompressionType.UNCOMPRESSED,
         Collections.emptyMap());
+  }
+
+  public static BatchData genBatchData(TSDataType dataType, int offset, int size) {
+    BatchData batchData = new BatchData(dataType);
+    for (long i = offset; i < offset + size; i++) {
+      switch (dataType) {
+        case DOUBLE:
+          batchData.putDouble(i, i * 1.0);
+          break;
+        case TEXT:
+          batchData.putBinary(i, new Binary(String.valueOf(i)));
+          break;
+        case INT64:
+          batchData.putLong(i, i);
+          break;
+        case INT32:
+          batchData.putInt(i, (int) i);
+          break;
+        case FLOAT:
+          batchData.putFloat(i, i * 1.0f);
+          break;
+        case BOOLEAN:
+          batchData.putBoolean(i, (i % 2) == 1);
+          break;
+      }
+    }
+    return batchData;
+  }
+
+  public static boolean batchEquals(BatchData batchA, BatchData batchB) {
+    if (batchA == batchB) {
+      return true;
+    }
+    if (batchA == null || batchB == null) {
+      return false;
+    }
+    if (!batchA.getDataType().equals(batchB.getDataType())) {
+      return false;
+    }
+    if (batchA.length() != batchB.length()) {
+      return false;
+    }
+    while (batchA.hasCurrent()) {
+      if (!batchB.hasCurrent()) {
+        return false;
+      }
+      long timeA = batchA.currentTime();
+      Object valueA = batchA.currentValue();
+      long timeB = batchB.currentTime();
+      Object valueB = batchB.currentValue();
+      if (timeA != timeB || !valueA.equals(valueB)) {
+        return false;
+      }
+      batchA.next();
+      batchB.next();
+    }
+    return true;
   }
 }
