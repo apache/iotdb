@@ -581,14 +581,13 @@ public class StorageGroupProcessor {
     boolean result = tsFileProcessor.insertBatch(batchInsertPlan, indexes, results);
 
     // try to update the latest time of the device of this tsRecord
+    long maxTime = Long.MIN_VALUE;
+    for (int i : results) {
+      maxTime = Math.min(maxTime, batchInsertPlan.getTimes()[i]);
+    }
     if (sequence && result
         && latestTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId())
-        < batchInsertPlan
-        .getMaxTime()) {
-      long maxTime = Long.MIN_VALUE;
-      for (int i : results) {
-        maxTime = Math.min(maxTime, batchInsertPlan.getTimes()[i]);
-      }
+        < maxTime) {
       latestTimeForEachDevice.get(timePartitionId)
           .put(batchInsertPlan.getDeviceId(), maxTime);
     }
