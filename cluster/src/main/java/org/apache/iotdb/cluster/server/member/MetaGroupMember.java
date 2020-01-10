@@ -1152,7 +1152,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @param path a path with wildcard
    * @return all paths after removing wildcards in the path
    */
-  public List<String> getAllPaths(String storageGroupName, String path) throws MetadataException {
+  public List<String> getMatchedPaths(String storageGroupName, String path) throws MetadataException {
     // find the data group that should hold the timeseries schemas of the storage group
     PartitionGroup partitionGroup = partitionTable.route(storageGroupName, 0);
     if (partitionGroup.contains(thisNode)) {

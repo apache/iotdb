@@ -107,8 +107,11 @@ public class SchemaUtils {
       case COLUMN_PRIVILEGE:
       case COLUMN_STORAGE_GROUP:
         return TSDataType.TEXT;
+      case SQLConstant.RESERVED_TIME:
       case COLUMN_TTL:
         return TSDataType.INT64;
+      case SQLConstant.RESERVED_FREQ:
+        return TSDataType.FLOAT;
       default:
         // do nothing
     }

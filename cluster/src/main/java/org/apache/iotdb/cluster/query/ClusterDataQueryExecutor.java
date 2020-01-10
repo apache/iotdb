@@ -9,7 +9,6 @@ import java.util.List;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.EngineExecutor;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
@@ -19,7 +18,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public class ClusterDataQueryExecutor extends EngineExecutor {
 
@@ -44,11 +42,6 @@ public class ClusterDataQueryExecutor extends EngineExecutor {
   protected IReaderByTimestamp getReaderByTimestamp(Path path, QueryContext context)
       throws IOException, StorageEngineException {
     return metaGroupMember.getReaderByTimestamp(path, context);
-  }
-
-  @Override
-  protected TSDataType getDataType(String path) throws MetadataException {
-    return metaGroupMember.getSeriesType(path);
   }
 
   @Override

@@ -19,9 +19,10 @@
 package org.apache.iotdb.db.query.executor;
 
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.NewEngineDataSetWithoutValueFilter;
@@ -36,10 +37,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * IoTDB query executor.
@@ -102,11 +99,6 @@ public class EngineExecutor implements DataQueryExecutor {
     } catch (InterruptedException e) {
       throw new StorageEngineException(e.getMessage());
     }
-  }
-
-
-  protected TSDataType getDataType(String path) throws MetadataException {
-    return MManager.getInstance().getSeriesType(path);
   }
 
   /**

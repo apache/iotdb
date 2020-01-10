@@ -5,13 +5,14 @@
 package org.apache.iotdb.cluster.common;
 
 import java.util.NoSuchElementException;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-public class TestManagedSeriesReader implements ManagedSeriesReader {
+public class TestManagedSeriesReader implements ManagedSeriesReader, IReaderByTimestamp {
 
   private BatchData batchData;
   private boolean batchUsed = false;
@@ -43,6 +44,20 @@ public class TestManagedSeriesReader implements ManagedSeriesReader {
   @Override
   public void setHasRemaining(boolean hasRemaining) {
     this.hasRemaining = hasRemaining;
+  }
+
+  @Override
+  public Object getValueInTimestamp(long timestamp) {
+    while (batchData.hasCurrent()) {
+      long currTime = batchData.currentTime();
+      if (currTime == timestamp) {
+        return batchData.currentValue();
+      } else if (currTime > timestamp) {
+        break;
+      }
+      batchData.next();
+    }
+    return null;
   }
 
   @Override
