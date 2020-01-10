@@ -32,7 +32,6 @@ import static org.junit.Assert.fail;
 
 public class IoTDBQueryDemoIT {
 
-  private static IoTDB daemon;
   private static String[] sqls = new String[]{
       "set storage group to root.ln",
       "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
@@ -107,8 +106,6 @@ public class IoTDBQueryDemoIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     importData();
@@ -116,7 +113,6 @@ public class IoTDBQueryDemoIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

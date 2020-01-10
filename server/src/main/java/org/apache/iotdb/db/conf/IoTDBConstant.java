@@ -81,5 +81,4 @@ public class IoTDBConstant {
   public static final String TSFILE_NAME_SEPARATOR = "-";
 
   public static final int MEMTABLE_NUM_IN_EACH_STORAGE_GROUP = 4;
-
 }

@@ -458,6 +458,10 @@ public class IoTDBConfig {
    */
   private long defaultTTL = Long.MAX_VALUE;
 
+  //just for test
+  //wait for 60 second by default.
+  private int thriftServerAwaitTimeForStopService = 60;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -1189,6 +1193,10 @@ public class IoTDBConfig {
     return hdfsIp.split(",");
   }
 
+  String getRawHDFSIp() {
+    return hdfsIp;
+  }
+
   public void setHdfsIp(String[] hdfsIp) {
     this.hdfsIp = String.join(",", hdfsIp);
   }
@@ -1219,6 +1227,10 @@ public class IoTDBConfig {
 
   public String[] getDfsHaNamenodes() {
     return dfsHaNamenodes.split(",");
+  }
+
+  String getRawDfsHaNamenodes() {
+    return dfsHaNamenodes;
   }
 
   public void setDfsHaNamenodes(String[] dfsHaNamenodes) {
@@ -1271,5 +1283,13 @@ public class IoTDBConfig {
 
   public void setDefaultTTL(long defaultTTL) {
     this.defaultTTL = defaultTTL;
+  }
+
+  public int getThriftServerAwaitTimeForStopService() {
+    return thriftServerAwaitTimeForStopService;
+  }
+
+  public void setThriftServerAwaitTimeForStopService(int thriftServerAwaitTimeForStopService) {
+    this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
   }
 }
