@@ -49,7 +49,7 @@ public class IoTDBAggregationIT {
 
   private static final String TIMESTAMP_STR = "Time";
   private static final String TEMPERATURE_STR = "root.ln.wf01.wt01.temperature";
-  private static IoTDB daemon;
+
   private static String[] creationSqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",
       "SET STORAGE GROUP TO root.vehicle.d1",
@@ -86,8 +86,6 @@ public class IoTDBAggregationIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -96,7 +94,6 @@ public class IoTDBAggregationIT {
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
   }

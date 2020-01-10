@@ -161,6 +161,7 @@ public class StorageEngine implements IService {
     syncCloseAllProcessor();
     ttlCheckThread.shutdownNow();
     recoveryThreadPool.shutdownNow();
+    this.reset();
     try {
       ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
@@ -265,6 +266,8 @@ public class StorageEngine implements IService {
     logger.info("Start closing all storage group processor");
     for (StorageGroupProcessor processor : processorMap.values()) {
       processor.waitForAllCurrentTsFileProcessorsClosed();
+      //TODO do we need to wait for all merging tasks to be finished here?
+      processor.closeAllResources();
     }
   }
 
@@ -411,6 +414,7 @@ public class StorageEngine implements IService {
    */
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
+    syncCloseAllProcessor();
     for (String storageGroup : MManager.getInstance().getAllStorageGroupNames()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }

@@ -25,9 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
@@ -57,6 +55,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
 
   private List<String> deduplicatedMeasurementColumns;
   private Map<String, Set<String>> measurementColumnsGroupByDevice;
+  private Map<String, IExpression> deviceToFilterMap;
 
   // group-by-time parameters
   private long unit;
@@ -85,11 +84,11 @@ public class DeviceIterateDataSet extends QueryDataSet {
     this.queryRouter = queryRouter;
     this.context = context;
     this.measurementColumnsGroupByDevice = queryPlan.getMeasurementsGroupByDevice();
+    this.deviceToFilterMap = queryPlan.getDeviceToFilterMap();
 
     if (queryPlan instanceof GroupByPlan) {
       this.dataSetType = DataSetType.GROUPBY;
       // assign parameters
-      this.expression = queryPlan.getExpression();
       this.unit = ((GroupByPlan) queryPlan).getUnit();
       this.slidingStep = ((GroupByPlan) queryPlan).getSlidingStep();
       this.startTime = ((GroupByPlan) queryPlan).getStartTime();
@@ -97,8 +96,6 @@ public class DeviceIterateDataSet extends QueryDataSet {
 
     } else if (queryPlan instanceof AggregationPlan) {
       this.dataSetType = DataSetType.AGGREGATE;
-      // assign parameters
-      this.expression = queryPlan.getExpression();
 
     } else if (queryPlan instanceof FillQueryPlan) {
       this.dataSetType = DataSetType.FILL;
@@ -107,8 +104,6 @@ public class DeviceIterateDataSet extends QueryDataSet {
       this.fillType = ((FillQueryPlan) queryPlan).getFillType();
     } else {
       this.dataSetType = DataSetType.QUERY;
-      // assign parameters
-      this.expression = queryPlan.getExpression();
     }
 
     this.curDataSetInitialized = false;
@@ -164,6 +159,11 @@ public class DeviceIterateDataSet extends QueryDataSet {
           tsDataTypes.add(tsDataTypeMap.get(path));
           executePaths.add(path);
         }
+      }
+
+      // get filter to execute for the current device
+      if(deviceToFilterMap != null){
+        this.expression = deviceToFilterMap.get(currentDevice);
       }
 
       try {

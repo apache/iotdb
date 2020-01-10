@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
@@ -32,8 +31,6 @@ import static org.apache.iotdb.db.integration.Constant.*;
 import static org.junit.Assert.*;
 
 public class IOTDBGroupByInnerIntervalIT {
-
-  private static IoTDB daemon;
 
   private static String[] dataSet1 = new String[]{
           "SET STORAGE GROUP TO root.ln.wf01.wt01",
@@ -101,8 +98,6 @@ public class IOTDBGroupByInnerIntervalIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
@@ -110,7 +105,6 @@ public class IOTDBGroupByInnerIntervalIT {
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

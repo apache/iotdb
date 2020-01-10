@@ -43,7 +43,6 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
@@ -56,7 +55,6 @@ public class FileLoaderTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileLoaderTest.class);
   private static final String SG_NAME = "root.sg";
-  private static IoTDB daemon;
   private String dataDir;
   private IFileLoader fileLoader;
 
@@ -64,8 +62,6 @@ public class FileLoaderTest {
   public void setUp()
       throws IOException, InterruptedException, StartupException, DiskSpaceInsufficientException, MetadataException {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
     dataDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
         .getParentFile().getAbsolutePath();
@@ -83,7 +79,6 @@ public class FileLoaderTest {
 
   @After
   public void tearDown() throws InterruptedException, IOException, StorageEngineException {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

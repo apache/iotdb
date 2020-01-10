@@ -28,7 +28,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -43,8 +42,6 @@ import org.junit.Test;
  * IoTDB server should be defined as integration test.
  */
 public class IoTDBMultiSeriesIT {
-
-  private static IoTDB daemon;
 
   private static boolean testFlag = Constant.testFlag;
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
@@ -70,8 +67,6 @@ public class IoTDBMultiSeriesIT {
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1000);
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(100);
 
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertData();
@@ -79,7 +74,6 @@ public class IoTDBMultiSeriesIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     // recovery value
     tsFileConfig.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
     tsFileConfig.setPageSizeInByte(pageSizeInByte);

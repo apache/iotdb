@@ -111,6 +111,11 @@ public class LogReplayer {
           "Cannot replay logs for query processor exception" + e.getMessage());
     } finally {
       logReader.close();
+      try {
+        modFile.close();
+      } catch (IOException e) {
+        logger.error("Canno close the modifications file {}", modFile.getFilePath(), e);
+      }
     }
     tempStartTimeMap.forEach((k, v) -> currentTsFileResource.updateStartTime(k, v));
     tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateEndTime(k, v));
