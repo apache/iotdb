@@ -418,6 +418,7 @@ public class PhysicalGenerator {
   }
 
   private void deduplicate(QueryPlan queryPlan) {
+    //The deduplication of a GroupByDevice query is done in the dataset
     if (queryPlan.isGroupByDevice()) {
       return;
     }
