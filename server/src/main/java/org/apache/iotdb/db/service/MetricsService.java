@@ -89,11 +89,20 @@ public class MetricsService implements MetricsServiceMBean, IService {
     metricsWebUI.initialize();
     server = metricsWebUI.getServer(port);
     metricsSystem.start();
-    executorService.execute(new MetricsServiceThread(server));
-    logger.info("{}: start {} successfully, listening on ip {} port {}",
-        IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
-        IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-        IoTDBDescriptor.getInstance().getConfig().getMetricsPort());
+    try {
+      executorService.execute(new MetricsServiceThread(server));
+      logger.info("{}: start {} successfully, listening on ip {} port {}",
+          IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
+          IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+          IoTDBDescriptor.getInstance().getConfig().getMetricsPort());
+    } catch (NullPointerException e) {
+      //issue IOTDB-414, we need to stop the service.
+      logger.error("{}: start {} failed, listening on ip {} port {}",
+          IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
+          IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+          IoTDBDescriptor.getInstance().getConfig().getMetricsPort());
+      stopService();
+    }
   }
 
   @Override
