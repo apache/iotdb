@@ -73,6 +73,4 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
     return super.nextBatch();
   }
 
-  public void close() {
-  }
 }

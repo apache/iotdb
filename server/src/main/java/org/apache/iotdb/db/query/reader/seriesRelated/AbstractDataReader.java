@@ -179,6 +179,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     }
 
     isCurrentChunkReaderInit = false;
+    chunkMetaData.getChunkLoader().close();
     hasCachedNextChunk = hasCachedNextPage;
     return hasCachedNextPage;
   }
@@ -496,6 +497,12 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     public VersionPair(long version, T data) {
       this.version = version;
       this.data = data;
+    }
+  }
+
+  public void close() throws IOException {
+    if (chunkMetaData != null) {
+      chunkMetaData.getChunkLoader().close();
     }
   }
 }
