@@ -31,7 +31,11 @@ IOTDB_CONF=${IOTDB_HOME}/conf
 # IOTDB_LOGS=${IOTDB_HOME}/logs
 
 if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
-    . "$IOTDB_CONF/iotdb-env.sh"
+    if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
+      . "$IOTDB_CONF/iotdb-env.sh" "printgc"
+    else
+        . "$IOTDB_CONF/iotdb-env.sh"
+    fi
 else
     echo "can't find $IOTDB_CONF/iotdb-env.sh"
 fi

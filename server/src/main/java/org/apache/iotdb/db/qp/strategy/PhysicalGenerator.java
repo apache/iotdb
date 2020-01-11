@@ -139,7 +139,8 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_STORAGE_GROUP:
             return new ShowPlan(ShowContentType.STORAGE_GROUP);
           case SQLConstant.TOK_DEVICES:
-            return new ShowDevicesPlan(ShowContentType.DEVICES, ((ShowDevicesOperator) operator).getPath());
+            return new ShowDevicesPlan(ShowContentType.DEVICES,
+                ((ShowDevicesOperator) operator).getPath());
           case SQLConstant.TOK_COUNT_NODE_TIMESERIES:
             return new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,
                 ((CountOperator) operator).getPath(), ((CountOperator) operator).getLevel());
@@ -225,7 +226,8 @@ public class PhysicalGenerator {
           Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
           Set<String> tmpDeviceSet = new HashSet<>();
           try {
-            List<String> actualPaths = executor.getAllMatchedPaths(fullPath.getFullPath());  // remove stars to get actual paths
+            List<String> actualPaths = executor
+                .getAllMatchedPaths(fullPath.getFullPath());  // remove stars to get actual paths
             for (String pathStr : actualPaths) {
               Path path = new Path(pathStr);
               String device = path.getDevice();
@@ -259,9 +261,9 @@ public class PhysicalGenerator {
               if (dataTypeConsistencyChecker.containsKey(measurementChecked)) {
                 if (!dataType.equals(dataTypeConsistencyChecker.get(measurementChecked))) {
                   throw new QueryProcessException(
-                          "The data types of the same measurement column should be the same across "
-                                  + "devices in GROUP_BY_DEVICE sql. For more details please refer to the "
-                                  + "SQL document.");
+                      "The data types of the same measurement column should be the same across "
+                          + "devices in GROUP_BY_DEVICE sql. For more details please refer to the "
+                          + "SQL document.");
                 }
               } else {
                 dataTypeConsistencyChecker.put(measurementChecked, dataType);
@@ -313,12 +315,11 @@ public class PhysicalGenerator {
       queryPlan.setMeasurementsGroupByDevice(measurementsGroupByDevice);
       queryPlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
       queryPlan.setPaths(paths);
-      queryPlan.setDeduplicatedPaths(paths);
 
       // get device to filter map
       FilterOperator filterOperator = queryOperator.getFilterOperator();
 
-      if(filterOperator != null){
+      if (filterOperator != null) {
         queryPlan.setDeviceToFilterMap(concatFilterByDivice(prefixPaths, filterOperator));
       }
     } else {
@@ -345,8 +346,9 @@ public class PhysicalGenerator {
   // e.g. translate "select * from root.ln.d1, root.ln.d2 where s1 < 20 AND s2 > 10" to
   // [root.ln.d1 -> root.ln.d1.s1 < 20 AND root.ln.d1.s2 > 10,
   //  root.ln.d2 -> root.ln.d2.s1 < 20 AND root.ln.d2.s2 > 10)]
-  private Map<String, IExpression> concatFilterByDivice(List<Path> fromPaths, FilterOperator operator)
-          throws QueryProcessException {
+  private Map<String, IExpression> concatFilterByDivice(List<Path> fromPaths,
+      FilterOperator operator)
+      throws QueryProcessException {
     Map<String, IExpression> deviceToFilterMap = new HashMap<>();
     // remove stars in fromPaths and get deviceId with deduplication
     List<String> noStarDevices = removeStarsInDeviceWithUnique(fromPaths);
@@ -361,7 +363,7 @@ public class PhysicalGenerator {
   }
 
   private List<String> removeStarsInDeviceWithUnique(List<Path> paths)
-          throws LogicalOptimizeException {
+      throws LogicalOptimizeException {
     List<String> retDevices;
     Set<String> deviceSet = new LinkedHashSet<>();
     try {
@@ -383,7 +385,7 @@ public class PhysicalGenerator {
   }
 
   private FilterOperator concatFilterPath(String prefix, FilterOperator operator) {
-    if(!operator.isLeaf()){
+    if (!operator.isLeaf()) {
       for (FilterOperator child : operator.getChildren()) {
         concatFilterPath(prefix, child);
       }
@@ -416,11 +418,13 @@ public class PhysicalGenerator {
   }
 
   private void deduplicate(QueryPlan queryPlan) {
+    //The deduplication of a GroupByDevice query is done in the dataset
+    if (queryPlan.isGroupByDevice()) {
+      return;
+    }
     if (queryPlan instanceof AggregationPlan) {
-      if (!queryPlan.isGroupByDevice()) {
-        AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
-        deduplicateAggregation(aggregationPlan);
-      }
+      AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
+      deduplicateAggregation(aggregationPlan);
       return;
     }
     List<Path> paths = queryPlan.getPaths();

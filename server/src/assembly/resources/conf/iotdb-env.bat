@@ -54,24 +54,27 @@ for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
 	set BIT_VERSION=%%l
 )
 IF "%BIT_VERSION%" == "64-Bit" (
-  rem 64bit, Maximum heap size
-  set MAX_HEAP_SIZE="2G"
-  rem 64bit, Minimum heap size
-  set HEAP_NEWSIZE="2G"
+	rem 64-bit Java
+	echo Detect 64-bit Java, maximum memory allocation pool = 2GB, initial memory allocation pool = 2GB
+	set IOTDB_HEAP_OPTS=-Xmx2G -Xms2G
 ) ELSE (
-  rem 32bit, Maximum heap size
-  set MAX_HEAP_SIZE="512M"
-  rem 32bit, Minimum heap size
-  set HEAP_NEWSIZE="512M"
+	rem 32-bit Java
+	echo Detect 32-bit Java, maximum memory allocation pool = 512MB, initial memory allocation pool = 512MB
+	set IOTDB_HEAP_OPTS=-Xmx512M -Xms512M
 )
-
-@REM MAX_HEAP_SIZE="2G"
-@REM HEAP_NEWSIZE="2G"
-
-set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE%
 
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%
 
 :end_config_setting
+@REM set gc log.
+IF "%1" equ "printgc" (
+	IF %JAVA_VERSION% == 8 (
+	    md %IOTDB_HOME%\logs
+		set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Xloggc:"%IOTDB_HOME%\logs\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails  -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
+	) ELSE (
+		md %IOTDB_HOME%\logs
+		set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS%  -Xlog:gc=info,heap*=trace,age*=debug,safepoint=info,promotion*=trace:file="%IOTDB_HOME%\logs\gc.log":time,uptime,pid,tid,level:filecount=10,filesize=10485760
+	)
+)
 echo If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).
