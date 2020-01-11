@@ -478,15 +478,17 @@ public abstract class AbstractClient {
     } else {
       blockLine.append("+");
     }
-    if (resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
-      maxValueLength = measurementColumnLength;
-    } else {
-      int tmp = Integer.MIN_VALUE;
-      for (int i = 1; i <= colCount; i++) {
-        int len = resultSetMetaData.getColumnLabel(i).length();
-        tmp = Math.max(tmp, len);
+    if(printTimestamp) {
+      if (resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
+        maxValueLength = measurementColumnLength;
+      } else {
+        int tmp = Integer.MIN_VALUE;
+        for (int i = 1; i <= colCount; i++) {
+          int len = resultSetMetaData.getColumnLabel(i).length();
+          tmp = Math.max(tmp, len);
+        }
+        maxValueLength = tmp;
       }
-      maxValueLength = tmp;
     }
     if(printTimestamp) {
       for (int i = 2; i <= colCount; i++) {
