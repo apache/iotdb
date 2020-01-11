@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.reader.seriesRelated;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
@@ -67,6 +68,8 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
   private final List<ChunkMetaData> seqChunkMetadatas = new ArrayList<>();
   private final TreeSet<ChunkMetaData> unseqChunkMetadatas = new TreeSet<>(
       Comparator.comparingLong(ChunkMetaData::getStartTime));
+
+  private final List<IChunkLoader> openedChunkLoaders = new LinkedList<>();
 
   protected boolean hasCachedNextChunk;
   private boolean isCurrentChunkReaderInit;
@@ -234,6 +237,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     }
     IChunkReader chunkReader = null;
     IChunkLoader chunkLoader = metaData.getChunkLoader();
+    openedChunkLoaders.add(chunkLoader);
     if (chunkLoader instanceof MemChunkLoader) {
       MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
       chunkReader = new MemChunkReader(memChunkLoader.getChunk(), filter);
@@ -503,6 +507,9 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
   public void close() throws IOException {
     if (chunkMetaData != null) {
       chunkMetaData.getChunkLoader().close();
+    }
+    for (int i = 0; i < openedChunkLoaders.size(); i++) {
+      openedChunkLoaders.get(i).close();
     }
   }
 }
