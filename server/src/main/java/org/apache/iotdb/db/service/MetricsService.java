@@ -96,7 +96,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
           IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
           IoTDBDescriptor.getInstance().getConfig().getMetricsPort());
     } catch (NullPointerException e) {
-      //issue IOTDB-414, we need to stop the service.
+      //issue IOTDB-415, we need to stop the service.
       logger.error("{}: start {} failed, listening on ip {} port {}",
           IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
           IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
