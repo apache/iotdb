@@ -71,9 +71,11 @@ public class MergeTaskTest extends MergeTest {
 
     QueryContext context = new QueryContext();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    List<TsFileResource> list = new ArrayList<>();
+    list.add(seqResources.get(0));
     RawDataReaderWithoutValueFilter tsFilesReader = new RawDataReaderWithoutValueFilter(path,
         measurementSchemas[0].getType(),
-        null, context);
+        null, context, list);
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
@@ -94,8 +96,10 @@ public class MergeTaskTest extends MergeTest {
 
     QueryContext context = new QueryContext();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    List<TsFileResource> list = new ArrayList<>();
+    list.add(seqResources.get(0));
     RawDataReaderWithoutValueFilter tsFilesReader = new RawDataReaderWithoutValueFilter(path,
-        measurementSchemas[0].getType(), null, context);
+        measurementSchemas[0].getType(), null, context, list);
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
@@ -141,8 +145,10 @@ public class MergeTaskTest extends MergeTest {
 
     QueryContext context = new QueryContext();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    List<TsFileResource> list = new ArrayList<>();
+    list.add(seqResources.get(0));
     RawDataReaderWithoutValueFilter tsFilesReader = new RawDataReaderWithoutValueFilter(path,
-        measurementSchemas[0].getType(), null, context);
+        measurementSchemas[0].getType(), null, context, list);
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
@@ -167,8 +173,10 @@ public class MergeTaskTest extends MergeTest {
 
     QueryContext context = new QueryContext();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    List<TsFileResource> list = new ArrayList<>();
+    list.add(seqResources.get(0));
     RawDataReaderWithoutValueFilter tsFilesReader = new RawDataReaderWithoutValueFilter(path,
-        measurementSchemas[0].getType(), null, context);
+        measurementSchemas[0].getType(), null, context, list);
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
@@ -189,8 +197,10 @@ public class MergeTaskTest extends MergeTest {
 
     QueryContext context = new QueryContext();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    List<TsFileResource> list = new ArrayList<>();
+    list.add(seqResources.get(0));
     RawDataReaderWithoutValueFilter tsFilesReader = new RawDataReaderWithoutValueFilter(path,
-        measurementSchemas[0].getType(), null, context);
+        measurementSchemas[0].getType(), null, context, list);
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
