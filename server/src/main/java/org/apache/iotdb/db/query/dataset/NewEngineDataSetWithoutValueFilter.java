@@ -47,10 +47,12 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
     private final ManagedSeriesReader reader;
     private BlockingQueue<BatchData> blockingQueue;
+    private final int index;
 
-    public ReadTask(ManagedSeriesReader reader, BlockingQueue<BatchData> blockingQueue) {
+    public ReadTask(ManagedSeriesReader reader, BlockingQueue<BatchData> blockingQueue, int index) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
+      this.index = index;
     }
 
     @Override
@@ -61,26 +63,37 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           // so here we don't need to check whether the queue has free space
           // the reader has next batch
           while (reader.hasNextBatch()) {
+            LOGGER.info("Reader-{} start getting next batch data", index);
             BatchData batchData = reader.nextBatch();
+            LOGGER.info("Reader-{} end getting next batch data", index);
             // iterate until we get first batch data with valid value
             if (batchData.isEmpty()) {
+              LOGGER.info("Reader-{} got empty batch data", index);
               continue;
             }
+            LOGGER.info("Reader-{} start putting normal batch data", index);
             blockingQueue.put(batchData);
+            LOGGER.info("Reader-{} end putting normal batch data", index);
             // if the queue also has free space, just submit another itself
             if (blockingQueue.remainingCapacity() > 0) {
+              LOGGER.info("self start submitting reader-{} task", index);
               pool.submit(this);
+              LOGGER.info("self end submitting reader-{} task", index);
             }
             // the queue has no more space
             // remove itself from the QueryTaskPoolManager
             else {
+              LOGGER.info("self start removing reader-{} task", index);
               reader.setManagedByQueryManager(false);
+              LOGGER.info("self end removing reader-{} task", index);
             }
             return;
           }
           // there are no batch data left in this reader
           // put the signal batch data into queue
+          LOGGER.info("Reader-{} start putting signal batch data", index);
           blockingQueue.put(SignalBatchData.getInstance());
+          LOGGER.info("Reader-{} end putting signal batch data", index);
           // set the hasRemaining field in reader to false
           // tell the Consumer not to submit another task for this reader any more
           reader.setHasRemaining(false);
@@ -150,7 +163,9 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
-      pool.submit(new ReadTask(reader, blockingQueueArray[i]));
+      LOGGER.info("master start initializing reader-{} task", i);
+      pool.submit(new ReadTask(reader, blockingQueueArray[i], i));
+      LOGGER.info("master end initializing reader-{} task", i);
     }
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
       fillCache(i);
@@ -349,7 +364,9 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           // now we should submit it again
           if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
             reader.setManagedByQueryManager(true);
-            pool.submit(new ReadTask(reader, blockingQueueArray[seriesIndex]));
+            LOGGER.info("master start submitting reader-{} task", seriesIndex);
+            pool.submit(new ReadTask(reader, blockingQueueArray[seriesIndex], seriesIndex));
+            LOGGER.info("master end submitting reader-{} task", seriesIndex);
           }
         }
       }
