@@ -183,7 +183,7 @@ Map<String, ByteBuffer> statistics = {
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/63765352-664a4280-c8fb-11e9-869e-859edf6d00bb.png">
 
-In v0.9.0, the storage format is changed to an array for space and time efficiency. That is, `ByteBuffer[] statistics`. Each position of the array has a fixed association with a specific type of statistic, following the order defined in StatisticType:
+In v0.9.x, the storage format is changed to an array for space and time efficiency. That is, `ByteBuffer[] statistics`. Each position of the array has a fixed association with a specific type of statistic, following the order defined in StatisticType:
 
 ```
 enum StatisticType {
@@ -203,7 +203,7 @@ ByteBuffer[] statistics = [
 ]
 ```
 
-As another example in v0.9.0, when deserializing a TsDigest from buffer [3, 0,4,0, 1,4,99, 3,4,19], we get 
+As another example in v0.9.x, when deserializing a TsDigest from buffer [3, 0,4,0, 1,4,99, 3,4,19], we get 
 
 ```
 ByteBuffer[] statistics = [
@@ -465,6 +465,6 @@ You can also use `example/tsfile/org/apache/iotdb/tsfile/TsFileSequenceRead` to 
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png">
 
-#### v0.9.0
+#### v0.9.x
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/69341240-26012300-0ca4-11ea-91a1-d516810cad44.png">

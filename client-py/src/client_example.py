@@ -18,6 +18,7 @@
 
 import sys, struct
 
+# If you generate IoTDB python library manually, add it to your python path
 sys.path.append("../target")
 
 from thrift.protocol import TBinaryProtocol

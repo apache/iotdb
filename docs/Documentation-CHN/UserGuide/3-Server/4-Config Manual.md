@@ -423,3 +423,20 @@
 |类型| String |
 |默认值|your principal |
 |改后生效方式|重启服务器生效|
+
+
+## 开启GC日志
+GC日志默认是关闭的。为了性能调优，用户可能会需要手机GC信息。
+若要打开GC日志，则需要在启动IoTDB Server的时候加上"printgc"参数：
+
+```bash
+sbin/start-server.sh printgc
+```
+或者
+
+```bash
+sbin\start-server.bat printgc
+```
+
+GC日志会被存储在`IOTDB_HOME/logs/gc.log`. 至多会存储10个gc.log文件，每个文件最多10MB。
+
