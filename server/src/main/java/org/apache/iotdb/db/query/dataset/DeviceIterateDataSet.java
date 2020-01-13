@@ -39,10 +39,9 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
+
 
 /**
  * This QueryDataSet is used for GROUP_BY_DEVICE query result.
@@ -56,11 +55,13 @@ public class DeviceIterateDataSet extends QueryDataSet {
 
   private List<String> deduplicatedMeasurementColumns;
   private Map<String, Set<String>> measurementColumnsGroupByDevice;
+  private Map<String, IExpression> deviceToFilterMap;
 
   // group-by-time parameters
   private long unit;
-  private long origin;
-  private List<Pair<Long, Long>> intervals;
+  private long slidingStep;
+  private long startTime;
+  private long endTime;
 
   // fill parameters
   private long queryTime;
@@ -71,30 +72,30 @@ public class DeviceIterateDataSet extends QueryDataSet {
   private String currentDevice;
   private QueryDataSet currentDataSet;
   private int[] currentColumnMapRelation;
+  private Map<Path, TSDataType> tsDataTypeMap;
 
   public DeviceIterateDataSet(QueryPlan queryPlan, QueryContext context,
       IEngineQueryRouter queryRouter) {
     super(null, queryPlan.getDataTypes());
 
     // get deduplicated measurement columns (already deduplicated in TSServiceImpl.executeDataQuery)
-    this.deduplicatedMeasurementColumns = queryPlan.getMeasurementColumnList();
-
+    this.deduplicatedMeasurementColumns = queryPlan.getMeasurements();
+    this.tsDataTypeMap = queryPlan.getDataTypeMapping();
     this.queryRouter = queryRouter;
     this.context = context;
-    this.measurementColumnsGroupByDevice = queryPlan.getMeasurementColumnsGroupByDevice();
+    this.measurementColumnsGroupByDevice = queryPlan.getMeasurementsGroupByDevice();
+    this.deviceToFilterMap = queryPlan.getDeviceToFilterMap();
 
     if (queryPlan instanceof GroupByPlan) {
       this.dataSetType = DataSetType.GROUPBY;
       // assign parameters
-      this.expression = queryPlan.getExpression();
       this.unit = ((GroupByPlan) queryPlan).getUnit();
-      this.origin = ((GroupByPlan) queryPlan).getOrigin();
-      this.intervals = ((GroupByPlan) queryPlan).getIntervals();
+      this.slidingStep = ((GroupByPlan) queryPlan).getSlidingStep();
+      this.startTime = ((GroupByPlan) queryPlan).getStartTime();
+      this.endTime = ((GroupByPlan) queryPlan).getEndTime();
 
     } else if (queryPlan instanceof AggregationPlan) {
       this.dataSetType = DataSetType.AGGREGATE;
-      // assign parameters
-      this.expression = queryPlan.getExpression();
 
     } else if (queryPlan instanceof FillQueryPlan) {
       this.dataSetType = DataSetType.FILL;
@@ -103,8 +104,6 @@ public class DeviceIterateDataSet extends QueryDataSet {
       this.fillType = ((FillQueryPlan) queryPlan).getFillType();
     } else {
       this.dataSetType = DataSetType.QUERY;
-      // assign parameters
-      this.expression = queryPlan.getExpression();
     }
 
     this.curDataSetInitialized = false;
@@ -112,7 +111,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
     this.currentColumnMapRelation = new int[deduplicatedMeasurementColumns.size()];
   }
 
-  public boolean hasNext() throws IOException {
+  protected boolean hasNextWithoutConstraint() throws IOException {
     if (curDataSetInitialized && currentDataSet.hasNext()) {
       return true;
     } else {
@@ -146,35 +145,62 @@ public class DeviceIterateDataSet extends QueryDataSet {
       }
       // extract paths and aggregations if exist from executeColumns
       List<Path> executePaths = new ArrayList<>();
+      List<TSDataType> tsDataTypes = new ArrayList<>();
       List<String> executeAggregations = new ArrayList<>();
       for (String column : executeColumns) {
         if (dataSetType == DataSetType.GROUPBY || dataSetType == DataSetType.AGGREGATE) {
-          executePaths.add(new Path(currentDevice,
-              column.substring(column.indexOf("(") + 1, column.indexOf(")"))));
+          Path path = new Path(currentDevice,
+              column.substring(column.indexOf("(") + 1, column.indexOf(")")));
+          tsDataTypes.add(tsDataTypeMap.get(path));
+          executePaths.add(path);
           executeAggregations.add(column.substring(0, column.indexOf("(")));
         } else {
-          executePaths.add(new Path(currentDevice, column));
+          Path path = new Path(currentDevice, column);
+          tsDataTypes.add(tsDataTypeMap.get(path));
+          executePaths.add(path);
         }
+      }
+
+      // get filter to execute for the current device
+      if(deviceToFilterMap != null){
+        this.expression = deviceToFilterMap.get(currentDevice);
       }
 
       try {
         switch (dataSetType) {
           case GROUPBY:
-            currentDataSet = queryRouter
-                .groupBy(executePaths, executeAggregations, expression, unit, origin, intervals,
-                    context);
+            GroupByPlan groupByPlan = new GroupByPlan();
+            groupByPlan.setEndTime(endTime);
+            groupByPlan.setStartTime(startTime);
+            groupByPlan.setSlidingStep(slidingStep);
+            groupByPlan.setUnit(unit);
+            groupByPlan.setDeduplicatedPaths(executePaths);
+            groupByPlan.setDeduplicatedDataTypes(dataTypes);
+            groupByPlan.setDeduplicatedAggregations(executeAggregations);
+            currentDataSet = queryRouter.groupBy(groupByPlan, context);
             break;
           case AGGREGATE:
-            currentDataSet = queryRouter
-                .aggregate(executePaths, executeAggregations, expression, context);
+            AggregationPlan aggregationPlan = new AggregationPlan();
+            aggregationPlan.setDeduplicatedPaths(executePaths);
+            aggregationPlan.setDeduplicatedAggregations(executeAggregations);
+            aggregationPlan.setDeduplicatedDataTypes(dataTypes);
+            aggregationPlan.setExpression(expression);
+            currentDataSet = queryRouter.aggregate(aggregationPlan, context);
             break;
           case FILL:
-            currentDataSet = queryRouter.fill(executePaths, queryTime, fillType, context);
+            FillQueryPlan fillQueryPlan = new FillQueryPlan();
+            fillQueryPlan.setFillType(fillType);
+            fillQueryPlan.setQueryTime(queryTime);
+            fillQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
+            fillQueryPlan.setDeduplicatedPaths(executePaths);
+            currentDataSet = queryRouter.fill(fillQueryPlan, context);
             break;
           case QUERY:
-            QueryExpression queryExpression = QueryExpression.create()
-                .setSelectSeries(executePaths).setExpression(expression);
-            currentDataSet = queryRouter.query(queryExpression, context);
+            QueryPlan queryPlan = new QueryPlan();
+            queryPlan.setDeduplicatedPaths(executePaths);
+            queryPlan.setDeduplicatedDataTypes(tsDataTypes);
+            queryPlan.setExpression(expression);
+            currentDataSet = queryRouter.query(queryPlan, context);
             break;
           default:
             throw new IOException("unsupported DataSetType");
@@ -191,7 +217,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
     return false;
   }
 
-  public RowRecord next() throws IOException {
+  protected RowRecord nextWithoutConstraint() throws IOException {
     RowRecord originRowRecord = currentDataSet.next();
 
     RowRecord rowRecord = new RowRecord(originRowRecord.getTimestamp());
@@ -200,12 +226,12 @@ public class DeviceIterateDataSet extends QueryDataSet {
     deviceField.setBinaryV(new Binary(currentDevice));
     rowRecord.addField(deviceField);
 
-    List<Field> measurementfields = originRowRecord.getFields();
+    List<Field> measurementFields = originRowRecord.getFields();
     for (int mapPos : currentColumnMapRelation) {
       if (mapPos == -1) {
         rowRecord.addField(new Field(null));
       } else {
-        rowRecord.addField(measurementfields.get(mapPos));
+        rowRecord.addField(measurementFields.get(mapPos));
       }
     }
     return rowRecord;

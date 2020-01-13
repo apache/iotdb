@@ -81,7 +81,7 @@ Changes to IoTDB source codes are made through Github pull request. Anyone can r
 
 ### Contributing by Documentation Changes
 
-To propose a change to release documentation (that is, docs that appear under <https://iotdb.apache.org/#/Documents>), edit the Markdown source files in IoTDB’s docs/ directory(`documentation-EN` branch). The process to propose a doc change is otherwise the same as the process for proposing code changes below.  
+To propose a change to release documentation (that is, docs that appear under <https://iotdb.apache.org/#/Documents/progress/chap1/sec1>), edit the Markdown source files in IoTDB’s docs/ directory(`documentation-EN` branch). The process to propose a doc change is otherwise the same as the process for proposing code changes below.  
 
 Whenever updating **User Guide** documents, remember to update `0-Content.md` at the same time. Here are two brief examples to show how to add new documents or how to modify existing documents:
 
@@ -123,7 +123,7 @@ Following `README.md` to test, run or build IoTDB.
 Generally, IoTDB uses JIRA to track logical issues, including bugs and improvements and uses Github pull requests to manage the review and merge specific code changes. That is, JIRAs are used to describe what should be fixed or changed, proposing high-level approaches. Pull requests describe how to implement that change in the project’s source code. For example, major design decisions discussed in JIRA.
 
 1. Find the existing IoTDB JIRA that the change pertains to.
-    1. o not create a new JIRA if you send a PR to address an existing issue labeled in JIRA; add it to the existing discussion.
+    1. Do not create a new JIRA if you send a PR to address an existing issue labeled in JIRA; add it to the existing discussion.
     2. Look for existing pull requests that are linked from the JIRA, to understand if someone is already working on the JIRA
 2. If the change is new, then it usually needs a new JIRA. However, trivial changes, such as changes are self-explained, do not require a JIRA. Example: Fix spelling error in JavaDoc
 3. If required, create a new JIRA:
@@ -148,7 +148,7 @@ Generally, IoTDB uses JIRA to track logical issues, including bugs and improveme
         1. Fix Version. This is assigned by committers only when resolved.
         2. Target Version. This is assigned by committers to indicate a PR has been accepted for possible fix by the target version.
     5. Do not include a patch file; pull requests are used to propose the actual change.
-4. If the change is a large change, consider raising a discussion on it at dev@iotdb.apache.org first before proceeding to implement the change. Currently, we use https://cwiki.apache.org/confluence to store design proposals and release process. Users can also send them there.
+4. If the change is a large change, consider raising a discussion on it at dev@iotdb.apache.org first before proceeding to implement the change. Currently, we use https://cwiki.apache.org/confluence/display/IOTDB to store design proposals and release process. Users can also send them there.
 
 
 #### Pull Request
@@ -205,3 +205,7 @@ git rebase upstream/master
 #### Code Style
 
 For Java code, Apache IoTDB follows Google’s Java Style Guide.
+
+#### Unit Test
+
+When writing unit tests, note the path to generate the test file at test time, which we require to be generated in the `target` directory and placed under the `constant` package for each test project

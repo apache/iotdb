@@ -18,31 +18,35 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.util.Map;
 
 /**
  * this class extends {@code RootOperator} and process getIndex statement
  */
 public class QueryOperator extends SFWOperator {
 
+  private long startTime;
+  private long endTime;
+  // time interval
   private long unit;
-  private long origin;
-  private List<Pair<Long, Long>> intervals;
+  // sliding step
+  private long slidingStep;
   private boolean isGroupByTime = false;
 
   private Map<TSDataType, IFill> fillTypes;
   private boolean isFill = false;
 
-  private int seriesLimit;
-  private int seriesOffset;
-  private boolean hasSlimit = false; // false if sql does not contain SLIMIT clause
+  private int rowLimit = 0;
+  private int rowOffset = 0;
+  private int seriesLimit = 0;
+  private int seriesOffset = 0;
 
   private boolean isGroupByDevice = false;
+  private boolean isAlign = true;
 
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);
@@ -73,13 +77,32 @@ public class QueryOperator extends SFWOperator {
     this.isGroupByTime = isGroupBy;
   }
 
+  public int getRowLimit() {
+    return rowLimit;
+  }
+
+  public void setRowLimit(int rowLimit) {
+    this.rowLimit = rowLimit;
+  }
+
+  public int getRowOffset() {
+    return rowOffset;
+  }
+
+  public void setRowOffset(int rowOffset) {
+    this.rowOffset = rowOffset;
+  }
+
+  public boolean hasLimit() {
+    return rowLimit > 0;
+  }
+
   public int getSeriesLimit() {
     return seriesLimit;
   }
 
   public void setSeriesLimit(int seriesLimit) {
     this.seriesLimit = seriesLimit;
-    this.hasSlimit = true;
   }
 
   public int getSeriesOffset() {
@@ -87,15 +110,11 @@ public class QueryOperator extends SFWOperator {
   }
 
   public void setSeriesOffset(int seriesOffset) {
-    /*
-     * Since soffset cannot be set alone without slimit, `hasSlimit` only need to be set true in the
-     * `setSeriesLimit` function.
-     */
     this.seriesOffset = seriesOffset;
   }
 
   public boolean hasSlimit() {
-    return hasSlimit;
+    return seriesLimit > 0;
   }
 
   public long getUnit() {
@@ -106,20 +125,28 @@ public class QueryOperator extends SFWOperator {
     this.unit = unit;
   }
 
-  public long getOrigin() {
-    return origin;
+  public long getStartTime() {
+    return startTime;
   }
 
-  public void setOrigin(long origin) {
-    this.origin = origin;
+  public void setStartTime(long startTime) {
+    this.startTime = startTime;
   }
 
-  public List<Pair<Long, Long>> getIntervals() {
-    return intervals;
+  public long getEndTime() {
+    return endTime;
   }
 
-  public void setIntervals(List<Pair<Long, Long>> intervals) {
-    this.intervals = intervals;
+  public void setEndTime(long endTime) {
+    this.endTime = endTime;
+  }
+
+  public long getSlidingStep() {
+    return slidingStep;
+  }
+
+  public void setSlidingStep(long slidingStep) {
+    this.slidingStep = slidingStep;
   }
 
   public boolean isGroupByDevice() {
@@ -128,5 +155,13 @@ public class QueryOperator extends SFWOperator {
 
   public void setGroupByDevice(boolean isGroupByDevice) {
     this.isGroupByDevice = isGroupByDevice;
+  }
+
+  public boolean isAlign() {
+    return isAlign;
+  }
+
+  public void setAlign(boolean align) {
+    isAlign = align;
   }
 }

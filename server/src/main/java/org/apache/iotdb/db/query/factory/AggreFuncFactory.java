@@ -20,17 +20,17 @@
 package org.apache.iotdb.db.query.factory;
 
 import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.impl.AvgAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.CountAggrFunc;
-import org.apache.iotdb.db.query.aggregation.impl.FirstAggrFunc;
-import org.apache.iotdb.db.query.aggregation.impl.LastAggrFunc;
+import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrFunc;
+import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MaxValueAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MinValueAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.SumAggrFunc;
-import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
@@ -54,24 +54,24 @@ public class AggreFuncFactory {
     }
 
     switch (aggrFuncName.toLowerCase()) {
-      case StatisticConstant.MIN_TIME:
+      case SQLConstant.MIN_TIME:
         return new MinTimeAggrFunc();
-      case StatisticConstant.MAX_TIME:
+      case SQLConstant.MAX_TIME:
         return new MaxTimeAggrFunc();
-      case StatisticConstant.MIN_VALUE:
+      case SQLConstant.MIN_VALUE:
         return new MinValueAggrFunc(dataType);
-      case StatisticConstant.MAX_VALUE:
+      case SQLConstant.MAX_VALUE:
         return new MaxValueAggrFunc(dataType);
-      case StatisticConstant.COUNT:
+      case SQLConstant.COUNT:
         return new CountAggrFunc();
-      case StatisticConstant.AVG:
+      case SQLConstant.AVG:
         return new AvgAggrFunc(dataType);
-      case StatisticConstant.FIRST:
-        return new FirstAggrFunc(dataType);
-      case StatisticConstant.SUM:
+      case SQLConstant.FIRST_VALUE:
+        return new FirstValueAggrFunc(dataType);
+      case SQLConstant.SUM:
         return new SumAggrFunc(dataType);
-      case StatisticConstant.LAST:
-        return new LastAggrFunc(dataType);
+      case SQLConstant.LAST_VALUE:
+        return new LastValueAggrFunc(dataType);
       default:
         throw new PathException(
             "aggregate does not support " + aggrFuncName + " function.");

@@ -21,12 +21,13 @@ package org.apache.iotdb.db.query.externalsort;
 import java.io.File;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileSerializer;
 import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthIExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthTimeValuePairSerializer;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.junit.Assert;
@@ -43,7 +44,7 @@ public class IExternalSortFileSerializerDeserializerTest {
 
   @Test
   public void testFIX_LENGTH() throws IOException {
-    String rootPath = "tmpFile2";
+    String rootPath = TestConstant.BASE_OUTPUT_PATH.concat("tmpFile2");
     String filePath = rootPath;
     int count = 10000;
     testReadWrite(genTimeValuePairs(count, TSDataType.BOOLEAN), count, rootPath, filePath,

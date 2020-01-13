@@ -19,6 +19,15 @@
 
 package org.apache.iotdb.tsfile.utils;
 
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BINARY;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BOOLEAN;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.DOUBLE;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.FLOAT;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.INTEGER;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.LONG;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.STRING;
+
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -28,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -189,7 +199,19 @@ public class ReadWriteIOUtils {
   public static int write(int n, OutputStream outputStream) throws IOException {
     byte[] bytes = BytesUtils.intToBytes(n);
     outputStream.write(bytes);
-    return bytes.length;
+    return INT_LEN;
+  }
+
+
+
+  /**
+   * write the size (int) of the binary and then the bytes in binary
+   */
+  public static int write(Binary binary, OutputStream outputStream) throws IOException {
+    byte[] size = BytesUtils.intToBytes(binary.getValues().length);
+    outputStream.write(size);
+    outputStream.write(binary.getValues());
+    return size.length + binary.getValues().length;
   }
 
   /**
@@ -232,7 +254,7 @@ public class ReadWriteIOUtils {
   public static int write(long n, OutputStream outputStream) throws IOException {
     byte[] bytes = BytesUtils.longToBytes(n);
     outputStream.write(bytes);
-    return bytes.length;
+    return LONG_LEN;
   }
 
   /**
@@ -555,22 +577,23 @@ public class ReadWriteIOUtils {
     return readBytes(inputStream, length);
   }
 
-  /**
-   * read bytes from inputStream, this method makes sure that you can read length bytes or reach to
-   * the end of the stream.
-   */
-  public static ByteBuffer readByteBufferWithSelfDescriptionLength(InputStream inputStream)
-      throws IOException {
-    byte[] bytes = readBytesWithSelfDescriptionLength(inputStream);
-    ByteBuffer byteBuffer = ByteBuffer.allocate(bytes.length);
-    byteBuffer.put(bytes);
-    byteBuffer.flip();
-    return byteBuffer;
+  public static Binary readBinary(ByteBuffer buffer) {
+    int length = readInt(buffer);
+    byte[] bytes = readBytes(buffer, length);
+    return new Binary(bytes);
+  }
+
+  public static Binary readBinary(InputStream inputStream) throws IOException {
+    int length = readInt(inputStream);
+    byte[] bytes = readBytes(inputStream, length);
+    return new Binary(bytes);
   }
 
   /**
    * read bytes from byteBuffer, this method makes sure that you can read length bytes or reach to
    * the end of the buffer.
+   *
+   * read a int + buffer
    */
   public static ByteBuffer readByteBufferWithSelfDescriptionLength(ByteBuffer buffer) {
     int byteLength = readInt(buffer);
@@ -756,4 +779,70 @@ public class ReadWriteIOUtils {
   public static boolean checkIfMagicString(InputStream inputStream) throws IOException {
     return inputStream.available() <= magicStringBytes.length;
   }
+
+  enum ClassSerializeId {
+    LONG, DOUBLE, INTEGER, FLOAT, BINARY, BOOLEAN, STRING
+  }
+
+  public static void writeObject(Object value, DataOutputStream outputStream) {
+      try {
+        if (value instanceof Long) {
+          outputStream.write(LONG.ordinal());
+          outputStream.writeLong((Long) value);
+        } else if (value instanceof Double) {
+          outputStream.write(DOUBLE.ordinal());
+          outputStream.writeDouble((Double) value);
+        } else if (value instanceof Integer) {
+          outputStream.write(INTEGER.ordinal());
+          outputStream.writeInt((Integer) value);
+        } else if (value instanceof Float) {
+          outputStream.write(FLOAT.ordinal());
+          outputStream.writeFloat((Float) value);
+        } else if (value instanceof Binary) {
+          outputStream.write(BINARY.ordinal());
+          byte[] bytes = ((Binary) value).getValues();
+          outputStream.writeInt(bytes.length);
+          outputStream.write(bytes);
+        } else if (value instanceof Boolean) {
+          outputStream.write(BOOLEAN.ordinal());
+          outputStream.write(((Boolean) value) ? 1 : 0);
+        } else {
+          outputStream.write(STRING.ordinal());
+          byte[] bytes = value.toString().getBytes();
+          outputStream.writeInt(bytes.length);
+          outputStream.write(bytes);
+        }
+      } catch (IOException ignored) {
+        // ignored
+      }
+  }
+
+  public static Object readObject(ByteBuffer buffer) {
+    ClassSerializeId serializeId = ClassSerializeId.values()[buffer.get()];
+    switch (serializeId) {
+      case BOOLEAN:
+        return buffer.get() == 1;
+      case FLOAT:
+        return buffer.getFloat();
+      case DOUBLE:
+        return buffer.getDouble();
+      case LONG:
+        return buffer.getLong();
+      case INTEGER:
+        return buffer.getInt();
+      case BINARY:
+        int length = buffer.getInt();
+        byte[] bytes = new byte[length];
+        buffer.get(bytes);
+        return new Binary(bytes);
+      case STRING:
+      default:
+        length = buffer.getInt();
+        bytes = new byte[length];
+        buffer.get(bytes);
+        return new String(bytes);
+    }
+  }
+
+
 }

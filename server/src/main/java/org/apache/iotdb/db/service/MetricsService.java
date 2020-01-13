@@ -1,19 +1,27 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
- * agreements. See the NOTICE file distributed with this work for additional information regarding
- * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License. You may obtain a
- * copy of the License at
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.iotdb.db.service;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketAddress;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -81,11 +89,20 @@ public class MetricsService implements MetricsServiceMBean, IService {
     metricsWebUI.initialize();
     server = metricsWebUI.getServer(port);
     metricsSystem.start();
-    executorService.execute(new MetricsServiceThread(server));
-    logger.info("{}: start {} successfully, listening on ip {} port {}",
-        IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
-        IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-        IoTDBDescriptor.getInstance().getConfig().getMetricsPort());
+    try {
+      executorService.execute(new MetricsServiceThread(server));
+      logger.info("{}: start {} successfully, listening on ip {} port {}",
+          IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
+          IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+          IoTDBDescriptor.getInstance().getConfig().getMetricsPort());
+    } catch (NullPointerException e) {
+      //issue IOTDB-415, we need to stop the service.
+      logger.error("{}: start {} failed, listening on ip {} port {}",
+          IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
+          IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+          IoTDBDescriptor.getInstance().getConfig().getMetricsPort());
+      stopService();
+    }
   }
 
   @Override
@@ -100,17 +117,48 @@ public class MetricsService implements MetricsServiceMBean, IService {
     try {
       if (server != null) {
         server.stop();
+        server = null;
       }
-      executorService.shutdown();
-      if (!executorService.awaitTermination(60, TimeUnit.MILLISECONDS)) {
-        executorService.shutdownNow();
+      if (executorService != null) {
+        executorService.shutdown();
+        if (!executorService.awaitTermination(
+            3000, TimeUnit.MILLISECONDS)) {
+          executorService.shutdownNow();
+        }
+        executorService = null;
       }
     } catch (Exception e) {
-      logger.error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
+      logger
+          .error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(),
+              e);
       executorService.shutdownNow();
       Thread.currentThread().interrupt();
     }
+    checkAndWaitPortIsClosed();
     logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+  }
+
+  private void checkAndWaitPortIsClosed() {
+    SocketAddress socketAddress = new InetSocketAddress("localhost", getMetricsPort());
+    @SuppressWarnings("squid:S2095")
+    Socket socket = new Socket();
+    int timeout = 1;
+    int count = 10000; // 10 seconds
+    while (count > 0) {
+      try {
+        socket.connect(socketAddress, timeout);
+        count--;
+      } catch (IOException e) {
+        return;
+      } finally {
+        try {
+          socket.close();
+        } catch (IOException e) {
+          //do nothing
+        }
+      }
+    }
+    logger.error("Port {} can not be closed.", getMetricsPort());
   }
 
   private static class MetricsServiceHolder {
@@ -134,6 +182,10 @@ public class MetricsService implements MetricsServiceMBean, IService {
         Thread.currentThread().setName(ThreadName.METRICS_SERVICE.getName());
         server.start();
         server.join();
+      } catch (@SuppressWarnings("squid:S2142") InterruptedException e1) {
+        //we do not sure why InterruptedException happens, but it indeed occurs in Travis WinOS
+        logger.error(e1.getMessage(), e1);
+        stopService();
       } catch (Exception e) {
         logger.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
       }

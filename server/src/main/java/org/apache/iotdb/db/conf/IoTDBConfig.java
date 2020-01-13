@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.db.conf;
 
-import java.io.File;
-import java.time.ZoneId;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
@@ -33,6 +29,11 @@ import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.time.ZoneId;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class IoTDBConfig {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
@@ -40,7 +41,7 @@ public class IoTDBConfig {
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
-  
+
   /**
    * Port which the metrics service listens to.
    */
@@ -147,24 +148,24 @@ public class IoTDBConfig {
   private String walFolder = "data/wal";
 
   /**
-   * Data directory for index files (KV-match indexes).
-   */
-  private String indexFileDir = "data/index";
-
-  /**
    * Maximum MemTable number in MemTable pool.
    */
   private int maxMemtableNumber = 20;
 
   /**
-   * The amount of data that is read every time when IoTDB merges data.
+   * The amount of data that is read every time.
    */
-  private int fetchSize = 10000;
+  private int batchSize = 100000;
 
   /**
    * How many threads can concurrently flush. When <= 0, use CPU core number.
    */
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
+
+  /**
+   * How many threads can concurrently query. When <= 0, use CPU core number.
+   */
+  private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
 
   private ZoneId zoneID = ZoneId.systemDefault();
 
@@ -457,6 +458,10 @@ public class IoTDBConfig {
    */
   private long defaultTTL = Long.MAX_VALUE;
 
+  //just for test
+  //wait for 60 second by default.
+  private int thriftServerAwaitTimeForStopService = 60;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -538,7 +543,7 @@ public class IoTDBConfig {
     }
   }
 
-  private String getHdfsDir(){
+  private String getHdfsDir() {
     String[] hdfsIps = TSFileDescriptor.getInstance().getConfig().getHdfsIp();
     String hdfsDir = "hdfs://";
     if (hdfsIps.length > 1) {
@@ -653,20 +658,12 @@ public class IoTDBConfig {
     this.multiDirStrategyClassName = multiDirStrategyClassName;
   }
 
-  public String getIndexFileDir() {
-    return indexFileDir;
+  public int getBatchSize() {
+    return batchSize;
   }
 
-  private void setIndexFileDir(String indexFileDir) {
-    this.indexFileDir = indexFileDir;
-  }
-
-  public int getFetchSize() {
-    return fetchSize;
-  }
-
-  void setFetchSize(int fetchSize) {
-    this.fetchSize = fetchSize;
+  void setBatchSize(int batchSize) {
+    this.batchSize = batchSize;
   }
 
   public int getMaxMemtableNumber() {
@@ -683,6 +680,14 @@ public class IoTDBConfig {
 
   void setConcurrentFlushThread(int concurrentFlushThread) {
     this.concurrentFlushThread = concurrentFlushThread;
+  }
+
+  public int getConcurrentQueryThread() {
+    return concurrentQueryThread;
+  }
+
+  void setConcurrentQueryThread(int concurrentQueryThread) {
+    this.concurrentQueryThread = concurrentQueryThread;
   }
 
   void setZoneID(ZoneId zoneID) {
@@ -1188,6 +1193,10 @@ public class IoTDBConfig {
     return hdfsIp.split(",");
   }
 
+  String getRawHDFSIp() {
+    return hdfsIp;
+  }
+
   public void setHdfsIp(String[] hdfsIp) {
     this.hdfsIp = String.join(",", hdfsIp);
   }
@@ -1218,6 +1227,10 @@ public class IoTDBConfig {
 
   public String[] getDfsHaNamenodes() {
     return dfsHaNamenodes.split(",");
+  }
+
+  String getRawDfsHaNamenodes() {
+    return dfsHaNamenodes;
   }
 
   public void setDfsHaNamenodes(String[] dfsHaNamenodes) {
@@ -1270,5 +1283,13 @@ public class IoTDBConfig {
 
   public void setDefaultTTL(long defaultTTL) {
     this.defaultTTL = defaultTTL;
+  }
+
+  public int getThriftServerAwaitTimeForStopService() {
+    return thriftServerAwaitTimeForStopService;
+  }
+
+  public void setThriftServerAwaitTimeForStopService(int thriftServerAwaitTimeForStopService) {
+    this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
   }
 }

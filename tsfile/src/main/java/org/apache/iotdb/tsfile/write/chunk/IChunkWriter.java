@@ -57,11 +57,6 @@ public interface IChunkWriter {
   /**
    * write a time value pair.
    */
-  void write(long time, BigDecimal value);
-
-  /**
-   * write a time value pair.
-   */
   void write(long time, Binary value);
 
   /**
@@ -92,11 +87,6 @@ public interface IChunkWriter {
   /**
    * write time series
    */
-  void write(long[] timestamps, BigDecimal[] values, int batchSize);
-
-  /**
-   * write time series
-   */
   void write(long[] timestamps, Binary[] values, int batchSize);
 
   /**
@@ -113,6 +103,8 @@ public interface IChunkWriter {
    * return the serialized size of the chunk header + all pages (not including the un-sealed page).
    * Notice, call this method before calling writeToFileWriter(), otherwise the page buffer in
    * memory will be cleared.
+   * <br> If there is no data points in the chunk, return 0 (i.e., in this case, the size of header
+   * is not calculated, because nothing will be serialized latter)</>
    */
   long getCurrentChunkSize();
 

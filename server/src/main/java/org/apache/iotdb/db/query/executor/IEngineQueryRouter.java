@@ -18,63 +18,41 @@
  */
 package org.apache.iotdb.db.query.executor;
 
+
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public interface IEngineQueryRouter {
 
   /**
    * Execute physical plan.
    */
-  QueryDataSet query(QueryExpression queryExpression, QueryContext context)
-      throws StorageEngineException, PathException;
+  QueryDataSet query(QueryPlan queryPlan, QueryContext context) throws StorageEngineException;
 
   /**
    * Execute aggregation query.
    */
-  QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
-      IExpression expression, QueryContext context)
+  QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, IOException, QueryProcessException;
 
   /**
    * Execute groupBy query.
-   *
-   * @param selectedSeries select path list
-   * @param aggres aggregation name list
-   * @param expression filter expression
-   * @param unit time granularity for interval partitioning, unit is ms.
-   * @param origin the datum time point for interval division is divided into a time interval for
-   * each TimeUnit time from this point forward and backward.
-   * @param intervals time intervals, closed interval.
    */
-  QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
-      IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals,
-      QueryContext context)
+  QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException,
       QueryProcessException, IOException;
 
   /**
    * Execute fill query.
-   *
-   * @param fillPaths select path list
-   * @param queryTime timestamp
-   * @param fillType type IFill map
    */
-  QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
-      QueryContext context)
+  QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException;
-
 }

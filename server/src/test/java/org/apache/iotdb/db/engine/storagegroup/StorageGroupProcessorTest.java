@@ -21,20 +21,28 @@ package org.apache.iotdb.db.engine.storagegroup;
 import static org.junit.Assert.assertFalse;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.junit.After;
@@ -45,7 +53,7 @@ import org.junit.Test;
 public class StorageGroupProcessorTest {
 
   private String storageGroup = "root.vehicle.d0";
-  private String systemDir = "data/info";
+  private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
   private StorageGroupProcessor processor;
@@ -65,10 +73,47 @@ public class StorageGroupProcessorTest {
   public void tearDown() throws Exception {
     processor.syncDeleteDataFiles();
     EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.cleanDir("data");
+    EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     MergeManager.getINSTANCE().stop();
   }
 
+
+  @Test
+  public void testUnseqUnsealedDelete() throws QueryProcessException, IOException {
+    TSRecord record = new TSRecord(10000, deviceId);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
+    processor.insert(new InsertPlan(record));
+    processor.waitForAllCurrentTsFileProcessorsClosed();
+
+
+    for (int j = 1; j <= 10; j++) {
+      record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertPlan(record));
+    }
+
+    processor.getWorkUnSequenceTsFileProcessor().syncFlush();
+
+    for (int j = 11; j <= 20; j++) {
+      record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertPlan(record));
+    }
+
+    processor.delete(deviceId, measurementId, 15L);
+
+    Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor.getWorkUnSequenceTsFileProcessor()
+        .query(deviceId, measurementId, TSDataType.INT32, Collections.emptyMap(), new QueryContext());
+
+    List<TimeValuePair> timeValuePairs = pair.left.getSortedTimeValuePairList();
+
+    long time = 16;
+    for (TimeValuePair timeValuePair : timeValuePairs) {
+      Assert.assertEquals(time++, timeValuePair.getTimestamp());
+    }
+
+    Assert.assertEquals(0, pair.right.size());
+  }
 
   @Test
   public void testSequenceSyncClose() throws QueryProcessException {
@@ -218,7 +263,7 @@ public class StorageGroupProcessorTest {
   class DummySGP extends StorageGroupProcessor {
 
     DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
-      super(systemInfoDir, storageGroupName);
+      super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy());
     }
 
     @Override

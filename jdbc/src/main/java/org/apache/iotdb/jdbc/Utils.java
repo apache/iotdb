@@ -18,19 +18,9 @@
  */
 package org.apache.iotdb.jdbc;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 /**
  * Utils to convert between thrift format and TsFile format.
@@ -48,31 +38,17 @@ public class Utils {
       return params;
     }
     boolean isUrlLegal = false;
-    Pattern pattern = Pattern.compile("^"
-        + "(((?!-)[A-Za-z0-9-]{1,63}(?<!-)\\.)+[A-Za-z]{2,6}" // Domain name
-        + "|"
-        + "localhost" // localhost
-        + "|"
-        + "(([0-9]{1,3}\\.){3})[0-9]{1,3})" // Ip
-        + ":"
-        + "[0-9]{1,5}" // Port
-        + "/?$");
+    Pattern pattern = Pattern.compile("([^:]+):([0-9]{1,5})/?");
     String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
     Matcher matcher = pattern.matcher(subURL);
     if(matcher.matches()) {
       isUrlLegal = true;
     }
-    String[] DomainAndPort;
-    if(subURL.contains("/")) {
-      DomainAndPort = subURL.substring(0, subURL.length()-1).split(":");
-    } else {
-      DomainAndPort = subURL.split(":");
-    }
-    params.setHost(DomainAndPort[0]);
-    params.setPort(Integer.parseInt(DomainAndPort[1]));
     if (!isUrlLegal) {
-      throw new IoTDBURLException("Error url format, url should be jdbc:iotdb://domain|ip:port/ or jdbc:iotdb://domain|ip:port");
+      throw new IoTDBURLException("Error url format, url should be jdbc:iotdb://anything:port/ or jdbc:iotdb://anything:port");
     }
+    params.setHost(matcher.group(1));
+    params.setPort(Integer.parseInt(matcher.group(2)));
 
     if (info.containsKey(Config.AUTH_USER)) {
       params.setUsername(info.getProperty(Config.AUTH_USER));
@@ -83,74 +59,5 @@ public class Utils {
 
     return params;
   }
-
-  /**
-   * convert row records.
-   */
-  static List<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet,
-      List<String> columnTypeList) {
-    int rowCount = tsQueryDataSet.getRowCount();
-    ByteBuffer byteBuffer = tsQueryDataSet.bufferForValues();
-
-    // process time buffer
-    List<RowRecord> rowRecordList = processTimeAndCreateRowRecords(byteBuffer, rowCount);
-
-    for (String type : columnTypeList) {
-      for (int i = 0; i < rowCount; i++) {
-        Field field = null;
-        boolean is_empty = BytesUtils.byteToBool(byteBuffer.get());
-        if (is_empty) {
-          field = new Field(null);
-        } else {
-          TSDataType dataType = TSDataType.valueOf(type);
-          field = new Field(dataType);
-          switch (dataType) {
-            case BOOLEAN:
-              boolean booleanValue = BytesUtils.byteToBool(byteBuffer.get());
-              field.setBoolV(booleanValue);
-              break;
-            case INT32:
-              int intValue = byteBuffer.getInt();
-              field.setIntV(intValue);
-              break;
-            case INT64:
-              long longValue = byteBuffer.getLong();
-              field.setLongV(longValue);
-              break;
-            case FLOAT:
-              float floatValue = byteBuffer.getFloat();
-              field.setFloatV(floatValue);
-              break;
-            case DOUBLE:
-              double doubleValue = byteBuffer.getDouble();
-              field.setDoubleV(doubleValue);
-              break;
-            case TEXT:
-              int binarySize = byteBuffer.getInt();
-              byte[] binaryValue = new byte[binarySize];
-              byteBuffer.get(binaryValue);
-              field.setBinaryV(new Binary(binaryValue));
-              break;
-            default:
-              throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", type));
-          }
-        }
-        rowRecordList.get(i).getFields().add(field);
-      }
-    }
-    return rowRecordList;
-  }
-
-  private static List<RowRecord> processTimeAndCreateRowRecords(ByteBuffer byteBuffer,
-      int rowCount) {
-    List<RowRecord> rowRecordList = new ArrayList<>();
-    for (int i = 0; i < rowCount; i++) {
-      long timestamp = byteBuffer.getLong(); // byteBuffer has been flipped by the server side
-      RowRecord rowRecord = new RowRecord(timestamp);
-      rowRecordList.add(rowRecord);
-    }
-    return rowRecordList;
-  }
-
+  
 }

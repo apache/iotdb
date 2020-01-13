@@ -22,7 +22,7 @@
 # Chapter 3: Server
 
 ## Docker Image
-Now a Dockerfile has been written at ROOT/docker/Dockerfile on the branch enable_docker_image.
+Now a Dockerfile has been written at docker/src/main/Dockerfile.
 
 1. You can build a docker image by: 
 ```
@@ -82,7 +82,7 @@ $ start-client.sh -h localhost -p 6667 -u root -pw root
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-jdbc</artifactId>
-            <version>0.8.0-SNAPSHOT</version>
+            <version>0.8.0</version>
         </dependency>
 ```
 Some examples about how to use IoTDB with IoTDB-JDBC can be found at: https://github.com/apache/incubator-iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb

@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -54,7 +57,8 @@ public class DeviceMetaDataCacheTest {
   private String measurementId4 = "s4";
   private String measurementId5 = "s5";
   private StorageGroupProcessor storageGroupProcessor;
-  private String systemDir = "data/info";
+  private String systemDir = TestConstant.BASE_OUTPUT_PATH.concat("data")
+          .concat(File.separator).concat("info");
 
   static {
     MManager.getInstance().init();
@@ -65,7 +69,7 @@ public class DeviceMetaDataCacheTest {
     EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-    storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup);
+    storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup, new DirectFlushPolicy());
     insertData();
   }
 

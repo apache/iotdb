@@ -1,15 +1,19 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
- * agreements.  See the NOTICE file distributed with this work for additional information regarding
- * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with the License.  You may obtain
- * a copy of the License at
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied.  See the License for the specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.db.engine.flush;
@@ -136,6 +140,7 @@ public class MemTableFlushTask {
       }
     }
 
+    @SuppressWarnings("squid:S135")
     @Override
     public void run() {
       long memSerializeTime = 0;
@@ -153,10 +158,11 @@ public class MemTableFlushTask {
           }
           try {
             Thread.sleep(10);
-          } catch (InterruptedException e) {
+          } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
             logger.error("Storage group {} memtable {}, encoding task is interrupted.",
                 storageGroup, memTable.getVersion(), e);
-            Thread.currentThread().interrupt();
+            // generally it is because the thread pool is shutdown so the task should be aborted
+            break;
           }
         } else {
           if (task instanceof StartFlushGroupIOTask) {
@@ -180,6 +186,7 @@ public class MemTableFlushTask {
     }
   };
 
+  @SuppressWarnings("squid:S135")
   private Runnable ioTask = () -> {
       long ioTime = 0;
       boolean returnWhenNoTask = false;
@@ -195,10 +202,11 @@ public class MemTableFlushTask {
           }
           try {
             Thread.sleep(10);
-          } catch (InterruptedException e) {
+          } catch (@SuppressWarnings("squid:S2142")  InterruptedException e) {
             logger.error("Storage group {} memtable, io task is interrupted.", storageGroup
                 , memTable.getVersion(), e);
-            Thread.currentThread().interrupt();
+            // generally it is because the thread pool is shutdown so the task should be aborted
+            break;
           }
         } else {
           long starTime = System.currentTimeMillis();

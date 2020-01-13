@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.write.chunk;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
@@ -38,19 +37,12 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @see IChunkWriter IChunkWriter
- */
 public class ChunkWriterImpl implements IChunkWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkWriterImpl.class);
 
   private MeasurementSchema measurementSchema;
 
-  /**
-   * help to encode data of this series.
-   */
-  //private final ChunkBuffer chunkBuffer;
   private ICompressor compressor;
 
   /**
@@ -58,13 +50,10 @@ public class ChunkWriterImpl implements IChunkWriter {
    */
   private PublicBAOS pageBuffer;
 
-  private long chunkPointCount;
-  private long chunkMaxTime;
-  private long chunkMinTime = Long.MIN_VALUE;
-
   private int numOfPages;
+
   /**
-   * value writer to encode data.
+   * write data into current page
    */
   private PageWriter pageWriter;
 
@@ -75,23 +64,18 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private final int maxNumberOfPointsInPage;
 
-  // initial value for this.valueCountInOnePageForNextCheck
-  private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 1500;
-
   /**
-   * value count in a page. It will be reset after calling {@code writePageHeaderAndDataIntoBuff()}
+   * value count in current page.
    */
   private int valueCountInOnePageForNextCheck;
 
-  /**
-   * statistic on a stage. It will be reset after calling {@code writeAllPagesOfSeriesToTsFile()}
-   */
-  private Statistics<?> chunkStatistics;
+  // initial value for valueCountInOnePageForNextCheck
+  private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 1500;
 
   /**
-   * statistic on a page. It will be reset after calling {@code writePageHeaderAndDataIntoBuff()}
+   * statistic of this chunk.
    */
-  //private Statistics<?> pageStatistics;
+  private Statistics<?> statistics;
 
   /**
    * @param schema schema of this measurement
@@ -107,8 +91,8 @@ public class ChunkWriterImpl implements IChunkWriter {
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountInOnePageForNextCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
 
-    // init statistics for this series and page
-    this.chunkStatistics = Statistics.getStatsByType(measurementSchema.getType());
+    // init statistics for this chunk and page
+    this.statistics = Statistics.getStatsByType(measurementSchema.getType());
 
     this.pageWriter = new PageWriter(measurementSchema);
     this.pageWriter.setTimeEncoder(measurementSchema.getTimeEncoder());
@@ -146,12 +130,6 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long time, BigDecimal value) {
-    pageWriter.write(time, value);
-    checkPageSizeAndMayOpenANewPage();
-  }
-
-  @Override
   public void write(long time, Binary value) {
     pageWriter.write(time, value);
     checkPageSizeAndMayOpenANewPage();
@@ -183,12 +161,6 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long[] timestamps, double[] values, int batchSize) {
-    pageWriter.write(timestamps, values, batchSize);
-    checkPageSizeAndMayOpenANewPage();
-  }
-
-  @Override
-  public void write(long[] timestamps, BigDecimal[] values, int batchSize) {
     pageWriter.write(timestamps, values, batchSize);
     checkPageSizeAndMayOpenANewPage();
   }
@@ -233,12 +205,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
       // update statistics of this chunk
       numOfPages++;
-      chunkMaxTime = pageWriter.getPageMaxTime();
-      if (chunkMinTime == Long.MIN_VALUE) {
-        chunkMinTime = pageWriter.getPageMinTime();
-      }
-      chunkPointCount += pageWriter.getPointNumber();
-      this.chunkStatistics.mergeStatistics(pageWriter.getStatistics());
+      this.statistics.mergeStatistics(pageWriter.getStatistics());
     } catch (IOException e) {
       logger.error("meet error in pageWriter.writePageHeaderAndDataIntoBuff,ignore this page:", e);
     } finally {
@@ -250,10 +217,11 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
     sealCurrentPage();
-    writeAllPagesOfChunkToTsFile(tsfileWriter, chunkStatistics);
-    this.reset();
-    // reset series_statistics
-    this.chunkStatistics = Statistics.getStatsByType(measurementSchema.getType());
+    writeAllPagesOfChunkToTsFile(tsfileWriter, statistics);
+
+    // reinit this chunk writer
+    pageBuffer.reset();
+    this.statistics = Statistics.getStatsByType(measurementSchema.getType());
   }
 
   @Override
@@ -263,9 +231,11 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public long getCurrentChunkSize() {
+    if (pageBuffer.size() == 0) {
+      return 0;
+    }
     // return the serialized size of the chunk header + all pages
-    return ChunkHeader.getSerializedSize(measurementSchema.getMeasurementId()) + this
-        .getCurrentDataSize();
+    return ChunkHeader.getSerializedSize(measurementSchema.getMeasurementId()) + (long) pageBuffer.size();
   }
 
   @Override
@@ -294,15 +264,6 @@ public class ChunkWriterImpl implements IChunkWriter {
       throws PageException {
     numOfPages++;
 
-    // 1. update time statistics
-    if (this.chunkMinTime == Long.MIN_VALUE) {
-      this.chunkMinTime = header.getMinTimestamp();
-    }
-    if (this.chunkMinTime == Long.MIN_VALUE) {
-      throw new PageException("No valid data point in this page");
-    }
-    this.chunkMaxTime = header.getMaxTimestamp();
-
     // write the page header to pageBuffer
     try {
       logger.debug("start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
@@ -310,16 +271,12 @@ public class ChunkWriterImpl implements IChunkWriter {
       logger.debug("finish to flush a page header {} of {} into buffer, buffer position {} ", header,
           measurementSchema.getMeasurementId(), pageBuffer.size());
 
+      statistics.mergeStatistics(header.getStatistics());
+
     } catch (IOException e) {
-      if (chunkPointCount == 0) {
-        chunkMinTime = Long.MIN_VALUE;
-      }
       throw new PageException(
           "IO Exception in writeDataPageHeader,ignore this page", e);
     }
-
-    // update data point num
-    this.chunkPointCount += header.getNumOfValues();
 
     // write page content to temp PBAOS
     try (WritableByteChannel channel = Channels.newChannel(pageBuffer)) {
@@ -333,22 +290,18 @@ public class ChunkWriterImpl implements IChunkWriter {
    * write the page to specified IOWriter.
    *
    * @param writer     the specified IOWriter
-   * @param statistics the statistic information provided by series writer
-   * @return the data size of this chunk
+   * @param statistics the chunk statistics
    * @throws IOException exception in IO
    */
-  public long writeAllPagesOfChunkToTsFile(TsFileIOWriter writer, Statistics<?> statistics)
+  public void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer, Statistics<?> statistics)
       throws IOException {
-    if (chunkPointCount == 0) {
-      return 0;
+    if (statistics.getCount() == 0) {
+      return;
     }
 
     // start to write this column chunk
-    int headerSize = writer
-        .startFlushChunk(measurementSchema, compressor.getType(), measurementSchema.getType(),
-            measurementSchema.getEncodingType(), statistics, chunkMaxTime,
-            chunkMinTime, pageBuffer.size(),
-            numOfPages);
+    writer.startFlushChunk(measurementSchema, compressor.getType(), measurementSchema.getType(),
+            measurementSchema.getEncodingType(), statistics, pageBuffer.size(), numOfPages);
 
     long dataOffset = writer.getPos();
 
@@ -362,17 +315,7 @@ public class ChunkWriterImpl implements IChunkWriter {
               + " " + pageBuffer.size());
     }
 
-    writer.endChunk(chunkPointCount);
-    return headerSize + dataSize;
-  }
-
-  /**
-   * reset exist data in page for next stage.
-   */
-  public void reset() {
-    chunkMinTime = Long.MIN_VALUE;
-    pageBuffer.reset();
-    chunkPointCount = 0;
+    writer.endCurrentChunk();
   }
 
   /**
@@ -380,21 +323,12 @@ public class ChunkWriterImpl implements IChunkWriter {
    *
    * @return the max possible allocated size currently
    */
-  public long estimateMaxPageMemSize() {
+  private long estimateMaxPageMemSize() {
     // return the sum of size of buffer and page max size
-    return (long) (pageBuffer.size() + estimateMaxPageHeaderSize());
+    return (long) (pageBuffer.size() +
+        PageHeader.calculatePageHeaderSizeWithoutStatistics() +
+        pageWriter.getStatistics().getSerializedSize());
   }
 
-  private int estimateMaxPageHeaderSize() {
-    return PageHeader.calculatePageHeaderSize(measurementSchema.getType());
-  }
 
-  /**
-   * get current data size.
-   *
-   * @return current data size that the writer has serialized.
-   */
-  public long getCurrentDataSize() {
-    return pageBuffer.size();
-  }
 }

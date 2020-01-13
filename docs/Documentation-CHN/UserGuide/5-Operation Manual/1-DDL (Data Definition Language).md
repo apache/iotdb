@@ -102,12 +102,49 @@ IoTDB > COUNT TIMESERIES root.ln.*.*.status
 IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
 ```
 
+除此之外，还可以通过定义`LEVEL`来统计指定层级下的时间序列个数。这条语句可以用来统计每一个设备下的传感器数量，语法为：`COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>`。
+
+例如有如下时间序列（可以使用`show timeseries`展示所有时间序列）：
+
+<center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792072-cdc8a480-1200-11ea-8cec-321fef618a12.png"></center>
+   
+那么Metadata Tree如下所示：
+
+<center><img style="width:100%; max-width:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792176-1718f400-1201-11ea-861a-1a83c07ca144.jpg"></center>
+   
+可以看到，`root`被定义为`LEVEL=0`。那么当你输入如下语句时：
+
+```
+IoTDB > COUNT TIMESERIES root GROUP BY LEVEL=1
+IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
+IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
+```
+
+你将得到以下结果：
+<center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792071-cb664a80-1200-11ea-8386-02dd12046c4b.png"></center>
+
+> 注意：时间序列的路径只是过滤条件，与level的定义无关。
+
+### 统计节点数
+IoTDB支持使用`COUNT NODES <Path> LEVEL=<INTEGER>`来统计当前Metadata树下指定层级的节点个数，这条语句可以用来统计设备数。例如：
+
+```
+IoTDB > COUNT NODES root LEVEL=2
+IoTDB > COUNT NODES root.ln LEVEL=2
+IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
+```
+
+对于上面提到的例子和Metadata Tree，你可以获得如下结果：
+<center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792060-c73a2d00-1200-11ea-8ec4-be7145fd6c8c.png"></center>
+
+> 注意：时间序列的路径只是过滤条件，与level的定义无关。
+
 ### 删除时间序列
 我们可以使用`DELETE TimeSeries <PrefixPath>`语句来删除我们之前创建的时间序列。SQL语句如下所示：
 ```
 IoTDB> delete timeseries root.ln.wf01.wt01.status
 IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
-IoTDB> delete timeseries root.ln.wf02*
+IoTDB> delete timeseries root.ln.wf02.*
 ```
 
 ### 查看设备
@@ -129,8 +166,10 @@ IoTDB> set ttl to root.ln 3600000
 这个例子表示在`root.ln`存储组中，只有最近一个小时的数据将会保存，旧数据会被移除或不可见。
 
 ### 取消 TTL
+取消TTL的SQL语句如下所示：
 ```
-IoTDB> set ttl to root.ln 3600000。
+IoTDB> unset ttl to root.ln
 ```
+取消设置TTL后，存储组`root.ln`中所有的数据都会被保存。
 
 

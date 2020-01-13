@@ -33,7 +33,7 @@ public class Utils {
   }
 
   public static String getTimeSeries(String sql){
-    return sql.substring(sql.indexOf("into") + 4, sql.indexOf('(')).trim();
+    return sql.substring(0, sql.indexOf(',')).trim();
   }
 
 }

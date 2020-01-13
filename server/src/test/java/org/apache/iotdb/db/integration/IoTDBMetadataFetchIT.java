@@ -23,7 +23,6 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
-import org.apache.iotdb.jdbc.IoTDBMetadataResultSet;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -38,8 +37,6 @@ import static org.junit.Assert.fail;
  * defined as integration test.
  */
 public class IoTDBMetadataFetchIT {
-
-  private static IoTDB daemon;
 
   private DatabaseMetaData databaseMetaData;
 
@@ -66,9 +63,6 @@ public class IoTDBMetadataFetchIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertSQL();
@@ -76,7 +70,6 @@ public class IoTDBMetadataFetchIT {
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -92,21 +85,18 @@ public class IoTDBMetadataFetchIT {
           "show timeseries root.ln.*.wt01", // seriesPath with stars
           "show timeseries", // the same as root
           "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
-          "show timeseries root.ln,root.ln",
-          // SHOW TIMESERIES <PATH> only accept single seriesPath, thus
-          // returning ""
       };
       String[] standards = new String[]{
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n",
+          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n",
 
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
-              + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n",
+          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n"
+              + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
 
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
-              + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n",
+          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n"
+              + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
 
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
-                  + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n",
+          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n"
+                  + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
 
           "",
 
@@ -179,12 +169,6 @@ public class IoTDBMetadataFetchIT {
       connection = DriverManager
           .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
       databaseMetaData = connection.getMetaData();
-
-      allColumns();
-      device();
-      showTimeseriesPath1();
-      showTimeseriesPath2();
-      showStorageGroup();
       showTimeseriesInJson();
 
     } catch (Exception e) {
@@ -208,8 +192,8 @@ public class IoTDBMetadataFetchIT {
         boolean hasResultSet = statement.execute(sql);
         if(hasResultSet) {
           try(ResultSet resultSet = statement.getResultSet()) {
-            ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-            Assert.assertEquals(resultSetMetaData.getColumnLabel(1), IoTDBConstant.VERSION);
+            resultSet.next();
+            Assert.assertEquals(resultSet.getString(1), IoTDBConstant.VERSION);
           }
         }
       } catch (Exception e) {
@@ -218,129 +202,178 @@ public class IoTDBMetadataFetchIT {
     }
   }
 
-  /**
-   * get all columns' name under a given seriesPath
-   */
-  private void allColumns() throws SQLException {
-    String standard =
-        "column,\n" + "root.ln.wf01.wt01.status,\n" + "root.ln.wf01.wt01.temperature,\n";
-
-    try (ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_COLUMN, "root", null, null);) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      int colCount = resultSetMetaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 1; i < colCount + 1; i++) {
-        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
-      }
-      resultStr.append("\n");
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
+  @Test
+  public void showDevices() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String[] sqls = new String[]{"show devices root.ln"};
+      String[] standards = new String[]{"root.ln.wf01.wt01,\n"};
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        String standard = standards[n];
+        StringBuilder builder = new StringBuilder();
+        try {
+          boolean hasResultSet = statement.execute(sql);
+          if (hasResultSet) {
+            try (ResultSet resultSet = statement.getResultSet()) {
+              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+              while (resultSet.next()) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                  builder.append(resultSet.getString(i)).append(",");
+                }
+                builder.append("\n");
+              }
+            }
+          }
+          Assert.assertEquals(builder.toString(), standard);
+        } catch (SQLException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
         }
-        resultStr.append("\n");
       }
-      Assert.assertEquals(resultStr.toString(), standard);
     }
   }
 
-  /**
-   * get all delta objects under a given column
-   */
-  private void device() throws SQLException {
-    String standard = "Device,\n" + "root.ln.wf01.wt01,\n";
-
-
-    try (ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICES, null, null,
-        null)) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      int colCount = resultSetMetaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 1; i < colCount + 1; i++) {
-        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
-      }
-      resultStr.append("\n");
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
+  @Test
+  public void showChildPaths() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String[] sqls = new String[]{"show child paths root.ln"};
+      String[] standards = new String[]{"root.ln.wf01,\n"};
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        String standard = standards[n];
+        StringBuilder builder = new StringBuilder();
+        try {
+          boolean hasResultSet = statement.execute(sql);
+          if (hasResultSet) {
+            try (ResultSet resultSet = statement.getResultSet()) {
+              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+              while (resultSet.next()) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                  builder.append(resultSet.getString(i)).append(",");
+                }
+                builder.append("\n");
+              }
+            }
+          }
+          Assert.assertEquals(builder.toString(), standard);
+        } catch (SQLException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
         }
-        resultStr.append("\n");
       }
-      Assert.assertEquals(resultStr.toString(), standard);
     }
   }
 
-  /**
-   * show timeseries <seriesPath> usage 1
-   */
-  private void showTimeseriesPath1() throws SQLException {
-    String standard = "Timeseries,Storage Group,DataType,Encoding,\n"
-        + "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
-        + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n";
-
-    try (ResultSet resultSet = databaseMetaData
-        .getColumns(Constant.CATALOG_TIMESERIES, "root", null, null);) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      int colCount = resultSetMetaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 1; i < colCount + 1; i++) {
-        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
-      }
-      resultStr.append("\n");
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
+  @Test
+  public void showCountTimeSeries() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String[] sqls = new String[]{"COUNT TIMESERIES root.ln"};
+      String[] standards = new String[]{"2,\n"};
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        String standard = standards[n];
+        StringBuilder builder = new StringBuilder();
+        try {
+          boolean hasResultSet = statement.execute(sql);
+          if (hasResultSet) {
+            try (ResultSet resultSet = statement.getResultSet()) {
+              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+              while (resultSet.next()) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                  builder.append(resultSet.getString(i)).append(",");
+                }
+                builder.append("\n");
+              }
+            }
+          }
+          Assert.assertEquals(builder.toString(), standard);
+        } catch (SQLException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
         }
-        resultStr.append("\n");
       }
-      Assert.assertEquals(resultStr.toString(), standard);
     }
   }
 
-  /**
-   * show timeseries <seriesPath> usage 2
-   */
-  private void showTimeseriesPath2() throws SQLException {
-    String standard = "DataType,\n" + "BOOLEAN,\n";
-
-    try (ResultSet resultSet = databaseMetaData
-        .getColumns(Constant.CATALOG_TIMESERIES, "root.ln.wf01.wt01.status", null,
-            null);) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      StringBuilder resultStr = new StringBuilder();
-      resultStr.append(resultSetMetaData.getColumnName(3)).append(",\n");
-      while (resultSet.next()) {
-        resultStr.append(resultSet.getString(IoTDBMetadataResultSet.GET_STRING_TIMESERIES_DATATYPE))
-            .append(",");
-        resultStr.append("\n");
-      }
-      Assert.assertEquals(resultStr.toString(), standard);
-    }
-  }
-
-  /**
-   * show storage group
-   */
-  private void showStorageGroup() throws SQLException {
-    String standard = "Storage Group,\n" + "root.ln.wf01.wt01,\n";
-
-    try (ResultSet resultSet = databaseMetaData
-        .getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null)) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      int colCount = resultSetMetaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 1; i < colCount + 1; i++) {
-        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
-      }
-      resultStr.append("\n");
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
+  @Test
+  public void showCountTimeSeriesGroupBy() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String[] sqls = new String[]{"COUNT TIMESERIES root group by level=1"};
+      String[] standards = new String[]{"root.ln,2,\n"};
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        String standard = standards[n];
+        StringBuilder builder = new StringBuilder();
+        try {
+          boolean hasResultSet = statement.execute(sql);
+          if (hasResultSet) {
+            try (ResultSet resultSet = statement.getResultSet()) {
+              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+              while (resultSet.next()) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                  builder.append(resultSet.getString(i)).append(",");
+                }
+                builder.append("\n");
+              }
+            }
+          }
+          Assert.assertEquals(builder.toString(), standard);
+        } catch (SQLException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
         }
-        resultStr.append("\n");
       }
-      Assert.assertEquals(resultStr.toString(), standard);
     }
   }
+
+  @Test
+  public void showCountNodes() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String[] sqls = new String[]{"COUNT NODES root level=1"};
+      String[] standards = new String[]{"1,\n"};
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        String standard = standards[n];
+        StringBuilder builder = new StringBuilder();
+        try {
+          boolean hasResultSet = statement.execute(sql);
+          if (hasResultSet) {
+            try (ResultSet resultSet = statement.getResultSet()) {
+              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+              while (resultSet.next()) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                  builder.append(resultSet.getString(i)).append(",");
+                }
+                builder.append("\n");
+              }
+            }
+          }
+          Assert.assertEquals(builder.toString(), standard);
+        } catch (SQLException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+
+
 
   /**
    * show metadata in json

@@ -29,14 +29,16 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.integration.Constant;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.tools.watermark.WatermarkDetector;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -46,9 +48,8 @@ import org.junit.Test;
  */
 public class IoTDBWatermarkTest {
 
-  private static IoTDB daemon;
-  private static String filePath1 = "watermarked_query_result.csv";
-  private static String filePath2 = "notWatermarked_query_result.csv";
+  private static String filePath1 = TestConstant.BASE_OUTPUT_PATH.concat("watermarked_query_result.csv");
+  private static String filePath2 = TestConstant.BASE_OUTPUT_PATH.concat("notWatermarked_query_result.csv");
   private static PrintWriter writer1;
   private static PrintWriter writer2;
   private static String secretKey = "ASDFGHJKL";
@@ -56,16 +57,15 @@ public class IoTDBWatermarkTest {
   private static int embed_row_cycle = 5;
   private static int embed_lsb_num = 5;
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     IoTDBDescriptor.getInstance().getConfig().setEnableWatermark(true); // default false
     IoTDBDescriptor.getInstance().getConfig().setWatermarkSecretKey(secretKey);
     IoTDBDescriptor.getInstance().getConfig().setWatermarkBitString(watermarkBitString);
     IoTDBDescriptor.getInstance().getConfig().setWatermarkMethod(String.format("GroupBasedLSBMethod"
         + "(embed_row_cycle=%d,embed_lsb_num=%d)", embed_row_cycle, embed_lsb_num));
-    daemon = IoTDB.getInstance();
-    daemon.active();
+
     EnvironmentUtils.envSetUp();
     insertData();
 
@@ -84,8 +84,8 @@ public class IoTDBWatermarkTest {
     writer2.println("time,root.vehicle.d0.s0,root.vehicle.d0.s1,root.vehicle.d0.s2");
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     File file1 = new File(filePath1);
     if (file1.exists()) {
       file1.delete();
@@ -94,7 +94,6 @@ public class IoTDBWatermarkTest {
     if (file2.exists()) {
       file2.delete();
     }
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

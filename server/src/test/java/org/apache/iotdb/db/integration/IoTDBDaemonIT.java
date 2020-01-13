@@ -18,23 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.apache.iotdb.db.integration.Constant.TIMESTAMP_STR;
-import static org.apache.iotdb.db.integration.Constant.d0s0;
-import static org.apache.iotdb.db.integration.Constant.d0s1;
-import static org.apache.iotdb.db.integration.Constant.d0s2;
-import static org.apache.iotdb.db.integration.Constant.d0s3;
-import static org.apache.iotdb.db.integration.Constant.d0s4;
-import static org.apache.iotdb.db.integration.Constant.d1s0;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
@@ -42,13 +25,18 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.sql.*;
+
+import static org.apache.iotdb.db.integration.Constant.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
 public class IoTDBDaemonIT {
 
-  private static IoTDB daemon;
   private static String[] sqls = new String[]{
 
       "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
@@ -112,8 +100,6 @@ public class IoTDBDaemonIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertData();
@@ -122,7 +108,7 @@ public class IoTDBDaemonIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
+
     EnvironmentUtils.cleanEnv();
   }
 
@@ -194,7 +180,7 @@ public class IoTDBDaemonIT {
   @Test
   public void selectWithDuplicatedColumnsTest2() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "0,11,11,42988.0,11,"
+        "11,11,42988.0,11,"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -211,7 +197,7 @@ public class IoTDBDaemonIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("Time,count(root.vehicle.d0.s0),count(root.vehicle.d0.s0),"
+        Assert.assertEquals("count(root.vehicle.d0.s0),count(root.vehicle.d0.s0),"
             + "sum(root.vehicle.d0.s0),count(root.vehicle.d0.s1),", header.toString());
 
         int cnt = 0;

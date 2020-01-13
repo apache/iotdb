@@ -97,7 +97,7 @@ Users can start IoTDB by the start-server script under the sbin folder.
 
 #### Use Cli
 
-IoTDB offers different ways to interact with server, here we introduce basic steps of using Cli tool to insrert and query data.
+IoTDB offers different ways to interact with server, here we introduce basic steps of using Cli tool to insert and query data.
 
 After installing IoTDB, there is a default user 'root', its default password is also 'root'. Users can use this
 default user to login Cli to use IoTDB. The startup script of Cli is the start-client script in the folder sbin. When executing the script, user should assign  
@@ -157,7 +157,7 @@ IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODIN
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 ```
 
-Inorder to query the specific timeseries, we can use SHOW TIMESERIES <Path>. <Path> represent the path of the timeseries. Its default value is null, which means quering all the timeseries in the system(the same as using "SHOW TIMESERIES root"). Here are the examples:
+In order to query the specific timeseries, we can use SHOW TIMESERIES <Path>. <Path> represent the path of the timeseries. Its default value is null, which means quering all the timeseries in the system(the same as using "SHOW TIMESERIES root"). Here are the examples:
 
 1. Querying all timeseries in the system:
 

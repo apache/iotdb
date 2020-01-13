@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.writelog.recover;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,6 +30,7 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
@@ -49,6 +52,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -78,7 +82,8 @@ public class SeqTsFileRecoverTest {
 
   @Before
   public void setup() throws IOException, WriteProcessException {
-    tsF = SystemFileFactory.INSTANCE.getFile("temp", "test.ts");
+    FlushSubTaskPoolManager.getInstance().start();
+    tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
 
     schema = new Schema();
@@ -130,14 +135,66 @@ public class SeqTsFileRecoverTest {
     FileUtils.deleteDirectory(tsF.getParentFile());
     resource.close();
     node.delete();
+    FlushSubTaskPoolManager.getInstance().stop();
   }
 
   @Test
-  public void test() throws StorageGroupProcessorException, IOException {
+  public void testNonLastRecovery() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, schema,
-        versionController, resource, true);
+        versionController, resource, true, false);
     ActiveTimeSeriesCounter.getInstance().init(logNodePrefix);
-    performer.recover();
+    RestorableTsFileIOWriter writer = performer.recover();
+    assertFalse(writer.canWrite());
+
+    assertEquals(2, (long) resource.getStartTimeMap().get("device99"));
+    assertEquals(100, (long) resource.getEndTimeMap().get("device99"));
+    for (int i = 0; i < 10; i++) {
+      assertEquals(0, (long) resource.getStartTimeMap().get("device" + i));
+      assertEquals(19, (long) resource.getEndTimeMap().get("device" + i));
+    }
+
+    ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(tsF.getPath()));
+    List<Path> pathList = new ArrayList<>();
+    for (int j = 0; j < 10; j++) {
+      for (int k = 0; k < 10; k++) {
+        pathList.add(new Path("device" + j, "sensor" + k));
+      }
+    }
+    QueryExpression queryExpression = QueryExpression.create(pathList, null);
+    QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+    for (int i = 0; i < 20; i++) {
+      RowRecord record = dataSet.next();
+      assertEquals(i, record.getTimestamp());
+      List<Field> fields = record.getFields();
+      assertEquals(100, fields.size());
+      for (int j = 0; j < 100; j++) {
+        assertEquals(j % 10, fields.get(j).getLongV());
+      }
+    }
+
+    pathList = new ArrayList<>();
+    pathList.add(new Path("device99", "sensor1"));
+    pathList.add(new Path("device99", "sensor4"));
+    queryExpression = QueryExpression.create(pathList, null);
+    dataSet = readOnlyTsFile.query(queryExpression);
+    Assert.assertTrue(dataSet.hasNext());
+    RowRecord record = dataSet.next();
+    Assert.assertEquals("2\t0\tnull", record.toString());
+    Assert.assertTrue(dataSet.hasNext());
+    record = dataSet.next();
+    Assert.assertEquals("100\tnull\t0", record.toString());
+
+    readOnlyTsFile.close();
+  }
+
+  @Test
+  public void testLastRecovery() throws StorageGroupProcessorException, IOException {
+    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, schema,
+        versionController, resource, true, true);
+    ActiveTimeSeriesCounter.getInstance().init(logNodePrefix);
+    RestorableTsFileIOWriter writer = performer.recover();
+    assertTrue(writer.canWrite());
+    writer.endFile(schema);
 
     assertEquals(2, (long) resource.getStartTimeMap().get("device99"));
     assertEquals(100, (long) resource.getEndTimeMap().get("device99"));

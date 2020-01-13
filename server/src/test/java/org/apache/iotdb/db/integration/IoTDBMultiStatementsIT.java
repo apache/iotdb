@@ -18,8 +18,14 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.fail;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -29,17 +35,11 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.sql.*;
-
-import static org.junit.Assert.fail;
-
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
  * defined as integration test.
  */
 public class IoTDBMultiStatementsIT {
-
-  private static IoTDB daemon;
 
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
@@ -63,8 +63,6 @@ public class IoTDBMultiStatementsIT {
     tsFileConfig.setGroupSizeInByte(1024 * 1000);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1000);
 
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertData();
@@ -72,7 +70,6 @@ public class IoTDBMultiStatementsIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     // recovery value
     tsFileConfig.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
     tsFileConfig.setPageSizeInByte(pageSizeInByte);
@@ -135,7 +132,6 @@ public class IoTDBMultiStatementsIT {
          Statement statement1 = connection.createStatement();
          Statement statement2 = connection.createStatement()) {
       statement1.setFetchSize(10);
-      statement1.close();
       boolean hasResultSet1 = statement1.execute(selectSql);
       Assert.assertTrue(hasResultSet1);
       ResultSet resultSet1 = statement1.getResultSet();

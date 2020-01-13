@@ -41,21 +41,21 @@ Storage groups are used to let users define how to organize and isolate differen
 ###Producer
 Producers insert IoTDB insert statements into partitions according to devices, ensuring that the same device's data is inserted or updated in the same MessageQueue.
 ###Consumer 
-1. At startup, the consumer client first creates a JDBC connection and check whether the storage groups and timeseries are created in IoTDB. If not, create it.  
-2. Then consume client consume data from rocketmq using MessageListener Orderly to ensure orderly consumption, and insert the sql statement into IoTDB.
+1. At startup, the consumer client first creates a IOTDB-Session connection and check whether the storage groups and timeseries are created in IoTDB. If not, create it.  
+2. Then consume client consume data from RocketMQ using MessageListener Orderly to ensure orderly consumption, and insert the sql statement into IoTDB.
 
 ## Usage
 ### Version usage
-IoTDB: 0.8.0-SNAPSHOT  
-Kafka: 4.4.0
+IoTDB: 0.10.0  
+RocketMQ: 4.4.0
 ### Dependencies with Maven
 
 ```
 <dependencies>
     <dependency>
       <groupId>org.apache.iotdb</groupId>
-      <artifactId>iotdb-jdbc</artifactId>
-      <version>0.8.0-SNAPSHOT</version>
+      <artifactId>iotdb-session</artifactId>
+      <version>0.10.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.rocketmq</groupId>
@@ -65,13 +65,19 @@ Kafka: 4.4.0
   </dependencies>
 ```
 Note: The maven dependencies of io.netty in IoTDB are in conflicts with those dependencies in RocketMQ-Client.
+
 ###1. Install IoTDB
 please refer to [https://iotdb.apache.org/#/Download](https://iotdb.apache.org/#/Download)
+
 ###2. Install RocketMQ
 pleasr refer to [http://rocketmq.apache.org/docs/quick-start/](http://rocketmq.apache.org/docs/quick-start/)
+
 ###3. Startup IoTDB
 please refer to [https://iotdb.apache.org/#/Documents](https://iotdb.apache.org/#/Documents)
+
 ###4. Startup RocketMQ
 please refer to [http://rocketmq.apache.org/docs/quick-start/](http://rocketmq.apache.org/docs/quick-start/)
+
 ###5. Start the consumer client:RocketMQConsumer
+
 ###6. Start the producer client:RocketMQProducer

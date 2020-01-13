@@ -42,8 +42,8 @@
 * 5-Docker Image
 # Chapter 4: Client
 * 1-Command Line Interface (CLI)
-* 2-Programming - JDBC
-* 3-Programming - Session
+* 2-Programming - Native API
+* 3-Programming - JDBC
 * 4-Programming - Other Languages
 * 5-Programming - TsFile API
 # Chapter 5: Operation Manual

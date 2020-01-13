@@ -178,7 +178,7 @@ public class MGraph implements Serializable {
   }
 
   /**
-   * Check whether the input path is storage group for current Metadata Tree or not.
+   * Check whether the input path is a storage group for current Metadata Tree or not.
    *
    * @param path Format: root.node.(node)*
    * @apiNote :for cluster
@@ -269,8 +269,12 @@ public class MGraph implements Serializable {
     return mtree.getAllStorageGroupList();
   }
 
-  Set<String> getAllDevices() throws SQLException {
+  List<String> getAllDevices() throws PathException {
     return mtree.getAllDevices();
+  }
+
+  public List<String> getDevices(String prefixPath) throws PathException {
+    return mtree.getDevices(prefixPath);
   }
 
   List<String> getNodesList(String schemaPattern, int nodeLevel) throws SQLException {
