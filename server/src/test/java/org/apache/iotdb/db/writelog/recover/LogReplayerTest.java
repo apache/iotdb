@@ -54,7 +54,7 @@ public class LogReplayerTest {
   @Test
   public void test() throws IOException, StorageGroupProcessorException {
     String logNodePrefix = "testLogNode";
-    File tsFile = SystemFileFactory.INSTANCE.getFile("temp", "test.ts");
+    File tsFile = SystemFileFactory.INSTANCE.getFile("temp", "1-1-1.tsfile");
     File modF = SystemFileFactory.INSTANCE.getFile("test.mod");
     ModificationFile modFile = new ModificationFile(modF.getPath());
     VersionController versionController = new VersionController() {

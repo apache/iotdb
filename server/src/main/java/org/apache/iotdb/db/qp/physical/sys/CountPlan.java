@@ -16,13 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.jdbc;
+package org.apache.iotdb.db.qp.physical.sys;
 
-public class Constant {
+import org.apache.iotdb.tsfile.read.common.Path;
 
-  private Constant(){}
+/**
+ * CountPlan is used to count time-series and count nodes.
+ */
+public class CountPlan extends ShowPlan {
 
-  public static final String GLOBAL_DB_NAME = "IoTDB";
+  private Path path;
+  private int level;
 
-  static final String METHOD_NOT_SUPPORTED = "Method not supported";
+  public CountPlan(ShowContentType showContentType, Path path) {
+    super(showContentType);
+    this.path = path;
+  }
+
+  public CountPlan(ShowContentType showContentType, Path path, int level) {
+    super(showContentType);
+    this.path = path;
+    this.level = level;
+  }
+
+  public int getLevel() {
+    return level;
+  }
+
+  public Path getPath() {
+    return path;
+  }
 }
