@@ -153,15 +153,11 @@ public class StorageGroupProcessor {
   // includes sealed and unsealed sequence TsFiles
   private TreeSet<TsFileResource> sequenceFileList = new TreeSet<>(
       (o1, o2) -> {
-        if (o1.getProcessor() == null || o2.getProcessor() == null) {
-          int rangeCompare = o1.getFile().getParentFile().getName()
-              .compareTo(o2.getFile().getParentFile().getName());
-          return rangeCompare == 0 ? compareFileName(o1.getFile(), o2.getFile()) : rangeCompare;
-        }
-        int rangeCompare = Long
-            .compare(o1.getProcessor().getTimeRangeId(), o2.getProcessor().getTimeRangeId());
+        int rangeCompare = o1.getFile().getParentFile().getName()
+            .compareTo(o2.getFile().getParentFile().getName());
         return rangeCompare == 0 ? compareFileName(o1.getFile(), o2.getFile()) : rangeCompare;
       });
+
   private CopyOnReadLinkedList<TsFileProcessor> closingSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
   // includes sealed and unsealed unSequence TsFiles
   private List<TsFileResource> unSequenceFileList = new ArrayList<>();
