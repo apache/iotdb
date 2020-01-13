@@ -47,13 +47,33 @@ public abstract class AggregateFunction {
 
   public abstract AggreResultData getResult();
 
-
-  public abstract void calculateValueFromStatistics(Statistics chunkStatistics)
+  /**
+   * Calculate the aggregation using Statistics
+   *
+   * @param statistics chunkStatistics or pageStatistics
+   * @throws QueryProcessException
+   */
+  public abstract void calculateValueFromStatistics(Statistics statistics)
       throws QueryProcessException;
 
+  /**
+   * Aggregate results cannot be calculated using Statistics directly, using the data in each page
+   *
+   * @param dataInThisPage the data in Page
+   * @throws IOException
+   */
   public abstract void calculateValueFromPageData(BatchData dataInThisPage) throws IOException;
 
-  public abstract void calculateValueFromPageData(BatchData dataInThisPage,long bound) throws IOException;
+  /**
+   * Aggregate results cannot be calculated using Statistics directly, using the data in each page
+   *
+   * @param dataInThisPage the data in Page
+   * @param bound          the time upper bounder of data in unsequence data reader
+   * @throws IOException
+   */
+  public abstract void calculateValueFromPageData(BatchData dataInThisPage, long bound)
+      throws IOException;
+
   /**
    * <p> Calculate the aggregation using <code>PageHeader</code>. </p>
    *

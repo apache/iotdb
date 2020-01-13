@@ -31,7 +31,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
+import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderIterator;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -170,7 +170,7 @@ public class UnseqTsFileRecoverTest {
       Chunk chunk = chunkLoader.getChunk(chunkMetaData);
       ChunkReader chunkReader = new ChunkReader(chunk, null);
       unSeqMergeReader
-          .addReaderWithPriority(new DiskChunkReader(chunkReader), priorityValue);
+          .addReaderWithPriority(new ChunkReaderIterator(chunkReader), priorityValue);
       priorityValue++;
     }
 

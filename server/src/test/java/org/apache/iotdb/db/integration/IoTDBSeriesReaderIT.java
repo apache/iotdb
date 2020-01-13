@@ -39,16 +39,13 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
@@ -270,7 +267,6 @@ public class IoTDBSeriesReaderIT {
     QueryPlan queryPlan = new QueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPaths(pathList);
-
     QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
@@ -376,12 +372,7 @@ public class IoTDBSeriesReaderIT {
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      RowRecord next = queryDataSet.next();
-      System.out.print(next.getTimestamp() + "\t");
-      for (Field field : next.getFields()) {
-        System.out.print(field.getIntV()+ "\t");
-      }
-      System.out.println();
+      queryDataSet.next();
       cnt++;
     }
     assertEquals(22300, cnt);

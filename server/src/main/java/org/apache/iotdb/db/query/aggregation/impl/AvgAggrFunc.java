@@ -60,9 +60,9 @@ public class AvgAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromStatistics(Statistics chunkStatistics) {
-    sum += chunkStatistics.getSumValue();
-    cnt += chunkStatistics.getCount();
+  public void calculateValueFromStatistics(Statistics statistics) {
+    sum += statistics.getSumValue();
+    cnt += statistics.getCount();
   }
 
   @Override

@@ -47,13 +47,13 @@ public class FirstValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromStatistics(Statistics chunkStatistics)
+  public void calculateValueFromStatistics(Statistics statistics)
       throws QueryProcessException {
     if (resultData.isSetTime()) {
       return;
     }
 
-    Object firstVal = chunkStatistics.getFirstValue();
+    Object firstVal = statistics.getFirstValue();
     if (firstVal == null) {
       throw new QueryProcessException("ChunkMetaData contains no FIRST value");
     }
@@ -78,7 +78,6 @@ public class FirstValueAggrFunc extends AggregateFunction {
     if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       resultData.putTimeAndValue(0, dataInThisPage.currentValue());
       dataInThisPage.next();
-      return;
     }
   }
 

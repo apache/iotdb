@@ -35,12 +35,12 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
  * are used here: <code>ChunkReaderWithoutFilter</code> and <code>ChunkReaderWithFilter</code>.
  * <p>
  */
-public class DiskChunkReader implements IPointReader, IBatchReader {
+public class ChunkReaderIterator implements IPointReader, IBatchReader {
 
   private IChunkReader chunkReader;
   private BatchData data;
 
-  public DiskChunkReader(IChunkReader chunkReader) {
+  public ChunkReaderIterator(IChunkReader chunkReader) {
     this.chunkReader = chunkReader;
   }
 

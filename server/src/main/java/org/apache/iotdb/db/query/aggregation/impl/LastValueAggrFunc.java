@@ -51,10 +51,10 @@ public class LastValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromStatistics(Statistics chunkStatistics)
+  public void calculateValueFromStatistics(Statistics statistics)
       throws QueryProcessException {
-    Object lastVal = chunkStatistics.getLastValue();
-    updateLastResult(chunkStatistics.getEndTime(), lastVal);
+    Object lastVal = statistics.getLastValue();
+    updateLastResult(statistics.getEndTime(), lastVal);
   }
 
   @Override

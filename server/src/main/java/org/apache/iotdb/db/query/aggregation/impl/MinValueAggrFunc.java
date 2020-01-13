@@ -47,9 +47,9 @@ public class MinValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromStatistics(Statistics chunkStatistics)
+  public void calculateValueFromStatistics(Statistics statistics)
       throws QueryProcessException {
-    Comparable<Object> minVal = (Comparable<Object>) chunkStatistics.getMinValue();
+    Comparable<Object> minVal = (Comparable<Object>) statistics.getMinValue();
     updateResult(minVal);
   }
 

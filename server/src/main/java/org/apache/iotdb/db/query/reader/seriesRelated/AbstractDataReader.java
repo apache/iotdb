@@ -36,7 +36,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.MemChunkLoader;
-import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
+import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderIterator;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -106,7 +106,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     seqFileResource = queryDataSource.getSeqResources();
     unseqFileResource = sortUnSeqFileResources(queryDataSource.getUnseqResources());
 
-    removeInvalidFiles(seriesPath, filter);
+    removeInvalidFiles(filter);
     fillMetadataContainer();
   }
 
@@ -127,7 +127,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     seqFileResource = queryDataSource.getSeqResources();
     unseqFileResource = sortUnSeqFileResources(queryDataSource.getUnseqResources());
 
-    removeInvalidFiles(seriesPath, filter);
+    removeInvalidFiles(filter);
     fillMetadataContainer();
   }
 
@@ -146,7 +146,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     this.seqFileResource = resources;
     this.unseqFileResource = new TreeSet<>();
 
-    removeInvalidFiles(seriesPath, filter);
+    removeInvalidFiles(filter);
     fillMetadataContainer();
   }
 
@@ -194,12 +194,13 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     }
     if (chunkReader.hasNextSatisfiedPage()) {
       priorityMergeReader
-          .addReaderWithPriority(new DiskChunkReader(chunkReader), chunkMetaData.getVersion());
+          .addReaderWithPriority(new ChunkReaderIterator(chunkReader), chunkMetaData.getVersion());
       hasCachedNextBatch = true;
     }
     for (int i = 0; i < overlappedPages.size(); i++) {
       VersionPair<IChunkReader> reader = overlappedPages.get(i);
-      priorityMergeReader.addReaderWithPriority(new DiskChunkReader(reader.data), reader.version);
+      priorityMergeReader
+          .addReaderWithPriority(new ChunkReaderIterator(reader.data), reader.version);
       hasCachedNextBatch = true;
     }
     overlappedPages.clear();
@@ -313,19 +314,11 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
   /**
    * Because you get a list of all the files, some files are not necessary when filters exist. This
    * method filters out the available data files based on the filter
-   *
-   * @param seriesPath
-   * @param filter
    */
-  private void removeInvalidFiles(Path seriesPath, Filter filter) {
+  private void removeInvalidFiles(Filter filter) {
     //filter seq files
     while (filter != null && !seqFileResource.isEmpty()) {
-      TsFileResource tsFileResource = seqFileResource.get(0);
-      long startTime = tsFileResource.getStartTimeMap()
-          .getOrDefault(seriesPath.getDevice(), Long.MIN_VALUE);
-      long endTime = tsFileResource.getEndTimeMap()
-          .getOrDefault(seriesPath.getDevice(), Long.MAX_VALUE);
-      if (!filter.satisfyStartEndTime(startTime, endTime)) {
+      if (!isValid(seqFileResource.get(0))) {
         seqFileResource.remove(0);
         continue;
       }
@@ -333,17 +326,20 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     }
     //filter unseq files
     while (filter != null && !unseqFileResource.isEmpty()) {
-      TsFileResource tsFileResource = unseqFileResource.first();
-      Long startTime = tsFileResource.getStartTimeMap()
-          .getOrDefault(seriesPath.getDevice(), Long.MIN_VALUE);
-      Long endTime = tsFileResource.getEndTimeMap()
-          .getOrDefault(seriesPath.getDevice(), Long.MAX_VALUE);
-      if (!filter.satisfyStartEndTime(startTime, endTime)) {
+      if (!isValid(unseqFileResource.first())) {
         unseqFileResource.pollFirst();
         continue;
       }
       break;
     }
+  }
+
+  private boolean isValid(TsFileResource tsFileResource) {
+    long startTime = tsFileResource.getStartTimeMap()
+        .getOrDefault(seriesPath.getDevice(), Long.MIN_VALUE);
+    long endTime = tsFileResource.getEndTimeMap()
+        .getOrDefault(seriesPath.getDevice(), Long.MAX_VALUE);
+    return filter.satisfyStartEndTime(startTime, endTime);
   }
 
   /**
@@ -365,7 +361,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
       Map<String, Long> startTimeMap = seqFileResource.get(0).getStartTimeMap();
       Long seqStartTime = startTimeMap.getOrDefault(seriesPath.getDevice(), Long.MIN_VALUE);
       if (chunkMetaData.getEndTime() > seqStartTime) {
-        unseqChunkMetadatas.addAll(loadChunkMetadatas(unseqFileResource.pollFirst()));
+        seqChunkMetadatas.addAll(loadChunkMetadatas(seqFileResource.remove(0)));
         continue;
       }
       break;

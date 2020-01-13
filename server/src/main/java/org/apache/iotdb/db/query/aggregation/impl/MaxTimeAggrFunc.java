@@ -47,8 +47,8 @@ public class MaxTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromStatistics(Statistics chunkStatistics) {
-    long maxTimestamp = chunkStatistics.getEndTime();
+  public void calculateValueFromStatistics(Statistics statistics) {
+    long maxTimestamp = statistics.getEndTime();
     updateMaxTimeResult(0, maxTimestamp);
   }
 

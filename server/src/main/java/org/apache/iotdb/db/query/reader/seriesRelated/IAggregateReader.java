@@ -22,10 +22,6 @@ import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-/**
- * @Author: LiuDaWei
- * @Create: 2020年01月05日
- */
 public interface IAggregateReader {
 
   boolean hasNextChunk() throws IOException;

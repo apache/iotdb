@@ -53,9 +53,9 @@ public class CountAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromStatistics(Statistics chunkStatistics) {
+  public void calculateValueFromStatistics(Statistics statistics) {
     long preValue = resultData.getLongRet();
-    preValue += chunkStatistics.getCount();
+    preValue += statistics.getCount();
     resultData.setLongRet(preValue);
   }
 

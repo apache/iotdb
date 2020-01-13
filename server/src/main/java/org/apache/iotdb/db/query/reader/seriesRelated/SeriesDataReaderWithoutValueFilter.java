@@ -27,10 +27,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-/**
- * @Author: LiuDaWei
- * @Create: 2020年01月05日
- */
+
 public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader implements
     IAggregateReader {
 
@@ -95,11 +92,8 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
 
 
   protected boolean canUseStatistics(Statistics statistics) {
-    if (filter == null || !filter.containStartEndTime(statistics.getStartTime(),
-        statistics.getEndTime())) {
-      return false;
-    }
-    return true;
+    return filter != null && filter.containStartEndTime(statistics.getStartTime(),
+        statistics.getEndTime());
   }
 
   public void close() {

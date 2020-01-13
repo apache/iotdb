@@ -46,8 +46,8 @@ public class MaxValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromStatistics(Statistics chunkStatistics) {
-    Comparable<Object> maxVal = (Comparable<Object>) chunkStatistics.getMaxValue();
+  public void calculateValueFromStatistics(Statistics statistics) {
+    Comparable<Object> maxVal = (Comparable<Object>) statistics.getMaxValue();
     updateResult(maxVal);
   }
 

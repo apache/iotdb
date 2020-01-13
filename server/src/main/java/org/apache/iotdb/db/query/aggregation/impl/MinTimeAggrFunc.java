@@ -46,11 +46,11 @@ public class MinTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromStatistics(Statistics chunkStatistics) {
+  public void calculateValueFromStatistics(Statistics statistics) {
     if (resultData.isSetValue()) {
       return;
     }
-    long time = chunkStatistics.getStartTime();
+    long time = statistics.getStartTime();
     resultData.putTimeAndValue(0, time);
   }
 
