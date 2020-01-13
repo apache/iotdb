@@ -97,20 +97,20 @@ import org.slf4j.LoggerFactory;
 /**
  * For sequence data, a StorageGroupProcessor has some TsFileProcessors, in which there is only one
  * TsFileProcessor in the working status. <br/>
- *
+ * <p>
  * There are two situations to set the working TsFileProcessor to closing status:<br/>
- *
+ * <p>
  * (1) when inserting data into the TsFileProcessor, and the TsFileProcessor shouldFlush() (or
  * shouldClose())<br/>
- *
+ * <p>
  * (2) someone calls waitForAllCurrentTsFileProcessorsClosed(). (up to now, only flush command from
  * cli will call this method)<br/>
- *
+ * <p>
  * UnSequence data has the similar process as above.
- *
+ * <p>
  * When a sequence TsFileProcessor is submitted to be flushed, the updateLatestFlushTimeCallback()
  * method will be called as a callback.<br/>
- *
+ * <p>
  * When a TsFileProcessor is closed, the closeUnsealedTsFileProcessor() method will be called as a
  * callback.
  */
@@ -154,7 +154,9 @@ public class StorageGroupProcessor {
   private TreeSet<TsFileResource> sequenceFileList = new TreeSet<>(
       (o1, o2) -> {
         if (o1.getProcessor() == null || o2.getProcessor() == null) {
-          return compareFileName(o1.getFile(), o2.getFile());
+          int rangeCompare = o1.getFile().getParentFile().getName()
+              .compareTo(o2.getFile().getParentFile().getName());
+          return rangeCompare == 0 ? compareFileName(o1.getFile(), o2.getFile()) : rangeCompare;
         }
         int rangeCompare = Long
             .compare(o1.getProcessor().getTimeRangeId(), o2.getProcessor().getTimeRangeId());
@@ -172,11 +174,11 @@ public class StorageGroupProcessor {
    */
   private Map<Long, Map<String, Long>> latestTimeForEachDevice = new HashMap<>();
   /**
-   * time partition id -> map, which contains
-   * device -> largest timestamp of the latest memtable to be submitted to asyncTryToFlush
-   * latestFlushedTimeForEachDevice determines whether a data point should be put into a sequential
-   * file or an unsequential file. Data of some device with timestamp less than or equals to the
-   * device's latestFlushedTime should go into an unsequential file.
+   * time partition id -> map, which contains device -> largest timestamp of the latest memtable to
+   * be submitted to asyncTryToFlush latestFlushedTimeForEachDevice determines whether a data point
+   * should be put into a sequential file or an unsequential file. Data of some device with
+   * timestamp less than or equals to the device's latestFlushedTime should go into an unsequential
+   * file.
    */
   private Map<Long, Map<String, Long>> latestFlushedTimeForEachDevice = new HashMap<>();
   private String storageGroupName;
@@ -317,8 +319,7 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * get version controller by time partition Id
-   * Thread-safety should be ensure by caller
+   * get version controller by time partition Id Thread-safety should be ensure by caller
    *
    * @param timePartitionId time partition Id
    * @return version controller
@@ -581,12 +582,11 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * insert batch to tsfile processor
-   * thread-safety that the caller need to guarantee
+   * insert batch to tsfile processor thread-safety that the caller need to guarantee
    *
    * @param batchInsertPlan batch insert plan
-   * @param sequence whether is sequence
-   * @param results result array
+   * @param sequence        whether is sequence
+   * @param results         result array
    * @param timePartitionId time partition id
    */
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
@@ -681,10 +681,10 @@ public class StorageGroupProcessor {
   /**
    * get processor from hashmap, flush oldest processor is necessary
    *
-   * @param timeRangeId time partition range
+   * @param timeRangeId            time partition range
    * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
-   * @param fileList file list to add new processor
-   * @param sequence whether is sequence or not
+   * @param fileList               file list to add new processor
+   * @param sequence               whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRangeId,
       TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap,
@@ -1111,9 +1111,9 @@ public class StorageGroupProcessor {
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param deviceId the deviceId of the timeseries to be deleted.
+   * @param deviceId      the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param timestamp the delete range is (0, timestamp].
+   * @param timestamp     the delete range is (0, timestamp].
    */
   public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
     // TODO: how to avoid partial deletion?
@@ -1396,7 +1396,8 @@ public class StorageGroupProcessor {
         try {
           seqFile.getModFile().close();
         } catch (IOException e) {
-          logger.error("Cannot close the ModificationFile {}", seqFile.getModFile().getFilePath(), e);
+          logger
+              .error("Cannot close the ModificationFile {}", seqFile.getModFile().getFilePath(), e);
         }
       }
     } catch (IOException e) {
@@ -1452,12 +1453,12 @@ public class StorageGroupProcessor {
   /**
    * Load a new tsfile to storage group processor. The mechanism of the sync module will make sure
    * that there has no file which is overlapping with the new file.
-   *
+   * <p>
    * Firstly, determine the loading type of the file, whether it needs to be loaded in sequence list
    * or unsequence list.
-   *
+   * <p>
    * Secondly, execute the loading process by the type.
-   *
+   * <p>
    * Finally, update the latestTimeForEachDevice and latestFlushedTimeForEachDevice.
    *
    * @param newTsFileResource tsfile resource
@@ -1485,12 +1486,12 @@ public class StorageGroupProcessor {
 
   /**
    * Load a new tsfile to storage group processor. Tne file may have overlap with other files.
-   *
+   * <p>
    * Firstly, determine the loading type of the file, whether it needs to be loaded in sequence list
    * or unsequence list.
-   *
+   * <p>
    * Secondly, execute the loading process by the type.
-   *
+   * <p>
    * Finally, update the latestTimeForEachDevice and latestFlushedTimeForEachDevice.
    *
    * @param newTsFileResource tsfile resource
@@ -1581,21 +1582,21 @@ public class StorageGroupProcessor {
   /**
    * Get an appropriate filename to ensure the order between files. The tsfile is named after
    * ({systemTime}-{versionNum}-{mergeNum}.tsfile).
-   *
+   * <p>
    * The sorting rules for tsfile names @see {@link this#compareFileName}, we can restore the list
    * based on the file name and ensure the correctness of the order, so there are three cases.
-   *
+   * <p>
    * 1. The tsfile is to be inserted in the first place of the list. If the timestamp in the file
    * name is less than the timestamp in the file name of the first tsfile  in the list, then the
    * file name is legal and the file name is returned directly. Otherwise, its timestamp can be set
    * to half of the timestamp value in the file name of the first tsfile in the list , and the
    * version number is the version number in the file name of the first tsfile in the list.
-   *
+   * <p>
    * 2. The tsfile is to be inserted in the last place of the list. If the timestamp in the file
    * name is lager than the timestamp in the file name of the last tsfile  in the list, then the
    * file name is legal and the file name is returned directly. Otherwise, the file name is
    * generated by the system according to the naming rules and returned.
-   *
+   * <p>
    * 3. This file is inserted between two files. If the timestamp in the name of the file satisfies
    * the timestamp between the timestamps in the name of the two files, then it is a legal name and
    * returns directly; otherwise, the time stamp is the mean of the timestamps of the two files, the
@@ -1664,7 +1665,7 @@ public class StorageGroupProcessor {
   /**
    * Execute the loading process by the type.
    *
-   * @param type load type
+   * @param type           load type
    * @param tsFileResource tsfile resource to be loaded
    * @UsedBy sync module, load external tsfile module.
    */
@@ -1731,9 +1732,9 @@ public class StorageGroupProcessor {
 
   /**
    * Delete tsfile if it exists.
-   *
+   * <p>
    * Firstly, remove the TsFileResource from sequenceFileList/unSequenceFileList.
-   *
+   * <p>
    * Secondly, delete the tsfile and .resource file.
    *
    * @param tsfieToBeDeleted tsfile to be deleted
@@ -1789,9 +1790,9 @@ public class StorageGroupProcessor {
 
   /**
    * Move tsfile to the target directory if it exists.
-   *
+   * <p>
    * Firstly, remove the TsFileResource from sequenceFileList/unSequenceFileList.
-   *
+   * <p>
    * Secondly, move the tsfile and .resource file to the target directory.
    *
    * @param fileToBeMoved tsfile to be moved

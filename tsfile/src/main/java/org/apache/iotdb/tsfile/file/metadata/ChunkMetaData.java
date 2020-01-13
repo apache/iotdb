@@ -93,7 +93,8 @@ public class ChunkMetaData {
   @Override
   public String toString() {
     return String.format("measurementId: %s, datatype: %s, version: %d, deletedAt: %d, "
-        + "Statistics: %s", measurementUid, tsDataType, version, deletedAt, statistics);
+        + "Statistics: %s, Start time: %s",
+        measurementUid, tsDataType, version, deletedAt, statistics, getStartTime());
   }
 
   public long getNumOfPoints() {
