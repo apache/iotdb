@@ -4,21 +4,22 @@
 
 package org.apache.iotdb.cluster.common;
 
-import java.io.IOException;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.thrift.async.TAsyncClientManager;
-import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingSocket;
 import org.apache.thrift.transport.TNonblockingTransport;
 
 public class TestClient extends AsyncClient {
 
   private int serialNum;
 
-  public TestClient() throws IOException {
-    super(new TBinaryProtocol.Factory(), new TAsyncClientManager(), new TNonblockingSocket(
-        "localhost", 1111));
+  protected TestClient() {
+    super(null, null, null);
+  }
+
+  public TestClient(int serialNum) {
+    this();
+    this.serialNum = serialNum;
   }
 
   TestClient(TProtocolFactory protocolFactory, TAsyncClientManager clientManager,

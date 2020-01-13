@@ -19,21 +19,18 @@
 
 package org.apache.iotdb.cluster.server.handlers.forwarder;
 
-import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient.addNode_call;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 
-public class ForwardAddNodeHandler implements AsyncMethodCallback<AddNodeResponse> {
+public class GenericForwardHandler<T> implements AsyncMethodCallback<T> {
 
   private AsyncMethodCallback resultHandler;
 
-  public ForwardAddNodeHandler(AsyncMethodCallback resultHandler) {
+  public GenericForwardHandler(AsyncMethodCallback resultHandler) {
     this.resultHandler = resultHandler;
   }
 
   @Override
-  public void onComplete(AddNodeResponse response) {
+  public void onComplete(T response) {
     resultHandler.onComplete(response);
   }
 

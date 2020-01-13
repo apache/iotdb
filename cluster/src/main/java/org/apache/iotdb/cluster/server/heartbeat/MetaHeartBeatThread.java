@@ -13,47 +13,40 @@ import org.slf4j.LoggerFactory;
 public class MetaHeartBeatThread extends HeartBeatThread {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaHeartBeatThread.class);
-  private MetaGroupMember raftMember;
+  private MetaGroupMember localMetaMember;
 
   public MetaHeartBeatThread(MetaGroupMember metaMember) {
     super(metaMember);
-    this.raftMember = metaMember;
+    this.localMetaMember = metaMember;
   }
 
   @Override
   void sendHeartbeat(Node node, AsyncClient client) {
     // if the node's identifier is not clear, require it
     request.setRequireIdentifier(!node.isSetNodeIdentifier());
-    synchronized (raftMember.getIdConflictNodes()) {
+    synchronized (localMetaMember.getIdConflictNodes()) {
       request.unsetRegenerateIdentifier();
-      if (raftMember.getIdConflictNodes().contains(node)) {
+      if (localMetaMember.getIdConflictNodes().contains(node)) {
         request.setRegenerateIdentifier(true);
       }
     }
 
     // if the node requires the partition table and it is ready, send it
-    if (raftMember.isNodeBlind(node)) {
-      if (raftMember.getPartitionTable() != null) {
+    if (localMetaMember.isNodeBlind(node)) {
+      if (localMetaMember.getPartitionTable() != null) {
         logger.debug("Send partition table to {}", node);
-        request.setPartitionTableBytes(raftMember.getPartitionTable().serialize());
+        request.setPartitionTableBytes(localMetaMember.getPartitionTable().serialize());
         // if the node does not receive the list, it will require it in the next heartbeat, so
         // we can remove it now
-        raftMember.removeBlindNode(node);
+        localMetaMember.removeBlindNode(node);
       } else {
         if (logger.isDebugEnabled()) {
-          logger.debug("Known nodes: {}, all nodes: {}", raftMember.getIdNodeMap(),
-              raftMember.getAllNodes());
+          logger.debug("Known nodes: {}, all nodes: {}", localMetaMember.getIdNodeMap(),
+              localMetaMember.getAllNodes());
         }
       }
     }
 
     super.sendHeartbeat(node, client);
-  }
-
-  @Override
-  void startElection() {
-    electionRequest.setLastLogTerm(raftMember.getLogManager().getLastLogTerm());
-    electionRequest.setLastLogIndex(raftMember.getLogManager().getCommitLogIndex());
-    super.startElection();
   }
 }

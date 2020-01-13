@@ -68,8 +68,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   String name;
 
   Random random = new Random();
-  Node thisNode;
-  volatile List<Node> allNodes;
+  protected Node thisNode;
+  protected volatile List<Node> allNodes;
 
   volatile NodeCharacter character = NodeCharacter.ELECTOR;
   AtomicLong term = new AtomicLong(0);
@@ -392,7 +392,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     this.lastCatchUpResponseTime = lastCatchUpResponseTime;
   }
 
-  public void setCharacter(NodeCharacter character) {
+  public void /**/setCharacter(NodeCharacter character) {
     logger.info("{} has become a {}", name, character);
     this.character = character;
   }

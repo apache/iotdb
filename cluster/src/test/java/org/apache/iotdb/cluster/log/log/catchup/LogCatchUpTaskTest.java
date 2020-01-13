@@ -6,7 +6,6 @@ package org.apache.iotdb.cluster.log.log.catchup;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.common.TestClient;
@@ -34,25 +33,21 @@ public class LogCatchUpTaskTest {
   private RaftMember sender = new TestMetaGroupMember() {
     @Override
     public AsyncClient connectNode(Node node) {
-      try {
-        return new TestClient() {
-          @Override
-          public void appendEntry(AppendEntryRequest request,
-              AsyncMethodCallback<Long> resultHandler) {
-            new Thread(() -> {
-              TestLog testLog = new TestLog();
-              testLog.deserialize(request.entry);
-              receivedLogs.add(testLog);
-              if (testLeadershipFlag && testLog.getCurrLogIndex() == 4) {
-                sender.setCharacter(NodeCharacter.ELECTOR);
-              }
-              resultHandler.onComplete(Response.RESPONSE_AGREE);
-            }).start();
-          }
-        };
-      } catch (IOException e) {
-        return null;
-      }
+      return new TestClient() {
+        @Override
+        public void appendEntry(AppendEntryRequest request,
+            AsyncMethodCallback<Long> resultHandler) {
+          new Thread(() -> {
+            TestLog testLog = new TestLog();
+            testLog.deserialize(request.entry);
+            receivedLogs.add(testLog);
+            if (testLeadershipFlag && testLog.getCurrLogIndex() == 4) {
+              sender.setCharacter(NodeCharacter.ELECTOR);
+            }
+            resultHandler.onComplete(Response.RESPONSE_AGREE);
+          }).start();
+        }
+      };
     }
 
     @Override

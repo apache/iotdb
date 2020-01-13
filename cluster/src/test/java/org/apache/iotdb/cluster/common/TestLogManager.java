@@ -12,19 +12,23 @@ import org.apache.iotdb.cluster.log.Snapshot;
 
 public class TestLogManager implements LogManager {
 
+  private long lastLogIndex;
+  private long lastLogTerm;
+  private long commitLogIndex;
+
   @Override
   public long getLastLogIndex() {
-    return 0;
+    return lastLogIndex;
   }
 
   @Override
   public long getLastLogTerm() {
-    return 0;
+    return lastLogTerm;
   }
 
   @Override
   public long getCommitLogIndex() {
-    return 0;
+    return commitLogIndex;
   }
 
   @Override
@@ -44,12 +48,12 @@ public class TestLogManager implements LogManager {
 
   @Override
   public void commitLog(long maxLogIndex) {
-
+    commitLogIndex = Math.max(commitLogIndex, maxLogIndex);
   }
 
   @Override
   public void commitLog(Log log) {
-
+    commitLog(log.getCurrLogIndex());
   }
 
   @Override
@@ -84,11 +88,15 @@ public class TestLogManager implements LogManager {
 
   @Override
   public void setLastLogId(long lastLogId) {
-
+    lastLogIndex = lastLogId;
   }
 
   @Override
   public void setLastLogTerm(long lastLogTerm) {
+    this.lastLogTerm = lastLogTerm;
+  }
 
+  public void setCommitLogIndex(long commitLogIndex) {
+    this.commitLogIndex = commitLogIndex;
   }
 }

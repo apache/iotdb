@@ -55,7 +55,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPullSnapshotHandler;
+import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -447,7 +447,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         logger.debug("{} forwarding a pull snapshot request to the leader {}", name, leader);
         DataClient client = (DataClient) connectNode(leader);
         try {
-          client.pullSnapshot(request, new ForwardPullSnapshotHandler(resultHandler));
+          client.pullSnapshot(request, new GenericForwardHandler<>(resultHandler));
         } catch (TException e) {
           resultHandler.onError(e);
         }

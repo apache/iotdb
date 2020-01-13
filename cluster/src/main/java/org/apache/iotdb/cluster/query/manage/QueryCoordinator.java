@@ -4,7 +4,7 @@
 
 package org.apache.iotdb.cluster.query.manage;
 
-import static org.apache.iotdb.cluster.server.RaftServer.CONNECTION_TIME_OUT_MS;
+import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -77,7 +77,7 @@ public class QueryCoordinator {
         long startTime = System.nanoTime();
         synchronized (resultRef) {
           metaClient.queryNodeStatus(handler);
-          resultRef.wait(CONNECTION_TIME_OUT_MS);
+          resultRef.wait(connectionTimeoutInMS);
         }
         TNodeStatus status = resultRef.get();
         if (status != null) {

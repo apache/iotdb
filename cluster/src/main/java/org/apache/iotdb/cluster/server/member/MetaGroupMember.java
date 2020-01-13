@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import static org.apache.iotdb.cluster.server.RaftServer.CONNECTION_TIME_OUT_MS;
+import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -93,7 +93,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
-import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardAddNodeHandler;
+import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.MetaHeartBeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
@@ -152,7 +152,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private LogApplier dataLogApplier = new DataLogApplier(this);
   private DataGroupMember.Factory dataMemberFactory;
 
-  private MetaSingleSnapshotLogManager logManager;
+  protected MetaSingleSnapshotLogManager logManager;
 
   private ClientPool dataClientPool;
 
@@ -716,7 +716,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     TSMetaService.AsyncClient client = (TSMetaService.AsyncClient) connectNode(leader);
     if (client != null) {
       try {
-        client.addNode(node, new ForwardAddNodeHandler(resultHandler));
+        client.addNode(node, new GenericForwardHandler(resultHandler));
         return true;
       } catch (TException e) {
         logger.warn("Cannot connect to node {}", node, e);
@@ -967,7 +967,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         try {
           client.pullTimeSeriesSchema(pullSchemaRequest, new PullTimeseriesSchemaHandler(node,
               prefixPath, timeseriesSchemas));
-          timeseriesSchemas.wait(CONNECTION_TIME_OUT_MS);
+          timeseriesSchemas.wait(connectionTimeoutInMS);
         } catch (TException | InterruptedException e) {
           logger
               .error("{}: Cannot pull timeseries schemas of {} from {}", name, prefixPath, node, e);
@@ -1053,7 +1053,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         synchronized (result) {
           result.set(null);
           client.querySingleSeriesByTimestamp(request, handler);
-          result.wait(CONNECTION_TIME_OUT_MS);
+          result.wait(connectionTimeoutInMS);
         }
         Long readerId = result.get();
         if (readerId != null) {
@@ -1126,7 +1126,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         synchronized (result) {
           result.set(null);
           client.querySingleSeries(request, handler);
-          result.wait(CONNECTION_TIME_OUT_MS);
+          result.wait(connectionTimeoutInMS);
         }
         Long readerId = result.get();
         if (readerId != null) {
@@ -1172,7 +1172,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           result.set(null);
           synchronized (result) {
             client.getAllPaths(partitionGroup.getHeader(), path, handler);
-            result.wait(CONNECTION_TIME_OUT_MS);
+            result.wait(connectionTimeoutInMS);
           }
           List<String> paths = result.get();
           if (paths != null) {

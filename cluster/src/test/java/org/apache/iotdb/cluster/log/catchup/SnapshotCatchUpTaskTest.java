@@ -4,9 +4,10 @@
 
 package org.apache.iotdb.cluster.log.catchup;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.common.TestClient;
@@ -37,34 +38,30 @@ public class SnapshotCatchUpTaskTest {
   private RaftMember sender = new TestMetaGroupMember() {
     @Override
     public AsyncClient connectNode(Node node) {
-      try {
-        return new TestClient() {
-          @Override
-          public void appendEntry(AppendEntryRequest request,
-              AsyncMethodCallback<Long> resultHandler) {
-            new Thread(() -> {
-              TestLog testLog = new TestLog();
-              testLog.deserialize(request.entry);
-              receivedLogs.add(testLog);
-              resultHandler.onComplete(Response.RESPONSE_AGREE);
-            }).start();
-          }
+      return new TestClient() {
+        @Override
+        public void appendEntry(AppendEntryRequest request,
+            AsyncMethodCallback<Long> resultHandler) {
+          new Thread(() -> {
+            TestLog testLog = new TestLog();
+            testLog.deserialize(request.entry);
+            receivedLogs.add(testLog);
+            resultHandler.onComplete(Response.RESPONSE_AGREE);
+          }).start();
+        }
 
-          @Override
-          public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
-            new Thread(() -> {
-              receivedSnapshot = new TestSnapshot();
-              receivedSnapshot.deserialize(request.snapshotBytes);
-              if (testLeadershipFlag) {
-                sender.setCharacter(NodeCharacter.ELECTOR);
-              }
-              resultHandler.onComplete(null);
-            }).start();
-          }
-        };
-      } catch (IOException e) {
-        return null;
-      }
+        @Override
+        public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
+          new Thread(() -> {
+            receivedSnapshot = new TestSnapshot();
+            receivedSnapshot.deserialize(request.snapshotBytes);
+            if (testLeadershipFlag) {
+              sender.setCharacter(NodeCharacter.ELECTOR);
+            }
+            resultHandler.onComplete(null);
+          }).start();
+        }
+      };
     }
 
     @Override

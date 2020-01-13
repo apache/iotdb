@@ -71,7 +71,7 @@ public class LogCatchUpTask implements Runnable {
         }
         client.appendEntry(request, handler);
         raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-        appendSucceed.wait(RaftServer.CONNECTION_TIME_OUT_MS);
+        appendSucceed.wait(RaftServer.connectionTimeoutInMS);
       }
       abort = !appendSucceed.get();
     }

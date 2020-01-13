@@ -4,7 +4,7 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
-import static org.apache.iotdb.cluster.server.RaftServer.CONNECTION_TIME_OUT_MS;
+import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -46,7 +46,7 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
       fetchResult.set(null);
       try {
         client.fetchSingleSeriesByTimestamp(header, readerId, timestamp, handler);
-        fetchResult.wait(CONNECTION_TIME_OUT_MS);
+        fetchResult.wait(connectionTimeoutInMS);
       } catch (TException | InterruptedException e) {
         throw new IOException(e);
       }

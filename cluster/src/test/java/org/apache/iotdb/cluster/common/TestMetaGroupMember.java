@@ -4,11 +4,17 @@
 
 package org.apache.iotdb.cluster.common;
 
+import java.util.ArrayList;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 
 public class TestMetaGroupMember extends MetaGroupMember {
 
   public TestMetaGroupMember() {
     super();
+    allNodes = new ArrayList<>();
+    thisNode = TestUtils.getNode(0);
+    for (int i = 0; i < 10; i++) {
+      allNodes.add(TestUtils.getNode(i));
+    }
   }
 }
