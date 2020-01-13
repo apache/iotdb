@@ -82,49 +82,6 @@ public class AvgAggrFunc extends AggregateFunction {
     }
   }
 
-  @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
-      throws IOException {
-    calculateValueFromPageData(dataInThisPage, unsequenceReader, false, 0);
-  }
-
-  @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException {
-    calculateValueFromPageData(dataInThisPage, unsequenceReader, true, bound);
-  }
-
-  private void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      boolean hasBound, long bound) throws IOException {
-    while (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
-      Object sumVal = null;
-      long time = Math.min(dataInThisPage.currentTime(), unsequenceReader.current().getTimestamp());
-      if (hasBound && time >= bound) {
-        break;
-      }
-      if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
-        sumVal = dataInThisPage.currentValue();
-        dataInThisPage.next();
-      } else if (dataInThisPage.currentTime() == unsequenceReader.current().getTimestamp()) {
-        sumVal = unsequenceReader.current().getValue().getValue();
-        dataInThisPage.next();
-        unsequenceReader.next();
-      } else {
-        sumVal = unsequenceReader.current().getValue().getValue();
-        unsequenceReader.next();
-      }
-      updateMean(seriesDataType, sumVal);
-    }
-
-    while (dataInThisPage.hasCurrent()) {
-      if (hasBound && dataInThisPage.currentTime() >= bound) {
-        break;
-      }
-      updateMean(seriesDataType, dataInThisPage.currentValue());
-      dataInThisPage.next();
-    }
-  }
-
   private void updateMean(TSDataType type, Object sumVal) throws IOException {
     switch (type) {
       case INT32:

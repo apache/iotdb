@@ -51,8 +51,7 @@ public class LastValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromStatistics(Statistics statistics)
-      throws QueryProcessException {
+  public void calculateValueFromStatistics(Statistics statistics) throws QueryProcessException {
     Object lastVal = statistics.getLastValue();
     updateLastResult(statistics.getEndTime(), lastVal);
   }
@@ -72,40 +71,6 @@ public class LastValueAggrFunc extends AggregateFunction {
       dataInThisPage.next();
     }
 
-    if (time != -1) {
-      updateLastResult(time, lastVal);
-    }
-  }
-
-  @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
-      throws IOException {
-    calculateValueFromPageData(dataInThisPage, unsequenceReader, Long.MAX_VALUE);
-  }
-
-  @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException {
-    long time = -1;
-    Object lastVal = null;
-    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
-      time = dataInThisPage.currentTime();
-      lastVal = dataInThisPage.currentValue();
-      dataInThisPage.next();
-    }
-
-    while (unsequenceReader.hasNext()) {
-      if (unsequenceReader.current().getTimestamp() < time) {
-        unsequenceReader.next();
-      } else if (unsequenceReader.current().getTimestamp() == time) {
-        lastVal = unsequenceReader.current().getValue().getValue();
-        unsequenceReader.next();
-      } else {
-        break;
-      }
-    }
-
-    // has inited lastVal and time in the batch(dataInThisPage).
     if (time != -1) {
       updateLastResult(time, lastVal);
     }

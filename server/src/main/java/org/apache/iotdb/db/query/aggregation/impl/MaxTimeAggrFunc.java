@@ -70,34 +70,6 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     }
   }
 
-  @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader) {
-
-    int maxIndex = dataInThisPage.length() - 1;
-    if (maxIndex < 0) {
-      return;
-    }
-    long time = dataInThisPage.getTimeByIndex(maxIndex);
-    updateMaxTimeResult(0, time);
-  }
-
-  @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) {
-    long time = -1;
-    while (dataInThisPage.hasCurrent()) {
-      if (dataInThisPage.currentTime() < bound) {
-        time = dataInThisPage.currentTime();
-        dataInThisPage.next();
-      } else {
-        break;
-      }
-    }
-    if (time != -1) {
-      updateMaxTimeResult(0, time);
-    }
-  }
-
   //TODO Consider how to reverse order in dataReader(IReaderByTimeStamp)
   @Override
   public void calcAggregationUsingTimestamps(long[] timestamps, int length,

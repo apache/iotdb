@@ -73,30 +73,7 @@ public abstract class AggregateFunction {
    */
   public abstract void calculateValueFromPageData(BatchData dataInThisPage, long bound)
       throws IOException;
-
-  /**
-   * <p> Could not calculate using <method>calculateValueFromPageHeader</method> directly.
-   * Calculate the aggregation according to all decompressed data in this page. </p>
-   *
-   * @param dataInThisPage   the data in the DataPage
-   * @param unsequenceReader unsequence data reader
-   * @throws IOException TsFile data read exception
-   */
-  public abstract void calculateValueFromPageData(BatchData dataInThisPage,
-      IPointReader unsequenceReader) throws IOException;
-
-  /**
-   * <p> Could not calculate using <method>calculateValueFromPageHeader</method> directly.
-   * Calculate the aggregation according to all decompressed data in this page. </p>
-   *
-   * @param dataInThisPage   the data in the DataPage
-   * @param unsequenceReader unsequence data reader
-   * @param bound            the time upper bounder of data in unsequence data reader
-   * @throws IOException TsFile data read exception
-   */
-  public abstract void calculateValueFromPageData(BatchData dataInThisPage,
-      IPointReader unsequenceReader, long bound) throws IOException, QueryProcessException;
-
+  
   /**
    * <p> This method is calculate the aggregation using the common timestamps of cross series
    * filter. </p>
@@ -113,11 +90,4 @@ public abstract class AggregateFunction {
    * @return If the aggregation result has been calculated return true, else return false.
    */
   public abstract boolean isCalculatedAggregationResult();
-
-  /**
-   * Return data type of aggregation function result data.
-   */
-  public TSDataType getResultDataType() {
-    return resultDataType;
-  }
 }

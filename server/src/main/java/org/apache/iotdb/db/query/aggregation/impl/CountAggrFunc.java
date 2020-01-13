@@ -81,50 +81,6 @@ public class CountAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
-      throws IOException {
-    calculateValueFromPageData(dataInThisPage, unsequenceReader, false, 0);
-  }
-
-  @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException {
-    calculateValueFromPageData(dataInThisPage, unsequenceReader, true, bound);
-  }
-
-  private void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      boolean hasBound, long bound) throws IOException {
-    int cnt = 0;
-    while (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
-      long minTimestamp = Math
-          .min(dataInThisPage.currentTime(), unsequenceReader.current().getTimestamp());
-      if (hasBound && minTimestamp >= bound) {
-        break;
-      }
-      if (dataInThisPage.currentTime() == unsequenceReader.current().getTimestamp()) {
-        dataInThisPage.next();
-        unsequenceReader.next();
-      } else if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
-        dataInThisPage.next();
-      } else {
-        unsequenceReader.next();
-      }
-      cnt++;
-    }
-
-    while (dataInThisPage.hasCurrent()) {
-      if (hasBound && dataInThisPage.currentTime() >= bound) {
-        break;
-      }
-      dataInThisPage.next();
-      cnt++;
-    }
-    long preValue = resultData.getLongRet();
-    preValue += cnt;
-    resultData.setLongRet(preValue);
-  }
-
-  @Override
   public void calcAggregationUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
     int cnt = 0;

@@ -82,57 +82,6 @@ public class FirstValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
-      throws IOException {
-    if (resultData.isSetTime()) {
-      return;
-    }
-    if (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
-      if (dataInThisPage.currentTime() >= unsequenceReader.current().getTimestamp()) {
-        resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
-        unsequenceReader.next();
-        return;
-      } else {
-        resultData.putTimeAndValue(0, dataInThisPage.currentValue());
-        dataInThisPage.next();
-        return;
-      }
-    }
-
-    if (dataInThisPage.hasCurrent()) {
-      resultData.putTimeAndValue(0, dataInThisPage.currentValue());
-    }
-  }
-
-  @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException {
-    if (resultData.isSetTime()) {
-      return;
-    }
-    if (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
-      if (dataInThisPage.currentTime() >= unsequenceReader.current().getTimestamp()) {
-        if (unsequenceReader.current().getTimestamp() < bound) {
-          resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
-          unsequenceReader.next();
-          return;
-        }
-      } else {
-        if (dataInThisPage.currentTime() < bound) {
-          resultData.putTimeAndValue(0, dataInThisPage.currentValue());
-          dataInThisPage.next();
-          return;
-        }
-      }
-    }
-
-    if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
-      resultData.putTimeAndValue(0, dataInThisPage.currentValue());
-      dataInThisPage.next();
-    }
-  }
-
-  @Override
   public void calcAggregationUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
     if (resultData.isSetTime()) {

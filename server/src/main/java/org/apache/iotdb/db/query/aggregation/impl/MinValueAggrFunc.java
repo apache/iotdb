@@ -67,61 +67,6 @@ public class MinValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
-      throws IOException {
-    while (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
-      if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
-        updateResult((Comparable<Object>) dataInThisPage.currentValue());
-        dataInThisPage.next();
-      } else if (dataInThisPage.currentTime() == unsequenceReader.current().getTimestamp()) {
-        updateResult((Comparable<Object>) unsequenceReader.current().getValue().getValue());
-        dataInThisPage.next();
-        unsequenceReader.next();
-      } else {
-        updateResult((Comparable<Object>) unsequenceReader.current().getValue().getValue());
-        unsequenceReader.next();
-      }
-    }
-
-    Comparable<Object> minVal = null;
-    while (dataInThisPage.hasCurrent()) {
-      if (minVal == null
-          || minVal.compareTo(dataInThisPage.currentValue()) > 0) {
-        minVal = (Comparable<Object>) dataInThisPage.currentValue();
-      }
-      dataInThisPage.next();
-    }
-    updateResult(minVal);
-  }
-
-  @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException {
-    while (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
-      long time = Math.min(dataInThisPage.currentTime(), unsequenceReader.current().getTimestamp());
-      if (time >= bound) {
-        break;
-      }
-
-      if (dataInThisPage.currentTime() == time) {
-        updateResult((Comparable<Object>) dataInThisPage.currentValue());
-        dataInThisPage.next();
-      }
-
-      if (unsequenceReader.current().getTimestamp() == time) {
-        updateResult((Comparable<Object>) unsequenceReader.current().getValue().getValue());
-        unsequenceReader.next();
-      }
-
-    }
-
-    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
-      updateResult((Comparable<Object>) dataInThisPage.currentValue());
-      dataInThisPage.next();
-    }
-  }
-
-  @Override
   public void calcAggregationUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
     Comparable<Object> minVal = null;

@@ -119,7 +119,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
     BatchData lastBatch = batchDataList.get(idx);
     calcBatchData(idx, function, lastBatch);
-    if (function.isCalculatedAggregationResult()) {
+    if (isEndCalc(function, lastBatch)) {
       return function.getResult().deepCopy();
     }
     while (sequenceReader.hasNextChunk()) {
@@ -154,7 +154,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         while (sequenceReader.hasNextBatch()) {
           BatchData batchData = sequenceReader.nextBatch();
           calcBatchData(idx, function, batchData);
-          if (function.isCalculatedAggregationResult()) {
+          if (isEndCalc(function, lastBatch)) {
             break;
           }
         }
@@ -163,6 +163,18 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     return function.getResult().deepCopy();
   }
 
+  private boolean isEndCalc(AggregateFunction function, BatchData lastBatch) {
+    if ((lastBatch != null && lastBatch.hasCurrent() && lastBatch.currentTime() > endTime)
+        || function.isCalculatedAggregationResult()) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * @return this batchData >= endTime
+   * @throws IOException
+   */
   private void calcBatchData(int idx, AggregateFunction function, BatchData batchData)
       throws IOException {
     if (batchData == null || !batchData.hasCurrent()) {

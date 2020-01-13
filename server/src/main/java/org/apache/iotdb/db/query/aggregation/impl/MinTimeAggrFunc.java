@@ -71,61 +71,6 @@ public class MinTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
-      throws IOException {
-    if (resultData.isSetValue()) {
-      return;
-    }
-
-    if (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
-      if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
-        resultData.setTimestamp(0);
-        resultData.setLongRet(dataInThisPage.currentTime());
-      } else {
-        resultData.setTimestamp(0);
-        resultData.setLongRet(unsequenceReader.current().getTimestamp());
-      }
-      return;
-    }
-
-    if (dataInThisPage.hasCurrent()) {
-      resultData.setTimestamp(0);
-      resultData.setLongRet(dataInThisPage.currentTime());
-    }
-  }
-
-  @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException {
-    if (resultData.isSetValue()) {
-      return;
-    }
-
-    if (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
-      if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
-        if (dataInThisPage.currentTime() >= bound) {
-          return;
-        }
-        resultData.setTimestamp(0);
-        resultData.setLongRet(dataInThisPage.currentTime());
-      } else {
-        if (unsequenceReader.current().getTimestamp() >= bound) {
-          return;
-        }
-        resultData.setTimestamp(0);
-        resultData.setLongRet(unsequenceReader.current().getTimestamp());
-      }
-      return;
-    }
-
-    if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
-      resultData.setTimestamp(0);
-      resultData.setLongRet(dataInThisPage.currentTime());
-      dataInThisPage.next();
-    }
-  }
-
-  @Override
   public void calcAggregationUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
     if (resultData.isSetValue()) {
