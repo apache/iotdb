@@ -31,11 +31,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class RawDataReaderWithoutValueFilter extends AbstractDataReader implements IRawDataReader {
 
-  public RawDataReaderWithoutValueFilter(Path seriesPath,
-      TSDataType dataType,
-      Filter filter,
-      QueryContext context)
-      throws StorageEngineException, IOException {
+  public RawDataReaderWithoutValueFilter(Path seriesPath, TSDataType dataType, Filter filter,
+      QueryContext context) throws StorageEngineException, IOException {
     super(seriesPath, dataType, filter, context);
   }
 
@@ -51,7 +48,10 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
     super(seriesPath, dataType, filter, context, resources);
   }
 
-
+  /**
+   * This method overrides the AbstractDataReader.hasNextBatch for pause reads, to achieve a
+   * continuous read
+   */
   @Override
   public boolean hasNextBatch() throws IOException {
     while (hasNextChunk()) {

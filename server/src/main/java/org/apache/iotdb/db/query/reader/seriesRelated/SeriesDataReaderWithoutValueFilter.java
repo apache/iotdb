@@ -27,7 +27,30 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-
+/*
+ *This class extends some methods to implement skip reads :
+ *  while(hasNextChunk()){
+ *    if(canUseChunkStatistics()){
+ *      Statistics statistics = currentChunkStatistics();
+ *      doSomething...
+ *      skipChunkData();
+ *      break;
+ *    }
+ *
+ *    while(hasNextPage()){
+ *      if(canUseChunkStatistics()){
+ *        Statistics statistics = currentPageStatistics();
+ *        doSomething...
+ *        skipPageData();
+ *        break;
+ *      }
+ *
+ *      while(hasNextBatch()){
+ *        nextBatch();
+ *      }
+ *    }
+ *  }
+ */
 public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader implements
     IAggregateReader {
 

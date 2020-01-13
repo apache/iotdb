@@ -54,6 +54,18 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
+/*
+ * This class implements a pause read method, pseudocode is:
+ *
+ *
+ * while(hasNextChunk()){
+ *    while(hasNextPage()){
+ *      while(hasNextBatch()){
+ *        nextBatch()
+ *      }
+ *    }
+ * }
+ */
 public abstract class AbstractDataReader implements ManagedSeriesReader {
 
   private final QueryDataSource queryDataSource;
