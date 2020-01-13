@@ -139,7 +139,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
 
   //for test
   public AbstractDataReader(Path seriesPath, TSDataType dataType,
-      Filter filter, QueryContext context, List<TsFileResource> resources) throws IOException {
+      Filter filter, QueryContext context, List<TsFileResource> seqResources) throws IOException {
     this.queryDataSource = null;
     this.seriesPath = seriesPath;
     this.context = context;
@@ -147,7 +147,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
 
     this.filter = filter;
 
-    this.seqFileResource = resources;
+    this.seqFileResource = seqResources;
     this.unseqFileResource = new TreeSet<>();
 
     removeInvalidFiles();
@@ -165,7 +165,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     if (!hasCachedNextChunk) {
       return false;
     }
-    fillOverlappedFiles();
+    unpackOverlappedFiles();
     fillOverlappedChunks();
     return hasCachedNextChunk;
   }
@@ -340,22 +340,22 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
 
   private boolean isValid(TsFileResource tsFileResource) {
     long startTime = tsFileResource.getStartTimeMap()
-        .getOrDefault(seriesPath.getDevice(), Long.MIN_VALUE);
+        .get(seriesPath.getDevice());
     long endTime = tsFileResource.getEndTimeMap()
         .getOrDefault(seriesPath.getDevice(), Long.MAX_VALUE);
     return filter.satisfyStartEndTime(startTime, endTime);
   }
 
   /**
-   * unseq file is a very special file that intersects not only with an ordered file, but also with
-   * another unseq file. So we need a way to find all the files that might be used to intersect the
-   * current measurement point.
+   * unseq files are very special files that intersect not only with sequence files, but also with
+   * other unseq files. So we need to find all tsfiles that overlapped with current chunk and
+   * extract chunks from the resource.
    */
-  private void fillOverlappedFiles() throws IOException {
+  private void unpackOverlappedFiles() throws IOException {
     while (!unseqFileResource.isEmpty()) {
       Map<String, Long> startTimeMap = unseqFileResource.first().getStartTimeMap();
-      Long unSeqStartTime = startTimeMap.getOrDefault(seriesPath.getDevice(), Long.MIN_VALUE);
-      if (chunkMetaData.getEndTime() > unSeqStartTime) {
+      Long unSeqStartTime = startTimeMap.getOrDefault(seriesPath.getDevice(), Long.MAX_VALUE);
+      if (chunkMetaData.getEndTime() >= unSeqStartTime) {
         unseqChunkMetadatas.addAll(loadChunkMetadatas(unseqFileResource.pollFirst()));
         continue;
       }
@@ -383,7 +383,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     } else if (seqChunkMetadatas.isEmpty() && !unseqChunkMetadatas.isEmpty()) {
       chunkMetaData = unseqChunkMetadatas.pollFirst();
     } else if (!seqChunkMetadatas.isEmpty()) {
-      // seq 和 unseq 的 chunk metadata 都不为空
+      // neither seqChunkMetadatas nor unseqChunkMetadatas is null
       if (seqChunkMetadatas.get(0).getStartTime() <= unseqChunkMetadatas.first().getStartTime()) {
         chunkMetaData = seqChunkMetadatas.remove(0);
       } else {
@@ -454,7 +454,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     while (!unseqChunkMetadatas.isEmpty()) {
       long startTime = unseqChunkMetadatas.first().getStartTime();
 
-      if (chunkMetaData.getEndTime() > startTime) {
+      if (chunkMetaData.getEndTime() >= startTime) {
         ChunkMetaData metaData = unseqChunkMetadatas.pollFirst();
         IChunkReader chunkReader = initChunkReader(metaData);
         //When data points overlap, there should be a weight
@@ -466,7 +466,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     while (!seqChunkMetadatas.isEmpty()) {
       long startTime = seqChunkMetadatas.get(0).getStartTime();
 
-      if (chunkMetaData.getEndTime() > startTime) {
+      if (chunkMetaData.getEndTime() >= startTime) {
         ChunkMetaData metaData = seqChunkMetadatas.remove(0);
         IChunkReader chunkReader = initChunkReader(metaData);
         overlappedChunkReader.add(new VersionPair<>(metaData.getVersion(), chunkReader));
