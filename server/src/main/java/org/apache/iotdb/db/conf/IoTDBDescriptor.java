@@ -23,6 +23,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.time.ZoneId;
 import java.util.Properties;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -56,6 +57,11 @@ public class IoTDBDescriptor {
       if (url != null) {
         url = url + File.separatorChar + "conf" + File.separatorChar + IoTDBConfig.CONFIG_NAME;
       } else {
+        URL uri = IoTDBConfig.class.getResource("/" + IoTDBConfig.CONFIG_NAME);
+        if (uri != null) {
+          url = uri.getPath();
+          return url;
+        }
         logger.warn(
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
                 + "config file {}, use default configuration",
@@ -273,11 +279,11 @@ public class IoTDBDescriptor {
           properties.getProperty("core_site_path", conf.getCoreSitePath()));
       conf.setHdfsSitePath(
           properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()));
-      conf.setHdfsIp(properties.getProperty("hdfs_ip").split(","));
+      conf.setHdfsIp(properties.getProperty("hdfs_ip", conf.getRawHDFSIp()).split(","));
       conf.setHdfsPort(properties.getProperty("hdfs_port", conf.getHdfsPort()));
       conf.setDfsNameServices(
           properties.getProperty("dfs_nameservices", conf.getDfsNameServices()));
-      conf.setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes").split(","));
+      conf.setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes", conf.getRawDfsHaNamenodes()).split(","));
       conf.setDfsHaAutomaticFailoverEnabled(
           Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled",
               String.valueOf(conf.isDfsHaAutomaticFailoverEnabled()))));
@@ -296,22 +302,22 @@ public class IoTDBDescriptor {
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
-          .setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
+          .setTSFileStorageFs(properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().name()));
       TSFileDescriptor.getInstance().getConfig().setKerberosKeytabFilePath(
           properties.getProperty("core_site_path", conf.getCoreSitePath()));
       TSFileDescriptor.getInstance().getConfig().setKerberosPrincipal(
           properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()));
       TSFileDescriptor.getInstance().getConfig()
-          .setHdfsIp(properties.getProperty("hdfs_ip").split(","));
-      TSFileDescriptor.getInstance().getConfig().setHdfsPort(properties.getProperty("hdfs_port"));
+          .setHdfsIp(properties.getProperty("hdfs_ip", conf.getRawHDFSIp()).split(","));
+      TSFileDescriptor.getInstance().getConfig().setHdfsPort(properties.getProperty("hdfs_port", conf.getHdfsPort()));
       TSFileDescriptor.getInstance().getConfig()
-          .setDfsNameServices(properties.getProperty("dfs_nameservices"));
+          .setDfsNameServices(properties.getProperty("dfs_nameservices", conf.getDfsNameServices()));
       TSFileDescriptor.getInstance().getConfig()
-          .setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes").split(","));
+          .setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes", conf.getRawDfsHaNamenodes()).split(","));
       TSFileDescriptor.getInstance().getConfig().setDfsHaAutomaticFailoverEnabled(
-          Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled")));
+          Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled", String.valueOf(conf.isDfsHaAutomaticFailoverEnabled()))));
       TSFileDescriptor.getInstance().getConfig().setDfsClientFailoverProxyProvider(
-          properties.getProperty("dfs_client_failover_proxy_provider"));
+          properties.getProperty("dfs_client_failover_proxy_provider", conf.getDfsClientFailoverProxyProvider()));
       TSFileDescriptor.getInstance().getConfig().setUseKerberos(Boolean.parseBoolean(
           properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));
       TSFileDescriptor.getInstance().getConfig().setKerberosKeytabFilePath(

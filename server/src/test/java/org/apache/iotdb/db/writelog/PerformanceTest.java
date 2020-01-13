@@ -37,8 +37,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
+@Ignore
 public class PerformanceTest {
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();

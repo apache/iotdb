@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -17,32 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.modification.io;
+package org.apache.iotdb.db.utils;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import org.apache.iotdb.db.engine.modification.Modification;
+public class FileUtils {
+  private static Logger logger = LoggerFactory.getLogger(FileUtils.class);
 
-/**
- * ModificationWriter provides methods for writing a modification to a persistent medium like file
- * system.
- */
-public interface ModificationWriter {
-
-  /**
-   * Write a new modification to the persistent medium.
-   * Notice that after calling write(), a fileWriter is opened,
-   * @param mod the modification to be written.
-   */
-  void write(Modification mod) throws IOException;
-
-  /**
-   * Release resources like streams.
-   */
-  void close() throws IOException;
-
-  /**
-   * Abort last modification.
-   */
-  void abort() throws IOException;
+  private FileUtils() { }
+  public static void deleteDirectory(File folder) throws IOException {
+    if (folder.isDirectory()) {
+      for (File file : folder.listFiles()) {
+        deleteDirectory(file);
+      }
+    }
+    try {
+      Files.delete(folder.toPath());
+    } catch (NoSuchFileException e) {
+      logger.warn(e.getMessage(), e);
+    }
+  }
 }
