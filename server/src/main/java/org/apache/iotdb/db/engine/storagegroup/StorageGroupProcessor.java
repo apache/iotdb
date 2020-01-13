@@ -999,6 +999,11 @@ public class StorageGroupProcessor {
           deviceId, measurementId, context);
       List<TsFileResource> unseqResources = getFileResourceListForQuery(unSequenceFileList,
           deviceId, measurementId, context);
+      System.out.println("!!!");
+      for(TsFileResource resource : seqResources){
+        System.out.println(resource);
+      }
+      System.out.println("!!!");
       QueryDataSource dataSource = new QueryDataSource(new Path(deviceId, measurementId),
           seqResources, unseqResources);
       // used files should be added before mergeLock is unlocked, or they may be deleted by
