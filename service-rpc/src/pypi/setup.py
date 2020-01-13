@@ -27,7 +27,7 @@ except FileNotFoundError:
     long_description = ''
 
 
-print long_description
+print(long_description)
 
 setuptools.setup(
     name="apache-iotdb", # Replace with your own username
