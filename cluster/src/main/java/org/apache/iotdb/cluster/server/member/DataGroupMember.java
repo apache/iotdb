@@ -27,16 +27,13 @@ import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
-import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.manage.FilePartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
-import org.apache.iotdb.cluster.log.snapshot.DataSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
-import org.apache.iotdb.cluster.log.snapshot.RemoteDataSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
@@ -63,7 +60,6 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -259,29 +255,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   public void applySnapshot(Snapshot snapshot, int slot) {
     logger.debug("{}: applying snapshot {} of slot {}", name, snapshot, slot);
-    if (snapshot instanceof DataSimpleSnapshot) {
-      applySimpleSnapshot((DataSimpleSnapshot) snapshot, slot);
-    } else if (snapshot instanceof FileSnapshot) {
+    if (snapshot instanceof FileSnapshot) {
       applyFileSnapshot((FileSnapshot) snapshot);
     } else {
       logger.error("Unrecognized snapshot {}", snapshot);
-    }
-  }
-
-  private void applySimpleSnapshot(DataSimpleSnapshot snapshot, int slot) {
-    synchronized (logManager) {
-      for (MeasurementSchema schema : snapshot.getTimeseriesSchemas()) {
-        SchemaUtils.registerTimeseries(schema);
-      }
-
-      for (Log log : snapshot.getSnapshot()) {
-        try {
-          logManager.getApplier().apply(log);
-        } catch (QueryProcessException e) {
-          logger.error("{}: Cannot apply a log {} in snapshot, ignored", name, log, e);
-        }
-      }
-      logManager.setSnapshot(snapshot, slot);
     }
   }
 
@@ -506,18 +483,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         List<Integer> nodeSlots = entry.getValue();
         pullFileSnapshot(node, nodeSlots);
       }
-    }
-  }
-
-  private void pullDataSimpleSnapshot(Node node, List<Integer> nodeSlots) {
-    PartitionGroup prevHolders =
-        new PartitionGroup(metaGroupMember.getPartitionTable().getHeaderGroup(node));
-
-    Future<Map<Integer, DataSimpleSnapshot>> snapshotFuture =
-        pullSnapshotService.submit(new PullSnapshotTask(node, nodeSlots, this,
-            prevHolders, DataSimpleSnapshot::new));
-    for (int slot : nodeSlots) {
-      logManager.setSnapshot(new RemoteDataSimpleSnapshot(snapshotFuture, slot), slot);
     }
   }
 

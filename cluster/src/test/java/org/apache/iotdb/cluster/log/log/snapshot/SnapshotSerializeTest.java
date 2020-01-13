@@ -11,7 +11,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,11 +25,9 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
-import org.apache.iotdb.cluster.log.snapshot.DataSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
-import org.apache.iotdb.cluster.log.snapshot.RemoteDataSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -40,22 +37,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
 public class SnapshotSerializeTest {
-
-  @Test
-  public void testDataSimpleSnapshot() {
-    List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      measurementSchemaList.add(TestUtils.getTestSchema(i, i));
-    }
-    DataSimpleSnapshot snapshot = new DataSimpleSnapshot(measurementSchemaList);
-    snapshot.setLastLogId(10);
-    snapshot.setLastLogTerm(10);
-
-    ByteBuffer byteBuffer = snapshot.serialize();
-    DataSimpleSnapshot deserializedSnapshot = new DataSimpleSnapshot();
-    deserializedSnapshot.deserialize(byteBuffer);
-    assertEquals(snapshot, deserializedSnapshot);
-  }
 
   @Test
   public void testFileSnapshot() {
@@ -135,73 +116,6 @@ public class SnapshotSerializeTest {
     assertEquals(snapshot, deserializedSnapshot);
   }
 
-  @Test
-  public void testRemoteDataSimpleSnapshot() {
-    Map<Integer, DataSimpleSnapshot> slotSnapshots = new HashMap<>();
-    List<Log> logs = new ArrayList<>();
-    for (int j = 0; j < 10; j++) {
-      MeasurementSchema schema = TestUtils.getTestSchema(j, 0);
-      CreateTimeSeriesPlan createTimeSeriesPlan =
-          new CreateTimeSeriesPlan(new Path(schema.getMeasurementId()), schema.getType(),
-              schema.getEncodingType(), schema.getCompressor(), schema.getProps());
-      PhysicalPlanLog log = new PhysicalPlanLog();
-      log.setPlan(createTimeSeriesPlan);
-      logs.add(log);
-      log.setPreviousLogTerm(j - 1);
-      log.setPreviousLogIndex(j - 1);
-      log.setCurrLogIndex(j);
-      log.setCurrLogTerm(j);
-    }
-
-    for (int i = 0; i < 10; i++) {
-      DataSimpleSnapshot s =
-          new DataSimpleSnapshot(Collections.singleton(TestUtils.getTestSchema(i, 0)));
-      s.setLastLogTerm(i);
-      s.setLastLogId(i);
-      for (Log log : logs.subList(0, i)) {
-        s.add(log);
-      }
-      slotSnapshots.put(i, s);
-    }
-    RemoteDataSimpleSnapshot snapshot = new RemoteDataSimpleSnapshot(
-        new Future<Map<Integer, DataSimpleSnapshot>>() {
-          @Override
-          public boolean cancel(boolean mayInterruptIfRunning) {
-            return false;
-          }
-
-          @Override
-          public boolean isCancelled() {
-            return false;
-          }
-
-          @Override
-          public boolean isDone() {
-            return false;
-          }
-
-          @Override
-          public Map<Integer, DataSimpleSnapshot> get() {
-            return slotSnapshots;
-          }
-
-          @Override
-          public Map<Integer, DataSimpleSnapshot> get(long timeout, TimeUnit unit) {
-            return slotSnapshots;
-          }
-        }, 5);
-    for (Log log : logs.subList(5, logs.size())) {
-      snapshot.add(log);
-    }
-    assertEquals(Arrays.asList(TestUtils.getTestSchema(5, 0)),
-        snapshot.getTimeseriesSchemas());
-    assertEquals(logs.subList(0, 10), snapshot.getSnapshot());
-
-    ByteBuffer byteBuffer = snapshot.serialize();
-    RemoteDataSimpleSnapshot deserializedSnapshot = new RemoteDataSimpleSnapshot();
-    deserializedSnapshot.deserialize(byteBuffer);
-    assertEquals(snapshot, deserializedSnapshot);
-  }
 
   @Test
   public void testRemoteFileSnapshot() {

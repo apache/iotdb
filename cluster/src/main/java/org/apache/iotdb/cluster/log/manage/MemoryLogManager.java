@@ -31,7 +31,7 @@ public abstract class MemoryLogManager implements LogManager {
   Deque<Log> logBuffer = new ArrayDeque<>();
   private LogApplier logApplier;
 
-  public MemoryLogManager(LogApplier logApplier) {
+  protected MemoryLogManager(LogApplier logApplier) {
     this.logApplier = logApplier;
   }
 

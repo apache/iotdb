@@ -10,15 +10,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.log.snapshot.DataSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.SnapshotFactory;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -29,59 +27,37 @@ import org.slf4j.LoggerFactory;
  * PartitionedSnapshotLogManager provides a PartitionedSnapshot as snapshot, dividing each log to
  * a sub-snapshot according to its slot and stores timeseries schemas of each slot.
  */
-public class PartitionedSnapshotLogManager extends MemoryLogManager {
+public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends MemoryLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(PartitionedSnapshotLogManager.class);
 
-  Map<Integer, Snapshot> slotSnapshots = new HashMap<>();
+  Map<Integer, T> slotSnapshots = new HashMap<>();
   Map<Integer, Collection<MeasurementSchema>> slotTimeseries = new HashMap<>();
   long snapshotLastLogId;
   long snapshotLastLogTerm;
   private PartitionTable partitionTable;
   Node header;
+  private SnapshotFactory factory;
 
   public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
-      Node header) {
+      Node header, SnapshotFactory<T> factory) {
     super(logApplier);
     this.partitionTable = partitionTable;
     this.header = header;
+    this.factory = factory;
   }
 
   @Override
   public Snapshot getSnapshot() {
     // copy snapshots
     synchronized (slotSnapshots) {
-      PartitionedSnapshot partitionedSnapshot = new PartitionedSnapshot(DataSimpleSnapshot::new);
-      for (Entry<Integer, Snapshot> entry : slotSnapshots.entrySet()) {
+      PartitionedSnapshot partitionedSnapshot = new PartitionedSnapshot(factory);
+      for (Entry<Integer, T> entry : slotSnapshots.entrySet()) {
         partitionedSnapshot.putSnapshot(entry.getKey(), entry.getValue());
       }
       partitionedSnapshot.setLastLogId(snapshotLastLogId);
       partitionedSnapshot.setLastLogTerm(snapshotLastLogTerm);
       return partitionedSnapshot;
-    }
-  }
-
-  @Override
-  public void takeSnapshot() {
-    logger.info("Taking snapshots, flushing IoTDB");
-    StorageEngine.getInstance().syncCloseAllProcessor();
-    logger.info("Taking snapshots, IoTDB is flushed");
-
-    synchronized (slotSnapshots) {
-      collectTimeseriesSchemas();
-
-      while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
-        Log log = logBuffer.removeFirst();
-        snapshotLastLogId = log.getCurrLogIndex();
-        snapshotLastLogTerm = log.getCurrLogTerm();
-
-        DataSimpleSnapshot dataSimpleSnapshot =
-            (DataSimpleSnapshot) slotSnapshots.computeIfAbsent(PartitionUtils.calculateLogSlot(log,
-            partitionTable), slot -> new DataSimpleSnapshot(slotTimeseries.get(slot)));
-        dataSimpleSnapshot.add(log);
-      }
-
-      logger.info("Snapshot is taken");
     }
   }
 
@@ -102,7 +78,7 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
     }
   }
 
-  public void setSnapshot(Snapshot snapshot, int slot) {
+  public void setSnapshot(T snapshot, int slot) {
     synchronized (slotSnapshots) {
       slotSnapshots.put(slot, snapshot);
     }

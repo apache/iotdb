@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.RemoteSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -26,20 +25,20 @@ import org.slf4j.LoggerFactory;
  * the committed in memory, it considers the logs are contained in the TsFiles so it will record
  * every TsFiles in the slot instead.
  */
-public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogManager{
+public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogManager<FileSnapshot> {
 
   private static final Logger logger = LoggerFactory.getLogger(FilePartitionedSnapshotLogManager.class);
 
   public FilePartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
       Node header) {
-    super(logApplier, partitionTable, header);
+    super(logApplier, partitionTable, header, FileSnapshot::new);
   }
 
   @Override
   public void takeSnapshot() {
     synchronized (slotSnapshots) {
       // make sure every remote snapshot is pulled before creating local snapshot
-      for (Entry<Integer, Snapshot> entry : slotSnapshots.entrySet()) {
+      for (Entry<Integer, FileSnapshot> entry : slotSnapshots.entrySet()) {
         if (entry.getValue() instanceof RemoteSnapshot) {
           ((RemoteSnapshot) entry.getValue()).getRemoteSnapshot();
         }
@@ -77,7 +76,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       // TODO-Cluster#350: add time partitioning
       int slotNum = PartitionUtils.calculateStorageGroupSlot(storageGroupName, 0);
 
-      FileSnapshot snapshot = (FileSnapshot) slotSnapshots.computeIfAbsent(slotNum,
+      FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
           s -> new FileSnapshot());
       snapshot.setTimeseriesSchemas(slotTimeseries.getOrDefault(slotNum,
         Collections.emptySet()));
