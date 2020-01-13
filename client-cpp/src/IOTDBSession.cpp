@@ -27,6 +27,15 @@ void verifySuccess(TSStatus status)
     }
 }
 
+bool checkPathValidity(string path)
+{
+    string PATH_SEPARATOR = ".";
+    string PATH_ROOT = "root";
+    string PATH_MATCHER = PATH_ROOT + "([" + PATH_SEPARATOR + "](([a-zA-Z_][a-zA-Z0-9_-]*)|([+-]?[0-9]+)))+";
+    regex r(PATH_MATCHER.c_str());
+    return regex_match(path,r);
+}
+
 vector<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet,vector<string> columnTypeList)
 {
     int rowCount = tsQueryDataSet.rowCount;
@@ -348,6 +357,12 @@ TSStatus Session::deleteData(vector<string> deviceId, long long time)
 
 TSStatus Session::setStorageGroup(string storageGroupId)
 {
+    if (!checkPathValidity(storageGroupId))
+    {
+        char buf[111];
+        sprintf(buf,"Path %s is invalid",storageGroupId.c_str());
+        throw IoTDBSessionException(buf);
+    }
     shared_ptr<TSStatus> resp(new TSStatus());
     try 
     {
@@ -389,6 +404,13 @@ TSStatus Session::deleteStorageGroups(vector<string> storageGroups)
 
 TSStatus Session::createTimeseries(string path, TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding, CompressionType::CompressionType compressor)
 {
+
+    if (!checkPathValidity(path))
+    {
+        char buf[111];
+        sprintf(buf,"Path %s is invalid",path.c_str());
+        throw IoTDBSessionException(buf);
+    }
     shared_ptr<TSCreateTimeseriesReq> req(new TSCreateTimeseriesReq());
     req->__set_path(path);
     req->__set_dataType(dataType);
@@ -612,3 +634,5 @@ void Session::insertBatch(string deviceId, int rowCount, vector<string> measurem
         throw IoTDBSessionException(e.what());
     }
 }
+
+

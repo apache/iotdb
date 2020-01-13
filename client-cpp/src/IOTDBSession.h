@@ -22,6 +22,7 @@
 #include<exception> 
 #include<iostream>
 #include<algorithm>
+#include<regex>
 #include<thrift/protocol/TBinaryProtocol.h>
 #include<thrift/protocol/TCompactProtocol.h>
 #include<thrift/transport/TSocket.h>
