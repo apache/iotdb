@@ -81,18 +81,6 @@ public class CountAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("PageHeader>>>>>>>>>>>>num of rows:{}, minTimeStamp:{}, maxTimeStamp{}",
-          pageHeader.getNumOfValues(), pageHeader.getStartTime(), pageHeader.getEndTime());
-    }
-    long preValue = resultData.getLongRet();
-    preValue += pageHeader.getNumOfValues();
-    resultData.setLongRet(preValue);
-
-  }
-
-  @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException {
     calculateValueFromPageData(dataInThisPage, unsequenceReader, false, 0);
@@ -129,32 +117,6 @@ public class CountAggrFunc extends AggregateFunction {
         break;
       }
       dataInThisPage.next();
-      cnt++;
-    }
-    long preValue = resultData.getLongRet();
-    preValue += cnt;
-    resultData.setLongRet(preValue);
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException {
-    int cnt = 0;
-    while (unsequenceReader.hasNext()) {
-      unsequenceReader.next();
-      cnt++;
-    }
-    long preValue = resultData.getLongRet();
-    preValue += cnt;
-    resultData.setLongRet(preValue);
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException {
-    int cnt = 0;
-    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
-      unsequenceReader.next();
       cnt++;
     }
     long preValue = resultData.getLongRet();

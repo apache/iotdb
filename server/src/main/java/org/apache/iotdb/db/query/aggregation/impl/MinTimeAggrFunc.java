@@ -71,15 +71,6 @@ public class MinTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    if (resultData.isSetValue()) {
-      return;
-    }
-    long time = pageHeader.getStartTime();
-    resultData.putTimeAndValue(0, time);
-  }
-
-  @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException {
     if (resultData.isSetValue()) {
@@ -131,30 +122,6 @@ public class MinTimeAggrFunc extends AggregateFunction {
       resultData.setTimestamp(0);
       resultData.setLongRet(dataInThisPage.currentTime());
       dataInThisPage.next();
-    }
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException {
-    if (resultData.isSetValue()) {
-      return;
-    }
-    if (unsequenceReader.hasNext()) {
-      resultData.setTimestamp(0);
-      resultData.setLongRet(unsequenceReader.current().getTimestamp());
-    }
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException {
-    if (resultData.isSetValue()) {
-      return;
-    }
-    if (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
-      resultData.setTimestamp(0);
-      resultData.setLongRet(unsequenceReader.current().getTimestamp());
     }
   }
 

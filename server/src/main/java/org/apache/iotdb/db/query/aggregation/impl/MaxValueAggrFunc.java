@@ -70,12 +70,6 @@ public class MaxValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    Comparable<Object> maxVal = (Comparable<Object>) pageHeader.getStatistics().getMaxValue();
-    updateResult(maxVal);
-  }
-
-  @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException {
     Comparable<Object> maxVal = null;
@@ -133,34 +127,6 @@ public class MaxValueAggrFunc extends AggregateFunction {
       updateResult((Comparable<Object>) dataInThisPage.currentValue());
       dataInThisPage.next();
     }
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException {
-    Comparable<Object> maxVal = null;
-    while (unsequenceReader.hasNext()) {
-      if (maxVal == null
-          || maxVal.compareTo(unsequenceReader.current().getValue().getValue()) < 0) {
-        maxVal = (Comparable<Object>) unsequenceReader.current().getValue().getValue();
-      }
-      unsequenceReader.next();
-    }
-    updateResult(maxVal);
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException {
-    Comparable<Object> maxVal = null;
-    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
-      if (maxVal == null
-          || maxVal.compareTo(unsequenceReader.current().getValue().getValue()) < 0) {
-        maxVal = (Comparable<Object>) unsequenceReader.current().getValue().getValue();
-      }
-      unsequenceReader.next();
-    }
-    updateResult(maxVal);
   }
 
   @Override

@@ -44,7 +44,6 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   private List<SeriesDataReaderWithoutValueFilter> sequenceReaderList;
   private List<BatchData> batchDataList;
-  private List<Boolean> hasCachedSequenceDataList;
   private Filter timeFilter;
 
   /**
@@ -56,10 +55,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
     this.sequenceReaderList = new ArrayList<>();
     this.timeFilter = null;
-    this.hasCachedSequenceDataList = new ArrayList<>();
     this.batchDataList = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
-      hasCachedSequenceDataList.add(false);
       batchDataList.add(null);
     }
     initGroupBy(context, groupByPlan);
@@ -122,6 +119,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
     BatchData lastBatch = batchDataList.get(idx);
     calcBatchData(idx, function, lastBatch);
+    if (function.isCalculatedAggregationResult()) {
+      return function.getResult().deepCopy();
+    }
     while (sequenceReader.hasNextChunk()) {
       Statistics chunkStatistics = sequenceReader.currentChunkStatistics();
       if (chunkStatistics.getStartTime() > endTime) {

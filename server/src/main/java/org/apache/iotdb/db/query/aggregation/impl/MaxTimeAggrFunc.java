@@ -71,12 +71,6 @@ public class MaxTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    long maxTimestamp = pageHeader.getEndTime();
-    updateMaxTimeResult(0, maxTimestamp);
-  }
-
-  @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader) {
 
     int maxIndex = dataInThisPage.length() - 1;
@@ -101,30 +95,6 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     }
     if (time != -1) {
       updateMaxTimeResult(0, time);
-    }
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException {
-    TimeValuePair pair = null;
-    while (unsequenceReader.hasNext()) {
-      pair = unsequenceReader.next();
-    }
-    if (pair != null) {
-      updateMaxTimeResult(0, pair.getTimestamp());
-    }
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException {
-    TimeValuePair pair = null;
-    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
-      pair = unsequenceReader.next();
-    }
-    if (pair != null) {
-      updateMaxTimeResult(0, pair.getTimestamp());
     }
   }
 

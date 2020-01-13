@@ -36,7 +36,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.MemChunkLoader;
-import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderIterator;
+import org.apache.iotdb.db.query.reader.chunkRelated.ChunkDataIterator;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -98,15 +98,12 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     this.context = context;
     this.dataType = dataType;
 
-    if (filter != null) {
-      filter = queryDataSource.setTTL(filter);
-      this.filter = filter;
-    }
+    this.filter = queryDataSource.setTTL(filter);
 
     seqFileResource = queryDataSource.getSeqResources();
     unseqFileResource = sortUnSeqFileResources(queryDataSource.getUnseqResources());
 
-    removeInvalidFiles(filter);
+    removeInvalidFiles();
     fillMetadataContainer();
   }
 
@@ -119,15 +116,12 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     this.context = context;
     this.dataType = dataType;
 
-    if (filter != null) {
-      filter = queryDataSource.setTTL(filter);
-      this.filter = filter;
-    }
+    this.filter = queryDataSource.setTTL(filter);
 
     seqFileResource = queryDataSource.getSeqResources();
     unseqFileResource = sortUnSeqFileResources(queryDataSource.getUnseqResources());
 
-    removeInvalidFiles(filter);
+    removeInvalidFiles();
     fillMetadataContainer();
   }
 
@@ -139,14 +133,12 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     this.context = context;
     this.dataType = dataType;
 
-    if (filter != null) {
-      this.filter = filter;
-    }
+    this.filter = filter;
 
     this.seqFileResource = resources;
     this.unseqFileResource = new TreeSet<>();
 
-    removeInvalidFiles(filter);
+    removeInvalidFiles();
     fillMetadataContainer();
   }
 
@@ -188,19 +180,19 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
   }
 
 
-  protected boolean hasNextBatch() throws IOException {
+  public boolean hasNextBatch() throws IOException {
     if (hasCachedNextBatch) {
       return true;
     }
     if (chunkReader.hasNextSatisfiedPage()) {
       priorityMergeReader
-          .addReaderWithPriority(new ChunkReaderIterator(chunkReader), chunkMetaData.getVersion());
+          .addReaderWithPriority(new ChunkDataIterator(chunkReader), chunkMetaData.getVersion());
       hasCachedNextBatch = true;
     }
     for (int i = 0; i < overlappedPages.size(); i++) {
       VersionPair<IChunkReader> reader = overlappedPages.get(i);
       priorityMergeReader
-          .addReaderWithPriority(new ChunkReaderIterator(reader.data), reader.version);
+          .addReaderWithPriority(new ChunkDataIterator(reader.data), reader.version);
       hasCachedNextBatch = true;
     }
     overlappedPages.clear();
@@ -209,12 +201,12 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     return hasCachedNextBatch;
   }
 
-  protected BatchData nextBatch() throws IOException {
+  public BatchData nextBatch() throws IOException {
     if (priorityMergeReader.hasNext()) {
       hasCachedNextBatch = false;
       return nextOverlappedPage();
     }
-    return null;
+    throw new IOException("no next data");
   }
 
 
@@ -315,7 +307,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
    * Because you get a list of all the files, some files are not necessary when filters exist. This
    * method filters out the available data files based on the filter
    */
-  private void removeInvalidFiles(Filter filter) {
+  private void removeInvalidFiles() {
     //filter seq files
     while (filter != null && !seqFileResource.isEmpty()) {
       if (!isValid(seqFileResource.get(0))) {

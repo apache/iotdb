@@ -35,12 +35,12 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
  * are used here: <code>ChunkReaderWithoutFilter</code> and <code>ChunkReaderWithFilter</code>.
  * <p>
  */
-public class ChunkReaderIterator implements IPointReader, IBatchReader {
+public class ChunkDataIterator implements IPointReader {
 
   private IChunkReader chunkReader;
   private BatchData data;
 
-  public ChunkReaderIterator(IChunkReader chunkReader) {
+  public ChunkDataIterator(IChunkReader chunkReader) {
     this.chunkReader = chunkReader;
   }
 
@@ -69,16 +69,6 @@ public class ChunkReaderIterator implements IPointReader, IBatchReader {
   public TimeValuePair current() {
     // FIXME: if data.hasNext() = false and this method is called...
     return TimeValuePairUtils.getCurrentTimeValuePair(data);
-  }
-
-  @Override
-  public boolean hasNextBatch() throws IOException {
-    return false;
-  }
-
-  @Override
-  public BatchData nextBatch() throws IOException {
-    return null;
   }
 
   @Override

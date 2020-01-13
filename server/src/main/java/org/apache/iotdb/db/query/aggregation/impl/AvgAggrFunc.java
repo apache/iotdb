@@ -83,12 +83,6 @@ public class AvgAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    sum += pageHeader.getStatistics().getSumValue();
-    cnt += pageHeader.getNumOfValues();
-  }
-
-  @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException {
     calculateValueFromPageData(dataInThisPage, unsequenceReader, false, 0);
@@ -153,24 +147,6 @@ public class AvgAggrFunc extends AggregateFunction {
                 .format("Unsupported data type in aggregation %s : %s", getAggreTypeName(), type));
     }
     cnt++;
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException {
-    while (unsequenceReader.hasNext()) {
-      TimeValuePair pair = unsequenceReader.next();
-      updateMean(seriesDataType, pair.getValue().getValue());
-    }
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException {
-    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
-      TimeValuePair pair = unsequenceReader.next();
-      updateMean(seriesDataType, pair.getValue().getValue());
-    }
   }
 
   @Override

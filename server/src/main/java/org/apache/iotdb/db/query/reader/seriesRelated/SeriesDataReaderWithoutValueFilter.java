@@ -85,11 +85,6 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
     return super.hasNextBatch();
   }
 
-  @Override
-  public BatchData nextBatch() throws IOException {
-    return super.nextBatch();
-  }
-
 
   protected boolean canUseStatistics(Statistics statistics) {
     return filter != null && filter.containStartEndTime(statistics.getStartTime(),

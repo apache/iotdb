@@ -71,7 +71,7 @@ public class ChunkReaderWrap {
     if (type.equals(ChunkReaderType.DISK_CHUNK)) {
       Chunk chunk = chunkLoader.getChunk(chunkMetaData);
       ChunkReader chunkReader = new ChunkReader(chunk, filter);
-      return new ChunkReaderIterator(chunkReader);
+      return new ChunkDataIterator(chunkReader);
     } else {
       return new MemChunkReader(readOnlyMemChunk, filter);
     }

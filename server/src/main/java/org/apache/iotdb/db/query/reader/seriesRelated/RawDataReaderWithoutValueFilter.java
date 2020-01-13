@@ -63,10 +63,4 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
     }
     return false;
   }
-
-  @Override
-  public BatchData nextBatch() throws IOException {
-    return super.nextBatch();
-  }
-
 }

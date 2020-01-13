@@ -78,12 +78,6 @@ public class LastValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    Object lastVal = pageHeader.getStatistics().getLastValue();
-    updateLastResult(pageHeader.getEndTime(), lastVal);
-  }
-
-  @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException {
     calculateValueFromPageData(dataInThisPage, unsequenceReader, Long.MAX_VALUE);
@@ -114,33 +108,6 @@ public class LastValueAggrFunc extends AggregateFunction {
     // has inited lastVal and time in the batch(dataInThisPage).
     if (time != -1) {
       updateLastResult(time, lastVal);
-    }
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException {
-    TimeValuePair pair = null;
-    while (unsequenceReader.hasNext()) {
-      pair = unsequenceReader.next();
-    }
-
-    if (pair != null) {
-      updateLastResult(pair.getTimestamp(), pair.getValue().getValue());
-    }
-
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException {
-    TimeValuePair pair = null;
-    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
-      pair = unsequenceReader.next();
-    }
-
-    if (pair != null) {
-      updateLastResult(pair.getTimestamp(), pair.getValue().getValue());
     }
   }
 

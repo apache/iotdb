@@ -68,19 +68,11 @@ public abstract class AggregateFunction {
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
    *
    * @param dataInThisPage the data in Page
-   * @param bound          the time upper bounder of data in unsequence data reader
+   * @param bound          calculate points whose time < bound
    * @throws IOException
    */
   public abstract void calculateValueFromPageData(BatchData dataInThisPage, long bound)
       throws IOException;
-
-  /**
-   * <p> Calculate the aggregation using <code>PageHeader</code>. </p>
-   *
-   * @param pageHeader <code>PageHeader</code>
-   */
-  public abstract void calculateValueFromPageHeader(PageHeader pageHeader)
-      throws QueryProcessException;
 
   /**
    * <p> Could not calculate using <method>calculateValueFromPageHeader</method> directly.
@@ -104,26 +96,6 @@ public abstract class AggregateFunction {
    */
   public abstract void calculateValueFromPageData(BatchData dataInThisPage,
       IPointReader unsequenceReader, long bound) throws IOException, QueryProcessException;
-
-  /**
-   * <p> Calculate the aggregation with data in unsequenceReader. </p>
-   *
-   * @param unsequenceReader unsequence data reader
-   */
-  public abstract void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException, QueryProcessException;
-
-  /**
-   * <p> Calculate the aggregation with data whose timestamp is less than bound in
-   * unsequenceReader.
-   * </p>
-   *
-   * @param unsequenceReader unsequence data reader
-   * @param bound            the time upper bounder of data in unsequence data reader
-   * @throws IOException TsFile data read exception
-   */
-  public abstract void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException, QueryProcessException;
 
   /**
    * <p> This method is calculate the aggregation using the common timestamps of cross series

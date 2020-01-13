@@ -102,7 +102,7 @@ public class NewAggregateEngineExecutor {
     //TODO use multi-thread
     for (int i = 0; i < selectedSeries.size(); i++) {
       AggreResultData aggreResultData = aggregateWithoutValueFilter(aggregateFunctions.get(i),
-          readersOfSequenceData.get(i), timeFilter);
+          readersOfSequenceData.get(i));
       aggreResultDataList.add(aggreResultData);
     }
     return constructDataSet(aggreResultDataList);
@@ -114,12 +114,18 @@ public class NewAggregateEngineExecutor {
    * @return one series aggregate result data
    */
   private AggreResultData aggregateWithoutValueFilter(AggregateFunction function,
-      SeriesDataReaderWithoutValueFilter newSeriesReader, Filter filter)
+      SeriesDataReaderWithoutValueFilter newSeriesReader)
       throws IOException, QueryProcessException {
     if (function instanceof MaxTimeAggrFunc || function instanceof LastValueAggrFunc) {
-      return handleLastMaxTimeWithOutTimeGenerator(function, newSeriesReader, filter);
+      return handleLastMaxTimeWithOutTimeGenerator(function, newSeriesReader);
     }
 
+    return getAggreResultData(function, newSeriesReader);
+  }
+
+  private AggreResultData getAggreResultData(AggregateFunction function,
+      SeriesDataReaderWithoutValueFilter newSeriesReader)
+      throws IOException, QueryProcessException {
     while (newSeriesReader.hasNextChunk()) {
       if (newSeriesReader.canUseChunkStatistics()) {
         Statistics chunkStatistics = newSeriesReader.currentChunkStatistics();
@@ -151,13 +157,6 @@ public class NewAggregateEngineExecutor {
       }
     }
     return function.getResult();
-  }
-
-  /**
-   * determine whether pageHeader can be used to compute aggregation results.
-   */
-  private boolean canUseHeader(long minTime, long maxTime, Filter filter) {
-    return filter != null && filter.containStartEndTime(minTime, maxTime);
   }
 
   /**
@@ -166,39 +165,9 @@ public class NewAggregateEngineExecutor {
    * @return BatchData-aggregate result
    */
   private AggreResultData handleLastMaxTimeWithOutTimeGenerator(AggregateFunction function,
-      SeriesDataReaderWithoutValueFilter newSeriesReader, Filter filter)
+      SeriesDataReaderWithoutValueFilter newSeriesReader)
       throws IOException, QueryProcessException {
-    while (newSeriesReader.hasNextChunk()) {
-      if (newSeriesReader.canUseChunkStatistics()) {
-        Statistics chunkStatistics = newSeriesReader.currentChunkStatistics();
-        function.calculateValueFromStatistics(chunkStatistics);
-        if (function.isCalculatedAggregationResult()) {
-          return function.getResult();
-        }
-        newSeriesReader.skipChunkData();
-        continue;
-      }
-      while (newSeriesReader.hasNextPage()) {
-        //cal by pageheader
-        if (newSeriesReader.canUsePageStatistics()) {
-          Statistics pageStatistic = newSeriesReader.currentChunkStatistics();
-          function.calculateValueFromStatistics(pageStatistic);
-          if (function.isCalculatedAggregationResult()) {
-            return function.getResult();
-          }
-          newSeriesReader.skipPageData();
-          continue;
-        }
-        //cal by pagedata
-        while (newSeriesReader.hasNextBatch()) {
-          function.calculateValueFromPageData(newSeriesReader.nextBatch());
-          if (function.isCalculatedAggregationResult()) {
-            return function.getResult();
-          }
-        }
-      }
-    }
-    return function.getResult();
+    return getAggreResultData(function, newSeriesReader);
   }
 
 

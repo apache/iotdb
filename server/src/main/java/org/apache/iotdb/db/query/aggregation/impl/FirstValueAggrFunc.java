@@ -82,19 +82,6 @@ public class FirstValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) throws QueryProcessException {
-    if (resultData.isSetTime()) {
-      return;
-    }
-
-    Object firstVal = pageHeader.getStatistics().getFirstValue();
-    if (firstVal == null) {
-      throw new QueryProcessException("PageHeader contains no FIRST value");
-    }
-    resultData.putTimeAndValue(0, firstVal);
-  }
-
-  @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException {
     if (resultData.isSetTime()) {
@@ -142,28 +129,6 @@ public class FirstValueAggrFunc extends AggregateFunction {
     if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       resultData.putTimeAndValue(0, dataInThisPage.currentValue());
       dataInThisPage.next();
-    }
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException {
-    if (resultData.isSetTime()) {
-      return;
-    }
-    if (unsequenceReader.hasNext()) {
-      resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
-    }
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException {
-    if (resultData.isSetTime()) {
-      return;
-    }
-    if (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
-      resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
     }
   }
 

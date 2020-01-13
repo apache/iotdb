@@ -62,7 +62,7 @@ public class PreviousFill extends IFill {
     TimeValuePair beforePair = null;
     TimeValuePair cachedPair = null;
     while (batchData.hasCurrent() || allDataReader.hasNextBatch()) {
-      if (!batchData.hasCurrent()) {
+      if (!batchData.hasCurrent() && allDataReader.hasNextBatch()) {
         batchData = allDataReader.nextBatch();
       }
       cachedPair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
