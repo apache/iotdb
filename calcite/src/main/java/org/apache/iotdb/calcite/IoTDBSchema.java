@@ -18,6 +18,7 @@ import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.impl.AbstractSchema;
 import org.apache.calcite.sql.type.SqlTypeFactoryImpl;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.jdbc.Config;
 
 public class IoTDBSchema extends AbstractSchema {
@@ -51,17 +52,18 @@ public class IoTDBSchema extends AbstractSchema {
     this.name = name;
   }
 
-  RelProtoDataType getRelDataType(String storageGroup) throws SQLException {
+  RelProtoDataType getRelDataType(String storageGroup) throws SQLException, QueryProcessException {
     final RelDataTypeFactory typeFactory =
         new SqlTypeFactoryImpl(RelDataTypeSystem.DEFAULT);
     final RelDataTypeFactory.Builder fieldInfo = typeFactory.builder();
+
     // add time, device columns in relational table
     fieldInfo.add(IoTDBConstant.TimeColumn,
         typeFactory.createSqlType(IoTDBFieldType.INT64.getSqlType()));
     fieldInfo.add(IoTDBConstant.DeviceColumn,
         typeFactory.createSqlType(IoTDBFieldType.TEXT.getSqlType()));
 
-    // get one device in this storage group
+    // get devices in this storage group
     Statement statement = connection.createStatement();
     boolean hasDevices = statement.execute("show devices " + storageGroup);
     if (hasDevices) {
@@ -71,16 +73,28 @@ public class IoTDBSchema extends AbstractSchema {
         deviceList.add(devices.getString(1));
       }
       this.sgToDeviceMap.put(storageGroup, deviceList);
-      // ignore validation here
-      boolean hasTS = statement.execute("show timeseries " + deviceList.get(0));
-      if (hasTS) {
-        ResultSet timeseries = statement.getResultSet();
-        while (timeseries.next()) {
-          String sensorName = timeseries.getString(1);
-          IoTDBFieldType sensorType = IoTDBFieldType.of(timeseries.getString(3));
-          int index = sensorName.lastIndexOf('.');
-          fieldInfo.add(sensorName.substring(index + 1),
-              typeFactory.createSqlType(sensorType.getSqlType()));
+    }
+
+    // get deduplicated measurements in table
+    boolean hasTS = statement.execute("show timeseries " + storageGroup);
+    if (hasTS) {
+      ResultSet timeseries = statement.getResultSet();
+      Map<String, IoTDBFieldType> tmpMeasurementMap = new HashMap<>();
+      while (timeseries.next()) {
+        String sensorName = timeseries.getString(1);
+        sensorName = sensorName.substring(sensorName.lastIndexOf('.') + 1);
+        IoTDBFieldType sensorType = IoTDBFieldType.of(timeseries.getString(3));
+
+        if (!tmpMeasurementMap.containsKey(sensorName)) {
+          tmpMeasurementMap.put(sensorName, sensorType);
+          fieldInfo.add(sensorName, typeFactory.createSqlType(sensorType.getSqlType()));
+        } else {
+          if (!tmpMeasurementMap.get(sensorName).equals(sensorType)) {
+            throw new QueryProcessException(
+                "The data types of the same measurement column should be the same across "
+                    + "devices in GROUP_BY_DEVICE sql. For more details please refer to the "
+                    + "SQL document.");
+          }
         }
       }
     }

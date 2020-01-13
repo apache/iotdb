@@ -33,6 +33,7 @@ import org.apache.calcite.schema.impl.AbstractTableQueryable;
 import org.apache.calcite.sql.type.SqlTypeFactoryImpl;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.util.Util;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 
 public class IoTDBTable extends AbstractQueryableTable
     implements TranslatableTable {
@@ -59,7 +60,8 @@ public class IoTDBTable extends AbstractQueryableTable
       if (protoRowType == null) {
         protoRowType = schema.getRelDataType(storageGroup);
       }
-    } catch (SQLException e) {
+    } catch (SQLException | QueryProcessException e) {
+      // print exception error here
       e.printStackTrace();
     }
     return protoRowType.apply(typeFactory);
