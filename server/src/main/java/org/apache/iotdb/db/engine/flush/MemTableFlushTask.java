@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
+import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.utils.datastructure.AbstractTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -93,6 +94,7 @@ public class MemTableFlushTask {
     logger.debug(
         "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
         storageGroup, memTable.getVersion(), sortTime);
+    PerfMonitor.add("sort", sortTime);
 
     ioTaskFuture.get();
 

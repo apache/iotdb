@@ -154,8 +154,10 @@ public class TsFileRecoverPerformer {
     } else {
       time = System.currentTimeMillis();
       redoLogs(restorableTsFileIOWriter);
+      PerfMonitor.add("TsFileRecoverPerformer.redoLogs", System.currentTimeMillis() - time);
 
       // clean logs
+      time = System.currentTimeMillis();
       try {
         MultiFileLogNodeManager.getInstance()
             .deleteNode(
@@ -218,36 +220,42 @@ public class TsFileRecoverPerformer {
     this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
         versionController,
         tsFileResource, schema, recoverMemTable, acceptUnseq);
-    logReplayer.replayLogs();
-    try {
-      if (!recoverMemTable.isEmpty()) {
-        // flush logs
 
-        MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, schema,
-            restorableTsFileIOWriter, tsFileResource.getFile().getParentFile().getName());
-        tableFlushTask.syncFlushMemTable();
-      }
-      // close file
-      restorableTsFileIOWriter.endFile(schema);
-      tsFileResource.serialize();
-    } catch (IOException | InterruptedException | ExecutionException e) {
-      throw new StorageGroupProcessorException(e);
-    }
+    long time = System.currentTimeMillis();
+    logReplayer.replayLogs();
+    PerfMonitor.add("LogReplayer.replayLogs", System.currentTimeMillis() - time);
+
+    flushRecoverdMemtable(recoverMemTable, restorableTsFileIOWriter);
   }
 
   private void reloadNVMData(RestorableTsFileIOWriter restorableTsFileIOWriter)
       throws StorageGroupProcessorException {
     NVMPrimitiveMemTable recoverMemTable = new NVMPrimitiveMemTable(storageGroupId);
+
+    long time = System.currentTimeMillis();
     NVMMemtableRecoverPerformer.getInstance().reconstructMemtable(recoverMemTable, tsFileResource);
+    PerfMonitor.add("NVMMemtableRecoverPerformer.reconstructMemtable", System.currentTimeMillis() - time);
+
+    flushRecoverdMemtable(recoverMemTable, restorableTsFileIOWriter);
+  }
+
+  private void flushRecoverdMemtable(IMemTable recoverMemTable, RestorableTsFileIOWriter restorableTsFileIOWriter)
+      throws StorageGroupProcessorException {
+    long time;
     try {
       if (!recoverMemTable.isEmpty()) {
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, schema,
             restorableTsFileIOWriter, tsFileResource.getFile().getParentFile().getName());
+
+        time = System.currentTimeMillis();
         tableFlushTask.syncFlushMemTable();
+        PerfMonitor.add("MemTableFlushTask.syncFlushMemTable", System.currentTimeMillis() - time);
       }
       // close file
+      time = System.currentTimeMillis();
       restorableTsFileIOWriter.endFile(schema);
       tsFileResource.serialize();
+      PerfMonitor.add("TsFileRecoverPerformer.closeFile", System.currentTimeMillis() - time);
     } catch (IOException | InterruptedException | ExecutionException e) {
       throw new StorageGroupProcessorException(e);
     }

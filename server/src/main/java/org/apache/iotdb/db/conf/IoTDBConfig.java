@@ -591,7 +591,7 @@ public class IoTDBConfig {
   }
 
   public boolean isEnableWal() {
-    return enableWal;
+    return !enableNVM && enableWal;
   }
 
   public void setEnableWal(boolean enableWal) {

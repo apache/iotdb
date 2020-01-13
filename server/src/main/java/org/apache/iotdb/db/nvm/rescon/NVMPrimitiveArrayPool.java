@@ -44,7 +44,7 @@ public class NVMPrimitiveArrayPool {
       nvmSpace = NVMSpaceManager.getInstance().allocateDataSpace(size * ARRAY_SIZE, dataType, isTime);
     }
 
-    PerfMonitor.add("NVM.getDataList", System.currentTimeMillis() - time);
+    PerfMonitor.add("NVM.getDataList" + (isTime ? "Time" : "Value"), System.currentTimeMillis() - time);
     return nvmSpace;
   }
 
