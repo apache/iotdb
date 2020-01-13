@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
+ * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.session;
@@ -691,6 +687,48 @@ public class IoTDBSessionIT {
     }
   }
 
+  public void queryForBatchCheckOrder() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    String standard =
+        "Time\n" + "root.sg1.d1.s1\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n" +
+            "root.sg1.d2.s1\n" + "root.sg1.d2.s2\n" + "root.sg1.d2.s3\n";
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery("select * from root");
+      final ResultSetMetaData metaData = resultSet.getMetaData();
+      final int colCount = metaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 0; i < colCount; i++) {
+        resultStr.append(metaData.getColumnLabel(i + 1) + "\n");
+      }
+
+      int count = 0;
+      long beforeTime = 0;
+      int errorCount = 0;
+      while (resultSet.next()) {
+        long curTime = resultSet.getLong(1);
+        System.out.println(curTime);
+        if (beforeTime < curTime) {
+          beforeTime = curTime;
+        } else {
+          errorCount++;
+          System.out.println("error");
+          if (errorCount > 10) {
+            System.exit(-1);
+          }
+        }
+
+        for (int i = 1; i <= colCount; i++) {
+          count++;
+        }
+      }
+      Assert.assertEquals(standard, resultStr.toString());
+      // d1 and d2 will align
+      Assert.assertEquals(7000, count);
+    }
+  }
+
   private void queryForBatchSeqAndUnseq() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     String standard =
@@ -710,7 +748,7 @@ public class IoTDBSessionIT {
       int count = 0;
       while (resultSet.next()) {
         for (int i = 1; i <= colCount; i++) {
-          if(i == 1){
+          if (i == 1) {
             System.out.println(resultSet.getString("Time"));
           }
           count++;
