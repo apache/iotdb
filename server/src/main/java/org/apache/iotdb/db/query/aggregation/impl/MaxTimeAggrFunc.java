@@ -21,16 +21,13 @@ package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class MaxTimeAggrFunc extends AggregateFunction {
+public class MaxTimeAggrFunc extends AggregateResult {
 
   public MaxTimeAggrFunc() {
     super(TSDataType.INT64);
@@ -47,13 +44,13 @@ public class MaxTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromStatistics(Statistics statistics) {
+  public void updateResultFromStatistics(Statistics statistics) {
     long maxTimestamp = statistics.getEndTime();
     updateMaxTimeResult(0, maxTimestamp);
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
     int maxIndex = dataInThisPage.length() - 1;
     if (maxIndex < 0) {
       return;
@@ -63,7 +60,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
     while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       updateMaxTimeResult(0, dataInThisPage.currentTime());
       dataInThisPage.next();
@@ -72,7 +69,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
   //TODO Consider how to reverse order in dataReader(IReaderByTimeStamp)
   @Override
-  public void calcAggregationUsingTimestamps(long[] timestamps, int length,
+  public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
     long time = -1;
     for (int i = 0; i < length; i++) {

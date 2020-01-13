@@ -20,18 +20,15 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import java.io.IOException;
 
-public class AvgAggrFunc extends AggregateFunction {
+public class AvgAggrFunc extends AggregateResult {
 
   protected double sum = 0.0;
   private int cnt = 0;
@@ -60,19 +57,19 @@ public class AvgAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromStatistics(Statistics statistics) {
+  public void updateResultFromStatistics(Statistics statistics) {
     sum += statistics.getSumValue();
     cnt += statistics.getCount();
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage)
+  public void updateResultFromPageData(BatchData dataInThisPage)
       throws IOException {
-    calculateValueFromPageData(dataInThisPage, Long.MAX_VALUE);
+    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
     while (dataInThisPage.hasCurrent()) {
       if (dataInThisPage.currentTime() >= bound) {
         break;
@@ -107,7 +104,7 @@ public class AvgAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calcAggregationUsingTimestamps(long[] timestamps, int length,
+  public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);

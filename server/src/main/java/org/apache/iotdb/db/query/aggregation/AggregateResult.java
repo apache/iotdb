@@ -28,18 +28,16 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public abstract class AggregateFunction {
+public abstract class AggregateResult {
 
   protected AggreResultData resultData;
-  private TSDataType resultDataType;
 
   /**
    * construct.
    *
    * @param dataType result data type.
    */
-  public AggregateFunction(TSDataType dataType) {
-    this.resultDataType = dataType;
+  public AggregateResult(TSDataType dataType) {
     this.resultData = new AggreResultData(dataType);
   }
 
@@ -53,7 +51,7 @@ public abstract class AggregateFunction {
    * @param statistics chunkStatistics or pageStatistics
    * @throws QueryProcessException
    */
-  public abstract void calculateValueFromStatistics(Statistics statistics)
+  public abstract void updateResultFromStatistics(Statistics statistics)
       throws QueryProcessException;
 
   /**
@@ -62,7 +60,7 @@ public abstract class AggregateFunction {
    * @param dataInThisPage the data in Page
    * @throws IOException
    */
-  public abstract void calculateValueFromPageData(BatchData dataInThisPage) throws IOException;
+  public abstract void updateResultFromPageData(BatchData dataInThisPage) throws IOException;
 
   /**
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
@@ -71,16 +69,16 @@ public abstract class AggregateFunction {
    * @param bound          calculate points whose time < bound
    * @throws IOException
    */
-  public abstract void calculateValueFromPageData(BatchData dataInThisPage, long bound)
+  public abstract void updateResultFromPageData(BatchData dataInThisPage, long bound)
       throws IOException;
-  
+
   /**
    * <p> This method is calculate the aggregation using the common timestamps of cross series
    * filter. </p>
    *
    * @throws IOException TsFile data read error
    */
-  public abstract void calcAggregationUsingTimestamps(long[] timestamps, int length,
+  public abstract void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException;
 
   /**

@@ -27,7 +27,7 @@ import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderWithoutValueFilter;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -113,7 +113,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    */
   private AggreResultData nextSeries(int idx) throws IOException, QueryProcessException {
     SeriesDataReaderWithoutValueFilter sequenceReader = sequenceReaderList.get(idx);
-    AggregateFunction function = functions.get(idx);
+    AggregateResult function = functions.get(idx);
     function.init();
     TimeRange timeRange = new TimeRange(startTime, endTime - 1);
 
@@ -129,7 +129,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
       if (sequenceReader.canUseChunkStatistics() && timeRange.contains(
           new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
-        function.calculateValueFromStatistics(chunkStatistics);
+        function.updateResultFromStatistics(chunkStatistics);
         if (function.isCalculatedAggregationResult()) {
           break;
         }
@@ -144,7 +144,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         }
         if (sequenceReader.canUsePageStatistics() && timeRange.contains(
             new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
-          function.calculateValueFromStatistics(pageStatistics);
+          function.updateResultFromStatistics(pageStatistics);
           if (function.isCalculatedAggregationResult()) {
             break;
           }
@@ -163,7 +163,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     return function.getResult().deepCopy();
   }
 
-  private boolean isEndCalc(AggregateFunction function, BatchData lastBatch) {
+  private boolean isEndCalc(AggregateResult function, BatchData lastBatch) {
     if ((lastBatch != null && lastBatch.hasCurrent() && lastBatch.currentTime() > endTime)
         || function.isCalculatedAggregationResult()) {
       return true;
@@ -175,7 +175,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * @return this batchData >= endTime
    * @throws IOException
    */
-  private void calcBatchData(int idx, AggregateFunction function, BatchData batchData)
+  private void calcBatchData(int idx, AggregateResult function, BatchData batchData)
       throws IOException {
     if (batchData == null || !batchData.hasCurrent()) {
       return;
@@ -184,7 +184,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       batchData.next();
     }
     if (batchData.hasCurrent()) {
-      function.calculateValueFromPageData(batchData, endTime);
+      function.updateResultFromPageData(batchData, endTime);
       if (batchData.hasCurrent()) {
         batchDataList.set(idx, batchData);
         return;

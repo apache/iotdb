@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.factory;
 
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.impl.AvgAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.CountAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrFunc;
@@ -47,7 +47,7 @@ public class AggreFuncFactory {
    * @param aggrFuncName function name.
    * @param dataType data type.
    */
-  public static AggregateFunction getAggrFuncByName(String aggrFuncName, TSDataType dataType)
+  public static AggregateResult getAggrFuncByName(String aggrFuncName, TSDataType dataType)
       throws PathException {
     if (aggrFuncName == null) {
       throw new PathException("AggregateFunction Name must not be null");

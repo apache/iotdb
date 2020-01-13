@@ -23,7 +23,7 @@ import java.util.List;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggreFuncFactory;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -42,7 +42,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   protected long startTime;
   protected long endTime;
   private int usedIndex;
-  protected List<AggregateFunction> functions;
+  protected List<AggregateResult> functions;
   protected boolean hasCachedTimeInterval;
 
   /**
@@ -66,7 +66,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   protected void initAggreFuction(GroupByPlan groupByPlan) throws PathException {
     // construct AggregateFunctions
     for (int i = 0; i < paths.size(); i++) {
-      AggregateFunction function = AggreFuncFactory
+      AggregateResult function = AggreFuncFactory
           .getAggrFuncByName(groupByPlan.getDeduplicatedAggregations().get(i),
               groupByPlan.getDeduplicatedDataTypes().get(i));
       function.init();

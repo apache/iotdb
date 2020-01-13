@@ -20,10 +20,8 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -32,7 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class CountAggrFunc extends AggregateFunction {
+public class CountAggrFunc extends AggregateResult {
 
   private static final Logger logger = LoggerFactory.getLogger(CountAggrFunc.class);
 
@@ -53,14 +51,14 @@ public class CountAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromStatistics(Statistics statistics) {
+  public void updateResultFromStatistics(Statistics statistics) {
     long preValue = resultData.getLongRet();
     preValue += statistics.getCount();
     resultData.setLongRet(preValue);
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage)
+  public void updateResultFromPageData(BatchData dataInThisPage)
       throws IOException {
     int cnt = dataInThisPage.length();
     long preValue = resultData.getLongRet();
@@ -69,7 +67,7 @@ public class CountAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
     while (dataInThisPage.hasCurrent()) {
       if (dataInThisPage.currentTime() >= bound) {
         break;
@@ -81,7 +79,7 @@ public class CountAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calcAggregationUsingTimestamps(long[] timestamps, int length,
+  public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
     int cnt = 0;
     for (int i = 0; i < length; i++) {
