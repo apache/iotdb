@@ -28,7 +28,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -44,7 +43,6 @@ import org.junit.Test;
  */
 public class IoTDBLargeDataIT {
 
-  private static IoTDB daemon;
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
@@ -67,8 +65,6 @@ public class IoTDBLargeDataIT {
     tsFileConfig.setGroupSizeInByte(1024 * 1000);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1000);
 
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertData();
@@ -76,7 +72,6 @@ public class IoTDBLargeDataIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
 
     // recovery value
     tsFileConfig.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);

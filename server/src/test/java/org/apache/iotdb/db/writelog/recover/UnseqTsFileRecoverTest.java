@@ -82,7 +82,7 @@ public class UnseqTsFileRecoverTest {
   @Before
   public void setup() throws IOException, WriteProcessException {
     FlushSubTaskPoolManager.getInstance().start();
-    tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "test.ts");
+    tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
 
     schema = new Schema();
@@ -139,6 +139,7 @@ public class UnseqTsFileRecoverTest {
   @After
   public void tearDown() throws IOException {
     FileUtils.deleteDirectory(tsF.getParentFile());
+    resource.close();
     node.delete();
     FlushSubTaskPoolManager.getInstance().stop();
   }

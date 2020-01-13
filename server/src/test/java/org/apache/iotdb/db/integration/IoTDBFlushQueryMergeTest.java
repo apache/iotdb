@@ -25,8 +25,9 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Locale;
+
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
@@ -36,7 +37,6 @@ import org.junit.Test;
 
 public class IoTDBFlushQueryMergeTest {
 
-  private static IoTDB daemon;
   private static String[] sqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",
       "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -60,15 +60,12 @@ public class IoTDBFlushQueryMergeTest {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -124,14 +121,14 @@ public class IoTDBFlushQueryMergeTest {
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 10; j < 20; j++) {
-          statement.execute(String.format(insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
+          statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
         }
       }
       statement.execute("FLUSH");
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 0; j < 10; j++) {
-          statement.execute(String.format(insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
+          statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
         }
       }
       statement.execute("FLUSH root.group1");
@@ -139,7 +136,7 @@ public class IoTDBFlushQueryMergeTest {
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 0; j < 30; j++) {
-          statement.execute(String.format(insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
+          statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
         }
       }
       statement.execute("FLUSH root.group1 true");

@@ -33,6 +33,7 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TThreadPoolServer;
+import org.apache.thrift.server.TThreadPoolServer.Args;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -207,8 +208,10 @@ public class JDBCService implements JDBCServiceMBean, IService {
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
         serverTransport = new TServerSocket(new InetSocketAddress(config.getRpcAddress(),
             config.getRpcPort()));
-        poolArgs = new TThreadPoolServer.Args(serverTransport).maxWorkerThreads(IoTDBDescriptor.
-            getInstance().getConfig().getRpcMaxConcurrentClientNum()).minWorkerThreads(1);
+        poolArgs = new Args(serverTransport).maxWorkerThreads(IoTDBDescriptor.
+            getInstance().getConfig().getRpcMaxConcurrentClientNum()).minWorkerThreads(1)
+            .stopTimeoutVal(
+                IoTDBDescriptor.getInstance().getConfig().getThriftServerAwaitTimeForStopService());
         poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,
             ThreadName.JDBC_CLIENT.getName());
         poolArgs.processor(processor);
@@ -224,7 +227,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
       } finally {
         close();
         // TODO debug log, will be deleted in production env
-        if(threadStopLatch == null) {
+        if (threadStopLatch == null) {
           logger.info("Stop Count Down latch is null");
         } else {
           logger.info("Stop Count Down latch is {}", threadStopLatch.getCount());

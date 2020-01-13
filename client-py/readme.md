@@ -35,7 +35,7 @@ http://thrift.apache.org/docs/install/
 
 ## Compile the thrift library
 If you have added Thrift executable into your path, you may just run `client-py/compile.sh` or
- `client-py/compile.bat`, or you will have to modify it to set variable `THRIFT_EXE` to point to
+ `client-py\compile.bat`, or you will have to modify it to set variable `THRIFT_EXE` to point to
 your executable. This will generate thrift sources under folder `target`, you can add it to your
 `PYTHONPATH` so that you would be able to use the library in your code. Notice that the scripts
 locate the thrift source file by relative path, so if you move the scripts else where, they are

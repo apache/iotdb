@@ -27,13 +27,15 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
 
   private List<String> columnInfoList;
   private List<String> columnTypeList;
+  private boolean ignoreTimestamp;
 
   /**
    * Constructor of IoTDBResultMetadata.
    */
-  public IoTDBResultMetadata(List<String> columnInfoList, List<String> columnTypeList) {
+  public IoTDBResultMetadata(List<String> columnInfoList, List<String> columnTypeList, boolean ignoreTimestamp) {
     this.columnInfoList = columnInfoList;
     this.columnTypeList = columnTypeList;
+    this.ignoreTimestamp = ignoreTimestamp;
   }
 
   @Override
@@ -95,11 +97,16 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   @Override
   public int getColumnType(int column) throws SQLException {
     checkColumnIndex(column);
-    if (column == 1) {
+    if (column == 1 && !ignoreTimestamp) {
       return Types.TIMESTAMP;
     }
     // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT,
-    String columnType = columnTypeList.get(column - 2);
+    String columnType;
+    if(!ignoreTimestamp) {
+      columnType = columnTypeList.get(column - 2);
+    } else {
+      columnType = columnTypeList.get(column - 1);
+    }
     switch (columnType.toUpperCase()) {
       case "BOOLEAN":
         return Types.BOOLEAN;
