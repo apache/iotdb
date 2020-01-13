@@ -29,7 +29,7 @@ if "%LOCAL_JMX%" == "yes" (
 
 IF ["%IOTDB_HEAP_OPTS%"] EQU [""] (
 	rem detect Java 8 or 11
-	IF %%JAVA_VERSION%% == 8 (
+	IF "%JAVA_VERSION%" == "8" (
 		java -d64 -version >nul 2>&1
 		IF NOT ERRORLEVEL 1 (
 			rem 64-bit Java
@@ -69,7 +69,7 @@ IF "%BIT_VERSION%" == "64-Bit" (
 :end_config_setting
 @REM set gc log.
 IF "%1" equ "printgc" (
-	IF %JAVA_VERSION% == 8 (
+	IF "%JAVA_VERSION%" == "8" (
 	    md %IOTDB_HOME%\logs
 		set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Xloggc:"%IOTDB_HOME%\logs\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails  -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
 	) ELSE (
