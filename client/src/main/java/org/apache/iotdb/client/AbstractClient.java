@@ -273,7 +273,7 @@ public abstract class AbstractClient {
         }
       } else {
         for (int i = 1; i <= colCount; i++) {
-          printColumnData(resultSetMetaData, res, i, zoneId);
+          printf(formatValue, res.getString(i));
         }
       }
       println();
@@ -475,20 +475,16 @@ public abstract class AbstractClient {
     StringBuilder blockLine = new StringBuilder();
     if (printTimestamp) {
       blockLine.append("+").append(StringUtils.repeat('-', maxTimeLength)).append("+");
-    } else {
-      blockLine.append("+");
-    }
-    if (resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
-      maxValueLength = measurementColumnLength;
-    } else {
-      int tmp = Integer.MIN_VALUE;
-      for (int i = 1; i <= colCount; i++) {
-        int len = resultSetMetaData.getColumnLabel(i).length();
-        tmp = Math.max(tmp, len);
+      if (resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
+        maxValueLength = measurementColumnLength;
+      } else {
+        int tmp = Integer.MIN_VALUE;
+        for (int i = 1; i <= colCount; i++) {
+          int len = resultSetMetaData.getColumnLabel(i).length();
+          tmp = Math.max(tmp, len);
+        }
+        maxValueLength = tmp;
       }
-      maxValueLength = tmp;
-    }
-    if(printTimestamp) {
       for (int i = 2; i <= colCount; i++) {
         if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
           blockLine.append(StringUtils.repeat('-', deviceColumnLength)).append("+");
@@ -497,8 +493,9 @@ public abstract class AbstractClient {
         }
       }
     } else {
+      blockLine.append("+");
       for (int i = 1; i <= colCount; i++) {
-          blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
+        blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
       }
     }
     println(blockLine);

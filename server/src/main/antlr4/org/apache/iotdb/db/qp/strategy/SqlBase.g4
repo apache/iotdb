@@ -116,7 +116,7 @@ functionName
     ;
 
 attributeClauses
-    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding (COMMA COMPRESSOR OPERATOR_EQ compressor=propertyValue)? (COMMA property)*
+    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)? (COMMA property)*
     ;
 
 setClause
@@ -722,6 +722,10 @@ DISABLE
 
 ALIGN
     : A L I G N
+    ;
+
+COMPRESSION
+    : C O M P R E S S I O N
     ;
 //============================
 // End of the keywords list
