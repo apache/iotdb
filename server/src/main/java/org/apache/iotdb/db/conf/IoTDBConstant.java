@@ -80,4 +80,9 @@ public class IoTDBConstant {
   public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
   public static final String TSFILE_NAME_SEPARATOR = "-";
 
+  // system folder name
+  public static final String SYSTEM_FOLDER_NAME = "system";
+  public static final String SCHEMA_FOLDER_NAME = "schema";
+  public static final String SYNC_FOLDER_NAME = "sync";
+  public static final String QUERY_FOLDER_NAME = "query";
 }
