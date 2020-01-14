@@ -54,7 +54,6 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
   private List<String> columnTypeList; // no deduplication
   private Map<String, Integer> columnInfoMap; // used because the server returns deduplicated columns
   private List<String> columnTypeDeduplicatedList; // deduplicated from columnTypeList
-  private int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
   private int fetchSize;
   private boolean emptyResultSet = false;
 
@@ -69,12 +68,12 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
   public IoTDBNonAlignQueryResultSet() {
     // do nothing
   }
-  
+
   // for disable align clause
   public IoTDBNonAlignQueryResultSet(Statement statement, List<String> columnNameList,
-      List<String> columnTypeList, boolean ignoreTimeStamp, TSIService.Iface client,
-      String sql, long queryId, long sessionId, TSQueryNonAlignDataSet dataset) 
-      throws SQLException {
+                                     List<String> columnTypeList, boolean ignoreTimeStamp, TSIService.Iface client,
+                                     String sql, long queryId, long sessionId, TSQueryNonAlignDataSet dataset)
+          throws SQLException {
     this.statement = statement;
     this.fetchSize = statement.getFetchSize();
     this.columnTypeList = columnTypeList;
@@ -156,7 +155,7 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
         throw new SQLException("Error occurs for close opeation in server side becasuse " + e);
       } catch (TException e) {
         throw new SQLException(
-            "Error occurs when connecting to server for close operation, becasue: " + e);
+                "Error occurs when connecting to server for close operation, becasue: " + e);
       }
     }
     client = null;
@@ -682,7 +681,6 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
    * @return true means has results
    */
   private boolean fetchResults() throws SQLException {
-    rowsIndex = 0;
     TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, false);
     try {
       TSFetchResultsResp resp = client.fetchResults(req);
@@ -703,14 +701,14 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
       return resp.hasResultSet;
     } catch (TException e) {
       throw new SQLException(
-          "Cannot fetch result from server, because of network connection: {} ", e);
+              "Cannot fetch result from server, because of network connection: {} ", e);
     }
   }
 
   private boolean hasCachedResults() {
     return (tsQueryNonAlignDataSet != null && hasTimesRemaining());
   }
-  
+
   // check if has times remaining for disable align clause
   private boolean hasTimesRemaining() {
     for (ByteBuffer time : tsQueryNonAlignDataSet.timeList) {
@@ -720,7 +718,7 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
     }
     return false;
   }
-  
+
   private void constructNonAlignOneRow() {
     for (int i = 0; i < tsQueryNonAlignDataSet.timeList.size(); i++) {
       times[i] = null;
@@ -769,7 +767,7 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+                    String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
         }
       }
       else {
@@ -777,7 +775,6 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
         values[i] = EMPTY_STR.getBytes();
       }
     }
-    rowsIndex++;
   }
 
   @Override
@@ -1230,7 +1227,7 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
   public boolean wasNull() throws SQLException {
     throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
-  
+
   private void checkRecord() throws SQLException {
     if (Objects.isNull(tsQueryNonAlignDataSet)) {
       throw new SQLException("No record remains");
@@ -1243,7 +1240,7 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
     }
     if (columnIndex > columnInfoList.size()) {
       throw new SQLException(
-          String.format("column index %d out of range %d", columnIndex, columnInfoList.size()));
+              String.format("column index %d out of range %d", columnIndex, columnInfoList.size()));
     }
     return columnInfoList.get(columnIndex - 1);
   }
@@ -1288,5 +1285,5 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
   public void setIgnoreTimeStamp(boolean ignoreTimeStamp) {
     this.ignoreTimeStamp = ignoreTimeStamp;
   }
-  
+
 }
