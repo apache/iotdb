@@ -28,19 +28,17 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
-
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class IoTDBDeletionIT {
 
   private static String[] creationSqls = new String[]{
           "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
-
           "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
           "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
           "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -57,12 +55,14 @@ public class IoTDBDeletionIT {
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareSeries();
   }
 
   @After
   public void tearDown() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
   }
 

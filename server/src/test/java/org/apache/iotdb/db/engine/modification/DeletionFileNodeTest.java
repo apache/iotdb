@@ -22,9 +22,12 @@ package org.apache.iotdb.db.engine.modification;
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -33,10 +36,10 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -141,18 +144,28 @@ public class DeletionFileNodeTest {
     StorageEngine.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
-        new Deletion(new Path(processorName, measurements[5]), 103, 50),
-        new Deletion(new Path(processorName, measurements[4]), 104, 40),
-        new Deletion(new Path(processorName, measurements[3]), 105, 30),
+        new Deletion(new Path(processorName, measurements[5]), 201, 50),
+        new Deletion(new Path(processorName, measurements[4]), 202, 40),
+        new Deletion(new Path(processorName, measurements[3]), 203, 30),
     };
 
     File fileNodeDir = new File(DirectoryManager.getInstance().getSequenceFileFolder(0), processorName);
-    File[] modFiles = fileNodeDir.listFiles((dir, name)
-        -> name.endsWith(ModificationFile.FILE_SUFFIX));
-    assertEquals(1, modFiles.length);
+    List<File> modFiles = new ArrayList<>();
+    for(File directory : fileNodeDir.listFiles()){
+      assertTrue(directory.isDirectory());
+      if(directory.isDirectory()){
+        for(File file : directory.listFiles()){
+          if(file.getPath().endsWith(ModificationFile.FILE_SUFFIX)){
+            modFiles.add(file);
+          }
+        }
+      }
+    }
+
+    assertEquals(1, modFiles.size());
 
     LocalTextModificationAccessor accessor =
-        new LocalTextModificationAccessor(modFiles[0].getPath());
+        new LocalTextModificationAccessor(modFiles.get(0).getPath());
     try {
       Collection<Modification> modifications = accessor.read();
       assertEquals(3, modifications.size());
@@ -237,24 +250,32 @@ public class DeletionFileNodeTest {
     StorageEngine.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
-        new Deletion(new Path(processorName, measurements[5]), 105, 50),
-        new Deletion(new Path(processorName, measurements[4]), 106, 40),
-        new Deletion(new Path(processorName, measurements[3]), 107, 30),
+        new Deletion(new Path(processorName, measurements[5]), 301, 50),
+        new Deletion(new Path(processorName, measurements[4]), 302, 40),
+        new Deletion(new Path(processorName, measurements[3]), 303, 30),
     };
 
     File fileNodeDir = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(), processorName);
-    File[] modFiles = fileNodeDir.listFiles((dir, name)
-        -> name.endsWith(ModificationFile.FILE_SUFFIX));
-    assertEquals(1, modFiles.length);
-
-    try (LocalTextModificationAccessor accessor =
-        new LocalTextModificationAccessor(modFiles[0].getPath())) {
-      Collection<Modification> modifications = accessor.read();
-      assertEquals(3, modifications.size());
-      int i = 0;
-      for (Modification modification : modifications) {
-        TestCase.assertEquals(modification, realModifications[i++]);
+    List<File> modFiles = new ArrayList<>();
+    for(File directory : fileNodeDir.listFiles()){
+      assertTrue(directory.isDirectory());
+      if(directory.isDirectory()){
+        for(File file : directory.listFiles()){
+          if(file.getPath().endsWith(ModificationFile.FILE_SUFFIX)){
+            modFiles.add(file);
+          }
+        }
       }
+    }
+    assertEquals(1, modFiles.size());
+
+    LocalTextModificationAccessor accessor =
+        new LocalTextModificationAccessor(modFiles.get(0).getPath());
+    Collection<Modification> modifications = accessor.read();
+    assertEquals( 3, modifications.size());
+    int i = 0;
+    for (Modification modification : modifications) {
+      TestCase.assertEquals(modification, realModifications[i++]);
     }
   }
 }

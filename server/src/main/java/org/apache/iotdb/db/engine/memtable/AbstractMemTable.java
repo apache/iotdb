@@ -138,10 +138,9 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes)
-      throws QueryProcessException {
+  public void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end) throws QueryProcessException {
     try {
-      write(batchInsertPlan, indexes);
+      write(batchInsertPlan, start, end);
       long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan);
       memSize += recordSizeInByte;
     } catch (RuntimeException e) {
@@ -158,11 +157,11 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void write(BatchInsertPlan batchInsertPlan, List<Integer> indexes) {
+  public void write(BatchInsertPlan batchInsertPlan, int start, int end) {
     for (int i = 0; i < batchInsertPlan.getMeasurements().length; i++) {
       IWritableMemChunk memSeries = createIfNotExistAndGet(batchInsertPlan.getDeviceId(),
           batchInsertPlan.getMeasurements()[i], batchInsertPlan.getDataTypes()[i]);
-      memSeries.write(batchInsertPlan.getTimes(), batchInsertPlan.getColumns()[i], batchInsertPlan.getDataTypes()[i], indexes);
+      memSeries.write(batchInsertPlan.getTimes(), batchInsertPlan.getColumns()[i], batchInsertPlan.getDataTypes()[i], start, end);
     }
   }
 

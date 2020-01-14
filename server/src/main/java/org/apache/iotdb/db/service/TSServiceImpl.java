@@ -1188,8 +1188,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       batchInsertPlan.setColumns(QueryDataSetUtils
           .readValuesFromBuffer(req.values, req.types, req.measurements.size(), req.size));
       batchInsertPlan.setRowCount(req.size);
-      batchInsertPlan.setTimeBuffer(req.timestamps);
-      batchInsertPlan.setValueBuffer(req.values);
       batchInsertPlan.setDataTypes(req.types);
 
       boolean isAllSuccessful = true;
