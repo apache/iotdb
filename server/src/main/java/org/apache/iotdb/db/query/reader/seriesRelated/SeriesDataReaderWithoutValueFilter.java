@@ -66,7 +66,7 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
 
   public boolean canUseChunkStatistics() {
     Statistics statistics = chunkMetaData.getStatistics();
-    return !overlappedChunkReader.isEmpty() && canUseStatistics(statistics);
+    return overlappedChunkReader.isEmpty() && canUseStatistics(statistics);
   }
 
   @Override
@@ -106,9 +106,8 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
     return super.hasNextBatch();
   }
 
-
   protected boolean canUseStatistics(Statistics statistics) {
-    return filter != null && filter.containStartEndTime(statistics.getStartTime(),
+    return filter == null || filter.containStartEndTime(statistics.getStartTime(),
         statistics.getEndTime());
   }
 
