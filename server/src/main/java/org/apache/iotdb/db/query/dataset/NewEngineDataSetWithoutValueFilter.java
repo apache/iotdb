@@ -164,9 +164,9 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
-      LOGGER.info("master start initializing reader-{} task", i);
+      LOGGER.info("master start initializing reader-{} task", reader.hashCode());
       pool.submit(new ReadTask(reader, blockingQueueArray[i], reader.hashCode()));
-      LOGGER.info("master end initializing reader-{} task", i);
+      LOGGER.info("master end initializing reader-{} task", reader.hashCode());
     }
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
       fillCache(i);
@@ -347,11 +347,17 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
   }
 
   private void fillCache(int seriesIndex) throws InterruptedException {
-    BatchData batchData = blockingQueueArray[seriesIndex].poll(15, TimeUnit.SECONDS);
-    if (batchData == null) {
-      LOGGER.error("Reader-{} failed", seriesReaderWithoutValueFilterList.get(seriesIndex).hashCode());
-      System.exit(0);
+    BatchData batchData;
+    while (true) {
+      batchData = blockingQueueArray[seriesIndex].poll(15, TimeUnit.SECONDS);
+      if (batchData == null) {
+        LOGGER.error("Reader-{} failed", seriesReaderWithoutValueFilterList.get(seriesIndex).hashCode());
+      }
+      else {
+        break;
+      }
     }
+
     // no more batch data in this time series queue
     if (batchData instanceof SignalBatchData) {
       noMoreDataInQueueArray[seriesIndex] = true;
@@ -369,9 +375,9 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           // now we should submit it again
           if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
             reader.setManagedByQueryManager(true);
-            LOGGER.info("master start submitting reader-{} task", seriesIndex);
+            LOGGER.info("master start submitting reader-{} task", reader.hashCode());
             pool.submit(new ReadTask(reader, blockingQueueArray[seriesIndex], reader.hashCode()));
-            LOGGER.info("master end submitting reader-{} task", seriesIndex);
+            LOGGER.info("master end submitting reader-{} task", reader.hashCode());
           }
         }
       }
