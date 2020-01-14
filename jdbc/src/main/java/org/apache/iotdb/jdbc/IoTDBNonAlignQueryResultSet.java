@@ -54,7 +54,6 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
   private List<String> columnTypeList; // no deduplication
   private Map<String, Integer> columnInfoMap; // used because the server returns deduplicated columns
   private List<String> columnTypeDeduplicatedList; // deduplicated from columnTypeList
-  private int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
   private int fetchSize;
   private boolean emptyResultSet = false;
 
@@ -682,7 +681,6 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
    * @return true means has results
    */
   private boolean fetchResults() throws SQLException {
-    rowsIndex = 0;
     TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, false);
     try {
       TSFetchResultsResp resp = client.fetchResults(req);
@@ -777,7 +775,6 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
         values[i] = EMPTY_STR.getBytes();
       }
     }
-    rowsIndex++;
   }
 
   @Override
