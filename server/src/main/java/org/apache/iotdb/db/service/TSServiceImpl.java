@@ -419,8 +419,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       for (String statement : statements) {
         long t2 = System.currentTimeMillis();
         isAllSuccessful =
-            isAllSuccessful && executeStatementInBatch(statement, batchErrorMessage, result,
-                req.getSessionId());
+            executeStatementInBatch(statement, batchErrorMessage, result,
+                req.getSessionId()) && isAllSuccessful;
         Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
       }
       if (isAllSuccessful) {
@@ -1087,8 +1087,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       batchInsertPlan.setColumns(QueryDataSetUtils
           .readValuesFromBuffer(req.values, req.types, req.measurements.size(), req.size));
       batchInsertPlan.setRowCount(req.size);
-      batchInsertPlan.setTimeBuffer(req.timestamps);
-      batchInsertPlan.setValueBuffer(req.values);
       batchInsertPlan.setDataTypes(req.types);
 
       boolean isAllSuccessful = true;

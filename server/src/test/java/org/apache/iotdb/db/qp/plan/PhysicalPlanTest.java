@@ -24,6 +24,7 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -53,6 +54,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.StringContainer;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -83,6 +85,12 @@ public class PhysicalPlanTest {
         .insert(new InsertPlan(path3.getDevice(), 10, path3.getMeasurement(), "10"));
     processor.getExecutor()
         .insert(new InsertPlan(path4.getDevice(), 10, path4.getMeasurement(), "10"));
+    MManager.getInstance().init();
+  }
+
+  @After
+  public void clean() {
+    MManager.getInstance().clear();
   }
 
   @Test
@@ -177,10 +185,10 @@ public class PhysicalPlanTest {
 
   @Test
   public void testGroupBy3()
-          throws QueryProcessException {
+      throws QueryProcessException {
     String sqlStr =
-            "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
-                    + "group by([2017-6-2T12:00:12+07:00,2017-6-12T12:00:12+07:00], 3h, 24h)";
+        "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
+            + "group by([2017-6-2T12:00:12+07:00,2017-6-12T12:00:12+07:00], 3h, 24h)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     if (!plan.isQuery()) {
       fail();
@@ -594,7 +602,47 @@ public class PhysicalPlanTest {
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
-        String.format("OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, operatorType=MOVE_FILE}", filePath,
+        String.format(
+            "OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, operatorType=MOVE_FILE}",
+            filePath,
             targetDir), plan.toString());
+  }
+
+  @Test
+  public void testDeduplicatedPath() throws Exception {
+    String sqlStr = "select * from root.sg.d1,root.sg.d1,root.sg.d1";
+    QueryPlan plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    Assert.assertEquals(1, plan.getDeduplicatedPaths().size());
+    Assert.assertEquals(1, plan.getDeduplicatedDataTypes().size());
+    Assert.assertEquals(new Path("root.sg.d1.*"), plan.getDeduplicatedPaths().get(0));
+
+    sqlStr = "select count(*) from root.sg.d1,root.sg.d1,root.sg.d1";
+    plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    Assert.assertEquals(1, plan.getDeduplicatedPaths().size());
+    Assert.assertEquals(1, plan.getDeduplicatedDataTypes().size());
+    Assert.assertEquals(new Path("root.sg.d1.*"), plan.getDeduplicatedPaths().get(0));
+
+    //'group by device' is deduplication in DeviceIterateDataSet
+    MManager manager = MManager.getInstance();
+    manager.setStorageGroupToMTree("root.vehicle");
+    manager.addPathToMTree("root.vehicle.d0.s1", "INT64", "PLAIN");
+    manager.addPathToMTree("root.vehicle.d0.s0", "INT64", "PLAIN");
+    manager.addPathToMTree("root.vehicle.d1.s0", "INT64", "PLAIN");
+    manager.addPathToMTree("root.vehicle.d1.s1", "INT64", "PLAIN");
+
+    sqlStr = "select s0,s0,s1 from root.vehicle.d0, root.vehicle.d1 group by device";
+    plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    Assert.assertEquals(0, plan.getDeduplicatedPaths().size());
+    Assert.assertEquals(0, plan.getDeduplicatedDataTypes().size());
+    Assert.assertEquals(6, plan.getPaths().size());
+    Assert.assertEquals(6, plan.getDataTypes().size());
+
+    sqlStr = "select COUNT(s0),COUNT(s0),COUNT(s1) from root.vehicle.d0, root.vehicle.d1 group by device";
+    plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    Assert.assertEquals(0, plan.getDeduplicatedPaths().size());
+    Assert.assertEquals(0, plan.getDeduplicatedPaths().size());
+    Assert.assertEquals(0, plan.getDeduplicatedDataTypes().size());
+    Assert.assertEquals(6, plan.getPaths().size());
+    Assert.assertEquals(6, plan.getDataTypes().size());
   }
 }

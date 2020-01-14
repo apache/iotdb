@@ -243,7 +243,7 @@ public class MTree implements Serializable {
    * Check whether the input path is storage group or not
    *
    * @param path input path
-   * @return if it is storage group, return true. Else return false
+   * @return if the whole path is a storage group, return true. Else return false
    * @apiNote :for cluster
    */
   boolean checkStorageGroup(String path) {
@@ -988,12 +988,13 @@ public class MTree implements Serializable {
     if (node.isLeaf()) {
       if (nodes.length <= idx) {
         String nodePath = parent + node;
-        List<String> tsRow = new ArrayList<>(4);// get [name,storage group,resultDataType,encoding]
+        List<String> tsRow = new ArrayList<>(5);// get [name,storage group,resultDataType,encoding]
         tsRow.add(nodePath);
         MeasurementSchema measurementSchema = node.getSchema();
         tsRow.add(node.getStorageGroupName());
         tsRow.add(measurementSchema.getType().toString());
         tsRow.add(measurementSchema.getEncodingType().toString());
+        tsRow.add(measurementSchema.getCompressor().toString());
         res.add(tsRow);
       }
       return;

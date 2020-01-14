@@ -22,7 +22,9 @@ import static org.apache.iotdb.session.Config.PATH_MATCHER;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.apache.commons.lang.StringEscapeUtils;
@@ -45,9 +47,11 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
@@ -177,12 +181,25 @@ public class Session {
   }
 
   /**
-   * use batch interface to insert data
+   * check whether the batch has been sorted
+   * @return whether the batch has been sorted
+   */
+  private boolean checkSorted(RowBatch rowBatch){
+    for (int i = 1; i < rowBatch.batchSize; i++) {
+      if(rowBatch.timestamps[i] < rowBatch.timestamps[i - 1]){
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * use batch interface to insert sorted data
    *
    * @param rowBatch data batch
    */
-  public TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch)
-      throws IoTDBSessionException {
+  private TSExecuteBatchStatementResp insertSortedBatchIntern(RowBatch rowBatch) throws IoTDBSessionException{
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
@@ -198,6 +215,112 @@ public class Session {
       return checkAndReturn(client.insertBatch(request));
     } catch (TException e) {
       throw new IoTDBSessionException(e);
+    }
+  }
+
+  /**
+   * use batch interface to insert sorted data
+   * times in row batch must be sorted before!
+   *
+   * @param rowBatch data batch
+   */
+  public TSExecuteBatchStatementResp insertSortedBatch(RowBatch rowBatch)
+      throws IoTDBSessionException {
+    if(!checkSorted(rowBatch)){
+      throw new IoTDBSessionException("Row batch has't been sorted when calling insertSortedBatch");
+    }
+    return insertSortedBatchIntern(rowBatch);
+  }
+
+  /**
+   * use batch interface to insert data
+   *
+   * @param rowBatch data batch
+   */
+  public TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch)
+      throws IoTDBSessionException {
+    sortRowBatch(rowBatch);
+
+    return insertSortedBatchIntern(rowBatch);
+  }
+
+  private void sortRowBatch(RowBatch rowBatch){
+    /*
+       * following part of code sort the batch data by time,
+       * so we can insert continuous data in value list to get a better performance
+       */
+    // sort to get index, and use index to sort value list
+    Integer[] index = new Integer[rowBatch.batchSize];
+    for (int i = 0; i < rowBatch.batchSize; i++) {
+      index[i] = i;
+    }
+    Arrays.sort(index, new Comparator<Integer>() {
+      @Override
+      public int compare(Integer o1, Integer o2) {
+        return Long.compare(rowBatch.timestamps[o1], rowBatch.timestamps[o2]);
+      }
+    });
+    Arrays.sort(rowBatch.timestamps, 0, rowBatch.batchSize);
+    for (int i = 0; i < rowBatch.measurements.size(); i++) {
+      rowBatch.values[i] =
+          sortList(rowBatch.values[i], rowBatch.measurements.get(i).getType(), index);
+    }
+  }
+
+  /**
+   * sort value list by index
+   *
+   * @param valueList value list
+   * @param dataType data type
+   * @param index index
+   * @return sorted list
+   */
+  private Object sortList(Object valueList, TSDataType dataType, Integer[] index) {
+    switch (dataType) {
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) valueList;
+        boolean[] sortedValues = new boolean[boolValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedValues[index[i]] = boolValues[i];
+        }
+        return sortedValues;
+      case INT32:
+        int[] intValues = (int[]) valueList;
+        int[] sortedIntValues = new int[intValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedIntValues[index[i]] = intValues[i];
+        }
+        return sortedIntValues;
+      case INT64:
+        long[] longValues = (long[]) valueList;
+        long[] sortedLongValues = new long[longValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedLongValues[index[i]] = longValues[i];
+        }
+        return sortedLongValues;
+      case FLOAT:
+        float[] floatValues = (float[]) valueList;
+        float[] sortedFloatValues = new float[floatValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedFloatValues[index[i]] = floatValues[i];
+        }
+        return sortedFloatValues;
+      case DOUBLE:
+        double[] doubleValues = (double[]) valueList;
+        double[] sortedDoubleValues = new double[doubleValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedDoubleValues[index[i]] = doubleValues[i];
+        }
+        return sortedDoubleValues;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) valueList;
+        Binary[] sortedBinaryValues = new Binary[binaryValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedBinaryValues[index[i]] = binaryValues[i];
+        }
+        return sortedBinaryValues;
+      default:
+        throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
   }
 

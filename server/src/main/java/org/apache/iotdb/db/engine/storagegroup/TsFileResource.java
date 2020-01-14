@@ -67,6 +67,10 @@ public class TsFileResource {
    */
   private Map<String, Long> endTimeMap;
 
+  public TsFileProcessor getProcessor() {
+    return processor;
+  }
+
   private TsFileProcessor processor;
 
   private ModificationFile modFile;
@@ -116,13 +120,19 @@ public class TsFileResource {
     this.historicalVersions = other.historicalVersions;
   }
 
+
+  /**
+   * for sealed TsFile, call setClosed to close TsFileResource
+   */
   public TsFileResource(File file) {
     this.file = file;
     this.startTimeMap = new ConcurrentHashMap<>();
     this.endTimeMap = new HashMap<>();
-    this.closed = true;
   }
-
+  
+  /**
+   * unsealed TsFile
+   */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
     this.startTimeMap = new ConcurrentHashMap<>();
@@ -393,7 +403,7 @@ public class TsFileResource {
   }
 
   /**
-   * clean the close flag when the file is successfully closed.
+   * clean the close flag (if existed) when the file is successfully closed.
    */
   public void cleanCloseFlag() {
     new File(file.getAbsoluteFile() + CLOSING_SUFFIX).delete();
@@ -409,5 +419,9 @@ public class TsFileResource {
 
   public void setHistoricalVersions(Set<Long> historicalVersions) {
     this.historicalVersions = historicalVersions;
+  }
+  
+  public void setProcessor(TsFileProcessor processor) {
+    this.processor = processor;
   }
 }

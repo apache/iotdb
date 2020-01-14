@@ -525,7 +525,7 @@ public class DatetimeUtils {
       }
     } else {
       if (unit.equals(DurationUnit.ns)) {
-        return value / 1000_0000;
+        return value / 1000_000;
       } else if (unit.equals(DurationUnit.us)) {
         return value / 1000;
       } else {

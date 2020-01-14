@@ -28,7 +28,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
@@ -39,20 +38,15 @@ import org.junit.Test;
 
 public class IoTDBTtlIT {
 
-  private IoTDB daemon;
-
   @Before
   public void setUp() throws Exception {
     Class.forName(Config.JDBC_DRIVER_NAME);
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -148,38 +142,36 @@ public class IoTDBTtlIT {
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.group1");
       statement.execute("SET STORAGE GROUP TO root.group2");
-
-      String result = doQuery(statement, "SHOW ALL TTL", 2);
+      String result = doQuery(statement, "SHOW ALL TTL");
       assertEquals("root.group1,null\n"
           + "root.group2,null\n", result);
-      result = doQuery(statement, "SHOW TTL ON root.group1", 2);
+      result = doQuery(statement, "SHOW TTL ON root.group1");
       assertEquals("root.group1,null\n", result);
 
       statement.execute("SET TTL TO root.group1 10000");
-      result = doQuery(statement, "SHOW ALL TTL", 2);
+      result = doQuery(statement, "SHOW ALL TTL");
       assertEquals("root.group1,10000\n"
           + "root.group2,null\n", result);
-      result = doQuery(statement, "SHOW TTL ON root.group1", 2);
+      result = doQuery(statement, "SHOW TTL ON root.group1");
       assertEquals("root.group1,10000\n", result);
 
       statement.execute("UNSET TTL TO root.group1");
-      result = doQuery(statement, "SHOW ALL TTL", 2);
+      result = doQuery(statement, "SHOW ALL TTL");
       assertEquals("root.group1,null\n"
           + "root.group2,null\n", result);
-      result = doQuery(statement, "SHOW TTL ON root.group1", 2);
+      result = doQuery(statement, "SHOW TTL ON root.group1");
       assertEquals("root.group1,null\n", result);
     }
   }
 
-  private String doQuery(Statement statement, String query, int columnSize) throws SQLException {
+  private String doQuery(Statement statement, String query) throws SQLException {
     StringBuilder ret;
     try (ResultSet resultSet = statement.executeQuery(query)) {
       ret = new StringBuilder();
       while (resultSet.next()) {
+        ret.append(resultSet.getString(1));
+        ret.append(",");
         ret.append(resultSet.getString(2));
-        for (int i = 3; i <= columnSize + 1; i++) {
-          ret.append(",").append(resultSet.getString(i));
-        }
         ret.append("\n");
       }
     }
@@ -195,7 +187,7 @@ public class IoTDBTtlIT {
       statement.execute("SET STORAGE GROUP TO root.group1");
       statement.execute("SET STORAGE GROUP TO root.group2");
 
-      String result = doQuery(statement, "SHOW ALL TTL", 2);
+      String result = doQuery(statement, "SHOW ALL TTL");
       assertEquals("root.group1,10000\n"
           + "root.group2,10000\n", result);
     } finally {

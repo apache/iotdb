@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
@@ -38,7 +37,6 @@ import static org.junit.Assert.fail;
  */
 public class IoTDBDaemonIT {
 
-  private static IoTDB daemon;
   private static String[] sqls = new String[]{
 
       "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
@@ -102,8 +100,6 @@ public class IoTDBDaemonIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertData();
@@ -112,7 +108,7 @@ public class IoTDBDaemonIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
+
     EnvironmentUtils.cleanEnv();
   }
 
@@ -184,7 +180,7 @@ public class IoTDBDaemonIT {
   @Test
   public void selectWithDuplicatedColumnsTest2() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "0,11,11,42988.0,11,"
+        "11,11,42988.0,11,"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -201,7 +197,7 @@ public class IoTDBDaemonIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("Time,count(root.vehicle.d0.s0),count(root.vehicle.d0.s0),"
+        Assert.assertEquals("count(root.vehicle.d0.s0),count(root.vehicle.d0.s0),"
             + "sum(root.vehicle.d0.s0),count(root.vehicle.d0.s1),", header.toString());
 
         int cnt = 0;

@@ -178,7 +178,7 @@ public class MGraph implements Serializable {
   }
 
   /**
-   * Check whether the input path is storage group for current Metadata Tree or not.
+   * Check whether the input path is a storage group for current Metadata Tree or not.
    *
    * @param path Format: root.node.(node)*
    * @apiNote :for cluster

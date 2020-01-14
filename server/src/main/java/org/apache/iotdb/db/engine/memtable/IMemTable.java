@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -41,7 +40,7 @@ public interface IMemTable {
   void write(String deviceId, String measurement, TSDataType dataType,
       long insertTime, Object objectValue);
 
-  void write(BatchInsertPlan batchInsertPlan, List<Integer> indexes);
+  void write(BatchInsertPlan batchInsertPlan, int start, int end);
 
   /**
    * @return the number of points
@@ -55,7 +54,7 @@ public interface IMemTable {
 
   void insert(InsertPlan insertPlan) throws QueryProcessException;
 
-  void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) throws QueryProcessException;
+  void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end) throws QueryProcessException;
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
       Map<String, String> props, long timeLowerBound);

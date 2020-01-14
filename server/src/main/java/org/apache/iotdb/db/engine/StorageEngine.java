@@ -44,6 +44,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -163,6 +164,7 @@ public class StorageEngine implements IService {
       ttlCheckThread.shutdownNow();
     }
     recoveryThreadPool.shutdownNow();
+    this.reset();
     try {
       ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
@@ -267,6 +269,8 @@ public class StorageEngine implements IService {
     logger.info("Start closing all storage group processor");
     for (StorageGroupProcessor processor : processorMap.values()) {
       processor.waitForAllCurrentTsFileProcessorsClosed();
+      //TODO do we need to wait for all merging tasks to be finished here?
+      processor.closeAllResources();
     }
   }
 
@@ -276,7 +280,18 @@ public class StorageEngine implements IService {
     if (processor != null) {
       processor.writeLock();
       try {
-        processor.moveOneWorkProcessorToClosingList(isSeq);
+        if(isSeq) {
+          // to avoid concurrent modification problem, we need a new array list
+          for (TsFileProcessor tsfileProcessor : new ArrayList<>(processor.getWorkSequenceTsFileProcessors())) {
+            processor.moveOneWorkProcessorToClosingList(true, tsfileProcessor);
+          }
+        }
+        else {
+          // to avoid concurrent modification problem, we need a new array list
+          for (TsFileProcessor tsfileProcessor : new ArrayList<>(processor.getWorkUnsequenceTsFileProcessor())) {
+            processor.moveOneWorkProcessorToClosingList(false, tsfileProcessor);
+          }
+        }
       } finally {
         processor.writeUnlock();
       }
@@ -402,6 +417,7 @@ public class StorageEngine implements IService {
    */
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
+    syncCloseAllProcessor();
     for (String storageGroup : MManager.getInstance().getAllStorageGroupNames()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
@@ -438,14 +454,29 @@ public class StorageEngine implements IService {
     getProcessor(storageGroupName).loadNewTsFile(newTsFileResource);
   }
 
-  public boolean deleteTsfile(File deletedTsfile) throws StorageEngineException {
+  public boolean deleteTsfileForSync(File deletedTsfile)
+      throws StorageEngineException {
     return getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
+  }
+
+  public boolean deleteTsfile(File deletedTsfile) throws StorageEngineException {
+    return getProcessor(getSgByEngineFile(deletedTsfile)).deleteTsfile(deletedTsfile);
   }
 
   public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
       throws StorageEngineException, IOException {
-    return getProcessor(tsfileToBeMoved.getParentFile().getName())
-        .moveTsfile(tsfileToBeMoved, targetDir);
+    return getProcessor(getSgByEngineFile(tsfileToBeMoved)).moveTsfile(tsfileToBeMoved, targetDir);
+  }
+
+  /**
+   * The internal file means that the file is in the engine, which is different from those external
+   * files which are not loaded.
+   *
+   * @param file internal file
+   * @return sg name
+   */
+  private String getSgByEngineFile(File file) {
+    return file.getParentFile().getParentFile().getName();
   }
 
   /**
@@ -456,7 +487,7 @@ public class StorageEngine implements IService {
     Map<String, List<TsFileResource>> ret = new HashMap<>();
     for (Entry<String, StorageGroupProcessor> entry : processorMap
         .entrySet()) {
-      ret.computeIfAbsent(entry.getKey(), sg -> new ArrayList<>()).addAll(entry.getValue().getSequenceFileList());
+      ret.computeIfAbsent(entry.getKey(), sg -> new ArrayList<>()).addAll(entry.getValue().getSequenceFileTreeSet());
       ret.get(entry.getKey()).addAll(entry.getValue().getUnSequenceFileList());
       ret.get(entry.getKey()).removeIf(file -> !file.isClosed());
     }

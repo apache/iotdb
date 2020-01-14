@@ -196,9 +196,12 @@ public class MergeTaskTest extends MergeTest {
 
   @Test
   public void mergeWithDeletionTest() throws Exception {
-    seqResources.get(0).getModFile().write(new Deletion(new Path(deviceIds[0],
-        measurementSchemas[0].getMeasurementId()), 10000, 49));
-    seqResources.get(0).getModFile().close();
+    try {
+      seqResources.get(0).getModFile().write(new Deletion(new Path(deviceIds[0],
+          measurementSchemas[0].getMeasurementId()), 10000, 49));
+    } finally {
+      seqResources.get(0).getModFile().close();
+    }
 
 
     MergeTask mergeTask =

@@ -224,6 +224,24 @@
 |默认值| 0 |
 |改后生效方式|重启服务器生效|
 
+* partition\_interval
+
+|名字| partition\_interval |
+|:---:|:---|
+|描述| 用于存储组分区的时间段长度，用户指定的存储组下会使用该时间段进行分区，单位：秒 |
+|类型|Int64|
+|默认值| 604800 |
+|改后生效方式|仅允许在第一次启动服务器前修改|
+
+* memtable\_num\_in\_each\_storage\_group
+
+|名字| memtable\_num\_in\_each\_storage\_group|
+|:---:|:---|
+|描述| 每个存储组所控制的memtable的最大数量，这决定了来源于多少个不同时间分区的数据可以并发写入<br>举例来说，你的时间分区为按天分区，想要同时并发写入3天的数据，那么这个值应该被设置为6(3个给顺序写入，3个给乱序写入)|
+|类型|Int32|
+|默认值| 10 |
+|改后生效方式|重启服务器生效|
+
 * multi\_dir\_strategy
 
 |名字| multi\_dir\_strategy |
@@ -405,3 +423,20 @@
 |类型| String |
 |默认值|your principal |
 |改后生效方式|重启服务器生效|
+
+
+## 开启GC日志
+GC日志默认是关闭的。为了性能调优，用户可能会需要手机GC信息。
+若要打开GC日志，则需要在启动IoTDB Server的时候加上"printgc"参数：
+
+```bash
+sbin/start-server.sh printgc
+```
+或者
+
+```bash
+sbin\start-server.bat printgc
+```
+
+GC日志会被存储在`IOTDB_HOME/logs/gc.log`. 至多会存储10个gc.log文件，每个文件最多10MB。
+

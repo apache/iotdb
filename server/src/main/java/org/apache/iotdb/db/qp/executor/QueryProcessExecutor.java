@@ -190,6 +190,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       return;
     }
     TsFileResource tsFileResource = new TsFileResource(file);
+    tsFileResource.setClosed(true);
     try {
       // check file
       RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);
@@ -848,27 +849,56 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   }
 
   /**
-   * Add a seriesPath to MTree
+   * register with value
    */
-  private void addPathToMTree(String fullPath, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressionType)
-      throws MetadataException, StorageEngineException {
-    boolean result = mManager.addPathToMTree(
-        fullPath, dataType, encoding, compressionType, Collections.emptyMap());
-    if (result) {
-      StorageEngine.getInstance().addTimeSeries(
-          new Path(fullPath), dataType, encoding, compressionType, Collections.emptyMap());
-    }
-  }
-
   private void addPathToMTree(String deviceId, String measurementId, Object value)
       throws MetadataException, StorageEngineException {
     TSDataType predictedDataType = TypeInferenceUtils.getPredictedDataType(value);
-    String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
+    Path path = new Path(deviceId, measurementId);
     TSEncoding encoding = getDefaultEncoding(predictedDataType);
     CompressionType compressionType =
         CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
-    addPathToMTree(fullPath, predictedDataType, encoding, compressionType);
+    addPathToMTree(path, predictedDataType, encoding, compressionType);
+  }
+
+  /**
+   * register with datatype
+   */
+  private void addPathToMTree(String deviceId, String measurementId, TSDataType dataType)
+      throws MetadataException, StorageEngineException {
+    Path path = new Path(deviceId, measurementId);
+    TSEncoding encoding = getDefaultEncoding(dataType);
+    CompressionType compressionType =
+        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
+    addPathToMTree(path, dataType, encoding, compressionType);
+  }
+
+  /**
+   * Add a seriesPath to MTree, register with datatype, encoding and compression
+   */
+  private void addPathToMTree(Path path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressionType)
+      throws MetadataException, StorageEngineException {
+    boolean result = mManager.addPathToMTree(
+        path, dataType, encoding, compressionType, Collections.emptyMap());
+    if (result) {
+      StorageEngine.getInstance().addTimeSeries(path, dataType, encoding, compressionType,
+          Collections.emptyMap());
+    }
+  }
+
+  /**
+   * Add a seriesPath to MTree, register with datatype, encoding and compression
+   */
+  private void addPathToMTree(String path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressionType)
+      throws MetadataException, StorageEngineException {
+    boolean result = mManager.addPathToMTree(
+        path, dataType, encoding, compressionType, Collections.emptyMap());
+    if (result) {
+      StorageEngine.getInstance().addTimeSeries(new Path(path),
+          dataType, encoding, compressionType, Collections.emptyMap());
+    }
   }
 
   /**

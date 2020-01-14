@@ -122,7 +122,7 @@ public class TsFileRecoverPerformer {
           tsFileResource.setHistoricalVersions(Collections.singleton(fileVersion));
           tsFileResource.serialize();
         }
-        return null;
+        return restorableTsFileIOWriter;
       } catch (IOException e) {
         throw new StorageGroupProcessorException(
             "recover the resource file failed: " + insertFilePath
@@ -208,7 +208,7 @@ public class TsFileRecoverPerformer {
         // flush logs
 
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, schema,
-            restorableTsFileIOWriter, tsFileResource.getFile().getParentFile().getName());
+            restorableTsFileIOWriter, tsFileResource.getFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
       }
 

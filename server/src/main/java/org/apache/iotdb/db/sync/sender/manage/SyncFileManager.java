@@ -49,36 +49,38 @@ public class SyncFileManager implements ISyncFileManager {
   /**
    * All storage groups on the disk where the current sync task is executed
    */
-  private Set<String> allSGs;
+  private Map<String, Set<Long>> allSGs;
 
   /**
-   * Key is storage group, value is the set of current sealed tsfiles in the storage group.
+   * Key is storage group, value is all sealed tsfiles in the storage group. Inner key is time range
+   * id, inner value is the set of current sealed tsfiles.
    */
-  private Map<String, Set<File>> currentSealedLocalFilesMap;
+  private Map<String, Map<Long, Set<File>>> currentSealedLocalFilesMap;
 
   /**
-   * Key is storage group, value is the set of last local tsfiles in the storage group, which doesn't
-   * contains those tsfiles which are not synced successfully.
+   * Key is storage group, value is all last local tsfiles in the storage group, which doesn't
+   * contains those tsfiles which are not synced successfully. Inner key is time range id, inner
+   * value is the set of last local tsfiles.
    */
-  private Map<String, Set<File>> lastLocalFilesMap;
+  private Map<String, Map<Long, Set<File>>> lastLocalFilesMap;
 
   /**
-   * Key is storage group, value is the valid set of deleted tsfiles which need to be synced to
-   * receiver end in the storage group.
+   * Key is storage group, value is all deleted tsfiles which need to be synced to receiver end in
+   * the storage group. Inner key is time range id, inner value is the valid set of sealed tsfiles.
    */
-  private Map<String, Set<File>> deletedFilesMap;
+  private Map<String, Map<Long, Set<File>>> deletedFilesMap;
 
   /**
-   * Key is storage group, value is the valid set of new tsfiles which need to be synced to receiver
-   * end in the storage group.
+   * Key is storage group, value is all new tsfiles which need to be synced to receiver end in the
+   * storage group. Inner key is time range id, inner value is the valid set of new tsfiles.
    */
-  private Map<String, Set<File>> toBeSyncedFilesMap;
+  private Map<String, Map<Long, Set<File>>> toBeSyncedFilesMap;
 
   private SyncFileManager() {
     MManager.getInstance().init();
   }
 
-  public static final SyncFileManager getInstance() {
+  public static SyncFileManager getInstance() {
     return SyncFileManagerHolder.INSTANCE;
   }
 
@@ -88,14 +90,14 @@ public class SyncFileManager implements ISyncFileManager {
 
     currentSealedLocalFilesMap = new HashMap<>();
     // get all files in data dir sequence folder
-    Map<String, Set<File>> currentAllLocalFiles = new HashMap<>();
+    Map<String, Map<Long, Set<File>>> currentAllLocalFiles = new HashMap<>();
     if (!new File(dataDir + File.separatorChar + IoTDBConstant.SEQUENCE_FLODER_NAME).exists()) {
       return;
     }
-    File[] allSGFolders = new File(
+    File[] allSgFolders = new File(
         dataDir + File.separatorChar + IoTDBConstant.SEQUENCE_FLODER_NAME)
         .listFiles();
-    for (File sgFolder : allSGFolders) {
+    for (File sgFolder : allSgFolders) {
       if (!sgFolder.getName().startsWith(IoTDBConstant.PATH_ROOT) || sgFolder.getName()
           .equals(TsFileConstant.PATH_UPGRADE)) {
         continue;
@@ -110,30 +112,42 @@ public class SyncFileManager implements ISyncFileManager {
         // the folder is not a sg folder
         continue;
       }
-      allSGs.add(sgFolder.getName());
-      currentAllLocalFiles.putIfAbsent(sgFolder.getName(), new HashSet<>());
-      File[] files = sgFolder.listFiles();
-      if (files != null) {
-        Arrays.stream(files).forEach(file -> currentAllLocalFiles.get(sgFolder.getName())
-            .add(new File(sgFolder.getAbsolutePath(), file.getName())));
+      allSGs.putIfAbsent(sgFolder.getName(), new HashSet<>());
+      currentAllLocalFiles.putIfAbsent(sgFolder.getName(), new HashMap<>());
+      for (File timeRangeFolder : sgFolder.listFiles()) {
+        Long timeRangeId = Long.parseLong(timeRangeFolder.getName());
+        currentAllLocalFiles.get(sgFolder.getName()).putIfAbsent(timeRangeId, new HashSet<>());
+        File[] files = timeRangeFolder.listFiles();
+        Arrays.stream(files)
+            .forEach(file -> currentAllLocalFiles.get(sgFolder.getName()).get(timeRangeId)
+                .add(new File(timeRangeFolder.getAbsolutePath(), file.getName())));
       }
     }
 
     // get sealed tsfiles
-    for (Entry<String, Set<File>> entry : currentAllLocalFiles.entrySet()) {
+    for (Entry<String, Map<Long, Set<File>>> entry : currentAllLocalFiles.entrySet()) {
       String sgName = entry.getKey();
-      currentSealedLocalFilesMap.putIfAbsent(sgName, new HashSet<>());
-      for (File file : entry.getValue()) {
-        if (!file.getName().endsWith(TSFILE_SUFFIX)) {
-          continue;
-        }
-        if (new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists() && !new File(
-            file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists() && !new File(
-            file.getAbsolutePath() + MergeTask.MERGE_SUFFIX).exists()) {
-          currentSealedLocalFilesMap.get(sgName).add(file);
+      currentSealedLocalFilesMap.putIfAbsent(sgName, new HashMap<>());
+      for (Entry<Long, Set<File>> innerEntry : entry.getValue().entrySet()) {
+        Long timeRangeId = innerEntry.getKey();
+        currentSealedLocalFilesMap.get(sgName).putIfAbsent(timeRangeId, new HashSet<>());
+        for (File file : innerEntry.getValue()) {
+          if (!file.getName().endsWith(TSFILE_SUFFIX)) {
+            continue;
+          }
+          if(checkFileValidity(file)){
+            currentSealedLocalFilesMap.get(sgName).get(timeRangeId).add(file);
+          }
         }
       }
     }
+  }
+
+  private boolean checkFileValidity(File file){
+    return new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
+        && !new File(
+        file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists() && !new File(
+        file.getAbsolutePath() + MergeTask.MERGE_SUFFIX).exists();
   }
 
   @Override
@@ -145,62 +159,79 @@ public class SyncFileManager implements ISyncFileManager {
       return;
     }
     try (BufferedReader reader = new BufferedReader(new FileReader(lastLocalFileInfo))) {
-      String fileName;
-      while ((fileName = reader.readLine()) != null) {
-        String sgName = new File(fileName).getParentFile().getName();
-        allSGs.add(sgName);
-        lastLocalFilesMap.putIfAbsent(sgName, new HashSet<>());
-        lastLocalFilesMap.get(sgName).add(new File(fileName));
+      String filePath;
+      while ((filePath = reader.readLine()) != null) {
+        File file = new File(filePath);
+        Long timeRangeId = Long.parseLong(file.getParentFile().getName());
+        String sgName = file.getParentFile().getParentFile().getName();
+        allSGs.putIfAbsent(sgName, new HashSet<>());
+        lastLocalFilesMap.computeIfAbsent(sgName, k -> new HashMap<>())
+            .computeIfAbsent(timeRangeId, k -> new HashSet<>()).add(file);
       }
     }
   }
 
   @Override
   public void getValidFiles(String dataDir) throws IOException {
-    allSGs = new HashSet<>();
+    allSGs = new HashMap<>();
     getCurrentLocalFiles(dataDir);
     getLastLocalFiles(
         new File(SyncSenderDescriptor.getInstance().getConfig().getLastFileInfoPath()));
     toBeSyncedFilesMap = new HashMap<>();
     deletedFilesMap = new HashMap<>();
-    for (String sgName : allSGs) {
-      toBeSyncedFilesMap.putIfAbsent(sgName, new HashSet<>());
-      deletedFilesMap.putIfAbsent(sgName, new HashSet<>());
-      for (File newFile : currentSealedLocalFilesMap.getOrDefault(sgName, Collections.emptySet())) {
-        if (!lastLocalFilesMap.getOrDefault(sgName, new HashSet<>()).contains(newFile)) {
-          toBeSyncedFilesMap.get(sgName).add(newFile);
+    for (String sgName : allSGs.keySet()) {
+      toBeSyncedFilesMap.putIfAbsent(sgName, new HashMap<>());
+      deletedFilesMap.putIfAbsent(sgName, new HashMap<>());
+      for(Entry<Long, Set<File>> entry: currentSealedLocalFilesMap
+          .getOrDefault(sgName, Collections.emptyMap()).entrySet()) {
+        Long timeRangeId = entry.getKey();
+        toBeSyncedFilesMap.get(sgName).putIfAbsent(timeRangeId, new HashSet<>());
+        allSGs.get(sgName).add(timeRangeId);
+        for (File newFile : entry.getValue()) {
+          if (!lastLocalFilesMap.getOrDefault(sgName, Collections.emptyMap())
+              .getOrDefault(timeRangeId, Collections.emptySet()).contains(newFile)) {
+            toBeSyncedFilesMap.get(sgName).get(timeRangeId).add(newFile);
+          }
         }
       }
-      for (File oldFile : lastLocalFilesMap.getOrDefault(sgName, new HashSet<>())) {
-        if (!currentSealedLocalFilesMap.getOrDefault(sgName, new HashSet<>()).contains(oldFile)) {
-          deletedFilesMap.get(sgName).add(oldFile);
+
+      for (Entry<Long, Set<File>> entry : lastLocalFilesMap
+          .getOrDefault(sgName, Collections.emptyMap()).entrySet()) {
+        Long timeRangeId = entry.getKey();
+        deletedFilesMap.get(sgName).putIfAbsent(timeRangeId, new HashSet<>());
+        allSGs.get(sgName).add(timeRangeId);
+        for (File oldFile : entry.getValue()) {
+          if (!currentSealedLocalFilesMap.getOrDefault(sgName, Collections.emptyMap())
+              .getOrDefault(timeRangeId, Collections.emptySet()).contains(oldFile)) {
+            deletedFilesMap.get(sgName).get(timeRangeId).add(oldFile);
+          }
         }
       }
     }
   }
 
   @Override
-  public Map<String, Set<File>> getCurrentSealedLocalFilesMap() {
+  public Map<String, Map<Long, Set<File>>> getCurrentSealedLocalFilesMap() {
     return currentSealedLocalFilesMap;
   }
 
   @Override
-  public Map<String, Set<File>> getLastLocalFilesMap() {
+  public Map<String, Map<Long, Set<File>>> getLastLocalFilesMap() {
     return lastLocalFilesMap;
   }
 
   @Override
-  public Map<String, Set<File>> getDeletedFilesMap() {
+  public Map<String, Map<Long, Set<File>>> getDeletedFilesMap() {
     return deletedFilesMap;
   }
 
   @Override
-  public Map<String, Set<File>> getToBeSyncedFilesMap() {
+  public Map<String, Map<Long, Set<File>>> getToBeSyncedFilesMap() {
     return toBeSyncedFilesMap;
   }
 
   @Override
-  public Set<String> getAllSGs() {
+  public Map<String, Set<Long>> getAllSGs() {
     return allSGs;
   }
 

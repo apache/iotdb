@@ -21,19 +21,15 @@ package org.apache.iotdb.db.conf.adapter;
 import static org.junit.Assert.assertEquals;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 public class IoTDBConfigDynamicAdapterTest {
-
-  private static IoTDB daemon;
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -46,15 +42,12 @@ public class IoTDBConfigDynamicAdapterTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
     IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(true);
   }
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
     CONFIG.setMaxMemtableNumber(oldMaxMemTableNumber);
     CONFIG.setTsFileSizeThreshold(oldTsFileThreshold);
@@ -73,7 +66,7 @@ public class IoTDBConfigDynamicAdapterTest {
     for (int i = 1; i < 1000000; i++) {
       try {
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
-        memTableNum += 4;
+        memTableNum += IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup();
         assertEquals(IoTDBConfigDynamicAdapter.getInstance().getCurrentMemTableSize(),
             CONFIG.getMemtableSizeThreshold());
         assertEquals(CONFIG.getMaxMemtableNumber(), memTableNum);
