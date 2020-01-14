@@ -197,6 +197,7 @@ public class NonAlignEngineDataSet extends QueryDataSet {
         }
       } catch (InterruptedException e) {
         LOGGER.error("Interrupted while putting into the blocking queue: ", e);
+        Thread.currentThread().interrupt();
       } catch (IOException e) {
         LOGGER.error("Something gets wrong while reading from the series reader: ", e);
       } catch (Exception e) {
