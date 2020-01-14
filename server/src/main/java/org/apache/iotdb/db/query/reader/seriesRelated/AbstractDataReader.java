@@ -179,8 +179,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
       chunkReader = initChunkReader(chunkMetaData);
       isCurrentChunkReaderInit = true;
     }
-
-    if (isCurrentChunkReaderInit && chunkReader.hasNextSatisfiedPage()) {
+    if (chunkReader != null && chunkReader.hasNextSatisfiedPage()) {
       fillOverlappedPages();
       return hasCachedNextPage;
     }
@@ -240,7 +239,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     if (metaData == null) {
       return null;
     }
-    IChunkReader chunkReader = null;
+    IChunkReader chunkReader;
     IChunkLoader chunkLoader = metaData.getChunkLoader();
     openedChunkLoaders.add(chunkLoader);
     if (chunkLoader instanceof MemChunkLoader) {
@@ -397,8 +396,6 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
   /**
    * Before reading the chunks, should first clean up all the useless chunks, because in the file
    * hierarchy, although the files are available, some of the internal chunks are still unavailable
-   *
-   * @throws IOException
    */
   private void removeInvalidChunks() throws IOException {
     //remove seq chunks
@@ -432,8 +429,6 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
    * Because there may be too many files in the scenario used by the user, we cannot open all the
    * chunks at once, which may OOM, so we can only fill one file at a time when needed. This
    * approach is likely to be ubiquitous, but it keeps the system running smoothly
-   *
-   * @throws IOException
    */
   private void fillMetadataContainer() throws IOException {
     while (seqChunkMetadatas.isEmpty() && !seqFileResource.isEmpty()) {
@@ -456,9 +451,11 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
 
       if (chunkMetaData.getEndTime() >= startTime) {
         ChunkMetaData metaData = unseqChunkMetadatas.pollFirst();
-        IChunkReader chunkReader = initChunkReader(metaData);
-        //When data points overlap, there should be a weight
-        overlappedChunkReader.add(new VersionPair<>(metaData.getVersion(), chunkReader));
+        if (metaData != null) {
+          IChunkReader chunkReader = initChunkReader(metaData);
+          //When data points overlap, there should be a weight
+          overlappedChunkReader.add(new VersionPair<>(metaData.getVersion(), chunkReader));
+        }
         continue;
       }
       break;
@@ -468,8 +465,10 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
 
       if (chunkMetaData.getEndTime() >= startTime) {
         ChunkMetaData metaData = seqChunkMetadatas.remove(0);
-        IChunkReader chunkReader = initChunkReader(metaData);
-        overlappedChunkReader.add(new VersionPair<>(metaData.getVersion(), chunkReader));
+        if (metaData != null) {
+          IChunkReader chunkReader = initChunkReader(metaData);
+          overlappedChunkReader.add(new VersionPair<>(metaData.getVersion(), chunkReader));
+        }
         continue;
       }
       break;

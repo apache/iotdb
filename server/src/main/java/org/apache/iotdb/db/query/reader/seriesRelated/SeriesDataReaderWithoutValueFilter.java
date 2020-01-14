@@ -23,7 +23,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -102,7 +101,6 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
     hasCachedNextPage = false;
   }
 
-
   @Override
   public boolean hasNextBatch() throws IOException {
     return super.hasNextBatch();
@@ -114,6 +112,7 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
         statistics.getEndTime());
   }
 
+  @Override
   public void close() {
 
   }
