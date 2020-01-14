@@ -1394,7 +1394,8 @@ public class StorageGroupProcessor {
     int maxResult =
         IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() / 2;
 
-    if (result.size() <= maxResult) {
+    System.out.println(timePartitionMergeResourceMap.keySet());
+    if (result.size() > maxResult) {
       Collections.shuffle(result);
       return result.subList(0, maxResult);
     }

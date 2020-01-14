@@ -722,13 +722,14 @@ public class IoTDBSessionIT {
           }
         }
 
-        for (int i = 1; i <= colCount; i++) {
-          count++;
-        }
+        count++;
+//        for (int i = 1; i <= colCount; i++) {
+//
+//        }
       }
+      Assert.assertEquals(7000, count);
       Assert.assertEquals(standard, resultStr.toString());
       // d1 and d2 will align
-      Assert.assertEquals(7000, count);
     }
   }
 
