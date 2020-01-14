@@ -47,7 +47,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public class NewAggregateEngineExecutor {
+public class AggregateEngineExecutor {
 
   private List<Path> selectedSeries;
   private List<TSDataType> dataTypes;
@@ -59,7 +59,7 @@ public class NewAggregateEngineExecutor {
    **/
   private int aggregateFetchSize;
 
-  public NewAggregateEngineExecutor(AggregationPlan aggregationPlan) {
+  public AggregateEngineExecutor(AggregationPlan aggregationPlan) {
     this.selectedSeries = aggregationPlan.getDeduplicatedPaths();
     this.dataTypes = aggregationPlan.getDeduplicatedDataTypes();
     this.aggres = aggregationPlan.getDeduplicatedAggregations();

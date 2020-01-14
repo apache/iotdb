@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.executor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
-import org.apache.iotdb.db.query.dataset.NewEngineDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
@@ -83,7 +83,7 @@ public class EngineExecutor {
     }
 
     try {
-      return new NewEngineDataSetWithoutValueFilter(deduplicatedPaths, deduplicatedDataTypes,
+      return new RawQueryDataSetWithoutValueFilter(deduplicatedPaths, deduplicatedDataTypes,
           readersOfSelectedSeries);
     } catch (InterruptedException e) {
       throw new StorageEngineException(e.getMessage());

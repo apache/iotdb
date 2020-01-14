@@ -41,7 +41,7 @@ import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
+public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
 
   private static class ReadTask implements Runnable {
 
@@ -123,7 +123,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
   private static final QueryTaskPoolManager pool = QueryTaskPoolManager.getInstance();
 
   private static final Logger LOGGER = LoggerFactory
-      .getLogger(NewEngineDataSetWithoutValueFilter.class);
+      .getLogger(RawQueryDataSetWithoutValueFilter.class);
 
 
   /**
@@ -133,7 +133,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
    * @param dataTypes time series data type
    * @param readers   readers in List(IPointReader) structure
    */
-  public NewEngineDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
+  public RawQueryDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
       List<ManagedSeriesReader> readers) throws InterruptedException {
     super(paths, dataTypes);
     this.seriesReaderWithoutValueFilterList = readers;
@@ -381,7 +381,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
    * for spark/hadoop/hive integration and test
    */
   @Override
-  protected RowRecord nextWithoutConstraint() throws IOException {
+  protected RowRecord nextWithoutConstraint() {
     int seriesNum = seriesReaderWithoutValueFilterList.size();
 
     long minTime = timeHeap.pollFirst();

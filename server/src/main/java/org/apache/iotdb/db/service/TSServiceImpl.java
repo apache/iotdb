@@ -49,7 +49,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.NewEngineDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
@@ -843,16 +843,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         throw new UnSupportedDataTypeException(String.format(
             "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
       }
-      if (queryDataSet instanceof NewEngineDataSetWithoutValueFilter) {
+      if (queryDataSet instanceof RawQueryDataSetWithoutValueFilter) {
         // optimize for query without value filter
-        result = ((NewEngineDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, encoder);
+        result = ((RawQueryDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, encoder);
       } else {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
       }
     } else {
-      if (queryDataSet instanceof NewEngineDataSetWithoutValueFilter) {
+      if (queryDataSet instanceof RawQueryDataSetWithoutValueFilter) {
         // optimize for query without value filter
-        result = ((NewEngineDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, null);
+        result = ((RawQueryDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, null);
       } else {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
       }
