@@ -301,6 +301,13 @@ public class IoTDBDescriptor {
 
       conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
           String.valueOf(conf.getDefaultTTL()))));
+      // Time range for dividing storage group
+      conf.setPartitionInterval(
+          Long.parseLong(properties.getProperty("partition_interval", String.valueOf(conf.getPartitionInterval()))));
+
+      // the num of memtables in each storage group
+      conf.setMemtableNumInEachStorageGroup(
+          Integer.parseInt(properties.getProperty("memtable_num_in_each_storage_group", String.valueOf(conf.getMemtableNumInEachStorageGroup()))));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()

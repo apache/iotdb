@@ -34,12 +34,14 @@ public class MemTablePool {
   private static final Logger logger = LoggerFactory.getLogger(MemTablePool.class);
 
   private static final Deque<IMemTable> availableMemTables = new ArrayDeque<>();
-
+  private static final int WAIT_TIME = 2000;
   private int size = 0;
 
-  private static final int WAIT_TIME = 2000;
-
   private MemTablePool() {
+  }
+
+  public static MemTablePool getInstance() {
+    return InstanceHolder.INSTANCE;
   }
 
   // TODO change the impl of getAvailableMemTable to non-blocking
@@ -52,7 +54,8 @@ public class MemTablePool {
         return new PrimitiveMemTable();
       } else if (!availableMemTables.isEmpty()) {
         logger
-            .debug("system memtable size: {}, stack size: {}, then get a memtable from stack for {}",
+            .debug(
+                "system memtable size: {}, stack size: {}, then get a memtable from stack for {}",
                 size, availableMemTables.size(), applier);
         return availableMemTables.pop();
       }
@@ -101,15 +104,11 @@ public class MemTablePool {
     return size;
   }
 
-  public static MemTablePool getInstance() {
-    return InstanceHolder.INSTANCE;
-  }
-
   private static class InstanceHolder {
+
+    private static final MemTablePool INSTANCE = new MemTablePool();
 
     private InstanceHolder() {
     }
-
-    private static final MemTablePool INSTANCE = new MemTablePool();
   }
 }

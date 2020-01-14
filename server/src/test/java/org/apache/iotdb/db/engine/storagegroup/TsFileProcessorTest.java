@@ -81,7 +81,7 @@ public class TsFileProcessorTest {
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
     },
-        () -> true, true);
+        (tsFileProcessor) -> true, true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props, context);
@@ -127,7 +127,7 @@ public class TsFileProcessorTest {
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
     },
-        () -> true, true);
+        (tsFileProcessor) -> true, true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props, context);
@@ -193,7 +193,7 @@ public class TsFileProcessorTest {
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
     },
-        () -> true, true);
+        (tsFileProcessor) -> true, true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props, context);
@@ -240,7 +240,7 @@ public class TsFileProcessorTest {
               throw new TsFileProcessorException(e);
             }
           }
-        }, () -> true, true);
+        }, (tsFileProcessor) -> true, true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props, context);
