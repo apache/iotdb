@@ -25,11 +25,15 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class RawDataReaderWithoutValueFilter extends AbstractDataReader implements IRawDataReader {
+
+  private BatchData batchData;
+  private boolean hasCachedBatchData = false;
 
   public RawDataReaderWithoutValueFilter(Path seriesPath, TSDataType dataType, Filter filter,
       QueryContext context) throws StorageEngineException, IOException {
@@ -54,13 +58,36 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
    */
   @Override
   public boolean hasNextBatch() throws IOException {
+
+    if (hasCachedBatchData) {
+      return true;
+    }
+
     while (hasNextChunk()) {
       while (hasNextPage()) {
-        if (super.hasNextBatch()) {
+        if (canUsePageStatistics()) {
+          batchData = nextPage();
+          hasCachedBatchData = true;
           return true;
+        } else {
+          if (hasNextBatch()) {
+            batchData = nextBatch();
+            hasCachedBatchData = true;
+            return true;
+          }
         }
       }
     }
     return false;
   }
+
+  @Override
+  public BatchData nextBatch() throws IOException {
+    if (hasCachedBatchData || hasNextBatch()) {
+      hasCachedBatchData = false;
+      return batchData;
+    }
+    throw new IOException("no next batch");
+  }
+
 }

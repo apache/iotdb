@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.query.reader;
 
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.IRawDataReader;
 
 /**
  * ManagedSeriesReader is a combination of IBatchReader and IPointReader that provides additional
  * interfaces to make it able to be run in a thread pool concurrently within a query.
  */
-public interface ManagedSeriesReader extends IBatchReader {
+public interface ManagedSeriesReader extends IRawDataReader {
 
   boolean isManagedByQueryManager();
 

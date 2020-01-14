@@ -86,12 +86,6 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
   }
 
   @Override
-  public boolean canUsePageStatistics() {
-    Statistics pageStatistics = currentPage.getStatistics();
-    return overlappedPages.isEmpty() && satisfyFilter(pageStatistics);
-  }
-
-  @Override
   public Statistics currentPageStatistics() {
     return currentPage.getStatistics();
   }
@@ -104,11 +98,6 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
   @Override
   public boolean hasNextBatch() throws IOException {
     return super.hasNextBatch();
-  }
-
-  protected boolean satisfyFilter(Statistics statistics) {
-    return filter == null || filter.containStartEndTime(statistics.getStartTime(),
-        statistics.getEndTime());
   }
 
   @Override

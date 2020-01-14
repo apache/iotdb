@@ -43,6 +43,7 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -157,6 +158,20 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     return hasCachedNextChunk;
   }
 
+  public boolean canUseChunkStatistics() {
+    Statistics chunkStatistics = chunkMetaData.getStatistics();
+    return overlappedChunkReader.isEmpty() && satisfyFilter(chunkStatistics);
+  }
+
+  public boolean canUsePageStatistics() {
+    Statistics pageStatistics = currentPage.getStatistics();
+    return overlappedPages.isEmpty() && satisfyFilter(pageStatistics);
+  }
+
+  protected boolean satisfyFilter(Statistics statistics) {
+    return filter == null || filter.containStartEndTime(statistics.getStartTime(),
+        statistics.getEndTime());
+  }
 
   protected boolean hasNextPage() throws IOException {
     if (hasCachedNextPage) {
@@ -177,6 +192,12 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     return hasCachedNextPage;
   }
 
+  protected BatchData nextPage() throws IOException {
+    if (hasCachedNextPage || hasNextPage()) {
+      hasCachedNextPage = false;
+    }
+    return chunkReader.nextPageData();
+  }
 
   public boolean hasNextBatch() throws IOException {
     if (hasCachedNextBatch) {

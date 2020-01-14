@@ -36,6 +36,7 @@ import org.apache.iotdb.db.query.dataset.OldEngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
@@ -102,7 +103,7 @@ public class AggregateEngineExecutor {
     aggregateResult.init();
 
     // construct series reader without value filter
-    SeriesDataReaderWithoutValueFilter seriesReader = new SeriesDataReaderWithoutValueFilter(
+    IAggregateReader seriesReader = new SeriesDataReaderWithoutValueFilter(
         selectedSeries.get(i), tsDataType, timeFilter, context);
 
     while (seriesReader.hasNextChunk()) {
