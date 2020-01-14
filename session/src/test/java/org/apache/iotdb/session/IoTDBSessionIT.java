@@ -697,7 +697,7 @@ public class IoTDBSessionIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "192.168.130.18:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       System.out.println("here");
-      ResultSet resultSet = statement.executeQuery("select s_0 from root.group_0.d_0 limit 10000");
+      ResultSet resultSet = statement.executeQuery("select s_0 from root.group_0.d_0");
       final ResultSetMetaData metaData = resultSet.getMetaData();
       final int colCount = metaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
@@ -711,7 +711,7 @@ public class IoTDBSessionIT {
       int errorCount = 0;
       while (resultSet.next()) {
         long curTime = resultSet.getLong(1);
-        System.out.println(curTime);
+        //System.out.println(curTime);
         if (beforeTime < curTime) {
           beforeTime = curTime;
         } else {

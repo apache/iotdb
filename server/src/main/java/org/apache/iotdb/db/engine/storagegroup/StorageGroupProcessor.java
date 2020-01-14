@@ -195,7 +195,10 @@ public class StorageGroupProcessor {
    * be invisible at this moment, without this, deletion/update during merge could be lost.
    */
   private ModificationFile mergingModification;
-  private volatile boolean isMerging = false;
+  /**
+   * how many merging task is processing
+   */
+  private volatile int mergeingCount = 0;
   private long mergeStartTime;
   /**
    * This linked list records the access order of measurements used by query.
@@ -1290,7 +1293,7 @@ public class StorageGroupProcessor {
   public void merge(boolean fullMerge) {
     writeLock();
     try {
-      if (isMerging) {
+      if (mergeingCount > 0) {
         if (logger.isInfoEnabled()) {
           logger.info("{} Last merge is ongoing, currently consumed time: {}ms", storageGroupName,
               (System.currentTimeMillis() - mergeStartTime));
@@ -1302,53 +1305,103 @@ public class StorageGroupProcessor {
         return;
       }
 
-      long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
-      long timeLowerBound = System.currentTimeMillis() - dataTTL;
-      MergeResource mergeResource = new MergeResource(sequenceFileTreeSet, unSequenceFileList,
-          timeLowerBound);
+      for(Pair<List<TsFileResource>, List<TsFileResource>> pair : buildTimePartitionMergeResource()){
+        long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
+        long timeLowerBound = System.currentTimeMillis() - dataTTL;
+        MergeResource mergeResource = new MergeResource(pair.left, pair.right,
+            timeLowerBound);
 
-      IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
-      try {
-        List[] mergeFiles = fileSelector.select();
-        if (mergeFiles.length == 0) {
-          logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
-              budget);
-          return;
-        }
-        // avoid pending tasks holds the metadata and streams
-        mergeResource.clear();
-        String taskName = storageGroupName + "-" + System.currentTimeMillis();
-        // do not cache metadata until true candidates are chosen, or too much metadata will be
-        // cached during selection
-        mergeResource.setCacheDeviceMeta(true);
+        IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
+        try {
+          List[] mergeFiles = fileSelector.select();
+          if (mergeFiles.length == 0) {
+            logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
+                budget);
+            return;
+          }
+          // avoid pending tasks holds the metadata and streams
+          mergeResource.clear();
+          String taskName = storageGroupName + "-" + System.currentTimeMillis();
+          // do not cache metadata until true candidates are chosen, or too much metadata will be
+          // cached during selection
+          mergeResource.setCacheDeviceMeta(true);
 
-        for (TsFileResource tsFileResource : mergeResource.getSeqFiles()) {
-          tsFileResource.setMerging(true);
-        }
-        for (TsFileResource tsFileResource : mergeResource.getUnseqFiles()) {
-          tsFileResource.setMerging(true);
-        }
+          for (TsFileResource tsFileResource : mergeResource.getSeqFiles()) {
+            tsFileResource.setMerging(true);
+          }
+          for (TsFileResource tsFileResource : mergeResource.getUnseqFiles()) {
+            tsFileResource.setMerging(true);
+          }
 
-        MergeTask mergeTask = new MergeTask(mergeResource, storageGroupSysDir.getPath(),
-            this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum(),
-            storageGroupName);
-        mergingModification = new ModificationFile(
-            storageGroupSysDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
-        MergeManager.getINSTANCE().submitMainTask(mergeTask);
-        if (logger.isInfoEnabled()) {
-          logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
-              storageGroupName, taskName, mergeFiles[0].size(), mergeFiles[1].size());
-        }
-        isMerging = true;
-        mergeStartTime = System.currentTimeMillis();
+          MergeTask mergeTask = new MergeTask(mergeResource, storageGroupSysDir.getPath(),
+              this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum(),
+              storageGroupName);
+          mergingModification = new ModificationFile(
+              storageGroupSysDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
+          MergeManager.getINSTANCE().submitMainTask(mergeTask);
+          if (logger.isInfoEnabled()) {
+            logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
+                storageGroupName, taskName, mergeFiles[0].size(), mergeFiles[1].size());
+          }
 
-      } catch (MergeException | IOException e) {
-        logger.error("{} cannot select file for merge", storageGroupName, e);
+          // there is a write lock to ensure thread safety, so just handle shared variables
+          if(mergeingCount == 0){
+            mergeStartTime = System.currentTimeMillis();
+          }
+          mergeingCount++;
+
+
+        } catch (MergeException | IOException e) {
+          logger.error("{} cannot select file for merge", storageGroupName, e);
+        }
       }
     } finally {
       writeUnlock();
     }
   }
+
+  /**
+   * build time partition merge resource
+   *
+   * @return list of pairs which contains list of sequence tsfile resources and list of unsequence
+   * tsfile resource in different time partition
+   */
+  private List<Pair<List<TsFileResource>, List<TsFileResource>>> buildTimePartitionMergeResource() {
+    // pair left -> sequence list  right -> unsequence list
+    HashMap<Long, Pair<List<TsFileResource>, List<TsFileResource>>> timePartitionMergeResourceMap = new HashMap<>();
+
+    // sequence part
+    for (TsFileResource tsFileResource : sequenceFileTreeSet) {
+      long partition = getTimePartitionFromTsFileResource(tsFileResource);
+      timePartitionMergeResourceMap
+          .computeIfAbsent(partition, id -> new Pair<>(new ArrayList<>(), new ArrayList<>())).left
+          .add(tsFileResource);
+    }
+
+    // unsequence part
+    for (TsFileResource tsFileResource : unSequenceFileList) {
+      long partition = getTimePartitionFromTsFileResource(tsFileResource);
+      Pair<List<TsFileResource>, List<TsFileResource>> curPartitionPair = timePartitionMergeResourceMap
+          .get(partition);
+      if (curPartitionPair != null) {
+        curPartitionPair.right.add(tsFileResource);
+      }
+    }
+
+    // only return part of resource for avoiding submit too much merge task
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> result = new ArrayList<>(
+        timePartitionMergeResourceMap.values());
+    int maxResult =
+        IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() / 2;
+
+    if (result.size() <= maxResult) {
+      Collections.shuffle(result);
+      result.subList(0, maxResult);
+    }
+
+    return result;
+  }
+
 
   private IMergeFileSelector getMergeFileSelector(long budget, MergeResource resource) {
     MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
@@ -1422,7 +1475,10 @@ public class StorageGroupProcessor {
 
     if (unseqFiles.isEmpty()) {
       // merge runtime exception arose, just end this merge
-      isMerging = false;
+      mergeLock.writeLock().lock();
+      mergeingCount--;
+      mergeLock.writeLock().unlock();
+
       logger.info("{} a merge task abnormally ends", storageGroupName);
       return;
     }
@@ -1437,7 +1493,7 @@ public class StorageGroupProcessor {
         if (i == seqFiles.size() - 1) {
           //FIXME if there is an exception, the the modification file will be not closed.
           removeMergingModification();
-          isMerging = false;
+          mergeingCount--;
           mergeLog.delete();
         }
       } finally {
