@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  *      Statistics statistics = currentChunkStatistics();
  *      doSomething...
  *      skipChunkData();
- *      break;
+ *      continue;
  *    }
  *
  *    while(hasNextPage()){
@@ -41,7 +41,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  *        Statistics statistics = currentPageStatistics();
  *        doSomething...
  *        skipPageData();
- *        break;
+ *        continue;
  *      }
  *
  *      while(hasNextBatch()){
