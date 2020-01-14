@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.writelog.recover;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -147,11 +146,8 @@ public class LogReplayer {
         tempEndTimeMap.put(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
       }
     }
-    ArrayList<Integer> index = new ArrayList<>();
-    for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
-      index.add(i);
-    }
-    recoverMemTable.insertBatch(batchInsertPlan, index);
+
+    recoverMemTable.insertBatch(batchInsertPlan, 0, batchInsertPlan.getRowCount());
   }
 
   private void replayInsert(InsertPlan insertPlan) throws QueryProcessException {
