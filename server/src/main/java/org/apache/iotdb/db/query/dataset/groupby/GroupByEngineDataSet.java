@@ -25,7 +25,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.factory.AggreFuncFactory;
+import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -66,8 +66,8 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   protected void initAggreFuction(GroupByPlan groupByPlan) throws PathException {
     // construct AggregateFunctions
     for (int i = 0; i < paths.size(); i++) {
-      AggregateResult function = AggreFuncFactory
-          .getAggrFuncByName(groupByPlan.getDeduplicatedAggregations().get(i),
+      AggregateResult function = AggreResultFactory
+          .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(i),
               groupByPlan.getDeduplicatedDataTypes().get(i));
       function.init();
       functions.add(function);
@@ -102,7 +102,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   }
 
   protected Field getField(AggreResultData aggreResultData) {
-    if (!aggreResultData.isSetValue()) {
+    if (!aggreResultData.hasResult()) {
       return new Field(null);
     }
     Field field = new Field(aggreResultData.getDataType());

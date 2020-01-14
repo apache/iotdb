@@ -75,7 +75,7 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
   }
 
   @Override
-  public void skipChunkData() throws IOException {
+  public void skipChunkData() {
     hasCachedNextChunk = false;
   }
 
@@ -97,7 +97,7 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
   }
 
   @Override
-  public void skipPageData() throws IOException {
+  public void skipPageData() {
     hasCachedNextPage = false;
   }
 

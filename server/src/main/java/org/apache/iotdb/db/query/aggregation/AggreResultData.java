@@ -25,7 +25,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public class AggreResultData {
 
-  private long timestamp;
   private TSDataType dataType;
 
   private boolean booleanRet;
@@ -35,23 +34,15 @@ public class AggreResultData {
   private double doubleRet;
   private Binary binaryRet;
 
-  private boolean isSetValue;
-  private boolean isSetTime;
+  private boolean hasResult;
 
   public AggreResultData(TSDataType dataType) {
     this.dataType = dataType;
-    this.isSetTime = false;
-    this.isSetValue = false;
+    this.hasResult = false;
   }
 
   public void reset() {
-    isSetValue = false;
-    isSetTime = false;
-  }
-
-  public void putTimeAndValue(long timestamp, Object v) {
-    setTimestamp(timestamp);
-    setAnObject((Comparable<?>) v);
+    hasResult = false;
   }
 
   public Object getValue() {
@@ -78,8 +69,8 @@ public class AggreResultData {
    *
    * @param v object value
    */
-  public void setAnObject(Comparable<?> v) {
-    isSetValue = true;
+  public void setValue(Object v) {
+    hasResult = true;
     switch (dataType) {
       case BOOLEAN:
         booleanRet = (Boolean) v;
@@ -104,15 +95,6 @@ public class AggreResultData {
     }
   }
 
-  public long getTimestamp() {
-    return timestamp;
-  }
-
-  public void setTimestamp(long timestamp) {
-    isSetTime = true;
-    this.timestamp = timestamp;
-  }
-
   public TSDataType getDataType() {
     return dataType;
   }
@@ -122,7 +104,7 @@ public class AggreResultData {
   }
 
   public void setBooleanRet(boolean booleanRet) {
-    this.isSetValue = true;
+    this.hasResult = true;
     this.booleanRet = booleanRet;
   }
 
@@ -131,7 +113,7 @@ public class AggreResultData {
   }
 
   public void setIntRet(int intRet) {
-    this.isSetValue = true;
+    this.hasResult = true;
     this.intRet = intRet;
   }
 
@@ -140,7 +122,7 @@ public class AggreResultData {
   }
 
   public void setLongRet(long longRet) {
-    this.isSetValue = true;
+    this.hasResult = true;
     this.longRet = longRet;
   }
 
@@ -149,7 +131,7 @@ public class AggreResultData {
   }
 
   public void setFloatRet(float floatRet) {
-    this.isSetValue = true;
+    this.hasResult = true;
     this.floatRet = floatRet;
   }
 
@@ -158,7 +140,7 @@ public class AggreResultData {
   }
 
   public void setDoubleRet(double doubleRet) {
-    this.isSetValue = true;
+    this.hasResult = true;
     this.doubleRet = doubleRet;
   }
 
@@ -167,25 +149,18 @@ public class AggreResultData {
   }
 
   public void setBinaryRet(Binary binaryRet) {
-    this.isSetValue = true;
+    this.hasResult = true;
     this.binaryRet = binaryRet;
   }
 
-  public boolean isSetValue() {
-    return isSetValue;
-  }
-
-  public boolean isSetTime() {
-    return isSetTime;
+  public boolean hasResult() {
+    return hasResult;
   }
 
   public AggreResultData deepCopy() {
     AggreResultData aggreResultData = new AggreResultData(this.dataType);
-    if (isSetValue) {
-      aggreResultData.setAnObject((Comparable<?>) this.getValue());
-    }
-    if (isSetTime) {
-      aggreResultData.setTimestamp(this.getTimestamp());
+    if (hasResult) {
+      aggreResultData.setValue(this.getValue());
     }
     return aggreResultData;
   }

@@ -27,16 +27,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class CountAggrFunc extends AggregateResult {
+public class CountAggrResult extends AggregateResult {
 
-  public CountAggrFunc() {
+  public CountAggrResult() {
     super(TSDataType.INT64);
   }
 
   @Override
   public void init() {
     resultData.reset();
-    resultData.setTimestamp(0);
     resultData.setLongRet(0);
   }
 
@@ -53,8 +52,7 @@ public class CountAggrFunc extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage)
-      throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage) {
     int cnt = dataInThisPage.length();
     long preValue = resultData.getLongRet();
     preValue += cnt;
@@ -62,7 +60,7 @@ public class CountAggrFunc extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
     while (dataInThisPage.hasCurrent()) {
       if (dataInThisPage.currentTime() >= bound) {
         break;

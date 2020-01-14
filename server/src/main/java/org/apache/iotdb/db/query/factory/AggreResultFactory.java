@@ -22,23 +22,23 @@ package org.apache.iotdb.db.query.factory;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.aggregation.impl.AvgAggrFunc;
-import org.apache.iotdb.db.query.aggregation.impl.CountAggrFunc;
-import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrFunc;
-import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrFunc;
-import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrFunc;
-import org.apache.iotdb.db.query.aggregation.impl.MaxValueAggrFunc;
-import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrFunc;
-import org.apache.iotdb.db.query.aggregation.impl.MinValueAggrFunc;
-import org.apache.iotdb.db.query.aggregation.impl.SumAggrFunc;
+import org.apache.iotdb.db.query.aggregation.impl.AvgAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.CountAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.MaxValueAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.MinValueAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.SumAggrResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
  * Easy factory pattern to build AggregateFunction.
  */
-public class AggreFuncFactory {
+public class AggreResultFactory {
 
-  private AggreFuncFactory() {
+  private AggreResultFactory() {
   }
 
   /**
@@ -47,7 +47,7 @@ public class AggreFuncFactory {
    * @param aggrFuncName function name.
    * @param dataType data type.
    */
-  public static AggregateResult getAggrFuncByName(String aggrFuncName, TSDataType dataType)
+  public static AggregateResult getAggrResultByName(String aggrFuncName, TSDataType dataType)
       throws PathException {
     if (aggrFuncName == null) {
       throw new PathException("AggregateFunction Name must not be null");
@@ -55,23 +55,23 @@ public class AggreFuncFactory {
 
     switch (aggrFuncName.toLowerCase()) {
       case SQLConstant.MIN_TIME:
-        return new MinTimeAggrFunc();
+        return new MinTimeAggrResult();
       case SQLConstant.MAX_TIME:
-        return new MaxTimeAggrFunc();
+        return new MaxTimeAggrResult();
       case SQLConstant.MIN_VALUE:
-        return new MinValueAggrFunc(dataType);
+        return new MinValueAggrResult(dataType);
       case SQLConstant.MAX_VALUE:
-        return new MaxValueAggrFunc(dataType);
+        return new MaxValueAggrResult(dataType);
       case SQLConstant.COUNT:
-        return new CountAggrFunc();
+        return new CountAggrResult();
       case SQLConstant.AVG:
-        return new AvgAggrFunc(dataType);
+        return new AvgAggrResult(dataType);
       case SQLConstant.FIRST_VALUE:
-        return new FirstValueAggrFunc(dataType);
+        return new FirstValueAggrResult(dataType);
       case SQLConstant.SUM:
-        return new SumAggrFunc(dataType);
+        return new SumAggrResult(dataType);
       case SQLConstant.LAST_VALUE:
-        return new LastValueAggrFunc(dataType);
+        return new LastValueAggrResult(dataType);
       default:
         throw new PathException(
             "aggregate does not support " + aggrFuncName + " function.");

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
@@ -27,10 +28,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class MinTimeAggrFunc extends AggregateResult {
+public class FirstValueAggrResult extends AggregateResult {
 
-  public MinTimeAggrFunc() {
-    super(TSDataType.INT64);
+  public FirstValueAggrResult(TSDataType dataType) {
+    super(dataType);
   }
 
   @Override
@@ -44,49 +45,58 @@ public class MinTimeAggrFunc extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics) {
-    if (resultData.isSetValue()) {
+  public void updateResultFromStatistics(Statistics statistics)
+      throws QueryProcessException {
+    if (resultData.hasResult()) {
       return;
     }
-    long time = statistics.getStartTime();
-    resultData.putTimeAndValue(0, time);
+
+    Object firstVal = statistics.getFirstValue();
+    if (firstVal == null) {
+      throw new QueryProcessException("ChunkMetaData contains no FIRST value");
+    }
+    resultData.setValue(firstVal);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
-    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
+  public void updateResultFromPageData(BatchData dataInThisPage) {
+    if (resultData.hasResult()) {
+      return;
+    }
+    if (dataInThisPage.hasCurrent()) {
+      resultData.setValue(dataInThisPage.currentValue());
+    }
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
-    if (resultData.isSetValue()) {
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
+    if (resultData.hasResult()) {
       return;
     }
     if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
-      resultData.setTimestamp(0);
-      resultData.setLongRet(dataInThisPage.currentTime());
+      resultData.setValue(dataInThisPage.currentValue());
+      dataInThisPage.next();
     }
   }
 
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    if (resultData.isSetValue()) {
+    if (resultData.hasResult()) {
       return;
     }
+
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
-        resultData.setTimestamp(0);
-        resultData.setLongRet(timestamps[i]);
-        return;
+        resultData.setValue(value);
+        break;
       }
     }
   }
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return resultData.isSetValue();
+    return resultData.hasResult();
   }
-
 }

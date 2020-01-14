@@ -67,28 +67,23 @@ public class TimeValuePairUtils {
   /**
    * get given data's current (time,value) pair.
    *
-   * @param data -AggreResultData
+   * @param data - AggreResultData
    * @return -given data's (time,value) pair
    */
   public static TimeValuePair getCurrentTimeValuePair(AggreResultData data) {
     switch (data.getDataType()) {
       case INT32:
-        return new TimeValuePair(data.getTimestamp(), new TsPrimitiveType.TsInt(data.getIntRet()));
+        return new TimeValuePair(0, new TsPrimitiveType.TsInt(data.getIntRet()));
       case INT64:
-        return new TimeValuePair(data.getTimestamp(),
-            new TsPrimitiveType.TsLong(data.getLongRet()));
+        return new TimeValuePair(0, new TsPrimitiveType.TsLong(data.getLongRet()));
       case FLOAT:
-        return new TimeValuePair(data.getTimestamp(),
-            new TsPrimitiveType.TsFloat(data.getFloatRet()));
+        return new TimeValuePair(0, new TsPrimitiveType.TsFloat(data.getFloatRet()));
       case DOUBLE:
-        return new TimeValuePair(data.getTimestamp(),
-            new TsPrimitiveType.TsDouble(data.getDoubleRet()));
+        return new TimeValuePair(0, new TsPrimitiveType.TsDouble(data.getDoubleRet()));
       case TEXT:
-        return new TimeValuePair(data.getTimestamp(),
-            new TsPrimitiveType.TsBinary(data.getBinaryRet()));
+        return new TimeValuePair(0, new TsPrimitiveType.TsBinary(data.getBinaryRet()));
       case BOOLEAN:
-        return new TimeValuePair(data.getTimestamp(),
-            new TsPrimitiveType.TsBoolean(data.isBooleanRet()));
+        return new TimeValuePair(0, new TsPrimitiveType.TsBoolean(data.isBooleanRet()));
       default:
         throw new UnSupportedDataTypeException(String.valueOf(data.getDataType()));
     }

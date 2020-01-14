@@ -23,8 +23,7 @@ import java.util.ArrayList;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.query.aggregation.impl.CountAggrFunc;
-import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.aggregation.impl.CountAggrResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -163,7 +162,7 @@ public class GroupByEngineDataSetTest {
     groupByPlan.setStartTime(startTime);
     groupByPlan.setEndTime(endTime);
     ArrayList<Object> aggrList = new ArrayList<>();
-    aggrList.add(new CountAggrFunc());
+    aggrList.add(new CountAggrResult());
     GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByPlan);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
