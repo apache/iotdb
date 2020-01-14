@@ -112,7 +112,7 @@ public class OldUnseqResourceMergeReader extends PriorityMergeReader {
         .executeForIPointReader(queryId, readerWrapList);
     int priorityValue = 1;
     for (IPointReader chunkReader : readerList) {
-      addReaderWithPriority(chunkReader, priorityValue++);
+      addReader(chunkReader, priorityValue++);
     }
   }
 

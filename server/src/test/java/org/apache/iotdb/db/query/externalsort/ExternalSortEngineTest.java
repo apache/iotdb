@@ -113,7 +113,7 @@ public class ExternalSortEngineTest {
     readerList1 = engine.executeForIPointReader(queryId, chunkReaderWrapList);
     PriorityMergeReader reader1 = new PriorityMergeReader();
     for (int i = 0; i < readerList1.size(); i++) {
-      reader1.addReaderWithPriority(readerList1.get(i), i);
+      reader1.addReader(readerList1.get(i), i);
     }
     while (reader1.hasNext()) {
       reader1.next();
@@ -125,7 +125,7 @@ public class ExternalSortEngineTest {
     startTimestamp = System.currentTimeMillis();
     PriorityMergeReader reader2 = new PriorityMergeReader();
     for (int i = 0; i < readerList2.size(); i++) {
-      reader2.addReaderWithPriority(readerList2.get(i), i);
+      reader2.addReader(readerList2.get(i), i);
     }
     while (reader2.hasNext()) {
       reader2.next();

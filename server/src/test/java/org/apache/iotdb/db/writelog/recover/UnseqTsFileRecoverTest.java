@@ -170,7 +170,7 @@ public class UnseqTsFileRecoverTest {
       Chunk chunk = chunkLoader.getChunk(chunkMetaData);
       ChunkReader chunkReader = new ChunkReader(chunk, null);
       unSeqMergeReader
-          .addReaderWithPriority(new ChunkDataIterator(chunkReader), priorityValue);
+          .addReader(new ChunkDataIterator(chunkReader), priorityValue);
       priorityValue++;
     }
 

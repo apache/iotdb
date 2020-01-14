@@ -82,7 +82,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
   protected PageHeader currentPage;
 
   private boolean hasCachedNextBatch;
-  protected PriorityMergeReader priorityMergeReader = new PriorityMergeReader();
+  protected PriorityMergeReader mergeReader = new PriorityMergeReader();
   private long currentPageEndTime = Long.MAX_VALUE;
 
   private boolean hasRemaining;
@@ -183,14 +183,11 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
       return true;
     }
     if (chunkReader.hasNextSatisfiedPage()) {
-      priorityMergeReader
-          .addReaderWithPriority(new ChunkDataIterator(chunkReader), chunkMetaData.getVersion());
+      mergeReader.addReader(new ChunkDataIterator(chunkReader), chunkMetaData.getVersion());
       hasCachedNextBatch = true;
     }
-    for (int i = 0; i < overlappedPages.size(); i++) {
-      VersionPair<IChunkReader> reader = overlappedPages.get(i);
-      priorityMergeReader
-          .addReaderWithPriority(new ChunkDataIterator(reader.data), reader.version);
+    for (VersionPair<IChunkReader> reader : overlappedPages) {
+      mergeReader.addReader(new ChunkDataIterator(reader.data), reader.version);
       hasCachedNextBatch = true;
     }
     overlappedPages.clear();
@@ -200,7 +197,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
   }
 
   public BatchData nextBatch() throws IOException {
-    if (priorityMergeReader.hasNext()) {
+    if (mergeReader.hasNext()) {
       hasCachedNextBatch = false;
       return nextOverlappedPage();
     }
@@ -210,14 +207,14 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
 
   protected BatchData nextOverlappedPage() throws IOException {
     BatchData batchData = new BatchData(dataType);
-    while (priorityMergeReader.hasNext()) {
-      TimeValuePair timeValuePair = priorityMergeReader.current();
+    while (mergeReader.hasNext()) {
+      TimeValuePair timeValuePair = mergeReader.current();
       //TODO should add a batchSize to limit the number of reads per time
       if (timeValuePair.getTimestamp() > currentPageEndTime) {
         break;
       }
       batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
-      priorityMergeReader.next();
+      mergeReader.next();
     }
     return batchData;
   }

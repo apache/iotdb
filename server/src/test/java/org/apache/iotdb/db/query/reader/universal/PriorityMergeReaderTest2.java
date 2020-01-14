@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.reader.universal;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.Element;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.junit.Assert;
 import org.junit.Test;
@@ -34,9 +33,9 @@ public class PriorityMergeReaderTest2 {
     FakedSeriesReader reader3 = new FakedSeriesReader(180, 50, 7, 31);
 
     PriorityMergeReader priorityMergeReader = new PriorityMergeReader();
-    priorityMergeReader.addReaderWithPriority(reader1, 3);
-    priorityMergeReader.addReaderWithPriority(reader2, 2);
-    priorityMergeReader.addReaderWithPriority(reader3, 1);
+    priorityMergeReader.addReader(reader1, 3);
+    priorityMergeReader.addReader(reader2, 2);
+    priorityMergeReader.addReader(reader3, 1);
 
     int cnt = 0;
     while (priorityMergeReader.hasNext()) {

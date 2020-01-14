@@ -41,11 +41,11 @@ public class PriorityMergeReader implements IPointReader {
   public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority)
       throws IOException {
     for (IPointReader reader : prioritySeriesReaders) {
-      addReaderWithPriority(reader, startPriority++);
+      addReader(reader, startPriority++);
     }
   }
 
-  public void addReaderWithPriority(IPointReader reader, long priority) throws IOException {
+  public void addReader(IPointReader reader, long priority) throws IOException {
     if (reader.hasNext()) {
       heap.add(new Element(reader, reader.next(), priority));
     } else {

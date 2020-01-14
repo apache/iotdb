@@ -128,7 +128,7 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
       if (!tsFileResource.isClosed()) {
         ChunkReaderWrap memChunkReaderWrap = new ChunkReaderWrap(
             tsFileResource.getReadOnlyMemChunk(), timeFilter);
-        priorityMergeReader.addReaderWithPriority(memChunkReaderWrap.getIPointReader(), priority++);
+        priorityMergeReader.addReader(memChunkReaderWrap.getIPointReader(), priority++);
       }
     }
 
@@ -186,7 +186,7 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
     // add next chunk into priority merge reader
     ChunkMetaData metaData = chunkMetaDataList.get(index++);
     ChunkReaderWrap diskChunkReader = new ChunkReaderWrap(metaData, metaData.getChunkLoader(), timeFilter);
-    priorityMergeReader.addReaderWithPriority(diskChunkReader.getIPointReader(), metaData.getPriority());
+    priorityMergeReader.addReader(diskChunkReader.getIPointReader(), metaData.getPriority());
   }
 
   @Override
