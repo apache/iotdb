@@ -790,6 +790,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
                 sessionIdUsernameMap.get(req.sessionId));
         boolean hasResultSet = result.bufferForTime().limit() != 0;
         if (!hasResultSet) {
+          QueryResourceManager.getInstance().endQuery(req.queryId);
           queryId2DataSet.remove(req.queryId);
         }
         TSFetchResultsResp resp = getTSFetchResultsResp(getStatus(TSStatusCode.SUCCESS_STATUS,

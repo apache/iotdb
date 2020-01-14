@@ -50,10 +50,10 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
   private SQLWarning warningChain = null;
   private boolean isClosed = false;
   private TSIService.Iface client = null;
-  private List<String> columnInfoList; // no deduplication
+  private List<String> columnNameList; // no deduplication
   private List<String> columnTypeList; // no deduplication
-  private Map<String, Integer> columnInfoMap; // used because the server returns deduplicated columns
-  private List<String> columnTypeDeduplicatedList; // deduplicated from columnTypeList
+  private Map<String, Integer> columnOrdinalMap; // used because the server returns deduplicated columns
+  private List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   private int fetchSize;
   private boolean emptyResultSet = false;
 
@@ -81,19 +81,19 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
     times = new byte[columnNameList.size()][Long.BYTES];
     values = new byte[columnNameList.size()][];
 
-    this.columnInfoList = new ArrayList<>();
+    this.columnNameList = new ArrayList<>();
     // deduplicate and map
-    this.columnInfoMap = new HashMap<>();
-    this.columnInfoMap.put(TIMESTAMP_STR, 1);
+    this.columnOrdinalMap = new HashMap<>();
+    this.columnOrdinalMap.put(TIMESTAMP_STR, 1);
     this.columnTypeDeduplicatedList = new ArrayList<>();
     int index = START_INDEX;
     for (int i = 0; i < columnNameList.size(); i++) {
       String name = columnNameList.get(i);
-      columnInfoList.add(TIMESTAMP_STR + name);
-      columnInfoList.add(name);
-      if (!columnInfoMap.containsKey(name)) {
-        columnInfoMap.put(name, index++);
-        columnTypeDeduplicatedList.add(columnTypeList.get(i));
+      this.columnNameList.add(TIMESTAMP_STR + name);
+      this.columnNameList.add(name);
+      if (!columnOrdinalMap.containsKey(name)) {
+        columnOrdinalMap.put(name, index++);
+        columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
       }
     }
 
@@ -152,10 +152,9 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
         TSStatus closeResp = client.closeOperation(closeReq);
         RpcUtils.verifySuccess(closeResp);
       } catch (IoTDBRPCException e) {
-        throw new SQLException("Error occurs for close opeation in server side becasuse " + e);
+        throw new SQLException("Error occurs for close opeation in server side becasuse ", e);
       } catch (TException e) {
-        throw new SQLException(
-                "Error occurs when connecting to server for close operation, becasue: " + e);
+        throw new SQLException("Error occurs when connecting to server for close operation ", e);
       }
     }
     client = null;
@@ -170,7 +169,7 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
 
   @Override
   public int findColumn(String columnName) {
-    return columnInfoMap.get(columnName);
+    return columnOrdinalMap.get(columnName);
   }
 
   @Override
@@ -247,7 +246,7 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
   @Override
   public boolean getBoolean(String columnName) throws SQLException {
     checkRecord();
-    int index = columnInfoMap.get(columnName) - START_INDEX;
+    int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (values[index] != null) {
       return BytesUtils.bytesToBool(values[index]);
     }
@@ -334,7 +333,7 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
   @Override
   public double getDouble(String columnName) throws SQLException {
     checkRecord();
-    int index = columnInfoMap.get(columnName) - START_INDEX;
+    int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (values[index] != null) {
       return BytesUtils.bytesToDouble(values[index]);
     } else {
@@ -370,7 +369,7 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
   @Override
   public float getFloat(String columnName) throws SQLException {
     checkRecord();
-    int index = columnInfoMap.get(columnName) - START_INDEX;
+    int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (values[index] != null) {
       return BytesUtils.bytesToFloat(values[index]);
     } else {
@@ -391,7 +390,7 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
   @Override
   public int getInt(String columnName) throws SQLException {
     checkRecord();
-    int index = columnInfoMap.get(columnName) - START_INDEX;
+    int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (values[index] != null) {
       return BytesUtils.bytesToInt(values[index]);
     } else {
@@ -409,10 +408,13 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
     checkRecord();
     if (columnName.startsWith(TIMESTAMP_STR)) {
       String column = columnName.substring(TIMESTAMP_STR_LENGTH);
-      int index = columnInfoMap.get(column) - START_INDEX;
-      return BytesUtils.bytesToLong(times[index]);
+      int index = columnOrdinalMap.get(column) - START_INDEX;
+      if (times[index] != null)
+        return BytesUtils.bytesToLong(times[index]);
+      else
+        throw new SQLException(String.format(VALUE_IS_NULL, columnName));
     }
-    int index = columnInfoMap.get(columnName) - START_INDEX;
+    int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (values[index] != null) {
       return BytesUtils.bytesToLong(values[index]);
     } else {
@@ -422,7 +424,7 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
 
   @Override
   public ResultSetMetaData getMetaData() {
-    return new IoTDBResultMetadata(columnInfoList, columnTypeList, false);
+    return new IoTDBResultMetadata(columnNameList, columnTypeList, false);
   }
 
   @Override
@@ -724,41 +726,31 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
       times[i] = null;
       values[i] = null;
       if (tsQueryNonAlignDataSet.timeList.get(i).remaining() >= Long.BYTES) {
-        if (times[i] == null) {
-          times[i] = new byte[Long.BYTES];
-        }
+
+        times[i] = new byte[Long.BYTES];
+
         tsQueryNonAlignDataSet.timeList.get(i).get(times[i]);
         ByteBuffer valueBuffer = tsQueryNonAlignDataSet.valueList.get(i);
-        TSDataType dataType = TSDataType.valueOf(columnTypeDeduplicatedList.get(i));
+        TSDataType dataType = columnTypeDeduplicatedList.get(i);
         switch (dataType) {
           case BOOLEAN:
-            if (values[i] == null) {
-              values[i] = new byte[1];
-            }
+            values[i] = new byte[1];
             valueBuffer.get(values[i]);
             break;
           case INT32:
-            if (values[i] == null) {
-              values[i] = new byte[Integer.BYTES];
-            }
+            values[i] = new byte[Integer.BYTES];
             valueBuffer.get(values[i]);
             break;
           case INT64:
-            if (values[i] == null) {
-              values[i] = new byte[Long.BYTES];
-            }
+            values[i] = new byte[Long.BYTES];
             valueBuffer.get(values[i]);
             break;
           case FLOAT:
-            if (values[i] == null) {
-              values[i] = new byte[Float.BYTES];
-            }
+            values[i] = new byte[Float.BYTES];
             valueBuffer.get(values[i]);
             break;
           case DOUBLE:
-            if (values[i] == null) {
-              values[i] = new byte[Double.BYTES];
-            }
+            values[i] = new byte[Double.BYTES];
             valueBuffer.get(values[i]);
             break;
           case TEXT:
@@ -771,7 +763,6 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
         }
       }
       else {
-        times[i] = new byte[Long.BYTES];
         values[i] = EMPTY_STR.getBytes();
       }
     }
@@ -1238,28 +1229,28 @@ public class IoTDBNonAlignQueryResultSet implements ResultSet {
     if (columnIndex <= 0) {
       throw new SQLException("column index should start from 1");
     }
-    if (columnIndex > columnInfoList.size()) {
+    if (columnIndex > columnNameList.size()) {
       throw new SQLException(
-              String.format("column index %d out of range %d", columnIndex, columnInfoList.size()));
+              String.format("column index %d out of range %d", columnIndex, columnNameList.size()));
     }
-    return columnInfoList.get(columnIndex - 1);
+    return columnNameList.get(columnIndex - 1);
   }
 
   private String getValueByName(String columnName) throws SQLException {
     checkRecord();
     if (columnName.startsWith(TIMESTAMP_STR)) {
       String column = columnName.substring(TIMESTAMP_STR_LENGTH);
-      int index = columnInfoMap.get(column) - START_INDEX;
-      if (times[index].length == 0) {
+      int index = columnOrdinalMap.get(column) - START_INDEX;
+      if (times[index] == null || times[index].length == 0) {
         return null;
       }
       return String.valueOf(BytesUtils.bytesToLong(times[index]));
     }
-    int index = columnInfoMap.get(columnName) - START_INDEX;
+    int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (index < 0 || index >= values.length || values[index] == null || values[index].length < 1) {
       return null;
     }
-    TSDataType dataType = TSDataType.valueOf(columnTypeDeduplicatedList.get(index));
+    TSDataType dataType = columnTypeDeduplicatedList.get(index);
     switch (dataType) {
       case BOOLEAN:
         return String.valueOf(BytesUtils.bytesToBool(values[index]));

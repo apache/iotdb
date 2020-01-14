@@ -46,22 +46,20 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 
 public class NonAlignEngineDataSet extends QueryDataSet {
 
-  private static class ReadTask implements Runnable {
+  private class ReadTask implements Runnable {
 
     private final ManagedSeriesReader reader;
     private BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue;
     private WatermarkEncoder encoder;
-    NonAlignEngineDataSet dataSet;
     private int index;
 
 
     public ReadTask(ManagedSeriesReader reader,
                     BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue,
-                    WatermarkEncoder encoder, NonAlignEngineDataSet dataSet, int index) {
+                    WatermarkEncoder encoder, int index) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
       this.encoder = encoder;
-      this.dataSet = dataSet;
       this.index = index;
     }
 
@@ -74,23 +72,24 @@ public class NonAlignEngineDataSet extends QueryDataSet {
           // if the task is submitted, there must be free space in the queue
           // so here we don't need to check whether the queue has free space
           // the reader has next batch
-          if ((dataSet.cachedBatchData[index] != null && dataSet.cachedBatchData[index].hasCurrent())
+          if ((cachedBatchData[index] != null && cachedBatchData[index].hasCurrent())
                   || reader.hasNextBatch()) {
             BatchData batchData;
-            if (dataSet.cachedBatchData[index] != null && dataSet.cachedBatchData[index].hasCurrent())
-              batchData = dataSet.cachedBatchData[index];
-            else
+            if (cachedBatchData[index] != null && cachedBatchData[index].hasCurrent()) {
+              batchData = cachedBatchData[index];
+            }
+            else {
               batchData = reader.nextBatch();
-
+            }
             int rowCount = 0;
-            while (rowCount < dataSet.fetchSize) {
+            while (rowCount < fetchSize) {
 
-              if ((dataSet.limit > 0 && dataSet.alreadyReturnedRowNumArray.get(index) >= dataSet.limit)) {
+              if ((limit > 0 && alreadyReturnedRowNumArray.get(index) >= limit)) {
                 break;
               }
 
               if (batchData != null && batchData.hasCurrent()) {
-                if (dataSet.offsetArray.get(index) == 0) {
+                if (offsetArray.get(index) == 0) {
                   long time = batchData.currentTime();
                   ReadWriteIOUtils.write(time, timeBAOS);
                   TSDataType type = batchData.getDataType();
@@ -142,19 +141,20 @@ public class NonAlignEngineDataSet extends QueryDataSet {
               else {
                 if (reader.hasNextBatch()) {
                   batchData = reader.nextBatch();
-                  dataSet.cachedBatchData[index] = batchData;
+                  cachedBatchData[index] = batchData;
                   continue;
                 }
-                else
+                else {
                   break;
+                }
               }
-              if (dataSet.offsetArray.get(index) == 0) {
+              if (offsetArray.get(index) == 0) {
                 rowCount++;
-                if (dataSet.limit > 0) {
-                  dataSet.alreadyReturnedRowNumArray.incrementAndGet(index);
+                if (limit > 0) {
+                  alreadyReturnedRowNumArray.incrementAndGet(index);
                 }
               } else {
-                dataSet.offsetArray.decrementAndGet(index);
+                offsetArray.decrementAndGet(index);
               }
             }
             if (rowCount == 0) {
@@ -167,12 +167,10 @@ public class NonAlignEngineDataSet extends QueryDataSet {
               return;
             }
 
-            ByteBuffer timeBuffer = ByteBuffer.allocate(timeBAOS.size());
-            timeBuffer.put(timeBAOS.getBuf(), 0, timeBAOS.size());
-            timeBuffer.flip();
-            ByteBuffer valueBuffer = ByteBuffer.allocate(valueBAOS.size());
-            valueBuffer.put(valueBAOS.getBuf(), 0, valueBAOS.size());
-            valueBuffer.flip();
+            ByteBuffer timeBuffer = ByteBuffer.wrap(timeBAOS.getBuf());
+            timeBuffer.limit(timeBAOS.size());
+            ByteBuffer valueBuffer = ByteBuffer.wrap(valueBAOS.getBuf());
+            valueBuffer.limit(valueBAOS.size());
 
             Pair<ByteBuffer, ByteBuffer> timeValueBAOSPair = new Pair(timeBuffer, valueBuffer);
 
@@ -282,7 +280,7 @@ public class NonAlignEngineDataSet extends QueryDataSet {
       ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
-      pool.submit(new ReadTask(reader, blockingQueueArray[i], encoder, this, i));
+      pool.submit(new ReadTask(reader, blockingQueueArray[i], encoder, i));
     }
     this.initialized = true;
   }
@@ -327,7 +325,7 @@ public class NonAlignEngineDataSet extends QueryDataSet {
           if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
             reader.setManagedByQueryManager(true);
             pool.submit(new ReadTask(reader, blockingQueueArray[seriesIndex],
-                    encoder, this, seriesIndex));
+                    encoder, seriesIndex));
           }
         }
       }
