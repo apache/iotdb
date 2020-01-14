@@ -21,7 +21,6 @@ package org.apache.iotdb.db.conf.adapter;
 import static org.junit.Assert.assertEquals;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -67,7 +66,7 @@ public class IoTDBConfigDynamicAdapterTest {
     for (int i = 1; i < 1000000; i++) {
       try {
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
-        memTableNum += 4;
+        memTableNum += IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup();
         assertEquals(IoTDBConfigDynamicAdapter.getInstance().getCurrentMemTableSize(),
             CONFIG.getMemtableSizeThreshold());
         assertEquals(CONFIG.getMaxMemtableNumber(), memTableNum);

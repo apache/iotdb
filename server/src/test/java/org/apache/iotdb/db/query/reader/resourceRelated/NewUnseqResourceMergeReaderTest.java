@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
@@ -45,13 +46,19 @@ public class NewUnseqResourceMergeReaderTest extends ReaderTestHelper{
 
     insertOneRecord(1, 1);
     insertOneRecord(10, 10);
-    storageGroupProcessor.getWorkUnSequenceTsFileProcessor().syncFlush();
+    for (TsFileProcessor tsfileProcessor : storageGroupProcessor.getWorkUnsequenceTsFileProcessor()) {
+      tsfileProcessor.syncFlush();
+    }
 
     insertOneRecord(4, 100);
-    storageGroupProcessor.getWorkUnSequenceTsFileProcessor().syncFlush();
+    for (TsFileProcessor tsfileProcessor : storageGroupProcessor.getWorkUnsequenceTsFileProcessor()) {
+      tsfileProcessor.syncFlush();
+    }
 
     insertOneRecord(10, 1000);
-    storageGroupProcessor.getWorkUnSequenceTsFileProcessor().syncFlush();
+    for (TsFileProcessor tsfileProcessor : storageGroupProcessor.getWorkUnsequenceTsFileProcessor()) {
+      tsfileProcessor.syncFlush();
+    }
 
     insertOneRecord(20, 20);
     storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();

@@ -21,14 +21,12 @@ package org.apache.iotdb.db.engine.storagegroup;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -45,6 +43,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseTsFileCallBack;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTimeCallBack;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -68,58 +67,44 @@ import org.slf4j.LoggerFactory;
 public class TsFileProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessor.class);
-
-  private RestorableTsFileIOWriter writer;
-
-  private Schema schema;
-
   private final String storageGroupName;
-
+  /**
+   * sync this object in query() and asyncTryToFlush()
+   */
+  private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
+  private RestorableTsFileIOWriter writer;
+  private Schema schema;
   private TsFileResource tsFileResource;
-
+  // time range index to indicate this processor belongs to which time range
+  private long timeRangeId;
   /**
    * Whether the processor is in the queue of the FlushManager or being flushed by a flush thread.
    */
   private volatile boolean managedByFlushManager;
-
   private ReadWriteLock flushQueryLock = new ReentrantReadWriteLock();
-
   /**
    * It is set by the StorageGroupProcessor and checked by flush threads. (If shouldClose == true
    * and its flushingMemTables are all flushed, then the flush thread will close this file.)
    */
   private volatile boolean shouldClose;
-
   private IMemTable workMemTable;
-
-  /**
-   * sync this object in query() and asyncTryToFlush()
-   */
-  private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
-
-
   private VersionController versionController;
-
   /**
    * this callback is called after the corresponding TsFile is called endFile().
    */
   private CloseTsFileCallBack closeTsFileCallback;
-
   /**
    * this callback is called before the workMemtable is added into the flushingMemTables.
    */
-  private Supplier updateLatestFlushTimeCallback;
-
+  private UpdateEndTimeCallBack updateLatestFlushTimeCallback;
   private WriteLogNode logNode;
-
   private boolean sequence;
-
   private long totalMemTableSize;
 
   TsFileProcessor(String storageGroupName, File tsfile, Schema schema,
       VersionController versionController,
       CloseTsFileCallBack closeTsFileCallback,
-      Supplier updateLatestFlushTimeCallback, boolean sequence)
+      UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.schema = schema;
@@ -135,9 +120,17 @@ public class TsFileProcessor {
     this.tsFileResource.setHistoricalVersions(Collections.singleton(versionController.currVersion()));
   }
 
+  public VersionController getVersionController() {
+    return versionController;
+  }
+
+  public void setVersionController(VersionController versionController) {
+    this.versionController = versionController;
+  }
+
   public TsFileProcessor(String storageGroupName, TsFileResource tsFileResource, Schema schema,
       VersionController versionController, CloseTsFileCallBack closeUnsealedTsFileProcessor,
-      Supplier updateLatestFlushTimeCallback, boolean sequence, RestorableTsFileIOWriter writer) {
+      UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence, RestorableTsFileIOWriter writer) {
     this.storageGroupName =storageGroupName;
     this.tsFileResource = tsFileResource;
     this.schema = schema;
@@ -184,7 +177,7 @@ public class TsFileProcessor {
     return true;
   }
 
-  public boolean insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes,
+  public boolean insertBatch(BatchInsertPlan batchInsertPlan, int start, int end,
       Integer[] results) throws QueryProcessException {
 
     if (workMemTable == null) {
@@ -192,27 +185,28 @@ public class TsFileProcessor {
     }
 
     // insert insertPlan to the work memtable
-    workMemTable.insertBatch(batchInsertPlan, indexes);
+    workMemTable.insertBatch(batchInsertPlan, start, end);
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
-        batchInsertPlan.setIndex(new HashSet<>(indexes));
+        batchInsertPlan.setStart(start);
+        batchInsertPlan.setEnd(end);
         getLogNode().write(batchInsertPlan);
       } catch (IOException e) {
         logger.error("write WAL failed", e);
-        for (int index: indexes) {
-          results[index] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
+        for (int i = start; i < end; i++) {
+          results[i] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
         }
         return false;
       }
     }
 
-    tsFileResource.updateStartTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getMinTime());
+    tsFileResource.updateStartTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[start]);
 
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     //for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
-      tsFileResource.updateEndTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
+      tsFileResource.updateEndTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
     }
 
     return true;
@@ -256,12 +250,12 @@ public class TsFileProcessor {
    * However, considering that the number of timeseries between storage groups may vary greatly,
    * it's inappropriate to judge whether to flush the memtable according to the average memtable
    * size. We need to adjust it according to the number of timeseries in a specific storage group.
-   *
    */
   private long getMemtableSizeThresholdBasedOnSeriesNum() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     long memTableSize = (long) (config.getMemtableSizeThreshold() * config.getMaxMemtableNumber()
-        / IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP * ActiveTimeSeriesCounter.getInstance().getActiveRatio(storageGroupName));
+        / IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() * ActiveTimeSeriesCounter.getInstance()
+        .getActiveRatio(storageGroupName));
     return Math.max(memTableSize, config.getMemtableSizeThreshold());
   }
 
@@ -398,9 +392,10 @@ public class TsFileProcessor {
    * flushManager again.
    */
   private void addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
-    updateLatestFlushTimeCallback.get();
+    updateLatestFlushTimeCallback.call(this);
     flushingMemTables.addLast(tobeFlushed);
-    tobeFlushed.setVersion(versionController.nextVersion());
+    long cur = versionController.nextVersion();
+    tobeFlushed.setVersion(cur);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       getLogNode().notifyStartFlush();
     }
@@ -533,6 +528,10 @@ public class TsFileProcessor {
     return managedByFlushManager;
   }
 
+  public void setManagedByFlushManager(boolean managedByFlushManager) {
+    this.managedByFlushManager = managedByFlushManager;
+  }
+
   WriteLogNode getLogNode() {
     if (logNode == null) {
       logNode = MultiFileLogNodeManager.getInstance()
@@ -550,10 +549,6 @@ public class TsFileProcessor {
     } catch (IOException e) {
       throw new TsFileProcessorException(e);
     }
-  }
-
-  public void setManagedByFlushManager(boolean managedByFlushManager) {
-    this.managedByFlushManager = managedByFlushManager;
   }
 
   public int getFlushingMemTableSize() {
@@ -626,4 +621,11 @@ public class TsFileProcessor {
     }
   }
 
+  public long getTimeRangeId() {
+    return timeRangeId;
+  }
+
+  public void setTimeRangeId(long timeRangeId) {
+    this.timeRangeId = timeRangeId;
+  }
 }

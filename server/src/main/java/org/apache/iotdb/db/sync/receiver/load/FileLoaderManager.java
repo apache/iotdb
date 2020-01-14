@@ -60,15 +60,14 @@ public class FileLoaderManager {
   private File deviceOwnerTmpFile;
 
   private FileLoaderManager() {
-    File deviceOwnerMapDir = new File(IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
-        SyncConstant.SYNC_NAME);
-    deviceOwnerFile = new File(deviceOwnerMapDir, SyncConstant.DEVICE_OWNER_FILE_NAME);
-    deviceOwnerTmpFile = new File(deviceOwnerMapDir, SyncConstant.DEVICE_OWNER_TMP_FILE_NAME);
+    String syncSystemDir = IoTDBDescriptor.getInstance().getConfig().getSyncDir();
+    deviceOwnerFile = new File(syncSystemDir, SyncConstant.DEVICE_OWNER_FILE_NAME);
+    deviceOwnerTmpFile = new File(syncSystemDir, SyncConstant.DEVICE_OWNER_TMP_FILE_NAME);
     try {
       recoverDeviceOwnerMap();
     } catch (IOException | ClassNotFoundException e) {
       LOGGER.error("Can not recover device owner map from file {}",
-          new File(deviceOwnerMapDir, SyncConstant.DEVICE_OWNER_FILE_NAME).getAbsolutePath());
+          new File(syncSystemDir, SyncConstant.DEVICE_OWNER_FILE_NAME).getAbsolutePath());
     }
   }
 

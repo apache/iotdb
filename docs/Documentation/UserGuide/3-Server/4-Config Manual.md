@@ -236,6 +236,25 @@ The detail of each variables are as follows:
 |Default| true |
 |Effective|Trigger|
 
+* partition\_interval
+
+|Name| partition\_interval |
+|:---:|:---|
+|Description| Time range for dividing storage group, time series data will be divided into groups by this time range |
+|Type|Int64|
+|Default| 604800 |
+|Effective|Should not be changed after first start up|
+
+
+* memtable\_num\_in\_each\_storage\_group
+
+|Name| memtable\_num\_in\_each\_storage\_group |
+|:---:|:---|
+|Description| This config decides how many time partitions in a storage group can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 3 different days, you should set this param >= 6 (for sequence and unsequence) |
+|Type|Int32|
+|Default| 10 |
+|Effective|After restart system|
+
 * multi\_dir\_strategy
 
 |Name| multi\_dir\_strategy |
