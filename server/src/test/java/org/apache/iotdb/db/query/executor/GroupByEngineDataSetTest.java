@@ -98,8 +98,8 @@ public class GroupByEngineDataSetTest {
     long startTime = 8;
     long endTime = 8 + 5 * 3;
 
-    long[] startTimeArray = {8, 11, 14, 17, 20, 23};
-    long[] endTimeArray = {11, 14, 17, 20, 23, 24};
+    long[] startTimeArray = {8, 11, 14, 17, 20};
+    long[] endTimeArray = {11, 14, 17, 20, 23};
 
     GroupByPlan groupByPlan = new GroupByPlan();
     groupByPlan.setUnit(unit);

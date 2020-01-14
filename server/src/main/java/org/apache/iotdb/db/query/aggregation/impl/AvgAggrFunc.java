@@ -20,17 +20,15 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import java.io.IOException;
 
-public class AvgAggrFunc extends AggregateFunction {
+public class AvgAggrFunc extends AggregateResult {
 
   protected double sum = 0.0;
   private int cnt = 0;
@@ -59,47 +57,21 @@ public class AvgAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    sum += pageHeader.getStatistics().getSumValue();
-    cnt += pageHeader.getNumOfValues();
+  public void updateResultFromStatistics(Statistics statistics) {
+    sum += statistics.getSumValue();
+    cnt += statistics.getCount();
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
+  public void updateResultFromPageData(BatchData dataInThisPage)
       throws IOException {
-    calculateValueFromPageData(dataInThisPage, unsequenceReader, false, 0);
+    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException {
-    calculateValueFromPageData(dataInThisPage, unsequenceReader, true, bound);
-  }
-
-  private void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      boolean hasBound, long bound) throws IOException {
-    while (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
-      Object sumVal = null;
-      long time = Math.min(dataInThisPage.currentTime(), unsequenceReader.current().getTimestamp());
-      if (hasBound && time >= bound) {
-        break;
-      }
-      if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
-        sumVal = dataInThisPage.currentValue();
-        dataInThisPage.next();
-      } else if (dataInThisPage.currentTime() == unsequenceReader.current().getTimestamp()) {
-        sumVal = unsequenceReader.current().getValue().getValue();
-        dataInThisPage.next();
-        unsequenceReader.next();
-      } else {
-        sumVal = unsequenceReader.current().getValue().getValue();
-        unsequenceReader.next();
-      }
-      updateMean(seriesDataType, sumVal);
-    }
-
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
     while (dataInThisPage.hasCurrent()) {
-      if (hasBound && dataInThisPage.currentTime() >= bound) {
+      if (dataInThisPage.currentTime() >= bound) {
         break;
       }
       updateMean(seriesDataType, dataInThisPage.currentValue());
@@ -125,31 +97,14 @@ public class AvgAggrFunc extends AggregateFunction {
       case BOOLEAN:
       default:
         throw new IOException(
-            String.format("Unsupported data type in aggregation %s : %s", getAggreTypeName(), type));
+            String
+                .format("Unsupported data type in aggregation %s : %s", getAggreTypeName(), type));
     }
     cnt++;
   }
 
   @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException {
-    while (unsequenceReader.hasNext()) {
-      TimeValuePair pair = unsequenceReader.next();
-      updateMean(seriesDataType, pair.getValue().getValue());
-    }
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException {
-    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
-      TimeValuePair pair = unsequenceReader.next();
-      updateMean(seriesDataType, pair.getValue().getValue());
-    }
-  }
-
-  @Override
-  public void calcAggregationUsingTimestamps(long[] timestamps, int length,
+  public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);

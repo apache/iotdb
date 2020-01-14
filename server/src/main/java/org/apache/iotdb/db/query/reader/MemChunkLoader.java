@@ -19,19 +19,36 @@
 
 package org.apache.iotdb.db.query.reader;
 
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import java.io.IOException;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
-/**
- * ManagedSeriesReader is a combination of IBatchReader and IPointReader that provides additional
- * interfaces to make it able to be run in a thread pool concurrently within a query.
- */
-public interface ManagedSeriesReader extends IBatchReader {
+public class MemChunkLoader implements IChunkLoader {
+  private final ReadOnlyMemChunk chunk;
 
-  boolean isManagedByQueryManager();
+  public MemChunkLoader(ReadOnlyMemChunk chunk) {
+    this.chunk = chunk;
+  }
 
-  void setManagedByQueryManager(boolean managedByQueryManager);
 
-  boolean hasRemaining();
+  @Override
+  public Chunk getChunk(ChunkMetaData chunkMetaData) throws IOException {
+    return null;
+  }
 
-  void setHasRemaining(boolean hasRemaining);
+  @Override
+  public void close() throws IOException {
+
+  }
+
+  @Override
+  public void clear() {
+
+  }
+
+  public ReadOnlyMemChunk getChunk() {
+    return chunk;
+  }
 }

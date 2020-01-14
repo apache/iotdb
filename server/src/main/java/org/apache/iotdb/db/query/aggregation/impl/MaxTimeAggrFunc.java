@@ -21,15 +21,13 @@ package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class MaxTimeAggrFunc extends AggregateFunction {
+public class MaxTimeAggrFunc extends AggregateResult {
 
   public MaxTimeAggrFunc() {
     super(TSDataType.INT64);
@@ -46,14 +44,13 @@ public class MaxTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    long maxTimestamp = pageHeader.getEndTime();
+  public void updateResultFromStatistics(Statistics statistics) {
+    long maxTimestamp = statistics.getEndTime();
     updateMaxTimeResult(0, maxTimestamp);
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader) {
-
+  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
     int maxIndex = dataInThisPage.length() - 1;
     if (maxIndex < 0) {
       return;
@@ -63,49 +60,16 @@ public class MaxTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) {
-    long time = -1;
-    while (dataInThisPage.hasCurrent()) {
-      if (dataInThisPage.currentTime() < bound) {
-        time = dataInThisPage.currentTime();
-        dataInThisPage.next();
-      } else {
-        break;
-      }
-    }
-    if (time != -1) {
-      updateMaxTimeResult(0, time);
-    }
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException {
-    TimeValuePair pair = null;
-    while (unsequenceReader.hasNext()) {
-      pair = unsequenceReader.next();
-    }
-    if (pair != null) {
-      updateMaxTimeResult(0, pair.getTimestamp());
-    }
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException {
-    TimeValuePair pair = null;
-    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
-      pair = unsequenceReader.next();
-    }
-    if (pair != null) {
-      updateMaxTimeResult(0, pair.getTimestamp());
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+      updateMaxTimeResult(0, dataInThisPage.currentTime());
+      dataInThisPage.next();
     }
   }
 
   //TODO Consider how to reverse order in dataReader(IReaderByTimeStamp)
   @Override
-  public void calcAggregationUsingTimestamps(long[] timestamps, int length,
+  public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
     long time = -1;
     for (int i = 0; i < length; i++) {

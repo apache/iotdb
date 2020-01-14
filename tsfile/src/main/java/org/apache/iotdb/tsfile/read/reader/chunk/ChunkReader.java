@@ -32,9 +32,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
-public class ChunkReader {
+public class ChunkReader implements IChunkReader {
 
   private ChunkHeader chunkHeader;
   private ByteBuffer chunkDataBuffer;
@@ -58,7 +59,7 @@ public class ChunkReader {
   /**
    * constructor of ChunkReader.
    *
-   * @param chunk input Chunk object
+   * @param chunk  input Chunk object
    * @param filter filter
    */
   public ChunkReader(Chunk chunk, Filter filter) {
@@ -104,7 +105,7 @@ public class ChunkReader {
    * @throws IOException IOException
    */
   public BatchData nextPageData() throws IOException {
-    if(hasCachedPageHeader || hasNextSatisfiedPage()) {
+    if (hasCachedPageHeader || hasNextSatisfiedPage()) {
       PageReader pageReader = constructPageReaderForNextPage(pageHeader);
       hasCachedPageHeader = false;
       return pageReader.getAllSatisfiedPageData();
@@ -141,7 +142,7 @@ public class ChunkReader {
     // doesn't has a complete page body
     if (compressedPageBodyLength > chunkDataBuffer.remaining()) {
       throw new IOException("do not has a complete page body. Expected:" + compressedPageBodyLength
-              + ". Actual:" + chunkDataBuffer.remaining());
+          + ". Actual:" + chunkDataBuffer.remaining());
     }
 
     chunkDataBuffer.get(compressedPageBody);

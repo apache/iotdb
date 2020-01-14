@@ -25,7 +25,7 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,7 +67,7 @@ public class ChunkMetaData {
   /**
    * ChunkLoader of metadata, used to create ChunkReaderWrap
    */
-  private ChunkLoaderImpl chunkLoader;
+  private IChunkLoader chunkLoader;
 
   private Statistics statistics;
 
@@ -188,11 +188,11 @@ public class ChunkMetaData {
     this.priority = priority;
   }
 
-  public ChunkLoaderImpl getChunkLoader() {
+  public IChunkLoader getChunkLoader() {
     return chunkLoader;
   }
 
-  public void setChunkLoader(ChunkLoaderImpl chunkLoader) {
+  public void setChunkLoader(IChunkLoader chunkLoader) {
     this.chunkLoader = chunkLoader;
   }
 

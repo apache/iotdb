@@ -21,49 +21,32 @@ package org.apache.iotdb.db.query.reader.seriesRelated;
 import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-/**
- * To read series data with value filter, this class extends {@link SeriesReaderWithoutValueFilter}
- * to implement <code>IPointReader</code> for the data.
- * <p>
- * Note that the difference between <code>SeriesReaderWithValueFilter</code> and
- * <code>SeriesReaderWithoutValueFilter</code> is that the former executes in the form of
- * filter(merge(filter(seqResource),unseqResource)) while the latter executes in the form of
- * merge(filter(seqResource),filter(unseqResource)) (when <code>pushdownUnseq</code> is True). More
- * see JIRA IOTDB-121. This difference is necessary to guarantee the correctness of the result.
- * <p>
- * This class is used by {@link org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator}.
- */
-public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter implements IPointReader {
 
-  private Filter filter;
+public class SeriesDataReaderWithValueFilter extends SeriesDataReaderWithoutValueFilter {
+
+  private final Filter valueFilter;
   private boolean hasCachedTimeValuePair;
-  private TimeValuePair timeValuePair;
   private BatchData batchData;
+  private TimeValuePair timeValuePair;
 
-  public SeriesReaderWithValueFilter(Path seriesPath, TSDataType dataType, Filter filter, QueryContext context)
-      throws StorageEngineException, IOException {
-    super(seriesPath, dataType, filter, context, false);
-    this.filter = filter;
-  }
-
-  /**
-   * for test
-   */
-  SeriesReaderWithValueFilter(IBatchReader seqResourceIterateReader,
-      IBatchReader unseqResourceMergeReader, Filter filter) {
-    super(seqResourceIterateReader, unseqResourceMergeReader);
-    this.filter = filter;
+  public SeriesDataReaderWithValueFilter(Path seriesPath, TSDataType dataType, Filter valueFilter,
+      QueryContext context) throws StorageEngineException, IOException {
+    super(seriesPath, dataType, null, context);
+    this.valueFilter = valueFilter;
   }
 
   @Override
+  protected boolean canUseStatistics(Statistics statistics) {
+    return false;
+  }
+
   public boolean hasNext() throws IOException {
     if (hasCachedTimeValuePair) {
       return true;
@@ -74,7 +57,7 @@ public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter 
     }
 
     // has not cached timeValuePair
-    while (super.hasNextBatch()) {
+    while (hasNextBatch()) {
       batchData = super.nextBatch();
       if (hasNextSatisfiedInCurrentBatch()) {
         return true;
@@ -83,10 +66,23 @@ public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter 
     return false;
   }
 
+  @Override
+  public boolean hasNextBatch() throws IOException {
+    while (hasNextChunk()) {
+      while (hasNextPage()) {
+        if (super.hasNextBatch()) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   private boolean hasNextSatisfiedInCurrentBatch() {
     while (batchData != null && batchData.hasCurrent()) {
-      if (filter.satisfy(batchData.currentTime(), batchData.currentValue())) {
-        timeValuePair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
+      if (valueFilter.satisfy(batchData.currentTime(), batchData.currentValue())) {
+        timeValuePair = new TimeValuePair(batchData.currentTime(),
+            batchData.currentTsPrimitiveType());
         hasCachedTimeValuePair = true;
         batchData.next();
         return true;
@@ -96,7 +92,6 @@ public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter 
     return false;
   }
 
-  @Override
   public TimeValuePair next() throws IOException {
     if (hasCachedTimeValuePair || hasNext()) {
       hasCachedTimeValuePair = false;
@@ -106,7 +101,6 @@ public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter 
     }
   }
 
-  @Override
   public TimeValuePair current() {
     return timeValuePair;
   }

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 /**
@@ -34,12 +35,12 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
  * are used here: <code>ChunkReaderWithoutFilter</code> and <code>ChunkReaderWithFilter</code>.
  * <p>
  */
-public class DiskChunkReader implements IPointReader, IBatchReader {
+public class ChunkDataIterator implements IPointReader {
 
-  private ChunkReader chunkReader;
+  private IChunkReader chunkReader;
   private BatchData data;
 
-  public DiskChunkReader(ChunkReader chunkReader) {
+  public ChunkDataIterator(IChunkReader chunkReader) {
     this.chunkReader = chunkReader;
   }
 
@@ -71,17 +72,7 @@ public class DiskChunkReader implements IPointReader, IBatchReader {
   }
 
   @Override
-  public boolean hasNextBatch() throws IOException {
-    return false;
-  }
-
-  @Override
-  public BatchData nextBatch() throws IOException {
-    return null;
-  }
-
-  @Override
-  public void close() {
+  public void close() throws IOException {
     this.chunkReader.close();
   }
 }

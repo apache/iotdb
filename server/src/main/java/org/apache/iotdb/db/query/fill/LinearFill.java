@@ -26,6 +26,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -33,6 +34,7 @@ public class LinearFill extends IFill {
 
   private long beforeRange;
   private long afterRange;
+  private BatchData batchData;
 
   public LinearFill(long beforeRange, long afterRange) {
     this.beforeRange = beforeRange;
@@ -47,6 +49,7 @@ public class LinearFill extends IFill {
     super(dataType, queryTime);
     this.beforeRange = beforeRange;
     this.afterRange = afterRange;
+    batchData = new BatchData();
   }
 
   public long getBeforeRange() {
@@ -80,8 +83,12 @@ public class LinearFill extends IFill {
   public IPointReader getFillResult() throws IOException, UnSupportedFillTypeException {
     TimeValuePair beforePair = null;
     TimeValuePair afterPair = null;
-    while (allDataReader.hasNext()) {
-      afterPair = allDataReader.next();
+    while (batchData.hasCurrent() || allDataReader.hasNextBatch()) {
+      if (!batchData.hasCurrent() && allDataReader.hasNextBatch()) {
+        batchData = allDataReader.nextBatch();
+      }
+      afterPair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
+      batchData.next();
       if (afterPair.getTimestamp() <= queryTime) {
         beforePair = afterPair;
       } else {

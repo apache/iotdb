@@ -20,15 +20,15 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class MinValueAggrFunc extends AggregateFunction {
+public class MinValueAggrFunc extends AggregateResult {
 
   public MinValueAggrFunc(TSDataType dataType) {
     super(dataType);
@@ -45,60 +45,19 @@ public class MinValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    Comparable<Object> minVal = (Comparable<Object>) pageHeader.getStatistics().getMinValue();
+  public void updateResultFromStatistics(Statistics statistics)
+      throws QueryProcessException {
+    Comparable<Object> minVal = (Comparable<Object>) statistics.getMinValue();
     updateResult(minVal);
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
-      throws IOException {
-    while (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
-      if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
-        updateResult((Comparable<Object>) dataInThisPage.currentValue());
-        dataInThisPage.next();
-      } else if (dataInThisPage.currentTime() == unsequenceReader.current().getTimestamp()) {
-        updateResult((Comparable<Object>) unsequenceReader.current().getValue().getValue());
-        dataInThisPage.next();
-        unsequenceReader.next();
-      } else {
-        updateResult((Comparable<Object>) unsequenceReader.current().getValue().getValue());
-        unsequenceReader.next();
-      }
-    }
-
-    Comparable<Object> minVal = null;
-    while (dataInThisPage.hasCurrent()) {
-      if (minVal == null
-          || minVal.compareTo(dataInThisPage.currentValue()) > 0) {
-        minVal = (Comparable<Object>) dataInThisPage.currentValue();
-      }
-      dataInThisPage.next();
-    }
-    updateResult(minVal);
+  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException {
-    while (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
-      long time = Math.min(dataInThisPage.currentTime(), unsequenceReader.current().getTimestamp());
-      if (time >= bound) {
-        break;
-      }
-
-      if (dataInThisPage.currentTime() == time) {
-        updateResult((Comparable<Object>) dataInThisPage.currentValue());
-        dataInThisPage.next();
-      }
-
-      if (unsequenceReader.current().getTimestamp() == time) {
-        updateResult((Comparable<Object>) unsequenceReader.current().getValue().getValue());
-        unsequenceReader.next();
-      }
-
-    }
-
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
     while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       updateResult((Comparable<Object>) dataInThisPage.currentValue());
       dataInThisPage.next();
@@ -106,35 +65,7 @@ public class MinValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException {
-    Comparable<Object> minVal = null;
-    while (unsequenceReader.hasNext()) {
-      if (minVal == null
-          || minVal.compareTo(unsequenceReader.current().getValue().getValue()) > 0) {
-        minVal = (Comparable<Object>) unsequenceReader.current().getValue().getValue();
-      }
-      unsequenceReader.next();
-    }
-    updateResult(minVal);
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException {
-    Comparable<Object> minVal = null;
-    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
-      if (minVal == null
-          || minVal.compareTo(unsequenceReader.current().getValue().getValue()) > 0) {
-        minVal = (Comparable<Object>) unsequenceReader.current().getValue().getValue();
-      }
-      unsequenceReader.next();
-    }
-    updateResult(minVal);
-  }
-
-  @Override
-  public void calcAggregationUsingTimestamps(long[] timestamps, int length,
+  public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
     Comparable<Object> minVal = null;
     for (int i = 0; i < length; i++) {

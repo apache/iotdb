@@ -34,9 +34,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -50,7 +50,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.RawDataReaderWithoutValueFilter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -196,8 +196,8 @@ public class TTLTest {
     assertTrue(seqResource.size() < 4);
     assertEquals(0, unseqResource.size());
     Path path = new Path(sg1, s1);
-    SeqResourceIterateReader reader = new SeqResourceIterateReader(path,
-        seqResource, null, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    RawDataReaderWithoutValueFilter reader = new RawDataReaderWithoutValueFilter(path,
+        TSDataType.INT64, null, EnvironmentUtils.TEST_QUERY_CONTEXT, dataSource);
 
     int cnt = 0;
     while (reader.hasNextBatch()) {

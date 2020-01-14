@@ -20,16 +20,17 @@ package org.apache.iotdb.tsfile.read.reader;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public interface IAggregateReader extends IBatchReader {
+public interface IChunkReader {
 
-  /**
-   * Returns meta-information of batch data.
-   * <p>
-   * Returns null if batch data comes from memory. Returns pageHeader if batch data comes from page
-   * data.
-   */
-  PageHeader nextPageHeader() throws IOException;
+  boolean hasNextSatisfiedPage() throws IOException;
 
-  void skipPageData() throws IOException;
+  BatchData nextPageData() throws IOException;
+
+  PageHeader nextPageHeader();
+
+  void skipPageData();
+
+  void close() throws IOException;
 }

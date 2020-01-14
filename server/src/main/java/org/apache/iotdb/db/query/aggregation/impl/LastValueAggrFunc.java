@@ -20,16 +20,15 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class LastValueAggrFunc extends AggregateFunction {
+public class LastValueAggrFunc extends AggregateResult {
 
   public LastValueAggrFunc(TSDataType dataType) {
     super(dataType);
@@ -49,20 +48,18 @@ public class LastValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    Object lastVal = pageHeader.getStatistics().getLastValue();
-    updateLastResult(pageHeader.getEndTime(), lastVal);
+  public void updateResultFromStatistics(Statistics statistics) throws QueryProcessException {
+    Object lastVal = statistics.getLastValue();
+    updateLastResult(statistics.getEndTime(), lastVal);
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
-      throws IOException {
-    calculateValueFromPageData(dataInThisPage, unsequenceReader, Long.MAX_VALUE);
+  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
     long time = -1;
     Object lastVal = null;
     while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
@@ -71,52 +68,13 @@ public class LastValueAggrFunc extends AggregateFunction {
       dataInThisPage.next();
     }
 
-    while (unsequenceReader.hasNext()) {
-      if (unsequenceReader.current().getTimestamp() < time) {
-        unsequenceReader.next();
-      } else if (unsequenceReader.current().getTimestamp() == time) {
-        lastVal = unsequenceReader.current().getValue().getValue();
-        unsequenceReader.next();
-      } else {
-        break;
-      }
-    }
-
-    // has inited lastVal and time in the batch(dataInThisPage).
     if (time != -1) {
       updateLastResult(time, lastVal);
     }
   }
 
   @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException {
-    TimeValuePair pair = null;
-    while (unsequenceReader.hasNext()) {
-      pair = unsequenceReader.next();
-    }
-
-    if (pair != null) {
-      updateLastResult(pair.getTimestamp(), pair.getValue().getValue());
-    }
-
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException {
-    TimeValuePair pair = null;
-    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
-      pair = unsequenceReader.next();
-    }
-
-    if (pair != null) {
-      updateLastResult(pair.getTimestamp(), pair.getValue().getValue());
-    }
-  }
-
-  @Override
-  public void calcAggregationUsingTimestamps(long[] timestamps, int length,
+  public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
 
     long time = -1;

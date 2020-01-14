@@ -138,7 +138,8 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) throws QueryProcessException {
+  public void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes)
+      throws QueryProcessException {
     try {
       write(batchInsertPlan, indexes);
       long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan);
@@ -207,7 +208,7 @@ public abstract class AbstractMemTable implements IMemTable {
       chunkCopy.setTimeOffset(undeletedTime);
       sorter = chunkCopy;
     }
-    return new ReadOnlyMemChunk(dataType, sorter, props);
+    return new ReadOnlyMemChunk(measurement, dataType, sorter, props);
   }
 
 

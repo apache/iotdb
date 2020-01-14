@@ -21,14 +21,13 @@ package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class MinTimeAggrFunc extends AggregateFunction {
+public class MinTimeAggrFunc extends AggregateResult {
 
   public MinTimeAggrFunc() {
     super(TSDataType.INT64);
@@ -45,95 +44,32 @@ public class MinTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) {
+  public void updateResultFromStatistics(Statistics statistics) {
     if (resultData.isSetValue()) {
       return;
     }
-    long time = pageHeader.getStartTime();
+    long time = statistics.getStartTime();
     resultData.putTimeAndValue(0, time);
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
-      throws IOException {
-    if (resultData.isSetValue()) {
-      return;
-    }
-
-    if (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
-      if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
-        resultData.setTimestamp(0);
-        resultData.setLongRet(dataInThisPage.currentTime());
-      } else {
-        resultData.setTimestamp(0);
-        resultData.setLongRet(unsequenceReader.current().getTimestamp());
-      }
-      return;
-    }
-
-    if (dataInThisPage.hasCurrent()) {
-      resultData.setTimestamp(0);
-      resultData.setLongRet(dataInThisPage.currentTime());
-    }
+  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
     if (resultData.isSetValue()) {
       return;
     }
-
-    if (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
-      if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
-        if (dataInThisPage.currentTime() >= bound) {
-          return;
-        }
-        resultData.setTimestamp(0);
-        resultData.setLongRet(dataInThisPage.currentTime());
-      } else {
-        if (unsequenceReader.current().getTimestamp() >= bound) {
-          return;
-        }
-        resultData.setTimestamp(0);
-        resultData.setLongRet(unsequenceReader.current().getTimestamp());
-      }
-      return;
-    }
-
     if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       resultData.setTimestamp(0);
       resultData.setLongRet(dataInThisPage.currentTime());
-      dataInThisPage.next();
     }
   }
 
   @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException {
-    if (resultData.isSetValue()) {
-      return;
-    }
-    if (unsequenceReader.hasNext()) {
-      resultData.setTimestamp(0);
-      resultData.setLongRet(unsequenceReader.current().getTimestamp());
-    }
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException {
-    if (resultData.isSetValue()) {
-      return;
-    }
-    if (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
-      resultData.setTimestamp(0);
-      resultData.setLongRet(unsequenceReader.current().getTimestamp());
-    }
-  }
-
-  @Override
-  public void calcAggregationUsingTimestamps(long[] timestamps, int length,
+  public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
     if (resultData.isSetValue()) {
       return;

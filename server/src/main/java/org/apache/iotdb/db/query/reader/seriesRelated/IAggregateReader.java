@@ -16,22 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.query.reader.seriesRelated;
 
-package org.apache.iotdb.db.query.reader;
+import java.io.IOException;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+public interface IAggregateReader {
 
-/**
- * ManagedSeriesReader is a combination of IBatchReader and IPointReader that provides additional
- * interfaces to make it able to be run in a thread pool concurrently within a query.
- */
-public interface ManagedSeriesReader extends IBatchReader {
+  boolean hasNextChunk() throws IOException;
 
-  boolean isManagedByQueryManager();
+  boolean canUseChunkStatistics();
 
-  void setManagedByQueryManager(boolean managedByQueryManager);
+  Statistics currentChunkStatistics();
 
-  boolean hasRemaining();
+  void skipChunkData() throws IOException;
 
-  void setHasRemaining(boolean hasRemaining);
+  boolean hasNextPage() throws IOException;
+
+  boolean canUsePageStatistics();
+
+  Statistics currentPageStatistics();
+
+  void skipPageData() throws IOException;
+
+  boolean hasNextBatch() throws IOException;
+
+  BatchData nextBatch() throws IOException;
 }

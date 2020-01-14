@@ -26,7 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
@@ -64,8 +64,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     initGroupBy(context, groupByPlan);
   }
 
-  public GroupByWithValueFilterDataSet(long queryId, GroupByPlan groupByPlan)
-      throws PathException, IOException, StorageEngineException {
+  public GroupByWithValueFilterDataSet(long queryId, GroupByPlan groupByPlan) {
     super(new QueryContext(queryId), groupByPlan);
     this.allDataReaderList = new ArrayList<>();
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
@@ -92,7 +91,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
           + " in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
-    for (AggregateFunction function : functions) {
+    for (AggregateResult function : functions) {
       function.init();
     }
 
@@ -115,7 +114,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
       // cal result using timestamp array
       for (int i = 0; i < paths.size(); i++) {
-        functions.get(i).calcAggregationUsingTimestamps(
+        functions.get(i).updateResultUsingTimestamps(
             timestampArray, timeArrayLength, allDataReaderList.get(i));
       }
 
@@ -130,7 +129,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     if (timeArrayLength > 0) {
       // cal result using timestamp array
       for (int i = 0; i < paths.size(); i++) {
-        functions.get(i).calcAggregationUsingTimestamps(
+        functions.get(i).updateResultUsingTimestamps(
             timestampArray, timeArrayLength, allDataReaderList.get(i));
       }
     }

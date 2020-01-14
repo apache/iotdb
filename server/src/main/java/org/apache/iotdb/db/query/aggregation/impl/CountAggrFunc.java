@@ -20,18 +20,17 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class CountAggrFunc extends AggregateFunction {
+public class CountAggrFunc extends AggregateResult {
 
   private static final Logger logger = LoggerFactory.getLogger(CountAggrFunc.class);
 
@@ -52,89 +51,35 @@ public class CountAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("PageHeader>>>>>>>>>>>>num of rows:{}, minTimeStamp:{}, maxTimeStamp{}",
-          pageHeader.getNumOfValues(), pageHeader.getStartTime(), pageHeader.getEndTime());
-    }
+  public void updateResultFromStatistics(Statistics statistics) {
     long preValue = resultData.getLongRet();
-    preValue += pageHeader.getNumOfValues();
+    preValue += statistics.getCount();
     resultData.setLongRet(preValue);
-
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
+  public void updateResultFromPageData(BatchData dataInThisPage)
       throws IOException {
-    calculateValueFromPageData(dataInThisPage, unsequenceReader, false, 0);
+    int cnt = dataInThisPage.length();
+    long preValue = resultData.getLongRet();
+    preValue += cnt;
+    resultData.setLongRet(preValue);
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException {
-    calculateValueFromPageData(dataInThisPage, unsequenceReader, true, bound);
-  }
-
-  private void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      boolean hasBound, long bound) throws IOException {
-    int cnt = 0;
-    while (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
-      long minTimestamp = Math
-          .min(dataInThisPage.currentTime(), unsequenceReader.current().getTimestamp());
-      if (hasBound && minTimestamp >= bound) {
-        break;
-      }
-      if (dataInThisPage.currentTime() == unsequenceReader.current().getTimestamp()) {
-        dataInThisPage.next();
-        unsequenceReader.next();
-      } else if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
-        dataInThisPage.next();
-      } else {
-        unsequenceReader.next();
-      }
-      cnt++;
-    }
-
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
     while (dataInThisPage.hasCurrent()) {
-      if (hasBound && dataInThisPage.currentTime() >= bound) {
+      if (dataInThisPage.currentTime() >= bound) {
         break;
       }
+      long preValue = resultData.getLongRet();
+      resultData.setLongRet(++preValue);
       dataInThisPage.next();
-      cnt++;
     }
-    long preValue = resultData.getLongRet();
-    preValue += cnt;
-    resultData.setLongRet(preValue);
   }
 
   @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException {
-    int cnt = 0;
-    while (unsequenceReader.hasNext()) {
-      unsequenceReader.next();
-      cnt++;
-    }
-    long preValue = resultData.getLongRet();
-    preValue += cnt;
-    resultData.setLongRet(preValue);
-  }
-
-  @Override
-  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException {
-    int cnt = 0;
-    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
-      unsequenceReader.next();
-      cnt++;
-    }
-    long preValue = resultData.getLongRet();
-    preValue += cnt;
-    resultData.setLongRet(preValue);
-  }
-
-  @Override
-  public void calcAggregationUsingTimestamps(long[] timestamps, int length,
+  public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
     int cnt = 0;
     for (int i = 0; i < length; i++) {
