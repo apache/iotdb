@@ -1372,7 +1372,7 @@ public class StorageGroupProcessor {
 
     // sequence part
     for (TsFileResource tsFileResource : sequenceFileTreeSet) {
-      long partition = getTimePartitionFromTsFileResource(tsFileResource);
+      long partition = getTimePartitionFromResourceByFileName(tsFileResource);
       timePartitionMergeResourceMap
           .computeIfAbsent(partition, id -> new Pair<>(new ArrayList<>(), new ArrayList<>())).left
           .add(tsFileResource);
@@ -1380,7 +1380,7 @@ public class StorageGroupProcessor {
 
     // unsequence part
     for (TsFileResource tsFileResource : unSequenceFileList) {
-      long partition = getTimePartitionFromTsFileResource(tsFileResource);
+      long partition = getTimePartitionFromResourceByFileName(tsFileResource);
       Pair<List<TsFileResource>, List<TsFileResource>> curPartitionPair = timePartitionMergeResourceMap
           .get(partition);
       if (curPartitionPair != null) {
@@ -1401,6 +1401,10 @@ public class StorageGroupProcessor {
     }
 
     return result;
+  }
+
+  private long getTimePartitionFromResourceByFileName(TsFileResource tsFileResource){
+    return Long.parseLong(tsFileResource.getFile().getParentFile().getName());
   }
 
 
