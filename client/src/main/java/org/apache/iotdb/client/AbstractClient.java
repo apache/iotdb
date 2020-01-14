@@ -553,7 +553,7 @@ public abstract class AbstractClient {
       for (int i = 2; i <= colCount / 2 + 1; i++) {
         if (printTimestamp) {
           blockLine.append(StringUtils.repeat('-', maxTimeLength)).append("+");
-        } 
+        }
         blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
       }
     }

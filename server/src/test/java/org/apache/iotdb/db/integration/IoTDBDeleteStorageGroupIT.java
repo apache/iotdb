@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
@@ -36,19 +35,14 @@ import static org.junit.Assert.assertTrue;
 
 public class IoTDBDeleteStorageGroupIT {
 
-  private static IoTDB daemon;
-
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

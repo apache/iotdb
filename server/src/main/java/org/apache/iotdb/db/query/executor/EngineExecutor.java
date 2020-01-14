@@ -108,12 +108,8 @@ public class EngineExecutor {
       readersOfSelectedSeries.add(reader);
     }
 
-    try {
-      return new NonAlignEngineDataSet(deduplicatedPaths, deduplicatedDataTypes,
-          readersOfSelectedSeries);
-    } catch (InterruptedException e) {
-      throw new StorageEngineException(e.getMessage());
-    }
+    return new NonAlignEngineDataSet(deduplicatedPaths, deduplicatedDataTypes,
+        readersOfSelectedSeries);
   }
 
   /**

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
@@ -85,7 +86,9 @@ public class SeqResourceReaderTest extends ReaderTestHelper {
     }
     for (int j = 1010; j <= 1019; j++) {
       insertOneRecord(j, j);
-      storageGroupProcessor.getWorkSequenceTsFileProcessor().syncFlush();
+      for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessors()){
+        tsFileProcessor.syncFlush();
+      }
     }
     storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
 
@@ -94,7 +97,7 @@ public class SeqResourceReaderTest extends ReaderTestHelper {
     }
     storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
 
-    assert storageGroupProcessor.getWorkSequenceTsFileProcessor() == null;
+    Assert.assertTrue(storageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
 
     for (int j = 3020; j <= 5029; j++) {
       insertOneRecord(j, j);

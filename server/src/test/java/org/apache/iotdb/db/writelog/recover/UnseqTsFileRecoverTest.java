@@ -62,7 +62,7 @@ public class UnseqTsFileRecoverTest {
   private File tsF;
   private TsFileWriter writer;
   private WriteLogNode node;
-  private String logNodePrefix = "testNode";
+  private String logNodePrefix = "testNode/0";
   private Schema schema;
   private TsFileResource resource;
   private VersionController versionController = new VersionController() {
@@ -139,6 +139,7 @@ public class UnseqTsFileRecoverTest {
   @After
   public void tearDown() throws IOException {
     FileUtils.deleteDirectory(tsF.getParentFile());
+    resource.close();
     node.delete();
     FlushSubTaskPoolManager.getInstance().stop();
   }

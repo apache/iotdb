@@ -41,7 +41,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.receiver.load.FileLoader;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderTest;
@@ -58,7 +57,6 @@ public class SyncReceiverLogAnalyzerTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileLoaderTest.class);
   private static final String SG_NAME = "root.sg";
-  private static IoTDB daemon;
   private String dataDir;
   private IFileLoader fileLoader;
   private ISyncReceiverLogAnalyzer logAnalyze;
@@ -68,8 +66,6 @@ public class SyncReceiverLogAnalyzerTest {
   public void setUp()
       throws IOException, InterruptedException, StartupException, DiskSpaceInsufficientException, MetadataException {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
     dataDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
         .getParentFile().getAbsolutePath();
@@ -88,7 +84,6 @@ public class SyncReceiverLogAnalyzerTest {
 
   @After
   public void tearDown() throws InterruptedException, IOException, StorageEngineException {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -144,7 +139,7 @@ public class SyncReceiverLogAnalyzerTest {
 
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
-      assertTrue(processor.getSequenceFileList().isEmpty());
+      assertTrue(processor.getSequenceFileTreeSet().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 

@@ -23,7 +23,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -31,18 +30,14 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class IoTDBSimpleQueryTest {
-  private IoTDB deamon;
 
   @Before
   public void setUp() throws Exception {
-    deamon = IoTDB.getInstance();
-    deamon.active();
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    deamon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

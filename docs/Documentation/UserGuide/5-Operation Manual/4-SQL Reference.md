@@ -37,10 +37,13 @@ show version
 ```
 
 ```
-+---------------------------------------------------------------------------+
-|                                                             0.10.0|
-+---------------------------------------------------------------------------+
-It costs 0.001s
++---------------+
+|        version|
++---------------+
+|0.10.0-SNAPSHOT|
++---------------+
+Total line number = 1
+It costs 0.417s
 ```
 
 ### Schema Statement
@@ -70,7 +73,7 @@ AttributeClauses : DATATYPE=<DataTypeValue> COMMA ENCODING=<EncodingValue> [COMM
 DataTypeValue: BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
 EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF | REGULAR
 ExtraAttributeClause: {
-  COMPRESSOR = <CompressorValue>
+  COMPRESSOR | COMPRESSION = <CompressorValue>
   MAX_POINT_NUMBER = Integer
 }
 CompressorValue: UNCOMPRESSED | SNAPPY

@@ -28,21 +28,17 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
-
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class IoTDBDeletionIT {
-  private static IoTDB daemon;
 
   private static String[] creationSqls = new String[]{
           "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
-
           "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
           "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
           "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -58,17 +54,15 @@ public class IoTDBDeletionIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareSeries();
   }
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
-
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -236,12 +230,12 @@ public class IoTDBDeletionIT {
 
       // prepare BufferWrite data
       for (int i = 10001; i <= 20000; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
             i % 2 == 0));
       }
       // prepare Overflow data
       for (int i = 1; i <= 10000; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
             i % 2 == 0));
       }
 

@@ -14,7 +14,7 @@ public class JDBCExample {
     try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
       long startTime = System.currentTimeMillis();
-      ResultSet resultSet = statement.executeQuery("select * from root where time < 30000000");
+      ResultSet resultSet = statement.executeQuery("select * from root where time < 100000000 disable align");
       outputResult(resultSet);
       long endTime = System.currentTimeMillis();
       System.out.println("Cost Time: " + (endTime - startTime));

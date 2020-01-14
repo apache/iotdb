@@ -42,6 +42,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 public class NonAlignEngineDataSet extends QueryDataSet {
 
@@ -84,12 +85,12 @@ public class NonAlignEngineDataSet extends QueryDataSet {
             int rowCount = 0;
             while (rowCount < dataSet.fetchSize) {
 
-              if ((dataSet.limit > 0 && dataSet.alreadyReturnedRowNumArray[index] >= dataSet.limit)) {
+              if ((dataSet.limit > 0 && dataSet.alreadyReturnedRowNumArray.get(index) >= dataSet.limit)) {
                 break;
               }
 
               if (batchData != null && batchData.hasCurrent()) {
-                if (dataSet.offsetArray[index] == 0) {
+                if (dataSet.offsetArray.get(index) == 0) {
                   long time = batchData.currentTime();
                   ReadWriteIOUtils.write(time, timeBAOS);
                   TSDataType type = batchData.getDataType();
@@ -147,13 +148,13 @@ public class NonAlignEngineDataSet extends QueryDataSet {
                 else
                   break;
               }
-              if (dataSet.offsetArray[index] == 0) {
+              if (dataSet.offsetArray.get(index) == 0) {
                 rowCount++;
                 if (dataSet.limit > 0) {
-                  dataSet.alreadyReturnedRowNumArray[index]++;
+                  dataSet.alreadyReturnedRowNumArray.incrementAndGet(index);
                 }
               } else {
-                dataSet.offsetArray[index]--;
+                dataSet.offsetArray.decrementAndGet(index);
               }
             }
             if (rowCount == 0) {
@@ -214,11 +215,11 @@ public class NonAlignEngineDataSet extends QueryDataSet {
 
   private boolean initialized = false;
 
-  private int[] offsetArray;
+  private AtomicIntegerArray offsetArray;
 
   private int limit;
 
-  private int[] alreadyReturnedRowNumArray;
+  private AtomicIntegerArray alreadyReturnedRowNumArray;
 
   private BatchData[] cachedBatchData;
 
@@ -265,10 +266,11 @@ public class NonAlignEngineDataSet extends QueryDataSet {
   }
 
   private void initLimit(int offset, int limit, int size) {
-    offsetArray = new int[size];
-    Arrays.fill(offsetArray, offset);
+    int[] offsetArrayTemp = new int[size];
+    Arrays.fill(offsetArrayTemp, offset);
+    offsetArray = new AtomicIntegerArray(offsetArrayTemp);
     this.limit = limit;
-    alreadyReturnedRowNumArray = new int[size];
+    this.alreadyReturnedRowNumArray = new AtomicIntegerArray(size);
     cachedBatchData = new BatchData[size];
   }
 
