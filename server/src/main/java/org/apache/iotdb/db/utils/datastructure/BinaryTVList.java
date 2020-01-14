@@ -210,4 +210,8 @@ public class BinaryTVList extends TVList {
       }
     }
   }
+
+  void addBatchValue(Binary[] batch) {
+    values.add(batch);
+  }
 }

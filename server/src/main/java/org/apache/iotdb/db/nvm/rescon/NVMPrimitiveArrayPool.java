@@ -3,9 +3,9 @@ package org.apache.iotdb.db.nvm.rescon;
 import java.util.ArrayDeque;
 import java.util.EnumMap;
 import org.apache.iotdb.db.nvm.PerfMonitor;
+import org.apache.iotdb.db.nvm.exception.NVMSpaceManagerException;
 import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
-import org.apache.iotdb.db.nvm.space.NVMSpaceMetadataManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class NVMPrimitiveArrayPool {
@@ -41,7 +41,11 @@ public class NVMPrimitiveArrayPool {
 
     long size = NVMSpaceManager.getPrimitiveTypeByteSize(dataType);
     if (nvmSpace == null) {
-      nvmSpace = NVMSpaceManager.getInstance().allocateDataSpace(size * ARRAY_SIZE, dataType, isTime);
+      try {
+        nvmSpace = NVMSpaceManager.getInstance().allocateDataSpace(size * ARRAY_SIZE, dataType, isTime);
+      } catch (NVMSpaceManagerException e) {
+        // TODO
+      }
     }
 
     PerfMonitor.add("NVM.getDataList" + (isTime ? "Time" : "Value"), System.currentTimeMillis() - time);

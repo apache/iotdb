@@ -183,7 +183,7 @@ public abstract class AbstractTVList {
       }
       reverseRange(lo, runHi);
     } else {                              // Ascending
-      while (runHi < hi &&getTime(runHi) >= getTime(runHi - 1)) {
+      while (runHi < hi && getTime(runHi) >= getTime(runHi - 1)) {
         runHi++;
       }
     }

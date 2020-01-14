@@ -5,12 +5,12 @@ import static org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool.ARRAY_SIZE;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.nvm.exception.NVMSpaceManagerException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -23,6 +23,7 @@ public class NVMSpaceManager {
 
   private static final String NVM_FILE_NAME = "nvmFile";
   public static final int NVMSPACE_NUM_MAX = 1000000;
+  private static final int TEXT_AVERAGE_SIZE_IN_BYTES = 100;
 
   private final static NVMSpaceManager INSTANCE = new NVMSpaceManager();
 
@@ -65,26 +66,33 @@ public class NVMSpaceManager {
     return nvmSpace;
   }
 
-  public synchronized NVMDataSpace allocateDataSpace(long size, TSDataType dataType, boolean isTime) {
-    checkIsFull();
+  public synchronized NVMDataSpace allocateDataSpace(long size, TSDataType dataType, boolean isTime)
+      throws NVMSpaceManagerException {
+    checkIsNVMFull(size);
 
     try {
       logger.trace("Try to allocate NVMDataSpace from {} to {}", curOffset, curOffset + size);
       int index = curDataSpaceIndex.getAndIncrement();
-      NVMDataSpace nvmSpace = new NVMDataSpace(
-          curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size), index, dataType, isTime);
+      NVMDataSpace nvmSpace;
+      if (dataType == TSDataType.TEXT) {
+        nvmSpace = new NVMBinaryDataSpace(curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size),
+            index, false);
+      } else {
+        nvmSpace = new NVMDataSpace(curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size),
+            index, dataType, isTime);
+      }
       curOffset += size;
       return nvmSpace;
     } catch (IOException e) {
-      // TODO deal with error
       logger.error("Fail to allocate {} nvm space at {}.", size, curOffset);
-      e.printStackTrace();
-      return null;
+      throw new NVMSpaceManagerException(e.getMessage());
     }
   }
 
-  private void checkIsFull() {
-    // TODO
+  private void checkIsNVMFull(long sizeToAllocate) throws NVMSpaceManagerException {
+    if (curOffset + sizeToAllocate > nvmSize) {
+      throw new NVMSpaceManagerException("NVM space is used up, can't allocate more. (total: " + nvmSize + ", used: " + curOffset + ", to allocate: " + sizeToAllocate + ")");
+    }
   }
 
   public NVMDataSpace getNVMDataSpaceByIndex(int spaceIndex) throws IOException {
@@ -100,7 +108,14 @@ public class NVMSpaceManager {
 
   private synchronized NVMDataSpace recoverData(long offset, long size, int index, TSDataType dataType) throws IOException {
     logger.trace("Try to recover NVMSpace from {} to {}", offset, offset + size);
-    NVMDataSpace nvmSpace = new NVMDataSpace(offset, size, nvmFileChannel.map(MAP_MODE, offset, size), index, dataType, false);
+    NVMDataSpace nvmSpace;
+    if (dataType == TSDataType.TEXT) {
+      nvmSpace = new NVMBinaryDataSpace(offset, size, nvmFileChannel.map(MAP_MODE, offset, size),
+          index, true);
+    } else {
+     nvmSpace = new NVMDataSpace(offset, size, nvmFileChannel.map(MAP_MODE, offset, size), index, dataType,
+          false);
+    }
     return nvmSpace;
   }
 
@@ -127,24 +142,11 @@ public class NVMSpaceManager {
         size = Double.BYTES;
         break;
       case TEXT:
-        // TODO
+        size = TEXT_AVERAGE_SIZE_IN_BYTES;
         break;
       default:
         throw new UnSupportedDataTypeException("DataType: " + dataType);
     }
     return size;
-  }
-
-  public static void main(String[] args) throws IOException {
-    String nvmDir = IoTDBDescriptor.getInstance().getConfig().getNvmDir();
-    String nvmFilePath = nvmDir + File.separatorChar + NVM_FILE_NAME;
-    File nvmDirFile = FSFactoryProducer.getFSFactory().getFile(nvmDir);
-    nvmDirFile.mkdirs();
-    FileChannel nvmFileChannel = new RandomAccessFile(nvmFilePath, "rw").getChannel();
-
-    ByteBuffer byteBuffer = nvmFileChannel.map(MapMode.READ_WRITE, 0, 4);
-    for (int i = 0; i < 1; i++) {
-      System.out.println(byteBuffer.getInt(i));
-    }
   }
 }

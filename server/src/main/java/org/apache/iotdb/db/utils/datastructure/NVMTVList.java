@@ -170,8 +170,7 @@ public abstract class NVMTVList extends AbstractTVList {
   public static NVMTVList newList(String sgId, String deviceId, String measurementId, TSDataType dataType) {
     switch (dataType) {
       case TEXT:
-        // TODO
-//        return new BinaryTVList();
+        return new NVMBinaryTVList(sgId, deviceId, measurementId);
       case FLOAT:
         return new NVMFloatTVList(sgId, deviceId, measurementId);
       case INT32:
