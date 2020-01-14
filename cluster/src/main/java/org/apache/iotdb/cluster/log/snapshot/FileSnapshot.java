@@ -13,7 +13,6 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -32,7 +31,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  */
 public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
-  private Set<MeasurementSchema> timeseriesSchemas;
+  private Collection<MeasurementSchema> timeseriesSchemas;
   private List<RemoteTsFileResource> dataFiles;
 
   public FileSnapshot() {
@@ -84,14 +83,14 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
   }
 
   @Override
-  public Set<MeasurementSchema> getTimeseriesSchemas() {
+  public Collection<MeasurementSchema> getTimeseriesSchemas() {
     return timeseriesSchemas;
   }
 
   @Override
   public void setTimeseriesSchemas(
       Collection<MeasurementSchema> timeseriesSchemas) {
-    this.timeseriesSchemas = (Set) timeseriesSchemas;
+    this.timeseriesSchemas = timeseriesSchemas;
   }
 
   @Override

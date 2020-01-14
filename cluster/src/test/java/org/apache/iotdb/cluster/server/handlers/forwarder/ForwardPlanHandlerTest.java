@@ -4,7 +4,7 @@
 
 package org.apache.iotdb.cluster.server.handlers.forwarder;
 
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -36,6 +36,6 @@ public class ForwardPlanHandlerTest {
     ForwardPlanHandler handler = new ForwardPlanHandler(result, plan, TestUtils.getNode(0));
 
     handler.onError(new TestException());
-    assertNull(result.get());
+    assertEquals("Don't worry, this exception is faked", result.get().statusType.getMessage());
   }
 }

@@ -4,35 +4,23 @@
 
 package org.apache.iotdb.cluster.common;
 
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-import org.apache.thrift.async.TAsyncClientManager;
-import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingTransport;
+import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
+import org.apache.iotdb.cluster.log.snapshot.SnapshotFactory;
+import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 
-public class TestClient extends AsyncClient {
+public class TestPartitionedLogManager extends PartitionedSnapshotLogManager {
 
-  private int serialNum;
-
-  public TestClient() {
-    super(null, null, null);
+  public TestPartitionedLogManager(LogApplier logApplier,
+      PartitionTable partitionTable,
+      Node header,
+      SnapshotFactory factory) {
+    super(logApplier, partitionTable, header, factory);
   }
 
-  public TestClient(int serialNum) {
-    this();
-    this.serialNum = serialNum;
-  }
+  @Override
+  public void takeSnapshot() {
 
-  TestClient(TProtocolFactory protocolFactory, TAsyncClientManager clientManager,
-      TNonblockingTransport transport, int serialNum) {
-    super(protocolFactory, clientManager, transport);
-    this.serialNum = serialNum;
-  }
-
-  public int getSerialNum() {
-    return serialNum;
-  }
-
-  public void setSerialNum(int serialNum) {
-    this.serialNum = serialNum;
   }
 }

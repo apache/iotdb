@@ -159,7 +159,9 @@ public class StorageEngine implements IService {
   @Override
   public void stop() {
     syncCloseAllProcessor();
-    ttlCheckThread.shutdownNow();
+    if (ttlCheckThread != null) {
+      ttlCheckThread.shutdownNow();
+    }
     recoveryThreadPool.shutdownNow();
     try {
       ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
