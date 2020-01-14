@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.NewEngineDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.RawDataReaderWithoutValueFilter;
@@ -82,6 +83,32 @@ public class EngineExecutor {
 
     try {
       return new NewEngineDataSetWithoutValueFilter(deduplicatedPaths, deduplicatedDataTypes,
+          readersOfSelectedSeries);
+    } catch (InterruptedException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
+  }
+  
+  public QueryDataSet executeNonAlign(QueryContext context)
+      throws StorageEngineException, IOException {
+
+    Filter timeFilter = null;
+    if (optimizedExpression != null) {
+      timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
+    }
+
+    List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
+    for (int i = 0; i < deduplicatedPaths.size(); i++) {
+      Path path = deduplicatedPaths.get(i);
+      TSDataType dataType = deduplicatedDataTypes.get(i);
+
+      ManagedSeriesReader reader = new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context,
+          true);
+      readersOfSelectedSeries.add(reader);
+    }
+
+    try {
+      return new NonAlignEngineDataSet(deduplicatedPaths, deduplicatedDataTypes,
           readersOfSelectedSeries);
     } catch (InterruptedException e) {
       throw new StorageEngineException(e.getMessage());

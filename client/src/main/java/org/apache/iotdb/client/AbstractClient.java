@@ -189,16 +189,25 @@ public abstract class AbstractClient {
       throws SQLException {
     int cnt = 0;
     boolean printTimestamp = true;
+    boolean align = true;
     displayCnt = 0;
     printHeader = false;
     ResultSetMetaData resultSetMetaData = res.getMetaData();
 
     int colCount = resultSetMetaData.getColumnCount();
-    printTimestamp = !((IoTDBQueryResultSet) res).isIgnoreTimeStamp();
+
+    if (res instanceof IoTDBQueryResultSet) {
+      printTimestamp = !((IoTDBQueryResultSet) res).isIgnoreTimeStamp();
+      align = true;
+    }
+    else {
+      printTimestamp = true;
+      align = false;
+    }
 
     // Output values
     while (cnt < maxPrintRowCount && res.next()) {
-      printRow(printTimestamp, colCount, resultSetMetaData, res, zoneId);
+      printRow(printTimestamp, align, colCount, resultSetMetaData, res, zoneId);
       cnt++;
       if (!printToConsole && cnt % 10000 == 0) {
         println(cnt);
@@ -207,11 +216,11 @@ public abstract class AbstractClient {
 
     if (printToConsole) {
       if (!printHeader) {
-        printBlockLine(printTimestamp, colCount, resultSetMetaData);
-        printName(printTimestamp, colCount, resultSetMetaData);
-        printBlockLine(printTimestamp, colCount, resultSetMetaData);
+        printBlockLine(printTimestamp, align, colCount, resultSetMetaData);
+        printName(printTimestamp, align, colCount, resultSetMetaData);
+        printBlockLine(printTimestamp, align, colCount, resultSetMetaData);
       } else {
-        printBlockLine(printTimestamp, colCount, resultSetMetaData);
+        printBlockLine(printTimestamp, align, colCount, resultSetMetaData);
       }
 
     }
@@ -231,23 +240,23 @@ public abstract class AbstractClient {
       println("Total line number = " + cnt);
   }
 
-  private static void printRow(boolean printTimestamp, int colCount,
+  private static void printRow(boolean printTimestamp, boolean align, int colCount,
       ResultSetMetaData resultSetMetaData, ResultSet res, ZoneId zoneId)
       throws SQLException {
     // Output Labels
     if (!printToConsole) {
       return;
     }
-    printHeader(printTimestamp, colCount, resultSetMetaData);
-    printRowData(printTimestamp, res, zoneId, resultSetMetaData, colCount);
+    printHeader(printTimestamp, align, colCount, resultSetMetaData);
+    printRowData(printTimestamp, align, res, zoneId, resultSetMetaData, colCount);
   }
 
-  private static void printHeader(boolean printTimestamp, int colCount,
+  private static void printHeader(boolean printTimestamp, boolean align, int colCount,
       ResultSetMetaData resultSetMetaData) throws SQLException {
     if (!printHeader) {
-      printBlockLine(printTimestamp, colCount, resultSetMetaData);
-      printName(printTimestamp, colCount, resultSetMetaData);
-      printBlockLine(printTimestamp, colCount, resultSetMetaData);
+      printBlockLine(printTimestamp, align, colCount, resultSetMetaData);
+      printName(printTimestamp, align, colCount, resultSetMetaData);
+      printBlockLine(printTimestamp, align, colCount, resultSetMetaData);
       printHeader = true;
     }
   }
@@ -261,19 +270,37 @@ public abstract class AbstractClient {
     println();
   }
 
-  private static void printRowData(boolean printTimestamp, ResultSet res, ZoneId zoneId,
+  private static void printRowData(boolean printTimestamp, boolean align, ResultSet res, ZoneId zoneId,
       ResultSetMetaData resultSetMetaData, int colCount)
       throws SQLException {
     if (displayCnt < maxPrintRowCount) { // NOTE displayCnt only works on queried data results
       print("|");
-      if (printTimestamp) {
-        printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR), zoneId));
-        for (int i = 2; i <= colCount; i++) {
-          printColumnData(resultSetMetaData, res, i, zoneId);
+      if (align) {
+        if (printTimestamp) {
+          printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR), zoneId));
+          for (int i = 2; i <= colCount; i++) {
+            printColumnData(resultSetMetaData, align, res, i, zoneId);
+          }
+        } else {
+          for (int i = 1; i <= colCount; i++) {
+            printColumnData(resultSetMetaData, align, res, i, zoneId);
+          }
         }
-      } else {
-        for (int i = 1; i <= colCount; i++) {
-          printf(formatValue, res.getString(i));
+      }
+      else {
+        for (int i = 2; i <= colCount / 2 + 1; i++) {
+          if (printTimestamp) {
+            // timeLabel used for indicating the time column.
+            String timeLabel = TIMESTAMP_STR + resultSetMetaData.getColumnLabel(2 * i - 2);
+            if (res.getLong(timeLabel) == 0) {
+              // blank space
+              printf(formatTime, "");
+            }
+            else {
+              printf(formatTime, formatDatetime(res.getLong(timeLabel), zoneId));
+            }
+          }
+          printColumnData(resultSetMetaData, align, res, i, zoneId);
         }
       }
       println();
@@ -281,8 +308,8 @@ public abstract class AbstractClient {
     }
   }
 
-  private static void printColumnData(ResultSetMetaData resultSetMetaData, ResultSet res, int i,
-      ZoneId zoneId) throws SQLException {
+  private static void printColumnData(ResultSetMetaData resultSetMetaData, boolean align,
+      ResultSet res, int i, ZoneId zoneId) throws SQLException {
     boolean flag = false;
     for (String timeStr : AGGREGRATE_TIME_LIST) {
       if (resultSetMetaData.getColumnLabel(i).toUpperCase().contains(timeStr.toUpperCase())) {
@@ -297,11 +324,22 @@ public abstract class AbstractClient {
         printf(formatValue, "null");
         handleException(e);
       }
-    } else {
+    } 
+    else if (align) {
       if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
         printf("%" + deviceColumnLength + "s|", res.getString(i));
       } else {
         printf(formatValue, res.getString(i));
+      }
+    }
+    // for disable align clause
+    else {
+      if (res.getString(i * 2 - 2) == null) {
+        //blank space
+        printf(formatValue, "");
+      }
+      else {
+        printf(formatValue, res.getString(i * 2 - 2));
       }
     }
   }
@@ -470,11 +508,15 @@ public abstract class AbstractClient {
     }
   }
 
-  private static void printBlockLine(boolean printTimestamp, int colCount,
+  private static void printBlockLine(boolean printTimestamp, boolean align, int colCount,
       ResultSetMetaData resultSetMetaData) throws SQLException {
     StringBuilder blockLine = new StringBuilder();
-    if (printTimestamp) {
-      blockLine.append("+").append(StringUtils.repeat('-', maxTimeLength)).append("+");
+    if (align) {
+      if (printTimestamp) {
+        blockLine.append("+").append(StringUtils.repeat('-', maxTimeLength)).append("+");
+      } else {
+        blockLine.append("+");
+      }
       if (resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
         maxValueLength = measurementColumnLength;
       } else {
@@ -485,37 +527,65 @@ public abstract class AbstractClient {
         }
         maxValueLength = tmp;
       }
-      for (int i = 2; i <= colCount; i++) {
-        if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
-          blockLine.append(StringUtils.repeat('-', deviceColumnLength)).append("+");
-        } else {
-          blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
+      if (printTimestamp) {
+        for (int i = 2; i <= colCount; i++) {
+          if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
+            blockLine.append(StringUtils.repeat('-', deviceColumnLength)).append("+");
+          } else {
+            blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
+          }
+        }
+      } else {
+        for (int i = 1; i <= colCount; i++) {
+            blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
         }
       }
-    } else {
-      blockLine.append("+");
+    }
+    // for disable align clause
+    else {
+      int tmp = Integer.MIN_VALUE;
       for (int i = 1; i <= colCount; i++) {
+        int len = resultSetMetaData.getColumnLabel(i).length();
+        tmp = Math.max(tmp, len);
+      }
+      maxValueLength = tmp;
+      blockLine.append("+");
+      for (int i = 2; i <= colCount / 2 + 1; i++) {
+        if (printTimestamp) {
+          blockLine.append(StringUtils.repeat('-', maxTimeLength)).append("+");
+        } 
         blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
       }
     }
     println(blockLine);
   }
 
-  private static void printName(boolean printTimestamp, int colCount,
+  private static void printName(boolean printTimestamp, boolean align, int colCount,
       ResultSetMetaData resultSetMetaData) throws SQLException {
     print("|");
     formatValue = "%" + maxValueLength + "s|";
-    if (printTimestamp) {
-      printf(formatTime, TIMESTAMP_STR);
-      for (int i = 2; i <= colCount; i++) {
-        if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
-          printf("%" + deviceColumnLength + "s|", resultSetMetaData.getColumnLabel(i));
-        } else {
+    if (align) {
+      if (printTimestamp) {
+        printf(formatTime, TIMESTAMP_STR);
+        for (int i = 2; i <= colCount; i++) {
+          if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
+            printf("%" + deviceColumnLength + "s|", resultSetMetaData.getColumnLabel(i));
+          } else {
+            printf(formatValue, resultSetMetaData.getColumnLabel(i));
+          }
+        }
+      } else {
+        for (int i = 1; i <= colCount; i++) {
           printf(formatValue, resultSetMetaData.getColumnLabel(i));
         }
       }
-    } else {
-      for (int i = 1; i <= colCount; i++) {
+    }
+    // for disable align
+    else {
+      for (int i = 2; i <= colCount; i += 2) {
+        if (printTimestamp) {
+          printf(formatTime, TIMESTAMP_STR);
+        }
         printf(formatValue, resultSetMetaData.getColumnLabel(i));
       }
     }

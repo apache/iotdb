@@ -87,7 +87,7 @@ public class SessionDataSet {
     if (hasCachedRecord)
       return true;
     if (tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining()) {
-      TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, batchSize, queryId);
+      TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, batchSize, queryId, true);
       try {
         TSFetchResultsResp resp = client.fetchResults(req);
         RpcUtils.verifySuccess(resp.getStatus());
