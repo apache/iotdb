@@ -118,7 +118,7 @@ public class NewAggregateEngineExecutor {
       while (seriesReader.hasNextPage()) {
         //cal by pageheader
         if (seriesReader.canUsePageStatistics()) {
-          Statistics pageStatistic = seriesReader.currentChunkStatistics();
+          Statistics pageStatistic = seriesReader.currentPageStatistics();
           aggregateResult.updateResultFromStatistics(pageStatistic);
           if (aggregateResult.isCalculatedAggregationResult()) {
             return aggregateResult.getResult();
