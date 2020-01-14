@@ -25,28 +25,31 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Scanner;
 
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
-import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.SchemaBuilder;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 
 @Ignore
 public class TsFileGeneratorForTest {
@@ -61,12 +64,11 @@ public class TsFileGeneratorForTest {
   private static int pageSize;
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  public static void generateFile(int rowCount, int chunkGroupSize, int pageSize)
-      throws IOException {
+  public static void generateFile(int rowCount, int chunkGroupSize, int pageSize) throws IOException {
     generateFile(rowCount, rowCount, chunkGroupSize, pageSize);
   }
 
-  public static void generateFile(int minRowCount, int maxRowCount,int chunkGroupSize, int pageSize)
+  public static void generateFile(int minRowCount, int maxRowCount, int chunkGroupSize, int pageSize)
       throws IOException {
     TsFileGeneratorForTest.rowCount = maxRowCount;
     TsFileGeneratorForTest.chunkGroupSize = chunkGroupSize;
@@ -140,9 +142,7 @@ public class TsFileGeneratorForTest {
       fw.write(d2 + "\r\n");
     }
     // write error
-    String d =
-        "d2,3," + (startTime + rowCount) + ",s2," + (rowCount * 10 + 2) + ",s3," + (rowCount * 10
-            + 3);
+    String d = "d2,3," + (startTime + rowCount) + ",s2," + (rowCount * 10 + 2) + ",s3," + (rowCount * 10 + 3);
     fw.write(d + "\r\n");
     d = "d2," + (startTime + rowCount + 1) + ",2,s-1," + (rowCount * 10 + 2);
     fw.write(d + "\r\n");
@@ -163,8 +163,7 @@ public class TsFileGeneratorForTest {
 
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
-    TsFileWriter innerWriter = new TsFileWriter(file, schema,
-        TSFileDescriptor.getInstance().getConfig());
+    TsFileWriter innerWriter = new TsFileWriter(file, schema, TSFileDescriptor.getInstance().getConfig());
 
     // write
     try (Scanner in = new Scanner(fsFactory.getFile(inputDataFile))) {
@@ -228,36 +227,41 @@ public class TsFileGeneratorForTest {
   }
 
   private static Schema generateTestSchema() {
-    SchemaBuilder schemaBuilder = new SchemaBuilder();
-    schemaBuilder.addSeries("s1", TSDataType.INT32, TSEncoding.RLE);
-    schemaBuilder.addSeries("s2", TSDataType.INT64, TSEncoding.PLAIN);
-    schemaBuilder.addSeries("s3", TSDataType.INT64, TSEncoding.TS_2DIFF);
-    schemaBuilder.addSeries("s4", TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED,
-        Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20"));
-    schemaBuilder.addSeries("s5", TSDataType.BOOLEAN, TSEncoding.RLE);
-    schemaBuilder.addSeries("s6", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY,
-        Collections.singletonMap(Encoder.MAX_POINT_NUMBER, "5"));
-    schemaBuilder.addSeries("s7", TSDataType.DOUBLE, TSEncoding.GORILLA);
-    return schemaBuilder.build();
-  }
+    Schema schema = new Schema();
+    schema.registerTimeseries(new Path("d1.s1"), new TimeseriesSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d1.s2"), new TimeseriesSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d1.s3"), new TimeseriesSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+    schema.registerTimeseries(new Path("d1.s4"), new TimeseriesSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED, Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20")));
+    schema.registerTimeseries(new Path("d1.s5"), new TimeseriesSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d1.s6"), new TimeseriesSchema("s6", TSDataType.FLOAT, TSEncoding.RLE,
+        CompressionType.SNAPPY, Collections.singletonMap(Encoder.MAX_POINT_NUMBER, "5")));
+    schema.registerTimeseries(new Path("d1.s7"), new TimeseriesSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA));
 
+    schema.registerTimeseries(new Path("d2.s1"), new TimeseriesSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d2.s2"), new TimeseriesSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d2.s3"), new TimeseriesSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+    schema.registerTimeseries(new Path("d2.s4"), new TimeseriesSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED, Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20")));
+    return schema;
+  }
 
   /**
    * Writes a File with one incomplete chunk header
+   * 
    * @param file File to write
    * @throws IOException is thrown when encountering IO issues
    */
   public static void writeFileWithOneIncompleteChunkHeader(File file) throws IOException {
-      TsFileWriter writer = new TsFileWriter(file);
+    TsFileWriter writer = new TsFileWriter(file);
 
-      ChunkHeader header = new ChunkHeader("s1", 100, TSDataType.FLOAT, CompressionType.SNAPPY,
-              TSEncoding.PLAIN, 5);
-      ByteBuffer buffer = ByteBuffer.allocate(header.getSerializedSize());
-      header.serializeTo(buffer);
-      buffer.flip();
-      byte[] data = new byte[3];
-      buffer.get(data, 0, 3);
-      writer.getIOWriter().getIOWriterOut().write(data);
-      writer.getIOWriter().close();
+    ChunkHeader header = new ChunkHeader("s1", 100, TSDataType.FLOAT, CompressionType.SNAPPY, TSEncoding.PLAIN, 5);
+    ByteBuffer buffer = ByteBuffer.allocate(header.getSerializedSize());
+    header.serializeTo(buffer);
+    buffer.flip();
+    byte[] data = new byte[3];
+    buffer.get(data, 0, 3);
+    writer.getIOWriter().getIOWriterOut().write(data);
+    writer.getIOWriter().close();
   }
 }

@@ -19,7 +19,8 @@
 package org.apache.iotdb.tsfile.common.constant;
 
 /**
- * This class define several constant string variables used in tsfile schema's keys.
+ * This class define several constant string variables used in tsfile schema's
+ * keys.
  */
 public class JsonFormatConstant {
   public static final String JSON_SCHEMA = "schema";
@@ -41,5 +42,6 @@ public class JsonFormatConstant {
   public static final String DEFAULT_DELTA_TYPE = "default_delta_type";
   public static final String PROPERTIES = "properties";
 
-  private JsonFormatConstant(){}
+  private JsonFormatConstant() {
+  }
 }

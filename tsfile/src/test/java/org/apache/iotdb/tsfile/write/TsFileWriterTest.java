@@ -44,7 +44,7 @@ import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -82,8 +82,8 @@ public class TsFileWriterTest {
     try {
       //String measurementId, TSDataType type, TSEncoding encoding,
       //      CompressionType compressionType
-      writer.addMeasurement(
-          new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
+      writer.addTimeseries(new Path("d1.s1"),
+          new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -91,16 +91,16 @@ public class TsFileWriterTest {
     try {
       //String measurementId, TSDataType type, TSEncoding encoding,
       //      CompressionType compressionType
-      writer.addMeasurement(
-          new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
+      writer.addTimeseries(new Path("d1.s1"),
+          new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
-      Assert.assertEquals("given measurement has exists! s1", e.getMessage());
+      Assert.assertEquals("given timeseries has exists! d1.s1", e.getMessage());
     }
     try {
       //String measurementId, TSDataType type, TSEncoding encoding,
       //      CompressionType compressionType
-      writer.addMeasurement(
-          new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY));
+      writer.addTimeseries(new Path("d1.s2"),
+          new TimeseriesSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -185,9 +185,9 @@ public class TsFileWriterTest {
 
   @Test
   public void writeRowBatch() throws IOException, WriteProcessException {
-    RowBatch rowBatch = new RowBatch("d1", Arrays.asList(new MeasurementSchema[]{
-        new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY),
-        new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY)
+    RowBatch rowBatch = new RowBatch("d1", Arrays.asList(new TimeseriesSchema[]{
+        new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY),
+        new TimeseriesSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY)
     }));
     rowBatch.timestamps[0] = 10000;
     ((float[])rowBatch.values[0])[0] = 5.0f;
@@ -200,9 +200,9 @@ public class TsFileWriterTest {
 
   @Test
   public void writeRowBatch2() throws IOException, WriteProcessException {
-    RowBatch rowBatch = new RowBatch("d1", Arrays.asList(new MeasurementSchema[]{
-        new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY),
-        new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY)
+    RowBatch rowBatch = new RowBatch("d1", Arrays.asList(new TimeseriesSchema[]{
+        new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY),
+        new TimeseriesSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY)
     }));
     rowBatch.timestamps[0] = 10000;
     ((float[])rowBatch.values[0])[0] = 5.0f;

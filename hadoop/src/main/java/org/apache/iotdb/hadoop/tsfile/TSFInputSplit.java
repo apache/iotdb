@@ -21,8 +21,6 @@ package org.apache.iotdb.hadoop.tsfile;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.FileSplit;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -159,17 +157,6 @@ public class TSFInputSplit extends FileSplit implements Writable, org.apache.had
       this.measurementIds = measurementIds;
       this.startOffset = startOffset;
       this.endOffset = endOffset;
-    }
-
-    public ChunkGroupInfo(ChunkGroupMetaData chunkGroupMetaData) {
-      this.deviceId = chunkGroupMetaData.getDeviceID();
-      this.measurementIds = chunkGroupMetaData.getChunkMetaDataList().stream()
-              .map(ChunkMetaData::getMeasurementUid)
-              .distinct()
-              .toArray(String[]::new);
-
-      this.startOffset = chunkGroupMetaData.getStartOffsetOfChunkGroup();
-      this.endOffset = chunkGroupMetaData.getEndOffsetOfChunkGroup();
     }
 
     public String getDeviceId() {

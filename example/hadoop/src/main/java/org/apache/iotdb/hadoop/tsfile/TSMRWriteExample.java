@@ -31,8 +31,8 @@ import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,12 +59,13 @@ public class TSMRWriteExample {
 
         // add measurements into file schema (all with INT64 data type)
         for (int i = 0; i < 2; i++) {
-            schema.registerMeasurement(
-                    new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
+          schema.registerTimeseries(new org.apache.iotdb.tsfile.read.common.Path("device_1", "sensor_" + (i + 1)),
+              new TimeseriesSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
         }
+
         for (int i = 2; i < sensorNum; i++) {
-            schema.registerMeasurement(
-                    new MeasurementSchema("sensor_" + (i + 1), TSDataType.DOUBLE, TSEncoding.TS_2DIFF));
+          schema.registerTimeseries(new org.apache.iotdb.tsfile.read.common.Path("device_1", "sensor_" + (i + 1)),
+              new TimeseriesSchema("sensor_" + (i + 1), TSDataType.DOUBLE, TSEncoding.TS_2DIFF));
         }
         TSFOutputFormat.setSchema(schema);
 

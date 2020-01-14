@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -55,8 +56,7 @@ public class FloatStatistics extends Statistics<Float> {
     this.sumValue = sum;
   }
 
-  private void updateStats(float minValue, float maxValue, float firstValue, float last,
-      double sumValue) {
+  private void updateStats(float minValue, float maxValue, float firstValue, float last, double sumValue) {
     if (minValue < this.minValue) {
       this.minValue = minValue;
     }
@@ -209,7 +209,7 @@ public class FloatStatistics extends Statistics<Float> {
 
   @Override
   public String toString() {
-    return "[minValue:" + minValue + ",maxValue:" + maxValue + ",firstValue:" + firstValue +
-        ",lastValue:" + lastValue + ",sumValue:" + sumValue + "]";
+    return "[minValue:" + minValue + ",maxValue:" + maxValue + ",firstValue:" + firstValue + ",lastValue:" + lastValue
+        + ",sumValue:" + sumValue + "]";
   }
 }

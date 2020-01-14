@@ -25,6 +25,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import org.apache.iotdb.tsfile.utils.StringContainer;
+
 public class StringContainerTest {
 
   @Test

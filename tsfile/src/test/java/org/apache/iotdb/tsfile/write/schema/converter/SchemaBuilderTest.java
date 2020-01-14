@@ -23,34 +23,35 @@ import static org.junit.Assert.assertEquals;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.junit.Test;
+
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.SchemaBuilder;
-import org.junit.Test;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 public class SchemaBuilderTest {
 
   @Test
   public void testJsonConverter() {
 
-    SchemaBuilder builder = new SchemaBuilder();
     Map<String, String> props = new HashMap<>();
     props.put(JsonFormatConstant.MAX_POINT_NUMBER, "3");
-    builder.addSeries("s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props);
-    builder
-        .addSeries("s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null);
-    Schema schema = builder.build();
+    Schema schema = new Schema();
+    schema.registerTimeseries(new Path("d1", "s4"),
+        new TimeseriesSchema("s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
+    schema.registerTimeseries(new Path("d1", "s5"),
+        new TimeseriesSchema("s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
 
-    Collection<MeasurementSchema> measurements = schema.getMeasurementSchemaMap().values();
-    String[] measureDesStrings = {"[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]",
-        "[s5,INT32,TS_2DIFF,{},UNCOMPRESSED]"};
+    Collection<TimeseriesSchema> timeseries = schema.getTimeseriesSchemaMap().values();
+    String[] tsDesStrings = { "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,{},UNCOMPRESSED]" };
     int i = 0;
-    for (MeasurementSchema desc : measurements) {
-      assertEquals(measureDesStrings[i++], desc.toString());
+    for (TimeseriesSchema desc : timeseries) {
+      assertEquals(tsDesStrings[i++], desc.toString());
     }
   }
 }

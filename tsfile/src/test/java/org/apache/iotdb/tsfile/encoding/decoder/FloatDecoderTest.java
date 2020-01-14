@@ -24,15 +24,18 @@ import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.encoding.encoder.FloatEncoder;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.iotdb.tsfile.encoding.decoder.FloatDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.FloatEncoder;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 public class FloatDecoderTest {
 
@@ -114,8 +117,10 @@ public class FloatDecoderTest {
   // @Test
   // public void testBigDecimal() throws Exception {
   // for (int i = 1; i <= 5; i++) {
-  // testDecimalLenght(TSEncoding.TS_2DIFF, doubleList, doubleMaxPointNumber, false, i);
-  // testDecimalLenght(TSEncoding.RLE, doubleList, doubleMaxPointNumber, false, i);
+  // testDecimalLenght(TSEncoding.TS_2DIFF, doubleList, doubleMaxPointNumber,
+  // false, i);
+  // testDecimalLenght(TSEncoding.RLE, doubleList, doubleMaxPointNumber, false,
+  // i);
   // }
   // }
 
@@ -140,8 +145,7 @@ public class FloatDecoderTest {
     logger.debug("{} // {}", value + 2, value2_);
   }
 
-  private void testFloatLength(TSEncoding encoding, List<Float> valueList, int maxPointValue,
-      boolean isDebug,
+  private void testFloatLength(TSEncoding encoding, List<Float> valueList, int maxPointValue, boolean isDebug,
       int repeatCount) throws Exception {
     Encoder encoder = new FloatEncoder(encoding, TSDataType.FLOAT, maxPointValue);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -166,8 +170,7 @@ public class FloatDecoderTest {
     }
   }
 
-  private void testDoubleLength(TSEncoding encoding, List<Double> valueList, int maxPointValue,
-      boolean isDebug,
+  private void testDoubleLength(TSEncoding encoding, List<Double> valueList, int maxPointValue, boolean isDebug,
       int repeatCount) throws Exception {
     Encoder encoder = new FloatEncoder(encoding, TSDataType.DOUBLE, maxPointValue);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -192,9 +195,11 @@ public class FloatDecoderTest {
     }
   }
 
-  // private void testDecimalLenght(TSEncoding encoding, List<Double> valueList, int maxPointValue,
+  // private void testDecimalLenght(TSEncoding encoding, List<Double> valueList,
+  // int maxPointValue,
   // boolean isDebug, int repeatCount) throws Exception {
-  // Encoder encoder = new FloatEncoder(encoding, TSDataType.BIGDECIMAL, maxPointValue);
+  // Encoder encoder = new FloatEncoder(encoding, TSDataType.BIGDECIMAL,
+  // maxPointValue);
   // ByteArrayOutputStream baos = new ByteArrayOutputStream();
   // for (int i = 0; i < repeatCount; i++) {
   // for (double value : valueList) {

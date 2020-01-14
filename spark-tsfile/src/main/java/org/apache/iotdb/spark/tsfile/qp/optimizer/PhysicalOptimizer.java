@@ -32,7 +32,7 @@ import org.apache.iotdb.spark.tsfile.qp.common.SingleQuery;
 import org.apache.iotdb.spark.tsfile.qp.common.TSQueryPlan;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 public class PhysicalOptimizer {
 
@@ -48,7 +48,7 @@ public class PhysicalOptimizer {
   public List<TSQueryPlan> optimize(SingleQuery singleQuery, List<String> paths,
       TsFileSequenceReader in, Long start, Long end) throws IOException {
     List<String> actualDeltaObjects = in.getDeviceNameInRange(start, end);
-    List<MeasurementSchema> actualSeries = in.readFileMetadata().getMeasurementSchemaList();
+    List<TimeseriesSchema> actualSeries = in.readFileMetadata().getMeasurementSchemaList();
 
     List<String> selectedSeries = new ArrayList<>();
     for (String path : paths) {
@@ -65,7 +65,7 @@ public class PhysicalOptimizer {
       if (valueFilter != null) {
         List<String> filterPaths = valueFilter.getAllPaths();
         List<String> actualPaths = new ArrayList<>();
-        for (MeasurementSchema series : actualSeries) {
+        for (TimeseriesSchema series : actualSeries) {
           actualPaths.add(series.getMeasurementId());
         }
         //if filter paths doesn't in tsfile, don't query
@@ -92,15 +92,15 @@ public class PhysicalOptimizer {
       validDeltaObjects.addAll(in.getDeviceNameInRange(start, end));
     }
 
-    List<MeasurementSchema> fileSeries = in.readFileMetadata().getMeasurementSchemaList();
+    List<TimeseriesSchema> fileSeries = in.readFileMetadata().getMeasurementSchemaList();
     Set<String> seriesSet = new HashSet<>();
-    for (MeasurementSchema series : fileSeries) {
+    for (TimeseriesSchema series : fileSeries) {
       seriesSet.add(series.getMeasurementId());
     }
 
     //query all measurements from TSFile
     if (selectedSeries.size() == 0) {
-      for (MeasurementSchema series : actualSeries) {
+      for (TimeseriesSchema series : actualSeries) {
         selectedSeries.add(series.getMeasurementId());
       }
     } else {

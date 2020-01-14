@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.controller;
 
 import java.io.IOException;
+
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -41,7 +42,7 @@ public class ChunkLoaderImpl implements IChunkLoader {
    * constructor of ChunkLoaderImpl.
    *
    * @param fileSequenceReader file sequence reader
-   * @param cacheSize cache size
+   * @param cacheSize          cache size
    */
   public ChunkLoaderImpl(TsFileSequenceReader fileSequenceReader, int cacheSize) {
 

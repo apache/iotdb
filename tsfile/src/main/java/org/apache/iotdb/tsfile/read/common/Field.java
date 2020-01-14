@@ -23,8 +23,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 /**
- * Field is component of one {@code RowRecord} which stores a value in specific data type. The value
- * type of Field is primitive(int long, float, double, binary, boolean).
+ * Field is component of one {@code RowRecord} which stores a value in specific
+ * data type. The value type of Field is primitive(int long, float, double,
+ * binary, boolean).
  */
 public class Field {
 
@@ -102,20 +103,20 @@ public class Field {
       return "null";
     }
     switch (dataType) {
-      case BOOLEAN:
-        return String.valueOf(boolV);
-      case INT32:
-        return String.valueOf(intV);
-      case INT64:
-        return String.valueOf(longV);
-      case FLOAT:
-        return String.valueOf(floatV);
-      case DOUBLE:
-        return String.valueOf(doubleV);
-      case TEXT:
-        return binaryV.toString();
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+    case BOOLEAN:
+      return String.valueOf(boolV);
+    case INT32:
+      return String.valueOf(intV);
+    case INT64:
+      return String.valueOf(longV);
+    case FLOAT:
+      return String.valueOf(floatV);
+    case DOUBLE:
+      return String.valueOf(doubleV);
+    case TEXT:
+      return binaryV.toString();
+    default:
+      throw new UnSupportedDataTypeException(String.valueOf(dataType));
     }
   }
 
@@ -129,20 +130,20 @@ public class Field {
       return null;
     }
     switch (dataType) {
-      case DOUBLE:
-        return getDoubleV();
-      case FLOAT:
-        return getFloatV();
-      case INT64:
-        return getLongV();
-      case INT32:
-        return getIntV();
-      case BOOLEAN:
-        return getBoolV();
-      case TEXT:
-        return getBinaryV();
-      default:
-        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
+    case DOUBLE:
+      return getDoubleV();
+    case FLOAT:
+      return getFloatV();
+    case INT64:
+      return getLongV();
+    case INT32:
+      return getIntV();
+    case BOOLEAN:
+      return getBoolV();
+    case TEXT:
+      return getBinaryV();
+    default:
+      throw new UnSupportedDataTypeException("UnSupported: " + dataType);
     }
   }
 }

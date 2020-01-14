@@ -18,16 +18,18 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
+import java.io.Serializable;
+
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
-import java.io.Serializable;
-
 /**
- * This class define an Object named Path to represent a series in IoTDB. AndExpression in batch read, this definition
- * is also used in query processing. Note that, Path is unmodified after a new object has been created.
+ * This class define an Object named Path to represent a series in IoTDB.
+ * AndExpression in batch read, this definition is also used in query
+ * processing. Note that, Path is unmodified after a new object has been
+ * created.
  */
-public class Path implements Serializable {
+public class Path implements Serializable, Comparable<Path> {
 
   private static final long serialVersionUID = 3405277066329298200L;
   private String measurement = null;
@@ -58,7 +60,8 @@ public class Path implements Serializable {
   }
 
   /**
-   * construct a Path directly using device and measurement, no need to reformat the path
+   * construct a Path directly using device and measurement, no need to reformat
+   * the path
    *
    * @param device      root.deviceType.d1
    * @param measurement s1 , does not contain TsFileConstant.PATH_SEPARATOR
@@ -69,7 +72,8 @@ public class Path implements Serializable {
     }
     this.device = device;
     this.measurement = measurement;
-    this.fullPath = device + TsFileConstant.PATH_SEPARATOR + (measurement.contains(TsFileConstant.PATH_SEPARATOR) ? "\"" + measurement + "\"" : measurement);
+    this.fullPath = device + TsFileConstant.PATH_SEPARATOR
+        + (measurement.contains(TsFileConstant.PATH_SEPARATOR) ? "\"" + measurement + "\"" : measurement);
   }
 
   /**
@@ -93,7 +97,7 @@ public class Path implements Serializable {
       throw new IllegalArgumentException("input pathSc single/double quotes error, not in pair or more than one pair!");
     }
     if ((i == 2 && pathSc.length() - 1 != pathSc.lastIndexOf("\""))
-            || (j == 2 && pathSc.length() - 1 != pathSc.lastIndexOf("\'"))) {
+        || (j == 2 && pathSc.length() - 1 != pathSc.lastIndexOf("\'"))) {
       throw new IllegalArgumentException("input pathSc contains quoted string in the middle!");
     }
     String[] subStrs;
@@ -110,7 +114,8 @@ public class Path implements Serializable {
       measurement = subStrs[1];
       fullPath = pathSc;
     } else {
-      StringContainer sc = new StringContainer(pathSc.split(TsFileConstant.PATH_SEPARATER_NO_REGEX), TsFileConstant.PATH_SEPARATOR);
+      StringContainer sc = new StringContainer(pathSc.split(TsFileConstant.PATH_SEPARATER_NO_REGEX),
+          TsFileConstant.PATH_SEPARATOR);
       if (sc.size() <= 1) {
         device = "";
         fullPath = measurement = sc.toString();
@@ -189,6 +194,11 @@ public class Path implements Serializable {
   }
 
   @Override
+  public int compareTo(Path path) {
+    return fullPath.compareTo(path.getFullPath());
+  }
+
+  @Override
   public String toString() {
     return fullPath;
   }
@@ -199,7 +209,8 @@ public class Path implements Serializable {
   }
 
   /**
-   * if prefix is null, return false, else judge whether this.fullPath starts with prefix
+   * if prefix is null, return false, else judge whether this.fullPath starts with
+   * prefix
    *
    * @param prefix the prefix string to be tested.
    * @return True if fullPath starts with prefix
@@ -209,7 +220,8 @@ public class Path implements Serializable {
   }
 
   /**
-   * if prefix is null, return false, else judge whether this.fullPath starts with prefix.fullPath
+   * if prefix is null, return false, else judge whether this.fullPath starts with
+   * prefix.fullPath
    *
    * @param prefix the prefix path to be tested.
    * @return True if fullPath starts with prefix.fullPath
@@ -217,4 +229,5 @@ public class Path implements Serializable {
   public boolean startWith(Path prefix) {
     return startWith(prefix.fullPath);
   }
+
 }

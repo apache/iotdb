@@ -25,10 +25,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 /**
  * Encodes values using bitmap, according to the following grammar:
@@ -43,9 +45,12 @@ import org.slf4j.LoggerFactory;
  * value := value in the data after deduplication. Use varint-encode and store as unsigned var int
  * bit-index := a list of 01 sequence to record the position of the value above
  * }
- * </pre>.
-
- * Decode switch or enum values using bitmap, bitmap-encode.{@code <length> <num> <encoded data> }
+ * </pre>
+ * 
+ * .
+ * 
+ * Decode switch or enum values using bitmap,
+ * bitmap-encode.{@code <length> <num> <encoded data> }
  */
 public class BitmapEncoder extends Encoder {
 
@@ -66,12 +71,13 @@ public class BitmapEncoder extends Encoder {
   }
 
   /**
-   * Each time encoder receives a value, encoder doesn't write it to OutputStream immediately.
-   * Encoder stores current value in a list. When all value is received, flush() method will be
-   * invoked. Encoder encodes all values and writes them to OutputStream.
+   * Each time encoder receives a value, encoder doesn't write it to OutputStream
+   * immediately. Encoder stores current value in a list. When all value is
+   * received, flush() method will be invoked. Encoder encodes all values and
+   * writes them to OutputStream.
    *
    * @param value value to encode
-   * @param out OutputStream to write encoded stream
+   * @param out   OutputStream to write encoded stream
    * @throws IOException cannot encode value
    * @see Encoder#encode(int, java.io.ByteArrayOutputStream)
    */
@@ -81,7 +87,8 @@ public class BitmapEncoder extends Encoder {
   }
 
   /**
-   * When all data received, encoder now encodes values in list and write them to OutputStream.
+   * When all data received, encoder now encodes values in list and write them to
+   * OutputStream.
    *
    * @param out OutputStream to write encoded stream
    * @throws IOException cannot flush to OutputStream
@@ -129,6 +136,6 @@ public class BitmapEncoder extends Encoder {
   @Override
   public long getMaxByteSize() {
     // byteCacheSize + byteDictSize + (byte array + array length) * byteDictSize
-    return (long)4 + 4 + ((values.size() + 7) / 8 + 4) * values.size();
+    return (long) 4 + 4 + ((values.size() + 7) / 8 + 4) * values.size();
   }
 }

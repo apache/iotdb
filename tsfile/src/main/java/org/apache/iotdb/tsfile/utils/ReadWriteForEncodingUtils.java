@@ -30,7 +30,10 @@ import java.util.List;
  */
 public class ReadWriteForEncodingUtils {
   private static final String TOO_LONG_BYTE_FORMAT = "tsfile-common BytesUtils: encountered value (%d) that requires more than 4 bytes";
-  private ReadWriteForEncodingUtils(){}
+
+  private ReadWriteForEncodingUtils() {
+  }
+
   /**
    * check all number in a int list and find max bit width.
    *
@@ -121,14 +124,15 @@ public class ReadWriteForEncodingUtils {
   }
 
   /**
-   * write a value to stream using unsigned var int format. for example, int 123456789 has its
-   * binary format 00000111-01011011-11001101-00010101 (if we omit the first 5 0, then it is
-   * 111010-1101111-0011010-0010101), function writeUnsignedVarInt will split every seven bits and
-   * write them to stream from low bit to high bit like: 1-0010101 1-0011010 1-1101111 0-0111010 1
+   * write a value to stream using unsigned var int format. for example, int
+   * 123456789 has its binary format 00000111-01011011-11001101-00010101 (if we
+   * omit the first 5 0, then it is 111010-1101111-0011010-0010101), function
+   * writeUnsignedVarInt will split every seven bits and write them to stream from
+   * low bit to high bit like: 1-0010101 1-0011010 1-1101111 0-0111010 1
    * represents has next byte to write, 0 represents number end.
    *
    * @param value value to write into stream
-   * @param out output stream
+   * @param out   output stream
    */
   public static void writeUnsignedVarInt(int value, ByteArrayOutputStream out) {
     while ((value & 0xFFFFFF80) != 0L) {
@@ -139,14 +143,16 @@ public class ReadWriteForEncodingUtils {
   }
 
   /**
-   * write a value to stream using unsigned var int format. for example, int 123456789 has its
-   * binary format 111010-1101111-0011010-0010101, function writeUnsignedVarInt will split every
-   * seven bits and write them to stream from low bit to high bit like: 1-0010101 1-0011010
-   * 1-1101111 0-0111010 1 represents has next byte to write, 0 represents number end.
+   * write a value to stream using unsigned var int format. for example, int
+   * 123456789 has its binary format 111010-1101111-0011010-0010101, function
+   * writeUnsignedVarInt will split every seven bits and write them to stream from
+   * low bit to high bit like: 1-0010101 1-0011010 1-1101111 0-0111010 1
+   * represents has next byte to write, 0 represents number end.
    *
-   * @param value value to write into stream
-   * @param buffer where to store the result. buffer.remaining() needs to >= 32. Notice: (1) this
-   * function does not check buffer's remaining(). (2) the position will be updated.
+   * @param value  value to write into stream
+   * @param buffer where to store the result. buffer.remaining() needs to >= 32.
+   *               Notice: (1) this function does not check buffer's remaining().
+   *               (2) the position will be updated.
    * @return the number of bytes that the value consume.
    * @throws IOException exception in IO
    */
@@ -164,8 +170,8 @@ public class ReadWriteForEncodingUtils {
   /**
    * write integer value using special bit to output stream.
    *
-   * @param value value to write to stream
-   * @param out output stream
+   * @param value    value to write to stream
+   * @param out      output stream
    * @param bitWidth bit length
    * @throws IOException exception in IO
    */
@@ -173,8 +179,7 @@ public class ReadWriteForEncodingUtils {
       throws IOException {
     int paddedByteNum = (bitWidth + 7) / 8;
     if (paddedByteNum > 4) {
-      throw new IOException(String.format(
-              TOO_LONG_BYTE_FORMAT, paddedByteNum));
+      throw new IOException(String.format(TOO_LONG_BYTE_FORMAT, paddedByteNum));
     }
     int offset = 0;
     while (paddedByteNum > 0) {
@@ -187,18 +192,16 @@ public class ReadWriteForEncodingUtils {
   /**
    * write long value using special bit to output stream.
    *
-   * @param value value to write to stream
-   * @param out output stream
+   * @param value    value to write to stream
+   * @param out      output stream
    * @param bitWidth bit length
    * @throws IOException exception in IO
    */
-  public static void writeLongLittleEndianPaddedOnBitWidth(long value, OutputStream out,
-      int bitWidth)
+  public static void writeLongLittleEndianPaddedOnBitWidth(long value, OutputStream out, int bitWidth)
       throws IOException {
     int paddedByteNum = (bitWidth + 7) / 8;
     if (paddedByteNum > 8) {
-      throw new IOException(String.format(
-              TOO_LONG_BYTE_FORMAT, paddedByteNum));
+      throw new IOException(String.format(TOO_LONG_BYTE_FORMAT, paddedByteNum));
     }
     out.write(BytesUtils.longToBytes(value, paddedByteNum));
   }
@@ -206,17 +209,15 @@ public class ReadWriteForEncodingUtils {
   /**
    * read integer value using special bit from input stream.
    *
-   * @param buffer byte buffer
+   * @param buffer   byte buffer
    * @param bitWidth bit length
    * @return integer value
    * @throws IOException exception in IO
    */
-  public static int readIntLittleEndianPaddedOnBitWidth(ByteBuffer buffer, int bitWidth)
-      throws IOException {
+  public static int readIntLittleEndianPaddedOnBitWidth(ByteBuffer buffer, int bitWidth) throws IOException {
     int paddedByteNum = (bitWidth + 7) / 8;
     if (paddedByteNum > 4) {
-      throw new IOException(String.format(
-              TOO_LONG_BYTE_FORMAT, paddedByteNum));
+      throw new IOException(String.format(TOO_LONG_BYTE_FORMAT, paddedByteNum));
     }
     int result = 0;
     int offset = 0;
@@ -232,17 +233,15 @@ public class ReadWriteForEncodingUtils {
   /**
    * read long value using special bit from input stream.
    *
-   * @param buffer byte buffer
+   * @param buffer   byte buffer
    * @param bitWidth bit length
    * @return long long value
    * @throws IOException exception in IO
    */
-  public static long readLongLittleEndianPaddedOnBitWidth(ByteBuffer buffer, int bitWidth)
-      throws IOException {
+  public static long readLongLittleEndianPaddedOnBitWidth(ByteBuffer buffer, int bitWidth) throws IOException {
     int paddedByteNum = (bitWidth + 7) / 8;
     if (paddedByteNum > 8) {
-      throw new IOException(String.format(
-              TOO_LONG_BYTE_FORMAT, paddedByteNum));
+      throw new IOException(String.format(TOO_LONG_BYTE_FORMAT, paddedByteNum));
     }
     long result = 0;
     for (int i = 0; i < paddedByteNum; i++) {

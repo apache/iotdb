@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile;
+package org.apache.iotdb.tsfile.test;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -40,6 +40,8 @@ public class TsFileWriteWithTSRecord {
 
   public static void main(String args[]) {
     try {
+      long start, end;
+      start = System.currentTimeMillis();
       String path = "test.tsfile";
       File f = FSFactoryProducer.getFSFactory().getFile(path);
       if (f.exists()) {
@@ -50,33 +52,31 @@ public class TsFileWriteWithTSRecord {
       // add measurements into file schema
       
       for (int i = 0; i < 100; i++) {
-        // add measurements into file schema
-        tsFileWriter.addTimeseries(new Path("device_" + (i % 4), "sensor_1"),
-                new TimeseriesSchema("sensor_1", TSDataType.INT64, TSEncoding.RLE));
-        tsFileWriter.addTimeseries(new Path("device_" + (i % 4), "sensor_2"),
-            new TimeseriesSchema("sensor_2", TSDataType.INT64, TSEncoding.RLE));
-        tsFileWriter.addTimeseries(new Path("device_" + (i % 4), "sensor_3"),
-            new TimeseriesSchema("sensor_3", TSDataType.INT64, TSEncoding.RLE));
+        for (int j = 0; j < 3200; j++) {
+          tsFileWriter
+          .addTimeseries(new Path("device_"+ i + ".sensor_"+j), new TimeseriesSchema("sensor_"+j, TSDataType.INT64, TSEncoding.RLE));
+        }
       }
 
       // construct TSRecord
       for (int i = 0; i < 100; i++) {
-        TSRecord tsRecord = new TSRecord(i, "device_" + (i % 4));
-        DataPoint dPoint1 = new LongDataPoint("sensor_1", i);
-        DataPoint dPoint2 = new LongDataPoint("sensor_2", i);
-        DataPoint dPoint3 = new LongDataPoint("sensor_3", i);
-        tsRecord.addTuple(dPoint1);
-        tsRecord.addTuple(dPoint2);
-        tsRecord.addTuple(dPoint3);
-
-        // write TSRecord
-        tsFileWriter.write(tsRecord);
+        for (int t = 0; t < 50000; t++) {
+          TSRecord tsRecord = new TSRecord(t, "device_" + i);
+          for (int j = 0; j < 320; j++) {
+            DataPoint dPoint = new LongDataPoint("sensor_"+ j, i*j);
+            tsRecord.addTuple(dPoint);
+          }
+          tsFileWriter.write(tsRecord);
+        }
       }
 
       tsFileWriter.close();
+      end = System.currentTimeMillis();
+      System.out.println("Run time: " + (end - start) + "ms");
     } catch (Throwable e) {
       e.printStackTrace();
-      System.out.println(e.getMessage());
+      // System.out.println(e.getMessage());
     }
   }
 }
+

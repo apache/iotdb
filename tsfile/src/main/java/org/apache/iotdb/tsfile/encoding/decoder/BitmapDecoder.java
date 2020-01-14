@@ -26,20 +26,23 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * Decoder switch or enums value using bitmap, bitmap-encoding:. {@code <length> <num>
+ * Decoder switch or enums value using bitmap, bitmap-encoding:.
+ * {@code <length> <num>
  * <encoded-data>}
  *
- * @deprecated (2019.1.25, The bitmap data type has been removed., We can reserve this class, and
- *reuse it later.)
+ * @deprecated (2019.1.25, The bitmap data type has been removed., We can
+ *             reserve this class, and reuse it later.)
  */
 @Deprecated
 public class BitmapDecoder extends Decoder {
@@ -62,12 +65,14 @@ public class BitmapDecoder extends Decoder {
   private int currentCount;
 
   /**
-   * each time decoder receives a inputstream, decoder creates a buffer to save all encoded data.
+   * each time decoder receives a inputstream, decoder creates a buffer to save
+   * all encoded data.
    */
   private ByteBuffer byteCache;
 
   /**
-   * decoder reads all bitmap index from byteCache and save in Map(value, bitmap index).
+   * decoder reads all bitmap index from byteCache and save in Map(value, bitmap
+   * index).
    */
   private Map<Integer, byte[]> buffer;
 
@@ -88,10 +93,8 @@ public class BitmapDecoder extends Decoder {
         getLengthAndNumber(buffer);
         readNext();
       } catch (IOException e) {
-        logger.error(
-            "tsfile-encoding BitmapDecoder: error occurs when reading next number. lenght {}, "
-                + "number {}, current number {}, result buffer {}",
-            length, number, currentCount, this.buffer, e);
+        logger.error("tsfile-encoding BitmapDecoder: error occurs when reading next number. lenght {}, "
+            + "number {}, current number {}, result buffer {}", length, number, currentCount, this.buffer, e);
       }
     }
     int result = 0;
@@ -150,7 +153,7 @@ public class BitmapDecoder extends Decoder {
   /**
    * For special value in page list, get its bitmap index.
    *
-   * @param target value to get its bitmap index
+   * @param target   value to get its bitmap index
    * @param pageList input page list
    * @return List(Pair of ( length, bitmap index) )
    */
@@ -172,8 +175,7 @@ public class BitmapDecoder extends Decoder {
       }
 
       resultList.add(new Pair<>(this.number, tmp));
-      logger.debug("tsfile-encoding BitmapDecoder: number {} in current page, byte length {}",
-          this.number,
+      logger.debug("tsfile-encoding BitmapDecoder: number {} in current page, byte length {}", this.number,
           byteArrayLength);
     }
     return resultList;

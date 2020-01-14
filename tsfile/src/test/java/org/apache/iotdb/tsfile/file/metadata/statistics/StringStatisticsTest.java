@@ -21,8 +21,11 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.junit.Test;
+
+import org.apache.iotdb.tsfile.file.metadata.statistics.BinaryStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 public class StringStatisticsTest {
 
