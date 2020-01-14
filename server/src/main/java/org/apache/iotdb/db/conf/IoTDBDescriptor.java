@@ -299,7 +299,7 @@ public class IoTDBDescriptor {
 
       conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
           String.valueOf(conf.getDefaultTTL()))));
-      // Time range for divide storage group
+      // Time range for dividing storage group
       conf.setPartitionInterval(
           Long.parseLong(properties.getProperty("partition_interval", String.valueOf(conf.getPartitionInterval()))));
 

@@ -25,6 +25,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Locale;
+
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -119,14 +121,14 @@ public class IoTDBFlushQueryMergeTest {
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 10; j < 20; j++) {
-          statement.execute(String.format(insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
+          statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
         }
       }
       statement.execute("FLUSH");
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 0; j < 10; j++) {
-          statement.execute(String.format(insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
+          statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
         }
       }
       statement.execute("FLUSH root.group1");
@@ -134,7 +136,7 @@ public class IoTDBFlushQueryMergeTest {
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 0; j < 30; j++) {
-          statement.execute(String.format(insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
+          statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
         }
       }
       statement.execute("FLUSH root.group1 true");

@@ -466,10 +466,10 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * The engine file means that the file is in the engine, which is different from those external
+   * The internal file means that the file is in the engine, which is different from those external
    * files which are not loaded.
    *
-   * @param file engine file
+   * @param file internal file
    * @return sg name
    */
   private String getSgByEngineFile(File file) {

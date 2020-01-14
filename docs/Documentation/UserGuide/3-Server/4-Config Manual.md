@@ -250,7 +250,7 @@ The detail of each variables are as follows:
 
 |Name| memtable\_num\_in\_each\_storage\_group |
 |:---:|:---|
-|Description| This config decide how many time series in different time partition can be insert concurrently.</br> For example, your partitionInterval is 86400 and you want to insert data in 3 different days, you should set this param >= 6 (for sequence and unsequence) |
+|Description| This config decides how many time partitions in a storage group can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 3 different days, you should set this param >= 6 (for sequence and unsequence) |
 |Type|Int32|
 |Default| 10 |
 |Effective|After restart system|
@@ -462,3 +462,21 @@ The detail of each variables are as follows:
 |Type| String |
 |Default|your principal |
 |Effective|After restart system|
+
+## Enable GC log
+GC log is off by default.
+For performance tuning, you may want to collect the GC info. 
+
+To enable GC log, just add a paramenter "printgc" when you start the server.
+
+```bash
+sbin/start-server.sh printgc
+```
+Or
+```bash
+sbin\start-server.bat printgc
+```
+
+GC log is stored at `IOTDB_HOME/logs/gc.log`.
+There will be at most 10 gc.log.* files and each one can reach to 10MB.
+

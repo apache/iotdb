@@ -97,20 +97,20 @@ import org.slf4j.LoggerFactory;
 /**
  * For sequence data, a StorageGroupProcessor has some TsFileProcessors, in which there is only one
  * TsFileProcessor in the working status. <br/>
- *
+ * <p>
  * There are two situations to set the working TsFileProcessor to closing status:<br/>
- *
+ * <p>
  * (1) when inserting data into the TsFileProcessor, and the TsFileProcessor shouldFlush() (or
  * shouldClose())<br/>
- *
+ * <p>
  * (2) someone calls waitForAllCurrentTsFileProcessorsClosed(). (up to now, only flush command from
  * cli will call this method)<br/>
- *
+ * <p>
  * UnSequence data has the similar process as above.
- *
+ * <p>
  * When a sequence TsFileProcessor is submitted to be flushed, the updateLatestFlushTimeCallback()
  * method will be called as a callback.<br/>
- *
+ * <p>
  * When a TsFileProcessor is closed, the closeUnsealedTsFileProcessor() method will be called as a
  * callback.
  */
@@ -151,15 +151,13 @@ public class StorageGroupProcessor {
    */
   private Schema schema;
   // includes sealed and unsealed sequence TsFiles
-  private TreeSet<TsFileResource> sequenceFileList = new TreeSet<>(
+  private TreeSet<TsFileResource> sequenceFileTreeSet = new TreeSet<>(
       (o1, o2) -> {
-        if (o1.getProcessor() == null || o2.getProcessor() == null) {
-          return compareFileName(o1.getFile(), o2.getFile());
-        }
-        int rangeCompare = Long
-            .compare(o1.getProcessor().getTimeRangeId(), o2.getProcessor().getTimeRangeId());
+        int rangeCompare = o1.getFile().getParentFile().getName()
+            .compareTo(o2.getFile().getParentFile().getName());
         return rangeCompare == 0 ? compareFileName(o1.getFile(), o2.getFile()) : rangeCompare;
       });
+
   private CopyOnReadLinkedList<TsFileProcessor> closingSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
   // includes sealed and unsealed unSequence TsFiles
   private List<TsFileResource> unSequenceFileList = new ArrayList<>();
@@ -172,12 +170,13 @@ public class StorageGroupProcessor {
    */
   private Map<Long, Map<String, Long>> latestTimeForEachDevice = new HashMap<>();
   /**
-   * device -> largest timestamp of the latest memtable to be submitted to asyncTryToFlush
-   * latestFlushedTimeForEachDevice determines whether a data point should be put into a sequential
-   * file or an unsequential file. Data of some device with timestamp less than or equals to the
-   * device's latestFlushedTime should go into an unsequential file.
+   * time partition id -> map, which contains device -> largest timestamp of the latest memtable to
+   * be submitted to asyncTryToFlush latestFlushedTimeForEachDevice determines whether a data point
+   * should be put into a sequential file or an unsequential file. Data of some device with
+   * timestamp less than or equals to the device's latestFlushedTime should go into an unsequential
+   * file.
    */
-  private Map<String, Long> latestFlushedTimeForEachDevice = new HashMap<>();
+  private Map<Long, Map<String, Long>> latestFlushedTimeForEachDevice = new HashMap<>();
   private String storageGroupName;
   private File storageGroupSysDir;
   /**
@@ -291,12 +290,13 @@ public class StorageGroupProcessor {
       throw new StorageGroupProcessorException(e);
     }
 
-    for (TsFileResource resource : sequenceFileList) {
+    for (TsFileResource resource : sequenceFileTreeSet) {
       long timePartitionId = getTimePartitionFromTsFileResource(resource);
       if (timePartitionId != -1) {
         latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>())
             .putAll(resource.getEndTimeMap());
-        latestFlushedTimeForEachDevice.putAll(resource.getEndTimeMap());
+        latestFlushedTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>())
+            .putAll(resource.getEndTimeMap());
       }
     }
   }
@@ -315,8 +315,7 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * get version controller by time partition Id
-   * Thread-safety should be ensure by caller
+   * get version controller by time partition Id Thread-safety should be ensure by caller
    *
    * @param timePartitionId time partition Id
    * @return version controller
@@ -380,7 +379,7 @@ public class StorageGroupProcessor {
   private void recoverSeqFiles(List<TsFileResource> tsFiles) throws StorageGroupProcessorException {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
-      sequenceFileList.add(tsFileResource);
+      sequenceFileTreeSet.add(tsFileResource);
       long timePartitionId = getTimePartitionFromTsFileResource(tsFileResource);
 
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
@@ -483,11 +482,13 @@ public class StorageGroupProcessor {
       long timePartitionId = fromTimeToTimePartition(insertPlan.getTime());
       latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>())
           .putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
-      latestFlushedTimeForEachDevice.putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
+      latestFlushedTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>())
+          .putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
 
       // insert to sequence or unSequence file
       insertToTsFileProcessor(insertPlan,
-          insertPlan.getTime() > latestFlushedTimeForEachDevice.get(insertPlan.getDeviceId()));
+          insertPlan.getTime() > latestFlushedTimeForEachDevice.get(timePartitionId)
+              .get(insertPlan.getDeviceId()));
     } finally {
       writeUnlock();
     }
@@ -496,50 +497,71 @@ public class StorageGroupProcessor {
   public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
     writeLock();
     try {
-      // init map
-      latestFlushedTimeForEachDevice.putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
-
       Integer[] results = new Integer[batchInsertPlan.getRowCount()];
-      long lastFlushTime = latestFlushedTimeForEachDevice.get(batchInsertPlan.getDeviceId());
 
       /*
-       * sequence time partition id -> indexes indicating which rows in a batch should be inserted
+       * assume that batch has been sorted by client
        */
-      TreeMap<Long, List<Integer>> sequenceTimeRangeIndexes = new TreeMap<>();
-      /*
-       * unsequence time partition id -> indexes indicating which rows in a batch should be inserted
-       */
-      TreeMap<Long, List<Integer>> unsequenceTimeRangeIndexes = new TreeMap<>();
-      for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
-        long currTime = batchInsertPlan.getTimes()[i];
+      int loc = 0;
+      while (loc < batchInsertPlan.getRowCount()) {
+        long currTime = batchInsertPlan.getTimes()[loc];
         // skip points that do not satisfy TTL
         if (!checkTTL(currTime)) {
-          results[i] = TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode();
-          continue;
-        }
-        results[i] = TSStatusCode.SUCCESS_STATUS.getStatusCode();
-        long timePartitionId = fromTimeToTimePartition(currTime);
-        if (currTime > lastFlushTime) {
-          // for sequence
-          sequenceTimeRangeIndexes.computeIfAbsent(timePartitionId, k -> new ArrayList<>()).add(i);
+          results[loc] = TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode();
+          loc++;
         } else {
-          // for unsequence
-          unsequenceTimeRangeIndexes.computeIfAbsent(timePartitionId, k -> new ArrayList<>())
-              .add(i);
+          break;
+        }
+      }
+      // loc pointing at first legal position
+      if (loc == batchInsertPlan.getRowCount()) {
+        return results;
+      }
+      // before is first start point
+      int before = loc;
+      // before time partition
+      long beforeTimePartition = fromTimeToTimePartition(batchInsertPlan.getTimes()[before]);
+      // init map
+      long lastFlushTime = latestFlushedTimeForEachDevice.
+          computeIfAbsent(beforeTimePartition, id -> new HashMap<>()).
+          computeIfAbsent(batchInsertPlan.getDeviceId(), id -> Long.MIN_VALUE);
+      // if is sequence
+      boolean isSequence = false;
+      while (loc < batchInsertPlan.getRowCount()) {
+        long time = batchInsertPlan.getTimes()[loc];
+        long curTimePartition = fromTimeToTimePartition(time);
+        results[loc] = TSStatusCode.SUCCESS_STATUS.getStatusCode();
+        // start next partition
+        if (curTimePartition != beforeTimePartition) {
+          // insert last time partition
+          insertBatchToTsFileProcessor(batchInsertPlan, before, loc, isSequence, results,
+              beforeTimePartition);
+          // re initialize
+          before = loc;
+          beforeTimePartition = curTimePartition;
+          lastFlushTime = latestFlushedTimeForEachDevice.
+              computeIfAbsent(beforeTimePartition, id -> new HashMap<>()).
+              computeIfAbsent(batchInsertPlan.getDeviceId(), id -> Long.MIN_VALUE);
+          isSequence = false;
+        }
+        // still in this partition
+        else {
+          // judge if we should insert sequence
+          if (!isSequence && time > lastFlushTime) {
+            // insert into unsequence and then start sequence
+            insertBatchToTsFileProcessor(batchInsertPlan, before, loc, false, results,
+                beforeTimePartition);
+            before = loc;
+            isSequence = true;
+          }
+          loc++;
         }
       }
 
-      for (Map.Entry<Long, List<Integer>> entry : sequenceTimeRangeIndexes.entrySet()) {
-        long timePartitionId = entry.getKey();
-        latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>())
-            .putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
-        insertBatchToTsFileProcessor(batchInsertPlan, entry.getValue(), true, results,
-            timePartitionId);
-      }
-
-      for (Map.Entry<Long, List<Integer>> entry : unsequenceTimeRangeIndexes.entrySet()) {
-        insertBatchToTsFileProcessor(batchInsertPlan, entry.getValue(), false, results,
-            entry.getKey());
+      // do not forget last part
+      if (before < loc) {
+        insertBatchToTsFileProcessor(batchInsertPlan, before, loc, isSequence, results,
+            beforeTimePartition);
       }
 
       return results;
@@ -556,40 +578,40 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * insert batch to tsfile processor
-   * thread-safety that the caller need to guarantee
+   * insert batch to tsfile processor thread-safety that the caller need to guarantee
    *
    * @param batchInsertPlan batch insert plan
-   * @param indexes indexes of insert
-   * @param sequence whether is sequence
-   * @param results result array
+   * @param sequence        whether is sequence
+   * @param results         result array
    * @param timePartitionId time partition id
    */
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
-      List<Integer> indexes, boolean sequence, Integer[] results, long timePartitionId)
+      int start, int end, boolean sequence, Integer[] results, long timePartitionId)
       throws QueryProcessException {
+    // return when start <= end
+    if (start >= end) {
+      return;
+    }
 
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId,
         sequence);
     if (tsFileProcessor == null) {
-      for (int index : indexes) {
-        results[index] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
+      for (int i = start; i < end; i++) {
+        results[i] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
       }
       return;
     }
 
-    boolean result = tsFileProcessor.insertBatch(batchInsertPlan, indexes, results);
+    boolean result = tsFileProcessor.insertBatch(batchInsertPlan, start, end, results);
 
+    latestTimeForEachDevice.computeIfAbsent(timePartitionId, t -> new HashMap<>())
+        .putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
     // try to update the latest time of the device of this tsRecord
-    long maxTime = Long.MIN_VALUE;
-    for (int i : indexes) {
-      maxTime = Math.max(maxTime, batchInsertPlan.getTimes()[i]);
-    }
     if (sequence && result
         && latestTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId())
-        < maxTime) {
+        < batchInsertPlan.getTimes()[end - 1]) {
       latestTimeForEachDevice.get(timePartitionId)
-          .put(batchInsertPlan.getDeviceId(), maxTime);
+          .put(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
     }
 
     // check memtable size and may async try to flush the work memtable
@@ -597,6 +619,7 @@ public class StorageGroupProcessor {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
   }
+
 
   private void insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
       throws QueryProcessException {
@@ -632,7 +655,7 @@ public class StorageGroupProcessor {
     try {
       if (sequence) {
         tsFileProcessor = getOrCreateTsFileProcessorIntern(timeRangeId,
-            workSequenceTsFileProcessors, sequenceFileList, true);
+            workSequenceTsFileProcessors, sequenceFileTreeSet, true);
       } else {
         tsFileProcessor = getOrCreateTsFileProcessorIntern(timeRangeId,
             workUnsequenceTsFileProcessors, unSequenceFileList, false);
@@ -652,12 +675,12 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * get processor from hashmap, flush oldest processor is necessary
+   * get processor from hashmap, flush oldest processor if necessary
    *
-   * @param timeRangeId time partition range
+   * @param timeRangeId            time partition range
    * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
-   * @param fileList file list to add new processor
-   * @param sequence whether is sequence or not
+   * @param fileList               file list to add new processor
+   * @param sequence               whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRangeId,
       TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap,
@@ -807,7 +830,7 @@ public class StorageGroupProcessor {
         logger.error("Cannot close a TsFileResource {}", tsFileResource, e);
       }
     }
-    for (TsFileResource tsFileResource : sequenceFileList) {
+    for (TsFileResource tsFileResource : sequenceFileTreeSet) {
       try {
         tsFileResource.close();
       } catch (IOException e) {
@@ -837,7 +860,7 @@ public class StorageGroupProcessor {
 
       this.workSequenceTsFileProcessors.clear();
       this.workUnsequenceTsFileProcessors.clear();
-      this.sequenceFileList.clear();
+      this.sequenceFileTreeSet.clear();
       this.unSequenceFileList.clear();
       this.latestFlushedTimeForEachDevice.clear();
       this.latestTimeForEachDevice.clear();
@@ -873,7 +896,7 @@ public class StorageGroupProcessor {
     }
 
     // copy to avoid concurrent modification of deletion
-    List<TsFileResource> seqFiles = new ArrayList<>(sequenceFileList);
+    List<TsFileResource> seqFiles = new ArrayList<>(sequenceFileTreeSet);
     List<TsFileResource> unseqFiles = new ArrayList<>(unSequenceFileList);
 
     for (TsFileResource tsFileResource : seqFiles) {
@@ -910,7 +933,7 @@ public class StorageGroupProcessor {
                 new Date(timeLowerBound), dataTTL);
           }
           if (isSeq) {
-            sequenceFileList.remove(resource);
+            sequenceFileTreeSet.remove(resource);
           } else {
             unSequenceFileList.remove(resource);
           }
@@ -972,10 +995,15 @@ public class StorageGroupProcessor {
       lruForSensorUsedInQuery.add(measurementId);
     }
     try {
-      List<TsFileResource> seqResources = getFileResourceListForQuery(sequenceFileList,
+      List<TsFileResource> seqResources = getFileResourceListForQuery(sequenceFileTreeSet,
           deviceId, measurementId, context);
       List<TsFileResource> unseqResources = getFileResourceListForQuery(unSequenceFileList,
           deviceId, measurementId, context);
+      System.out.println("!!!");
+      for(TsFileResource resource : seqResources){
+        System.out.println(resource);
+      }
+      System.out.println("!!!");
       QueryDataSource dataSource = new QueryDataSource(new Path(deviceId, measurementId),
           seqResources, unseqResources);
       // used files should be added before mergeLock is unlocked, or they may be deleted by
@@ -1084,9 +1112,9 @@ public class StorageGroupProcessor {
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param deviceId the deviceId of the timeseries to be deleted.
+   * @param deviceId      the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param timestamp the delete range is (0, timestamp].
+   * @param timestamp     the delete range is (0, timestamp].
    */
   public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
     // TODO: how to avoid partial deletion?
@@ -1117,17 +1145,18 @@ public class StorageGroupProcessor {
       long timePartitionId = fromTimeToTimePartition(timestamp);
       // write log
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+        DeletePlan deletionPlan = new DeletePlan(timestamp, new Path(deviceId, measurementId));
         for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
           if (entry.getKey() <= timePartitionId) {
             entry.getValue().getLogNode()
-                .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+                .write(deletionPlan);
           }
         }
 
         for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
           if (entry.getKey() <= timePartitionId) {
             entry.getValue().getLogNode()
-                .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+                .write(deletionPlan);
           }
         }
       }
@@ -1140,7 +1169,7 @@ public class StorageGroupProcessor {
         updatedModFiles.add(mergingModification);
       }
 
-      deleteDataInFiles(sequenceFileList, deletion, updatedModFiles);
+      deleteDataInFiles(sequenceFileTreeSet, deletion, updatedModFiles);
       deleteDataInFiles(unSequenceFileList, deletion, updatedModFiles);
 
     } catch (Exception e) {
@@ -1204,7 +1233,8 @@ public class StorageGroupProcessor {
     // update the largest timestamp in the last flushing memtable
     for (Entry<String, Long> entry : latestTimeForEachDevice.get(processor.getTimeRangeId())
         .entrySet()) {
-      latestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
+      latestFlushedTimeForEachDevice.get(processor.getTimeRangeId())
+          .put(entry.getKey(), entry.getValue());
     }
     return true;
   }
@@ -1240,7 +1270,7 @@ public class StorageGroupProcessor {
    */
   public int countUpgradeFiles() {
     int cntUpgradeFileNum = 0;
-    for (TsFileResource seqTsFileResource : sequenceFileList) {
+    for (TsFileResource seqTsFileResource : sequenceFileTreeSet) {
       if (UpgradeUtils.isNeedUpgrade(seqTsFileResource)) {
         cntUpgradeFileNum += 1;
       }
@@ -1254,7 +1284,7 @@ public class StorageGroupProcessor {
   }
 
   public void upgrade() {
-    for (TsFileResource seqTsFileResource : sequenceFileList) {
+    for (TsFileResource seqTsFileResource : sequenceFileTreeSet) {
       seqTsFileResource.doUpgrade();
     }
     for (TsFileResource unseqTsFileResource : unSequenceFileList) {
@@ -1272,14 +1302,14 @@ public class StorageGroupProcessor {
         }
         return;
       }
-      if (unSequenceFileList.isEmpty() || sequenceFileList.isEmpty()) {
+      if (unSequenceFileList.isEmpty() || sequenceFileTreeSet.isEmpty()) {
         logger.info("{} no files to be merged", storageGroupName);
         return;
       }
 
       long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
       long timeLowerBound = System.currentTimeMillis() - dataTTL;
-      MergeResource mergeResource = new MergeResource(sequenceFileList, unSequenceFileList,
+      MergeResource mergeResource = new MergeResource(sequenceFileTreeSet, unSequenceFileList,
           timeLowerBound);
 
       IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
@@ -1368,7 +1398,8 @@ public class StorageGroupProcessor {
         try {
           seqFile.getModFile().close();
         } catch (IOException e) {
-          logger.error("Cannot close the ModificationFile {}", seqFile.getModFile().getFilePath(), e);
+          logger
+              .error("Cannot close the ModificationFile {}", seqFile.getModFile().getFilePath(), e);
         }
       }
     } catch (IOException e) {
@@ -1424,12 +1455,12 @@ public class StorageGroupProcessor {
   /**
    * Load a new tsfile to storage group processor. The mechanism of the sync module will make sure
    * that there has no file which is overlapping with the new file.
-   *
+   * <p>
    * Firstly, determine the loading type of the file, whether it needs to be loaded in sequence list
    * or unsequence list.
-   *
+   * <p>
    * Secondly, execute the loading process by the type.
-   *
+   * <p>
    * Finally, update the latestTimeForEachDevice and latestFlushedTimeForEachDevice.
    *
    * @param newTsFileResource tsfile resource
@@ -1457,12 +1488,12 @@ public class StorageGroupProcessor {
 
   /**
    * Load a new tsfile to storage group processor. Tne file may have overlap with other files.
-   *
+   * <p>
    * Firstly, determine the loading type of the file, whether it needs to be loaded in sequence list
    * or unsequence list.
-   *
+   * <p>
    * Secondly, execute the loading process by the type.
-   *
+   * <p>
    * Finally, update the latestTimeForEachDevice and latestFlushedTimeForEachDevice.
    *
    * @param newTsFileResource tsfile resource
@@ -1475,9 +1506,9 @@ public class StorageGroupProcessor {
     mergeLock.writeLock().lock();
     try {
       boolean isOverlap = false;
-      int preIndex = -1, subsequentIndex = sequenceFileList.size();
+      int preIndex = -1, subsequentIndex = sequenceFileTreeSet.size();
 
-      List<TsFileResource> sequenceList = new ArrayList<>(sequenceFileList);
+      List<TsFileResource> sequenceList = new ArrayList<>(sequenceFileTreeSet);
       // check new tsfile
       outer:
       for (int i = 0; i < sequenceList.size(); i++) {
@@ -1523,7 +1554,7 @@ public class StorageGroupProcessor {
       } else {
 
         // check whether the file name needs to be renamed.
-        if (subsequentIndex != sequenceFileList.size() || preIndex != -1) {
+        if (subsequentIndex != sequenceFileTreeSet.size() || preIndex != -1) {
           String newFileName = getFileNameForLoadingFile(tsfileToBeInserted.getName(), preIndex,
               subsequentIndex, getTimePartitionFromTsFileResource(newTsFileResource));
           if (!newFileName.equals(tsfileToBeInserted.getName())) {
@@ -1553,21 +1584,21 @@ public class StorageGroupProcessor {
   /**
    * Get an appropriate filename to ensure the order between files. The tsfile is named after
    * ({systemTime}-{versionNum}-{mergeNum}.tsfile).
-   *
+   * <p>
    * The sorting rules for tsfile names @see {@link this#compareFileName}, we can restore the list
    * based on the file name and ensure the correctness of the order, so there are three cases.
-   *
+   * <p>
    * 1. The tsfile is to be inserted in the first place of the list. If the timestamp in the file
    * name is less than the timestamp in the file name of the first tsfile  in the list, then the
    * file name is legal and the file name is returned directly. Otherwise, its timestamp can be set
    * to half of the timestamp value in the file name of the first tsfile in the list , and the
    * version number is the version number in the file name of the first tsfile in the list.
-   *
+   * <p>
    * 2. The tsfile is to be inserted in the last place of the list. If the timestamp in the file
    * name is lager than the timestamp in the file name of the last tsfile  in the list, then the
    * file name is legal and the file name is returned directly. Otherwise, the file name is
    * generated by the system according to the naming rules and returned.
-   *
+   * <p>
    * 3. This file is inserted between two files. If the timestamp in the name of the file satisfies
    * the timestamp between the timestamps in the name of the two files, then it is a legal name and
    * returns directly; otherwise, the time stamp is the mean of the timestamps of the two files, the
@@ -1581,14 +1612,14 @@ public class StorageGroupProcessor {
     long currentTsFileTime = Long
         .parseLong(tsfileName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
     long preTime;
-    List<TsFileResource> sequenceList = new ArrayList<>(sequenceFileList);
+    List<TsFileResource> sequenceList = new ArrayList<>(sequenceFileTreeSet);
     if (preIndex == -1) {
       preTime = 0L;
     } else {
       String preName = sequenceList.get(preIndex).getFile().getName();
       preTime = Long.parseLong(preName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
     }
-    if (subsequentIndex == sequenceFileList.size()) {
+    if (subsequentIndex == sequenceFileTreeSet.size()) {
       return preTime < currentTsFileTime ? tsfileName : getNewTsFileName(timePartitionId);
     } else {
       String subsequenceName = sequenceList.get(subsequentIndex).getFile().getName();
@@ -1620,9 +1651,15 @@ public class StorageGroupProcessor {
           || latestTimeForEachDevice.get(timePartitionId).get(device) < endTime) {
         latestTimeForEachDevice.get(timePartitionId).put(device, endTime);
       }
-      if (!latestFlushedTimeForEachDevice.containsKey(device)
-          || latestFlushedTimeForEachDevice.get(device) < endTime) {
-        latestFlushedTimeForEachDevice.put(device, endTime);
+
+      Map<String, Long> latestFlushTimeForPartition = latestFlushedTimeForEachDevice
+          .getOrDefault(timePartitionId, new HashMap<>());
+
+      if (!latestFlushTimeForPartition.containsKey(device)
+          || latestFlushTimeForPartition.get(device) < endTime) {
+        latestFlushedTimeForEachDevice
+            .computeIfAbsent(timePartitionId, id -> new HashMap<String, Long>())
+            .put(device, endTime);
       }
     }
   }
@@ -1630,7 +1667,7 @@ public class StorageGroupProcessor {
   /**
    * Execute the loading process by the type.
    *
-   * @param type load type
+   * @param type           load type
    * @param tsFileResource tsfile resource to be loaded
    * @UsedBy sync module, load external tsfile module.
    */
@@ -1656,7 +1693,7 @@ public class StorageGroupProcessor {
                 storageGroupName + File.separatorChar + timeRangeId + File.separator
                     + tsFileResource.getFile().getName());
         tsFileResource.setFile(targetFile);
-        sequenceFileList.add(tsFileResource);
+        sequenceFileTreeSet.add(tsFileResource);
         logger.info("Load tsfile in sequence list, move file from {} to {}",
             syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath());
         break;
@@ -1697,9 +1734,9 @@ public class StorageGroupProcessor {
 
   /**
    * Delete tsfile if it exists.
-   *
+   * <p>
    * Firstly, remove the TsFileResource from sequenceFileList/unSequenceFileList.
-   *
+   * <p>
    * Secondly, delete the tsfile and .resource file.
    *
    * @param tsfieToBeDeleted tsfile to be deleted
@@ -1711,7 +1748,7 @@ public class StorageGroupProcessor {
     mergeLock.writeLock().lock();
     TsFileResource tsFileResourceToBeDeleted = null;
     try {
-      Iterator<TsFileResource> sequenceIterator = sequenceFileList.iterator();
+      Iterator<TsFileResource> sequenceIterator = sequenceFileTreeSet.iterator();
       while (sequenceIterator.hasNext()) {
         TsFileResource sequenceResource = sequenceIterator.next();
         if (sequenceResource.getFile().getName().equals(tsfieToBeDeleted.getName())) {
@@ -1755,9 +1792,9 @@ public class StorageGroupProcessor {
 
   /**
    * Move tsfile to the target directory if it exists.
-   *
+   * <p>
    * Firstly, remove the TsFileResource from sequenceFileList/unSequenceFileList.
-   *
+   * <p>
    * Secondly, move the tsfile and .resource file to the target directory.
    *
    * @param fileToBeMoved tsfile to be moved
@@ -1769,7 +1806,7 @@ public class StorageGroupProcessor {
     mergeLock.writeLock().lock();
     TsFileResource tsFileResourceToBeMoved = null;
     try {
-      Iterator<TsFileResource> sequenceIterator = sequenceFileList.iterator();
+      Iterator<TsFileResource> sequenceIterator = sequenceFileTreeSet.iterator();
       while (sequenceIterator.hasNext()) {
         TsFileResource sequenceResource = sequenceIterator.next();
         if (sequenceResource.getFile().getName().equals(fileToBeMoved.getName())) {
@@ -1819,8 +1856,8 @@ public class StorageGroupProcessor {
   }
 
   @TestOnly
-  public List<TsFileResource> getSequenceFileList() {
-    return new ArrayList<>(sequenceFileList);
+  public List<TsFileResource> getSequenceFileTreeSet() {
+    return new ArrayList<>(sequenceFileTreeSet);
   }
 
   @TestOnly

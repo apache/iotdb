@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.storagegroup;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -178,7 +177,7 @@ public class TsFileProcessor {
     return true;
   }
 
-  public boolean insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes,
+  public boolean insertBatch(BatchInsertPlan batchInsertPlan, int start, int end,
       Integer[] results) throws QueryProcessException {
 
     if (workMemTable == null) {
@@ -186,35 +185,28 @@ public class TsFileProcessor {
     }
 
     // insert insertPlan to the work memtable
-    workMemTable.insertBatch(batchInsertPlan, indexes);
+    workMemTable.insertBatch(batchInsertPlan, start, end);
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
-        batchInsertPlan.setIndex(new HashSet<>(indexes));
+        batchInsertPlan.setStart(start);
+        batchInsertPlan.setEnd(end);
         getLogNode().write(batchInsertPlan);
       } catch (IOException e) {
         logger.error("write WAL failed", e);
-        for (int index : indexes) {
-          results[index] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
+        for (int i = start; i < end; i++) {
+          results[i] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
         }
         return false;
       }
     }
 
-    long minTime = Long.MAX_VALUE;
-    for (int i : indexes) {
-      minTime = Math.min(minTime, batchInsertPlan.getTimes()[i]);
-    }
-    tsFileResource.updateStartTime(batchInsertPlan.getDeviceId(), minTime);
+    tsFileResource.updateStartTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[start]);
 
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     //for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
-      long maxTime = Long.MIN_VALUE;
-      for (int i : indexes) {
-        maxTime = Math.max(maxTime, batchInsertPlan.getTimes()[i]);
-      }
-      tsFileResource.updateEndTime(batchInsertPlan.getDeviceId(), maxTime);
+      tsFileResource.updateEndTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
     }
 
     return true;
