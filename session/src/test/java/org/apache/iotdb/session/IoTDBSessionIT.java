@@ -24,6 +24,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -704,14 +705,17 @@ public class IoTDBSessionIT {
       for (int i = 0; i < colCount; i++) {
         resultStr.append(metaData.getColumnLabel(i + 1) + "\n");
       }
-      System.out.println("her2");
+      // System.out.println("her2");
 
       int count = 0;
       long beforeTime = 0;
       int errorCount = 0;
+      HashSet<Long> res = new HashSet<>();
       while (resultSet.next()) {
         long curTime = resultSet.getLong(1);
-        //System.out.println(curTime);
+        long partition = curTime / 1000 / 86400;
+        res.add(partition);
+        System.out.println(curTime);
         if (beforeTime < curTime) {
           beforeTime = curTime;
         } else {
@@ -727,6 +731,7 @@ public class IoTDBSessionIT {
 //
 //        }
       }
+      System.out.println(res);
       Assert.assertEquals(7000, count);
       Assert.assertEquals(standard, resultStr.toString());
       // d1 and d2 will align
