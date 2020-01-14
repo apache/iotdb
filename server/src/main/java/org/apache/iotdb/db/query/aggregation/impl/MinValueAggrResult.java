@@ -28,9 +28,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class LastValueAggrFunc extends AggregateResult {
+public class MinValueAggrResult extends AggregateResult {
 
-  public LastValueAggrFunc(TSDataType dataType) {
+  public MinValueAggrResult(TSDataType dataType) {
     super(dataType);
   }
 
@@ -41,54 +41,42 @@ public class LastValueAggrFunc extends AggregateResult {
 
   @Override
   public AggreResultData getResult() {
-    if (resultData.isSetTime()) {
-      resultData.setTimestamp(0);
-    }
     return resultData;
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics) throws QueryProcessException {
-    Object lastVal = statistics.getLastValue();
-    updateLastResult(statistics.getEndTime(), lastVal);
+  public void updateResultFromStatistics(Statistics statistics) {
+    Comparable<Object> minVal = (Comparable<Object>) statistics.getMinValue();
+    updateResult(minVal);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage) {
     updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
-    long time = -1;
-    Object lastVal = null;
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
     while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
-      time = dataInThisPage.currentTime();
-      lastVal = dataInThisPage.currentValue();
+      updateResult((Comparable<Object>) dataInThisPage.currentValue());
       dataInThisPage.next();
-    }
-
-    if (time != -1) {
-      updateLastResult(time, lastVal);
     }
   }
 
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-
-    long time = -1;
-    Object lastVal = null;
+    Comparable<Object> minVal = null;
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
-        time = timestamps[i];
-        lastVal = value;
+      if (value == null) {
+        continue;
+      }
+      if (minVal == null || minVal.compareTo(value) > 0) {
+        minVal = (Comparable<Object>) value;
       }
     }
-    if (time != -1) {
-      updateLastResult(time, lastVal);
-    }
+    updateResult(minVal);
   }
 
   @Override
@@ -96,13 +84,12 @@ public class LastValueAggrFunc extends AggregateResult {
     return false;
   }
 
-  private void updateLastResult(long time, Object value) {
-    if (!resultData.isSetTime()) {
-      resultData.putTimeAndValue(time, value);
-    } else {
-      if (time >= resultData.getTimestamp()) {
-        resultData.putTimeAndValue(time, value);
-      }
+  private void updateResult(Comparable<Object> minVal) {
+    if (minVal == null) {
+      return;
+    }
+    if (!resultData.hasResult() || minVal.compareTo(resultData.getValue()) < 0) {
+      resultData.setValue(minVal);
     }
   }
 

@@ -116,7 +116,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     unseqFileResource = sortUnSeqFileResources(queryDataSource.getUnseqResources());
 
     removeInvalidFiles();
-    fillMetadataContainer();
+    tryToFillChunkMetadatas();
   }
 
   //for test
@@ -134,7 +134,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     unseqFileResource = sortUnSeqFileResources(queryDataSource.getUnseqResources());
 
     removeInvalidFiles();
-    fillMetadataContainer();
+    tryToFillChunkMetadatas();
   }
 
   //for test
@@ -151,7 +151,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     this.unseqFileResource = new TreeSet<>();
 
     removeInvalidFiles();
-    fillMetadataContainer();
+    tryToFillChunkMetadatas();
   }
 
 
@@ -166,7 +166,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
       return false;
     }
     unpackOverlappedFiles();
-    fillOverlappedChunks();
+    unPackOverlappedChunks();
     return hasCachedNextChunk;
   }
 
@@ -422,7 +422,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
       }
       break;
     }
-    fillMetadataContainer();
+    tryToFillChunkMetadatas();
   }
 
   /**
@@ -430,7 +430,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
    * chunks at once, which may OOM, so we can only fill one file at a time when needed. This
    * approach is likely to be ubiquitous, but it keeps the system running smoothly
    */
-  private void fillMetadataContainer() throws IOException {
+  private void tryToFillChunkMetadatas() throws IOException {
     while (seqChunkMetadatas.isEmpty() && !seqFileResource.isEmpty()) {
       seqChunkMetadatas.addAll(loadChunkMetadatas(seqFileResource.remove(0)));
     }
@@ -445,7 +445,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
    * to clean up all the unused chunks and populate the container. It should be noted that this
    * chunk collection is not in order, and all chunks should be used at once
    */
-  private void fillOverlappedChunks() throws IOException {
+  private void unPackOverlappedChunks() throws IOException {
     while (!unseqChunkMetadatas.isEmpty()) {
       long startTime = unseqChunkMetadatas.first().getStartTime();
 

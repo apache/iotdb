@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
-import java.io.IOException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
@@ -28,75 +26,102 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class FirstValueAggrFunc extends AggregateResult {
+import java.io.IOException;
 
-  public FirstValueAggrFunc(TSDataType dataType) {
-    super(dataType);
+public class AvgAggrResult extends AggregateResult {
+
+  protected double sum = 0.0;
+  private int cnt = 0;
+  private TSDataType seriesDataType;
+  private static final String AVG_AGGR_NAME = "AVG";
+
+  public AvgAggrResult(TSDataType seriesDataType) {
+    super(TSDataType.DOUBLE);
+    this.seriesDataType = seriesDataType;
   }
 
   @Override
   public void init() {
     resultData.reset();
+    sum = 0.0;
+    cnt = 0;
   }
 
   @Override
   public AggreResultData getResult() {
+    if (cnt > 0) {
+      resultData.setDoubleRet(sum / cnt);
+    }
     return resultData;
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics)
-      throws QueryProcessException {
-    if (resultData.isSetTime()) {
-      return;
-    }
-
-    Object firstVal = statistics.getFirstValue();
-    if (firstVal == null) {
-      throw new QueryProcessException("ChunkMetaData contains no FIRST value");
-    }
-    resultData.putTimeAndValue(0, firstVal);
+  public void updateResultFromStatistics(Statistics statistics) {
+    sum += statistics.getSumValue();
+    cnt += statistics.getCount();
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
-    if (resultData.isSetTime()) {
-      return;
-    }
-    if (dataInThisPage.hasCurrent()) {
-      resultData.putTimeAndValue(0, dataInThisPage.currentValue());
-    }
+  public void updateResultFromPageData(BatchData dataInThisPage)
+      throws IOException {
+    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
   }
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
-    if (resultData.isSetTime()) {
-      return;
-    }
-    if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
-      resultData.putTimeAndValue(0, dataInThisPage.currentValue());
+    while (dataInThisPage.hasCurrent()) {
+      if (dataInThisPage.currentTime() >= bound) {
+        break;
+      }
+      updateMean(seriesDataType, dataInThisPage.currentValue());
       dataInThisPage.next();
     }
+  }
+
+  private void updateMean(TSDataType type, Object sumVal) throws IOException {
+    switch (type) {
+      case INT32:
+        sum += (int) sumVal;
+        break;
+      case INT64:
+        sum += (long) sumVal;
+        break;
+      case FLOAT:
+        sum += (float) sumVal;
+        break;
+      case DOUBLE:
+        sum += (double) sumVal;
+        break;
+      case TEXT:
+      case BOOLEAN:
+      default:
+        throw new IOException(
+            String
+                .format("Unsupported data type in aggregation %s : %s", getAggreTypeName(), type));
+    }
+    cnt++;
   }
 
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    if (resultData.isSetTime()) {
-      return;
-    }
-
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
-        resultData.putTimeAndValue(0, value);
-        break;
+        updateMean(seriesDataType, value);
       }
     }
   }
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return resultData.isSetTime();
+    return false;
+  }
+
+  /**
+   * Return type name of aggregation
+   */
+  public String getAggreTypeName() {
+    return AVG_AGGR_NAME;
   }
 }

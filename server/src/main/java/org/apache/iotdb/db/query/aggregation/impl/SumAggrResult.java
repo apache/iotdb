@@ -22,18 +22,17 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class SumAggrFunc extends AvgAggrFunc {
+public class SumAggrResult extends AvgAggrResult {
 
   private static final String SUM_AGGR_NAME = "SUM";
 
-  public SumAggrFunc(TSDataType seriesDataType) {
+  public SumAggrResult(TSDataType seriesDataType) {
     super(seriesDataType);
   }
 
   @Override
   public AggreResultData getResult() {
     resultData.setDoubleRet(sum);
-    resultData.setTimestamp(0);
     return resultData;
   }
 

@@ -30,12 +30,10 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrFunc;
-import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrFunc;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
 import org.apache.iotdb.db.query.dataset.OldEngineDataSetWithoutValueFilter;
-import org.apache.iotdb.db.query.factory.AggreFuncFactory;
+import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderWithoutValueFilter;
@@ -52,6 +50,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 public class NewAggregateEngineExecutor {
 
   private List<Path> selectedSeries;
+  private List<TSDataType> dataTypes;
   private List<String> aggres;
   private IExpression expression;
 
@@ -60,11 +59,9 @@ public class NewAggregateEngineExecutor {
    **/
   private int aggregateFetchSize;
 
-  /**
-   * constructor.
-   */
   public NewAggregateEngineExecutor(AggregationPlan aggregationPlan) {
     this.selectedSeries = aggregationPlan.getDeduplicatedPaths();
+    this.dataTypes = aggregationPlan.getDeduplicatedDataTypes();
     this.aggres = aggregationPlan.getDeduplicatedAggregations();
     this.expression = aggregationPlan.getExpression();
     this.aggregateFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
@@ -77,97 +74,68 @@ public class NewAggregateEngineExecutor {
    */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
       throws StorageEngineException, IOException, QueryProcessException {
+
     Filter timeFilter = null;
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
 
-    List<SeriesDataReaderWithoutValueFilter> readersOfSequenceData = new ArrayList<>();
-    List<AggregateResult> aggregateResults = new ArrayList<>();
-    for (int i = 0; i < selectedSeries.size(); i++) {
-      // construct AggregateFunction
-      TSDataType tsDataType = MManager.getInstance()
-          .getSeriesType(selectedSeries.get(i).getFullPath());
-      AggregateResult function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), tsDataType);
-      function.init();
-      aggregateResults.add(function);
-
-      // sequence reader for sealed tsfile, unsealed tsfile, memory
-      SeriesDataReaderWithoutValueFilter newSeriesReaderWithoutValueFilter = new SeriesDataReaderWithoutValueFilter(
-          selectedSeries.get(i), tsDataType, timeFilter, context);
-      readersOfSequenceData.add(newSeriesReaderWithoutValueFilter);
-    }
-
     List<AggreResultData> aggreResultDataList = new ArrayList<>();
     //TODO use multi-thread
     for (int i = 0; i < selectedSeries.size(); i++) {
-      AggreResultData aggreResultData = aggregateWithoutValueFilter(aggregateResults.get(i),
-          readersOfSequenceData.get(i));
+      AggreResultData aggreResultData = aggregateOneSeries(i, timeFilter, context);
       aggreResultDataList.add(aggreResultData);
     }
     return constructDataSet(aggreResultDataList);
   }
 
+
   /**
-   * calculation aggregate result with only time filter or no filter for one series.
-   *
-   * @return one series aggregate result data
+   * get aggregation result for one series
    */
-  private AggreResultData aggregateWithoutValueFilter(AggregateResult function,
-      SeriesDataReaderWithoutValueFilter newSeriesReader)
-      throws IOException, QueryProcessException {
-    if (function instanceof MaxTimeAggrFunc || function instanceof LastValueAggrFunc) {
-      return handleLastMaxTimeWithOutTimeGenerator(function, newSeriesReader);
-    }
+  private AggreResultData aggregateOneSeries(int i, Filter timeFilter, QueryContext context)
+      throws IOException, QueryProcessException, StorageEngineException {
 
-    return getAggreResultData(function, newSeriesReader);
-  }
+    // construct AggregateResult
+    TSDataType tsDataType = dataTypes.get(i);
+    AggregateResult aggregateResult = AggreResultFactory.getAggrResultByName(aggres.get(i), tsDataType);
+    aggregateResult.init();
 
-  private AggreResultData getAggreResultData(AggregateResult function,
-      SeriesDataReaderWithoutValueFilter newSeriesReader)
-      throws IOException, QueryProcessException {
-    while (newSeriesReader.hasNextChunk()) {
-      if (newSeriesReader.canUseChunkStatistics()) {
-        Statistics chunkStatistics = newSeriesReader.currentChunkStatistics();
-        function.updateResultFromStatistics(chunkStatistics);
-        if (function.isCalculatedAggregationResult()) {
-          return function.getResult();
+    // construct series reader without value filter
+    SeriesDataReaderWithoutValueFilter seriesReader = new SeriesDataReaderWithoutValueFilter(
+        selectedSeries.get(i), tsDataType, timeFilter, context);
+
+    while (seriesReader.hasNextChunk()) {
+      if (seriesReader.canUseChunkStatistics()) {
+        Statistics chunkStatistics = seriesReader.currentChunkStatistics();
+        aggregateResult.updateResultFromStatistics(chunkStatistics);
+        if (aggregateResult.isCalculatedAggregationResult()) {
+          return aggregateResult.getResult();
         }
-        newSeriesReader.skipChunkData();
+        seriesReader.skipChunkData();
         continue;
       }
-      while (newSeriesReader.hasNextPage()) {
+      while (seriesReader.hasNextPage()) {
         //cal by pageheader
-        if (newSeriesReader.canUsePageStatistics()) {
-          Statistics pageStatistic = newSeriesReader.currentChunkStatistics();
-          function.updateResultFromStatistics(pageStatistic);
-          if (function.isCalculatedAggregationResult()) {
-            return function.getResult();
+        if (seriesReader.canUsePageStatistics()) {
+          Statistics pageStatistic = seriesReader.currentChunkStatistics();
+          aggregateResult.updateResultFromStatistics(pageStatistic);
+          if (aggregateResult.isCalculatedAggregationResult()) {
+            return aggregateResult.getResult();
           }
-          newSeriesReader.skipPageData();
+          seriesReader.skipPageData();
           continue;
         }
         //cal by pagedata
-        while (newSeriesReader.hasNextBatch()) {
-          function.updateResultFromPageData(newSeriesReader.nextBatch());
-          if (function.isCalculatedAggregationResult()) {
-            return function.getResult();
+        while (seriesReader.hasNextBatch()) {
+          aggregateResult.updateResultFromPageData(seriesReader.nextBatch());
+          if (aggregateResult.isCalculatedAggregationResult()) {
+            return aggregateResult.getResult();
           }
         }
       }
     }
-    return function.getResult();
-  }
-
-  /**
-   * handle last and max_time aggregate function with only time filter or no filter.
-   *
-   * @return BatchData-aggregate result
-   */
-  private AggreResultData handleLastMaxTimeWithOutTimeGenerator(AggregateResult function,
-      SeriesDataReaderWithoutValueFilter newSeriesReader)
-      throws IOException, QueryProcessException {
-    return getAggreResultData(function, newSeriesReader);
+    return aggregateResult.getResult();
   }
 
 
@@ -189,13 +157,12 @@ public class NewAggregateEngineExecutor {
     List<AggregateResult> aggregateResults = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       TSDataType type = MManager.getInstance().getSeriesType(selectedSeries.get(i).getFullPath());
-      AggregateResult function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), type);
+      AggregateResult function = AggreResultFactory.getAggrResultByName(aggres.get(i), type);
       function.init();
       aggregateResults.add(function);
     }
     List<AggreResultData> batchDataList = aggregateWithValueFilter(aggregateResults,
-        timestampGenerator,
-        readersOfSelectedSeries);
+        timestampGenerator, readersOfSelectedSeries);
     return constructDataSet(batchDataList);
   }
 

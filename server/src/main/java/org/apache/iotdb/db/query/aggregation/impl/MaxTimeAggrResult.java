@@ -27,10 +27,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class MaxValueAggrFunc extends AggregateResult {
+public class MaxTimeAggrResult extends AggregateResult {
 
-  public MaxValueAggrFunc(TSDataType dataType) {
-    super(dataType);
+  public MaxTimeAggrResult() {
+    super(TSDataType.INT64);
   }
 
   @Override
@@ -45,42 +45,44 @@ public class MaxValueAggrFunc extends AggregateResult {
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    Comparable<Object> maxVal = (Comparable<Object>) statistics.getMaxValue();
-    updateResult(maxVal);
+    long maxTimestamp = statistics.getEndTime();
+    updateMaxTimeResult(maxTimestamp);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
-    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
+  public void updateResultFromPageData(BatchData dataInThisPage) {
+    int maxIndex = dataInThisPage.length() - 1;
+    if (maxIndex < 0) {
+      return;
+    }
+    long time = dataInThisPage.getTimeByIndex(maxIndex);
+    updateMaxTimeResult(time);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
-    Comparable<Object> maxVal = null;
-
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
     while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
-      if (maxVal == null || maxVal.compareTo(dataInThisPage.currentValue()) < 0) {
-        maxVal = (Comparable<Object>) dataInThisPage.currentValue();
-      }
+      updateMaxTimeResult(dataInThisPage.currentTime());
       dataInThisPage.next();
     }
-    updateResult(maxVal);
   }
 
+  //TODO Consider how to reverse order in dataReader(IReaderByTimeStamp)
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    Comparable<Object> maxVal = null;
+    long time = -1;
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value == null) {
-        continue;
-      }
-      if (maxVal == null || maxVal.compareTo(value) < 0) {
-        maxVal = (Comparable<Object>) value;
+      if (value != null) {
+        time = timestamps[i];
       }
     }
-    updateResult(maxVal);
+
+    if (time == -1) {
+      return;
+    }
+    updateMaxTimeResult(time);
   }
 
   @Override
@@ -88,12 +90,9 @@ public class MaxValueAggrFunc extends AggregateResult {
     return false;
   }
 
-  private void updateResult(Comparable<Object> maxVal) {
-    if (maxVal == null) {
-      return;
-    }
-    if (!resultData.isSetValue() || maxVal.compareTo(resultData.getValue()) > 0) {
-      resultData.putTimeAndValue(0, maxVal);
+  private void updateMaxTimeResult(long value) {
+    if (!resultData.hasResult() || value >= resultData.getLongRet()) {
+      resultData.setLongRet(value);
     }
   }
 }

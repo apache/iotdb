@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
+import java.io.IOException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
@@ -26,91 +27,63 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-import java.io.IOException;
+public class LastValueAggrResult extends AggregateResult {
 
-public class AvgAggrFunc extends AggregateResult {
-
-  protected double sum = 0.0;
-  private int cnt = 0;
-  private TSDataType seriesDataType;
-  private static final String AVG_AGGR_NAME = "AVG";
-
-  public AvgAggrFunc(TSDataType seriesDataType) {
-    super(TSDataType.DOUBLE);
-    this.seriesDataType = seriesDataType;
+  public LastValueAggrResult(TSDataType dataType) {
+    super(dataType);
   }
 
   @Override
   public void init() {
     resultData.reset();
-    sum = 0.0;
-    cnt = 0;
   }
 
   @Override
   public AggreResultData getResult() {
-    if (cnt > 0) {
-      resultData.setTimestamp(0);
-      resultData.setDoubleRet(sum / cnt);
-    }
     return resultData;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    sum += statistics.getSumValue();
-    cnt += statistics.getCount();
+    Object lastVal = statistics.getLastValue();
+    resultData.setValue(lastVal);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage)
-      throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage) {
     updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
-    while (dataInThisPage.hasCurrent()) {
-      if (dataInThisPage.currentTime() >= bound) {
-        break;
-      }
-      updateMean(seriesDataType, dataInThisPage.currentValue());
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
+    long time = -1;
+    Object lastVal = null;
+    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+      time = dataInThisPage.currentTime();
+      lastVal = dataInThisPage.currentValue();
       dataInThisPage.next();
     }
-  }
 
-  private void updateMean(TSDataType type, Object sumVal) throws IOException {
-    switch (type) {
-      case INT32:
-        sum += (int) sumVal;
-        break;
-      case INT64:
-        sum += (long) sumVal;
-        break;
-      case FLOAT:
-        sum += (float) sumVal;
-        break;
-      case DOUBLE:
-        sum += (double) sumVal;
-        break;
-      case TEXT:
-      case BOOLEAN:
-      default:
-        throw new IOException(
-            String
-                .format("Unsupported data type in aggregation %s : %s", getAggreTypeName(), type));
+    if (time != -1) {
+      resultData.setValue(lastVal);
     }
-    cnt++;
   }
 
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
+
+    long time = -1;
+    Object lastVal = null;
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
-        updateMean(seriesDataType, value);
+        time = timestamps[i];
+        lastVal = value;
       }
+    }
+    if (time != -1) {
+      resultData.setValue(lastVal);
     }
   }
 
@@ -119,10 +92,4 @@ public class AvgAggrFunc extends AggregateResult {
     return false;
   }
 
-  /**
-   * Return type name of aggregation
-   */
-  public String getAggreTypeName() {
-    return AVG_AGGR_NAME;
-  }
 }

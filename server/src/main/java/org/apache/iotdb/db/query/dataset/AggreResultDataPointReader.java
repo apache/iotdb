@@ -34,7 +34,7 @@ public class AggreResultDataPointReader implements IPointReader {
 
   @Override
   public boolean hasNext() {
-    return aggreResultData.isSetValue();
+    return aggreResultData.hasResult();
   }
 
   @Override

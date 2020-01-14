@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
@@ -28,10 +27,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class MinValueAggrFunc extends AggregateResult {
+public class MinTimeAggrResult extends AggregateResult {
 
-  public MinValueAggrFunc(TSDataType dataType) {
-    super(dataType);
+  public MinTimeAggrResult() {
+    super(TSDataType.INT64);
   }
 
   @Override
@@ -45,10 +44,12 @@ public class MinValueAggrFunc extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics)
-      throws QueryProcessException {
-    Comparable<Object> minVal = (Comparable<Object>) statistics.getMinValue();
-    updateResult(minVal);
+  public void updateResultFromStatistics(Statistics statistics) {
+    if (resultData.hasResult()) {
+      return;
+    }
+    long time = statistics.getStartTime();
+    resultData.setValue(time);
   }
 
   @Override
@@ -58,40 +59,32 @@ public class MinValueAggrFunc extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
-    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
-      updateResult((Comparable<Object>) dataInThisPage.currentValue());
-      dataInThisPage.next();
+    if (resultData.hasResult()) {
+      return;
+    }
+    if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+      resultData.setLongRet(dataInThisPage.currentTime());
     }
   }
 
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    Comparable<Object> minVal = null;
+    if (resultData.hasResult()) {
+      return;
+    }
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value == null) {
-        continue;
-      }
-      if (minVal == null || minVal.compareTo(value) > 0) {
-        minVal = (Comparable<Object>) value;
+      if (value != null) {
+        resultData.setLongRet(timestamps[i]);
+        return;
       }
     }
-    updateResult(minVal);
   }
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return false;
-  }
-
-  private void updateResult(Comparable<Object> minVal) {
-    if (minVal == null) {
-      return;
-    }
-    if (!resultData.isSetValue() || minVal.compareTo(resultData.getValue()) < 0) {
-      resultData.putTimeAndValue(0, minVal);
-    }
+    return resultData.hasResult();
   }
 
 }
