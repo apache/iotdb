@@ -164,16 +164,12 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   private boolean isEndCalc(AggregateResult function, BatchData lastBatch) {
-    if ((lastBatch != null && lastBatch.hasCurrent() && lastBatch.currentTime() > endTime)
-        || function.isCalculatedAggregationResult()) {
-      return true;
-    }
-    return false;
+    return (lastBatch != null && lastBatch.hasCurrent() && lastBatch.currentTime() > endTime)
+        || function.isCalculatedAggregationResult();
   }
 
   /**
    * @return this batchData >= endTime
-   * @throws IOException
    */
   private void calcBatchData(int idx, AggregateResult function, BatchData batchData)
       throws IOException {
@@ -187,7 +183,6 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       function.updateResultFromPageData(batchData, endTime);
       if (batchData.hasCurrent()) {
         batchDataList.set(idx, batchData);
-        return;
       }
     }
   }

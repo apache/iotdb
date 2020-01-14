@@ -19,20 +19,15 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
+import java.io.IOException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 public class CountAggrFunc extends AggregateResult {
-
-  private static final Logger logger = LoggerFactory.getLogger(CountAggrFunc.class);
 
   public CountAggrFunc() {
     super(TSDataType.INT64);

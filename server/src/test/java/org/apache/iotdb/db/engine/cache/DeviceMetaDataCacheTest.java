@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -94,7 +95,9 @@ public class DeviceMetaDataCacheTest {
     for (int j = 1; j <= 100; j++) {
       insertOneRecord(j, j);
     }
-    storageGroupProcessor.getWorkSequenceTsFileProcessor().syncFlush();
+    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessors()){
+      tsFileProcessor.syncFlush();
+    }
 
     for (int j = 10; j >= 1; j--) {
       insertOneRecord(j, j);

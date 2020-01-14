@@ -146,11 +146,13 @@ public class IoTDBDescriptor {
 
       conf.setBaseDir(properties.getProperty("base_dir", conf.getBaseDir()));
 
-      conf.setSystemDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "system");
+      conf.setSystemDir(FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.SYSTEM_FOLDER_NAME);
 
-      conf.setSchemaDir(FilePathUtils.regularizePath(conf.getSystemDir()) + "schema");
+      conf.setSchemaDir(FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SCHEMA_FOLDER_NAME);
 
-      conf.setQueryDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "query");
+      conf.setSyncDir(FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
+
+      conf.setQueryDir(FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
@@ -299,6 +301,13 @@ public class IoTDBDescriptor {
 
       conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
           String.valueOf(conf.getDefaultTTL()))));
+      // Time range for dividing storage group
+      conf.setPartitionInterval(
+          Long.parseLong(properties.getProperty("partition_interval", String.valueOf(conf.getPartitionInterval()))));
+
+      // the num of memtables in each storage group
+      conf.setMemtableNumInEachStorageGroup(
+          Integer.parseInt(properties.getProperty("memtable_num_in_each_storage_group", String.valueOf(conf.getMemtableNumInEachStorageGroup()))));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()

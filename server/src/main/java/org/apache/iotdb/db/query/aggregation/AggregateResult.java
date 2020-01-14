@@ -21,9 +21,7 @@ package org.apache.iotdb.db.query.aggregation;
 
 import java.io.IOException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -49,7 +47,6 @@ public abstract class AggregateResult {
    * Calculate the aggregation using Statistics
    *
    * @param statistics chunkStatistics or pageStatistics
-   * @throws QueryProcessException
    */
   public abstract void updateResultFromStatistics(Statistics statistics)
       throws QueryProcessException;
@@ -58,7 +55,6 @@ public abstract class AggregateResult {
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
    *
    * @param dataInThisPage the data in Page
-   * @throws IOException
    */
   public abstract void updateResultFromPageData(BatchData dataInThisPage) throws IOException;
 
@@ -66,8 +62,7 @@ public abstract class AggregateResult {
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
    *
    * @param dataInThisPage the data in Page
-   * @param bound          calculate points whose time < bound
-   * @throws IOException
+   * @param bound calculate points whose time < bound
    */
   public abstract void updateResultFromPageData(BatchData dataInThisPage, long bound)
       throws IOException;
