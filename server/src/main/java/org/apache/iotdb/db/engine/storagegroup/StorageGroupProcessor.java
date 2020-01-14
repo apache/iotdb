@@ -1396,7 +1396,7 @@ public class StorageGroupProcessor {
 
     if (result.size() <= maxResult) {
       Collections.shuffle(result);
-      result.subList(0, maxResult);
+      return result.subList(0, maxResult);
     }
 
     return result;
