@@ -117,8 +117,7 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
     Statistics statsByType = Statistics.getStatsByType(dataType);
     ChunkMetaData metaData = new ChunkMetaData(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
-      List<TimeValuePair> sortedTimeValuePairList = getSortedTimeValuePairList();
-      for (TimeValuePair timeValuePair : sortedTimeValuePairList) {
+      for (TimeValuePair timeValuePair : getSortedTimeValuePairList()) {
         switch (dataType) {
           case BOOLEAN:
             statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
