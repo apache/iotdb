@@ -43,7 +43,7 @@ public class SeriesDataReaderWithValueFilter extends SeriesDataReaderWithoutValu
   }
 
   @Override
-  protected boolean canUseStatistics(Statistics statistics) {
+  protected boolean satisfyFilter(Statistics statistics) {
     return false;
   }
 
