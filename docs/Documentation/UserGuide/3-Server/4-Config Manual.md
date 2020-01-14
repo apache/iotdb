@@ -242,7 +242,7 @@ The detail of each variables are as follows:
 |:---:|:---|
 |Description| Time range for dividing storage group, time series data will be divided into groups by this time range |
 |Type|Int64|
-|Default| 86400 |
+|Default| 604800 |
 |Effective|Should not be changed after first start up|
 
 

@@ -125,6 +125,11 @@ public class IoTDBConfig {
   private String schemaDir = "data/system/schema";
 
   /**
+   * Sync directory, including the lock file, uuid file, device owner map
+   */
+  private String syncDir = "data/system/sync";
+
+  /**
    * Query directory, stores temporary files of query
    */
   private String queryDir = "data/query";
@@ -462,7 +467,7 @@ public class IoTDBConfig {
   /**
    * Time range for partitioning data inside each storage group, the unit is second
    */
-  private long partitionInterval = 86400;
+  private long partitionInterval = 604800;
 
 
   //just for test
@@ -509,6 +514,7 @@ public class IoTDBConfig {
     baseDir = addHomeDir(baseDir);
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
+    syncDir = addHomeDir(syncDir);
     walFolder = addHomeDir(walFolder);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
@@ -658,6 +664,14 @@ public class IoTDBConfig {
 
   void setSchemaDir(String schemaDir) {
     this.schemaDir = schemaDir;
+  }
+
+  public String getSyncDir() {
+    return syncDir;
+  }
+
+  public void setSyncDir(String syncDir) {
+    this.syncDir = syncDir;
   }
 
   public String getQueryDir() {

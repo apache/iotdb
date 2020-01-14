@@ -142,32 +142,27 @@ public class SyncClient implements ISyncClient {
 
   @Override
   public void verifySingleton() throws IOException {
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    for (String dataDir : dataDirs) {
-      config.update(dataDir);
-      File lockFile = new File(config.getLockFilePath());
-      if (!lockFile.getParentFile().exists()) {
-        lockFile.getParentFile().mkdirs();
-      }
-      if (!lockFile.exists()) {
-        lockFile.createNewFile();
-      }
-      if (!lockInstance(config.getLockFilePath())) {
-        logger.error("Sync client is already running.");
-        System.exit(1);
-      }
+    File lockFile = getLockFile();
+    if (!lockFile.getParentFile().exists()) {
+      lockFile.getParentFile().mkdirs();
+    }
+    if (!lockFile.exists()) {
+      lockFile.createNewFile();
+    }
+    if (!lockInstance(lockFile)) {
+      logger.error("Sync client is already running.");
+      System.exit(1);
     }
   }
 
   /**
-   * Try to lock lockfile. if failed, it means that sync client has benn started.
+   * Try to lock lockfile. if failed, it means that sync client has been started.
    *
-   * @param lockFile path of lock file
+   * @param lockFile lock file
    */
-  private boolean lockInstance(final String lockFile) {
+  private boolean lockInstance(File lockFile) {
     try {
-      final File file = new File(lockFile);
-      final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw");
+      final RandomAccessFile randomAccessFile = new RandomAccessFile(lockFile, "rw");
       final FileLock fileLock = randomAccessFile.getChannel().tryLock();
       if (fileLock != null) {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -209,7 +204,7 @@ public class SyncClient implements ISyncClient {
     executorService.scheduleWithFixedDelay(() -> {
       try {
         syncAll();
-      } catch (SyncConnectionException | IOException | TException e) {
+      } catch (Exception e) {
         logger.error("Sync failed", e);
       }
     }, SyncConstant.SYNC_PROCESS_DELAY, SyncConstant.SYNC_PROCESS_PERIOD, TimeUnit.SECONDS);
@@ -291,7 +286,7 @@ public class SyncClient implements ISyncClient {
   public void confirmIdentity() throws SyncConnectionException {
     try (Socket socket = new Socket(config.getServerIp(), config.getServerPort())){
       SyncStatus status = serviceClient
-          .check(socket.getLocalAddress().getHostAddress(), getOrCreateUUID(config.getUuidPath()));
+          .check(socket.getLocalAddress().getHostAddress(), getOrCreateUUID(getUuidFile()));
       if (status.code != SUCCESS_CODE) {
         throw new SyncConnectionException(
             "The receiver rejected the synchronization task because " + status.msg);
@@ -305,25 +300,24 @@ public class SyncClient implements ISyncClient {
   /**
    * UUID marks the identity of sender for receiver.
    */
-  private String getOrCreateUUID(String uuidPath) throws IOException {
-    File file = new File(uuidPath);
+  private String getOrCreateUUID(File uuidFile) throws IOException {
     String uuid;
-    if (!file.getParentFile().exists()) {
-      file.getParentFile().mkdirs();
+    if (!uuidFile.getParentFile().exists()) {
+      uuidFile.getParentFile().mkdirs();
     }
-    if (!file.exists()) {
-      try (FileOutputStream out = new FileOutputStream(file)) {
+    if (!uuidFile.exists()) {
+      try (FileOutputStream out = new FileOutputStream(uuidFile)) {
         uuid = generateUUID();
         out.write(uuid.getBytes());
       } catch (IOException e) {
-        logger.error("Cannot insert UUID to file {}", file.getPath());
+        logger.error("Cannot insert UUID to file {}", uuidFile.getPath());
         throw new IOException(e);
       }
     } else {
-      try (BufferedReader bf = new BufferedReader((new FileReader(uuidPath)))) {
+      try (BufferedReader bf = new BufferedReader((new FileReader(uuidFile.getAbsolutePath())))) {
         uuid = bf.readLine();
       } catch (IOException e) {
-        logger.error("Cannot read UUID from file{}", file.getPath());
+        logger.error("Cannot read UUID from file{}", uuidFile.getPath());
         throw new IOException(e);
       }
     }
@@ -670,6 +664,16 @@ public class SyncClient implements ISyncClient {
   private File getSchemaLogFile() {
     return new File(IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
         MetadataConstant.METADATA_LOG);
+  }
+
+  private File getLockFile() {
+    return new File(IoTDBDescriptor.getInstance().getConfig().getSyncDir(),
+        SyncConstant.LOCK_FILE_NAME);
+  }
+
+  private File getUuidFile() {
+    return new File(IoTDBDescriptor.getInstance().getConfig().getSyncDir(),
+        SyncConstant.UUID_FILE_NAME);
   }
 
   private static class InstanceHolder {
