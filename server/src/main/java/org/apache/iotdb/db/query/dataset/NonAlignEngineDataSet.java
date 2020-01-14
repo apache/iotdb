@@ -84,7 +84,7 @@ public class NonAlignEngineDataSet extends QueryDataSet {
             int rowCount = 0;
             while (rowCount < dataSet.fetchSize) {
               
-              if ((dataSet.limitArray[index] > 0 && dataSet.alreadyReturnedRowNumArray[index] >= dataSet.limitArray[index])) {
+              if ((dataSet.limit > 0 && dataSet.alreadyReturnedRowNumArray[index] >= dataSet.limit)) {
                 break;
               }
               
@@ -139,13 +139,17 @@ public class NonAlignEngineDataSet extends QueryDataSet {
                 batchData.next();
               }
               else {
-                batchData = reader.nextBatch();
-                dataSet.cachedBatchData[index] = batchData;
-                continue;
+                if (reader.hasNextBatch()) {
+                  batchData = reader.nextBatch();
+                  dataSet.cachedBatchData[index] = batchData;
+                  continue;
+                }
+                else
+                  break;
               }
               if (dataSet.offsetArray[index] == 0) {
                 rowCount++;
-                if (dataSet.limitArray[index] > 0) {
+                if (dataSet.limit > 0) {
                   dataSet.alreadyReturnedRowNumArray[index]++;
                 }
               } else {
@@ -212,7 +216,7 @@ public class NonAlignEngineDataSet extends QueryDataSet {
 
   private int[] offsetArray;
 
-  private int[] limitArray;
+  private int limit;
 
   private int[] alreadyReturnedRowNumArray;
 
@@ -255,8 +259,6 @@ public class NonAlignEngineDataSet extends QueryDataSet {
     this.seriesReaderWithoutValueFilterList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
     noMoreDataInQueueArray = new boolean[readers.size()];
-    initLimit(super.rowOffset, super.rowLimit, readers.size());
-
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
       blockingQueueArray[i] = new LinkedBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
     }
@@ -265,13 +267,13 @@ public class NonAlignEngineDataSet extends QueryDataSet {
   private void initLimit(int offset, int limit, int size) {
     offsetArray = new int[size];
     Arrays.fill(offsetArray, offset);
-    limitArray = new int[size];
-    Arrays.fill(limitArray, limit);
+    this.limit = limit;
     alreadyReturnedRowNumArray = new int[size];
     cachedBatchData = new BatchData[size];
   }
   
   private void init(WatermarkEncoder encoder, int fetchSize) {
+    initLimit(super.rowOffset, super.rowLimit, seriesReaderWithoutValueFilterList.size());
     this.fetchSize = fetchSize;
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
       ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(i);
