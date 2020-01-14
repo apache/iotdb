@@ -83,7 +83,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
 
   private boolean hasCachedNextBatch;
   protected PriorityMergeReader priorityMergeReader = new PriorityMergeReader();
-  private long latestDirectlyOverlappedPageEndTime = Long.MAX_VALUE;
+  private long currentPageEndTime = Long.MAX_VALUE;
 
   private boolean hasRemaining;
   private boolean managedByQueryManager;
@@ -213,7 +213,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     while (priorityMergeReader.hasNext()) {
       TimeValuePair timeValuePair = priorityMergeReader.current();
       //TODO should add a batchSize to limit the number of reads per time
-      if (timeValuePair.getTimestamp() > latestDirectlyOverlappedPageEndTime) {
+      if (timeValuePair.getTimestamp() > currentPageEndTime) {
         break;
       }
       batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
@@ -470,7 +470,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
   private void fillOverlappedPages() {
     currentPage = chunkReader.nextPageHeader();
     hasCachedNextPage = true;
-    latestDirectlyOverlappedPageEndTime = currentPage.getEndTime();
+    currentPageEndTime = currentPage.getEndTime();
     while (!overlappedChunkReader.isEmpty()) {
       VersionPair<IChunkReader> iChunkReader = overlappedChunkReader.get(0);
       if (currentPage.getEndTime() >= iChunkReader.data.nextPageHeader().getStartTime()) {
