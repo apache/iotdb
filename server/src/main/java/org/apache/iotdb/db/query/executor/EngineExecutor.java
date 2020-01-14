@@ -103,7 +103,7 @@ public class EngineExecutor {
       Path path = deduplicatedPaths.get(i);
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
-      ManagedSeriesReader reader = new SeriesDataReaderWithoutValueFilter(path, dataType, timeFilter, context);
+      ManagedSeriesReader reader = new RawDataReaderWithoutValueFilter(path, dataType, timeFilter, context);
       readersOfSelectedSeries.add(reader);
     }
 
