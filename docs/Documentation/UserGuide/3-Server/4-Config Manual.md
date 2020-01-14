@@ -250,7 +250,7 @@ The detail of each variables are as follows:
 
 |Name| memtable\_num\_in\_each\_storage\_group |
 |:---:|:---|
-|Description| This config decide how many time series in different time partition can be insert concurrently.</br> For example, your partitionInterval is 86400 and you want to insert data in 3 different days, you should set this param >= 6 (for sequence and unsequence) |
+|Description| This config decides how many time partitions in a storage group can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 3 different days, you should set this param >= 6 (for sequence and unsequence) |
 |Type|Int32|
 |Default| 10 |
 |Effective|After restart system|

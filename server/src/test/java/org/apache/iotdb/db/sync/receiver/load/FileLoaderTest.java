@@ -130,7 +130,7 @@ public class FileLoaderTest {
 
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
-      assertTrue(processor.getSequenceFileList().isEmpty());
+      assertTrue(processor.getSequenceFileTreeSet().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 
@@ -161,8 +161,8 @@ public class FileLoaderTest {
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
       sequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-      assertEquals(10, processor.getSequenceFileList().size());
-      for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
+      assertEquals(10, processor.getSequenceFileTreeSet().size());
+      for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
         sequenceLoadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
       }
       assertTrue(processor.getUnSequenceFileList().isEmpty());
@@ -225,7 +225,7 @@ public class FileLoaderTest {
 
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
-      assertTrue(processor.getSequenceFileList().isEmpty());
+      assertTrue(processor.getSequenceFileTreeSet().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 
@@ -256,8 +256,8 @@ public class FileLoaderTest {
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
       loadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-      assertEquals(25, processor.getSequenceFileList().size());
-      for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
+      assertEquals(25, processor.getSequenceFileTreeSet().size());
+      for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
         loadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
       }
       assertTrue(processor.getUnSequenceFileList().isEmpty());
@@ -308,7 +308,7 @@ public class FileLoaderTest {
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
       loadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-      for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
+      for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
         loadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
       }
       assertTrue(processor.getUnSequenceFileList().isEmpty());

@@ -340,11 +340,11 @@ public class TTLTest {
     prepareData();
     storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
 
-    assertEquals(4, storageGroupProcessor.getSequenceFileList().size());
+    assertEquals(4, storageGroupProcessor.getSequenceFileTreeSet().size());
     assertEquals(4, storageGroupProcessor.getUnSequenceFileList().size());
 
     storageGroupProcessor.setDataTTL(0);
-    assertEquals(0, storageGroupProcessor.getSequenceFileList().size());
+    assertEquals(0, storageGroupProcessor.getSequenceFileTreeSet().size());
     assertEquals(0, storageGroupProcessor.getUnSequenceFileList().size());
   }
 }

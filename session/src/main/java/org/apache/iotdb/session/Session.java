@@ -181,13 +181,25 @@ public class Session {
   }
 
   /**
+   * check whether the batch has been sorted
+   * @return whether the batch has been sorted
+   */
+  private boolean checkSorted(RowBatch rowBatch){
+    for (int i = 1; i < rowBatch.batchSize; i++) {
+      if(rowBatch.timestamps[i] < rowBatch.timestamps[i - 1]){
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
    * use batch interface to insert sorted data
-   * times in row batch must be sorted before!
    *
    * @param rowBatch data batch
    */
-  public TSExecuteBatchStatementResp insertSortedBatch(RowBatch rowBatch)
-      throws IoTDBSessionException {
+  private TSExecuteBatchStatementResp insertSortedBatchIntern(RowBatch rowBatch) throws IoTDBSessionException{
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
@@ -207,6 +219,20 @@ public class Session {
   }
 
   /**
+   * use batch interface to insert sorted data
+   * times in row batch must be sorted before!
+   *
+   * @param rowBatch data batch
+   */
+  public TSExecuteBatchStatementResp insertSortedBatch(RowBatch rowBatch)
+      throws IoTDBSessionException {
+    if(!checkSorted(rowBatch)){
+      throw new IoTDBSessionException("Row batch has't been sorted when calling insertSortedBatch");
+    }
+    return insertSortedBatchIntern(rowBatch);
+  }
+
+  /**
    * use batch interface to insert data
    *
    * @param rowBatch data batch
@@ -215,7 +241,7 @@ public class Session {
       throws IoTDBSessionException {
     sortRowBatch(rowBatch);
 
-    return insertSortedBatch(rowBatch);
+    return insertSortedBatchIntern(rowBatch);
   }
 
   private void sortRowBatch(RowBatch rowBatch){

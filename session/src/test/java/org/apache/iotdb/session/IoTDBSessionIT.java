@@ -688,20 +688,23 @@ public class IoTDBSessionIT {
   }
 
   public void queryForBatchCheckOrder() throws ClassNotFoundException, SQLException {
+    System.out.println("here");
     Class.forName(Config.JDBC_DRIVER_NAME);
     String standard =
         "Time\n" + "root.sg1.d1.s1\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n" +
             "root.sg1.d2.s1\n" + "root.sg1.d2.s2\n" + "root.sg1.d2.s3\n";
     try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        .getConnection(Config.IOTDB_URL_PREFIX + "192.168.130.18:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery("select * from root");
+      System.out.println("here");
+      ResultSet resultSet = statement.executeQuery("select s_0 from root.group_0.d_0 limit 10000");
       final ResultSetMetaData metaData = resultSet.getMetaData();
       final int colCount = metaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
       for (int i = 0; i < colCount; i++) {
         resultStr.append(metaData.getColumnLabel(i + 1) + "\n");
       }
+      System.out.println("her2");
 
       int count = 0;
       long beforeTime = 0;
