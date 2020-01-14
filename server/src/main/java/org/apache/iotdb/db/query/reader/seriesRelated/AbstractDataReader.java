@@ -33,7 +33,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.MemChunkLoader;
 import org.apache.iotdb.db.query.reader.chunkRelated.ChunkDataIterator;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
@@ -54,7 +53,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
-public abstract class AbstractDataReader implements ManagedSeriesReader {
+public abstract class AbstractDataReader {
 
   private final QueryDataSource queryDataSource;
   private final QueryContext context;
@@ -85,9 +84,6 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
   private boolean hasCachedNextBatch;
   protected PriorityMergeReader mergeReader = new PriorityMergeReader();
   private long currentPageEndTime = Long.MAX_VALUE;
-
-  private boolean hasRemaining;
-  private boolean managedByQueryManager;
 
 
   public AbstractDataReader(Path seriesPath, TSDataType dataType,
@@ -199,7 +195,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     return chunkReader.nextPageData();
   }
 
-  public boolean hasNextBatch() throws IOException {
+  public boolean hasNextOverlappedPage() throws IOException {
     if (hasCachedNextBatch) {
       return true;
     }
@@ -217,27 +213,22 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     return hasCachedNextBatch;
   }
 
-  public BatchData nextBatch() throws IOException {
+  public BatchData nextOverlappedPage() throws IOException {
     if (mergeReader.hasNext()) {
       hasCachedNextBatch = false;
-      return nextOverlappedPage();
+      BatchData batchData = new BatchData(dataType);
+      while (mergeReader.hasNext()) {
+        TimeValuePair timeValuePair = mergeReader.current();
+        //TODO should add a batchSize to limit the number of reads per time
+        if (timeValuePair.getTimestamp() > currentPageEndTime) {
+          break;
+        }
+        batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
+        mergeReader.next();
+      }
+      return batchData;
     }
     throw new IOException("no next data");
-  }
-
-
-  protected BatchData nextOverlappedPage() throws IOException {
-    BatchData batchData = new BatchData(dataType);
-    while (mergeReader.hasNext()) {
-      TimeValuePair timeValuePair = mergeReader.current();
-      //TODO should add a batchSize to limit the number of reads per time
-      if (timeValuePair.getTimestamp() > currentPageEndTime) {
-        break;
-      }
-      batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
-      mergeReader.next();
-    }
-    return batchData;
   }
 
   private IChunkReader initChunkReader(ChunkMetaData metaData) throws IOException {
@@ -297,26 +288,6 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     });
     unseqTsFilesSet.addAll(tsFileResources);
     return unseqTsFilesSet;
-  }
-
-  @Override
-  public boolean isManagedByQueryManager() {
-    return managedByQueryManager;
-  }
-
-  @Override
-  public void setManagedByQueryManager(boolean managedByQueryManager) {
-    this.managedByQueryManager = managedByQueryManager;
-  }
-
-  @Override
-  public boolean hasRemaining() {
-    return hasRemaining;
-  }
-
-  @Override
-  public void setHasRemaining(boolean hasRemaining) {
-    this.hasRemaining = hasRemaining;
   }
 
   /**

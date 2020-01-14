@@ -19,9 +19,10 @@
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.io.IOException;
+import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public interface IRawDataReader {
+public interface IRawDataReader extends ManagedSeriesReader{
 
   boolean hasNextBatch() throws IOException;
 

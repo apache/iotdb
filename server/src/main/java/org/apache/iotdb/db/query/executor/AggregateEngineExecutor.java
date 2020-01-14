@@ -128,8 +128,8 @@ public class AggregateEngineExecutor {
           continue;
         }
         //cal by pagedata
-        while (seriesReader.hasNextBatch()) {
-          aggregateResult.updateResultFromPageData(seriesReader.nextBatch());
+        while (seriesReader.hasNextOverlappedPage()) {
+          aggregateResult.updateResultFromPageData(seriesReader.nextOverlappedPage());
           if (aggregateResult.isCalculatedAggregationResult()) {
             return aggregateResult.getResult();
           }

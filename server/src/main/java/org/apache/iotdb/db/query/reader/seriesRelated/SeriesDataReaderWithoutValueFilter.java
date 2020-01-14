@@ -44,8 +44,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  *        continue;
  *      }
  *
- *      while(hasNextBatch()){
- *        nextBatch();
+ *      while(hasNextOverlappedPage()){
+ *        nextOverlappedPage();
  *      }
  *    }
  *  }
@@ -96,8 +96,8 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
   }
 
   @Override
-  public boolean hasNextBatch() throws IOException {
-    return super.hasNextBatch();
+  public boolean hasNextOverlappedPage() throws IOException {
+    return super.hasNextOverlappedPage();
   }
 
   @Override

@@ -40,7 +40,7 @@ public interface IAggregateReader {
 
   void skipPageData() throws IOException;
 
-  boolean hasNextBatch() throws IOException;
+  boolean hasNextOverlappedPage() throws IOException;
 
-  BatchData nextBatch() throws IOException;
+  BatchData nextOverlappedPage() throws IOException;
 }

@@ -57,8 +57,8 @@ public class SeriesDataReaderWithValueFilter extends SeriesDataReaderWithoutValu
     }
 
     // has not cached timeValuePair
-    while (hasNextBatch()) {
-      batchData = super.nextBatch();
+    while (hasNextOverlappedPage()) {
+      batchData = super.nextOverlappedPage();
       if (hasNextSatisfiedInCurrentBatch()) {
         return true;
       }
@@ -67,10 +67,10 @@ public class SeriesDataReaderWithValueFilter extends SeriesDataReaderWithoutValu
   }
 
   @Override
-  public boolean hasNextBatch() throws IOException {
+  public boolean hasNextOverlappedPage() throws IOException {
     while (hasNextChunk()) {
       while (hasNextPage()) {
-        if (super.hasNextBatch()) {
+        if (super.hasNextOverlappedPage()) {
           return true;
         }
       }

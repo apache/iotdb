@@ -73,12 +73,12 @@ public class EngineExecutor {
       timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
     }
 
-    List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
+    List<IRawDataReader> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
       Path path = deduplicatedPaths.get(i);
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
-      ManagedSeriesReader reader = new RawDataReaderWithoutValueFilter(
+      IRawDataReader reader = new RawDataReaderWithoutValueFilter(
           path, dataType, timeFilter, context);
       readersOfSelectedSeries.add(reader);
     }
@@ -99,13 +99,13 @@ public class EngineExecutor {
       timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
     }
 
-    List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
+    List<IRawDataReader> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
       Path path = deduplicatedPaths.get(i);
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
 
-      ManagedSeriesReader reader = new RawDataReaderWithoutValueFilter(path, dataType, timeFilter, context);
+      IRawDataReader reader = new RawDataReaderWithoutValueFilter(path, dataType, timeFilter, context);
       readersOfSelectedSeries.add(reader);
     }
 

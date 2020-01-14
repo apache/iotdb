@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -34,6 +33,8 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
 
   private BatchData batchData;
   private boolean hasCachedBatchData = false;
+  private boolean hasRemaining;
+  private boolean managedByQueryManager;
 
   public RawDataReaderWithoutValueFilter(Path seriesPath, TSDataType dataType, Filter filter,
       QueryContext context) throws StorageEngineException, IOException {
@@ -53,7 +54,7 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
   }
 
   /**
-   * This method overrides the AbstractDataReader.hasNextBatch for pause reads, to achieve a
+   * This method overrides the AbstractDataReader.hasNextOverlappedPage for pause reads, to achieve a
    * continuous read
    */
   @Override
@@ -70,8 +71,8 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
           hasCachedBatchData = true;
           return true;
         } else {
-          if (hasNextBatch()) {
-            batchData = nextBatch();
+          if (hasNextOverlappedPage()) {
+            batchData = nextOverlappedPage();
             hasCachedBatchData = true;
             return true;
           }
@@ -88,6 +89,27 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
       return batchData;
     }
     throw new IOException("no next batch");
+  }
+
+
+  @Override
+  public boolean isManagedByQueryManager() {
+    return managedByQueryManager;
+  }
+
+  @Override
+  public void setManagedByQueryManager(boolean managedByQueryManager) {
+    this.managedByQueryManager = managedByQueryManager;
+  }
+
+  @Override
+  public boolean hasRemaining() {
+    return hasRemaining;
+  }
+
+  @Override
+  public void setHasRemaining(boolean hasRemaining) {
+    this.hasRemaining = hasRemaining;
   }
 
 }

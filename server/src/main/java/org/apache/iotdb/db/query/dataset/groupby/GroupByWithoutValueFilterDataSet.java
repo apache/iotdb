@@ -151,8 +151,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           sequenceReader.skipPageData();
           continue;
         }
-        while (sequenceReader.hasNextBatch()) {
-          BatchData batchData = sequenceReader.nextBatch();
+        while (sequenceReader.hasNextOverlappedPage()) {
+          BatchData batchData = sequenceReader.nextOverlappedPage();
           calcBatchData(idx, function, batchData);
           if (isEndCalc(function, lastBatch)) {
             break;
