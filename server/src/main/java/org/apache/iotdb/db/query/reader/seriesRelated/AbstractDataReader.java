@@ -486,7 +486,7 @@ public abstract class AbstractDataReader implements ManagedSeriesReader {
     latestDirectlyOverlappedPageEndTime = currentPage.getEndTime();
     while (!overlappedChunkReader.isEmpty()) {
       VersionPair<IChunkReader> iChunkReader = overlappedChunkReader.get(0);
-      if (currentPage.getEndTime() > iChunkReader.data.nextPageHeader().getStartTime()) {
+      if (currentPage.getEndTime() >= iChunkReader.data.nextPageHeader().getStartTime()) {
         overlappedPages.add(overlappedChunkReader.remove(0));
       }
     }
