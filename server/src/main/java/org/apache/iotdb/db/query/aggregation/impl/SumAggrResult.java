@@ -29,18 +29,17 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public class SumAggrResult extends AggregateResult {
 
   protected double sum = 0.0;
-  private TSDataType seriesDataType;
+  private static final String SUM_AGGR_NAME = "SUM";
 
   public SumAggrResult(TSDataType seriesDataType) {
-    super(TSDataType.DOUBLE);
-    this.seriesDataType = seriesDataType;
+    super(seriesDataType);
     reset();
     sum = 0.0;
   }
 
   @Override
-  public Double getResult() {
-    return getDoubleRet();
+  public Object getResult() {
+    return getValue();
   }
 
   @Override
@@ -60,7 +59,7 @@ public class SumAggrResult extends AggregateResult {
       if (dataInThisPage.currentTime() >= bound) {
         break;
       }
-      updateSum(seriesDataType, dataInThisPage.currentValue());
+      updateSum(getDataType(), dataInThisPage.currentValue());
       dataInThisPage.next();
     }
   }
@@ -83,9 +82,8 @@ public class SumAggrResult extends AggregateResult {
       case BOOLEAN:
       default:
         throw new IOException(
-            String.format("Unsupported data type in aggregation SUM or AVG : %s", type));
+            String.format("Unsupported data type in aggregation %s : %s", getAggrTypeName(), type));
     }
-    setDoubleRet(sum);
   }
 
   @Override
@@ -94,7 +92,7 @@ public class SumAggrResult extends AggregateResult {
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
-        updateSum(seriesDataType, value);
+        updateSum(getDataType(), value);
       }
     }
   }
@@ -102,5 +100,12 @@ public class SumAggrResult extends AggregateResult {
   @Override
   public boolean isCalculatedAggregationResult() {
     return false;
+  }
+
+  /**
+   * Return type name of aggregation
+   */
+  public String getAggrTypeName() {
+    return SUM_AGGR_NAME;
   }
 }

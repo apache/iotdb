@@ -65,7 +65,7 @@ public class AggreResultFactory {
       case SQLConstant.COUNT:
         return new CountAggrResult();
       case SQLConstant.AVG:
-        return new AvgAggrResult();
+        return new AvgAggrResult(dataType);
       case SQLConstant.FIRST_VALUE:
         return new FirstValueAggrResult(dataType);
       case SQLConstant.SUM:
