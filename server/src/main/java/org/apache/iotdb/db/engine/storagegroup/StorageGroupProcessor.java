@@ -1336,19 +1336,21 @@ public class StorageGroupProcessor {
           MergeTask mergeTask = new MergeTask(mergeResource, storageGroupSysDir.getPath(),
               this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum(),
               storageGroupName);
-          mergingModification = new ModificationFile(
-              storageGroupSysDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
+
+          // there is a write lock to ensure thread safety, so just handle shared variables
+
+          if(mergeingCount == 0){
+            mergingModification = new ModificationFile(
+                storageGroupSysDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
+            mergeStartTime = System.currentTimeMillis();
+          }
+          mergeingCount++;
+
           MergeManager.getINSTANCE().submitMainTask(mergeTask);
           if (logger.isInfoEnabled()) {
             logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
                 storageGroupName, taskName, mergeFiles[0].size(), mergeFiles[1].size());
           }
-
-          // there is a write lock to ensure thread safety, so just handle shared variables
-          if(mergeingCount == 0){
-            mergeStartTime = System.currentTimeMillis();
-          }
-          mergeingCount++;
 
 
         } catch (MergeException | IOException e) {
@@ -1497,8 +1499,10 @@ public class StorageGroupProcessor {
         updateMergeModification(seqFile);
         if (i == seqFiles.size() - 1) {
           //FIXME if there is an exception, the the modification file will be not closed.
-          removeMergingModification();
           mergeingCount--;
+          if(mergeingCount == 0) {
+            removeMergingModification();
+          }
           mergeLog.delete();
         }
       } finally {
