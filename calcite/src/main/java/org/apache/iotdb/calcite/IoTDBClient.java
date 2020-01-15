@@ -24,7 +24,7 @@ public class IoTDBClient {
           new IoTDBSchema("127.0.0.1", 6667, "root", "root", rootSchema, "IoTDBSchema"));
       calciteConnection.setSchema("IoTDBSchema");
       Statement statement = calciteConnection.createStatement();
-      String sql = "SELECT * FROM \"root.ln\" WHERE \"temperature\" > 10";
+      String sql = "SELECT \"temperature\" FROM \"root.ln\" WHERE \"temperature\" > 10";
       ResultSet resultSet = statement.executeQuery(sql);
 
       final ResultSetMetaData metaData = resultSet.getMetaData();

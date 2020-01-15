@@ -42,13 +42,17 @@ public class IoTDBEnumerator implements Enumerator<Object> {
 
     // get the corresponding index of project columns in result set
     // as we have 'time' and 'device' columns in result that the project columns may don't include
+    // e.g. If resultSet includes [time, device, s0, s1], project columns only include [device, s0, s1],
+    // then the indexInResultSet is [2, 3, 4].
     ResultSetMetaData metaData = currentResultSet.getMetaData();
-    for (int i = 0; i < metaData.getColumnCount(); i++) {
-      if (i < 2 && !metaData.getColumnName(i + 1).toLowerCase()
-          .equals(fieldTypes.get(i).getName())) {
+    int indexInFieldTypes = 0;
+    for (int i = 1; i <= metaData.getColumnCount(); i++) {
+      if (i <= 2 && !metaData.getColumnName(i).toLowerCase()
+          .equals(fieldTypes.get(indexInFieldTypes).getName())) {
         continue;
       } else {
-        indexInResultSet.add(i + 1);
+        indexInFieldTypes++;
+        indexInResultSet.add(i);
       }
     }
   }
@@ -60,23 +64,19 @@ public class IoTDBEnumerator implements Enumerator<Object> {
    */
   @Override
   public Object current() {
-
-    // Build an array with all fields in this row
-    Object[] row = new Object[fieldTypes.size()];
-    for (int i = 0; i < fieldTypes.size(); i++) {
-      try {
+    if (fieldTypes.size() == 1) {
+      // If we just have one field, produce it directly
+      return currentRowField(indexInResultSet.get(0), fieldTypes.get(0).getType().getSqlTypeName());
+    } else {
+      // Build an array with all fields in this row
+      Object[] row = new Object[fieldTypes.size()];
+      for (int i = 0; i < fieldTypes.size(); i++) {
         row[i] = currentRowField(indexInResultSet.get(i),
             fieldTypes.get(i).getType().getSqlTypeName());
-      } catch (SQLException e) {
-        if (e.getMessage().endsWith("NULL.")) {
-          row[i] = null;
-        } else {
-          e.printStackTrace();
-          return null;
-        }
       }
+
+      return row;
     }
-    return row;
   }
 
   /**
@@ -85,21 +85,30 @@ public class IoTDBEnumerator implements Enumerator<Object> {
    * @param index Index of the field within the Row object
    * @param type  Type of the field in this row
    */
-  private Object currentRowField(int index, SqlTypeName type) throws SQLException {
-    if (type == SqlTypeName.VARCHAR) {
-      return currentResultSet.getString(index);
-    } else if (type == SqlTypeName.INTEGER) {
-      return currentResultSet.getInt(index);
-    } else if (type == SqlTypeName.BIGINT) {
-      return currentResultSet.getLong(index);
-    } else if (type == SqlTypeName.DOUBLE) {
-      return currentResultSet.getDouble(index);
-    } else if (type == SqlTypeName.REAL) {
-      return currentResultSet.getFloat(index);
-    } else if (type == SqlTypeName.BOOLEAN) {
-      return currentResultSet.getBoolean(index);
-    } else {
-      return null;
+  private Object currentRowField(int index, SqlTypeName type) {
+    try {
+      if (type == SqlTypeName.VARCHAR) {
+        return currentResultSet.getString(index);
+      } else if (type == SqlTypeName.INTEGER) {
+        return currentResultSet.getInt(index);
+      } else if (type == SqlTypeName.BIGINT) {
+        return currentResultSet.getLong(index);
+      } else if (type == SqlTypeName.DOUBLE) {
+        return currentResultSet.getDouble(index);
+      } else if (type == SqlTypeName.REAL) {
+        return currentResultSet.getFloat(index);
+      } else if (type == SqlTypeName.BOOLEAN) {
+        return currentResultSet.getBoolean(index);
+      } else {
+        return null;
+      }
+    } catch (SQLException e) {
+      if (e.getMessage().endsWith("NULL.")) {
+        return null;
+      } else {
+        e.printStackTrace();
+        return null;
+      }
     }
   }
 

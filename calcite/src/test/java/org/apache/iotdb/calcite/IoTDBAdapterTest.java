@@ -150,11 +150,11 @@ public class IoTDBAdapterTest {
   public void testProject1() {
     CalciteAssert.that()
         .with(MODEL)
-        .query("select \"s0\", \"s2\" from \"root.vehicle\"")
+        .query("select \"s0\" from \"root.vehicle\"")
         .limit(1)
-        .returns("s0=101; s2=null\n")
+        .returns("s0=101\n")
         .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
-            "  IoTDBProject(s0=[$2], s2=[$4])\n" +
+            "  IoTDBProject(s0=[$2])\n" +
             "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
   }
 
@@ -292,7 +292,8 @@ public class IoTDBAdapterTest {
             "time=100; device=root.vehicle.d0; s0=99; s1=199; s2=null; s3=null; s4=true\n" +
             "time=10000; device=root.vehicle.d1; s0=null; s1=null; s2=null; s3=null; s4=true\n")
         .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
-            "  IoTDBFilter(condition=[OR(AND(=($1, 'root.vehicle.d0'), <=($0, 1)), =($6, true))])\n" +
+            "  IoTDBFilter(condition=[OR(AND(=($1, 'root.vehicle.d0'), <=($0, 1)), =($6, true))])\n"
+            +
             "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
   }
 
