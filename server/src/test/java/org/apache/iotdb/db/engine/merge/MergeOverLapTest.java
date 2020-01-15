@@ -161,7 +161,7 @@ public class MergeOverLapTest extends MergeTest {
     int cnt = 0;
     try {
       while (tsFilesReader.hasNextBatch()) {
-        BatchData batchData = tsFilesReader.nextOverlappedPage();
+        BatchData batchData = tsFilesReader.nextBatch();
         for (int i = 0; i < batchData.length(); i++) {
           cnt++;
           assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
