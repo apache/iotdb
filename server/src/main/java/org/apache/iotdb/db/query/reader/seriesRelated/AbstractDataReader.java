@@ -483,8 +483,8 @@ public abstract class AbstractDataReader {
     if (chunkMetaData != null) {
       chunkMetaData.getChunkLoader().close();
     }
-    for (int i = 0; i < openedChunkLoaders.size(); i++) {
-      openedChunkLoaders.get(i).close();
+    for (IChunkLoader openedChunkLoader : openedChunkLoaders) {
+      openedChunkLoader.close();
     }
   }
 }

@@ -65,8 +65,7 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
   }
 
   public boolean canUseChunkStatistics() {
-    Statistics chunkStatistics = chunkMetaData.getStatistics();
-    return overlappedChunkReader.isEmpty() && satisfyFilter(chunkStatistics);
+    return super.canUseChunkStatistics();
   }
 
   @Override
@@ -101,7 +100,7 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
   }
 
   @Override
-  public void close() {
-
+  public void close() throws IOException {
+    super.close();
   }
 }
