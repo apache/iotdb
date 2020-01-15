@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class SumAggrResult extends AvgAggrResult {
@@ -28,12 +28,13 @@ public class SumAggrResult extends AvgAggrResult {
 
   public SumAggrResult(TSDataType seriesDataType) {
     super(seriesDataType);
+    reset();
   }
 
   @Override
-  public AggreResultData getResult() {
-    resultData.setDoubleRet(sum);
-    return resultData;
+  public AggregateResult getResult() {
+    setDoubleRet(sum);
+    return this;
   }
 
   /**

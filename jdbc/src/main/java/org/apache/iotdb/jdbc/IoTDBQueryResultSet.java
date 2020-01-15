@@ -41,10 +41,8 @@ import java.util.*;
 public class IoTDBQueryResultSet implements ResultSet {
 
   private static final String TIMESTAMP_STR = "Time";
-  private static final int TIMESTAMP_STR_LENGTH = 4;
   private static final int START_INDEX = 2;
   private static final String VALUE_IS_NULL = "The value got by %s (column name) is NULL.";
-  private static final String EMPTY_STR = "";
   private Statement statement = null;
   private String sql;
   private SQLWarning warningChain = null;

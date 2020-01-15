@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBoolean;
@@ -26,10 +30,6 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 public class TimeValuePairUtils {
 
@@ -67,10 +67,10 @@ public class TimeValuePairUtils {
   /**
    * get given data's current (time,value) pair.
    *
-   * @param data - AggreResultData
+   * @param data - AggregateResult
    * @return -given data's (time,value) pair
    */
-  public static TimeValuePair getCurrentTimeValuePair(AggreResultData data) {
+  public static TimeValuePair getCurrentTimeValuePair(AggregateResult data) {
     switch (data.getDataType()) {
       case INT32:
         return new TimeValuePair(0, new TsPrimitiveType.TsInt(data.getIntRet()));

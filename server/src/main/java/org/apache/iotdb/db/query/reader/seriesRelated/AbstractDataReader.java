@@ -150,7 +150,7 @@ public abstract class AbstractDataReader {
       return false;
     }
     unpackOverlappedFiles();
-    unPackOverlappedChunks();
+    unpackOverlappedChunks();
     return hasCachedNextChunk;
   }
 
@@ -421,7 +421,7 @@ public abstract class AbstractDataReader {
    * to clean up all the unused chunks and populate the container. It should be noted that this
    * chunk collection is not in order, and all chunks should be used at once
    */
-  private void unPackOverlappedChunks() throws IOException {
+  private void unpackOverlappedChunks() throws IOException {
     while (!unseqChunkMetadatas.isEmpty()) {
       long startTime = unseqChunkMetadatas.first().getStartTime();
 

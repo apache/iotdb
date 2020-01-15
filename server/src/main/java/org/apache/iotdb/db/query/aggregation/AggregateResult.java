@@ -22,13 +22,24 @@ package org.apache.iotdb.db.query.aggregation;
 import java.io.IOException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.utils.Binary;
 
-public abstract class AggregateResult {
+public class AggregateResult {
 
-  protected AggreResultData resultData;
+  private TSDataType dataType;
+
+  private boolean booleanRet;
+  private int intRet;
+  private long longRet;
+  private float floatRet;
+  private double doubleRet;
+  private Binary binaryRet;
+
+  private boolean hasResult;
 
   /**
    * construct.
@@ -36,27 +47,32 @@ public abstract class AggregateResult {
    * @param dataType result data type.
    */
   public AggregateResult(TSDataType dataType) {
-    this.resultData = new AggreResultData(dataType);
+    this.dataType = dataType;
+    this.hasResult = false;
   }
 
-  public abstract void init();
-
-  public abstract AggreResultData getResult();
+  public AggregateResult getResult() {
+    return null;
+  }
 
   /**
    * Calculate the aggregation using Statistics
    *
    * @param statistics chunkStatistics or pageStatistics
    */
-  public abstract void updateResultFromStatistics(Statistics statistics)
-      throws QueryProcessException;
+  public void updateResultFromStatistics(Statistics statistics)
+      throws QueryProcessException {
+
+  }
 
   /**
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
    *
    * @param dataInThisPage the data in Page
    */
-  public abstract void updateResultFromPageData(BatchData dataInThisPage) throws IOException;
+  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+
+  }
 
   /**
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
@@ -64,8 +80,10 @@ public abstract class AggregateResult {
    * @param dataInThisPage the data in Page
    * @param bound calculate points whose time < bound
    */
-  public abstract void updateResultFromPageData(BatchData dataInThisPage, long bound)
-      throws IOException;
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound)
+      throws IOException {
+
+  }
 
   /**
    * <p> This method is calculate the aggregation using the common timestamps of cross series
@@ -73,8 +91,10 @@ public abstract class AggregateResult {
    *
    * @throws IOException TsFile data read error
    */
-  public abstract void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException;
+  public void updateResultUsingTimestamps(long[] timestamps, int length,
+      IReaderByTimestamp dataReader) throws IOException {
+
+  }
 
   /**
    * Judge if aggregation results have been calculated. In other words, if the aggregated result
@@ -82,5 +102,131 @@ public abstract class AggregateResult {
    *
    * @return If the aggregation result has been calculated return true, else return false.
    */
-  public abstract boolean isCalculatedAggregationResult();
+  public boolean isCalculatedAggregationResult() {
+    return false;
+  }
+
+  public void reset() {
+    hasResult = false;
+  }
+
+  public Object getValue() {
+    switch (dataType) {
+      case BOOLEAN:
+        return booleanRet;
+      case DOUBLE:
+        return doubleRet;
+      case TEXT:
+        return binaryRet;
+      case FLOAT:
+        return floatRet;
+      case INT32:
+        return intRet;
+      case INT64:
+        return longRet;
+      default:
+        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+    }
+  }
+
+  /**
+   * set an object.
+   *
+   * @param v object value
+   */
+  public void setValue(Object v) {
+    hasResult = true;
+    switch (dataType) {
+      case BOOLEAN:
+        booleanRet = (Boolean) v;
+        break;
+      case DOUBLE:
+        doubleRet = (Double) v;
+        break;
+      case TEXT:
+        binaryRet = (Binary) v;
+        break;
+      case FLOAT:
+        floatRet = (Float) v;
+        break;
+      case INT32:
+        intRet = (Integer) v;
+        break;
+      case INT64:
+        longRet = (Long) v;
+        break;
+      default:
+        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+    }
+  }
+
+  public TSDataType getDataType() {
+    return dataType;
+  }
+
+  public boolean isBooleanRet() {
+    return booleanRet;
+  }
+
+  public void setBooleanRet(boolean booleanRet) {
+    this.hasResult = true;
+    this.booleanRet = booleanRet;
+  }
+
+  public int getIntRet() {
+    return intRet;
+  }
+
+  public void setIntRet(int intRet) {
+    this.hasResult = true;
+    this.intRet = intRet;
+  }
+
+  public long getLongRet() {
+    return longRet;
+  }
+
+  public void setLongRet(long longRet) {
+    this.hasResult = true;
+    this.longRet = longRet;
+  }
+
+  public float getFloatRet() {
+    return floatRet;
+  }
+
+  public void setFloatRet(float floatRet) {
+    this.hasResult = true;
+    this.floatRet = floatRet;
+  }
+
+  public double getDoubleRet() {
+    return doubleRet;
+  }
+
+  public void setDoubleRet(double doubleRet) {
+    this.hasResult = true;
+    this.doubleRet = doubleRet;
+  }
+
+  public Binary getBinaryRet() {
+    return binaryRet;
+  }
+
+  public void setBinaryRet(Binary binaryRet) {
+    this.hasResult = true;
+    this.binaryRet = binaryRet;
+  }
+
+  public boolean hasResult() {
+    return hasResult;
+  }
+
+  public AggregateResult deepCopy() {
+    AggregateResult aggregateResult = new AggregateResult(this.dataType);
+    if (hasResult) {
+      aggregateResult.setValue(this.getValue());
+    }
+    return aggregateResult;
+  }
 }

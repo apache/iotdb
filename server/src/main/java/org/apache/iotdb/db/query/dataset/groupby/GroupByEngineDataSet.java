@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
@@ -69,7 +68,6 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       AggregateResult function = AggreResultFactory
           .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(i),
               groupByPlan.getDeduplicatedDataTypes().get(i));
-      function.init();
       functions.add(function);
     }
   }
@@ -101,32 +99,32 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     return new Pair<>(startTime, endTime);
   }
 
-  protected Field getField(AggreResultData aggreResultData) {
-    if (!aggreResultData.hasResult()) {
+  protected Field getField(AggregateResult aggregateResult) {
+    if (!aggregateResult.hasResult()) {
       return new Field(null);
     }
-    Field field = new Field(aggreResultData.getDataType());
-    switch (aggreResultData.getDataType()) {
+    Field field = new Field(aggregateResult.getDataType());
+    switch (aggregateResult.getDataType()) {
       case INT32:
-        field.setIntV(aggreResultData.getIntRet());
+        field.setIntV(aggregateResult.getIntRet());
         break;
       case INT64:
-        field.setLongV(aggreResultData.getLongRet());
+        field.setLongV(aggregateResult.getLongRet());
         break;
       case FLOAT:
-        field.setFloatV(aggreResultData.getFloatRet());
+        field.setFloatV(aggregateResult.getFloatRet());
         break;
       case DOUBLE:
-        field.setDoubleV(aggreResultData.getDoubleRet());
+        field.setDoubleV(aggregateResult.getDoubleRet());
         break;
       case BOOLEAN:
-        field.setBoolV(aggreResultData.isBooleanRet());
+        field.setBoolV(aggregateResult.isBooleanRet());
         break;
       case TEXT:
-        field.setBinaryV(aggreResultData.getBinaryRet());
+        field.setBinaryV(aggregateResult.getBinaryRet());
         break;
       default:
-        throw new UnSupportedDataTypeException("UnSupported: " + aggreResultData.getDataType());
+        throw new UnSupportedDataTypeException("UnSupported: " + aggregateResult.getDataType());
     }
     return field;
   }

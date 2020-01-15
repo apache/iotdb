@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,32 +30,28 @@ public class CountAggrResult extends AggregateResult {
 
   public CountAggrResult() {
     super(TSDataType.INT64);
+    reset();
+    setLongRet(0);
   }
 
   @Override
-  public void init() {
-    resultData.reset();
-    resultData.setLongRet(0);
-  }
-
-  @Override
-  public AggreResultData getResult() {
-    return resultData;
+  public AggregateResult getResult() {
+    return this;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    long preValue = resultData.getLongRet();
+    long preValue = getLongRet();
     preValue += statistics.getCount();
-    resultData.setLongRet(preValue);
+    setLongRet(preValue);
   }
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage) {
     int cnt = dataInThisPage.length();
-    long preValue = resultData.getLongRet();
+    long preValue = getLongRet();
     preValue += cnt;
-    resultData.setLongRet(preValue);
+    setLongRet(preValue);
   }
 
   @Override
@@ -65,8 +60,8 @@ public class CountAggrResult extends AggregateResult {
       if (dataInThisPage.currentTime() >= bound) {
         break;
       }
-      long preValue = resultData.getLongRet();
-      resultData.setLongRet(++preValue);
+      long preValue = getLongRet();
+      setLongRet(++preValue);
       dataInThisPage.next();
     }
   }
@@ -82,9 +77,9 @@ public class CountAggrResult extends AggregateResult {
       }
     }
 
-    long preValue = resultData.getLongRet();
+    long preValue = getLongRet();
     preValue += cnt;
-    resultData.setLongRet(preValue);
+    setLongRet(preValue);
   }
 
   @Override

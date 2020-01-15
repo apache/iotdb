@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,22 +30,18 @@ public class LastValueAggrResult extends AggregateResult {
 
   public LastValueAggrResult(TSDataType dataType) {
     super(dataType);
+    reset();
   }
 
   @Override
-  public void init() {
-    resultData.reset();
-  }
-
-  @Override
-  public AggreResultData getResult() {
-    return resultData;
+  public AggregateResult getResult() {
+    return this;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
     Object lastVal = statistics.getLastValue();
-    resultData.setValue(lastVal);
+    setValue(lastVal);
   }
 
   @Override
@@ -65,7 +60,7 @@ public class LastValueAggrResult extends AggregateResult {
     }
 
     if (time != -1) {
-      resultData.setValue(lastVal);
+      setValue(lastVal);
     }
   }
 
@@ -83,7 +78,7 @@ public class LastValueAggrResult extends AggregateResult {
       }
     }
     if (time != -1) {
-      resultData.setValue(lastVal);
+      setValue(lastVal);
     }
   }
 

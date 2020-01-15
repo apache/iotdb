@@ -28,7 +28,6 @@ import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
@@ -81,26 +80,26 @@ public class AggregateEngineExecutor {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
 
-    List<AggreResultData> aggreResultDataList = new ArrayList<>();
+    List<AggregateResult> aggregateResultList = new ArrayList<>();
     //TODO use multi-thread
     for (int i = 0; i < selectedSeries.size(); i++) {
-      AggreResultData aggreResultData = aggregateOneSeries(i, timeFilter, context);
-      aggreResultDataList.add(aggreResultData);
+      AggregateResult aggregateResult = aggregateOneSeries(i, timeFilter, context);
+      aggregateResultList.add(aggregateResult);
     }
-    return constructDataSet(aggreResultDataList);
+    return constructDataSet(aggregateResultList);
   }
 
 
   /**
    * get aggregation result for one series
    */
-  private AggreResultData aggregateOneSeries(int i, Filter timeFilter, QueryContext context)
+  private AggregateResult aggregateOneSeries(int i, Filter timeFilter, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException {
 
     // construct AggregateResult
     TSDataType tsDataType = dataTypes.get(i);
-    AggregateResult aggregateResult = AggreResultFactory.getAggrResultByName(aggres.get(i), tsDataType);
-    aggregateResult.init();
+    AggregateResult aggregateResult = AggreResultFactory
+        .getAggrResultByName(aggres.get(i), tsDataType);
 
     // construct series reader without value filter
     IAggregateReader seriesReader = new SeriesDataReaderWithoutValueFilter(
@@ -159,10 +158,9 @@ public class AggregateEngineExecutor {
     for (int i = 0; i < selectedSeries.size(); i++) {
       TSDataType type = MManager.getInstance().getSeriesType(selectedSeries.get(i).getFullPath());
       AggregateResult function = AggreResultFactory.getAggrResultByName(aggres.get(i), type);
-      function.init();
       aggregateResults.add(function);
     }
-    List<AggreResultData> batchDataList = aggregateWithValueFilter(aggregateResults,
+    List<AggregateResult> batchDataList = aggregateWithValueFilter(aggregateResults,
         timestampGenerator, readersOfSelectedSeries);
     return constructDataSet(batchDataList);
   }
@@ -170,7 +168,7 @@ public class AggregateEngineExecutor {
   /**
    * calculation aggregate result with value filter.
    */
-  private List<AggreResultData> aggregateWithValueFilter(
+  private List<AggregateResult> aggregateWithValueFilter(
       List<AggregateResult> aggregateResults,
       EngineTimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries)
@@ -195,23 +193,23 @@ public class AggregateEngineExecutor {
       }
     }
 
-    List<AggreResultData> aggreResultDataArrayList = new ArrayList<>();
+    List<AggregateResult> aggregateResultList = new ArrayList<>();
     for (AggregateResult function : aggregateResults) {
-      aggreResultDataArrayList.add(function.getResult());
+      aggregateResultList.add(function.getResult());
     }
-    return aggreResultDataArrayList;
+    return aggregateResultList;
   }
 
   /**
    * using aggregate result data list construct QueryDataSet.
    *
-   * @param aggreResultDataList aggregate result data list
+   * @param aggregateResultList aggregate result list
    */
-  private QueryDataSet constructDataSet(List<AggreResultData> aggreResultDataList)
+  private QueryDataSet constructDataSet(List<AggregateResult> aggregateResultList)
       throws IOException {
     List<TSDataType> dataTypes = new ArrayList<>();
     List<IPointReader> resultDataPointReaders = new ArrayList<>();
-    for (AggreResultData resultData : aggreResultDataList) {
+    for (AggregateResult resultData : aggregateResultList) {
       dataTypes.add(resultData.getDataType());
       resultDataPointReaders.add(new AggreResultDataPointReader(resultData));
     }

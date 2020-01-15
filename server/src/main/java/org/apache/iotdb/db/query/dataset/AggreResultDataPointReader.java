@@ -19,34 +19,34 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 
 public class AggreResultDataPointReader implements IPointReader {
 
-  private AggreResultData aggreResultData;
+  private AggregateResult aggregateResult;
 
-  public AggreResultDataPointReader(AggreResultData aggreResultData) {
-    this.aggreResultData = aggreResultData;
+  public AggreResultDataPointReader(AggregateResult aggregateResult) {
+    this.aggregateResult = aggregateResult;
   }
 
   @Override
   public boolean hasNext() {
-    return aggreResultData.hasResult();
+    return aggregateResult.hasResult();
   }
 
   @Override
   public TimeValuePair next() {
-    TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(aggreResultData);
-    aggreResultData.reset();
+    TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(aggregateResult);
+    aggregateResult.reset();
     return timeValuePair;
   }
 
   @Override
   public TimeValuePair current() {
-    return TimeValuePairUtils.getCurrentTimeValuePair(aggreResultData);
+    return TimeValuePairUtils.getCurrentTimeValuePair(aggregateResult);
   }
 
   @Override

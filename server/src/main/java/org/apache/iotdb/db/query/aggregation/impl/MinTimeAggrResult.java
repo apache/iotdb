@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,25 +30,21 @@ public class MinTimeAggrResult extends AggregateResult {
 
   public MinTimeAggrResult() {
     super(TSDataType.INT64);
+    reset();
   }
 
   @Override
-  public void init() {
-    resultData.reset();
-  }
-
-  @Override
-  public AggreResultData getResult() {
-    return resultData;
+  public AggregateResult getResult() {
+    return this;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    if (resultData.hasResult()) {
+    if (hasResult()) {
       return;
     }
     long time = statistics.getStartTime();
-    resultData.setValue(time);
+    setValue(time);
   }
 
   @Override
@@ -59,24 +54,24 @@ public class MinTimeAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
-    if (resultData.hasResult()) {
+    if (hasResult()) {
       return;
     }
     if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
-      resultData.setLongRet(dataInThisPage.currentTime());
+      setLongRet(dataInThisPage.currentTime());
     }
   }
 
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    if (resultData.hasResult()) {
+    if (hasResult()) {
       return;
     }
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
-        resultData.setLongRet(timestamps[i]);
+        setLongRet(timestamps[i]);
         return;
       }
     }
@@ -84,7 +79,7 @@ public class MinTimeAggrResult extends AggregateResult {
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return resultData.hasResult();
+    return hasResult();
   }
 
 }

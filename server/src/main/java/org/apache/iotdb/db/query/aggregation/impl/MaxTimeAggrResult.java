@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,16 +30,12 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   public MaxTimeAggrResult() {
     super(TSDataType.INT64);
+    reset();
   }
 
   @Override
-  public void init() {
-    resultData.reset();
-  }
-
-  @Override
-  public AggreResultData getResult() {
-    return resultData;
+  public AggregateResult getResult() {
+    return this;
   }
 
   @Override
@@ -91,8 +86,8 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   private void updateMaxTimeResult(long value) {
-    if (!resultData.hasResult() || value >= resultData.getLongRet()) {
-      resultData.setLongRet(value);
+    if (!hasResult() || value >= getLongRet()) {
+      setLongRet(value);
     }
   }
 }

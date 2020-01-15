@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -32,16 +30,12 @@ public class MinValueAggrResult extends AggregateResult {
 
   public MinValueAggrResult(TSDataType dataType) {
     super(dataType);
+    reset();
   }
 
   @Override
-  public void init() {
-    resultData.reset();
-  }
-
-  @Override
-  public AggreResultData getResult() {
-    return resultData;
+  public AggregateResult getResult() {
+    return this;
   }
 
   @Override
@@ -88,8 +82,8 @@ public class MinValueAggrResult extends AggregateResult {
     if (minVal == null) {
       return;
     }
-    if (!resultData.hasResult() || minVal.compareTo(resultData.getValue()) < 0) {
-      resultData.setValue(minVal);
+    if (!hasResult() || minVal.compareTo(getValue()) < 0) {
+      setValue(minVal);
     }
   }
 

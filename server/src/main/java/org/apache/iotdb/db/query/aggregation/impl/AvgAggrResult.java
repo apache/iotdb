@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
+import java.io.IOException;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-
-import java.io.IOException;
 
 public class AvgAggrResult extends AggregateResult {
 
@@ -38,21 +36,17 @@ public class AvgAggrResult extends AggregateResult {
   public AvgAggrResult(TSDataType seriesDataType) {
     super(TSDataType.DOUBLE);
     this.seriesDataType = seriesDataType;
-  }
-
-  @Override
-  public void init() {
-    resultData.reset();
+    reset();
     sum = 0.0;
     cnt = 0;
   }
 
   @Override
-  public AggreResultData getResult() {
+  public AggregateResult getResult() {
     if (cnt > 0) {
-      resultData.setDoubleRet(sum / cnt);
+      setDoubleRet(sum / cnt);
     }
-    return resultData;
+    return this;
   }
 
   @Override

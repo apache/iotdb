@@ -26,7 +26,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
@@ -91,10 +90,6 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
           + " in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
-    for (AggregateResult function : functions) {
-      function.init();
-    }
-
     long[] timestampArray = new long[timeStampFetchSize];
     int timeArrayLength = 0;
     if (hasCachedTimestamp) {
@@ -139,7 +134,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * construct an array of timestamps for one batch of a group by partition calculating.
    *
-   * @param timestampArray  timestamp array
+   * @param timestampArray timestamp array
    * @param timeArrayLength the current size of timestamp array
    * @return time array size
    */

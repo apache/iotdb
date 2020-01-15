@@ -21,7 +21,6 @@ package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -32,22 +31,18 @@ public class FirstValueAggrResult extends AggregateResult {
 
   public FirstValueAggrResult(TSDataType dataType) {
     super(dataType);
+    reset();
   }
 
   @Override
-  public void init() {
-    resultData.reset();
-  }
-
-  @Override
-  public AggreResultData getResult() {
-    return resultData;
+  public AggregateResult getResult() {
+    return this;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics)
       throws QueryProcessException {
-    if (resultData.hasResult()) {
+    if (hasResult()) {
       return;
     }
 
@@ -55,26 +50,26 @@ public class FirstValueAggrResult extends AggregateResult {
     if (firstVal == null) {
       throw new QueryProcessException("ChunkMetaData contains no FIRST value");
     }
-    resultData.setValue(firstVal);
+    setValue(firstVal);
   }
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage) {
-    if (resultData.hasResult()) {
+    if (hasResult()) {
       return;
     }
     if (dataInThisPage.hasCurrent()) {
-      resultData.setValue(dataInThisPage.currentValue());
+      setValue(dataInThisPage.currentValue());
     }
   }
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
-    if (resultData.hasResult()) {
+    if (hasResult()) {
       return;
     }
     if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
-      resultData.setValue(dataInThisPage.currentValue());
+      setValue(dataInThisPage.currentValue());
       dataInThisPage.next();
     }
   }
@@ -82,14 +77,14 @@ public class FirstValueAggrResult extends AggregateResult {
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    if (resultData.hasResult()) {
+    if (hasResult()) {
       return;
     }
 
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
-        resultData.setValue(value);
+        setValue(value);
         break;
       }
     }
@@ -97,6 +92,6 @@ public class FirstValueAggrResult extends AggregateResult {
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return resultData.hasResult();
+    return hasResult();
   }
 }

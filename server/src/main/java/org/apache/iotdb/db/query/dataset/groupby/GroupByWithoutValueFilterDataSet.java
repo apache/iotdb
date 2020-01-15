@@ -26,7 +26,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderWithoutValueFilter;
@@ -91,7 +90,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     hasCachedTimeInterval = false;
     RowRecord record = new RowRecord(startTime);
     for (int i = 0; i < functions.size(); i++) {
-      AggreResultData res;
+      AggregateResult res;
       try {
         res = nextSeries(i);
       } catch (QueryProcessException e) {
@@ -111,10 +110,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    *
    * @param idx series id
    */
-  private AggreResultData nextSeries(int idx) throws IOException, QueryProcessException {
+  private AggregateResult nextSeries(int idx) throws IOException, QueryProcessException {
     SeriesDataReaderWithoutValueFilter sequenceReader = sequenceReaderList.get(idx);
     AggregateResult function = functions.get(idx);
-    function.init();
     TimeRange timeRange = new TimeRange(startTime, endTime - 1);
 
     BatchData lastBatch = batchDataList.get(idx);
