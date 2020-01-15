@@ -323,6 +323,44 @@ Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammati
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
 
+* Disable align语句
+```
+规则:  
+1. 大小写均可.  
+Correct example: select * from root.sg1 disable align  
+Correct example: select * from root.sg1 DISABLE ALIGN  
+
+2. Disable Align只能用于查询语句句尾.  
+Correct example: select * from root.sg1 where time > 10 disable align 
+Wrong example: select * from root.sg1 disable align where time > 10 
+
+3. Disable Align 不能用于聚合查询、Fill语句、Group by或Group by device语句，但可用于Limit语句。
+Correct example: select * from root.sg1 limit 3 offset 2 disable align
+Correct example: select * from root.sg1 slimit 3 soffset 2 disable align
+Wrong example: select count(s0),count(s1) from root.sg1.d1 disable align
+Wrong example: select * from root.vehicle where root.vehicle.d0.s0>0 disable align
+Wrong example: select * from root.vehicle group by device disable align
+
+4. 结果显示若无数据显示为空白.
+
+查询结果样式如下表:
+| Time | root.sg.d0.s1 | Time | root.sg.d0.s2 | Time | root.sg.d1.s1 |
+| ---  | ---           | ---  | ---           | ---  | ---           |
+|  1   | 100           | 20   | 300           | 400  | 600           |
+|  2   | 300           | 40   | 800           | 700  | 900           |
+|  4   | 500           |      |               | 800  | 1000          |
+|      |               |      |               | 900  | 8000          |
+
+5. 一些正确使用样例: 
+   - select * from root.vehicle disable align
+   - select s0,s0,s1 from root.vehicle.* disable align
+   - select s0,s1 from root.vehicle.* limit 10 offset 1 disable align
+   - select * from root.vehicle slimit 10 soffset 2 disable align
+   - select * from root.vehicle where time > 10 disable align
+
+
+```
+
 ### 数据库管理语句
 
 * 创建用户

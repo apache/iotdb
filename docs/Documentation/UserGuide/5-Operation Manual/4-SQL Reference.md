@@ -404,7 +404,44 @@ For example, "select s0,s0,s1 from root.sg.* group by device" is not equal to "s
    - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) group by device
    - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) group by device
 ```
+* Disable Align Statement
+```
+Disable Align Clause: DISABLE ALIGN
 
+Rules:  
+1. Both uppercase and lowercase are ok.  
+Correct example: select * from root.sg1 disable align  
+Correct example: select * from root.sg1 DISABLE ALIGN  
+
+2. Disable Align Clause can only be used at the end of a query statement.  
+Correct example: select * from root.sg1 where time > 10 disable align 
+Wrong example: select * from root.sg1 disable align where time > 10 
+
+3. Disable Align Clause cannot be used with Aggregation, Fill Statements, Group By or Group By Device Statements, but can with Limit Statements.
+Correct example: select * from root.sg1 limit 3 offset 2 disable align
+Correct example: select * from root.sg1 slimit 3 soffset 2 disable align
+Wrong example: select count(s0),count(s1) from root.sg1.d1 disable align
+Wrong example: select * from root.vehicle where root.vehicle.d0.s0>0 disable align
+Wrong example: select * from root.vehicle group by device disable align
+
+4. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being empty.
+
+You could expect a table like:
+| Time | root.sg.d0.s1 | Time | root.sg.d0.s2 | Time | root.sg.d1.s1 |
+| ---  | ---           | ---  | ---           | ---  | ---           |
+|  1   | 100           | 20   | 300           | 400  | 600           |
+|  2   | 300           | 40   | 800           | 700  | 900           |
+|  4   | 500           |      |               | 800  | 1000          |
+|      |               |      |               | 900  | 8000          |
+
+5. More correct examples: 
+   - select * from root.vehicle disable align
+   - select s0,s0,s1 from root.vehicle.* disable align
+   - select s0,s1 from root.vehicle.* limit 10 offset 1 disable align
+   - select * from root.vehicle slimit 10 soffset 2 disable align
+   - select * from root.vehicle where time > 10 disable align
+
+```
 
 ### Database Management Statement
 
