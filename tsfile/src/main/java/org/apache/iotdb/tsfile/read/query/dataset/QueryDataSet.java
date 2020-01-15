@@ -88,37 +88,6 @@ public abstract class QueryDataSet {
     this.dataTypes = dataTypes;
   }
 
-  protected Field getField(Object value, TSDataType dataType) {
-    if (value == null) {
-      return new Field(null);
-    }
-
-    Field field = new Field(dataType);
-    switch (dataType) {
-      case DOUBLE:
-        field.setDoubleV((double) value);
-        break;
-      case FLOAT:
-        field.setFloatV((float) value);
-        break;
-      case INT64:
-        field.setLongV((long) value);
-        break;
-      case INT32:
-        field.setIntV((int) value);
-        break;
-      case BOOLEAN:
-        field.setBoolV((boolean) value);
-        break;
-      case TEXT:
-        field.setBinaryV((Binary) value);
-        break;
-      default:
-        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
-    }
-    return field;
-  }
-
   public int getRowLimit() {
     return rowLimit;
   }

@@ -84,7 +84,7 @@ public class EngineDataSetWithValueFilter extends QueryDataSet {
           rowRecord.addField(new Field(null));
         } else {
           hasField = true;
-          rowRecord.addField(getField(value, dataTypes.get(i)));
+          rowRecord.addField(value, dataTypes.get(i));
         }
       }
       if (hasField) {

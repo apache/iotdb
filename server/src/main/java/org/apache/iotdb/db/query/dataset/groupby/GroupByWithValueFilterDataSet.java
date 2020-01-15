@@ -34,7 +34,6 @@ import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -163,9 +162,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   private RowRecord constructRowRecord() {
     RowRecord record = new RowRecord(startTime);
-    aggregateResults.forEach(aggregateResult -> record.addField(getField(
-        TsPrimitiveType.getByType(aggregateResult.getDataType(), aggregateResult.getResult()),
-        aggregateResult.getDataType())));
+    aggregateResults.forEach(aggregateResult -> record.addField(aggregateResult.getResult(),
+        aggregateResult.getDataType()));
     return record;
   }
 }

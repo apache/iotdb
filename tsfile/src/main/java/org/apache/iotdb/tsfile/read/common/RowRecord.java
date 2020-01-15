@@ -38,8 +38,8 @@ public class RowRecord {
     this.fields.add(f);
   }
 
-  public void addField(TsPrimitiveType tsPrimitiveType, TSDataType dataType) {
-    this.fields.add(Field.getField(tsPrimitiveType, dataType));
+  public void addField(Object value, TSDataType dataType) {
+    this.fields.add(Field.getField(value, dataType));
   }
 
   @Override
