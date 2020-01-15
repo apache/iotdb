@@ -20,12 +20,15 @@
 package org.apache.iotdb.db.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -36,18 +39,21 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBMergeTest {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBMergeTest.class);
-
+  private long prevPartitionInterval;
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
 
     EnvironmentUtils.envSetUp();
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1);
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
   @Test
@@ -95,6 +101,130 @@ public class IoTDBMergeTest {
         }
         assertEquals((i + 1) * 10, cnt);
       }
+    }
+  }
+
+  @Test
+  public void testInvertedOrder() {
+    // case: seq data and unseq data are written in reverted order
+    // e.g.: write 1. seq [10, 20), 2. seq [20, 30), 3. unseq [20, 30), 4. unseq [10, 20)
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.mergeTest");
+      for (int i = 1; i <= 3; i++) {
+        try {
+          statement.execute("CREATE TIMESERIES root.mergeTest.s" + i + " WITH DATATYPE=INT64,"
+              + "ENCODING=PLAIN");
+        } catch (SQLException e) {
+          // ignore
+        }
+      }
+
+      for (int j = 10; j < 20; j++) {
+        statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+            + "%d,%d)", j, j+1, j+2, j+3));
+      }
+      statement.execute("FLUSH");
+      for (int j = 20; j < 30; j++) {
+        statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+            + "%d,%d)", j, j+1, j+2, j+3));
+      }
+      statement.execute("FLUSH");
+
+      for (int j = 20; j < 30; j++) {
+        statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+            + "%d,%d)", j, j+10, j+20, j+30));
+      }
+      statement.execute("FLUSH");
+      for (int j = 10; j < 20; j++) {
+        statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+            + "%d,%d)", j, j+10, j+20, j+30));
+      }
+      statement.execute("FLUSH");
+
+      statement.execute("MERGE");
+
+      int cnt;
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
+        cnt = 0;
+        while (resultSet.next()) {
+          long time = resultSet.getLong("Time");
+          long s1 = resultSet.getLong("root.mergeTest.s1");
+          long s2 = resultSet.getLong("root.mergeTest.s2");
+          long s3 = resultSet.getLong("root.mergeTest.s3");
+          assertEquals(cnt + 10, time);
+          assertEquals(time + 10, s1);
+          assertEquals(time + 20, s2);
+          assertEquals(time + 30, s3);
+          cnt++;
+        }
+      }
+      assertEquals(20, cnt);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCrossPartition() throws SQLException, StorageEngineException {
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.mergeTest");
+      for (int i = 1; i <= 3; i++) {
+        try {
+          statement.execute("CREATE TIMESERIES root.mergeTest.s" + i + " WITH DATATYPE=INT64,"
+              + "ENCODING=PLAIN");
+        } catch (SQLException e) {
+          // ignore
+        }
+      }
+
+      // file in partition
+      for (int k = 0; k < 7; k++) {
+        // partition num
+        for (int i = 0; i < 10; i++) {
+          // sequence files
+          for (int j = i * 1000 + 300 + k * 100; j <= i * 1000 + 399 + k * 100; j++) {
+            statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                + "%d,%d)", j, j+1, j+2, j+3));
+          }
+          statement.execute("FLUSH");
+          // unsequence files
+          for (int j = i * 1000 + k * 100; j <= i * 1000 + 99 + k * 100; j++) {
+            statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                + "%d,%d)", j, j+10, j+20, j+30));
+          }
+          statement.execute("FLUSH");
+        }
+      }
+
+      statement.execute("MERGE");
+
+      int cnt;
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
+        cnt = 0;
+        while (resultSet.next()) {
+          long time = resultSet.getLong("Time");
+          long s1 = resultSet.getLong("root.mergeTest.s1");
+          long s2 = resultSet.getLong("root.mergeTest.s2");
+          long s3 = resultSet.getLong("root.mergeTest.s3");
+          assertEquals(cnt, time);
+          if (time % 1000 < 700) {
+            assertEquals(time + 10, s1);
+            assertEquals(time + 20, s2);
+            assertEquals(time + 30, s3);
+          } else {
+            assertEquals(time + 1, s1);
+            assertEquals(time + 2, s2);
+            assertEquals(time + 3, s3);
+          }
+          cnt++;
+        }
+      }
+      assertEquals(10000, cnt);
     }
   }
 }
