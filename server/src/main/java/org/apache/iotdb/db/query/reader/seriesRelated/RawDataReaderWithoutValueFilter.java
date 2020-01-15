@@ -87,7 +87,7 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
 
   @Override
   public BatchData nextBatch() throws IOException {
-    if (hasCachedBatchData) {
+    if (hasCachedBatchData || hasNextBatch()) {
       hasCachedBatchData = false;
       return batchData;
     }
