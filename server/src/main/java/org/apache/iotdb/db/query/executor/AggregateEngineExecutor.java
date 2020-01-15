@@ -30,10 +30,8 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
-import org.apache.iotdb.db.query.dataset.OldEngineDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
-import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderWithoutValueFilter;
@@ -42,10 +40,12 @@ import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class AggregateEngineExecutor {
 
@@ -206,12 +206,15 @@ public class AggregateEngineExecutor {
   private QueryDataSet constructDataSet(List<AggregateResult> aggregateResultList)
       throws IOException {
     List<TSDataType> dataTypes = new ArrayList<>();
-    List<IPointReader> resultDataPointReaders = new ArrayList<>();
+    RowRecord record = new RowRecord(0);
     for (AggregateResult resultData : aggregateResultList) {
-      dataTypes.add(resultData.getDataType());
-      resultDataPointReaders.add(new AggreResultDataPointReader(resultData));
+      TSDataType dataType = resultData.getDataType();
+      dataTypes.add(dataType);
+      record.addField(TsPrimitiveType.getByType(dataType, resultData.getResult()), dataType);
     }
-    return new OldEngineDataSetWithoutValueFilter(selectedSeries, dataTypes,
-        resultDataPointReaders);
+
+    SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
+    dataSet.setRecord(record);
+    return dataSet;
   }
 }

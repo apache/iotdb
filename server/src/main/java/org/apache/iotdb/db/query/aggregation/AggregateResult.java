@@ -97,7 +97,7 @@ public abstract class AggregateResult {
     hasResult = false;
   }
 
-  public Object getValue() {
+  protected Object getValue() {
     switch (dataType) {
       case BOOLEAN:
         return booleanRet;
@@ -151,7 +151,7 @@ public abstract class AggregateResult {
     return dataType;
   }
 
-  public boolean isBooleanRet() {
+  protected boolean getBooleanRet() {
     return booleanRet;
   }
 
@@ -160,7 +160,7 @@ public abstract class AggregateResult {
     this.booleanRet = booleanRet;
   }
 
-  public int getIntRet() {
+  protected int getIntRet() {
     return intRet;
   }
 
@@ -169,7 +169,7 @@ public abstract class AggregateResult {
     this.intRet = intRet;
   }
 
-  public long getLongRet() {
+  protected long getLongRet() {
     return longRet;
   }
 
@@ -178,7 +178,7 @@ public abstract class AggregateResult {
     this.longRet = longRet;
   }
 
-  public float getFloatRet() {
+  protected float getFloatRet() {
     return floatRet;
   }
 
@@ -187,7 +187,7 @@ public abstract class AggregateResult {
     this.floatRet = floatRet;
   }
 
-  public double getDoubleRet() {
+  protected double getDoubleRet() {
     return doubleRet;
   }
 
@@ -196,7 +196,7 @@ public abstract class AggregateResult {
     this.doubleRet = doubleRet;
   }
 
-  public Binary getBinaryRet() {
+  protected Binary getBinaryRet() {
     return binaryRet;
   }
 
@@ -205,7 +205,7 @@ public abstract class AggregateResult {
     this.binaryRet = binaryRet;
   }
 
-  public boolean hasResult() {
+  protected boolean hasResult() {
     return hasResult;
   }
 }
