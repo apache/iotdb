@@ -24,6 +24,8 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -66,12 +68,21 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
 
     while (hasNextChunk()) {
       while (hasNextPage()) {
-        if (canUsePageStatistics() && !mergeReader.hasNext()) {
-          batchData = nextPage();
-          hasCachedNextPage = false;
-          hasCachedBatchData = true;
-          return true;
+        if (canUsePageStatistics()) {
+          //page is not overlapped but mergeReader has data
+          if (mergeReader.hasNext()) {
+            TimeValuePair current = mergeReader.current();
+            PageHeader pageHeader = chunkReader.nextPageHeader();
+            //剩下的数据点 依然是与当前page没有相交
+            if (current.getTimestamp() > pageHeader.getEndTime()) {
+              batchData = nextPage();
+              hasCachedNextPage = false;
+              hasCachedBatchData = true;
+              return true;
+            }
+          }
         }
+        //这里是依然剩下的相交的数据
         if (hasNextOverlappedPage()) {
           batchData = nextOverlappedPage();
           hasCachedNextPage = false;
