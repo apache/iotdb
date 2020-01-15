@@ -41,7 +41,6 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   protected long startTime;
   protected long endTime;
   private int usedIndex;
-  protected List<AggregateResult> aggregateResults;
   protected boolean hasCachedTimeInterval;
 
   /**
@@ -54,22 +53,11 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.slidingStep = groupByPlan.getSlidingStep();
     this.intervalStartTime = groupByPlan.getStartTime();
     this.intervalEndTime = groupByPlan.getEndTime();
-    this.aggregateResults = new ArrayList<>();
 
     // init group by time partition
     this.usedIndex = 0;
     this.hasCachedTimeInterval = false;
     this.endTime = -1;
-  }
-
-  protected void initAggreFuction(GroupByPlan groupByPlan) throws PathException {
-    // construct AggregateFunctions
-    for (int i = 0; i < paths.size(); i++) {
-      AggregateResult aggregateResult = AggreResultFactory
-          .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(i),
-              groupByPlan.getDeduplicatedDataTypes().get(i));
-      aggregateResults.add(aggregateResult);
-    }
   }
 
   @Override
@@ -98,35 +86,4 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     hasCachedTimeInterval = false;
     return new Pair<>(startTime, endTime);
   }
-
-  protected Field getField(AggregateResult aggregateResult) {
-    if (!aggregateResult.hasResult()) {
-      return new Field(null);
-    }
-    Field field = new Field(aggregateResult.getDataType());
-    switch (aggregateResult.getDataType()) {
-      case INT32:
-        field.setIntV(aggregateResult.getIntRet());
-        break;
-      case INT64:
-        field.setLongV(aggregateResult.getLongRet());
-        break;
-      case FLOAT:
-        field.setFloatV(aggregateResult.getFloatRet());
-        break;
-      case DOUBLE:
-        field.setDoubleV(aggregateResult.getDoubleRet());
-        break;
-      case BOOLEAN:
-        field.setBoolV(aggregateResult.isBooleanRet());
-        break;
-      case TEXT:
-        field.setBinaryV(aggregateResult.getBinaryRet());
-        break;
-      default:
-        throw new UnSupportedDataTypeException("UnSupported: " + aggregateResult.getDataType());
-    }
-    return field;
-  }
-
 }

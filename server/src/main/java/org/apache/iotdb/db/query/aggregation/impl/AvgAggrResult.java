@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public class AvgAggrResult extends SumAggrResult {
 
   private int cnt = 0;
-  private static final String AVG_AGGR_NAME = "AVG";
 
   public AvgAggrResult(TSDataType seriesDataType) {
     super(seriesDataType);
@@ -41,16 +40,18 @@ public class AvgAggrResult extends SumAggrResult {
     if (cnt > 0) {
       setDoubleRet(sum / cnt);
     }
-    return sum / cnt;
+    return getDoubleRet();
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
+    super.updateResultFromStatistics(statistics);
     cnt += statistics.getCount();
   }
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+    super.updateResultFromPageData(dataInThisPage, bound);
     while (dataInThisPage.hasCurrent()) {
       if (dataInThisPage.currentTime() >= bound) {
         break;
@@ -63,17 +64,11 @@ public class AvgAggrResult extends SumAggrResult {
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
+    super.updateResultUsingTimestamps(timestamps, length, dataReader);
     for (int i = 0; i < length; i++) {
       if (dataReader.getValueInTimestamp(timestamps[i]) != null) {
         cnt++;
       }
     }
-  }
-
-  /**
-   * Return type name of aggregation
-   */
-  public String getAggreTypeName() {
-    return AVG_AGGR_NAME;
   }
 }

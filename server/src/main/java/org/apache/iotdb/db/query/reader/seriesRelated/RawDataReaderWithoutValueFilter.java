@@ -54,8 +54,8 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
   }
 
   /**
-   * This method overrides the AbstractDataReader.hasNextOverlappedPage for pause reads, to achieve a
-   * continuous read
+   * This method overrides the AbstractDataReader.hasNextOverlappedPage for pause reads, to achieve
+   * a continuous read
    */
   @Override
   public boolean hasNextBatch() throws IOException {
@@ -66,17 +66,20 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
 
     while (hasNextChunk()) {
       while (hasNextPage()) {
-        if (canUsePageStatistics()) {
+        if (canUsePageStatistics() && !mergeReader.hasNext()) {
           batchData = nextPage();
+          hasCachedNextPage = false;
           hasCachedBatchData = true;
           return true;
-        } else {
-          if (hasNextOverlappedPage()) {
-            batchData = nextOverlappedPage();
-            hasCachedBatchData = true;
-            return true;
-          }
         }
+        if (hasNextOverlappedPage()) {
+          batchData = nextOverlappedPage();
+          hasCachedNextPage = false;
+          hasCachedBatchData = true;
+          return true;
+        }
+        hasCachedNextPage = hasCachedBatchData;
+        return hasCachedNextPage;
       }
     }
     return false;

@@ -45,7 +45,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class AggregateEngineExecutor {
 
@@ -210,7 +209,7 @@ public class AggregateEngineExecutor {
     for (AggregateResult resultData : aggregateResultList) {
       TSDataType dataType = resultData.getDataType();
       dataTypes.add(dataType);
-      record.addField(TsPrimitiveType.getByType(dataType, resultData.getValue()), dataType);
+      record.addField(resultData.getResult(), dataType);
     }
 
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);

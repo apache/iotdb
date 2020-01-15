@@ -202,7 +202,7 @@ public class TTLTest {
 
     int cnt = 0;
     while (reader.hasNextBatch()) {
-      BatchData batchData = reader.nextOverlappedPage();
+      BatchData batchData = reader.nextBatch();
       while (batchData.hasCurrent()) {
         batchData.next();
         cnt++;

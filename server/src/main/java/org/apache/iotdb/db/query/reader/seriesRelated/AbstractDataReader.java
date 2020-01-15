@@ -191,8 +191,9 @@ public abstract class AbstractDataReader {
   protected BatchData nextPage() throws IOException {
     if (hasCachedNextPage || hasNextPage()) {
       hasCachedNextPage = false;
+      return chunkReader.nextPageData();
     }
-    return chunkReader.nextPageData();
+    throw new IOException("no next page data");
   }
 
   public boolean hasNextOverlappedPage() throws IOException {
