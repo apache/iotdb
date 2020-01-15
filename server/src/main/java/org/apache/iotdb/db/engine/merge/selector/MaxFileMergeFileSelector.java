@@ -65,7 +65,6 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
   private Map<TsFileResource, Long> maxSeriesQueryCostMap = new HashMap<>();
 
   List<TsFileResource> selectedUnseqFiles;
-  List<Integer> selectedSeqFileIndices;
   List<TsFileResource> selectedSeqFiles;
 
   private Collection<Integer> tmpSelectedSeqFiles;
@@ -135,7 +134,6 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
 
   void select(boolean useTightBound) throws IOException {
     tmpSelectedSeqFiles = new HashSet<>();
-    selectedSeqFileIndices = new ArrayList<>();
     seqSelected = new boolean[resource.getSeqFiles().size()];
     seqSelectedNum = 0;
     selectedSeqFiles = new ArrayList<>();
@@ -188,7 +186,6 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
         for (Integer seqIdx : tmpSelectedSeqFiles) {
           seqSelected[seqIdx] = true;
           seqSelectedNum++;
-          selectedSeqFileIndices.add(seqIdx);
         }
         totalCost += newCost;
         logger.debug("Adding a new unseqFile {} and seqFiles {} as candidates, new cost {}, total"
@@ -199,9 +196,10 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
       unseqIndex++;
       timeConsumption = System.currentTimeMillis() - startTime;
     }
-    selectedSeqFileIndices.sort(null);
-    for (Integer i : selectedSeqFileIndices) {
-      selectedSeqFiles.add(resource.getSeqFiles().get(i));
+    for (int i = 0; i < seqSelected.length; i++) {
+      if (seqSelected[i]) {
+        selectedSeqFiles.add(resource.getSeqFiles().get(i));
+      }
     }
   }
 
