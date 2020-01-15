@@ -41,16 +41,18 @@ public class AvgAggrResult extends SumAggrResult {
     if (cnt > 0) {
       setDoubleRet(sum / cnt);
     }
-    return sum / cnt;
+    return getDoubleRet();
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
+    super.updateResultFromStatistics(statistics);
     cnt += statistics.getCount();
   }
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+    super.updateResultFromPageData(dataInThisPage, bound);
     while (dataInThisPage.hasCurrent()) {
       if (dataInThisPage.currentTime() >= bound) {
         break;
@@ -63,6 +65,7 @@ public class AvgAggrResult extends SumAggrResult {
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
+    super.updateResultUsingTimestamps(timestamps, length, dataReader);
     for (int i = 0; i < length; i++) {
       if (dataReader.getValueInTimestamp(timestamps[i]) != null) {
         cnt++;

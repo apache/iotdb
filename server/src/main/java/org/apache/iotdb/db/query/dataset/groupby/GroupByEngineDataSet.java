@@ -118,7 +118,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
         field.setDoubleV(aggregateResult.getDoubleRet());
         break;
       case BOOLEAN:
-        field.setBoolV(aggregateResult.isBooleanRet());
+        field.setBoolV(aggregateResult.getBooleanRet());
         break;
       case TEXT:
         field.setBinaryV(aggregateResult.getBinaryRet());

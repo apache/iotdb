@@ -210,7 +210,7 @@ public class AggregateEngineExecutor {
     for (AggregateResult resultData : aggregateResultList) {
       TSDataType dataType = resultData.getDataType();
       dataTypes.add(dataType);
-      record.addField(TsPrimitiveType.getByType(dataType, resultData.getValue()), dataType);
+      record.addField(TsPrimitiveType.getByType(dataType, resultData.getResult()), dataType);
     }
 
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);

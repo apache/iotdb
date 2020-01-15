@@ -41,8 +41,7 @@ public class SumAggrResult extends AggregateResult {
 
   @Override
   public Double getResult() {
-    setDoubleRet(sum);
-    return sum;
+    return getDoubleRet();
   }
 
   @Override
@@ -88,6 +87,7 @@ public class SumAggrResult extends AggregateResult {
             String
                 .format("Unsupported data type in aggregation %s : %s", getSumAggrName(), type));
     }
+    setDoubleRet(sum);
   }
 
   @Override
