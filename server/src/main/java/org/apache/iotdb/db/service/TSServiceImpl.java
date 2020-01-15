@@ -862,7 +862,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private TSQueryNonAlignDataSet fillRpcNonAlignReturnData(int fetchSize, QueryDataSet queryDataSet,
-                                                           String userName) throws TException, AuthException, IOException, InterruptedException {
+                                                           String userName) throws TException, AuthException, InterruptedException {
     IAuthorizer authorizer;
     try {
       authorizer = LocalFileAuthorizer.getInstance();

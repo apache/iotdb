@@ -39,14 +39,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
-public class IoTDBNonAlignQueryResultSet extends IoTDBResultSet {
+public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
 
   private static final int TIMESTAMP_STR_LENGTH = 4;
   private static final String EMPTY_STR = "";
 
   private TSQueryNonAlignDataSet tsQueryNonAlignDataSet = null;
   private byte[][] times; // used for disable align
-  private byte[][] values; // used to cache the current row record value
 
   // for disable align clause
   public IoTDBNonAlignQueryResultSet(Statement statement, List<String> columnNameList,

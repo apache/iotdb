@@ -37,7 +37,7 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.Objects;
 
-public class IoTDBQueryResultSet extends IoTDBResultSet {
+public class IoTDBQueryResultSet extends AbstractIoTDBResultSet {
 
   private static final int START_INDEX = 2;
   private static final String VALUE_IS_NULL = "The value got by %s (column name) is NULL.";
