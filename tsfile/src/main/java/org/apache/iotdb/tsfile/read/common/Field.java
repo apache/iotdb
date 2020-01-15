@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.common;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 /**
  * Field is component of one {@code RowRecord} which stores a value in specific data type. The value
@@ -144,5 +145,35 @@ public class Field {
       default:
         throw new UnSupportedDataTypeException("UnSupported: " + dataType);
     }
+  }
+
+  public static Field getField(TsPrimitiveType tsPrimitiveType, TSDataType dataType) {
+    if (tsPrimitiveType == null) {
+      return new Field(null);
+    }
+    Field field = new Field(dataType);
+    switch (dataType) {
+      case INT32:
+        field.setIntV(tsPrimitiveType.getInt());
+        break;
+      case INT64:
+        field.setLongV(tsPrimitiveType.getLong());
+        break;
+      case FLOAT:
+        field.setFloatV(tsPrimitiveType.getFloat());
+        break;
+      case DOUBLE:
+        field.setDoubleV(tsPrimitiveType.getDouble());
+        break;
+      case BOOLEAN:
+        field.setBoolV(tsPrimitiveType.getBoolean());
+        break;
+      case TEXT:
+        field.setBinaryV(tsPrimitiveType.getBinary());
+        break;
+      default:
+        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
+    }
+    return field;
   }
 }
