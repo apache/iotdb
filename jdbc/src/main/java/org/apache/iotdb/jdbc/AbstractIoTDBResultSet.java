@@ -72,7 +72,6 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
     this.columnTypeList = columnTypeList;
     values = new byte[columnNameList.size()][];
 
-
     this.columnNameList = new ArrayList<>();
     if(!ignoreTimeStamp) {
       this.columnNameList.add(TIMESTAMP_STR);
@@ -86,7 +85,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
     int index = START_INDEX;
     for (int i = 0; i < columnNameList.size(); i++) {
       String name = columnNameList.get(i);
-      columnNameList.add(name);
+      this.columnNameList.add(name);
       if (!columnOrdinalMap.containsKey(name)) {
         columnOrdinalMap.put(name, index++);
         columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
