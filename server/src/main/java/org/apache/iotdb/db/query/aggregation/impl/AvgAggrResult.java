@@ -20,45 +20,33 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class AvgAggrResult extends AggregateResult {
+public class AvgAggrResult extends SumAggrResult {
 
-  protected double sum = 0.0;
   private int cnt = 0;
-  private TSDataType seriesDataType;
   private static final String AVG_AGGR_NAME = "AVG";
 
   public AvgAggrResult(TSDataType seriesDataType) {
-    super(TSDataType.DOUBLE);
-    this.seriesDataType = seriesDataType;
+    super(seriesDataType);
     reset();
-    sum = 0.0;
     cnt = 0;
   }
 
   @Override
-  public AggregateResult getResult() {
+  public Double getResult() {
     if (cnt > 0) {
       setDoubleRet(sum / cnt);
     }
-    return this;
+    return sum / cnt;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    sum += statistics.getSumValue();
     cnt += statistics.getCount();
-  }
-
-  @Override
-  public void updateResultFromPageData(BatchData dataInThisPage)
-      throws IOException {
-    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
   }
 
   @Override
@@ -67,49 +55,19 @@ public class AvgAggrResult extends AggregateResult {
       if (dataInThisPage.currentTime() >= bound) {
         break;
       }
-      updateMean(seriesDataType, dataInThisPage.currentValue());
+      cnt++;
       dataInThisPage.next();
     }
-  }
-
-  private void updateMean(TSDataType type, Object sumVal) throws IOException {
-    switch (type) {
-      case INT32:
-        sum += (int) sumVal;
-        break;
-      case INT64:
-        sum += (long) sumVal;
-        break;
-      case FLOAT:
-        sum += (float) sumVal;
-        break;
-      case DOUBLE:
-        sum += (double) sumVal;
-        break;
-      case TEXT:
-      case BOOLEAN:
-      default:
-        throw new IOException(
-            String
-                .format("Unsupported data type in aggregation %s : %s", getAggreTypeName(), type));
-    }
-    cnt++;
   }
 
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
     for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
-        updateMean(seriesDataType, value);
+      if (dataReader.getValueInTimestamp(timestamps[i]) != null) {
+        cnt++;
       }
     }
-  }
-
-  @Override
-  public boolean isCalculatedAggregationResult() {
-    return false;
   }
 
   /**

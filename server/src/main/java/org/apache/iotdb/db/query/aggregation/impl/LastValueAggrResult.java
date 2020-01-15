@@ -34,8 +34,8 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public AggregateResult getResult() {
-    return this;
+  public Object getResult() {
+    return getValue();
   }
 
   @Override

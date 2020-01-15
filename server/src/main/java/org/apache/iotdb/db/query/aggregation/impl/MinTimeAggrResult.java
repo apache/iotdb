@@ -34,8 +34,8 @@ public class MinTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  public AggregateResult getResult() {
-    return this;
+  public Long getResult() {
+    return getLongRet();
   }
 
   @Override

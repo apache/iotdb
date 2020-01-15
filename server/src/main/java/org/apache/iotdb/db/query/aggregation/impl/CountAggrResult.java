@@ -35,8 +35,8 @@ public class CountAggrResult extends AggregateResult {
   }
 
   @Override
-  public AggregateResult getResult() {
-    return this;
+  public Long getResult() {
+    return getLongRet();
   }
 
   @Override

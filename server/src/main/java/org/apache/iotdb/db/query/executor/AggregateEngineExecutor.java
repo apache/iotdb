@@ -110,7 +110,7 @@ public class AggregateEngineExecutor {
         Statistics chunkStatistics = seriesReader.currentChunkStatistics();
         aggregateResult.updateResultFromStatistics(chunkStatistics);
         if (aggregateResult.isCalculatedAggregationResult()) {
-          return aggregateResult.getResult();
+          return aggregateResult;
         }
         seriesReader.skipChunkData();
         continue;
@@ -121,7 +121,7 @@ public class AggregateEngineExecutor {
           Statistics pageStatistic = seriesReader.currentPageStatistics();
           aggregateResult.updateResultFromStatistics(pageStatistic);
           if (aggregateResult.isCalculatedAggregationResult()) {
-            return aggregateResult.getResult();
+            return aggregateResult;
           }
           seriesReader.skipPageData();
           continue;
@@ -130,12 +130,12 @@ public class AggregateEngineExecutor {
         while (seriesReader.hasNextOverlappedPage()) {
           aggregateResult.updateResultFromPageData(seriesReader.nextOverlappedPage());
           if (aggregateResult.isCalculatedAggregationResult()) {
-            return aggregateResult.getResult();
+            return aggregateResult;
           }
         }
       }
     }
-    return aggregateResult.getResult();
+    return aggregateResult;
   }
 
 
@@ -194,9 +194,7 @@ public class AggregateEngineExecutor {
     }
 
     List<AggregateResult> aggregateResultList = new ArrayList<>();
-    for (AggregateResult function : aggregateResults) {
-      aggregateResultList.add(function.getResult());
-    }
+    aggregateResultList.addAll(aggregateResults);
     return aggregateResultList;
   }
 

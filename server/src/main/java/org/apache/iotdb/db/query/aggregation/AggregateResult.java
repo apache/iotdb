@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-public class AggregateResult {
+public abstract class AggregateResult {
 
   private TSDataType dataType;
 
@@ -51,39 +51,30 @@ public class AggregateResult {
     this.hasResult = false;
   }
 
-  public AggregateResult getResult() {
-    return null;
-  }
+  public abstract Object getResult();
 
   /**
    * Calculate the aggregation using Statistics
    *
    * @param statistics chunkStatistics or pageStatistics
    */
-  public void updateResultFromStatistics(Statistics statistics)
-      throws QueryProcessException {
-
-  }
+  public abstract void updateResultFromStatistics(Statistics statistics)
+      throws QueryProcessException;
 
   /**
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
    *
    * @param dataInThisPage the data in Page
    */
-  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
-
-  }
-
+  public abstract void updateResultFromPageData(BatchData dataInThisPage) throws IOException;
   /**
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
    *
    * @param dataInThisPage the data in Page
    * @param bound calculate points whose time < bound
    */
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound)
-      throws IOException {
-
-  }
+  public abstract void updateResultFromPageData(BatchData dataInThisPage, long bound)
+      throws IOException;
 
   /**
    * <p> This method is calculate the aggregation using the common timestamps of cross series
@@ -91,10 +82,8 @@ public class AggregateResult {
    *
    * @throws IOException TsFile data read error
    */
-  public void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException {
-
-  }
+  public abstract void updateResultUsingTimestamps(long[] timestamps, int length,
+      IReaderByTimestamp dataReader) throws IOException;
 
   /**
    * Judge if aggregation results have been calculated. In other words, if the aggregated result
@@ -102,9 +91,7 @@ public class AggregateResult {
    *
    * @return If the aggregation result has been calculated return true, else return false.
    */
-  public boolean isCalculatedAggregationResult() {
-    return false;
-  }
+  public abstract boolean isCalculatedAggregationResult();
 
   public void reset() {
     hasResult = false;
@@ -134,7 +121,7 @@ public class AggregateResult {
    *
    * @param v object value
    */
-  public void setValue(Object v) {
+  protected void setValue(Object v) {
     hasResult = true;
     switch (dataType) {
       case BOOLEAN:
@@ -168,7 +155,7 @@ public class AggregateResult {
     return booleanRet;
   }
 
-  public void setBooleanRet(boolean booleanRet) {
+  protected void setBooleanRet(boolean booleanRet) {
     this.hasResult = true;
     this.booleanRet = booleanRet;
   }
@@ -177,7 +164,7 @@ public class AggregateResult {
     return intRet;
   }
 
-  public void setIntRet(int intRet) {
+  protected void setIntRet(int intRet) {
     this.hasResult = true;
     this.intRet = intRet;
   }
@@ -186,7 +173,7 @@ public class AggregateResult {
     return longRet;
   }
 
-  public void setLongRet(long longRet) {
+  protected void setLongRet(long longRet) {
     this.hasResult = true;
     this.longRet = longRet;
   }
@@ -195,7 +182,7 @@ public class AggregateResult {
     return floatRet;
   }
 
-  public void setFloatRet(float floatRet) {
+  protected void setFloatRet(float floatRet) {
     this.hasResult = true;
     this.floatRet = floatRet;
   }
@@ -204,7 +191,7 @@ public class AggregateResult {
     return doubleRet;
   }
 
-  public void setDoubleRet(double doubleRet) {
+  protected void setDoubleRet(double doubleRet) {
     this.hasResult = true;
     this.doubleRet = doubleRet;
   }
@@ -213,20 +200,12 @@ public class AggregateResult {
     return binaryRet;
   }
 
-  public void setBinaryRet(Binary binaryRet) {
+  protected void setBinaryRet(Binary binaryRet) {
     this.hasResult = true;
     this.binaryRet = binaryRet;
   }
 
   public boolean hasResult() {
     return hasResult;
-  }
-
-  public AggregateResult deepCopy() {
-    AggregateResult aggregateResult = new AggregateResult(this.dataType);
-    if (hasResult) {
-      aggregateResult.setValue(this.getValue());
-    }
-    return aggregateResult;
   }
 }

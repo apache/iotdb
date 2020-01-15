@@ -118,7 +118,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     BatchData lastBatch = batchDataList.get(idx);
     calcBatchData(idx, function, lastBatch);
     if (isEndCalc(function, lastBatch)) {
-      return function.getResult().deepCopy();
+      return function;
     }
     while (sequenceReader.hasNextChunk()) {
       Statistics chunkStatistics = sequenceReader.currentChunkStatistics();
@@ -158,7 +158,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         }
       }
     }
-    return function.getResult().deepCopy();
+    return function;
   }
 
   private boolean isEndCalc(AggregateResult function, BatchData lastBatch) {
