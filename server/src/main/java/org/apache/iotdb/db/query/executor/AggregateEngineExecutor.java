@@ -156,8 +156,8 @@ public class AggregateEngineExecutor {
     List<AggregateResult> aggregateResults = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       TSDataType type = MManager.getInstance().getSeriesType(selectedSeries.get(i).getFullPath());
-      AggregateResult function = AggreResultFactory.getAggrResultByName(aggres.get(i), type);
-      aggregateResults.add(function);
+      AggregateResult result = AggreResultFactory.getAggrResultByName(aggres.get(i), type);
+      aggregateResults.add(result);
     }
     List<AggregateResult> batchDataList = aggregateWithValueFilter(aggregateResults,
         timestampGenerator, readersOfSelectedSeries);

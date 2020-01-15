@@ -35,7 +35,7 @@ public class MaxValueAggrResult extends AggregateResult {
 
   @Override
   public Object getResult() {
-    return getValue();
+    return hasResult() ? getValue() : null;
   }
 
   @Override

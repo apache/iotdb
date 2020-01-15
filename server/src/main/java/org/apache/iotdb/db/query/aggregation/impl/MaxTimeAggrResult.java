@@ -35,7 +35,7 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   @Override
   public Long getResult() {
-    return getLongRet();
+    return hasResult() ? getLongRet() : null;
   }
 
   @Override

@@ -29,8 +29,8 @@ public class AvgAggrResult extends SumAggrResult {
 
   private int cnt = 0;
 
-  public AvgAggrResult(TSDataType seriesDataType) {
-    super(seriesDataType);
+  public AvgAggrResult() {
+    super(TSDataType.DOUBLE);
     reset();
     cnt = 0;
   }

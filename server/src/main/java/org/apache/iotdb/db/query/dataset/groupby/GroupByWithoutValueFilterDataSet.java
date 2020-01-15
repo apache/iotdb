@@ -102,8 +102,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       if (res == null) {
         record.addField(new Field(null));
       } else {
-        TSDataType dataType = res.getDataType();
-        record.addField(res.getResult(), dataType);
+        record.addField(res.getResult(), res.getDataType());
       }
     }
     return record;

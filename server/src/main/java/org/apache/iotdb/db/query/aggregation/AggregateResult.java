@@ -205,7 +205,7 @@ public abstract class AggregateResult {
     this.binaryRet = binaryRet;
   }
 
-  public boolean hasResult() {
+  protected boolean hasResult() {
     return hasResult;
   }
 }
