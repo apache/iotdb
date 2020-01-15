@@ -65,9 +65,6 @@ public class PreviousFill extends IFill {
       if (!batchData.hasCurrent() && allDataReader.hasNextBatch()) {
         batchData = allDataReader.nextBatch();
       }
-      if (batchData == null) {
-        break;
-      }
       cachedPair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
       batchData.next();
       if (cachedPair.getTimestamp() <= queryTime) {

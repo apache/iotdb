@@ -87,9 +87,6 @@ public class LinearFill extends IFill {
       if (!batchData.hasCurrent() && allDataReader.hasNextBatch()) {
         batchData = allDataReader.nextBatch();
       }
-      if (batchData == null) {
-        break;
-      }
       afterPair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
       batchData.next();
       if (afterPair.getTimestamp() <= queryTime) {
