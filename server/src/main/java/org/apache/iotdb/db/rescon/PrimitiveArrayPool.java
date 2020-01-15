@@ -32,17 +32,17 @@ public class PrimitiveArrayPool {
   /**
    * data type -> Array<PrimitiveArray>
    */
-  private static final EnumMap<TSDataType, ArrayDeque> primitiveArraysMap = new EnumMap<>(TSDataType.class);
+  private static final EnumMap<TSDataType, ArrayDeque<Object>> primitiveArraysMap = new EnumMap<>(TSDataType.class);
 
   public static final int ARRAY_SIZE = 128;
 
   static {
-    primitiveArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque());
-    primitiveArraysMap.put(TSDataType.INT32, new ArrayDeque());
-    primitiveArraysMap.put(TSDataType.INT64, new ArrayDeque());
-    primitiveArraysMap.put(TSDataType.FLOAT, new ArrayDeque());
-    primitiveArraysMap.put(TSDataType.DOUBLE, new ArrayDeque());
-    primitiveArraysMap.put(TSDataType.TEXT, new ArrayDeque());
+    primitiveArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque<>());
+    primitiveArraysMap.put(TSDataType.INT32, new ArrayDeque<>());
+    primitiveArraysMap.put(TSDataType.INT64, new ArrayDeque<>());
+    primitiveArraysMap.put(TSDataType.FLOAT, new ArrayDeque<>());
+    primitiveArraysMap.put(TSDataType.DOUBLE, new ArrayDeque<>());
+    primitiveArraysMap.put(TSDataType.TEXT, new ArrayDeque<>());
   }
 
   public static PrimitiveArrayPool getInstance() {
@@ -55,7 +55,7 @@ public class PrimitiveArrayPool {
   private PrimitiveArrayPool() {}
 
   public synchronized Object getPrimitiveDataListByType(TSDataType dataType) {
-    ArrayDeque dataListQueue = primitiveArraysMap.computeIfAbsent(dataType, k ->new ArrayDeque<>());
+    ArrayDeque<Object> dataListQueue = primitiveArraysMap.computeIfAbsent(dataType, k ->new ArrayDeque<>());
     Object dataArray = dataListQueue.poll();
     switch (dataType) {
       case BOOLEAN:
