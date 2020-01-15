@@ -732,6 +732,7 @@ public class IoTDBSessionIT {
 //        }
       }
       System.out.println(res);
+      System.out.println(errorCount);
       Assert.assertEquals(7000, count);
       Assert.assertEquals(standard, resultStr.toString());
       // d1 and d2 will align
