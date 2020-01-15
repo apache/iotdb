@@ -5,8 +5,7 @@
 package org.apache.iotdb.cluster.log.applier;
 
 import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertNotNull;
-import static junit.framework.TestCase.assertNull;
+import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 
 import java.util.Collections;
@@ -81,10 +80,10 @@ public class MetaLogApplierTest extends IoTDBTest {
   public void testApplyCloseFile() throws StorageEngineException, QueryProcessException {
     StorageGroupProcessor storageGroupProcessor =
         StorageEngine.getInstance().getProcessor(TestUtils.getTestSg(0));
-    assertNotNull(storageGroupProcessor.getWorkSequenceTsFileProcessor());
+    assertFalse(storageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
 
     CloseFileLog closeFileLog = new CloseFileLog(TestUtils.getTestSg(0), true);
     applier.apply(closeFileLog);
-    assertNull(storageGroupProcessor.getWorkSequenceTsFileProcessor());
+    assertTrue(storageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
   }
 }

@@ -60,12 +60,12 @@ public class TsFileResource {
   /**
    * device -> start time
    */
-  private Map<String, Long> startTimeMap;
+  protected Map<String, Long> startTimeMap;
 
   /**
    * device -> end time. It is null if it's an unsealed sequence tsfile
    */
-  private Map<String, Long> endTimeMap;
+  protected Map<String, Long> endTimeMap;
 
   public TsFileProcessor getProcessor() {
     return processor;

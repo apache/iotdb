@@ -45,6 +45,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
@@ -710,7 +711,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     long startTime = System.currentTimeMillis();
     long waitedTime = 0;
     AtomicReference<Long> commitIdResult = new AtomicReference<>(Long.MAX_VALUE);
-    while (waitedTime < ClusterConstant.SYNC_LEADER_MAX_WAIT_MS) {
+    while (waitedTime < RaftServer.syncLeaderMaxWaitMs) {
       AsyncClient client = connectNode(leader);
       if (client == null) {
         return false;
@@ -718,7 +719,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       try {
         synchronized (commitIdResult) {
           client.requestCommitIndex(getHeader(), new GenericHandler<>(leader, commitIdResult));
-          commitIdResult.wait(ClusterConstant.SYNC_LEADER_MAX_WAIT_MS);
+          commitIdResult.wait(RaftServer.syncLeaderMaxWaitMs);
         }
         long leaderCommitId = commitIdResult.get();
         long localCommitId = logManager.getCommitLogIndex();

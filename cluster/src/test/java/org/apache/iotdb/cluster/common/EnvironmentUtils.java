@@ -111,6 +111,7 @@ public class EnvironmentUtils {
     // delete query
     cleanDir(config.getQueryDir());
     cleanDir(config.getBaseDir());
+    cleanDir("remote");
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);

@@ -5,17 +5,20 @@
 package org.apache.iotdb.cluster.server.member;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestPartitionTable;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.LogManager;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.junit.After;
 import org.junit.Before;
 
@@ -24,9 +27,15 @@ public class MemberTest {
   MetaGroupMember metaGroupMember;
   LogManager metaLogManager;
   private PartitionTable partitionTable;
+  PartitionGroup partitionGroup;
 
   @Before
   public void setUp() throws Exception {
+    partitionGroup = new PartitionGroup();
+    for (int i = 0; i < 100; i += 10) {
+      partitionGroup.add(TestUtils.getNode(i));
+    }
+
     metaLogManager = new TestLogManager();
     metaGroupMember = new TestMetaGroupMember() {
       @Override
@@ -49,17 +58,30 @@ public class MemberTest {
         }
         return ret;
       }
+
+      @Override
+      public PartitionGroup getHeaderGroup(Node header) {
+        return partitionGroup;
+      }
+
+      @Override
+      public Map<Integer, Node> getPreviousNodeMap(Node node) {
+        Map<Integer, Node> ret = new HashMap<>();
+        for (int i = 0; i < 10; i++) {
+          ret.put(i, TestUtils.getNode(i));
+        }
+        return ret;
+      }
     };
-    MManager.getInstance().init();
+    EnvironmentUtils.envSetUp();
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().setStorageGroupToMTree(TestUtils.getTestSg(i));
+      SchemaUtils.registerTimeseries(TestUtils.getTestSchema(0, i));
     }
   }
 
   @After
   public void tearDown() throws Exception {
-    StorageEngine.getInstance().stop();
-    MManager.getInstance().clear();
-    EnvironmentUtils.cleanAllDir();
+    EnvironmentUtils.cleanEnv();
   }
 }

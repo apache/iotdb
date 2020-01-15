@@ -152,7 +152,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private LogApplier dataLogApplier = new DataLogApplier(this);
   private DataGroupMember.Factory dataMemberFactory;
 
-  protected MetaSingleSnapshotLogManager logManager;
+  private MetaSingleSnapshotLogManager logManager;
 
   private ClientPool dataClientPool;
 

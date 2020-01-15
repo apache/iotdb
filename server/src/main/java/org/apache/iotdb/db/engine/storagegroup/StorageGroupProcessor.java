@@ -75,7 +75,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -769,6 +768,7 @@ public class StorageGroupProcessor {
   }
 
   private String getNewTsFileName(long time, long version, int mergeCnt) {
+    allDirectFileVersions.add(version);
     return time + IoTDBConstant.TSFILE_NAME_SEPARATOR + version
         + IoTDBConstant.TSFILE_NAME_SEPARATOR + mergeCnt + TSFILE_SUFFIX;
   }
@@ -1587,33 +1587,28 @@ public class StorageGroupProcessor {
     closeQueryLock.writeLock().lock();
     try {
       Iterator<TsFileResource> iterator = sequenceFileTreeSet.iterator();
-      while (iterator.hasNext()) {
-        TsFileResource seqFile = iterator.next();
-        if (resource.getHistoricalVersions().containsAll(seqFile.getHistoricalVersions())) {
-          if (seqFile.getWriteQueryLock().writeLock().tryLock()) {
-            iterator.remove();
-            seqFile.remove();
-            seqFile.getWriteQueryLock().writeLock().unlock();
-          }
-        }
-      }
+      removeFullyOverlapFiles(resource, iterator);
 
       iterator = unSequenceFileList.iterator();
-      while (iterator.hasNext()) {
-        TsFileResource seqFile = iterator.next();
-        if (resource.getHistoricalVersions().containsAll(seqFile.getHistoricalVersions())) {
-          if (seqFile.getWriteQueryLock().writeLock().tryLock()) {
-            iterator.remove();
-            seqFile.remove();
-            seqFile.getWriteQueryLock().writeLock().unlock();
-          }
-        }
-      }
+      removeFullyOverlapFiles(resource, iterator);
     } finally {
-      closeQueryLock.readLock().unlock();
+      closeQueryLock.writeLock().unlock();
       writeUnlock();
     }
+  }
 
+  private void removeFullyOverlapFiles(TsFileResource resource, Iterator<TsFileResource> iterator) {
+    while (iterator.hasNext()) {
+      TsFileResource seqFile = iterator.next();
+      if (resource.getHistoricalVersions().containsAll(seqFile.getHistoricalVersions())
+          && !resource.getHistoricalVersions().equals(seqFile.getHistoricalVersions())) {
+        if (seqFile.getWriteQueryLock().writeLock().tryLock()) {
+          iterator.remove();
+          seqFile.remove();
+          seqFile.getWriteQueryLock().writeLock().unlock();
+        }
+      }
+    }
   }
 
   /**

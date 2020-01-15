@@ -50,7 +50,8 @@ import org.slf4j.LoggerFactory;
 public abstract class RaftServer implements RaftService.AsyncIface {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftService.class);
-  public static int connectionTimeoutInMS = ClusterDescriptor.getINSTANCE().getConfig().getConnectionTimeoutInMS();;
+  public static int connectionTimeoutInMS = ClusterDescriptor.getINSTANCE().getConfig().getConnectionTimeoutInMS();
+  public static int syncLeaderMaxWaitMs = 20 * 1000;
 
   ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
   private TNonblockingServerTransport socket;

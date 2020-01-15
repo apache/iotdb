@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -43,6 +44,8 @@ public class RemoteTsFileResource extends TsFileResource {
 
   public RemoteTsFileResource() {
     setClosed(true);
+    this.startTimeMap = new ConcurrentHashMap<>();
+    this.endTimeMap = new ConcurrentHashMap<>();
   }
 
   private RemoteTsFileResource(TsFileResource other) {
