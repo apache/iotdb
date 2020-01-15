@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public class AvgAggrResult extends SumAggrResult {
 
   private int cnt = 0;
-  private static final String AVG_AGGR_NAME = "AVG";
 
   public AvgAggrResult(TSDataType seriesDataType) {
     super(seriesDataType);
@@ -71,12 +70,5 @@ public class AvgAggrResult extends SumAggrResult {
         cnt++;
       }
     }
-  }
-
-  /**
-   * Return type name of aggregation
-   */
-  public String getAggreTypeName() {
-    return AVG_AGGR_NAME;
   }
 }

@@ -39,7 +39,7 @@ public class RowRecord {
   }
 
   public void addField(TsPrimitiveType tsPrimitiveType, TSDataType dataType) {
-    this.fields.add(getField(tsPrimitiveType, dataType));
+    this.fields.add(Field.getField(tsPrimitiveType, dataType));
   }
 
   @Override
@@ -63,35 +63,5 @@ public class RowRecord {
 
   public List<Field> getFields() {
     return fields;
-  }
-
-  private Field getField(TsPrimitiveType tsPrimitiveType, TSDataType dataType) {
-    if (tsPrimitiveType == null) {
-      return new Field(null);
-    }
-    Field field = new Field(dataType);
-    switch (dataType) {
-      case INT32:
-        field.setIntV(tsPrimitiveType.getInt());
-        break;
-      case INT64:
-        field.setLongV(tsPrimitiveType.getLong());
-        break;
-      case FLOAT:
-        field.setFloatV(tsPrimitiveType.getFloat());
-        break;
-      case DOUBLE:
-        field.setDoubleV(tsPrimitiveType.getDouble());
-        break;
-      case BOOLEAN:
-        field.setBoolV(tsPrimitiveType.getBoolean());
-        break;
-      case TEXT:
-        field.setBinaryV(tsPrimitiveType.getBinary());
-        break;
-      default:
-        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
-    }
-    return field;
   }
 }
