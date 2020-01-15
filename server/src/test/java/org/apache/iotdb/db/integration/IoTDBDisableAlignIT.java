@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
@@ -31,6 +32,8 @@ import static org.junit.Assert.fail;
 
 public class IoTDBDisableAlignIT {
   
+
+  private static IoTDB daemon;
   private static String[] sqls = new String[]{
 
       "SET STORAGE GROUP TO root.vehicle",
@@ -99,12 +102,18 @@ public class IoTDBDisableAlignIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
+
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
+
     insertData();
   }
   
   @AfterClass
   public static void tearDown() throws Exception {
+
+    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
   
@@ -126,16 +135,16 @@ public class IoTDBDisableAlignIT {
   public void selectTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
         "1,101,1,1101,2,2.22,60,aaaaa,100,true,1,999,",
-        "2,10000,2,40000,3,3.33,70,bbbbb,0,null,1000,888,",
-        "50,10000,50,50000,4,4.44,80,ccccc,0,null,0,null,",
-        "100,99,100,199,102,10.0,101,ddddd,0,null,0,null,",
-        "101,99,101,199,105,11.11,102,fffff,0,null,0,null,",
-        "102,80,102,180,1000,1000.11,946684800000,good,0,null,0,null,",
-        "103,99,103,199,0,null,0,null,0,null,0,null,",
-        "104,90,104,190,0,null,0,null,0,null,0,null,",
-        "105,99,105,199,0,null,0,null,0,null,0,null,",
-        "106,99,1000,55555,0,null,0,null,0,null,0,null,",
-        "1000,22222,946684800000,100,0,null,0,null,0,null,0,null,",
+        "2,10000,2,40000,3,3.33,70,bbbbb,null,null,1000,888,",
+        "50,10000,50,50000,4,4.44,80,ccccc,null,null,null,null,",
+        "100,99,100,199,102,10.0,101,ddddd,null,null,null,null,",
+        "101,99,101,199,105,11.11,102,fffff,null,null,null,null,",
+        "102,80,102,180,1000,1000.11,946684800000,good,null,null,null,null,",
+        "103,99,103,199,null,null,null,null,null,null,null,null,",
+        "104,90,104,190,null,null,null,null,null,null,null,null,",
+        "105,99,105,199,null,null,null,null,null,null,null,null,",
+        "106,99,1000,55555,null,null,null,null,null,null,null,null,",
+        "1000,22222,946684800000,100,null,null,null,null,null,null,null,null,",
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -242,16 +251,16 @@ public class IoTDBDisableAlignIT {
   @Test
   public void selectLimitTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "2,10000,1000,888,2,40000,3,3.33,70,bbbbb,0,null,",
-        "50,10000,0,null,50,50000,4,4.44,80,ccccc,0,null,",
-        "100,99,0,null,100,199,102,10.0,101,ddddd,0,null,",
-        "101,99,0,null,101,199,105,11.11,102,fffff,0,null,",
-        "102,80,0,null,102,180,1000,1000.11,946684800000,good,0,null,",
-        "103,99,0,null,103,199,0,null,0,null,0,null,",
-        "104,90,0,null,104,190,0,null,0,null,0,null,",
-        "105,99,0,null,105,199,0,null,0,null,0,null,",
-        "106,99,0,null,1000,55555,0,null,0,null,0,null,",
-        "1000,22222,0,null,946684800000,100,0,null,0,null,0,null,",
+        "2,10000,1000,888,2,40000,3,3.33,70,bbbbb,null,null,",
+        "50,10000,null,null,50,50000,4,4.44,80,ccccc,null,null,",
+        "100,99,null,null,100,199,102,10.0,101,ddddd,null,null,",
+        "101,99,null,null,101,199,105,11.11,102,fffff,null,null,",
+        "102,80,null,null,102,180,1000,1000.11,946684800000,good,null,null,",
+        "103,99,null,null,103,199,null,null,null,null,null,null,",
+        "104,90,null,null,104,190,null,null,null,null,null,null,",
+        "105,99,null,null,105,199,null,null,null,null,null,null,",
+        "106,99,null,null,1000,55555,null,null,null,null,null,null,",
+        "1000,22222,null,null,946684800000,100,null,null,null,null,null,null,",
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -309,11 +318,11 @@ public class IoTDBDisableAlignIT {
         "100,199,102,10.0,",
         "101,199,105,11.11,",
         "102,180,1000,1000.11,",
-        "103,199,0,null,",
-        "104,190,0,null,",
-        "105,199,0,null,",
-        "1000,55555,0,null,",
-        "946684800000,100,0,null,",
+        "103,199,null,null,",
+        "104,190,null,null,",
+        "105,199,null,null,",
+        "1000,55555,null,null,",
+        "946684800000,100,null,null,",
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);

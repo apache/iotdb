@@ -18,21 +18,6 @@
  */
 package org.apache.iotdb.client;
 
-import java.io.PrintStream;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.text.SimpleDateFormat;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
@@ -44,6 +29,18 @@ import org.apache.iotdb.jdbc.IoTDBQueryResultSet;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.tool.ImportCsv;
 import org.apache.thrift.TException;
+
+import java.io.PrintStream;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 public abstract class AbstractClient {
 
@@ -98,6 +95,9 @@ public abstract class AbstractClient {
   private static String GROUPBY_DEVICE_COLUMN_NAME = "Device";
   private static boolean isQuit = false;
   static String TIMESTAMP_PRECISION = "ms";
+
+  private static final int START_PRINT_INDEX = 2;
+  private static final int NO_ALIGN_PRINT_INTERVAL = 2;
 
   /**
    * control the width of columns for 'show timeseries path' and 'show storage group'.
@@ -198,10 +198,8 @@ public abstract class AbstractClient {
 
     if (res instanceof IoTDBQueryResultSet) {
       printTimestamp = !((IoTDBQueryResultSet) res).isIgnoreTimeStamp();
-      align = true;
     }
     else {
-      printTimestamp = true;
       align = false;
     }
 
@@ -279,28 +277,27 @@ public abstract class AbstractClient {
         if (printTimestamp) {
           printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR), zoneId));
           for (int i = 2; i <= colCount; i++) {
-            printColumnData(resultSetMetaData, align, res, i, zoneId);
+            printColumnData(resultSetMetaData, true, res, i, zoneId);
           }
         } else {
           for (int i = 1; i <= colCount; i++) {
-            printColumnData(resultSetMetaData, align, res, i, zoneId);
+            printColumnData(resultSetMetaData, true, res, i, zoneId);
           }
         }
       }
       else {
-        for (int i = 2; i <= colCount / 2 + 1; i++) {
+        for (int i = START_PRINT_INDEX; i <= colCount / NO_ALIGN_PRINT_INTERVAL + 1; i++) {
           if (printTimestamp) {
             // timeLabel used for indicating the time column.
-            String timeLabel = TIMESTAMP_STR + resultSetMetaData.getColumnLabel(2 * i - 2);
-            if (res.getLong(timeLabel) == 0) {
-              // blank space
-              printf(formatTime, "");
-            }
-            else {
+            String timeLabel = TIMESTAMP_STR + resultSetMetaData.getColumnLabel(NO_ALIGN_PRINT_INTERVAL * i - START_PRINT_INDEX);
+            try {
               printf(formatTime, formatDatetime(res.getLong(timeLabel), zoneId));
+            } catch (Exception e) {
+              printf(formatTime, "null");
+              handleException(e);
             }
           }
-          printColumnData(resultSetMetaData, align, res, i, zoneId);
+          printColumnData(resultSetMetaData, false, res, i, zoneId);
         }
       }
       println();
@@ -334,12 +331,12 @@ public abstract class AbstractClient {
     }
     // for disable align clause
     else {
-      if (res.getString(i * 2 - 2) == null) {
+      if (res.getString(i * NO_ALIGN_PRINT_INTERVAL - START_PRINT_INDEX) == null) {
         //blank space
         printf(formatValue, "");
       }
       else {
-        printf(formatValue, res.getString(i * 2 - 2));
+        printf(formatValue, res.getString(i * NO_ALIGN_PRINT_INTERVAL - START_PRINT_INDEX));
       }
     }
   }
@@ -553,7 +550,7 @@ public abstract class AbstractClient {
       for (int i = 2; i <= colCount / 2 + 1; i++) {
         if (printTimestamp) {
           blockLine.append(StringUtils.repeat('-', maxTimeLength)).append("+");
-        } 
+        }
         blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
       }
     }
