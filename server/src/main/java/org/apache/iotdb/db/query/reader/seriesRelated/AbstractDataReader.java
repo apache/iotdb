@@ -196,7 +196,7 @@ public abstract class AbstractDataReader {
     throw new IOException("no next page data");
   }
 
-  public boolean hasNextOverlappedPage() throws IOException {
+  protected boolean hasNextOverlappedPage() throws IOException {
     if (hasCachedNextBatch) {
       return true;
     }
@@ -214,7 +214,7 @@ public abstract class AbstractDataReader {
     return hasCachedNextBatch;
   }
 
-  public BatchData nextOverlappedPage() throws IOException {
+  protected BatchData nextOverlappedPage() throws IOException {
     if (mergeReader.hasNext()) {
       hasCachedNextBatch = false;
       BatchData batchData = new BatchData(dataType);
