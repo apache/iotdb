@@ -71,7 +71,7 @@ public class FillEngineExecutor {
       fill.setDataType(dataType);
       fill.setQueryTime(queryTime);
       fill.constructReaders(path, context);
-      record.addField(fill.getFillResult().current().getValue(), dataType);
+      record.addField(fill.getFillResult().current().getValue().getValue(), dataType);
     }
 
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);

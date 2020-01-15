@@ -40,7 +40,6 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -104,7 +103,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         record.addField(new Field(null));
       } else {
         TSDataType dataType = res.getDataType();
-        record.addField(TsPrimitiveType.getByType(dataType, res.getResult()), dataType);
+        record.addField(res.getResult(), dataType);
       }
     }
     return record;
@@ -175,7 +174,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   /**
-   * @return this batchData >= endTime
+   * this batchData >= endTime
    */
   private void calcBatchData(int idx, AggregateResult function, BatchData batchData)
       throws IOException {

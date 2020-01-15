@@ -147,10 +147,11 @@ public class Field {
     }
   }
 
-  public static Field getField(TsPrimitiveType tsPrimitiveType, TSDataType dataType) {
-    if (tsPrimitiveType == null) {
+  public static Field getField(Object value, TSDataType dataType) {
+    if (value == null) {
       return new Field(null);
     }
+    TsPrimitiveType tsPrimitiveType = TsPrimitiveType.getByType(dataType, value);
     Field field = new Field(dataType);
     switch (dataType) {
       case INT32:
