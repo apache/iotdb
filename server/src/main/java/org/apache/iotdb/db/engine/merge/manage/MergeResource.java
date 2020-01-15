@@ -91,6 +91,9 @@ public class MergeResource {
     for (TsFileSequenceReader sequenceReader : fileReaderCache.values()) {
       sequenceReader.close();
     }
+    for (RestorableTsFileIOWriter writer : fileWriterCache.values()) {
+      writer.close();
+    }
 
     fileReaderCache.clear();
     fileWriterCache.clear();
