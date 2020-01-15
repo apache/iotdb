@@ -41,7 +41,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   protected long startTime;
   protected long endTime;
   private int usedIndex;
-  protected List<AggregateResult> functions;
+  protected List<AggregateResult> aggregateResults;
   protected boolean hasCachedTimeInterval;
 
   /**
@@ -54,7 +54,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.slidingStep = groupByPlan.getSlidingStep();
     this.intervalStartTime = groupByPlan.getStartTime();
     this.intervalEndTime = groupByPlan.getEndTime();
-    this.functions = new ArrayList<>();
+    this.aggregateResults = new ArrayList<>();
 
     // init group by time partition
     this.usedIndex = 0;
@@ -65,10 +65,10 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   protected void initAggreFuction(GroupByPlan groupByPlan) throws PathException {
     // construct AggregateFunctions
     for (int i = 0; i < paths.size(); i++) {
-      AggregateResult function = AggreResultFactory
+      AggregateResult aggregateResult = AggreResultFactory
           .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(i),
               groupByPlan.getDeduplicatedDataTypes().get(i));
-      functions.add(function);
+      aggregateResults.add(aggregateResult);
     }
   }
 

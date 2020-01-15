@@ -109,7 +109,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
       // cal result using timestamp array
       for (int i = 0; i < paths.size(); i++) {
-        functions.get(i).updateResultUsingTimestamps(
+        aggregateResults.get(i).updateResultUsingTimestamps(
             timestampArray, timeArrayLength, allDataReaderList.get(i));
       }
 
@@ -124,7 +124,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     if (timeArrayLength > 0) {
       // cal result using timestamp array
       for (int i = 0; i < paths.size(); i++) {
-        functions.get(i).updateResultUsingTimestamps(
+        aggregateResults.get(i).updateResultUsingTimestamps(
             timestampArray, timeArrayLength, allDataReaderList.get(i));
       }
     }
@@ -154,7 +154,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   private RowRecord constructRowRecord() {
     RowRecord record = new RowRecord(startTime);
-    functions.forEach(function -> record.addField(getField(function.getResult())));
+    aggregateResults.forEach(aggregateResult -> record.addField(getField(aggregateResult)));
     return record;
   }
 }

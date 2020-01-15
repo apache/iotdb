@@ -89,7 +89,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
     hasCachedTimeInterval = false;
     RowRecord record = new RowRecord(startTime);
-    for (int i = 0; i < functions.size(); i++) {
+    for (int i = 0; i < aggregateResults.size(); i++) {
       AggregateResult res;
       try {
         res = nextSeries(i);
@@ -112,7 +112,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    */
   private AggregateResult nextSeries(int idx) throws IOException, QueryProcessException {
     SeriesDataReaderWithoutValueFilter sequenceReader = sequenceReaderList.get(idx);
-    AggregateResult function = functions.get(idx);
+    AggregateResult function = aggregateResults.get(idx);
     TimeRange timeRange = new TimeRange(startTime, endTime - 1);
 
     BatchData lastBatch = batchDataList.get(idx);
