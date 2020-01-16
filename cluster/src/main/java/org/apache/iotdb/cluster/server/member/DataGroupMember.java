@@ -4,8 +4,6 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import static org.apache.iotdb.cluster.config.ClusterConstant.CONNECTION_TIME_OUT_MS;
-
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -50,6 +48,7 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
@@ -393,7 +392,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         result.set(null);
         synchronized (result) {
           client.readFile(remotePath, offset, fetchSize, getHeader(), handler);
-          result.wait(CONNECTION_TIME_OUT_MS);
+          result.wait(RaftServer.connectionTimeoutInMS);
         }
         ByteBuffer buffer = result.get();
         if (buffer == null || buffer.array().length == 0) {
@@ -573,9 +572,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       throws IOException, StorageEngineException {
     // pull the newest data
     if (syncLeader()) {
-      return new SeriesReaderWithValueFilter(path,
-          dataType, timeFilter,
-          context);
+      return new SeriesReaderWithValueFilter(path, dataType, timeFilter, context);
     } else {
       throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
     }

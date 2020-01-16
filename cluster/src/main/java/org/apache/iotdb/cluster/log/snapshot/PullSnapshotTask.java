@@ -14,6 +14,7 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.thrift.TException;
@@ -64,7 +65,7 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
       synchronized (snapshotRef) {
         client.pullSnapshot(request, new PullSnapshotHandler<>(snapshotRef,
             node, slots, snapshotFactory));
-        snapshotRef.wait(ClusterConstant.CONNECTION_TIME_OUT_MS);
+        snapshotRef.wait(RaftServer.connectionTimeoutInMS);
       }
       Map<Integer, T> result = snapshotRef.get();
       if (result != null) {

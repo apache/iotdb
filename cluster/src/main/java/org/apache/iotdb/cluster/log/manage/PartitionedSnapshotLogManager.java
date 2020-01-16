@@ -35,7 +35,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
   Map<Integer, Collection<MeasurementSchema>> slotTimeseries = new HashMap<>();
   long snapshotLastLogId;
   long snapshotLastLogTerm;
-  private PartitionTable partitionTable;
+  PartitionTable partitionTable;
   Node header;
   private SnapshotFactory factory;
 
@@ -69,7 +69,8 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
     List<MNode> allSgNodes = MManager.getInstance().getAllStorageGroups();
     for (MNode sgNode : allSgNodes) {
       String storageGroupName = sgNode.getFullPath();
-      int slot = PartitionUtils.calculateStorageGroupSlot(storageGroupName, 0);
+      int slot = PartitionUtils.calculateStorageGroupSlot(storageGroupName, 0,
+          partitionTable.getSlotNum());
 
       Collection<MeasurementSchema> schemas = slotTimeseries.computeIfAbsent(slot,
           s -> new HashSet<>());

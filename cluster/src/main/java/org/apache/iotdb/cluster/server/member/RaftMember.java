@@ -347,7 +347,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       }
 
       try {
-        quorum.wait(ClusterConstant.CONNECTION_TIME_OUT_MS);
+        quorum.wait(RaftServer.connectionTimeoutInMS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
@@ -532,7 +532,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       // check if the last catch-up is still ongoing
       Long lastCatchupResp = lastCatchUpResponseTime.get(follower);
       if (lastCatchupResp != null
-          && System.currentTimeMillis() - lastCatchupResp < ClusterConstant.CONNECTION_TIME_OUT_MS) {
+          && System.currentTimeMillis() - lastCatchupResp < RaftServer.connectionTimeoutInMS) {
         logger.debug("{}: last catch up of {} is ongoing", name, follower);
         return;
       } else {
@@ -617,7 +617,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         }
         synchronized (status) {
           client.executeNonQueryPlan(req, new ForwardPlanHandler(status, plan, node));
-          status.wait(ClusterConstant.CONNECTION_TIME_OUT_MS);
+          status.wait(RaftServer.connectionTimeoutInMS);
         }
         return status.get() == null ? StatusUtils.TIME_OUT : status.get();
       } catch (IOException | TException e) {

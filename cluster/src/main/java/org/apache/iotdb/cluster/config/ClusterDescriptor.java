@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -106,6 +107,7 @@ public class ClusterDescriptor {
 
       config.setConnectionTimeoutInMS(Integer.parseInt(properties.getProperty("CONNECTION_TIME_OUT_MS",
           String.valueOf(config.getConnectionTimeoutInMS()))));
+      RaftServer.connectionTimeoutInMS = config.getConnectionTimeoutInMS();
 
       String seedUrls = properties.getProperty("SEED_NODES");
       if (seedUrls != null) {

@@ -49,13 +49,19 @@ public class SlotPartitionTable implements PartitionTable {
   // the data groups which this node belongs to
   private List<PartitionGroup> localGroups;
   private Node thisNode;
+  private int slotNum;
 
   public SlotPartitionTable(Node thisNode) {
     this.thisNode = thisNode;
   }
 
   public SlotPartitionTable(Collection<Node> nodes, Node thisNode) {
+    this(nodes, thisNode, ClusterConstant.SLOT_NUM);
+  }
+
+  public SlotPartitionTable(Collection<Node> nodes, Node thisNode, int slotNum) {
     this.thisNode = thisNode;
+    this.slotNum = slotNum;
     init(nodes);
   }
 
@@ -70,13 +76,13 @@ public class SlotPartitionTable implements PartitionTable {
   private void assignPartitions() {
     // evenly assign the slots to each node
     int nodeNum = nodeRing.size();
-    int slotsPerNode = ClusterConstant.SLOT_NUM / nodeNum;
+    int slotsPerNode = slotNum / nodeNum;
     for (Node node : nodeRing) {
       List<Integer> nodeSlots = new ArrayList<>();
       nodeSlotMap.put(node, nodeSlots);
     }
 
-    for (int i = 0; i < ClusterConstant.SLOT_NUM; i++) {
+    for (int i = 0; i < slotNum; i++) {
       int nodeIdx = i / slotsPerNode;
       if (nodeIdx >= nodeNum) {
         // the last node may receive a little more if total slots cannot de divided by node number
@@ -138,10 +144,10 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public PartitionGroup route(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
-      int slotNum = PartitionUtils.calculateStorageGroupSlot(storageGroupName, timestamp);
-      Node node = slotNodeMap.get(slotNum);
+      int slot = PartitionUtils.calculateStorageGroupSlot(storageGroupName, timestamp, getSlotNum());
+      Node node = slotNodeMap.get(slot);
       logger.debug("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp,
-          slotNum, node);
+          slot, node);
       return getHeaderGroup(node);
     }
   }
@@ -150,6 +156,10 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public PartitionGroup addNode(Node node) {
     synchronized (nodeRing) {
+      if (nodeRing.contains(node)) {
+        return null;
+      }
+
       nodeRing.add(node);
       nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
 
@@ -196,7 +206,7 @@ public class SlotPartitionTable implements PartitionTable {
     // move the slots to the new node if any previous node have more slots than the new average
     List<Integer> newSlots = new ArrayList<>();
     Map<Integer, Node> previousHolders = new HashMap<>();
-    int newAvg = ClusterConstant.SLOT_NUM / nodeRing.size();
+    int newAvg = slotNum / nodeRing.size();
     for (Entry<Node, List<Integer>> entry : nodeSlotMap.entrySet()) {
       List<Integer> slots = entry.getValue();
       int transferNum = slots.size() - newAvg;
@@ -225,6 +235,7 @@ public class SlotPartitionTable implements PartitionTable {
     DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
 
     try {
+      dataOutputStream.writeInt(slotNum);
       dataOutputStream.writeInt(nodeSlotMap.size());
       for (Entry<Node, List<Integer>> entry : nodeSlotMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
@@ -251,6 +262,7 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public void deserialize(ByteBuffer buffer) {
     logger.info("Initializing the partition table from buffer");
+    slotNum = buffer.getInt();
     int size = buffer.getInt();
     Map<Integer, Node> idNodeMap = new HashMap<>();
     for (int i = 0; i < size; i++) {
@@ -306,5 +318,10 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public Map<Node, List<Integer>> getAllNodeSlots() {
     return nodeSlotMap;
+  }
+
+  @Override
+  public int getSlotNum() {
+    return slotNum;
   }
 }

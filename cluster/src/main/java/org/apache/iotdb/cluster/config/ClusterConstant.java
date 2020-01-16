@@ -26,7 +26,6 @@ public class ClusterConstant {
   public static final long ELECTION_RANDOM_TIME_OUT_MS = 8 * 1000L;
   public static final int SLOT_NUM = 10000;
   public static final int HASH_SALT = 2333;
-  public static final int CONNECTION_TIME_OUT_MS = 20 * 1000;
   public static final int CHECK_ALIVE_TIME_OUT_MS = 1000;
   public static final int PULL_SNAPSHOT_RETRY_INTERVAL = 5 * 1000;
 

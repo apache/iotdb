@@ -61,7 +61,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
     for (int i = 0; i < 3; i++) {
       FileSnapshot fileSnapshot =
           (FileSnapshot) snapshot.getSnapshot(PartitionUtils.calculateStorageGroupSlot(
-              TestUtils.getTestSg(i), 0));
+              TestUtils.getTestSg(i), 0, 100));
       assertEquals(10, fileSnapshot.getTimeseriesSchemas().size());
       assertEquals(5, fileSnapshot.getDataFiles().size());
     }
@@ -92,7 +92,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
     PartitionedSnapshot snapshot = (PartitionedSnapshot) manager.getSnapshot();
     for (int i = 6; i < 9; i++) {
       FileSnapshot fileSnapshot =
-          (FileSnapshot) snapshot.getSnapshot(PartitionUtils.calculateStorageGroupSlot(TestUtils.getTestSg(i), 0));
+          (FileSnapshot) snapshot.getSnapshot(PartitionUtils.calculateStorageGroupSlot(TestUtils.getTestSg(i), 0, 100));
       assertEquals(10, fileSnapshot.getDataFiles().size());
       assertEquals(10, fileSnapshot.getTimeseriesSchemas().size());
     }

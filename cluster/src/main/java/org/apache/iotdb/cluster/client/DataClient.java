@@ -4,12 +4,11 @@
 
 package org.apache.iotdb.cluster.client;
 
-import static org.apache.iotdb.cluster.config.ClusterConstant.CONNECTION_TIME_OUT_MS;
-
 import java.io.IOException;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncClient;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TNonblockingSocket;
@@ -23,7 +22,7 @@ public class DataClient extends AsyncClient {
       TAsyncClientManager clientManager, Node node, ClientPool pool) throws IOException {
     // the difference of the two clients lies in the port
     super(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(), node.getDataPort()
-        , CONNECTION_TIME_OUT_MS));
+        , RaftServer.connectionTimeoutInMS));
     this.node = node;
     this.pool = pool;
   }

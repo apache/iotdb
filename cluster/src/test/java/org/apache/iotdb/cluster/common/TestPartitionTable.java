@@ -62,4 +62,9 @@ public class TestPartitionTable implements PartitionTable {
   public Map<Node, List<Integer>> getAllNodeSlots() {
     return null;
   }
+
+  @Override
+  public int getSlotNum() {
+    return 100;
+  }
 }

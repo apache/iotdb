@@ -84,7 +84,7 @@ public class ClusterConfig {
     return seedNodeUrls;
   }
 
-  void setSeedNodeUrls(List<String> seedNodeUrls) {
+  public void setSeedNodeUrls(List<String> seedNodeUrls) {
     this.seedNodeUrls = seedNodeUrls;
   }
 

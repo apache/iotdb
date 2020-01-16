@@ -80,4 +80,6 @@ public interface PartitionTable {
   List<Integer> getNodeSlots(Node header);
 
   Map<Node, List<Integer>> getAllNodeSlots();
+
+  int getSlotNum();
 }

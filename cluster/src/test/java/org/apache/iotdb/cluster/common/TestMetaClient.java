@@ -15,7 +15,7 @@ public class TestMetaClient extends MetaClient {
 
   private Node node;
 
-  protected TestMetaClient(TProtocolFactory protocolFactory,
+  public TestMetaClient(TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager,
       Node node, ClientPool pool)
       throws IOException {

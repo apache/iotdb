@@ -194,14 +194,20 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         case OK:
           logger.info("Close file request of {} is accepted", log);
           logManager.commitLog(logManager.getLastLogIndex());
+          break;
         case TIME_OUT:
           logger.info("Close file request of {} timed out", log);
           logManager.removeLastLog();
+          break;
         case LEADERSHIP_STALE:
         default:
           logManager.removeLastLog();
       }
     }
+  }
+
+  public DataClusterServer getDataClusterServer() {
+    return dataClusterServer;
   }
 
   @Override
@@ -223,14 +229,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   @Override
   public void stop() {
     super.stop();
-    if (dataClusterServer != null) {
-      dataClusterServer.stop();
+    if (getDataClusterServer() != null) {
+      getDataClusterServer().stop();
       clientServer.stop();
     }
   }
 
   private void initSubServers() throws TTransportException, StartupException {
-    dataClusterServer.start();
+    getDataClusterServer().start();
     clientServer.start();
   }
 
@@ -273,12 +279,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         PartitionGroup newGroup = partitionTable.addNode(newNode);
         savePartitionTable();
 
-        dataClusterServer.addNode(newNode);
+        getDataClusterServer().addNode(newNode);
         if (newGroup.contains(thisNode)) {
           try {
             logger.info("Adding this node into a new group {}", newGroup);
             DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup, thisNode);
-            dataClusterServer.addDataGroupMember(dataGroupMember);
+            getDataClusterServer().addDataGroupMember(dataGroupMember);
             dataGroupMember.start();
             dataGroupMember.pullSnapshots(partitionTable.getNodeSlots(newNode), newNode);
           } catch (TTransportException e) {
@@ -327,7 +333,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Cannot join the cluster from {}, because time out after {}ms",
-            node, ClusterConstant.CONNECTION_TIME_OUT_MS);
+            node, connectionTimeoutInMS);
       }
       // start next try
       retry--;
@@ -348,7 +354,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
       synchronized (response) {
         client.addNode(thisNode, handler);
-        response.wait(ClusterConstant.CONNECTION_TIME_OUT_MS);
+        response.wait(connectionTimeoutInMS);
       }
       AddNodeResponse resp = response.get();
       if (resp == null) {
@@ -369,7 +375,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
         initSubServers();
         buildDataGroups();
-        dataClusterServer.pullSnapshots();
+        getDataClusterServer().pullSnapshots();
         return true;
       } else if (resp.getRespNum() == Response.RESPONSE_IDENTIFIER_CONFLICT) {
         logger.info("The identifier {} conflicts the existing ones, regenerate a new one",
@@ -700,7 +706,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
 
       try {
-        groupRemainings.wait(ClusterConstant.CONNECTION_TIME_OUT_MS);
+        groupRemainings.wait(connectionTimeoutInMS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
@@ -788,6 +794,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   // if the identifier file does not exist, a new identifier will be generated
   private void loadIdentifier() {
+    if (thisNode.isSetNodeIdentifier()) {
+      return;
+    }
     File file = new File(NODE_IDENTIFIER_FILE_NAME);
     Integer nodeId = null;
     if (file.exists()) {
@@ -823,12 +832,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private void buildDataGroups() throws TTransportException {
     List<PartitionGroup> partitionGroups = partitionTable.getLocalGroups();
 
-    dataClusterServer.setPartitionTable(partitionTable);
+    getDataClusterServer().setPartitionTable(partitionTable);
     for (PartitionGroup partitionGroup : partitionGroups) {
       logger.debug("Building member of data group: {}", partitionGroup);
       DataGroupMember dataGroupMember = dataMemberFactory.create(partitionGroup, thisNode);
       dataGroupMember.start();
-      dataClusterServer.addDataGroupMember(dataGroupMember);
+      getDataClusterServer().addDataGroupMember(dataGroupMember);
     }
     logger.info("Data group members are ready");
   }
@@ -851,13 +860,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   private void applySnapshot(MetaSimpleSnapshot snapshot) {
     synchronized (logManager) {
-      for (Log log : snapshot.getSnapshot()) {
-        try {
-          logManager.getApplier().apply(log);
-        } catch (QueryProcessException e) {
-          logger.error("{}: Cannot apply a log {} in snapshot, ignored", name, log, e);
-        }
-      }
       for (String storageGroup : snapshot.getStorageGroups()) {
         try {
           MManager.getInstance().setStorageGroupToMTree(storageGroup);
@@ -865,6 +867,13 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           // ignore duplicated storage group
         } catch (MetadataException e) {
           logger.error("{}: Cannot add storage group {} in snapshot", name, storageGroup);
+        }
+      }
+      for (Log log : snapshot.getSnapshot()) {
+        try {
+          logManager.getApplier().apply(log);
+        } catch (QueryProcessException e) {
+          logger.error("{}: Cannot apply a log {} in snapshot, ignored", name, log, e);
         }
       }
       logManager.setSnapshot(snapshot);
@@ -921,7 +930,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     if (partitionGroup.contains(thisNode)) {
       // the query should be handled by a group the local node is in, handle it with in the group
-      return dataClusterServer.getDataMember(partitionGroup.getHeader(), null, plan)
+      return getDataClusterServer().getDataMember(partitionGroup.getHeader(), null, plan)
           .executeNonQuery(plan);
     } else {
       // forward the query to the group that should handle it
@@ -949,7 +958,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     if (partitionGroup.contains(thisNode)) {
       // the node is in the target group, synchronize with leader should be enough
-      dataClusterServer.getDataMember(partitionGroup.getHeader(), null,
+      getDataClusterServer().getDataMember(partitionGroup.getHeader(), null,
           "Pull timeseries of " + prefixPath).syncLeader();
       List<MeasurementSchema> timeseriesSchemas = new ArrayList<>();
       MManager.getInstance().collectSeries(prefixPath, timeseriesSchemas);
@@ -986,7 +995,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   public void pullTimeSeriesSchema(PullSchemaRequest request,
       AsyncMethodCallback<PullSchemaResp> resultHandler) {
     Node header = request.getHeader();
-    DataGroupMember dataGroupMember = dataClusterServer.getDataMember(header, resultHandler,
+    DataGroupMember dataGroupMember = getDataClusterServer().getDataMember(header, resultHandler,
         "Pull timeseries");
     if (dataGroupMember == null) {
       resultHandler
@@ -1026,7 +1035,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     if (partitionGroup.contains(thisNode)) {
       // the target storage group contains this node, perform a local query
-      DataGroupMember dataGroupMember = dataClusterServer.getDataMember(partitionGroup.getHeader(),
+      DataGroupMember dataGroupMember = getDataClusterServer().getDataMember(partitionGroup.getHeader(),
           null, String.format("Query: %s by time, queryId: %d", path, context.getQueryId()));
       return dataGroupMember.getReaderByTimestamp(path, context);
     } else {
@@ -1048,7 +1057,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     for (Node node : partitionGroup) {
       logger.debug("{}: querying {} from {}", name, path, node);
       GenericHandler<Long> handler = new GenericHandler<>(node, result);
-      DataClient client = (DataClient) dataClientPool.getClient(node);
+      DataClient client = (DataClient) getDataClientPool().getClient(node);
       try {
         synchronized (result) {
           result.set(null);
@@ -1084,7 +1093,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     if (partitionGroup.contains(thisNode)) {
       // the target storage group contains this node, perform a local query
-      DataGroupMember dataGroupMember = dataClusterServer.getDataMember(partitionGroup.getHeader(),
+      DataGroupMember dataGroupMember = getDataClusterServer().getDataMember(partitionGroup.getHeader(),
           null, String.format("Query: %s, time filter: %s, queryId: %d", path, filter,
               context.getQueryId()));
       if (withValueFilter) {
@@ -1121,7 +1130,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     for (Node node : coordinatedNodes) {
       logger.debug("{}: querying {} from {}", name, path, node);
       GenericHandler<Long> handler = new GenericHandler<>(node, result);
-      DataClient client = (DataClient) dataClientPool.getClient(node);
+      DataClient client = (DataClient) getDataClientPool().getClient(node);
       try {
         synchronized (result) {
           result.set(null);
@@ -1158,7 +1167,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     if (partitionGroup.contains(thisNode)) {
       // this node is a member of the group, perform a local query after synchronizing with the
       // leader
-      dataClusterServer.getDataMember(partitionGroup.getHeader(), null, "Get paths of " + path)
+      getDataClusterServer().getDataMember(partitionGroup.getHeader(), null, "Get paths of " + path)
           .syncLeader();
       return MManager.getInstance().getPaths(path);
     } else {
@@ -1167,7 +1176,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
       for (Node node : coordinatedNodes) {
         try {
-          DataClient client = (DataClient) dataClientPool.getClient(node);
+          DataClient client = (DataClient) getDataClientPool().getClient(node);
           GenericHandler<List<String>> handler = new GenericHandler<>(node, result);
           result.set(null);
           synchronized (result) {
@@ -1224,5 +1233,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   @Override
   public void checkAlive(AsyncMethodCallback<Node> resultHandler) {
     resultHandler.onComplete(thisNode);
+  }
+
+  @TestOnly
+  public void setPartitionTable(PartitionTable partitionTable) {
+    this.partitionTable = partitionTable;
+    getDataClusterServer().setPartitionTable(partitionTable);
   }
 }

@@ -8,7 +8,6 @@ import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
 
 import java.util.Objects;
 import org.apache.commons.collections4.map.MultiKeyMap;
-import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
@@ -53,7 +52,7 @@ public class PartitionUtils {
         try {
           storageGroup = MManager.getInstance()
               .getStorageGroupNameByPath(((CreateTimeSeriesPlan) plan).getPath().getFullPath());
-          return calculateStorageGroupSlot(storageGroup, 0);
+          return calculateStorageGroupSlot(storageGroup, 0, partitionTable.getSlotNum());
         } catch (MetadataException e) {
           logger.error("Cannot find the storage group of {}", ((CreateTimeSeriesPlan) plan).getPath());
           return -1;
@@ -124,9 +123,10 @@ public class PartitionUtils {
     return timeRangeMapRaftGroup;
   }
 
-  public static int calculateStorageGroupSlot(String storageGroupName, long timestamp) {
+  public static int calculateStorageGroupSlot(String storageGroupName, long timestamp,
+      int slotNum) {
     long partitionInstance = timestamp / PARTITION_INTERVAL; //FIXME considering the time unit
     int hash = Murmur128Hash.hash(storageGroupName, partitionInstance, HASH_SALT);
-    return Math.abs(hash % ClusterConstant.SLOT_NUM);
+    return Math.abs(hash % slotNum);
   }
 }

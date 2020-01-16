@@ -105,8 +105,8 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   private PartitionedSnapshotLogManager getLogManager() {
-    return new TestPartitionedLogManager(new DataLogApplier(metaGroupMember),
-        metaGroupMember.getPartitionTable(), partitionGroup.getHeader(), FileSnapshot::new) {
+    return new TestPartitionedLogManager(new DataLogApplier(testMetaMember),
+        testMetaMember.getPartitionTable(), partitionGroup.getHeader(), FileSnapshot::new) {
       @Override
       public Snapshot getSnapshot() {
         PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(FileSnapshot::new);
@@ -128,7 +128,7 @@ public class DataGroupMemberTest extends MemberTest {
   private DataGroupMember getDataGroupMember(Node node) throws IOException {
     return new DataGroupMember(new TCompactProtocol.Factory(), new PartitionGroup(partitionGroup)
         , node, getLogManager(),
-        metaGroupMember, new TAsyncClientManager()) {
+        testMetaMember, new TAsyncClientManager()) {
       @Override
       public AsyncClient connectNode(Node node) {
         try {
@@ -260,7 +260,7 @@ public class DataGroupMemberTest extends MemberTest {
     dataGroupMember.getLogManager().setLastLogId(10);
     dataGroupMember.getLogManager().setLastLogTerm(10);
     dataGroupMember.getTerm().set(10);
-    metaGroupMember.getTerm().set(10);
+    testMetaMember.getTerm().set(10);
     metaLogManager.setLastLogId(5);
     metaLogManager.setLastLogTerm(5);
 

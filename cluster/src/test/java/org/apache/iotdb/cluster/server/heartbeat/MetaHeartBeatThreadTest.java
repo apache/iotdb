@@ -84,6 +84,11 @@ public class MetaHeartBeatThreadTest extends HeartBeatThreadTest {
     public Map<Node, List<Integer>> getAllNodeSlots() {
       return null;
     }
+
+    @Override
+    public int getSlotNum() {
+      return 100;
+    }
   };
 
   @Override
