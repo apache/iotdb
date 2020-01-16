@@ -106,8 +106,8 @@ public class AggregateEngineExecutor {
         selectedSeries.get(i), tsDataType, timeFilter, context);
 
     while (seriesReader.hasNextChunk()) {
-      if (seriesReader.canUseNextChunkStatistics()) {
-        Statistics chunkStatistics = seriesReader.nextChunkStatistics();
+      if (seriesReader.canUseCurrentChunkStatistics()) {
+        Statistics chunkStatistics = seriesReader.currentChunkStatistics();
         aggregateResult.updateResultFromStatistics(chunkStatistics);
         if (aggregateResult.isCalculatedAggregationResult()) {
           return aggregateResult;

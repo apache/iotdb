@@ -19,16 +19,18 @@
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * To read chunk data in memory
@@ -42,8 +44,6 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   private TimeValuePair cachedTimeValuePair;
 
   private TSDataType dataType;
-
-  private PageHeader cachedPageHeader;
 
   public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter filter) {
     this.readOnlyMemChunk = readableChunk;
@@ -117,16 +117,8 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   }
 
   @Override
-  public PageHeader currentPageHeader() {
-    if (cachedPageHeader == null) {
-      cachedPageHeader = new PageHeader(0, 0,
-              readOnlyMemChunk.getChunkMetaData().getStatistics());
-    }
-    return cachedPageHeader;
+  public List<IPageReader> getPageReaderList() {
+    return Collections.singletonList(new MenPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
   }
 
-  @Override
-  public void skipPageData() {
-    nextPageData();
-  }
 }

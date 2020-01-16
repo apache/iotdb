@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
@@ -51,7 +52,7 @@ public class ChunkReader implements IChunkReader {
 
   protected Filter filter;
 
-  private List<PageReader> pageReaderList = new LinkedList<>();
+  private List<IPageReader> pageReaderList = new LinkedList<>();
 
   /**
    * Data whose timestamp <= deletedAt should be considered deleted(not be returned).
@@ -155,7 +156,7 @@ public class ChunkReader implements IChunkReader {
   }
 
   @Override
-  public List<PageReader> getPageReaderList() {
+  public List<IPageReader> getPageReaderList() {
     return pageReaderList;
   }
 }

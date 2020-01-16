@@ -19,18 +19,19 @@
 
 package org.apache.iotdb.db.query.reader.universal;
 
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.junit.Assert;
+import org.junit.Test;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
-import org.apache.iotdb.tsfile.read.IPointReader;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class PriorityMergeReaderByTimestampTest {
 
@@ -92,7 +93,7 @@ public class PriorityMergeReaderByTimestampTest {
   }
 
   public static class FakedReaderByTimestamp implements IReaderByTimestamp,
-      IPointReader {
+          IPointReader {
 
     private Iterator<TimeValuePair> iterator;
     private long currentTimeStamp = Long.MIN_VALUE;
@@ -100,12 +101,12 @@ public class PriorityMergeReaderByTimestampTest {
     private TimeValuePair cachedTimeValuePair;
 
     public FakedReaderByTimestamp(long startTime, int size, int interval,
-        int modValue) {
+                                  int modValue) {
       long time = startTime;
       List<TimeValuePair> list = new ArrayList<>();
       for (int i = 0; i < size; i++) {
         list.add(
-            new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT64, time % modValue)));
+                new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT64, time % modValue)));
         time += interval;
       }
       iterator = list.iterator();
@@ -146,6 +147,7 @@ public class PriorityMergeReaderByTimestampTest {
       }
     }
 
+
     @Override
     public void close() {
     }
@@ -158,7 +160,7 @@ public class PriorityMergeReaderByTimestampTest {
         return cachedTimeValuePair.getValue().getValue();
       }
 
-      if (hasNextTimeValuePair()) {
+      if (hasNext()) {
         cachedTimeValuePair = nextTimeValuePair();
         if (cachedTimeValuePair.getTimestamp() == timestamp) {
           return cachedTimeValuePair.getValue().getValue();
@@ -167,6 +169,11 @@ public class PriorityMergeReaderByTimestampTest {
         }
       }
       return null;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return hasNextTimeValuePair();
     }
   }
 }

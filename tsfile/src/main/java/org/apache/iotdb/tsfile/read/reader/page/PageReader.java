@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
@@ -31,7 +32,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class PageReader {
+public class PageReader implements IPageReader {
 
   private PageHeader pageHeader;
 
@@ -87,6 +88,7 @@ public class PageReader {
   /**
    * @return the returned BatchData may be empty, but never be null
    */
+  @Override
   public BatchData getAllSatisfiedPageData() throws IOException {
 
     BatchData pageData = new BatchData(dataType);
@@ -138,6 +140,7 @@ public class PageReader {
     return pageData;
   }
 
+  @Override
   public Statistics getStatistics() {
     return pageHeader.getStatistics();
   }

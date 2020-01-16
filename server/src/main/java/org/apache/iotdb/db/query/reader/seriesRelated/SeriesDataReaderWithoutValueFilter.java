@@ -64,16 +64,20 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
     return super.hasNextChunk();
   }
 
-  public boolean canUseNextChunkStatistics() {
+  public boolean canUseCurrentChunkStatistics() {
     return super.canUseChunkStatistics();
   }
 
   @Override
-  public Statistics nextChunkStatistics() {
-    Statistics res = firstChunkMetaData.getStatistics();
+  public Statistics currentChunkStatistics() {
+    return firstChunkMetaData.getStatistics();
+  }
+
+  @Override
+  public void skipChunkData() throws IOException {
     hasCachedFirstChunkMetadata = false;
+    firstChunkMetaData.getChunkLoader().close();
     firstChunkMetaData = null;
-    return res;
   }
 
   @Override
@@ -87,6 +91,11 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
       throw new IOException("No next page statistics.");
     }
     return overlappedPageReaders.poll().data.getStatistics();
+  }
+
+  @Override
+  public void skipPageData() throws IOException {
+    overlappedPageReaders.poll();
   }
 
   @Override

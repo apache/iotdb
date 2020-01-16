@@ -27,15 +27,19 @@ public interface IAggregateReader {
 
   boolean hasNextChunk() throws IOException;
 
-  boolean canUseNextChunkStatistics();
+  boolean canUseCurrentChunkStatistics();
 
-  Statistics nextChunkStatistics();
+  Statistics currentChunkStatistics();
+
+  void skipChunkData() throws IOException;
 
   boolean hasNextPage() throws IOException;
 
   boolean canUseNextPageStatistics();
 
   Statistics nextPageStatistics() throws IOException;
+
+  void skipPageData() throws IOException;
 
   boolean hasNextOverlappedPage() throws IOException;
 
