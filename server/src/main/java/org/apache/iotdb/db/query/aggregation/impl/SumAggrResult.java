@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
-import java.io.IOException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
@@ -27,16 +26,16 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
+import java.io.IOException;
+
 public class SumAggrResult extends AggregateResult {
 
   protected double sum = 0.0;
   protected int cnt = 0;
-  private TSDataType seriesDataType;
   private static final String SUM_AGGR_NAME = "SUM";
 
   public SumAggrResult(TSDataType seriesDataType) {
     super(seriesDataType);
-    this.seriesDataType = seriesDataType;
     reset();
     sum = 0.0;
     cnt = 0;
@@ -64,7 +63,7 @@ public class SumAggrResult extends AggregateResult {
       if (dataInThisPage.currentTime() >= bound) {
         break;
       }
-      updateSum(seriesDataType, dataInThisPage.currentValue());
+      updateSum(dataType, dataInThisPage.currentValue());
       dataInThisPage.next();
     }
   }
@@ -75,7 +74,7 @@ public class SumAggrResult extends AggregateResult {
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
-        updateSum(seriesDataType, value);
+        updateSum(dataType, value);
       }
     }
   }

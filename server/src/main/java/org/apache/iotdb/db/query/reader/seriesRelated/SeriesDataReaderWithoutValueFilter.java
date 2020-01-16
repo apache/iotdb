@@ -74,9 +74,8 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
   }
 
   @Override
-  public void skipChunkData() throws IOException {
+  public void skipChunkData() {
     hasCachedFirstChunkMetadata = false;
-    firstChunkMetaData.getChunkLoader().close();
     firstChunkMetaData = null;
   }
 

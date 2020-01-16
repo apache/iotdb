@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.aggregation;
 
-import java.io.IOException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -28,9 +27,11 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.io.IOException;
+
 public abstract class AggregateResult {
 
-  private TSDataType dataType;
+  protected TSDataType dataType;
 
   private boolean booleanRet;
   private int intRet;
