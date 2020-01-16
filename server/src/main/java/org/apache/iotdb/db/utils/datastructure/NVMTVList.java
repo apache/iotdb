@@ -4,6 +4,7 @@ import static org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool;
 import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.nvm.space.NVMSpaceMetadataManager;
@@ -18,6 +19,9 @@ public abstract class NVMTVList extends AbstractTVList {
   protected List<NVMDataSpace> timestamps;
   protected List<NVMDataSpace> values;
   protected TSDataType dataType;
+
+  protected long[][] tempTimestampsForSort;
+  protected Object pivotValue;
 
   public NVMTVList(String sgId, String deviceId, String measurementId) {
     this.sgId = sgId;
@@ -149,6 +153,13 @@ public abstract class NVMTVList extends AbstractTVList {
       }
       sortedTimestamps = null;
     }
+
+    if (tempTimestampsForSort != null) {
+      for (long[] dataArray : tempTimestampsForSort) {
+        PrimitiveArrayPool.getInstance().release(dataArray);
+      }
+      tempTimestampsForSort = null;
+    }
   }
 
   @Override
@@ -219,5 +230,89 @@ public abstract class NVMTVList extends AbstractTVList {
 
     // sorted
     sorted = false;
+  }
+
+  @Override
+  public void sort() {
+    long time = System.currentTimeMillis();
+    initTempArrays();
+//    System.out.println("init arr:" + (System.currentTimeMillis() - time));
+    PerfMonitor.add("sort-initarr", System.currentTimeMillis() - time);
+
+    time = System.currentTimeMillis();
+    copyTVToTempArrays();
+//    System.out.println("copy to arr:" + (System.currentTimeMillis() - time));
+    PerfMonitor.add("sort-copytoarr", System.currentTimeMillis() - time);
+
+    time = System.currentTimeMillis();
+    sort(0, size);
+//    System.out.println("sort:" + (System.currentTimeMillis() - time));
+    PerfMonitor.add("sort-sort", System.currentTimeMillis() - time);
+
+    time = System.currentTimeMillis();
+    copyTVFromTempArrays();
+//    System.out.println("copy from arr:" + (System.currentTimeMillis() - time));
+    PerfMonitor.add("sort-copyfromarr", System.currentTimeMillis() - time);
+
+    time = System.currentTimeMillis();
+    clearSortedValue();
+    clearSortedTime();
+//    System.out.println("clear arr:" + (System.currentTimeMillis() - time));
+    PerfMonitor.add("sort-cleararr", System.currentTimeMillis() - time);
+
+    sorted = true;
+  }
+
+  protected abstract void initTempArrays();
+
+  protected abstract void copyTVToTempArrays();
+
+  protected abstract void copyTVFromTempArrays();
+
+  @Override
+  protected void reverseRange(int lo, int hi) {
+    hi--;
+    while (lo < hi) {
+      long loT = getTimeForSort(lo);
+      Object loV = getValueForSort(lo);
+      long hiT = getTimeForSort(hi);
+      Object hiV = getValueForSort(hi);
+      setForSort(lo++, hiT, hiV);
+      setForSort(hi--, loT, loV);
+    }
+  }
+
+  @Override
+  protected long getTimeForSort(int index) {
+    if (index >= size) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    return tempTimestampsForSort[arrayIndex][elementIndex];
+  }
+
+  @Override
+  protected void setForSort(int index, long timestamp, Object value) {
+    if (index >= size) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    tempTimestampsForSort[arrayIndex][elementIndex] = timestamp;
+    setValueForSort(arrayIndex, elementIndex, value);
+  }
+
+  protected abstract void setValueForSort(int arrayIndex, int elementIndex, Object value);
+
+  @Override
+  protected void saveAsPivot(int pos) {
+    pivotTime = getTimeForSort(pos);
+    pivotValue = getValueForSort(pos);
+  }
+
+  @Override
+  protected void setPivotTo(int pos) {
+    setForSort(pos, pivotTime, pivotValue);
   }
 }

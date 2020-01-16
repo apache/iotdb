@@ -68,6 +68,10 @@ public class NVMMemtableRecoverPerformer {
   public void reconstructMemtable(NVMPrimitiveMemTable memTable, TsFileResource tsFileResource) {
     String sgId = memTable.getStorageGroupId();
     Map<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>> dataOfSG = dataMap.remove(sgId);
+    if (dataOfSG == null) {
+      return;
+    }
+
     memTable.loadData(dataOfSG);
 
     Map<String, Long>[] maps = getMinMaxTimeMapFromData(dataOfSG);

@@ -22,6 +22,7 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayPool.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -90,6 +91,7 @@ public class FloatTVList extends TVList {
 
   @Override
   public void sort() {
+    long time = System.currentTimeMillis();
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
       sortedTimestamps = (long[][]) PrimitiveArrayPool
           .getInstance().getDataListsByType(TSDataType.INT64, size);
@@ -98,9 +100,20 @@ public class FloatTVList extends TVList {
       sortedValues = (float[][]) PrimitiveArrayPool
           .getInstance().getDataListsByType(TSDataType.FLOAT, size);
     }
+    System.out.println("init arr:" + (System.currentTimeMillis() - time));
+    PerfMonitor.add("sort-initarr", System.currentTimeMillis() - time);
+
+    time = System.currentTimeMillis();
     sort(0, size);
+    System.out.println("sort:" + (System.currentTimeMillis() - time));
+    PerfMonitor.add("sort-sort", System.currentTimeMillis() - time);
+
+    time = System.currentTimeMillis();
     clearSortedValue();
     clearSortedTime();
+    System.out.println("clear arr:" + (System.currentTimeMillis() - time));
+    PerfMonitor.add("sort-cleararr", System.currentTimeMillis() - time);
+
     sorted = true;
   }
 
@@ -212,5 +225,15 @@ public class FloatTVList extends TVList {
 
   void addBatchValue(float[] batch) {
     values.add(batch);
+  }
+
+  @Override
+  protected Object getValueForSort(int index) {
+    return getFloat(index);
+  }
+
+  @Override
+  protected void setForSort(int index, long timestamp, Object value) {
+    set(index, timestamp, (float) value);
   }
 }

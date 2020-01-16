@@ -10,8 +10,7 @@ public class NVMFloatTVList extends NVMTVList {
 
   // TODO
   private float[][] sortedValues;
-
-  private float pivotValue;
+  private float[][] tempValuesForSort;
 
   NVMFloatTVList(String sgId, String deviceId, String measurementId) {
     super(sgId, deviceId, measurementId);
@@ -53,19 +52,56 @@ public class NVMFloatTVList extends NVMTVList {
   }
 
   @Override
-  public void sort() {
+  protected void initTempArrays() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
       sortedTimestamps = (long[][]) PrimitiveArrayPool
+          .getInstance().getDataListsByType(TSDataType.INT64, size);
+      tempTimestampsForSort = (long[][]) PrimitiveArrayPool
           .getInstance().getDataListsByType(TSDataType.INT64, size);
     }
     if (sortedValues == null || sortedValues.length < size) {
       sortedValues = (float[][]) PrimitiveArrayPool
-          .getInstance().getDataListsByType(TSDataType.FLOAT, size);
+          .getInstance().getDataListsByType(dataType, size);
+      tempValuesForSort = (float[][]) PrimitiveArrayPool
+          .getInstance().getDataListsByType(dataType, size);
     }
-    sort(0, size);
-    clearSortedValue();
-    clearSortedTime();
-    sorted = true;
+  }
+
+  @Override
+  protected void copyTVToTempArrays() {
+    int arrayIndex = 0;
+    int elementIndex = 0;
+    for (int i = 0; i < size; i++) {
+      long time = (long) timestamps.get(arrayIndex).getData(elementIndex);
+      float value = (float) values.get(arrayIndex).getData(elementIndex);
+      tempTimestampsForSort[arrayIndex][elementIndex] = time;
+      tempValuesForSort[arrayIndex][elementIndex] = value;
+
+      elementIndex++;
+      if (elementIndex == ARRAY_SIZE) {
+        elementIndex = 0;
+        arrayIndex++;
+      }
+    }
+  }
+
+  @Override
+  protected void copyTVFromTempArrays() {
+    int arrayIndex = 0;
+    int elementIndex = 0;
+    for (int i = 0; i < size; i++) {
+      long time = tempTimestampsForSort[arrayIndex][elementIndex];
+      float value = tempValuesForSort[arrayIndex][elementIndex];
+
+      timestamps.get(arrayIndex).setData(elementIndex, time);
+      values.get(arrayIndex).setData(elementIndex, value);
+
+      elementIndex++;
+      if (elementIndex == ARRAY_SIZE) {
+        elementIndex = 0;
+        arrayIndex++;
+      }
+    }
   }
 
   @Override
@@ -76,11 +112,18 @@ public class NVMFloatTVList extends NVMTVList {
       }
       sortedValues = null;
     }
+
+    if (tempValuesForSort != null) {
+      for (float[] dataArray : tempValuesForSort) {
+        PrimitiveArrayPool.getInstance().release(dataArray);
+      }
+      tempValuesForSort = null;
+    }
   }
 
   @Override
   protected void setFromSorted(int src, int dest) {
-    set(dest, sortedTimestamps[src/ARRAY_SIZE][src%ARRAY_SIZE], sortedValues[src/ARRAY_SIZE][src%ARRAY_SIZE]);
+    setForSort(dest, sortedTimestamps[src/ARRAY_SIZE][src%ARRAY_SIZE], sortedValues[src/ARRAY_SIZE][src%ARRAY_SIZE]);
   }
 
   @Override
@@ -91,33 +134,24 @@ public class NVMFloatTVList extends NVMTVList {
   }
 
   @Override
-  protected void setToSorted(int src, int dest) {
-    sortedTimestamps[dest/ARRAY_SIZE][dest% ARRAY_SIZE] = getTime(src);
-    sortedValues[dest/ARRAY_SIZE][dest%ARRAY_SIZE] = getFloat(src);
+  protected void setValueForSort(int arrayIndex, int elementIndex, Object value) {
+    tempValuesForSort[arrayIndex][elementIndex] = (float) value;
   }
 
   @Override
-  protected void reverseRange(int lo, int hi) {
-    hi--;
-    while (lo < hi) {
-      long loT = getTime(lo);
-      float loV = getFloat(lo);
-      long hiT = getTime(hi);
-      float hiV = getFloat(hi);
-      set(lo++, hiT, hiV);
-      set(hi--, loT, loV);
+  protected Object getValueForSort(int index) {
+    if (index >= size) {
+      throw new ArrayIndexOutOfBoundsException(index);
     }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    return tempValuesForSort[arrayIndex][elementIndex];
   }
 
   @Override
-  protected void saveAsPivot(int pos) {
-    pivotTime = getTime(pos);
-    pivotValue = getFloat(pos);
-  }
-
-  @Override
-  protected void setPivotTo(int pos) {
-    set(pos, pivotTime, pivotValue);
+  protected void setToSorted(int src, int dest) {
+    sortedTimestamps[dest/ARRAY_SIZE][dest% ARRAY_SIZE] = getTimeForSort(src);
+    sortedValues[dest/ARRAY_SIZE][dest%ARRAY_SIZE] = (float) getValueForSort(src);
   }
 
   @Override

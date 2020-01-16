@@ -48,6 +48,11 @@ public abstract class TVList extends AbstractTVList {
   }
 
   @Override
+  protected long getTimeForSort(int index) {
+    return getTime(index);
+  }
+
+  @Override
   protected void releaseLastTimeArray() {
     PrimitiveArrayPool.getInstance().release(timestamps.remove(timestamps.size() - 1));
   }

@@ -214,4 +214,14 @@ public class BinaryTVList extends TVList {
   void addBatchValue(Binary[] batch) {
     values.add(batch);
   }
+
+  @Override
+  protected Object getValueForSort(int index) {
+    return getBinary(index);
+  }
+
+  @Override
+  protected void setForSort(int index, long timestamp, Object value) {
+    set(index, timestamp, (Binary) value);
+  }
 }

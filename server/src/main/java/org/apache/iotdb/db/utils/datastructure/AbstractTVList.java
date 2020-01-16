@@ -177,19 +177,23 @@ public abstract class AbstractTVList {
     }
 
     // Find end of run, and reverse range if descending
-    if (getTime(runHi++) < getTime(lo)) { // Descending
-      while (runHi < hi && getTime(runHi) < getTime(runHi - 1)) {
+    if (getTimeForSort(runHi++) < getTimeForSort(lo)) { // Descending
+      while (runHi < hi && getTimeForSort(runHi) < getTimeForSort(runHi - 1)) {
         runHi++;
       }
       reverseRange(lo, runHi);
     } else {                              // Ascending
-      while (runHi < hi && getTime(runHi) >= getTime(runHi - 1)) {
+      while (runHi < hi && getTimeForSort(runHi) >= getTimeForSort(runHi - 1)) {
         runHi++;
       }
     }
 
     return runHi - lo;
   }
+
+  protected abstract long getTimeForSort(int index);
+
+  protected abstract void setForSort(int index, long timestamp, Object value);
 
   /**
    * this field is effective only in the Tvlist in a RealOnlyMemChunk.
@@ -203,9 +207,9 @@ public abstract class AbstractTVList {
     this.timeOffset = timeOffset;
   }
 
-  protected int compare(int idx1, int idx2) {
-    long t1 = getTime(idx1);
-    long t2 = getTime(idx2);
+  protected int compareForSort(int idx1, int idx2) {
+    long t1 = getTimeForSort(idx1);
+    long t2 = getTimeForSort(idx2);
     return Long.compare(t1, t2);
   }
 
@@ -235,7 +239,7 @@ public abstract class AbstractTVList {
        */
       while (left < right) {
         int mid = (left + right) >>> 1;
-        if (compare(start, mid) < 0) {
+        if (compareForSort(start, mid) < 0) {
           right = mid;
         } else {
           left = mid + 1;
@@ -252,7 +256,7 @@ public abstract class AbstractTVList {
        */
       int n = start - left;  // The number of elements to move
       for (int i = n; i >= 1; i--) {
-        set(left + i - 1, left + i);
+        setForSort(left + i - 1, left + i);
       }
       setPivotTo(left);
     }
@@ -260,6 +264,14 @@ public abstract class AbstractTVList {
       setToSorted(i, i);
     }
   }
+
+  private void setForSort(int src, int dest) {
+    long srcT = getTimeForSort(src);
+    Object srcV = getValueForSort(src);
+    setForSort(dest, srcT, srcV);
+  }
+
+  protected abstract Object getValueForSort(int index);
 
   protected void merge(int lo, int mid, int hi) {
     // end of sorting buffer
@@ -272,7 +284,7 @@ public abstract class AbstractTVList {
     // copy the minimum elements to sorting buffer until one sequence is exhausted
     int endSide = 0;
     while (endSide == 0) {
-      if (compare(leftIdx, rightIdx) <= 0) {
+      if (compareForSort(leftIdx, rightIdx) <= 0) {
         setToSorted(leftIdx, lo + tmpIdx);
         tmpIdx ++;
         leftIdx ++;

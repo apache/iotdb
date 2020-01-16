@@ -71,6 +71,10 @@ public class NVMPrimitiveMemTable extends AbstractMemTable {
   }
 
   public void loadData(Map<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>> dataMap) {
+    if (dataMap == null) {
+      return;
+    }
+
     for (Entry<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>> deviceDataEntry : dataMap
         .entrySet()) {
       String deviceId = deviceDataEntry.getKey();

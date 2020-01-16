@@ -213,4 +213,14 @@ public class LongTVList extends TVList {
   void addBatchValue(long[] batch) {
     values.add(batch);
   }
+
+  @Override
+  protected Object getValueForSort(int index) {
+    return getLong(index);
+  }
+
+  @Override
+  protected void setForSort(int index, long timestamp, Object value) {
+    set(index, timestamp, (long) value);
+  }
 }

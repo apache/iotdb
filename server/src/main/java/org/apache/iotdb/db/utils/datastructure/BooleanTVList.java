@@ -213,4 +213,14 @@ public class BooleanTVList extends TVList {
   void addBatchValue(boolean[] batch) {
     values.add(batch);
   }
+
+  @Override
+  protected Object getValueForSort(int index) {
+    return getBoolean(index);
+  }
+
+  @Override
+  protected void setForSort(int index, long timestamp, Object value) {
+    set(index, timestamp, (boolean) value);
+  }
 }
