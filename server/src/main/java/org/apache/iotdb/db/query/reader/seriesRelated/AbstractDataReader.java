@@ -272,7 +272,7 @@ public abstract class AbstractDataReader {
       QueryUtils.modifyChunkMetaData(currentChunkMetaDataList, pathModifications);
     }
     ReadOnlyMemChunk readOnlyMemChunk = resource.getReadOnlyMemChunk();
-    if (readOnlyMemChunk != null) {
+    if (readOnlyMemChunk != null && !readOnlyMemChunk.isEmpty()) {
       currentChunkMetaDataList.add(readOnlyMemChunk.getChunkMetaData());
     }
     return currentChunkMetaDataList;
