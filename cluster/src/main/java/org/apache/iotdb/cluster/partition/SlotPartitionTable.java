@@ -16,6 +16,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -323,5 +324,27 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public int getSlotNum() {
     return slotNum;
+  }
+
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    SlotPartitionTable that = (SlotPartitionTable) o;
+    return slotNum == that.slotNum &&
+        Objects.equals(nodeRing, that.nodeRing) &&
+        Objects.equals(nodeSlotMap, that.nodeSlotMap) &&
+        Objects.equals(slotNodeMap, that.slotNodeMap) &&
+        Objects.equals(previousNodeMap, that.previousNodeMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return 0;
   }
 }

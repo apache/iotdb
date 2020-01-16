@@ -16,6 +16,7 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.ElectionHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.HeartBeatHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -52,7 +53,7 @@ public class HeartBeatThread implements Runnable {
           case LEADER:
             // send heartbeats to the followers
             sendHeartBeats();
-            Thread.sleep(ClusterConstant.HEART_BEAT_INTERVAL_MS);
+            Thread.sleep(RaftServer.heartBeatIntervalMs);
             break;
           case FOLLOWER:
             // check if heartbeat times out

@@ -96,7 +96,7 @@ public class DataGroupMemberTest extends MemberTest {
     super.setUp();
     dataGroupMember = getDataGroupMember(TestUtils.getNode(0));
     snapshotMap = new HashMap<>();
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 100; i++) {
       FileSnapshot fileSnapshot = new FileSnapshot();
       fileSnapshot.setTimeseriesSchemas(Collections.singleton(TestUtils.getTestSchema(1, i)));
       snapshotMap.put(i, fileSnapshot);
@@ -111,7 +111,7 @@ public class DataGroupMemberTest extends MemberTest {
       public Snapshot getSnapshot() {
         PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(FileSnapshot::new);
         if (hasInitialSnapshots) {
-          for (int i = 0; i < 10; i++) {
+          for (int i = 0; i < 100; i++) {
             snapshot.putSnapshot(i, snapshotMap.get(i));
           }
         }
@@ -410,7 +410,8 @@ public class DataGroupMemberTest extends MemberTest {
     dataGroupMember.start();
     try {
       hasInitialSnapshots = false;
-      List<Integer> requiredSlots = Arrays.asList(1, 3, 5, 7, 9);
+      partitionTable.addNode(TestUtils.getNode(10));
+      List<Integer> requiredSlots = Arrays.asList(19, 39, 59, 79, 99);
       dataGroupMember.pullSnapshots(requiredSlots, TestUtils.getNode(10));
       assertEquals(requiredSlots.size(), receivedSnapshots.size());
       for (Integer requiredSlot : requiredSlots) {

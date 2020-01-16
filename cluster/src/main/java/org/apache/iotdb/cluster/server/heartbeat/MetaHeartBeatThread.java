@@ -39,11 +39,6 @@ public class MetaHeartBeatThread extends HeartBeatThread {
         // if the node does not receive the list, it will require it in the next heartbeat, so
         // we can remove it now
         localMetaMember.removeBlindNode(node);
-      } else {
-        if (logger.isDebugEnabled()) {
-          logger.debug("Known nodes: {}, all nodes: {}", localMetaMember.getIdNodeMap(),
-              localMetaMember.getAllNodes());
-        }
       }
     }
 

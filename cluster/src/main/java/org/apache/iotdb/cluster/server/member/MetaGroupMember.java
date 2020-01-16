@@ -87,6 +87,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.server.ClientServer;
 import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
@@ -128,8 +129,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIface {
-  private static final String NODE_IDENTIFIER_FILE_NAME = "node_identifier";
-  private static final String PARTITION_FILE_NAME = "partitions";
+  static final String NODE_IDENTIFIER_FILE_NAME = "node_identifier";
+  static final String PARTITION_FILE_NAME = "partitions";
   private static final String TEMP_SUFFIX = ".tmp";
 
   private static final Logger logger = LoggerFactory.getLogger(MetaGroupMember.class);
@@ -327,7 +328,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           return true;
         }
         // wait a heartbeat to start the next try
-        Thread.sleep(ClusterConstant.HEART_BEAT_INTERVAL_MS);
+        Thread.sleep(RaftServer.heartBeatIntervalMs);
       } catch (TException | StartupException e) {
         logger.warn("Cannot join the cluster from {}, because:", node, e);
       } catch (InterruptedException e) {
@@ -391,8 +392,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   @Override
-  void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response,
-      long leaderTerm) {
+  void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response) {
     if (request.isRequireIdentifier()) {
       // the leader wants to know who the node is
       if (request.isRegenerateIdentifier()) {
@@ -510,10 +510,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
 
     super.appendEntry(request, resultHandler);
-  }
-
-  public Map<Integer, Node> getIdNodeMap() {
-    return idNodeMap;
   }
 
   /**
@@ -1238,6 +1234,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   @TestOnly
   public void setPartitionTable(PartitionTable partitionTable) {
     this.partitionTable = partitionTable;
-    getDataClusterServer().setPartitionTable(partitionTable);
+    DataClusterServer dataClusterServer = getDataClusterServer();
+    if (dataClusterServer != null) {
+      dataClusterServer.setPartitionTable(partitionTable);
+    }
   }
 }

@@ -475,7 +475,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       for (int slot : slots) {
         if (snapshot.getSnapshot(slot) == null) {
           Node node = prevHolders.get(slot);
-          holderSlotsMap.computeIfAbsent(node, n -> new ArrayList<>()).add(slot);
+          if (node != null) {
+            holderSlotsMap.computeIfAbsent(node, n -> new ArrayList<>()).add(slot);
+          }
         }
       }
 

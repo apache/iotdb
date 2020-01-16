@@ -4,6 +4,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
@@ -54,11 +55,6 @@ public class MemberTest {
       public LogManager getLogManager() {
         return metaLogManager;
       }
-
-      @Override
-      public PartitionTable getPartitionTable() {
-        return partitionTable;
-      }
     };
 
     allNodes = new ArrayList<>();
@@ -72,11 +68,14 @@ public class MemberTest {
       SchemaUtils.registerTimeseries(TestUtils.getTestSchema(0, i));
     }
     queryProcessExecutor = new QueryProcessExecutor();
+    testMetaMember.setPartitionTable(partitionTable);
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     ClusterDescriptor.getINSTANCE().getConfig().setSeedNodeUrls(prevUrls);
+    new File(MetaGroupMember.PARTITION_FILE_NAME).delete();
+    new File(MetaGroupMember.NODE_IDENTIFIER_FILE_NAME).delete();
   }
 }

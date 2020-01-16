@@ -23,7 +23,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.config.ClusterConfig;
-import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
@@ -142,7 +141,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           logger.debug("{} received a heartbeat from a stale leader {}", name, request.getLeader());
         }
       } else {
-        processValidHeartbeatReq(request, response, leaderTerm);
+        processValidHeartbeatReq(request, response);
 
         response.setTerm(Response.RESPONSE_AGREE);
         response.setFollower(thisNode);
@@ -449,8 +448,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   public void onElectionWins() {
 
   }
-  void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response,
-      long leaderTerm) {
+
+  void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response) {
 
   }
 
@@ -731,7 +730,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         // wait for next heartbeat to catch up
         waitedTime = System.currentTimeMillis() - startTime;
         synchronized (syncLock) {
-          syncLock.wait(ClusterConstant.HEART_BEAT_INTERVAL_MS);
+          syncLock.wait(RaftServer.heartBeatIntervalMs);
         }
       } catch (TException | InterruptedException e) {
         logger.error("{}: Cannot request commit index from {}", name, leader, e);
