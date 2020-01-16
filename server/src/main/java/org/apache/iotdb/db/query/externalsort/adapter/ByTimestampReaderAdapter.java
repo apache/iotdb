@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.query.externalsort.adapter;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 /**
  * This class is an adapter which makes IPointReader implement IReaderByTimestamp interface.
@@ -49,8 +49,8 @@ public class ByTimestampReaderAdapter implements IReaderByTimestamp {
       }
     }
 
-    while (pointReader.hasNext()) {
-      pair = pointReader.next();
+    while (pointReader.hasNextTimeValuePair()) {
+      pair = pointReader.nextTimeValuePair();
       if (pair.getTimestamp() >= timestamp) {
         hasCached = true;
         break;
@@ -72,6 +72,6 @@ public class ByTimestampReaderAdapter implements IReaderByTimestamp {
 
   @Override
   public boolean hasNext() throws IOException {
-    return pointReader.hasNext();
+    return pointReader.hasNextTimeValuePair();
   }
 }

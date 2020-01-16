@@ -18,13 +18,15 @@
  */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
-import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import java.io.IOException;
 
 /*
  *This class extends some methods to implement skip reads :
@@ -32,7 +34,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  *    if(canUseChunkStatistics()){
  *      Statistics statistics = currentChunkStatistics();
  *      doSomething...
- *      skipChunkData();
  *      continue;
  *    }
  *
@@ -40,7 +41,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  *      if(canUseChunkStatistics()){
  *        Statistics statistics = currentPageStatistics();
  *        doSomething...
- *        skipPageData();
  *        continue;
  *      }
  *
@@ -64,20 +64,17 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
     return super.hasNextChunk();
   }
 
-  public boolean canUseChunkStatistics() {
+  public boolean canUseNextChunkStatistics() {
     return super.canUseChunkStatistics();
   }
 
   @Override
-  public Statistics currentChunkStatistics() {
-    return chunkMetaData.getStatistics();
+  public Statistics nextChunkStatistics() {
+    Statistics res = firstChunkMetaData.getStatistics();
+    hasCachedFirstChunkMetadata = false;
+    firstChunkMetaData = null;
+    return res;
   }
-
-  @Override
-  public void skipChunkData() {
-    hasCachedNextChunk = false;
-  }
-
 
   @Override
   public boolean hasNextPage() throws IOException {
@@ -85,18 +82,21 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
   }
 
   @Override
-  public Statistics currentPageStatistics() {
-    return currentPage.getStatistics();
-  }
-
-  @Override
-  public void skipPageData() {
-    hasCachedNextPage = false;
+  public Statistics nextPageStatistics() throws IOException {
+    if (overlappedPageReaders.isEmpty() || overlappedPageReaders.peek().data == null) {
+      throw new IOException("No next page statistics.");
+    }
+    return overlappedPageReaders.poll().data.getStatistics();
   }
 
   @Override
   public boolean hasNextOverlappedPage() throws IOException {
     return super.hasNextOverlappedPage();
+  }
+
+  @Override
+  public BatchData nextOverlappedPage() throws IOException {
+    return super.nextOverlappedPage();
   }
 
   @Override

@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.tsfile.read.reader;
 
-import java.io.IOException;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+
+import java.io.IOException;
+import java.util.List;
 
 public interface IChunkReader {
 
@@ -28,9 +30,7 @@ public interface IChunkReader {
 
   BatchData nextPageData() throws IOException;
 
-  PageHeader nextPageHeader();
-
-  void skipPageData();
-
   void close() throws IOException;
+
+  List<PageReader> getPageReaderList();
 }

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine.memtable;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBoolean;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;

@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.common;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.BatchDataIterator;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.*;
@@ -515,4 +516,10 @@ public class BatchData implements Serializable {
     }
     return null;
   }
+
+  public BatchDataIterator getBatchDataIterator() {
+    return new BatchDataIterator(this);
+  }
+
+
 }

@@ -124,7 +124,7 @@ public class DeviceMetaDataCacheTest {
   public void test1() throws IOException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(false);
     QueryDataSource queryDataSource = storageGroupProcessor
-        .query(deviceId0, measurementId5, context, null);
+        .query(deviceId0, measurementId5, context, null, null);
 
     List<TsFileResource> seqResources = queryDataSource.getSeqResources();
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
@@ -146,7 +146,7 @@ public class DeviceMetaDataCacheTest {
   public void test2() throws IOException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(true);
     QueryDataSource queryDataSource = storageGroupProcessor
-        .query(deviceId0, measurementId5, context, null);
+        .query(deviceId0, measurementId5, context, null, null);
 
     List<TsFileResource> seqResources = queryDataSource.getSeqResources();
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();

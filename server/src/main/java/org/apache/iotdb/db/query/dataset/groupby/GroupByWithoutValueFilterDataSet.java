@@ -121,11 +121,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       return function;
     }
     while (sequenceReader.hasNextChunk()) {
-      Statistics chunkStatistics = sequenceReader.currentChunkStatistics();
+      Statistics chunkStatistics = sequenceReader.nextChunkStatistics();
       if (chunkStatistics.getStartTime() > endTime) {
         break;
       }
-      if (sequenceReader.canUseChunkStatistics() && timeRange.contains(
+      if (sequenceReader.canUseNextChunkStatistics() && timeRange.contains(
           new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
         function.updateResultFromStatistics(chunkStatistics);
         if (function.isCalculatedAggregationResult()) {
@@ -136,11 +136,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
 
       while (sequenceReader.hasNextPage()) {
-        Statistics pageStatistics = sequenceReader.currentChunkStatistics();
+        Statistics pageStatistics = sequenceReader.nextChunkStatistics();
         if (pageStatistics.getStartTime() > endTime) {
           break;
         }
-        if (sequenceReader.canUsePageStatistics() && timeRange.contains(
+        if (sequenceReader.canUseNextPageStatistics() && timeRange.contains(
             new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
           function.updateResultFromStatistics(pageStatistics);
           if (function.isCalculatedAggregationResult()) {

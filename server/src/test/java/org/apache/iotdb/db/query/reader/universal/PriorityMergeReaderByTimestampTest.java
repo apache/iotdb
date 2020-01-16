@@ -24,9 +24,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Assert;
@@ -112,7 +112,7 @@ public class PriorityMergeReaderByTimestampTest {
     }
 
     @Override
-    public boolean hasNext() {
+    public boolean hasNextTimeValuePair() {
       if (hasCachedTimeValuePair && cachedTimeValuePair.getTimestamp() >= currentTimeStamp) {
         return true;
       }
@@ -128,7 +128,7 @@ public class PriorityMergeReaderByTimestampTest {
     }
 
     @Override
-    public TimeValuePair next() throws IOException {
+    public TimeValuePair nextTimeValuePair() throws IOException {
       if (hasCachedTimeValuePair) {
         hasCachedTimeValuePair = false;
         return cachedTimeValuePair;
@@ -138,7 +138,7 @@ public class PriorityMergeReaderByTimestampTest {
     }
 
     @Override
-    public TimeValuePair current() throws IOException {
+    public TimeValuePair currentTimeValuePair() throws IOException {
       if (hasCachedTimeValuePair) {
         return cachedTimeValuePair;
       } else {
@@ -158,8 +158,8 @@ public class PriorityMergeReaderByTimestampTest {
         return cachedTimeValuePair.getValue().getValue();
       }
 
-      if (hasNext()) {
-        cachedTimeValuePair = next();
+      if (hasNextTimeValuePair()) {
+        cachedTimeValuePair = nextTimeValuePair();
         if (cachedTimeValuePair.getTimestamp() == timestamp) {
           return cachedTimeValuePair.getValue().getValue();
         } else if (cachedTimeValuePair.getTimestamp() > timestamp) {

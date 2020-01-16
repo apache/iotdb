@@ -23,9 +23,9 @@ import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.RawDataReaderWithoutValueFilter;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -91,18 +91,18 @@ public abstract class IFill {
     }
 
     @Override
-    public boolean hasNext() {
+    public boolean hasNextTimeValuePair() {
       return !isUsed;
     }
 
     @Override
-    public TimeValuePair next() {
+    public TimeValuePair nextTimeValuePair() {
       isUsed = true;
       return pair;
     }
 
     @Override
-    public TimeValuePair current() {
+    public TimeValuePair currentTimeValuePair() {
       return pair;
     }
 

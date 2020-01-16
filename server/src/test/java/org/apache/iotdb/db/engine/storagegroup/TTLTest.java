@@ -20,15 +20,6 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -64,6 +55,16 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class TTLTest {
 
@@ -180,8 +181,7 @@ public class TTLTest {
 
     // files before ttl
     QueryDataSource dataSource = storageGroupProcessor
-        .query(sg1, s1, EnvironmentUtils.TEST_QUERY_CONTEXT
-            , null);
+        .query(sg1, s1, EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
     List<TsFileResource> seqResource = dataSource.getSeqResources();
     List<TsFileResource> unseqResource = dataSource.getUnseqResources();
     assertEquals(4, seqResource.size());
@@ -190,8 +190,7 @@ public class TTLTest {
     storageGroupProcessor.setDataTTL(500);
 
     // files after ttl
-    dataSource = storageGroupProcessor.query(sg1, s1, EnvironmentUtils.TEST_QUERY_CONTEXT
-        , null);
+    dataSource = storageGroupProcessor.query(sg1, s1, EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
     assertTrue(seqResource.size() < 4);
@@ -214,7 +213,7 @@ public class TTLTest {
 
     storageGroupProcessor.setDataTTL(0);
     dataSource = storageGroupProcessor.query(sg1, s1, EnvironmentUtils.TEST_QUERY_CONTEXT
-        , null);
+        , null, null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
     assertEquals(0, seqResource.size());

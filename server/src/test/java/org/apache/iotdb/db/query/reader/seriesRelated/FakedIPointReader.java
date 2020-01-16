@@ -22,8 +22,8 @@ package org.apache.iotdb.db.query.reader.seriesRelated;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -49,12 +49,12 @@ public class FakedIPointReader implements IPointReader {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNextTimeValuePair() {
     return hasCachedTimeValuePair || iterator.hasNext();
   }
 
   @Override
-  public TimeValuePair next() {
+  public TimeValuePair nextTimeValuePair() {
     if (hasCachedTimeValuePair) {
       hasCachedTimeValuePair = false;
       return cachedTimeValuePair;
@@ -63,7 +63,7 @@ public class FakedIPointReader implements IPointReader {
   }
 
   @Override
-  public TimeValuePair current() {
+  public TimeValuePair currentTimeValuePair() {
     if (hasCachedTimeValuePair) {
       return cachedTimeValuePair;
     }

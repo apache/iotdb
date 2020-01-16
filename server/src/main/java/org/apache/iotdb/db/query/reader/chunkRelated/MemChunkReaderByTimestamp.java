@@ -22,7 +22,7 @@ import java.util.Iterator;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileReaderByTimestamp;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 /**
  * To read data in memory by timestamp, this class implements an interface {@link

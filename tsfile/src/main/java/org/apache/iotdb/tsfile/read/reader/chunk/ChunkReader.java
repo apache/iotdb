@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.tsfile.read.reader.chunk;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
@@ -35,6 +33,11 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.LinkedList;
+import java.util.List;
+
 public class ChunkReader implements IChunkReader {
 
   private ChunkHeader chunkHeader;
@@ -48,8 +51,7 @@ public class ChunkReader implements IChunkReader {
 
   protected Filter filter;
 
-  private PageHeader pageHeader;
-  private boolean hasCachedPageHeader;
+  private List<PageReader> pageReaderList = new LinkedList<>();
 
   /**
    * Data whose timestamp <= deletedAt should be considered deleted(not be returned).
@@ -62,7 +64,7 @@ public class ChunkReader implements IChunkReader {
    * @param chunk  input Chunk object
    * @param filter filter
    */
-  public ChunkReader(Chunk chunk, Filter filter) {
+  public ChunkReader(Chunk chunk, Filter filter) throws IOException {
     this.filter = filter;
     this.chunkDataBuffer = chunk.getData();
     this.deletedAt = chunk.getDeletedAt();
@@ -72,30 +74,31 @@ public class ChunkReader implements IChunkReader {
     valueDecoder = Decoder
         .getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
     valueDecoder.setEndianType(endianType);
-    hasCachedPageHeader = false;
+
+    initAllPageReaders();
+  }
+
+
+  private void initAllPageReaders() throws IOException {
+    // construct next satisfied page header
+    while (chunkDataBuffer.remaining() > 0) {
+      // deserialize a PageHeader from chunkDataBuffer
+      PageHeader pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+      // if the current page satisfies
+      if (pageSatisfied(pageHeader)) {
+        pageReaderList.add(constructPageReaderForNextPage(pageHeader));
+      } else {
+        skipBytesInStreamByLength(pageHeader.getCompressedSize());
+      }
+    }
   }
 
   /**
    * judge if has next page whose page header satisfies the filter.
    */
+  @Override
   public boolean hasNextSatisfiedPage() {
-    if (hasCachedPageHeader) {
-      return true;
-    }
-    // construct next satisfied page header
-    while (chunkDataBuffer.remaining() > 0) {
-      // deserialize a PageHeader from chunkDataBuffer
-      pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
-
-      // if the current page satisfies
-      if (pageSatisfied(pageHeader)) {
-        hasCachedPageHeader = true;
-        return true;
-      } else {
-        skipBytesInStreamByLength(pageHeader.getCompressedSize());
-      }
-    }
-    return false;
+    return !pageReaderList.isEmpty();
   }
 
   /**
@@ -104,23 +107,12 @@ public class ChunkReader implements IChunkReader {
    * @return next data batch
    * @throws IOException IOException
    */
+  @Override
   public BatchData nextPageData() throws IOException {
-    if (hasCachedPageHeader || hasNextSatisfiedPage()) {
-      PageReader pageReader = constructPageReaderForNextPage(pageHeader);
-      hasCachedPageHeader = false;
-      return pageReader.getAllSatisfiedPageData();
-    } else {
-      throw new IOException("no next page data");
+    if (pageReaderList.isEmpty()) {
+      throw new IOException("No more page");
     }
-  }
-
-  public PageHeader nextPageHeader() {
-    return pageHeader;
-  }
-
-  public void skipPageData() {
-    skipBytesInStreamByLength(pageHeader.getCompressedSize());
-    hasCachedPageHeader = false;
+    return pageReaderList.remove(0).getAllSatisfiedPageData();
   }
 
   private void skipBytesInStreamByLength(long length) {
@@ -148,16 +140,22 @@ public class ChunkReader implements IChunkReader {
     chunkDataBuffer.get(compressedPageBody);
     valueDecoder.reset();
     ByteBuffer pageData = ByteBuffer.wrap(unCompressor.uncompress(compressedPageBody));
-    PageReader reader = new PageReader(pageData, chunkHeader.getDataType(),
+    PageReader reader = new PageReader(pageHeader, pageData, chunkHeader.getDataType(),
         valueDecoder, timeDecoder, filter);
     reader.setDeletedAt(deletedAt);
     return reader;
   }
 
+  @Override
   public void close() {
   }
 
   public ChunkHeader getChunkHeader() {
     return chunkHeader;
+  }
+
+  @Override
+  public List<PageReader> getPageReaderList() {
+    return pageReaderList;
   }
 }

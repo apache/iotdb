@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
-import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
+import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+
+import java.io.IOException;
 
 /**
  * To read chunk data on disk, this class implements an interface {@link IPointReader} based on the
@@ -42,7 +43,7 @@ public class ChunkDataIterator implements IPointReader {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNextTimeValuePair() throws IOException {
     if (data != null && data.hasCurrent()) {
       return true;
     }
@@ -56,14 +57,14 @@ public class ChunkDataIterator implements IPointReader {
   }
 
   @Override
-  public TimeValuePair next() {
+  public TimeValuePair nextTimeValuePair() {
     TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(data);
     data.next();
     return timeValuePair;
   }
 
   @Override
-  public TimeValuePair current() {
+  public TimeValuePair currentTimeValuePair() {
     // FIXME: if data.hasNext() = false and this method is called...
     return TimeValuePairUtils.getCurrentTimeValuePair(data);
   }
