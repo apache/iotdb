@@ -54,7 +54,6 @@ public class IoTDBConnection implements Connection {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
   private static final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1;
-  private static final String METHOD_NOT_SUPPORTED = "Method not supported";
   private TSIService.Iface client = null;
   private long sessionId = -1;
   private IoTDBConnectionParams params;
@@ -90,17 +89,17 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support isWrapperFor");
   }
 
   @Override
   public <T> T unwrap(Class<T> arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support unwrap");
   }
 
   @Override
   public void abort(Executor arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support abort");
   }
 
   @Override
@@ -128,32 +127,32 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void commit() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support commit");
   }
 
   @Override
   public Array createArrayOf(String arg0, Object[] arg1) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support createArrayOf");
   }
 
   @Override
   public Blob createBlob() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support createBlob");
   }
 
   @Override
   public Clob createClob() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support createClob");
   }
 
   @Override
   public NClob createNClob() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not suppport createNClob");
   }
 
   @Override
   public SQLXML createSQLXML() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support createSQLXML");
   }
 
   @Override
@@ -181,12 +180,12 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public Statement createStatement(int arg0, int arg1, int arg2) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support createStatement");
   }
 
   @Override
   public Struct createStruct(String arg0, Object[] arg1) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support createStruct");
   }
 
   @Override
@@ -206,22 +205,22 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void setCatalog(String arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support setCatalog");
   }
 
   @Override
   public Properties getClientInfo() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support getClientInfo");
   }
 
   @Override
   public void setClientInfo(Properties arg0) throws SQLClientInfoException {
-    throw new SQLClientInfoException(METHOD_NOT_SUPPORTED, null);
+    throw new SQLClientInfoException("Not support setClientInfo", null);
   }
 
   @Override
   public String getClientInfo(String arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support getClientInfo");
   }
 
   @Override
@@ -232,7 +231,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void setHoldability(int arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support setHoldability");
   }
 
   @Override
@@ -250,12 +249,12 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public String getSchema() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support getSchema");
   }
 
   @Override
   public void setSchema(String arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support setSchema");
   }
 
   @Override
@@ -265,17 +264,17 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void setTransactionIsolation(int arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support setTransactionIsolation");
   }
 
   @Override
   public Map<String, Class<?>> getTypeMap() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support getTypeMap");
   }
 
   @Override
   public void setTypeMap(Map<String, Class<?>> arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support setTypeMap");
   }
 
   @Override
@@ -295,33 +294,33 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void setReadOnly(boolean arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support setReadOnly");
   }
 
   @Override
   public boolean isValid(int arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    return !isClosed;
   }
 
   @Override
   public String nativeSQL(String arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support nativeSQL");
   }
 
   @Override
   public CallableStatement prepareCall(String arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support prepareCall");
   }
 
   @Override
   public CallableStatement prepareCall(String arg0, int arg1, int arg2) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support prepareCall");
   }
 
   @Override
   public CallableStatement prepareCall(String arg0, int arg1, int arg2, int arg3)
       throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support prepareCall");
   }
 
   @Override
@@ -331,34 +330,34 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support prepareStatement");
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support prepareStatement");
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support prepareStatement");
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency)
       throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support prepareStatement");
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency,
       int resultSetHoldability) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support prepareStatement");
   }
 
   @Override
   public void releaseSavepoint(Savepoint arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support releaseSavepoint");
   }
 
   @Override
@@ -373,22 +372,22 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void setClientInfo(String arg0, String arg1) throws SQLClientInfoException {
-    throw new SQLClientInfoException(METHOD_NOT_SUPPORTED, null);
+    throw new SQLClientInfoException("Not support setClientInfo", null);
   }
 
   @Override
   public void setNetworkTimeout(Executor arg0, int arg1) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support setNetworkTimeout");
   }
 
   @Override
   public Savepoint setSavepoint() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support setSavepoint");
   }
 
   @Override
   public Savepoint setSavepoint(String arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
+    throw new SQLException("Not support setSavepoint");
   }
 
   public TSIService.Iface getClient() {
