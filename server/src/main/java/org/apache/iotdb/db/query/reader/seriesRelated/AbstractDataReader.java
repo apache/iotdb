@@ -72,7 +72,7 @@ public abstract class AbstractDataReader {
       new PriorityQueue<>(
           Comparator.comparingLong(pageReader -> pageReader.data.getStatistics().getStartTime()));
 
-  protected PriorityMergeReader mergeReader = new PriorityMergeReader();
+  private PriorityMergeReader mergeReader = new PriorityMergeReader();
 
   private boolean hasCachedNextBatch;
   private BatchData cachedBatchData;
@@ -135,22 +135,16 @@ public abstract class AbstractDataReader {
       return true;
     }
     // init first chunkReader whose startTime is minimum
-    tryInitFirstChunk();
+    tryToInitFirstChunk();
 
     return hasCachedFirstChunkMetadata;
-
-    // unpack all files that overlap with the first chunk
-    //    unpackOverlappedFiles();
-    // init all chunk readers that overlap with the first chunk
-    //    initOverlappedChunkReaders();
-    //    return hasCachedFirstChunkMetadata;
   }
 
   /**
    * Because seq data and unseq data intersect, the minimum startTime taken from two files at a time
    * is used as the reference time to start reading data
    */
-  private void tryInitFirstChunk() throws IOException {
+  private void tryToInitFirstChunk() throws IOException {
     tryToFillChunkMetadatas();
     hasCachedFirstChunkMetadata = true;
     if (!seqChunkMetadatas.isEmpty() && unseqChunkMetadatas.isEmpty()) {
@@ -196,8 +190,6 @@ public abstract class AbstractDataReader {
     fillOverlappedPageReaders();
 
     return !overlappedPageReaders.isEmpty();
-
-    //    firstChunkMetaData.getChunkLoader().close();
   }
 
   private void fillOverlappedPageReaders() throws IOException {
