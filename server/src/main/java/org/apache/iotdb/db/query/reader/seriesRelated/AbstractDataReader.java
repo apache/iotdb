@@ -215,7 +215,7 @@ public abstract class AbstractDataReader {
         .forEach(
             pageReader ->
                 overlappedPageReaders.add(
-                    new VersionPair(firstChunkMetaData.getVersion(), pageReader)));
+                    new VersionPair(chunkMetaData.getVersion(), pageReader)));
   }
 
   public boolean canUseCurrentPageStatistics() {
