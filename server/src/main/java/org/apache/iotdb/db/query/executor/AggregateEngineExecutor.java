@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
@@ -45,6 +42,10 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class AggregateEngineExecutor {
 
@@ -105,24 +106,22 @@ public class AggregateEngineExecutor {
         selectedSeries.get(i), tsDataType, timeFilter, context);
 
     while (seriesReader.hasNextChunk()) {
-      if (seriesReader.canUseChunkStatistics()) {
+      if (seriesReader.canUseCurrentChunkStatistics()) {
         Statistics chunkStatistics = seriesReader.currentChunkStatistics();
         aggregateResult.updateResultFromStatistics(chunkStatistics);
         if (aggregateResult.isCalculatedAggregationResult()) {
           return aggregateResult;
         }
-        seriesReader.skipChunkData();
         continue;
       }
       while (seriesReader.hasNextPage()) {
         //cal by pageheader
-        if (seriesReader.canUsePageStatistics()) {
-          Statistics pageStatistic = seriesReader.currentPageStatistics();
+        if (seriesReader.canUseNextPageStatistics()) {
+          Statistics pageStatistic = seriesReader.nextPageStatistics();
           aggregateResult.updateResultFromStatistics(pageStatistic);
           if (aggregateResult.isCalculatedAggregationResult()) {
             return aggregateResult;
           }
-          seriesReader.skipPageData();
           continue;
         }
         //cal by pagedata

@@ -19,18 +19,6 @@
 
 package org.apache.iotdb.db.engine.modification;
 
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
 import junit.framework.TestCase;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -46,7 +34,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -58,6 +46,15 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class DeletionFileNodeTest {
 
@@ -114,7 +111,7 @@ public class DeletionFileNodeTest {
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);
     QueryDataSource dataSource = QueryResourceManager.getInstance()
-        .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT);
+        .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
 
     Iterator<TimeValuePair> timeValuePairs =
         dataSource.getSeqResources().get(0).getReadOnlyMemChunk().getIterator();
@@ -208,7 +205,7 @@ public class DeletionFileNodeTest {
         measurements[5]), null);
 
     QueryDataSource dataSource = QueryResourceManager.getInstance()
-        .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT);
+        .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
 
     Iterator<TimeValuePair> timeValuePairs =
         dataSource.getUnseqResources().get(0).getReadOnlyMemChunk().getIterator();

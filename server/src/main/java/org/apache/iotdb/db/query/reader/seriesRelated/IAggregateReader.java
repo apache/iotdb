@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
-import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+
+import java.io.IOException;
 
 public interface IAggregateReader {
 
   boolean hasNextChunk() throws IOException;
 
-  boolean canUseChunkStatistics();
+  boolean canUseCurrentChunkStatistics();
 
   Statistics currentChunkStatistics();
 
@@ -34,9 +35,9 @@ public interface IAggregateReader {
 
   boolean hasNextPage() throws IOException;
 
-  boolean canUsePageStatistics();
+  boolean canUseNextPageStatistics();
 
-  Statistics currentPageStatistics();
+  Statistics nextPageStatistics() throws IOException;
 
   void skipPageData() throws IOException;
 

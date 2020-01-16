@@ -33,7 +33,7 @@ import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.reader.chunkRelated.ChunkDataIterator;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -175,10 +175,10 @@ public class UnseqTsFileRecoverTest {
     }
 
     for (int i = 0; i < 10; i++) {
-      TimeValuePair timeValuePair = unSeqMergeReader.current();
+      TimeValuePair timeValuePair = unSeqMergeReader.currentTimeValuePair();
       assertEquals(i, timeValuePair.getTimestamp());
       assertEquals(11, (long) timeValuePair.getValue().getValue());
-      unSeqMergeReader.next();
+      unSeqMergeReader.nextTimeValuePair();
     }
     unSeqMergeReader.close();
     fileReader.close();

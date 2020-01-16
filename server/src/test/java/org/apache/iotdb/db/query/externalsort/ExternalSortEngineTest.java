@@ -28,12 +28,12 @@ import java.util.Random;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 import org.apache.iotdb.db.query.reader.universal.FakedSeriesReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -115,8 +115,8 @@ public class ExternalSortEngineTest {
     for (int i = 0; i < readerList1.size(); i++) {
       reader1.addReader(readerList1.get(i), i);
     }
-    while (reader1.hasNext()) {
-      reader1.next();
+    while (reader1.hasNextTimeValuePair()) {
+      reader1.nextTimeValuePair();
     }
     System.out.println(
         "Time used WITH external sort:" + (System.currentTimeMillis() - startTimestamp) + "ms");
@@ -127,8 +127,8 @@ public class ExternalSortEngineTest {
     for (int i = 0; i < readerList2.size(); i++) {
       reader2.addReader(readerList2.get(i), i);
     }
-    while (reader2.hasNext()) {
-      reader2.next();
+    while (reader2.hasNextTimeValuePair()) {
+      reader2.nextTimeValuePair();
     }
     System.out.println(
         "Time used WITHOUT external sort:" + (System.currentTimeMillis() - startTimestamp) + "ms");
@@ -160,14 +160,14 @@ public class ExternalSortEngineTest {
   }
 
   private void check(IPointReader reader1, IPointReader reader2) throws IOException {
-    while (reader1.hasNext() && reader2.hasNext()) {
-      TimeValuePair tv1 = reader1.next();
-      TimeValuePair tv2 = reader2.next();
+    while (reader1.hasNextTimeValuePair() && reader2.hasNextTimeValuePair()) {
+      TimeValuePair tv1 = reader1.nextTimeValuePair();
+      TimeValuePair tv2 = reader2.nextTimeValuePair();
       Assert.assertEquals(tv1.getTimestamp(), tv2.getTimestamp());
       Assert.assertEquals(tv1.getValue(), tv2.getValue());
     }
-    Assert.assertFalse(reader2.hasNext());
-    Assert.assertFalse(reader1.hasNext());
+    Assert.assertFalse(reader2.hasNextTimeValuePair());
+    Assert.assertFalse(reader1.hasNextTimeValuePair());
   }
 
   private List<IPointReader> genSimple() {

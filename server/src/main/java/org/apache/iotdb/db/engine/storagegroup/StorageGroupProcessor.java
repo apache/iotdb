@@ -18,28 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
-import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -86,12 +64,24 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 
 /**
@@ -985,7 +975,7 @@ public class StorageGroupProcessor {
 
   // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSource query(String deviceId, String measurementId, QueryContext context,
-      QueryFileManager filePathsManager) {
+                               QueryFileManager filePathsManager, Filter timeFilter) {
     insertLock.readLock().lock();
     mergeLock.readLock().lock();
     synchronized (lruForSensorUsedInQuery) {
@@ -996,9 +986,9 @@ public class StorageGroupProcessor {
     }
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(sequenceFileTreeSet,
-          deviceId, measurementId, context);
+          deviceId, measurementId, context, timeFilter);
       List<TsFileResource> unseqResources = getFileResourceListForQuery(unSequenceFileList,
-          deviceId, measurementId, context);
+          deviceId, measurementId, context, timeFilter);
       QueryDataSource dataSource = new QueryDataSource(new Path(deviceId, measurementId),
           seqResources, unseqResources);
       // used files should be added before mergeLock is unlocked, or they may be deleted by
@@ -1051,7 +1041,7 @@ public class StorageGroupProcessor {
    */
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources,
-      String deviceId, String measurementId, QueryContext context) {
+      String deviceId, String measurementId, QueryContext context, Filter timeFilter) {
 
     MeasurementSchema mSchema = schema.getMeasurementSchema(measurementId);
     TSDataType dataType = mSchema.getType();
@@ -1062,8 +1052,7 @@ public class StorageGroupProcessor {
     context.setQueryTimeLowerBound(timeLowerBound);
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      // TODO: try filtering files if the query contains time filter
-      if (!testResourceDevice(tsFileResource, deviceId)) {
+      if (!isTsFileResourceSatisfied(tsFileResource, deviceId, timeFilter)) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1091,13 +1080,19 @@ public class StorageGroupProcessor {
   /**
    * @return true if the device is contained in the TsFile and it lives beyond TTL
    */
-  private boolean testResourceDevice(TsFileResource tsFileResource, String deviceId) {
+  private boolean isTsFileResourceSatisfied(TsFileResource tsFileResource, String deviceId, Filter timeFilter) {
     if (!tsFileResource.containsDevice(deviceId)) {
       return false;
     }
     if (dataTTL != Long.MAX_VALUE) {
       Long deviceEndTime = tsFileResource.getEndTimeMap().get(deviceId);
       return deviceEndTime == null || checkTTL(deviceEndTime);
+    }
+
+    if (timeFilter != null) {
+      long startTime = tsFileResource.getStartTimeMap().get(deviceId);
+      long endTime = tsFileResource.getEndTimeMap().getOrDefault(deviceId, Long.MAX_VALUE);
+      return timeFilter.satisfyStartEndTime(startTime, endTime);
     }
     return true;
   }

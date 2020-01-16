@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -29,16 +26,17 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
+import org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderWithoutValueFilter;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.*;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -113,7 +111,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * @param idx series id
    */
   private AggregateResult nextSeries(int idx) throws IOException, QueryProcessException {
-    SeriesDataReaderWithoutValueFilter sequenceReader = sequenceReaderList.get(idx);
+    IAggregateReader sequenceReader = sequenceReaderList.get(idx);
     AggregateResult result = AggreResultFactory
         .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(idx),
             groupByPlan.getDeduplicatedDataTypes().get(idx));
@@ -130,7 +128,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       if (chunkStatistics.getStartTime() > endTime) {
         break;
       }
-      if (sequenceReader.canUseChunkStatistics() && timeRange.contains(
+      if (sequenceReader.canUseCurrentChunkStatistics() && timeRange.contains(
           new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
         result.updateResultFromStatistics(chunkStatistics);
         if (result.isCalculatedAggregationResult()) {
@@ -145,7 +143,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         if (pageStatistics.getStartTime() > endTime) {
           break;
         }
-        if (sequenceReader.canUsePageStatistics() && timeRange.contains(
+        if (sequenceReader.canUseNextPageStatistics() && timeRange.contains(
             new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
           result.updateResultFromStatistics(pageStatistics);
           if (result.isCalculatedAggregationResult()) {

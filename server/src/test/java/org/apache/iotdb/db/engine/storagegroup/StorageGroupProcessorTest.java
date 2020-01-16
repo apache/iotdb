@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.junit.Assert.assertFalse;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
@@ -39,7 +31,7 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -49,6 +41,15 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.junit.Assert.assertFalse;
 
 public class StorageGroupProcessorTest {
 
@@ -132,7 +133,7 @@ public class StorageGroupProcessorTest {
 
     processor.waitForAllCurrentTsFileProcessorsClosed();
     QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
-        null);
+        null, null);
 
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -187,7 +188,7 @@ public class StorageGroupProcessorTest {
     processor.waitForAllCurrentTsFileProcessorsClosed();
 
     QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
-        null);
+        null, null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(1, queryDataSource.getUnseqResources().size());
@@ -218,7 +219,7 @@ public class StorageGroupProcessorTest {
     processor.waitForAllCurrentTsFileProcessorsClosed();
 
     QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
-        null);
+        null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -255,7 +256,7 @@ public class StorageGroupProcessorTest {
     }
 
     QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
-        null);
+        null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {

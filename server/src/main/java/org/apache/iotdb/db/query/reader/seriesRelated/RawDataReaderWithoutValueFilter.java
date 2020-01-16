@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -29,6 +27,10 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Objects;
+
 public class RawDataReaderWithoutValueFilter extends AbstractDataReader implements IRawDataReader {
 
   private BatchData batchData;
@@ -37,21 +39,22 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
   private boolean managedByQueryManager;
 
   public RawDataReaderWithoutValueFilter(Path seriesPath, TSDataType dataType, Filter filter,
-      QueryContext context) throws StorageEngineException, IOException {
+      QueryContext context) throws StorageEngineException {
     super(seriesPath, dataType, filter, context);
   }
 
   public RawDataReaderWithoutValueFilter(Path seriesPath, TSDataType dataType,
-      Filter filter, QueryContext context, QueryDataSource dataSource)
-      throws IOException {
+      Filter filter, QueryContext context, QueryDataSource dataSource) {
     super(seriesPath, dataType, filter, context, dataSource);
   }
 
+  // for test
   public RawDataReaderWithoutValueFilter(Path seriesPath, TSDataType dataType,
-      Filter filter, QueryContext context, List<TsFileResource> resources)
-      throws IOException {
+      Filter filter, QueryContext context, List<TsFileResource> resources) {
     super(seriesPath, dataType, filter, context, resources);
   }
+
+
 
   /**
    * This method overrides the AbstractDataReader.hasNextOverlappedPage for pause reads, to achieve
@@ -64,22 +67,25 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
       return true;
     }
 
-    while (hasNextChunk()) {
-      while (hasNextPage()) {
-        if (canUsePageStatistics() && !mergeReader.hasNext()) {
+    // read remaining data in merge reader
+    if (hasNextOverlappedPage()) {
+      batchData = nextOverlappedPage();
+      hasCachedBatchData = true;
+      return true;
+    }
+
+    if (hasNextChunk()) {
+      if (hasNextPage()) {
+        if (canUseNextPageStatistics()) {
           batchData = nextPage();
-          hasCachedNextPage = false;
           hasCachedBatchData = true;
           return true;
         }
         if (hasNextOverlappedPage()) {
           batchData = nextOverlappedPage();
-          hasCachedNextPage = false;
           hasCachedBatchData = true;
           return true;
         }
-        hasCachedNextPage = hasCachedBatchData;
-        return hasCachedNextPage;
       }
     }
     return false;
@@ -92,6 +98,12 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
       return batchData;
     }
     throw new IOException("no next batch");
+  }
+
+  private BatchData nextPage() throws IOException {
+    return Objects.requireNonNull(overlappedPageReaders.poll().data, "No Batch data")
+            .getAllSatisfiedPageData();
+
   }
 
 

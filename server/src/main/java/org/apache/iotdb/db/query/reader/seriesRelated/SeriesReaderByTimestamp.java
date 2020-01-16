@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
-import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -27,6 +26,8 @@ import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceReaderByTimes
 import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.common.Path;
+
+import java.io.IOException;
 
 /**
  * To read series data by timestamp, this class extends {@link PriorityMergeReaderByTimestamp} to
@@ -41,7 +42,7 @@ public class SeriesReaderByTimestamp extends PriorityMergeReaderByTimestamp {
   public SeriesReaderByTimestamp(Path seriesPath, QueryContext context)
       throws StorageEngineException, IOException {
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-        .getQueryDataSource(seriesPath, context);
+        .getQueryDataSource(seriesPath, context, null);
 
     // reader for sequence resources
     SeqResourceReaderByTimestamp seqResourceReaderByTimestamp = new SeqResourceReaderByTimestamp(

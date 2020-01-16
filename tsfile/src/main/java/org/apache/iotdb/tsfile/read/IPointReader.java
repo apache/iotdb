@@ -16,19 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader;
+package org.apache.iotdb.tsfile.read;
 
 import java.io.IOException;
-import org.apache.iotdb.db.utils.TimeValuePair;
 
 public interface IPointReader {
 
-  // FIXME: this means hasCurrent actually
-  boolean hasNext() throws IOException;
+  boolean hasNextTimeValuePair() throws IOException;
 
-  TimeValuePair next() throws IOException;
+  TimeValuePair nextTimeValuePair() throws IOException;
 
-  TimeValuePair current() throws IOException;
+  TimeValuePair currentTimeValuePair() throws IOException;
 
   void close() throws IOException;
 }

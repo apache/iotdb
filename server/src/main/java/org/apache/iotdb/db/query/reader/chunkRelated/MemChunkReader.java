@@ -18,16 +18,19 @@
  */
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
-import java.io.IOException;
-import java.util.Iterator;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.IPageReader;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * To read chunk data in memory
@@ -50,7 +53,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNextTimeValuePair() {
     if (hasCachedTimeValuePair) {
       return true;
     }
@@ -67,7 +70,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   }
 
   @Override
-  public TimeValuePair next() {
+  public TimeValuePair nextTimeValuePair() {
     if (hasCachedTimeValuePair) {
       hasCachedTimeValuePair = false;
       return cachedTimeValuePair;
@@ -77,7 +80,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   }
 
   @Override
-  public TimeValuePair current() {
+  public TimeValuePair currentTimeValuePair() {
     if (!hasCachedTimeValuePair) {
       cachedTimeValuePair = timeValuePairIterator.next();
       hasCachedTimeValuePair = true;
@@ -87,7 +90,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
 
   @Override
   public boolean hasNextSatisfiedPage() throws IOException {
-    return hasNext();
+    return hasNextTimeValuePair();
   }
 
   @Override
@@ -114,12 +117,8 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   }
 
   @Override
-  public PageHeader nextPageHeader() {
-    return new PageHeader(0, 0, readOnlyMemChunk.getChunkMetaData().getStatistics());
+  public List<IPageReader> getPageReaderList() {
+    return Collections.singletonList(new MenPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
   }
 
-  @Override
-  public void skipPageData() {
-    nextPageData();
-  }
 }

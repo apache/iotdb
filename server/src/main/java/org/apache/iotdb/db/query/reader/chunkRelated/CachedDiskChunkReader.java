@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
@@ -40,7 +40,7 @@ public class CachedDiskChunkReader implements IPointReader {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNextTimeValuePair() throws IOException {
     if (data != null && data.hasCurrent()) {
       return true;
     }
@@ -54,16 +54,16 @@ public class CachedDiskChunkReader implements IPointReader {
   }
 
   @Override
-  public TimeValuePair next() throws IOException {
+  public TimeValuePair nextTimeValuePair() throws IOException {
     TimeValuePairUtils.setCurrentTimeValuePair(data, prev);
     data.next();
     if (data.hasCurrent()) {
-      TimeValuePairUtils.setCurrentTimeValuePair(data, current());
+      TimeValuePairUtils.setCurrentTimeValuePair(data, currentTimeValuePair());
     } else {
       while (chunkReader.hasNextSatisfiedPage()) {
         data = chunkReader.nextPageData();
         if (data.hasCurrent()) {
-          TimeValuePairUtils.setCurrentTimeValuePair(data, current());
+          TimeValuePairUtils.setCurrentTimeValuePair(data, currentTimeValuePair());
           break;
         }
       }
@@ -72,7 +72,7 @@ public class CachedDiskChunkReader implements IPointReader {
   }
 
   @Override
-  public TimeValuePair current() {
+  public TimeValuePair currentTimeValuePair() {
     if (current == null) {
       this.current =
           TimeValuePairUtils.getEmptyTimeValuePair(chunkReader.getChunkHeader().getDataType());

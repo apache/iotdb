@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -31,6 +25,14 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * <p>
@@ -84,9 +86,9 @@ public class QueryResourceManager {
 
 
   public QueryDataSource getQueryDataSource(Path selectedPath,
-      QueryContext context) throws StorageEngineException {
+                                            QueryContext context, Filter filter) throws StorageEngineException {
 
-    SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
+    SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, filter);
     return StorageEngine
         .getInstance().query(singleSeriesExpression, context, filePathsManager);
   }
