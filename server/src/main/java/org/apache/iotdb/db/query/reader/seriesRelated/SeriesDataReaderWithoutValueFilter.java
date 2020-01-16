@@ -86,11 +86,11 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
   }
 
   @Override
-  public Statistics nextPageStatistics() throws IOException {
+  public Statistics currentPageStatistics() throws IOException {
     if (overlappedPageReaders.isEmpty() || overlappedPageReaders.peek().data == null) {
       throw new IOException("No next page statistics.");
     }
-    return overlappedPageReaders.poll().data.getStatistics();
+    return overlappedPageReaders.peek().data.getStatistics();
   }
 
   @Override

@@ -112,16 +112,18 @@ public class AggregateEngineExecutor {
         if (aggregateResult.isCalculatedAggregationResult()) {
           return aggregateResult;
         }
+        seriesReader.skipChunkData();
         continue;
       }
       while (seriesReader.hasNextPage()) {
         //cal by pageheader
-        if (seriesReader.canUseNextPageStatistics()) {
-          Statistics pageStatistic = seriesReader.nextPageStatistics();
+        if (seriesReader.canUseCurrentPageStatistics()) {
+          Statistics pageStatistic = seriesReader.currentPageStatistics();
           aggregateResult.updateResultFromStatistics(pageStatistic);
           if (aggregateResult.isCalculatedAggregationResult()) {
             return aggregateResult;
           }
+          seriesReader.skipPageData();
           continue;
         }
         //cal by pagedata

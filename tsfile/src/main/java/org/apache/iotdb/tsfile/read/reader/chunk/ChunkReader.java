@@ -43,9 +43,8 @@ public class ChunkReader implements IChunkReader {
 
   private ChunkHeader chunkHeader;
   private ByteBuffer chunkDataBuffer;
-
+  private EndianType endianType;
   private IUnCompressor unCompressor;
-  private Decoder valueDecoder;
   private Decoder timeDecoder = Decoder.getDecoderByType(
       TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
       TSDataType.INT64);
@@ -69,12 +68,10 @@ public class ChunkReader implements IChunkReader {
     this.filter = filter;
     this.chunkDataBuffer = chunk.getData();
     this.deletedAt = chunk.getDeletedAt();
-    EndianType endianType = chunk.getEndianType();
+    endianType = chunk.getEndianType();
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
-    valueDecoder = Decoder
-        .getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
-    valueDecoder.setEndianType(endianType);
+
 
     initAllPageReaders();
   }
@@ -139,7 +136,9 @@ public class ChunkReader implements IChunkReader {
     }
 
     chunkDataBuffer.get(compressedPageBody);
-    valueDecoder.reset();
+    Decoder valueDecoder = Decoder
+            .getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
+    valueDecoder.setEndianType(endianType);
     ByteBuffer pageData = ByteBuffer.wrap(unCompressor.uncompress(compressedPageBody));
     PageReader reader = new PageReader(pageHeader, pageData, chunkHeader.getDataType(),
         valueDecoder, timeDecoder, filter);

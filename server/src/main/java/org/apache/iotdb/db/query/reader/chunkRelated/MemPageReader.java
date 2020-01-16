@@ -6,12 +6,12 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
 import java.io.IOException;
 
-public class MenPageReader implements IPageReader {
+public class MemPageReader implements IPageReader {
 
   private BatchData batchData;
   private Statistics statistics;
 
-  public MenPageReader(BatchData batchData, Statistics statistics) {
+  public MemPageReader(BatchData batchData, Statistics statistics) {
     this.batchData = batchData;
     this.statistics = statistics;
   }

@@ -68,15 +68,15 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
     }
 
     // read remaining data in merge reader
-    if (hasNextOverlappedPage()) {
-      batchData = nextOverlappedPage();
-      hasCachedBatchData = true;
-      return true;
-    }
+//    if (hasNextOverlappedPage()) {
+//      batchData = nextOverlappedPage();
+//      hasCachedBatchData = true;
+//      return true;
+//    }
 
     if (hasNextChunk()) {
       if (hasNextPage()) {
-        if (canUseNextPageStatistics()) {
+        if (canUseCurrentPageStatistics()) {
           batchData = nextPage();
           hasCachedBatchData = true;
           return true;

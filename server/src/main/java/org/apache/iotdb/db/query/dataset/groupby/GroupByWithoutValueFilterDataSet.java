@@ -139,11 +139,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
 
       while (sequenceReader.hasNextPage()) {
-        Statistics pageStatistics = sequenceReader.currentChunkStatistics();
+        Statistics pageStatistics = sequenceReader.currentPageStatistics();
         if (pageStatistics.getStartTime() > endTime) {
           break;
         }
-        if (sequenceReader.canUseNextPageStatistics() && timeRange.contains(
+        if (sequenceReader.canUseCurrentPageStatistics() && timeRange.contains(
             new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
           result.updateResultFromStatistics(pageStatistics);
           if (result.isCalculatedAggregationResult()) {

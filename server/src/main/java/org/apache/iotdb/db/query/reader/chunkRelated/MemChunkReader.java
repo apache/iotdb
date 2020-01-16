@@ -118,7 +118,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
 
   @Override
   public List<IPageReader> getPageReaderList() {
-    return Collections.singletonList(new MenPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
+    return Collections.singletonList(new MemPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
   }
 
 }
