@@ -26,7 +26,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
@@ -37,6 +39,7 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   private List<IReaderByTimestamp> allDataReaderList;
+  private GroupByPlan groupByPlan;
   private TimeGenerator timestampGenerator;
   /**
    * cached timestamp for next group by partition.
@@ -58,7 +61,6 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   public GroupByWithValueFilterDataSet(QueryContext context, GroupByPlan groupByPlan)
       throws PathException, IOException, StorageEngineException {
     super(context, groupByPlan);
-    this.allDataReaderList = new ArrayList<>();
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
     initGroupBy(context, groupByPlan);
   }
@@ -74,12 +76,11 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    */
   private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
       throws StorageEngineException, IOException, PathException {
-    initAggreFuction(groupByPlan);
     this.timestampGenerator = new EngineTimeGenerator(groupByPlan.getExpression(), context);
     this.allDataReaderList = new ArrayList<>();
+    this.groupByPlan = groupByPlan;
     for (Path path : paths) {
-      SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path, context);
-      allDataReaderList.add(seriesReaderByTimestamp);
+      allDataReaderList.add(new SeriesReaderByTimestamp(path, context));
     }
   }
 
@@ -90,6 +91,17 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
           + " in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
+    List<AggregateResult> aggregateResultList = new ArrayList<>();
+    for (int i = 0; i < paths.size(); i++) {
+      try {
+        aggregateResultList.add(AggreResultFactory.getAggrResultByName(
+            groupByPlan.getDeduplicatedAggregations().get(i),
+            groupByPlan.getDeduplicatedDataTypes().get(i)));
+      } catch (PathException e) {
+        throw new IOException(e);
+      }
+    }
+
     long[] timestampArray = new long[timeStampFetchSize];
     int timeArrayLength = 0;
     if (hasCachedTimestamp) {
@@ -99,17 +111,16 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
           timestampArray[timeArrayLength++] = timestamp;
         }
       } else {
-        return constructRowRecord();
+        return constructRowRecord(aggregateResultList);
       }
     }
-
     while (timestampGenerator.hasNext()) {
       // construct timestamp array
       timeArrayLength = constructTimeArrayForOneCal(timestampArray, timeArrayLength);
 
       // cal result using timestamp array
       for (int i = 0; i < paths.size(); i++) {
-        aggregateResults.get(i).updateResultUsingTimestamps(
+        aggregateResultList.get(i).updateResultUsingTimestamps(
             timestampArray, timeArrayLength, allDataReaderList.get(i));
       }
 
@@ -124,11 +135,11 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     if (timeArrayLength > 0) {
       // cal result using timestamp array
       for (int i = 0; i < paths.size(); i++) {
-        aggregateResults.get(i).updateResultUsingTimestamps(
+        aggregateResultList.get(i).updateResultUsingTimestamps(
             timestampArray, timeArrayLength, allDataReaderList.get(i));
       }
     }
-    return constructRowRecord();
+    return constructRowRecord(aggregateResultList);
   }
 
   /**
@@ -152,9 +163,12 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     return timeArrayLength;
   }
 
-  private RowRecord constructRowRecord() {
+  private RowRecord constructRowRecord(List<AggregateResult> aggregateResultList) {
     RowRecord record = new RowRecord(startTime);
-    aggregateResults.forEach(aggregateResult -> record.addField(getField(aggregateResult)));
+    for (int i = 0; i < paths.size(); i++) {
+      AggregateResult aggregateResult = aggregateResultList.get(i);
+      record.addField(aggregateResult.getResult(), aggregateResult.getDataType());
+    }
     return record;
   }
 }

@@ -360,7 +360,7 @@ public abstract class AbstractDataReader {
       }
     }
     ReadOnlyMemChunk readOnlyMemChunk = resource.getReadOnlyMemChunk();
-    if (readOnlyMemChunk != null) {
+    if (readOnlyMemChunk != null && !readOnlyMemChunk.isEmpty()) {
       currentChunkMetaDataList.add(readOnlyMemChunk.getChunkMetaData());
     }
 

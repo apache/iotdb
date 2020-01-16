@@ -457,6 +457,7 @@ public class IoTDBAggregationIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+
       fail(e.getMessage());
     }
   }

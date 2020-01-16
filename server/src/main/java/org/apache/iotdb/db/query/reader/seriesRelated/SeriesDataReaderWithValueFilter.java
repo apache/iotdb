@@ -45,7 +45,7 @@ public class SeriesDataReaderWithValueFilter extends SeriesDataReaderWithoutValu
 
   @Override
   protected boolean satisfyFilter(Statistics statistics) {
-    return false;
+    return valueFilter.satisfy(statistics);
   }
 
   public boolean hasNext() throws IOException {

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderWithoutValueFilter;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -44,6 +45,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   private List<SeriesDataReaderWithoutValueFilter> sequenceReaderList;
   private List<BatchData> batchDataList;
   private Filter timeFilter;
+  private GroupByPlan groupByPlan;
 
   /**
    * constructor.
@@ -67,7 +69,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
       throws StorageEngineException, IOException, PathException {
     IExpression expression = groupByPlan.getExpression();
-    initAggreFuction(groupByPlan);
+    this.groupByPlan = groupByPlan;
     // init reader
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
@@ -89,7 +91,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
     hasCachedTimeInterval = false;
     RowRecord record = new RowRecord(startTime);
-    for (int i = 0; i < aggregateResults.size(); i++) {
+    for (int i = 0; i < paths.size(); i++) {
       AggregateResult res;
       try {
         res = nextSeries(i);
@@ -99,7 +101,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       if (res == null) {
         record.addField(new Field(null));
       } else {
-        record.addField(getField(res));
+        record.addField(res.getResult(), res.getDataType());
       }
     }
     return record;
@@ -112,13 +114,16 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    */
   private AggregateResult nextSeries(int idx) throws IOException, QueryProcessException {
     SeriesDataReaderWithoutValueFilter sequenceReader = sequenceReaderList.get(idx);
-    AggregateResult function = aggregateResults.get(idx);
+    AggregateResult result = AggreResultFactory
+        .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(idx),
+            groupByPlan.getDeduplicatedDataTypes().get(idx));
+
     TimeRange timeRange = new TimeRange(startTime, endTime - 1);
 
     BatchData lastBatch = batchDataList.get(idx);
-    calcBatchData(idx, function, lastBatch);
-    if (isEndCalc(function, lastBatch)) {
-      return function;
+    calcBatchData(idx, result, lastBatch);
+    if (isEndCalc(result, lastBatch)) {
+      return result;
     }
     while (sequenceReader.hasNextChunk()) {
       Statistics chunkStatistics = sequenceReader.nextChunkStatistics();
@@ -127,8 +132,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
       if (sequenceReader.canUseNextChunkStatistics() && timeRange.contains(
           new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
-        function.updateResultFromStatistics(chunkStatistics);
-        if (function.isCalculatedAggregationResult()) {
+        result.updateResultFromStatistics(chunkStatistics);
+        if (result.isCalculatedAggregationResult()) {
           break;
         }
         sequenceReader.skipChunkData();
@@ -142,8 +147,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         }
         if (sequenceReader.canUseNextPageStatistics() && timeRange.contains(
             new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
-          function.updateResultFromStatistics(pageStatistics);
-          if (function.isCalculatedAggregationResult()) {
+          result.updateResultFromStatistics(pageStatistics);
+          if (result.isCalculatedAggregationResult()) {
             break;
           }
           sequenceReader.skipPageData();
@@ -151,14 +156,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         }
         while (sequenceReader.hasNextOverlappedPage()) {
           BatchData batchData = sequenceReader.nextOverlappedPage();
-          calcBatchData(idx, function, batchData);
-          if (isEndCalc(function, lastBatch)) {
+          calcBatchData(idx, result, batchData);
+          if (isEndCalc(result, lastBatch)) {
             break;
           }
         }
       }
     }
-    return function;
+    return result;
   }
 
   private boolean isEndCalc(AggregateResult function, BatchData lastBatch) {
@@ -167,7 +172,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   /**
-   * @return this batchData >= endTime
+   * this batchData >= endTime
    */
   private void calcBatchData(int idx, AggregateResult function, BatchData batchData)
       throws IOException {

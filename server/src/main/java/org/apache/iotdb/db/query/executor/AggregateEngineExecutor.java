@@ -42,7 +42,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -156,8 +155,8 @@ public class AggregateEngineExecutor {
     List<AggregateResult> aggregateResults = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       TSDataType type = MManager.getInstance().getSeriesType(selectedSeries.get(i).getFullPath());
-      AggregateResult function = AggreResultFactory.getAggrResultByName(aggres.get(i), type);
-      aggregateResults.add(function);
+      AggregateResult result = AggreResultFactory.getAggrResultByName(aggres.get(i), type);
+      aggregateResults.add(result);
     }
     List<AggregateResult> batchDataList = aggregateWithValueFilter(aggregateResults,
         timestampGenerator, readersOfSelectedSeries);
@@ -209,7 +208,7 @@ public class AggregateEngineExecutor {
     for (AggregateResult resultData : aggregateResultList) {
       TSDataType dataType = resultData.getDataType();
       dataTypes.add(dataType);
-      record.addField(TsPrimitiveType.getByType(dataType, resultData.getResult()), dataType);
+      record.addField(resultData.getResult(), dataType);
     }
 
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);

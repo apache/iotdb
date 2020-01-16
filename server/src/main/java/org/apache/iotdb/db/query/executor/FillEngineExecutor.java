@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -29,9 +26,15 @@ import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 public class FillEngineExecutor {
 
@@ -57,7 +60,7 @@ public class FillEngineExecutor {
    */
   public QueryDataSet execute(QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
-    RowRecord record = new RowRecord(0);
+    RowRecord record = new RowRecord(queryTime);
 
     for (int i = 0; i < selectedSeries.size(); i++) {
       Path path = selectedSeries.get(i);
@@ -71,7 +74,13 @@ public class FillEngineExecutor {
       fill.setDataType(dataType);
       fill.setQueryTime(queryTime);
       fill.constructReaders(path, context);
-      record.addField(fill.getFillResult().currentTimeValuePair().getValue(), dataType);
+
+      TimeValuePair timeValuePair = fill.getFillResult().currentTimeValuePair();
+      if (timeValuePair.getValue() == null) {
+        record.addField(new Field(null));
+      } else {
+        record.addField(timeValuePair.getValue().getValue(), dataType);
+      }
     }
 
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
