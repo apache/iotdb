@@ -202,7 +202,7 @@ public abstract class AbstractDataReader {
 
   private void fillOverlappedPageReaders() throws IOException {
     if (!hasCachedFirstChunkMetadata) {
-      throw new IOException("No first chunk meta data.");
+      return;
     }
     unpackOneChunkMetaData(firstChunkMetaData);
     hasCachedFirstChunkMetadata = false;
@@ -269,7 +269,7 @@ public abstract class AbstractDataReader {
                 >= overlappedPageReaders.peek().data.getStatistics().getStartTime()) {
           VersionPair<IPageReader> pageReader = overlappedPageReaders.poll();
           mergeReader.addReader(
-              pageReader.data.getAllSatisfiedPageData().getBatchDataIterator(), pageReader.version);
+              pageReader.data.getAllSatisfiedPageData().getBatchDataIterator(), pageReader.version, pageReader.data.getStatistics().getEndTime());
         }
 
         timeValuePair = mergeReader.nextTimeValuePair();
@@ -285,12 +285,14 @@ public abstract class AbstractDataReader {
 
     if (mergeReader.hasNextTimeValuePair()) {
       currentPageEndTime = mergeReader.getCurrentLargestEndTime();
-    } else {
+    } else if (!overlappedPageReaders.isEmpty()) {
       // put the first page into merge reader
       currentPageEndTime = overlappedPageReaders.peek().data.getStatistics().getEndTime();
       VersionPair<IPageReader> pageReader = overlappedPageReaders.poll();
       mergeReader.addReader(
-          pageReader.data.getAllSatisfiedPageData().getBatchDataIterator(), pageReader.version);
+          pageReader.data.getAllSatisfiedPageData().getBatchDataIterator(), pageReader.version, pageReader.data.getStatistics().getEndTime());
+    } else {
+      return;
     }
 
     // unpack all overlapped seq chunk meta data into overlapped page readers
@@ -311,7 +313,7 @@ public abstract class AbstractDataReader {
         && currentPageEndTime >= overlappedPageReaders.peek().data.getStatistics().getStartTime()) {
       VersionPair<IPageReader> pageReader = overlappedPageReaders.poll();
       mergeReader.addReader(
-          pageReader.data.getAllSatisfiedPageData().getBatchDataIterator(), pageReader.version);
+          pageReader.data.getAllSatisfiedPageData().getBatchDataIterator(), pageReader.version, pageReader.data.getStatistics().getEndTime());
     }
   }
 
