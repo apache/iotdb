@@ -224,51 +224,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized List<TimeValuePair> getSortedTimeValuePairList() {
-    if (sortedList != null) {
-      return sortedList;
-    }
-    sortedList = new ArrayList<>();
-    list.sort();
-    for (int i = 0; i < list.size(); i++) {
-      long time = list.getTime(i);
-      if (time < list.getTimeOffset() ||
-          (i + 1 < list.size() && (time == list.getTime(i + 1)))) {
-        continue;
-      }
-      switch (dataType) {
-        case BOOLEAN:
-          sortedList.add(new TimeValuePair(time, new TsBoolean(list.getBoolean(i))));
-          break;
-        case INT32:
-          sortedList.add(new TimeValuePair(time, new TsInt(list.getInt(i))));
-          break;
-        case INT64:
-          sortedList.add(new TimeValuePair(time, new TsLong(list.getLong(i))));
-          break;
-        case FLOAT:
-          sortedList.add(new TimeValuePair(time, new TsFloat(list.getFloat(i))));
-          break;
-        case DOUBLE:
-          sortedList.add(new TimeValuePair(time, new TsDouble(list.getDouble(i))));
-          break;
-        case TEXT:
-          sortedList.add(new TimeValuePair(time, new TsBinary(list.getBinary(i))));
-          break;
-        default:
-          logger.error("Unsupported data type: {}", dataType);
-          break;
-      }
-    }
-    return this.sortedList;
-  }
-
-  @Override
-  public boolean isEmpty() {
-    return list.size() == 0;
-  }
-
-  @Override
   public long getMinTime() {
     return list.getMinTime();
   }

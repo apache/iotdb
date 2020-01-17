@@ -608,7 +608,7 @@ public class TsFileProcessor {
       // memSeriesLazyMerger has handled the props,
       // so we do not need to handle it again in the following readOnlyMemChunk
       ReadOnlyMemChunk timeValuePairSorter = new ReadOnlyMemChunk(measurementId, dataType,
-          tvLists, Collections.emptyMap());
+          tvLists, props);
 
       ModificationFile modificationFile = tsFileResource.getModFile();
       List<Modification> modifications = context.getPathModifications(modificationFile,

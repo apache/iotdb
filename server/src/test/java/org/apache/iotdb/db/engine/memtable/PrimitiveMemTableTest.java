@@ -46,17 +46,17 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void memSeriesCloneTest() {
+  public void memSeriesSortIteratorTest() throws IOException {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series = new WritableMemChunk(dataType, TVList.newList(dataType));
     int count = 1000;
     for (int i = 0; i < count; i++) {
       series.write(i, i);
     }
-    Iterator<TimeValuePair> it = series.getSortedTimeValuePairList().iterator();
+    IPointReader it = series.getSortedTVList().getIterator();
     int i = 0;
-    while (it.hasNext()) {
-      Assert.assertEquals(i, it.next().getTimestamp());
+    while (it.hasNextTimeValuePair()) {
+      Assert.assertEquals(i, it.nextTimeValuePair().getTimestamp());
       i++;
     }
     Assert.assertEquals(count, i);
