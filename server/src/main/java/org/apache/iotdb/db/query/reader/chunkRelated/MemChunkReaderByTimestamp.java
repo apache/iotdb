@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
-import java.util.Iterator;
+import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileReaderByTimestamp;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 /**
@@ -33,12 +34,12 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
  */
 public class MemChunkReaderByTimestamp implements IReaderByTimestamp {
 
-  private Iterator<TimeValuePair> timeValuePairIterator;
+  private TVList timeValuePairIterator;
   private boolean hasCachedTimeValuePair;
   private TimeValuePair cachedTimeValuePair;
 
-  public MemChunkReaderByTimestamp(ReadOnlyMemChunk readableChunk) {
-    timeValuePairIterator = readableChunk.getIterator();
+  public MemChunkReaderByTimestamp(ReadOnlyMemChunk readableChunk) throws IOException {
+    timeValuePairIterator = readableChunk.getSortedTVList();
   }
 
   @Override
@@ -46,7 +47,7 @@ public class MemChunkReaderByTimestamp implements IReaderByTimestamp {
     if (hasCachedTimeValuePair) {
       return true;
     }
-    return timeValuePairIterator.hasNext();
+    return timeValuePairIterator.hasNextTimeValuePair();
   }
 
   private TimeValuePair next() {
@@ -54,7 +55,7 @@ public class MemChunkReaderByTimestamp implements IReaderByTimestamp {
       hasCachedTimeValuePair = false;
       return cachedTimeValuePair;
     } else {
-      return timeValuePairIterator.next();
+      return timeValuePairIterator.nextTimeValuePair();
     }
   }
 

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -61,7 +62,7 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void simpleTest() {
+  public void simpleTest() throws IOException {
     IMemTable memTable = new PrimitiveMemTable();
     int count = 10;
     String deviceId = "d1";
@@ -78,11 +79,13 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(deviceId, measurementId[0], TSDataType.INT32, i, i);
     }
-    Iterator<TimeValuePair> tvPair = memTable
-        .query(deviceId, measurementId[0], TSDataType.INT32, Collections.emptyMap(), Long.MIN_VALUE)
-        .getSortedTimeValuePairList().iterator();
+    TVList tvPair = memTable
+        .query(deviceId, measurementId[0], TSDataType.INT32, Collections.emptyMap(),
+            Long.MIN_VALUE);
+    tvPair.sort();
     for (int i = 0; i < dataSize; i++) {
-      TimeValuePair timeValuePair = tvPair.next();
+      tvPair.hasNextTimeValuePair();
+      TimeValuePair timeValuePair = tvPair.nextTimeValuePair();
       Assert.assertEquals(i, timeValuePair.getTimestamp());
       Assert.assertEquals(i, timeValuePair.getValue().getValue());
     }
@@ -96,10 +99,9 @@ public class PrimitiveMemTableTest {
       memTable.write(deviceId, sensorId, dataType, ret[i].getTimestamp(),
           ret[i].getValue().getValue());
     }
-    Iterator<TimeValuePair> tvPair = memTable
-        .query(deviceId, sensorId, dataType, Collections.emptyMap(), Long.MIN_VALUE)
-        .getSortedTimeValuePairList()
-        .iterator();
+    TVList tvPair = memTable
+        .query(deviceId, sensorId, dataType, Collections.emptyMap(), Long.MIN_VALUE);
+    tvPair.sort();
     Arrays.sort(ret);
     TimeValuePair last = null;
     for (int i = 0; i < ret.length; i++) {
@@ -111,7 +113,8 @@ public class PrimitiveMemTableTest {
       }
       TimeValuePair pair = ret[i];
       last = pair;
-      TimeValuePair next = tvPair.next();
+      tvPair.hasNextTimeValuePair();
+      TimeValuePair next = tvPair.nextTimeValuePair();
       Assert.assertEquals(pair.getTimestamp(), next.getTimestamp());
       if (dataType == TSDataType.DOUBLE) {
         Assert.assertEquals(pair.getValue().getDouble(),
@@ -119,7 +122,7 @@ public class PrimitiveMemTableTest {
       } else if (dataType == TSDataType.FLOAT) {
         float expected = pair.getValue().getFloat();
         float actual = MathUtils.roundWithGivenPrecision(next.getValue().getFloat());
-        Assert.assertEquals(expected, actual, delta+ Float.MIN_NORMAL);
+        Assert.assertEquals(expected, actual, delta + Float.MIN_NORMAL);
       } else {
         Assert.assertEquals(pair.getValue(), next.getValue());
       }

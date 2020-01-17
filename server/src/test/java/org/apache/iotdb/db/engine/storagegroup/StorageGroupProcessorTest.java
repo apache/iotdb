@@ -31,6 +31,7 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -112,10 +113,11 @@ public class StorageGroupProcessorTest {
       break;
     }
 
-    List<TimeValuePair> timeValuePairs = pair.left.getSortedTimeValuePairList();
+    TVList timeValuePairs = pair.left.getSortedTVList();
 
     long time = 16;
-    for (TimeValuePair timeValuePair : timeValuePairs) {
+    while (timeValuePairs.hasNextTimeValuePair()) {
+      TimeValuePair timeValuePair = timeValuePairs.nextTimeValuePair();
       Assert.assertEquals(time++, timeValuePair.getTimestamp());
     }
 

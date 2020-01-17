@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +54,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTablePool;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -131,8 +133,9 @@ public class TsFileProcessor {
 
   public TsFileProcessor(String storageGroupName, TsFileResource tsFileResource, Schema schema,
       VersionController versionController, CloseTsFileCallBack closeUnsealedTsFileProcessor,
-      UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence, RestorableTsFileIOWriter writer) {
-    this.storageGroupName =storageGroupName;
+      UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence,
+      RestorableTsFileIOWriter writer) {
+    this.storageGroupName = storageGroupName;
     this.tsFileResource = tsFileResource;
     this.schema = schema;
     this.versionController = versionController;
@@ -202,12 +205,14 @@ public class TsFileProcessor {
       }
     }
 
-    tsFileResource.updateStartTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[start]);
+    tsFileResource
+        .updateStartTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[start]);
 
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     //for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
-      tsFileResource.updateEndTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
+      tsFileResource
+          .updateEndTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
     }
 
     return true;
@@ -583,28 +588,28 @@ public class TsFileProcessor {
       String measurementId, TSDataType dataType, Map<String, String> props, QueryContext context) {
     flushQueryLock.readLock().lock();
     try {
-      MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
+      List<TVList> memSeriesList = new ArrayList<>();
       for (IMemTable flushingMemTable : flushingMemTables) {
         if (flushingMemTable.isSignalMemTable()) {
           continue;
         }
-        ReadOnlyMemChunk memChunk = flushingMemTable
+        TVList memChunk = flushingMemTable
             .query(deviceId, measurementId, dataType, props, context.getQueryTimeLowerBound());
         if (memChunk != null) {
-          memSeriesLazyMerger.addMemSeries(memChunk);
+          memSeriesList.add(memChunk);
         }
       }
       if (workMemTable != null) {
-        ReadOnlyMemChunk memChunk = workMemTable.query(deviceId, measurementId, dataType, props,
+        TVList memChunk = workMemTable.query(deviceId, measurementId, dataType, props,
             context.getQueryTimeLowerBound());
         if (memChunk != null) {
-          memSeriesLazyMerger.addMemSeries(memChunk);
+          memSeriesList.add(memChunk);
         }
       }
       // memSeriesLazyMerger has handled the props,
       // so we do not need to handle it again in the following readOnlyMemChunk
       ReadOnlyMemChunk timeValuePairSorter = new ReadOnlyMemChunk(measurementId, dataType,
-          memSeriesLazyMerger, Collections.emptyMap());
+          memSeriesList, Collections.emptyMap());
 
       ModificationFile modificationFile = tsFileResource.getModFile();
       List<Modification> modifications = context.getPathModifications(modificationFile,

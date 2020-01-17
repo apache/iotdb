@@ -20,18 +20,18 @@ package org.apache.iotdb.db.engine.memtable;
 
 import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
  * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of
- * IMemTable maintains all series belonging to one StorageGroup,
- * corresponding to one StorageGroupProcessor.<br> The concurrent control of IMemTable
- * is based on the concurrent control of StorageGroupProcessor, i.e., Writing and
- * querying operations must already have gotten writeLock and readLock respectively.<br>
+ * IMemTable maintains all series belonging to one StorageGroup, corresponding to one
+ * StorageGroupProcessor.<br> The concurrent control of IMemTable is based on the concurrent control
+ * of StorageGroupProcessor, i.e., Writing and querying operations must already have gotten
+ * writeLock and readLock respectively.<br>
  */
 public interface IMemTable {
 
@@ -54,9 +54,10 @@ public interface IMemTable {
 
   void insert(InsertPlan insertPlan) throws QueryProcessException;
 
-  void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end) throws QueryProcessException;
+  void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end)
+      throws QueryProcessException;
 
-  ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
+  TVList query(String deviceId, String measurement, TSDataType dataType,
       Map<String, String> props, long timeLowerBound);
 
   /**
@@ -70,9 +71,9 @@ public interface IMemTable {
    * Delete data in it whose timestamp <= 'timestamp' and belonging to timeseries
    * deviceId.measurementId. Only called for non-flushing MemTable.
    *
-   * @param deviceId the deviceId of the timeseries to be deleted.
+   * @param deviceId      the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param timestamp the upper-bound of deletion time.
+   * @param timestamp     the upper-bound of deletion time.
    */
   void delete(String deviceId, String measurementId, long timestamp);
 

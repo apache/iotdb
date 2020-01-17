@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -38,7 +39,7 @@ import java.util.List;
 public class MemChunkReader implements IChunkReader, IPointReader {
 
   private ReadOnlyMemChunk readOnlyMemChunk;
-  private Iterator<TimeValuePair> timeValuePairIterator;
+  private TVList timeValuePairIterator;
   private Filter filter;
   private boolean hasCachedTimeValuePair;
   private TimeValuePair cachedTimeValuePair;
@@ -47,7 +48,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
 
   public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter filter) {
     this.readOnlyMemChunk = readableChunk;
-    timeValuePairIterator = readableChunk.getIterator();
+    timeValuePairIterator = readableChunk.getSortedTVList();
     this.filter = filter;
     this.dataType = readableChunk.getDataType();
   }
@@ -57,8 +58,8 @@ public class MemChunkReader implements IChunkReader, IPointReader {
     if (hasCachedTimeValuePair) {
       return true;
     }
-    while (timeValuePairIterator.hasNext()) {
-      TimeValuePair timeValuePair = timeValuePairIterator.next();
+    while (timeValuePairIterator.hasNextTimeValuePair()) {
+      TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
       if (filter == null || filter
           .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
         hasCachedTimeValuePair = true;
@@ -75,14 +76,14 @@ public class MemChunkReader implements IChunkReader, IPointReader {
       hasCachedTimeValuePair = false;
       return cachedTimeValuePair;
     } else {
-      return timeValuePairIterator.next();
+      return timeValuePairIterator.nextTimeValuePair();
     }
   }
 
   @Override
   public TimeValuePair currentTimeValuePair() {
     if (!hasCachedTimeValuePair) {
-      cachedTimeValuePair = timeValuePairIterator.next();
+      cachedTimeValuePair = timeValuePairIterator.nextTimeValuePair();
       hasCachedTimeValuePair = true;
     }
     return cachedTimeValuePair;
@@ -101,8 +102,8 @@ public class MemChunkReader implements IChunkReader, IPointReader {
       batchData.putAnObject(cachedTimeValuePair.getTimestamp(),
           cachedTimeValuePair.getValue().getValue());
     }
-    while (timeValuePairIterator.hasNext()) {
-      TimeValuePair timeValuePair = timeValuePairIterator.next();
+    while (timeValuePairIterator.hasNextTimeValuePair()) {
+      TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
       if (filter == null || filter
           .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
         batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
@@ -118,7 +119,8 @@ public class MemChunkReader implements IChunkReader, IPointReader {
 
   @Override
   public List<IPageReader> getPageReaderList() {
-    return Collections.singletonList(new MemPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
+    return Collections.singletonList(
+        new MemPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
   }
 
 }

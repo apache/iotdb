@@ -20,12 +20,11 @@ package org.apache.iotdb.db.engine.memtable;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 
-public class MemSeriesLazyMerger implements TimeValuePairSorter {
+public class MemSeriesLazyMerger {
 
-  private List<ReadOnlyMemChunk> memSeriesList;
+  private List<TVList> memSeriesList;
 
   public MemSeriesLazyMerger() {
     memSeriesList = new ArrayList<>();
@@ -35,16 +34,11 @@ public class MemSeriesLazyMerger implements TimeValuePairSorter {
    * IMPORTANT: Please ensure that the minimum timestamp of added {@link IWritableMemChunk} is
    * larger than any timestamps of the IWritableMemChunk already added in.
    */
-  public void addMemSeries(ReadOnlyMemChunk series) {
+  public void addMemSeries(TVList series) {
     memSeriesList.add(series);
   }
 
-  @Override
-  public List<TimeValuePair> getSortedTimeValuePairList() {
-    List<TimeValuePair> res = new ArrayList<>();
-    for (int i = 0; i < memSeriesList.size(); i++) {
-      res.addAll(memSeriesList.get(i).getSortedTimeValuePairList());
-    }
-    return res;
+  public List<TVList> getMemSeriesList() {
+    return memSeriesList;
   }
 }

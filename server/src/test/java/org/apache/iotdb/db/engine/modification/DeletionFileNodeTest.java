@@ -34,6 +34,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -81,7 +82,8 @@ public class DeletionFileNodeTest {
           encoding);
       StorageEngine.getInstance()
           .addTimeSeries(new Path(processorName, measurements[i]), TSDataType.valueOf(dataType),
-              TSEncoding.valueOf(encoding), CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
+              TSEncoding.valueOf(encoding),
+              CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
               Collections.emptyMap());
     }
   }
@@ -93,7 +95,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInBufferWriteCache() throws
-      StorageEngineException, QueryProcessException {
+      StorageEngineException, QueryProcessException, IOException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -113,11 +115,11 @@ public class DeletionFileNodeTest {
     QueryDataSource dataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
 
-    Iterator<TimeValuePair> timeValuePairs =
-        dataSource.getSeqResources().get(0).getReadOnlyMemChunk().getIterator();
+    TVList timeValuePairs = dataSource.getSeqResources().get(0).getReadOnlyMemChunk()
+        .getSortedTVList();
     int count = 0;
-    while (timeValuePairs.hasNext()) {
-      timeValuePairs.next();
+    while (timeValuePairs.hasNextTimeValuePair()) {
+      timeValuePairs.nextTimeValuePair();
       count++;
     }
     assertEquals(50, count);
@@ -146,13 +148,14 @@ public class DeletionFileNodeTest {
         new Deletion(new Path(processorName, measurements[3]), 203, 30),
     };
 
-    File fileNodeDir = new File(DirectoryManager.getInstance().getSequenceFileFolder(0), processorName);
+    File fileNodeDir = new File(DirectoryManager.getInstance().getSequenceFileFolder(0),
+        processorName);
     List<File> modFiles = new ArrayList<>();
-    for(File directory : fileNodeDir.listFiles()){
+    for (File directory : fileNodeDir.listFiles()) {
       assertTrue(directory.isDirectory());
-      if(directory.isDirectory()){
-        for(File file : directory.listFiles()){
-          if(file.getPath().endsWith(ModificationFile.FILE_SUFFIX)){
+      if (directory.isDirectory()) {
+        for (File file : directory.listFiles()) {
+          if (file.getPath().endsWith(ModificationFile.FILE_SUFFIX)) {
             modFiles.add(file);
           }
         }
@@ -176,7 +179,8 @@ public class DeletionFileNodeTest {
   }
 
   @Test
-  public void testDeleteInOverflowCache() throws StorageEngineException, QueryProcessException {
+  public void testDeleteInOverflowCache()
+      throws StorageEngineException, QueryProcessException, IOException {
     // insert sequence data
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -207,11 +211,11 @@ public class DeletionFileNodeTest {
     QueryDataSource dataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
 
-    Iterator<TimeValuePair> timeValuePairs =
-        dataSource.getUnseqResources().get(0).getReadOnlyMemChunk().getIterator();
+    TVList timeValuePairs =
+        dataSource.getUnseqResources().get(0).getReadOnlyMemChunk().getSortedTVList();
     int count = 0;
-    while (timeValuePairs.hasNext()) {
-      timeValuePairs.next();
+    while (timeValuePairs.hasNextTimeValuePair()) {
+      timeValuePairs.nextTimeValuePair();
       count++;
     }
     assertEquals(50, count);
@@ -252,13 +256,14 @@ public class DeletionFileNodeTest {
         new Deletion(new Path(processorName, measurements[3]), 303, 30),
     };
 
-    File fileNodeDir = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(), processorName);
+    File fileNodeDir = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(),
+        processorName);
     List<File> modFiles = new ArrayList<>();
-    for(File directory : fileNodeDir.listFiles()){
+    for (File directory : fileNodeDir.listFiles()) {
       assertTrue(directory.isDirectory());
-      if(directory.isDirectory()){
-        for(File file : directory.listFiles()){
-          if(file.getPath().endsWith(ModificationFile.FILE_SUFFIX)){
+      if (directory.isDirectory()) {
+        for (File file : directory.listFiles()) {
+          if (file.getPath().endsWith(ModificationFile.FILE_SUFFIX)) {
             modFiles.add(file);
           }
         }
@@ -269,7 +274,7 @@ public class DeletionFileNodeTest {
     LocalTextModificationAccessor accessor =
         new LocalTextModificationAccessor(modFiles.get(0).getPath());
     Collection<Modification> modifications = accessor.read();
-    assertEquals( 3, modifications.size());
+    assertEquals(3, modifications.size());
     int i = 0;
     for (Modification modification : modifications) {
       TestCase.assertEquals(modification, realModifications[i++]);

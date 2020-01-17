@@ -18,31 +18,27 @@
  */
 package org.apache.iotdb.db.engine.querycontext;
 
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
-import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
 import org.apache.iotdb.db.query.reader.MemChunkLoader;
 import org.apache.iotdb.db.utils.MathUtils;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 //TODO: merge ReadOnlyMemChunk and WritableMemChunk and IWritableMemChunk
-public class ReadOnlyMemChunk implements TimeValuePairSorter {
+public class ReadOnlyMemChunk {
 
   private boolean initialized;
   private String measurementUid;
   private TSDataType dataType;
-  private TimeValuePairSorter memSeries;
-  private List<TimeValuePair> sortedTimeValuePairList;
+  private List<TVList> memSeries;
+  private TVList sortedTVList;
 
   Map<String, String> props;
   private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
@@ -50,7 +46,7 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
   /**
    * init by TSDataType and TimeValuePairSorter.
    */
-  public ReadOnlyMemChunk(String measurementUid, TSDataType dataType, TimeValuePairSorter memSeries,
+  public ReadOnlyMemChunk(String measurementUid, TSDataType dataType, List<TVList> memSeries,
       Map<String, String> props) {
     this.measurementUid = measurementUid;
     this.dataType = dataType;
@@ -60,6 +56,7 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
     if (props.containsKey(Encoder.MAX_POINT_NUMBER)) {
       this.floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
     }
+    checkInitialized();
   }
 
   private void checkInitialized() {
@@ -69,25 +66,46 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
   }
 
   private void init() {
-    sortedTimeValuePairList = memSeries.getSortedTimeValuePairList();
-    if (!(memSeries instanceof MemSeriesLazyMerger)) {
-      switch (dataType) {
-        case FLOAT:
-          sortedTimeValuePairList.replaceAll(x -> new TimeValuePair(x.getTimestamp(),
-              new TsFloat(
-                  MathUtils.roundWithGivenPrecision(x.getValue().getFloat(), floatPrecision))));
-          break;
-        case DOUBLE:
-          sortedTimeValuePairList.replaceAll(x -> new TimeValuePair(x.getTimestamp(),
-              new TsDouble(
-                  MathUtils.roundWithGivenPrecision(x.getValue().getDouble(), floatPrecision))));
-          break;
-        default:
-          break;
+    if (memSeries != null && memSeries.size() > 0) {
+      TVList first = memSeries.remove(0);
+
+      for (TVList tv : memSeries) {
+        tv.sort();
+        while (tv.hasNextTimeValuePair()) {
+          TimeValuePair tvPair = tv.nextTimeValuePair();
+          switch (dataType) {
+            case BOOLEAN:
+              first.putBoolean(tvPair.getTimestamp(), tvPair.getValue().getBoolean());
+              break;
+            case TEXT:
+              first.putBinary(tvPair.getTimestamp(), tvPair.getValue().getBinary());
+              break;
+            case FLOAT:
+              first.putFloat(tvPair.getTimestamp(),
+                  MathUtils.roundWithGivenPrecision(tvPair.getValue().getFloat(), floatPrecision));
+              break;
+            case INT32:
+              first.putInt(tvPair.getTimestamp(), tvPair.getValue().getInt());
+              break;
+            case INT64:
+              first.putLong(tvPair.getTimestamp(), tvPair.getValue().getLong());
+              break;
+            case DOUBLE:
+              first.putDouble(tvPair.getTimestamp(),
+                  MathUtils.roundWithGivenPrecision(tvPair.getValue().getDouble(), floatPrecision));
+              break;
+            default:
+              throw new UnSupportedDataTypeException("The type isn't supported");
+          }
+        }
       }
+
+      first.sort();
+      sortedTVList = first;
+    } else {
+      sortedTVList = TVList.newList(dataType);
     }
-    //putBack memory
-    memSeries = null;
+
     initialized = true;
   }
 
@@ -95,29 +113,17 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
     return dataType;
   }
 
-  @Override
-  public List<TimeValuePair> getSortedTimeValuePairList() {
+  public TVList getSortedTVList() {
     checkInitialized();
-    return Collections.unmodifiableList(sortedTimeValuePairList);
-  }
-
-  @Override
-  public Iterator<TimeValuePair> getIterator() {
-    checkInitialized();
-    return sortedTimeValuePairList.iterator();
-  }
-
-  @Override
-  public boolean isEmpty() {
-    checkInitialized();
-    return sortedTimeValuePairList.isEmpty();
+    return sortedTVList;
   }
 
   public ChunkMetaData getChunkMetaData() {
     Statistics statsByType = Statistics.getStatsByType(dataType);
     ChunkMetaData metaData = new ChunkMetaData(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
-      for (TimeValuePair timeValuePair : getSortedTimeValuePairList()) {
+      while (sortedTVList.hasNextTimeValuePair()) {
+        TimeValuePair timeValuePair = sortedTVList.nextTimeValuePair();
         switch (dataType) {
           case BOOLEAN:
             statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
@@ -146,5 +152,10 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
     metaData.setChunkLoader(new MemChunkLoader(this));
     metaData.setVersion(Long.MAX_VALUE);
     return metaData;
+  }
+
+  public boolean isEmpty() {
+    checkInitialized();
+    return sortedTVList != null && sortedTVList.size() > 0;
   }
 }
