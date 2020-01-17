@@ -66,35 +66,6 @@ public class ReadOnlyMemChunk {
     }
   }
 
-//  private void checkInitialized() {
-//    if (!initialized) {
-//      init();
-//    }
-//  }
-
-//  private void init() {
-//    sortedTimeValuePairList = memSeries.getSortedTimeValuePairList();
-//    if (!(memSeries instanceof MemSeriesLazyMerger)) {
-//      switch (dataType) {
-//        case FLOAT:
-//          sortedTimeValuePairList.replaceAll(x -> new TimeValuePair(x.getTimestamp(),
-//              new TsFloat(
-//                  MathUtils.roundWithGivenPrecision(x.getValue().getFloat(), floatPrecision))));
-//          break;
-//        case DOUBLE:
-//          sortedTimeValuePairList.replaceAll(x -> new TimeValuePair(x.getTimestamp(),
-//              new TsDouble(
-//                  MathUtils.roundWithGivenPrecision(x.getValue().getDouble(), floatPrecision))));
-//          break;
-//        default:
-//          break;
-//      }
-//    }
-//    //putBack memory
-//    memSeries = null;
-//    initialized = true;
-//  }
-
   public TSDataType getDataType() {
     return dataType;
   }
