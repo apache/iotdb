@@ -19,10 +19,8 @@
 package org.apache.iotdb.db.engine.querycontext;
 
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.engine.version.VersionPair;
 import org.apache.iotdb.db.query.reader.MemChunkLoader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.datastructure.TVList;
