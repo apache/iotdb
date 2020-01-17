@@ -210,6 +210,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
     chunkCopy.setVersion(getVersion());
     chunkCopy.setTimeOffset(undeletedTime);
+    chunkCopy.sort();
     return chunkCopy;
   }
 

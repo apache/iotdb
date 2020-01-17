@@ -61,7 +61,6 @@ public class ReadOnlyMemChunk {
     mergeReader = new PriorityMergeReader(floatPrecision);
     chunkedReader = new PriorityMergeReader(floatPrecision);
     for (TVList pair : memSeries) {
-      pair.sort();
       mergeReader.addReader(pair.getIterator(), pair.getVersion());
       chunkedReader.addReader(pair.getIterator(), pair.getVersion());
     }
