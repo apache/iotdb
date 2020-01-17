@@ -31,7 +31,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 @SuppressWarnings("unused")
-public abstract class TVList implements IPointReader {
+public abstract class TVList {
 
   private static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
 
@@ -53,9 +53,6 @@ public abstract class TVList implements IPointReader {
 
   protected long minTime;
 
-  private TimeValuePair cachedTimeValuePair;
-  private boolean hasCachedPair;
-  private int cur;
 
   public TVList() {
     timestamps = new ArrayList<>();
@@ -481,41 +478,54 @@ public abstract class TVList implements IPointReader {
     sorted = sorted && inputSorted && (size == 0 || inPutMinTime >= getTime(size - 1));
   }
 
-  @Override
-  public boolean hasNextTimeValuePair() {
-    if (hasCachedPair) {
-      return true;
-    }
-
-    while (cur < size) {
-      long time = getTime(cur);
-      if (time < getTimeOffset() || (cur + 1 < size() && (time == getTime(cur + 1)))) {
-        cur++;
-        continue;
-      }
-      cachedTimeValuePair = getTimeValuePair(cur, time);
-      hasCachedPair = true;
-      cur++;
-      return true;
-    }
-    return hasCachedPair;
-  }
-
-  @Override
-  public TimeValuePair nextTimeValuePair() {
-    hasCachedPair = false;
-    return cachedTimeValuePair;
-  }
-
   protected abstract TimeValuePair getTimeValuePair(int index, long time);
 
-  @Override
-  public TimeValuePair currentTimeValuePair() {
-    return cachedTimeValuePair;
+  public IPointReader getIterator() {
+    return new Ite();
   }
 
-  @Override
-  public void close() throws IOException {
+  private class Ite implements IPointReader {
 
+    private TimeValuePair cachedTimeValuePair;
+    private boolean hasCachedPair;
+    private int cur;
+
+    @Override
+    public boolean hasNextTimeValuePair() {
+      if (hasCachedPair) {
+        return true;
+      }
+
+      while (cur < size) {
+        long time = getTime(cur);
+        if (time < getTimeOffset() || (cur + 1 < size() && (time == getTime(cur + 1)))) {
+          cur++;
+          continue;
+        }
+        cachedTimeValuePair = getTimeValuePair(cur, time);
+        hasCachedPair = true;
+        cur++;
+        return true;
+      }
+      return hasCachedPair;
+    }
+
+    @Override
+    public TimeValuePair nextTimeValuePair() {
+      hasCachedPair = false;
+      return cachedTimeValuePair;
+    }
+
+    @Override
+    public TimeValuePair currentTimeValuePair() {
+      return cachedTimeValuePair;
+    }
+
+    @Override
+    public void close() throws IOException {
+
+    }
   }
+
+
 }

@@ -40,6 +40,7 @@ import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -96,8 +97,9 @@ public class LogReplayerTest {
       replayer.replayLogs();
 
       for (int i = 0; i < 5; i++) {
-        TVList iterator = memTable.query("device" + i, "sensor" + i, TSDataType.INT64,
+        TVList tvList = memTable.query("device" + i, "sensor" + i, TSDataType.INT64,
             Collections.emptyMap(), Long.MIN_VALUE);
+        IPointReader iterator = tvList.getIterator();
         if (i == 0) {
           assertFalse(iterator.hasNextTimeValuePair());
         } else {

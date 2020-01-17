@@ -51,8 +51,7 @@ public class ReadOnlyMemChunk {
    * init by TSDataType and TimeValuePairSorter.
    */
   public ReadOnlyMemChunk(String measurementUid, TSDataType dataType,
-      List<TVList> memSeries,
-      Map<String, String> props) throws IOException {
+      List<TVList> memSeries, Map<String, String> props) throws IOException {
     this.measurementUid = measurementUid;
     this.dataType = dataType;
     this.props = props;
@@ -60,11 +59,11 @@ public class ReadOnlyMemChunk {
       this.floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
     }
     mergeReader = new PriorityMergeReader(floatPrecision);
-    chunkedReader = new PriorityMergeReader();
+    chunkedReader = new PriorityMergeReader(floatPrecision);
     for (TVList pair : memSeries) {
       pair.sort();
-      mergeReader.addReader(pair, pair.getVersion());
-      chunkedReader.addReader(pair, pair.getVersion());
+      mergeReader.addReader(pair.getIterator(), pair.getVersion());
+      chunkedReader.addReader(pair.getIterator(), pair.getVersion());
     }
   }
 
@@ -102,7 +101,7 @@ public class ReadOnlyMemChunk {
   }
 
   public boolean isEmpty() {
-    return mergeReader.hasNextTimeValuePair();
+    return !mergeReader.hasNextTimeValuePair();
   }
 
   public ChunkMetaData getChunkMetaData() throws IOException {
