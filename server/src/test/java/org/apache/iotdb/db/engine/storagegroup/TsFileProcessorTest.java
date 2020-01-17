@@ -39,6 +39,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -56,7 +57,8 @@ public class TsFileProcessorTest {
 
   private TsFileProcessor processor;
   private String storageGroup = "storage_group1";
-  private String filePath = TestConstant.OUTPUT_DATA_DIR.concat("testUnsealedTsFileProcessor.tsfile");
+  private String filePath = TestConstant.OUTPUT_DATA_DIR
+      .concat("testUnsealedTsFileProcessor.tsfile");
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
   private TSDataType dataType = TSDataType.INT32;
@@ -101,10 +103,10 @@ public class TsFileProcessorTest {
     left = pair.left;
     assertFalse(left.isEmpty());
     int num = 1;
-    Iterator<TimeValuePair> iterator = left.getIterator();
+    IPointReader iterator = left.getIterator();
     for (; num <= 100; num++) {
-      iterator.hasNext();
-      TimeValuePair timeValuePair = iterator.next();
+      iterator.hasNextTimeValuePair();
+      TimeValuePair timeValuePair = iterator.nextTimeValuePair();
       assertEquals(num, timeValuePair.getTimestamp());
       assertEquals(num, timeValuePair.getValue().getInt());
     }
@@ -147,10 +149,10 @@ public class TsFileProcessorTest {
     left = pair.left;
     assertFalse(left.isEmpty());
     int num = 1;
-    Iterator<TimeValuePair> iterator = left.getIterator();
+    IPointReader iterator = left.getIterator();
     for (; num <= 100; num++) {
-      iterator.hasNext();
-      TimeValuePair timeValuePair = iterator.next();
+      iterator.hasNextTimeValuePair();
+      TimeValuePair timeValuePair = iterator.nextTimeValuePair();
       assertEquals(num, timeValuePair.getTimestamp());
       assertEquals(num, timeValuePair.getValue().getInt());
     }
@@ -260,10 +262,10 @@ public class TsFileProcessorTest {
     left = pair.left;
     assertFalse(left.isEmpty());
     int num = 1;
-    Iterator<TimeValuePair> iterator = left.getIterator();
+    IPointReader iterator = left.getIterator();
     for (; num <= 100; num++) {
-      iterator.hasNext();
-      TimeValuePair timeValuePair = iterator.next();
+      iterator.hasNextTimeValuePair();
+      TimeValuePair timeValuePair = iterator.nextTimeValuePair();
       assertEquals(num, timeValuePair.getTimestamp());
       assertEquals(num, timeValuePair.getValue().getInt());
     }

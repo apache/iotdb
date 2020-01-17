@@ -33,6 +33,8 @@ public class PriorityMergeReader implements IPointReader {
   // largest end time of all added readers
   private long currentLargestEndTime;
 
+  private int floatPrecision;
+
   PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
     int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
         o2.timeValuePair.getTimestamp());
@@ -41,6 +43,11 @@ public class PriorityMergeReader implements IPointReader {
 
   public PriorityMergeReader() {
   }
+
+  public PriorityMergeReader(int floatPrecision) {
+    this.floatPrecision = floatPrecision;
+  }
+
 
   public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority)
       throws IOException {

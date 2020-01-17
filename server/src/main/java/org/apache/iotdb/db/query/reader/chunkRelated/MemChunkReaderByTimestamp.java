@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
+import java.io.IOException;
 import java.util.Iterator;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 /**
@@ -33,7 +35,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
  */
 public class MemChunkReaderByTimestamp implements IReaderByTimestamp {
 
-  private Iterator<TimeValuePair> timeValuePairIterator;
+  private IPointReader timeValuePairIterator;
   private boolean hasCachedTimeValuePair;
   private TimeValuePair cachedTimeValuePair;
 
@@ -42,26 +44,26 @@ public class MemChunkReaderByTimestamp implements IReaderByTimestamp {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws IOException {
     if (hasCachedTimeValuePair) {
       return true;
     }
-    return timeValuePairIterator.hasNext();
+    return timeValuePairIterator.hasNextTimeValuePair();
   }
 
-  private TimeValuePair next() {
+  private TimeValuePair next() throws IOException {
     if (hasCachedTimeValuePair) {
       hasCachedTimeValuePair = false;
       return cachedTimeValuePair;
     } else {
-      return timeValuePairIterator.next();
+      return timeValuePairIterator.nextTimeValuePair();
     }
   }
 
   // TODO consider change timeValuePairIterator to List structure, and use binary search instead of
   // sequential search
   @Override
-  public Object getValueInTimestamp(long timestamp) {
+  public Object getValueInTimestamp(long timestamp) throws IOException {
     while (hasNext()) {
       TimeValuePair timeValuePair = next();
       long time = timeValuePair.getTimestamp();

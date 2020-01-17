@@ -39,6 +39,7 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -95,17 +96,16 @@ public class LogReplayerTest {
       replayer.replayLogs();
 
       for (int i = 0; i < 5; i++) {
-        ReadOnlyMemChunk chunk = memTable.query("device" + i, "sensor" + i, TSDataType.INT64,
+        TVList iterator = memTable.query("device" + i, "sensor" + i, TSDataType.INT64,
             Collections.emptyMap(), Long.MIN_VALUE);
-        Iterator<TimeValuePair> iterator = chunk.getIterator();
         if (i == 0) {
-          assertFalse(iterator.hasNext());
+          assertFalse(iterator.hasNextTimeValuePair());
         } else {
-          assertTrue(iterator.hasNext());
-          TimeValuePair timeValuePair = iterator.next();
+          assertTrue(iterator.hasNextTimeValuePair());
+          TimeValuePair timeValuePair = iterator.nextTimeValuePair();
           assertEquals(i, timeValuePair.getTimestamp());
           assertEquals(i, timeValuePair.getValue().getLong());
-          assertFalse(iterator.hasNext());
+          assertFalse(iterator.hasNextTimeValuePair());
         }
       }
 

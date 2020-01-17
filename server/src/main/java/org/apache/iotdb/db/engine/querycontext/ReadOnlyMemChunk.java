@@ -18,106 +18,102 @@
  */
 package org.apache.iotdb.db.engine.querycontext;
 
-import java.util.Collections;
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
-import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
+import org.apache.iotdb.db.engine.version.VersionPair;
 import org.apache.iotdb.db.query.reader.MemChunkLoader;
-import org.apache.iotdb.db.utils.MathUtils;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
+import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 //TODO: merge ReadOnlyMemChunk and WritableMemChunk and IWritableMemChunk
-public class ReadOnlyMemChunk implements TimeValuePairSorter {
+public class ReadOnlyMemChunk {
 
-  private boolean initialized;
   private String measurementUid;
   private TSDataType dataType;
-  private TimeValuePairSorter memSeries;
-  private List<TimeValuePair> sortedTimeValuePairList;
 
   Map<String, String> props;
   private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
+  private ChunkMetaData cachedMetaData;
+
+  private PriorityMergeReader mergeReader;
+  private PriorityMergeReader chunkedReader;
 
   /**
    * init by TSDataType and TimeValuePairSorter.
    */
-  public ReadOnlyMemChunk(String measurementUid, TSDataType dataType, TimeValuePairSorter memSeries,
-      Map<String, String> props) {
+  public ReadOnlyMemChunk(String measurementUid, TSDataType dataType,
+      List<TVList> memSeries,
+      Map<String, String> props) throws IOException {
     this.measurementUid = measurementUid;
     this.dataType = dataType;
-    this.memSeries = memSeries;
-    this.initialized = false;
     this.props = props;
     if (props.containsKey(Encoder.MAX_POINT_NUMBER)) {
       this.floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
     }
-  }
-
-  private void checkInitialized() {
-    if (!initialized) {
-      init();
+    mergeReader = new PriorityMergeReader(floatPrecision);
+    chunkedReader = new PriorityMergeReader();
+    for (TVList pair : memSeries) {
+      pair.sort();
+      mergeReader.addReader(pair, pair.getVersion());
+      chunkedReader.addReader(pair, pair.getVersion());
     }
   }
 
-  private void init() {
-    sortedTimeValuePairList = memSeries.getSortedTimeValuePairList();
-    if (!(memSeries instanceof MemSeriesLazyMerger)) {
-      switch (dataType) {
-        case FLOAT:
-          sortedTimeValuePairList.replaceAll(x -> new TimeValuePair(x.getTimestamp(),
-              new TsFloat(
-                  MathUtils.roundWithGivenPrecision(x.getValue().getFloat(), floatPrecision))));
-          break;
-        case DOUBLE:
-          sortedTimeValuePairList.replaceAll(x -> new TimeValuePair(x.getTimestamp(),
-              new TsDouble(
-                  MathUtils.roundWithGivenPrecision(x.getValue().getDouble(), floatPrecision))));
-          break;
-        default:
-          break;
-      }
-    }
-    //putBack memory
-    memSeries = null;
-    initialized = true;
-  }
+//  private void checkInitialized() {
+//    if (!initialized) {
+//      init();
+//    }
+//  }
+
+//  private void init() {
+//    sortedTimeValuePairList = memSeries.getSortedTimeValuePairList();
+//    if (!(memSeries instanceof MemSeriesLazyMerger)) {
+//      switch (dataType) {
+//        case FLOAT:
+//          sortedTimeValuePairList.replaceAll(x -> new TimeValuePair(x.getTimestamp(),
+//              new TsFloat(
+//                  MathUtils.roundWithGivenPrecision(x.getValue().getFloat(), floatPrecision))));
+//          break;
+//        case DOUBLE:
+//          sortedTimeValuePairList.replaceAll(x -> new TimeValuePair(x.getTimestamp(),
+//              new TsDouble(
+//                  MathUtils.roundWithGivenPrecision(x.getValue().getDouble(), floatPrecision))));
+//          break;
+//        default:
+//          break;
+//      }
+//    }
+//    //putBack memory
+//    memSeries = null;
+//    initialized = true;
+//  }
 
   public TSDataType getDataType() {
     return dataType;
   }
 
-  @Override
-  public List<TimeValuePair> getSortedTimeValuePairList() {
-    checkInitialized();
-    return Collections.unmodifiableList(sortedTimeValuePairList);
-  }
-
-  @Override
-  public Iterator<TimeValuePair> getIterator() {
-    checkInitialized();
-    return sortedTimeValuePairList.iterator();
-  }
-
-  @Override
   public boolean isEmpty() {
-    checkInitialized();
-    return sortedTimeValuePairList.isEmpty();
+    return mergeReader.hasNextTimeValuePair();
   }
 
-  public ChunkMetaData getChunkMetaData() {
+  public ChunkMetaData getChunkMetaData() throws IOException {
+    if (cachedMetaData != null) {
+      return cachedMetaData;
+    }
     Statistics statsByType = Statistics.getStatsByType(dataType);
     ChunkMetaData metaData = new ChunkMetaData(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
-      for (TimeValuePair timeValuePair : getSortedTimeValuePairList()) {
+      while (chunkedReader.hasNextTimeValuePair()) {
+        TimeValuePair timeValuePair = chunkedReader.nextTimeValuePair();
         switch (dataType) {
           case BOOLEAN:
             statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
@@ -145,6 +141,11 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
     statsByType.setEmpty(isEmpty());
     metaData.setChunkLoader(new MemChunkLoader(this));
     metaData.setVersion(Long.MAX_VALUE);
+    cachedMetaData = metaData;
     return metaData;
+  }
+
+  public IPointReader getIterator() {
+    return mergeReader;
   }
 }
