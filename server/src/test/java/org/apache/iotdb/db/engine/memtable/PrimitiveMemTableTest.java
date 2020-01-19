@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Random;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -80,10 +81,10 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(deviceId, measurementId[0], TSDataType.INT32, i, i);
     }
-    TVList tvPair = memTable
+    ReadOnlyMemChunk memChunk = memTable
         .query(deviceId, measurementId[0], TSDataType.INT32, Collections.emptyMap(),
             Long.MIN_VALUE);
-    IPointReader iterator = tvPair.getIterator();
+    IPointReader iterator = memChunk.getIterator();
     for (int i = 0; i < dataSize; i++) {
       iterator.hasNextTimeValuePair();
       TimeValuePair timeValuePair = iterator.nextTimeValuePair();

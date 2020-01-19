@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +26,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
@@ -37,7 +39,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class AbstractMemTable implements IMemTable {
 
-  private long version;
+  private long version = Long.MAX_VALUE;
 
   private List<Modification> modifications = new ArrayList<>();
 
@@ -199,8 +201,8 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public TVList query(String deviceId, String measurement, TSDataType dataType,
-      Map<String, String> props, long timeLowerBound) {
+  public ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
+      Map<String, String> props, long timeLowerBound) throws IOException {
     if (!checkPath(deviceId, measurement)) {
       return null;
     }
@@ -208,10 +210,8 @@ public abstract class AbstractMemTable implements IMemTable {
     IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
     TVList chunkCopy = memChunk.getTVList().clone();
 
-    chunkCopy.setVersion(getVersion());
     chunkCopy.setTimeOffset(undeletedTime);
-    chunkCopy.sort();
-    return chunkCopy;
+    return new ReadOnlyMemChunk(measurement, dataType, chunkCopy, props, getVersion());
   }
 
 

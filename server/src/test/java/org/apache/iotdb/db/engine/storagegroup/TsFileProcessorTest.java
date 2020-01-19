@@ -24,13 +24,12 @@ import static org.junit.Assert.assertFalse;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -39,12 +38,11 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.tsfile.read.IPointReader;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -85,9 +83,9 @@ public class TsFileProcessorTest {
     },
         (tsFileProcessor) -> true, true);
 
-    Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
+    Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props, context);
-    ReadOnlyMemChunk left = pair.left;
+    List<ReadOnlyMemChunk> left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertTrue(left.isEmpty());
     assertEquals(0, right.size());
@@ -103,12 +101,14 @@ public class TsFileProcessorTest {
     left = pair.left;
     assertFalse(left.isEmpty());
     int num = 1;
-    IPointReader iterator = left.getIterator();
     for (; num <= 100; num++) {
-      iterator.hasNextTimeValuePair();
-      TimeValuePair timeValuePair = iterator.nextTimeValuePair();
-      assertEquals(num, timeValuePair.getTimestamp());
-      assertEquals(num, timeValuePair.getValue().getInt());
+      for (ReadOnlyMemChunk chunk : left) {
+        IPointReader iterator = chunk.getIterator();
+        iterator.hasNextTimeValuePair();
+        TimeValuePair timeValuePair = iterator.nextTimeValuePair();
+        assertEquals(num, timeValuePair.getTimestamp());
+        assertEquals(num, timeValuePair.getValue().getInt());
+      }
     }
 
     // flush synchronously
@@ -131,9 +131,9 @@ public class TsFileProcessorTest {
     },
         (tsFileProcessor) -> true, true);
 
-    Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
+    Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props, context);
-    ReadOnlyMemChunk left = pair.left;
+    List<ReadOnlyMemChunk> left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertTrue(left.isEmpty());
     assertEquals(0, right.size());
@@ -149,12 +149,15 @@ public class TsFileProcessorTest {
     left = pair.left;
     assertFalse(left.isEmpty());
     int num = 1;
-    IPointReader iterator = left.getIterator();
-    for (; num <= 100; num++) {
-      iterator.hasNextTimeValuePair();
-      TimeValuePair timeValuePair = iterator.nextTimeValuePair();
-      assertEquals(num, timeValuePair.getTimestamp());
-      assertEquals(num, timeValuePair.getValue().getInt());
+
+    for (ReadOnlyMemChunk chunk : left) {
+      IPointReader iterator = chunk.getIterator();
+      for (; num <= 100; num++) {
+        iterator.hasNextTimeValuePair();
+        TimeValuePair timeValuePair = iterator.nextTimeValuePair();
+        assertEquals(num, timeValuePair.getTimestamp());
+        assertEquals(num, timeValuePair.getValue().getInt());
+      }
     }
 
     // flush synchronously
@@ -197,9 +200,9 @@ public class TsFileProcessorTest {
     },
         (tsFileProcessor) -> true, true);
 
-    Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
+    Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props, context);
-    ReadOnlyMemChunk left = pair.left;
+    List<ReadOnlyMemChunk> left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertTrue(left.isEmpty());
     assertEquals(0, right.size());
@@ -244,9 +247,9 @@ public class TsFileProcessorTest {
           }
         }, (tsFileProcessor) -> true, true);
 
-    Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
+    Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props, context);
-    ReadOnlyMemChunk left = pair.left;
+    List<ReadOnlyMemChunk> left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertTrue(left.isEmpty());
     assertEquals(0, right.size());
@@ -262,12 +265,15 @@ public class TsFileProcessorTest {
     left = pair.left;
     assertFalse(left.isEmpty());
     int num = 1;
-    IPointReader iterator = left.getIterator();
+
     for (; num <= 100; num++) {
-      iterator.hasNextTimeValuePair();
-      TimeValuePair timeValuePair = iterator.nextTimeValuePair();
-      assertEquals(num, timeValuePair.getTimestamp());
-      assertEquals(num, timeValuePair.getValue().getInt());
+      for (ReadOnlyMemChunk chunk : left) {
+        IPointReader iterator = chunk.getIterator();
+        iterator.hasNextTimeValuePair();
+        TimeValuePair timeValuePair = iterator.nextTimeValuePair();
+        assertEquals(num, timeValuePair.getTimestamp());
+        assertEquals(num, timeValuePair.getValue().getInt());
+      }
     }
 
     // close synchronously

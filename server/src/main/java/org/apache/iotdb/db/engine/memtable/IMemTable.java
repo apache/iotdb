@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.io.IOException;
 import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
@@ -56,8 +57,8 @@ public interface IMemTable {
 
   void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end) throws QueryProcessException;
 
-  TVList query(String deviceId, String measurement, TSDataType dataType,
-      Map<String, String> props, long timeLowerBound);
+  ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
+      Map<String, String> props, long timeLowerBound) throws IOException;
 
   /**
    * putBack all the memory resources.

@@ -23,6 +23,7 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayPool.ARRAY_SIZE;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
+import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -172,8 +173,12 @@ public class FloatTVList extends TVList {
   }
 
   @Override
-  protected TimeValuePair getTimeValuePair(int index, long time) {
-    return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.FLOAT, getFloat(index)));
+  protected TimeValuePair getTimeValuePair(int index, long time, Integer floatPrecision) {
+    float value = getFloat(index);
+    if (floatPrecision != null) {
+      value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
+    }
+    return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.FLOAT, value));
   }
 
   @Override

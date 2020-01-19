@@ -19,10 +19,8 @@
 package org.apache.iotdb.db.engine.querycontext;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.query.reader.MemChunkLoader;
-import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
@@ -38,49 +36,39 @@ public class ReadOnlyMemChunk {
   private String measurementUid;
   private TSDataType dataType;
 
+  private long version;
   Map<String, String> props;
+
   private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
+
   private ChunkMetaData cachedMetaData;
 
-  private PriorityMergeReader mergeReader;
-  private PriorityMergeReader chunkedReader;
+  private TVList chunkData;
 
-  /**
-   * init by TSDataType and TimeValuePairSorter.
-   */
-  public ReadOnlyMemChunk(String measurementUid, TSDataType dataType,
-      List<TVList> memSeries, Map<String, String> props) throws IOException {
+  private IPointReader chunkDataReader;
+
+  public ReadOnlyMemChunk(String measurementUid, TSDataType dataType, TVList tvList,
+      Map<String, String> props, long version) throws IOException {
     this.measurementUid = measurementUid;
     this.dataType = dataType;
+    this.version = version;
     this.props = props;
     if (props.containsKey(Encoder.MAX_POINT_NUMBER)) {
       this.floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
     }
-    mergeReader = new PriorityMergeReader(floatPrecision);
-    chunkedReader = new PriorityMergeReader(floatPrecision);
-    for (TVList pair : memSeries) {
-      mergeReader.addReader(pair.getIterator(), pair.getVersion());
-      chunkedReader.addReader(pair.getIterator(), pair.getVersion());
-    }
+    tvList.sort();
+    this.chunkData = tvList;
+    this.chunkDataReader = tvList.getIterator(floatPrecision);
+    initChunkMeta();
   }
 
-  public TSDataType getDataType() {
-    return dataType;
-  }
-
-  public boolean isEmpty() {
-    return !mergeReader.hasNextTimeValuePair();
-  }
-
-  public ChunkMetaData getChunkMetaData() throws IOException {
-    if (cachedMetaData != null) {
-      return cachedMetaData;
-    }
+  private void initChunkMeta() throws IOException {
     Statistics statsByType = Statistics.getStatsByType(dataType);
     ChunkMetaData metaData = new ChunkMetaData(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
-      while (chunkedReader.hasNextTimeValuePair()) {
-        TimeValuePair timeValuePair = chunkedReader.nextTimeValuePair();
+      IPointReader iterator = chunkData.getIterator(floatPrecision);
+      while (iterator.hasNextTimeValuePair()) {
+        TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         switch (dataType) {
           case BOOLEAN:
             statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
@@ -109,10 +97,25 @@ public class ReadOnlyMemChunk {
     metaData.setChunkLoader(new MemChunkLoader(this));
     metaData.setVersion(Long.MAX_VALUE);
     cachedMetaData = metaData;
-    return metaData;
+  }
+
+  public TSDataType getDataType() {
+    return dataType;
+  }
+
+  public boolean isEmpty() throws IOException {
+    return !chunkDataReader.hasNextTimeValuePair();
+  }
+
+  public ChunkMetaData getChunkMetaData() {
+    return cachedMetaData;
   }
 
   public IPointReader getIterator() {
-    return mergeReader;
+    return chunkDataReader;
+  }
+
+  public long getVersion() {
+    return version;
   }
 }

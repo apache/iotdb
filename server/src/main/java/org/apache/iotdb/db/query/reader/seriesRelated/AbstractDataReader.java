@@ -171,9 +171,9 @@ public abstract class AbstractDataReader {
     Statistics chunkStatistics = firstChunkMetaData.getStatistics();
     return !mergeReader.hasNextTimeValuePair()
         && (seqChunkMetadatas.isEmpty()
-            || chunkStatistics.getEndTime() < seqChunkMetadatas.get(0).getStartTime())
+        || chunkStatistics.getEndTime() < seqChunkMetadatas.get(0).getStartTime())
         && (unseqChunkMetadatas.isEmpty()
-            || chunkStatistics.getEndTime() < unseqChunkMetadatas.peek().getStartTime())
+        || chunkStatistics.getEndTime() < unseqChunkMetadatas.peek().getStartTime())
         && satisfyFilter(chunkStatistics);
   }
 
@@ -214,9 +214,9 @@ public abstract class AbstractDataReader {
     Statistics pageStatistics = overlappedPageReaders.peek().data.getStatistics();
     return !mergeReader.hasNextTimeValuePair()
         && (seqChunkMetadatas.isEmpty()
-            || pageStatistics.getEndTime() < seqChunkMetadatas.get(0).getStartTime())
+        || pageStatistics.getEndTime() < seqChunkMetadatas.get(0).getStartTime())
         && (unseqChunkMetadatas.isEmpty()
-            || pageStatistics.getEndTime() < unseqChunkMetadatas.peek().getStartTime())
+        || pageStatistics.getEndTime() < unseqChunkMetadatas.peek().getStartTime())
         && satisfyFilter(pageStatistics);
   }
 
@@ -258,10 +258,11 @@ public abstract class AbstractDataReader {
         // put all overlapped pages into merge reader
         while (!overlappedPageReaders.isEmpty()
             && timeValuePair.getTimestamp()
-                >= overlappedPageReaders.peek().data.getStatistics().getStartTime()) {
+            >= overlappedPageReaders.peek().data.getStatistics().getStartTime()) {
           VersionPair<IPageReader> pageReader = overlappedPageReaders.poll();
           mergeReader.addReader(
-              pageReader.data.getAllSatisfiedPageData().getBatchDataIterator(), pageReader.version, pageReader.data.getStatistics().getEndTime());
+              pageReader.data.getAllSatisfiedPageData().getBatchDataIterator(), pageReader.version,
+              pageReader.data.getStatistics().getEndTime());
         }
 
         timeValuePair = mergeReader.nextTimeValuePair();
@@ -282,7 +283,8 @@ public abstract class AbstractDataReader {
       currentPageEndTime = overlappedPageReaders.peek().data.getStatistics().getEndTime();
       VersionPair<IPageReader> pageReader = overlappedPageReaders.poll();
       mergeReader.addReader(
-          pageReader.data.getAllSatisfiedPageData().getBatchDataIterator(), pageReader.version, pageReader.data.getStatistics().getEndTime());
+          pageReader.data.getAllSatisfiedPageData().getBatchDataIterator(), pageReader.version,
+          pageReader.data.getStatistics().getEndTime());
     } else {
       return;
     }
@@ -305,7 +307,8 @@ public abstract class AbstractDataReader {
         && currentPageEndTime >= overlappedPageReaders.peek().data.getStatistics().getStartTime()) {
       VersionPair<IPageReader> pageReader = overlappedPageReaders.poll();
       mergeReader.addReader(
-          pageReader.data.getAllSatisfiedPageData().getBatchDataIterator(), pageReader.version, pageReader.data.getStatistics().getEndTime());
+          pageReader.data.getAllSatisfiedPageData().getBatchDataIterator(), pageReader.version,
+          pageReader.data.getStatistics().getEndTime());
     }
   }
 
@@ -357,15 +360,20 @@ public abstract class AbstractDataReader {
 
     for (ChunkMetaData data : currentChunkMetaDataList) {
       if (data.getChunkLoader() == null) {
-        if (chunkLoader == null)
+        if (chunkLoader == null) {
           chunkLoader =
               new ChunkLoaderImpl(new TsFileSequenceReader(resource.getFile().getAbsolutePath()));
+        }
         data.setChunkLoader(chunkLoader);
       }
     }
-    ReadOnlyMemChunk readOnlyMemChunk = resource.getReadOnlyMemChunk();
-    if (readOnlyMemChunk != null && !readOnlyMemChunk.isEmpty()) {
-      currentChunkMetaDataList.add(readOnlyMemChunk.getChunkMetaData());
+    List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
+    if (memChunks != null) {
+      for (ReadOnlyMemChunk readOnlyMemChunk : memChunks) {
+        if (!memChunks.isEmpty()) {
+          currentChunkMetaDataList.add(readOnlyMemChunk.getChunkMetaData());
+        }
+      }
     }
 
     if (filter != null) {

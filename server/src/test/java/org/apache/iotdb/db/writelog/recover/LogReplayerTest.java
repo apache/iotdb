@@ -27,6 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
@@ -97,9 +98,9 @@ public class LogReplayerTest {
       replayer.replayLogs();
 
       for (int i = 0; i < 5; i++) {
-        TVList tvList = memTable.query("device" + i, "sensor" + i, TSDataType.INT64,
+        ReadOnlyMemChunk memChunk = memTable.query("device" + i, "sensor" + i, TSDataType.INT64,
             Collections.emptyMap(), Long.MIN_VALUE);
-        IPointReader iterator = tvList.getIterator();
+        IPointReader iterator = memChunk.getIterator();
         if (i == 0) {
           assertFalse(iterator.hasNextTimeValuePair());
         } else {

@@ -583,32 +583,28 @@ public class TsFileProcessor {
    * @param dataType      data type
    * @return left: the chunk data in memory; right: the chunkMetadatas of data on disk
    */
-  public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> query(String deviceId,
+  public Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> query(String deviceId,
       String measurementId, TSDataType dataType, Map<String, String> props, QueryContext context) {
     flushQueryLock.readLock().lock();
     try {
-      List<TVList> tvLists = new ArrayList<>();
+      List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
       for (IMemTable flushingMemTable : flushingMemTables) {
         if (flushingMemTable.isSignalMemTable()) {
           continue;
         }
-        TVList memChunk = flushingMemTable
+        ReadOnlyMemChunk memChunk = flushingMemTable
             .query(deviceId, measurementId, dataType, props, context.getQueryTimeLowerBound());
         if (memChunk != null) {
-          tvLists.add(memChunk);
+          readOnlyMemChunks.add(memChunk);
         }
       }
       if (workMemTable != null) {
-        TVList memChunk = workMemTable.query(deviceId, measurementId, dataType, props,
+        ReadOnlyMemChunk memChunk = workMemTable.query(deviceId, measurementId, dataType, props,
             context.getQueryTimeLowerBound());
         if (memChunk != null) {
-          tvLists.add(memChunk);
+          readOnlyMemChunks.add(memChunk);
         }
       }
-      // memSeriesLazyMerger has handled the props,
-      // so we do not need to handle it again in the following readOnlyMemChunk
-      ReadOnlyMemChunk timeValuePairSorter = new ReadOnlyMemChunk(measurementId, dataType,
-          tvLists, props);
 
       ModificationFile modificationFile = tsFileResource.getModFile();
       List<Modification> modifications = context.getPathModifications(modificationFile,
@@ -621,7 +617,7 @@ public class TsFileProcessor {
 
       chunkMetaDataList.removeIf(context::chunkNotSatisfy);
 
-      return new Pair<>(timeValuePairSorter, chunkMetaDataList);
+      return new Pair<>(readOnlyMemChunks, chunkMetaDataList);
     } catch (IOException e) {
       logger.error("get ReadOnlyMemChunk has error", e);
     } finally {

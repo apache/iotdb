@@ -18,15 +18,12 @@
  */
 package org.apache.iotdb.db.query.reader.universal;
 
-import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.PriorityQueue;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 
 /**
  * This class implements {@link IPointReader} for data sources with different priorities.
@@ -36,8 +33,6 @@ public class PriorityMergeReader implements IPointReader {
   // largest end time of all added readers
   private long currentLargestEndTime;
 
-  private Integer floatPrecision;
-
   PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
     int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
         o2.timeValuePair.getTimestamp());
@@ -46,11 +41,6 @@ public class PriorityMergeReader implements IPointReader {
 
   public PriorityMergeReader() {
   }
-
-  public PriorityMergeReader(int floatPrecision) {
-    this.floatPrecision = floatPrecision;
-  }
-
 
   public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority)
       throws IOException {
@@ -99,18 +89,6 @@ public class PriorityMergeReader implements IPointReader {
     if (topNext != null) {
       top.timeValuePair = topNext;
       heap.add(top);
-    }
-    if (floatPrecision != null) {
-      switch (ret.getValue().getDataType()) {
-        case DOUBLE:
-          ret.setValue(new TsDouble(
-              MathUtils.roundWithGivenPrecision(ret.getValue().getDouble(), floatPrecision)));
-          break;
-        case FLOAT:
-          ret.setValue(new TsFloat(
-              MathUtils.roundWithGivenPrecision(ret.getValue().getFloat(), floatPrecision)));
-          break;
-      }
     }
     return ret;
   }

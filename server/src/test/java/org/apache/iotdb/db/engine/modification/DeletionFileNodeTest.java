@@ -19,11 +19,23 @@
 
 package org.apache.iotdb.db.engine.modification;
 
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import junit.framework.TestCase;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -34,12 +46,11 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.read.IPointReader;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -47,15 +58,6 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class DeletionFileNodeTest {
 
@@ -115,12 +117,15 @@ public class DeletionFileNodeTest {
     QueryDataSource dataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
 
-    IPointReader timeValuePairs =
-        dataSource.getSeqResources().get(0).getReadOnlyMemChunk().getIterator();
+    List<ReadOnlyMemChunk> timeValuePairs =
+        dataSource.getSeqResources().get(0).getReadOnlyMemChunk();
     int count = 0;
-    while (timeValuePairs.hasNextTimeValuePair()) {
-      timeValuePairs.nextTimeValuePair();
-      count++;
+    for (ReadOnlyMemChunk chunk : timeValuePairs) {
+      IPointReader iterator = chunk.getIterator();
+      while (iterator.hasNextTimeValuePair()) {
+        iterator.nextTimeValuePair();
+        count++;
+      }
     }
     assertEquals(50, count);
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
@@ -211,12 +216,15 @@ public class DeletionFileNodeTest {
     QueryDataSource dataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
 
-    IPointReader timeValuePairs =
-        dataSource.getUnseqResources().get(0).getReadOnlyMemChunk().getIterator();
+    List<ReadOnlyMemChunk> timeValuePairs =
+        dataSource.getUnseqResources().get(0).getReadOnlyMemChunk();
     int count = 0;
-    while (timeValuePairs.hasNextTimeValuePair()) {
-      timeValuePairs.nextTimeValuePair();
-      count++;
+    for (ReadOnlyMemChunk chunk : timeValuePairs) {
+      IPointReader iterator = chunk.getIterator();
+      while (iterator.hasNextTimeValuePair()) {
+        iterator.nextTimeValuePair();
+        count++;
+      }
     }
     assertEquals(50, count);
 

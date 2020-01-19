@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
 import java.io.IOException;
-import java.util.Iterator;
+import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileReaderByTimestamp;
-import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 /**
@@ -35,16 +35,19 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
  */
 public class MemChunkReaderByTimestamp implements IReaderByTimestamp {
 
-  private IPointReader timeValuePairIterator;
+  private PriorityMergeReader timeValuePairIterator;
   private boolean hasCachedTimeValuePair;
   private TimeValuePair cachedTimeValuePair;
 
-  public MemChunkReaderByTimestamp(ReadOnlyMemChunk readableChunk) {
-    timeValuePairIterator = readableChunk.getIterator();
+  public MemChunkReaderByTimestamp(List<ReadOnlyMemChunk> readableChunk) throws IOException {
+    timeValuePairIterator = new PriorityMergeReader();
+    for (ReadOnlyMemChunk memChunk : readableChunk) {
+      timeValuePairIterator.addReader(memChunk.getIterator(), memChunk.getVersion());
+    }
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNext() {
     if (hasCachedTimeValuePair) {
       return true;
     }

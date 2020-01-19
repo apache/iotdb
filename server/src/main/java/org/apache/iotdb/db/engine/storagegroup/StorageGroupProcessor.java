@@ -975,7 +975,7 @@ public class StorageGroupProcessor {
 
   // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSource query(String deviceId, String measurementId, QueryContext context,
-                               QueryFileManager filePathsManager, Filter timeFilter) {
+      QueryFileManager filePathsManager, Filter timeFilter) {
     insertLock.readLock().lock();
     mergeLock.readLock().lock();
     synchronized (lruForSensorUsedInQuery) {
@@ -1062,7 +1062,7 @@ public class StorageGroupProcessor {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
           // left: in-memory data, right: meta of disk data
-          Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = tsFileResource
+          Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = tsFileResource
               .getUnsealedFileProcessor()
               .query(deviceId, measurementId, dataType, mSchema.getProps(), context);
 
@@ -1080,7 +1080,8 @@ public class StorageGroupProcessor {
   /**
    * @return true if the device is contained in the TsFile and it lives beyond TTL
    */
-  private boolean isTsFileResourceSatisfied(TsFileResource tsFileResource, String deviceId, Filter timeFilter) {
+  private boolean isTsFileResourceSatisfied(TsFileResource tsFileResource, String deviceId,
+      Filter timeFilter) {
     if (!tsFileResource.containsDevice(deviceId)) {
       return false;
     }

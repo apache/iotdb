@@ -105,7 +105,7 @@ public class StorageGroupProcessorTest {
 
     processor.delete(deviceId, measurementId, 15L);
 
-    Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = null;
+    Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = null;
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
       pair = tsfileProcessor
           .query(deviceId, measurementId, TSDataType.INT32, Collections.emptyMap(),
@@ -113,12 +113,15 @@ public class StorageGroupProcessorTest {
       break;
     }
 
-    IPointReader timeValuePairs = pair.left.getIterator();
+    List<ReadOnlyMemChunk> memChunks = pair.left;
 
     long time = 16;
-    while (timeValuePairs.hasNextTimeValuePair()) {
-      TimeValuePair timeValuePair = timeValuePairs.nextTimeValuePair();
-      Assert.assertEquals(time++, timeValuePair.getTimestamp());
+    for (ReadOnlyMemChunk memChunk : memChunks) {
+      IPointReader iterator = memChunk.getIterator();
+      while (iterator.hasNextTimeValuePair()) {
+        TimeValuePair timeValuePair = iterator.nextTimeValuePair();
+        Assert.assertEquals(time++, timeValuePair.getTimestamp());
+      }
     }
 
     Assert.assertEquals(0, pair.right.size());

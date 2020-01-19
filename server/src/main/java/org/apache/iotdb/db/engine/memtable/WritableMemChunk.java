@@ -18,28 +18,15 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBoolean;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class WritableMemChunk implements IWritableMemChunk {
 
-  private static final Logger logger = LoggerFactory.getLogger(WritableMemChunk.class);
   private TSDataType dataType;
   private TVList list;
-  private List<TimeValuePair> sortedList;
 
   public WritableMemChunk(TSDataType dataType, TVList list) {
     this.dataType = dataType;
@@ -70,7 +57,6 @@ public class WritableMemChunk implements IWritableMemChunk {
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
-    sortedList = null;
   }
 
   @Override
@@ -103,7 +89,6 @@ public class WritableMemChunk implements IWritableMemChunk {
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
-    sortedList = null;
   }
 
 

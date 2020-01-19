@@ -179,10 +179,6 @@ public abstract class TVList {
     return version;
   }
 
-  public void setVersion(long version) {
-    this.version = version;
-  }
-
   protected abstract void set(int src, int dest);
 
   protected abstract void setFromSorted(int src, int dest);
@@ -194,6 +190,11 @@ public abstract class TVList {
   protected abstract void expandValues();
 
   public abstract TVList clone();
+
+  public TVList clone(long version) {
+    this.version = version;
+    return clone();
+  }
 
   protected abstract void releaseLastValueArray();
 
@@ -478,10 +479,15 @@ public abstract class TVList {
     sorted = sorted && inputSorted && (size == 0 || inPutMinTime >= getTime(size - 1));
   }
 
-  protected abstract TimeValuePair getTimeValuePair(int index, long time);
+  protected abstract TimeValuePair getTimeValuePair(int index, long time,
+      Integer floatPrecision);
 
   public IPointReader getIterator() {
     return new Ite();
+  }
+
+  public IPointReader getIterator(int floatPrecision) {
+    return new Ite(floatPrecision);
   }
 
   private class Ite implements IPointReader {
@@ -489,6 +495,14 @@ public abstract class TVList {
     private TimeValuePair cachedTimeValuePair;
     private boolean hasCachedPair;
     private int cur;
+    private Integer floatPrecision;
+
+    public Ite() {
+    }
+
+    public Ite(int floatPrecision) {
+      this.floatPrecision = floatPrecision;
+    }
 
     @Override
     public boolean hasNextTimeValuePair() {
@@ -502,7 +516,7 @@ public abstract class TVList {
           cur++;
           continue;
         }
-        cachedTimeValuePair = getTimeValuePair(cur, time);
+        cachedTimeValuePair = getTimeValuePair(cur, time, floatPrecision);
         hasCachedPair = true;
         cur++;
         return true;
@@ -511,9 +525,13 @@ public abstract class TVList {
     }
 
     @Override
-    public TimeValuePair nextTimeValuePair() {
-      hasCachedPair = false;
-      return cachedTimeValuePair;
+    public TimeValuePair nextTimeValuePair() throws IOException {
+      if (hasCachedPair || hasNextTimeValuePair()) {
+        hasCachedPair = false;
+        return cachedTimeValuePair;
+      } else {
+        throw new IOException("no next time value pair");
+      }
     }
 
     @Override

@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -82,8 +83,12 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
       }
 
       if (!tsFileResource.isClosed()) {
+        List<ReadOnlyMemChunk> readOnlyMemChunks = tsFileResource.getReadOnlyMemChunk();
+        for (ReadOnlyMemChunk memChunk : readOnlyMemChunks) {
+          chunkReaderWrapList.add(new ChunkReaderWrap(memChunk, null));
+        }
         // create and add MemChunkReader
-        chunkReaderWrapList.add(new ChunkReaderWrap(tsFileResource.getReadOnlyMemChunk(), null));
+//        chunkReaderWrapList.add(new ChunkReaderWrap(tsFileResource.getReadOnlyMemChunk(), null));
       }
     }
 
