@@ -45,7 +45,6 @@ import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
  * Note that an unsequence TsFile can be either closed or unclosed. An unclosed unsequence TsFile
  * consists of data on disk and data in memtables that will be flushed to this unclosed TsFile.
  * <p>
- * This class is used in {@link org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp}.
  */
 public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimestamp {
 
