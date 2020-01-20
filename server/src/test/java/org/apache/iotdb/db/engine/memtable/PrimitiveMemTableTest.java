@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Random;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.MathUtils;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -44,24 +47,24 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void memSeriesCloneTest() {
+  public void memSeriesSortIteratorTest() throws IOException {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series = new WritableMemChunk(dataType, TVList.newList(dataType));
     int count = 1000;
     for (int i = 0; i < count; i++) {
       series.write(i, i);
     }
-    Iterator<TimeValuePair> it = series.getSortedTimeValuePairList().iterator();
+    IPointReader it = series.getSortedTVList().getIterator();
     int i = 0;
-    while (it.hasNext()) {
-      Assert.assertEquals(i, it.next().getTimestamp());
+    while (it.hasNextTimeValuePair()) {
+      Assert.assertEquals(i, it.nextTimeValuePair().getTimestamp());
       i++;
     }
     Assert.assertEquals(count, i);
   }
 
   @Test
-  public void simpleTest() {
+  public void simpleTest() throws IOException {
     IMemTable memTable = new PrimitiveMemTable();
     int count = 10;
     String deviceId = "d1";
@@ -78,28 +81,28 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(deviceId, measurementId[0], TSDataType.INT32, i, i);
     }
-    Iterator<TimeValuePair> tvPair = memTable
-        .query(deviceId, measurementId[0], TSDataType.INT32, Collections.emptyMap(), Long.MIN_VALUE)
-        .getSortedTimeValuePairList().iterator();
+    ReadOnlyMemChunk memChunk = memTable
+        .query(deviceId, measurementId[0], TSDataType.INT32, Collections.emptyMap(),
+            Long.MIN_VALUE);
+    IPointReader iterator = memChunk.getIterator();
     for (int i = 0; i < dataSize; i++) {
-      TimeValuePair timeValuePair = tvPair.next();
+      iterator.hasNextTimeValuePair();
+      TimeValuePair timeValuePair = iterator.nextTimeValuePair();
       Assert.assertEquals(i, timeValuePair.getTimestamp());
       Assert.assertEquals(i, timeValuePair.getValue().getValue());
     }
   }
 
   private void write(IMemTable memTable, String deviceId, String sensorId, TSDataType dataType,
-      int size) {
+      int size) throws IOException {
     TimeValuePair[] ret = genTimeValuePair(size, dataType);
 
     for (int i = 0; i < ret.length; i++) {
       memTable.write(deviceId, sensorId, dataType, ret[i].getTimestamp(),
           ret[i].getValue().getValue());
     }
-    Iterator<TimeValuePair> tvPair = memTable
-        .query(deviceId, sensorId, dataType, Collections.emptyMap(), Long.MIN_VALUE)
-        .getSortedTimeValuePairList()
-        .iterator();
+    IPointReader tvPair = memTable
+        .query(deviceId, sensorId, dataType, Collections.emptyMap(), Long.MIN_VALUE).getIterator();
     Arrays.sort(ret);
     TimeValuePair last = null;
     for (int i = 0; i < ret.length; i++) {
@@ -111,7 +114,8 @@ public class PrimitiveMemTableTest {
       }
       TimeValuePair pair = ret[i];
       last = pair;
-      TimeValuePair next = tvPair.next();
+      tvPair.hasNextTimeValuePair();
+      TimeValuePair next = tvPair.nextTimeValuePair();
       Assert.assertEquals(pair.getTimestamp(), next.getTimestamp());
       if (dataType == TSDataType.DOUBLE) {
         Assert.assertEquals(pair.getValue().getDouble(),
@@ -119,7 +123,7 @@ public class PrimitiveMemTableTest {
       } else if (dataType == TSDataType.FLOAT) {
         float expected = pair.getValue().getFloat();
         float actual = MathUtils.roundWithGivenPrecision(next.getValue().getFloat());
-        Assert.assertEquals(expected, actual, delta+ Float.MIN_NORMAL);
+        Assert.assertEquals(expected, actual, delta + Float.MIN_NORMAL);
       } else {
         Assert.assertEquals(pair.getValue(), next.getValue());
       }
@@ -127,7 +131,7 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void testFloatType() {
+  public void testFloatType() throws IOException {
     IMemTable memTable = new PrimitiveMemTable();
     String deviceId = "d1";
     int size = 100;
@@ -135,7 +139,7 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void testAllType() {
+  public void testAllType() throws IOException {
     IMemTable memTable = new PrimitiveMemTable();
     int count = 10;
     String deviceId = "d1";

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.io.IOException;
 import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -57,7 +58,7 @@ public interface IMemTable {
   void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end) throws QueryProcessException;
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      Map<String, String> props, long timeLowerBound);
+      Map<String, String> props, long timeLowerBound) throws IOException;
 
   /**
    * putBack all the memory resources.

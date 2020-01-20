@@ -31,6 +31,7 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -104,7 +105,7 @@ public class StorageGroupProcessorTest {
 
     processor.delete(deviceId, measurementId, 15L);
 
-    Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = null;
+    Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = null;
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
       pair = tsfileProcessor
           .query(deviceId, measurementId, TSDataType.INT32, Collections.emptyMap(),
@@ -112,11 +113,15 @@ public class StorageGroupProcessorTest {
       break;
     }
 
-    List<TimeValuePair> timeValuePairs = pair.left.getSortedTimeValuePairList();
+    List<ReadOnlyMemChunk> memChunks = pair.left;
 
     long time = 16;
-    for (TimeValuePair timeValuePair : timeValuePairs) {
-      Assert.assertEquals(time++, timeValuePair.getTimestamp());
+    for (ReadOnlyMemChunk memChunk : memChunks) {
+      IPointReader iterator = memChunk.getIterator();
+      while (iterator.hasNextTimeValuePair()) {
+        TimeValuePair timeValuePair = iterator.nextTimeValuePair();
+        Assert.assertEquals(time++, timeValuePair.getTimestamp());
+      }
     }
 
     Assert.assertEquals(0, pair.right.size());

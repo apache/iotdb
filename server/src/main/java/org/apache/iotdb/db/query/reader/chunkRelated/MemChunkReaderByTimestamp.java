@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
-import java.util.Iterator;
+import java.io.IOException;
+import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 /**
@@ -33,12 +35,15 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
  */
 public class MemChunkReaderByTimestamp implements IReaderByTimestamp {
 
-  private Iterator<TimeValuePair> timeValuePairIterator;
+  private PriorityMergeReader timeValuePairIterator;
   private boolean hasCachedTimeValuePair;
   private TimeValuePair cachedTimeValuePair;
 
-  public MemChunkReaderByTimestamp(ReadOnlyMemChunk readableChunk) {
-    timeValuePairIterator = readableChunk.getIterator();
+  public MemChunkReaderByTimestamp(List<ReadOnlyMemChunk> readableChunk) throws IOException {
+    timeValuePairIterator = new PriorityMergeReader();
+    for (ReadOnlyMemChunk memChunk : readableChunk) {
+      timeValuePairIterator.addReader(memChunk.getIterator(), memChunk.getVersion());
+    }
   }
 
   @Override
@@ -46,22 +51,22 @@ public class MemChunkReaderByTimestamp implements IReaderByTimestamp {
     if (hasCachedTimeValuePair) {
       return true;
     }
-    return timeValuePairIterator.hasNext();
+    return timeValuePairIterator.hasNextTimeValuePair();
   }
 
-  private TimeValuePair next() {
+  private TimeValuePair next() throws IOException {
     if (hasCachedTimeValuePair) {
       hasCachedTimeValuePair = false;
       return cachedTimeValuePair;
     } else {
-      return timeValuePairIterator.next();
+      return timeValuePairIterator.nextTimeValuePair();
     }
   }
 
   // TODO consider change timeValuePairIterator to List structure, and use binary search instead of
   // sequential search
   @Override
-  public Object getValueInTimestamp(long timestamp) {
+  public Object getValueInTimestamp(long timestamp) throws IOException {
     while (hasNext()) {
       TimeValuePair timeValuePair = next();
       long time = timeValuePair.getTimestamp();
