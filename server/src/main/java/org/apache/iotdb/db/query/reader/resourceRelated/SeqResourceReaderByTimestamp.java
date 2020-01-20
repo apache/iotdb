@@ -45,7 +45,6 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
  * sealed or unsealed. 4) An unsealed sequence TsFile consists of two parts of data in chronological
  * order: data that has been flushed to disk and data in the flushing memtable list.
  * <p>
- * This class is used in {@link org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp}.
  */
 
 public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
