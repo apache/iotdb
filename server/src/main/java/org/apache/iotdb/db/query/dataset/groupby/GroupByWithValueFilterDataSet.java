@@ -75,7 +75,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    * init reader and aggregate function.
    */
   private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
-      throws StorageEngineException, IOException {
+      throws StorageEngineException {
     this.timestampGenerator = new EngineTimeGenerator(groupByPlan.getExpression(), context);
     this.allDataReaderList = new ArrayList<>();
     this.groupByPlan = groupByPlan;
