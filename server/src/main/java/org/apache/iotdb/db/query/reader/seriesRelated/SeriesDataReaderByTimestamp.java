@@ -68,21 +68,18 @@ public class SeriesDataReaderByTimestamp extends AbstractDataReader implements
         }
         if (canUseCurrentPageStatistics()) {
           batchData = nextPage();
-          if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
-            return true;
-          }
         } else {
           batchData = nextOverlappedPage();
-          if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
-            return true;
-          }
+        }
+        if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
+          return true;
         }
       }
     }
     return false;
   }
 
-  public Statistics currentPageStatistics() throws IOException {
+  private Statistics currentPageStatistics() throws IOException {
     if (overlappedPageReaders.isEmpty() || overlappedPageReaders.peek().data == null) {
       throw new IOException("No next page statistics.");
     }
