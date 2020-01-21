@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
@@ -28,7 +29,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 
-public class SeriesDataReaderByTimestamp extends RawDataReaderWithoutValueFilter implements
+public class SeriesDataReaderByTimestamp extends AbstractDataReader implements
     IReaderByTimestamp {
 
   private BatchData batchData;
@@ -53,13 +54,41 @@ public class SeriesDataReaderByTimestamp extends RawDataReaderWithoutValueFilter
 
   private boolean hasNext(long timestamp) throws IOException {
     while (super.hasNextChunk()) {
-      batchData = nextBatch();
-      if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
-        return true;
+      Statistics statistics = firstChunkMetaData.getStatistics();
+      if (statistics.getEndTime() < timestamp) {
+        hasCachedFirstChunkMetadata = false;
+        firstChunkMetaData = null;
+        continue;
+      }
+      while (super.hasNextPage()) {
+        Statistics pageStatistics = currentPageStatistics();
+        if (pageStatistics.getEndTime() < timestamp) {
+          overlappedPageReaders.poll();
+          continue;
+        }
+        if (canUseCurrentPageStatistics()) {
+          batchData = nextPage();
+          if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
+            return true;
+          }
+        } else {
+          batchData = nextOverlappedPage();
+          if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
+            return true;
+          }
+        }
       }
     }
     return false;
   }
+
+  public Statistics currentPageStatistics() throws IOException {
+    if (overlappedPageReaders.isEmpty() || overlappedPageReaders.peek().data == null) {
+      throw new IOException("No next page statistics.");
+    }
+    return overlappedPageReaders.peek().data.getStatistics();
+  }
+
 
   @Override
   protected boolean satisfyFilter(Statistics statistics) {
@@ -69,5 +98,11 @@ public class SeriesDataReaderByTimestamp extends RawDataReaderWithoutValueFilter
   @Override
   public boolean hasNext() throws IOException {
     throw new IOException("hasNext in SeriesDataReaderByTimestamp is an empty method.");
+  }
+
+  private BatchData nextPage() throws IOException {
+    return Objects.requireNonNull(overlappedPageReaders.poll().data, "No Batch data")
+        .getAllSatisfiedPageData();
+
   }
 }
