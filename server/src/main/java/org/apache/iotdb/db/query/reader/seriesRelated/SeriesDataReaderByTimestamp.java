@@ -62,14 +62,12 @@ public class SeriesDataReaderByTimestamp extends AbstractDataReader implements
 
   private boolean hasNext(long timestamp) throws IOException {
     while (super.hasNextChunk()) {
-      Statistics statistics = currentChunkStatistics();
-      if (statistics.getEndTime() < timestamp) {
+      if (!satisfyFilter(currentChunkStatistics())) {
         skipChunkData();
         continue;
       }
       while (super.hasNextPage()) {
-        Statistics pageStatistics = currentPageStatistics();
-        if (pageStatistics.getEndTime() < timestamp) {
+        if (!satisfyFilter(currentPageStatistics())) {
           skipPageData();
           continue;
         }
@@ -84,6 +82,11 @@ public class SeriesDataReaderByTimestamp extends AbstractDataReader implements
       }
     }
     return false;
+  }
+
+  @Override
+  protected boolean satisfyFilter(Statistics statistics) {
+    return filter.satisfy(statistics);
   }
 
   @Override
