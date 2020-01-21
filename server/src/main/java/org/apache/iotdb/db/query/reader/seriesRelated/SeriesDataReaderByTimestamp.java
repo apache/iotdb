@@ -29,13 +29,14 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 
 
 public class SeriesDataReaderByTimestamp extends AbstractDataReader implements
     IReaderByTimestamp {
 
   private BatchData batchData;
-  private Filter filter;
+  private UnaryFilter<Long> filter = TimeFilter.gtEq(Long.MIN_VALUE);
 
   public SeriesDataReaderByTimestamp(Path seriesPath, TSDataType dataType, QueryContext context,
       QueryDataSource dataSource) {
@@ -45,7 +46,7 @@ public class SeriesDataReaderByTimestamp extends AbstractDataReader implements
 
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
-    this.filter = TimeFilter.gtEq(timestamp);
+    filter.setValue(timestamp);
     if (batchData == null || batchData.getTimeByIndex(batchData.length() - 1) < timestamp) {
       if (!hasNext(timestamp)) {
         return null;
