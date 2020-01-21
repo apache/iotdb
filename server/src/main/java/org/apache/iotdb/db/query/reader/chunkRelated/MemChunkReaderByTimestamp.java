@@ -19,35 +19,27 @@
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
 import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 /**
  * To read data in memory by timestamp, this class implements an interface {@link
  * IReaderByTimestamp} based on the data source {@link ReadOnlyMemChunk}.
- * <p>
- * This class is used in {@link UnSealedTsFileReaderByTimestamp} and {@link
- * org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceReaderByTimestamp}.
  */
 public class MemChunkReaderByTimestamp implements IReaderByTimestamp {
 
-  private PriorityMergeReader timeValuePairIterator;
+  private IPointReader timeValuePairIterator;
   private boolean hasCachedTimeValuePair;
   private TimeValuePair cachedTimeValuePair;
 
-  public MemChunkReaderByTimestamp(List<ReadOnlyMemChunk> readableChunk) throws IOException {
-    timeValuePairIterator = new PriorityMergeReader();
-    for (ReadOnlyMemChunk memChunk : readableChunk) {
-      timeValuePairIterator.addReader(memChunk.getIterator(), memChunk.getVersion());
-    }
+  public MemChunkReaderByTimestamp(ReadOnlyMemChunk readableChunk) {
+    timeValuePairIterator = readableChunk.getIterator();
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws IOException {
     if (hasCachedTimeValuePair) {
       return true;
     }

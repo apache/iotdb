@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,8 +39,8 @@ public class SeriesDataReaderWithValueFilter extends SeriesDataReaderWithoutValu
   private TimeValuePair timeValuePair;
 
   public SeriesDataReaderWithValueFilter(Path seriesPath, TSDataType dataType, Filter valueFilter,
-      QueryContext context) throws StorageEngineException, IOException {
-    super(seriesPath, dataType, null, context);
+      QueryContext context, QueryDataSource dataSource) {
+    super(seriesPath, dataType, null, context, dataSource);
     this.valueFilter = valueFilter;
   }
 

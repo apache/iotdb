@@ -18,15 +18,13 @@
  */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
-import org.apache.iotdb.db.exception.StorageEngineException;
+import java.io.IOException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
-import java.io.IOException;
 
 /*
  *This class extends some methods to implement skip reads :
@@ -53,62 +51,31 @@ import java.io.IOException;
 public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader implements
     IAggregateReader {
 
+  private final Filter filter;
+
   public SeriesDataReaderWithoutValueFilter(Path seriesPath, TSDataType dataType, Filter timeFilter,
-      QueryContext context) throws StorageEngineException, IOException {
-    super(seriesPath, dataType, timeFilter, context);
+      QueryContext context, QueryDataSource queryDataSource) {
+    super(seriesPath, dataType, context, queryDataSource.getSeqResources(),
+        queryDataSource.getUnseqResources());
+
+    this.filter = queryDataSource.setTTL(timeFilter);
   }
 
 
   @Override
-  public boolean hasNextChunk() throws IOException {
-    return super.hasNextChunk();
+  protected Filter getFilter() {
+    return filter;
   }
 
+  @Override
   public boolean canUseCurrentChunkStatistics() {
-    return super.canUseChunkStatistics();
+    Statistics chunkStatistics = super.currentChunkStatistics();
+    return !super.isChunkOverlapped() && satisfyFilter(chunkStatistics);
   }
 
   @Override
-  public Statistics currentChunkStatistics() {
-    return firstChunkMetaData.getStatistics();
-  }
-
-  @Override
-  public void skipChunkData() {
-    hasCachedFirstChunkMetadata = false;
-    firstChunkMetaData = null;
-  }
-
-  @Override
-  public boolean hasNextPage() throws IOException {
-    return super.hasNextPage();
-  }
-
-  @Override
-  public Statistics currentPageStatistics() throws IOException {
-    if (overlappedPageReaders.isEmpty() || overlappedPageReaders.peek().data == null) {
-      throw new IOException("No next page statistics.");
-    }
-    return overlappedPageReaders.peek().data.getStatistics();
-  }
-
-  @Override
-  public void skipPageData() throws IOException {
-    overlappedPageReaders.poll();
-  }
-
-  @Override
-  public boolean hasNextOverlappedPage() throws IOException {
-    return super.hasNextOverlappedPage();
-  }
-
-  @Override
-  public BatchData nextOverlappedPage() throws IOException {
-    return super.nextOverlappedPage();
-  }
-
-  @Override
-  public void close() throws IOException {
-    super.close();
+  public boolean canUseCurrentPageStatistics() throws IOException {
+    Statistics currentPageStatistics = super.currentPageStatistics();
+    return super.isPageOverlapped() && satisfyFilter(currentPageStatistics);
   }
 }

@@ -27,12 +27,13 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderWithoutValueFilter;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -103,7 +104,9 @@ public class AggregateEngineExecutor {
 
     // construct series reader without value filter
     IAggregateReader seriesReader = new SeriesDataReaderWithoutValueFilter(
-        selectedSeries.get(i), tsDataType, timeFilter, context);
+        selectedSeries.get(i), tsDataType, timeFilter, context,
+        QueryResourceManager.getInstance()
+            .getQueryDataSource(selectedSeries.get(i), context, timeFilter));
 
     while (seriesReader.hasNextChunk()) {
       if (seriesReader.canUseCurrentChunkStatistics()) {
@@ -149,8 +152,11 @@ public class AggregateEngineExecutor {
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
-    for (Path path : selectedSeries) {
-      SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path, context);
+    for (int i = 0; i < selectedSeries.size(); i++) {
+      Path path = selectedSeries.get(i);
+      SeriesDataReaderByTimestamp seriesReaderByTimestamp = new SeriesDataReaderByTimestamp(path,
+          dataTypes.get(i), context,
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, null));
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
 

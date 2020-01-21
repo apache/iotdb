@@ -19,12 +19,10 @@
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -85,7 +83,7 @@ public class ChunkReaderWrap {
       ChunkReaderByTimestamp chunkReader = new ChunkReaderByTimestamp(chunk);
       return new DiskChunkReaderByTimestamp(chunkReader);
     } else {
-      return new MemChunkReaderByTimestamp(Collections.singletonList(readOnlyMemChunk));
+      return new MemChunkReaderByTimestamp(readOnlyMemChunk);
     }
   }
 

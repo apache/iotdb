@@ -35,7 +35,7 @@ public interface IAggregateReader {
 
   boolean hasNextPage() throws IOException;
 
-  boolean canUseCurrentPageStatistics();
+  boolean canUseCurrentPageStatistics() throws IOException;
 
   Statistics currentPageStatistics() throws IOException;
 

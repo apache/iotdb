@@ -28,9 +28,10 @@ import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -75,12 +76,14 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    * init reader and aggregate function.
    */
   private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
-      throws StorageEngineException, IOException, PathException {
+      throws StorageEngineException {
     this.timestampGenerator = new EngineTimeGenerator(groupByPlan.getExpression(), context);
     this.allDataReaderList = new ArrayList<>();
     this.groupByPlan = groupByPlan;
-    for (Path path : paths) {
-      allDataReaderList.add(new SeriesReaderByTimestamp(path, context));
+    for (int i = 0; i < paths.size(); i++) {
+      Path path = paths.get(i);
+      allDataReaderList.add(new SeriesDataReaderByTimestamp(path, dataTypes.get(i), context,
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, null)));
     }
   }
 
@@ -145,7 +148,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * construct an array of timestamps for one batch of a group by partition calculating.
    *
-   * @param timestampArray timestamp array
+   * @param timestampArray  timestamp array
    * @param timeArrayLength the current size of timestamp array
    * @return time array size
    */

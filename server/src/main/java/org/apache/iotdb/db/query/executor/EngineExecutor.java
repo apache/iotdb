@@ -19,15 +19,19 @@
 package org.apache.iotdb.db.query.executor;
 
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.IRawDataReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.RawDataReaderWithoutValueFilter;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -35,10 +39,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * IoTDB query executor.
@@ -77,8 +77,9 @@ public class EngineExecutor {
       Path path = deduplicatedPaths.get(i);
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
-      IRawDataReader reader = new RawDataReaderWithoutValueFilter(
-          path, dataType, timeFilter, context);
+      IRawDataReader reader = new RawDataReaderWithoutValueFilter(path, dataType, timeFilter,
+          context,
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter));
       readersOfSelectedSeries.add(reader);
     }
 
@@ -90,8 +91,7 @@ public class EngineExecutor {
     }
   }
 
-  public QueryDataSet executeNonAlign(QueryContext context)
-      throws StorageEngineException, IOException {
+  public QueryDataSet executeNonAlign(QueryContext context) throws StorageEngineException {
 
     Filter timeFilter = null;
     if (optimizedExpression != null) {
@@ -104,7 +104,8 @@ public class EngineExecutor {
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
       IRawDataReader reader = new RawDataReaderWithoutValueFilter(path, dataType, timeFilter,
-          context);
+          context,
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter));
       readersOfSelectedSeries.add(reader);
     }
 
@@ -125,8 +126,11 @@ public class EngineExecutor {
         optimizedExpression, context);
 
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
-    for (Path path : deduplicatedPaths) {
-      SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path, context);
+    for (int i = 0; i < deduplicatedPaths.size(); i++) {
+      Path path = deduplicatedPaths.get(i);
+      SeriesDataReaderByTimestamp seriesReaderByTimestamp = new SeriesDataReaderByTimestamp(path,
+          deduplicatedDataTypes.get(i), context,
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, null));
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
     return new EngineDataSetWithValueFilter(deduplicatedPaths, deduplicatedDataTypes,

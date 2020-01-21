@@ -27,7 +27,6 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
  * To read chunk data on disk by timestamp, this class implements an interface {@link
  * IReaderByTimestamp} based on the data reader {@link ChunkReaderByTimestamp}.
  * <p>
- * This class is used in {@link org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceReaderByTimestamp}.
  */
 public class DiskChunkReaderByTimestamp implements IReaderByTimestamp {
 
