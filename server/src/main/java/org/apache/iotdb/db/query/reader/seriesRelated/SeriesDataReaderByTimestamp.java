@@ -89,7 +89,7 @@ public class SeriesDataReaderByTimestamp extends AbstractDataReader implements
 
   @Override
   protected boolean satisfyFilter(Statistics statistics) {
-    return statistics.getStartTime() <= timestamp && statistics.getEndTime() >= timestamp;
+    return true;
   }
 
   @Override
