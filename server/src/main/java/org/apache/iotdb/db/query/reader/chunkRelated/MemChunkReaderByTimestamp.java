@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
@@ -30,8 +29,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
  * To read data in memory by timestamp, this class implements an interface {@link
  * IReaderByTimestamp} based on the data source {@link ReadOnlyMemChunk}.
  * <p>
- * This class is used in {@link UnSealedTsFileReaderByTimestamp} and {@link
- * org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceReaderByTimestamp}.
  */
 public class MemChunkReaderByTimestamp implements IReaderByTimestamp {
 
