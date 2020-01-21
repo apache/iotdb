@@ -20,29 +20,32 @@ package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.io.IOException;
 import java.util.Objects;
-import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 
 public class SeriesDataReaderByTimestamp extends AbstractDataReader implements
     IReaderByTimestamp {
 
   private BatchData batchData;
-  private long timestamp;
+  private Filter filter;
 
-  public SeriesDataReaderByTimestamp(Path seriesPath, TSDataType dataType, QueryContext context)
-      throws StorageEngineException {
-    super(seriesPath, dataType, null, context);
+  public SeriesDataReaderByTimestamp(Path seriesPath, TSDataType dataType, QueryContext context,
+      QueryDataSource dataSource) {
+    super(seriesPath, dataType, context, dataSource.getSeqResources(),
+        dataSource.getUnseqResources());
   }
 
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
-    this.timestamp = timestamp;
+    this.filter = TimeFilter.gtEq(timestamp);
     if (batchData == null || batchData.getTimeByIndex(batchData.length() - 1) < timestamp) {
       if (!hasNext(timestamp)) {
         return null;
@@ -52,21 +55,25 @@ public class SeriesDataReaderByTimestamp extends AbstractDataReader implements
     return batchData.getValueInTimestamp(timestamp);
   }
 
+  @Override
+  public boolean hasNext() throws IOException {
+    throw new IOException("hasNext in SeriesReaderByTimestamp is an empty method.");
+  }
+
   private boolean hasNext(long timestamp) throws IOException {
     while (super.hasNextChunk()) {
-      Statistics statistics = firstChunkMetaData.getStatistics();
+      Statistics statistics = currentChunkStatistics();
       if (statistics.getEndTime() < timestamp) {
-        hasCachedFirstChunkMetadata = false;
-        firstChunkMetaData = null;
+        skipChunkData();
         continue;
       }
       while (super.hasNextPage()) {
         Statistics pageStatistics = currentPageStatistics();
         if (pageStatistics.getEndTime() < timestamp) {
-          overlappedPageReaders.poll();
+          skipPageData();
           continue;
         }
-        if (canUseCurrentPageStatistics()) {
+        if (!isPageOverlapped()) {
           batchData = nextPage();
         } else {
           batchData = nextOverlappedPage();
@@ -79,27 +86,8 @@ public class SeriesDataReaderByTimestamp extends AbstractDataReader implements
     return false;
   }
 
-  private Statistics currentPageStatistics() throws IOException {
-    if (overlappedPageReaders.isEmpty() || overlappedPageReaders.peek().data == null) {
-      throw new IOException("No next page statistics.");
-    }
-    return overlappedPageReaders.peek().data.getStatistics();
-  }
-
-
   @Override
-  protected boolean satisfyFilter(Statistics statistics) {
-    return true;
-  }
-
-  @Override
-  public boolean hasNext() throws IOException {
-    throw new IOException("hasNext in SeriesDataReaderByTimestamp is an empty method.");
-  }
-
-  private BatchData nextPage() throws IOException {
-    return Objects.requireNonNull(overlappedPageReaders.poll().data, "No Batch data")
-        .getAllSatisfiedPageData();
-
+  protected Filter getFilter() {
+    return filter;
   }
 }

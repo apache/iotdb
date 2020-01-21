@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
@@ -103,7 +104,9 @@ public class AggregateEngineExecutor {
 
     // construct series reader without value filter
     IAggregateReader seriesReader = new SeriesDataReaderWithoutValueFilter(
-        selectedSeries.get(i), tsDataType, timeFilter, context);
+        selectedSeries.get(i), tsDataType, timeFilter, context,
+        QueryResourceManager.getInstance()
+            .getQueryDataSource(selectedSeries.get(i), context, timeFilter));
 
     while (seriesReader.hasNextChunk()) {
       if (seriesReader.canUseCurrentChunkStatistics()) {
@@ -152,7 +155,8 @@ public class AggregateEngineExecutor {
     for (int i = 0; i < selectedSeries.size(); i++) {
       Path path = selectedSeries.get(i);
       SeriesDataReaderByTimestamp seriesReaderByTimestamp = new SeriesDataReaderByTimestamp(path,
-          dataTypes.get(i), context);
+          dataTypes.get(i), context,
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, null));
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
 

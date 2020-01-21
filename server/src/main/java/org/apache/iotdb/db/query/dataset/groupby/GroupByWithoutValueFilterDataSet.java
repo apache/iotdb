@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderWithoutValueFilter;
@@ -76,7 +77,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       Path path = paths.get(i);
       // sequence reader for sealed tsfile, unsealed tsfile, memory
       SeriesDataReaderWithoutValueFilter seqResourceIterateReader = new SeriesDataReaderWithoutValueFilter(
-          path, dataTypes.get(i), timeFilter, context);
+          path, dataTypes.get(i), timeFilter, context,
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter));
       sequenceReaderList.add(seqResourceIterateReader);
     }
   }

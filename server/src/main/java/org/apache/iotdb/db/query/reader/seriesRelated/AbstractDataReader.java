@@ -18,14 +18,19 @@
  */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.PriorityQueue;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.MemChunkLoader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -45,16 +50,11 @@ import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
-import java.io.IOException;
-import java.util.*;
-
 public abstract class AbstractDataReader {
 
-  private final QueryDataSource queryDataSource;
-  private final QueryContext context;
   private final Path seriesPath;
   private final TSDataType dataType;
-  protected Filter filter;
+  private final QueryContext context;
 
   private final List<TsFileResource> seqFileResource;
   private final PriorityQueue<TsFileResource> unseqFileResource;
@@ -65,10 +65,10 @@ public abstract class AbstractDataReader {
 
   private final List<IChunkLoader> openedChunkLoaders = new LinkedList<>();
 
-  protected boolean hasCachedFirstChunkMetadata;
-  protected ChunkMetaData firstChunkMetaData;
+  private boolean hasCachedFirstChunkMetadata;
+  private ChunkMetaData firstChunkMetaData;
 
-  protected PriorityQueue<VersionPair<IPageReader>> overlappedPageReaders =
+  private PriorityQueue<VersionPair<IPageReader>> overlappedPageReaders =
       new PriorityQueue<>(
           Comparator.comparingLong(pageReader -> pageReader.data.getStatistics().getStartTime()));
 
@@ -79,58 +79,24 @@ public abstract class AbstractDataReader {
 
   private long currentPageEndTime = Long.MAX_VALUE;
 
-  public AbstractDataReader(
-      Path seriesPath, TSDataType dataType, Filter filter, QueryContext context)
-      throws StorageEngineException {
-    queryDataSource =
-        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, filter);
+
+  public AbstractDataReader(Path seriesPath, TSDataType dataType, QueryContext context,
+      List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seriesPath = seriesPath;
-    this.context = context;
     this.dataType = dataType;
-
-    this.filter = queryDataSource.setTTL(filter);
-
-    seqFileResource = queryDataSource.getSeqResources();
-    unseqFileResource = sortUnSeqFileResources(queryDataSource.getUnseqResources());
+    this.context = context;
+    this.seqFileResource = seqFiles;
+    this.unseqFileResource = sortUnSeqFileResources(unseqFiles);
   }
 
-  // for test
-  public AbstractDataReader(
-      Path seriesPath,
-      TSDataType dataType,
-      Filter filter,
-      QueryContext context,
-      QueryDataSource dataSource) {
-    queryDataSource = dataSource;
-    this.seriesPath = seriesPath;
-    this.context = context;
-    this.dataType = dataType;
+  protected abstract Filter getFilter();
 
-    this.filter = queryDataSource.setTTL(filter);
-
-    seqFileResource = queryDataSource.getSeqResources();
-    unseqFileResource = sortUnSeqFileResources(queryDataSource.getUnseqResources());
+  protected boolean satisfyFilter(Statistics statistics) {
+    return getFilter() == null
+        || getFilter().containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
   }
 
-  // for test
-  public AbstractDataReader(
-      Path seriesPath,
-      TSDataType dataType,
-      Filter filter,
-      QueryContext context,
-      List<TsFileResource> seqResources) {
-    this.queryDataSource = null;
-    this.seriesPath = seriesPath;
-    this.context = context;
-    this.dataType = dataType;
-
-    this.filter = filter;
-
-    this.seqFileResource = seqResources;
-    this.unseqFileResource = new PriorityQueue<>();
-  }
-
-  protected boolean hasNextChunk() throws IOException {
+  public boolean hasNextChunk() throws IOException {
     if (hasCachedFirstChunkMetadata) {
       return true;
     }
@@ -167,22 +133,25 @@ public abstract class AbstractDataReader {
     tryToFillChunkMetadatas();
   }
 
-  public boolean canUseChunkStatistics() {
+  public boolean isChunkOverlapped() {
     Statistics chunkStatistics = firstChunkMetaData.getStatistics();
-    return !mergeReader.hasNextTimeValuePair()
-        && (seqChunkMetadatas.isEmpty()
-        || chunkStatistics.getEndTime() < seqChunkMetadatas.get(0).getStartTime())
-        && (unseqChunkMetadatas.isEmpty()
-        || chunkStatistics.getEndTime() < unseqChunkMetadatas.peek().getStartTime())
-        && satisfyFilter(chunkStatistics);
+    return mergeReader.hasNextTimeValuePair()
+        || (!seqChunkMetadatas.isEmpty()
+        && chunkStatistics.getEndTime() >= seqChunkMetadatas.get(0).getStartTime())
+        || (!unseqChunkMetadatas.isEmpty()
+        && chunkStatistics.getEndTime() >= unseqChunkMetadatas.peek().getStartTime());
   }
 
-  protected boolean satisfyFilter(Statistics statistics) {
-    return filter == null
-        || filter.containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
+  public Statistics currentChunkStatistics() {
+    return firstChunkMetaData.getStatistics();
   }
 
-  protected boolean hasNextPage() throws IOException {
+  public void skipChunkData() {
+    hasCachedFirstChunkMetadata = false;
+    firstChunkMetaData = null;
+  }
+
+  public boolean hasNextPage() throws IOException {
     if (!overlappedPageReaders.isEmpty()) {
       return true;
     }
@@ -210,17 +179,33 @@ public abstract class AbstractDataReader {
                     new VersionPair(chunkMetaData.getVersion(), pageReader)));
   }
 
-  public boolean canUseCurrentPageStatistics() {
-    Statistics pageStatistics = overlappedPageReaders.peek().data.getStatistics();
-    return !mergeReader.hasNextTimeValuePair()
-        && (seqChunkMetadatas.isEmpty()
-        || pageStatistics.getEndTime() < seqChunkMetadatas.get(0).getStartTime())
-        && (unseqChunkMetadatas.isEmpty()
-        || pageStatistics.getEndTime() < unseqChunkMetadatas.peek().getStartTime())
-        && satisfyFilter(pageStatistics);
+
+  public BatchData nextPage() throws IOException {
+    return Objects.requireNonNull(overlappedPageReaders.poll().data, "No Batch data")
+        .getAllSatisfiedPageData();
   }
 
-  protected boolean hasNextOverlappedPage() throws IOException {
+  public boolean isPageOverlapped() {
+    Statistics pageStatistics = overlappedPageReaders.peek().data.getStatistics();
+    return mergeReader.hasNextTimeValuePair()
+        || (!seqChunkMetadatas.isEmpty()
+        && pageStatistics.getEndTime() >= seqChunkMetadatas.get(0).getStartTime())
+        || (!unseqChunkMetadatas.isEmpty()
+        && pageStatistics.getEndTime() >= unseqChunkMetadatas.peek().getStartTime());
+  }
+
+  public Statistics currentPageStatistics() throws IOException {
+    if (overlappedPageReaders.isEmpty() || overlappedPageReaders.peek().data == null) {
+      throw new IOException("No next page statistics.");
+    }
+    return overlappedPageReaders.peek().data.getStatistics();
+  }
+
+  public void skipPageData() {
+    overlappedPageReaders.poll();
+  }
+
+  public boolean hasNextOverlappedPage() throws IOException {
 
     if (hasCachedNextBatch) {
       return true;
@@ -312,7 +297,7 @@ public abstract class AbstractDataReader {
     }
   }
 
-  protected BatchData nextOverlappedPage() throws IOException {
+  public BatchData nextOverlappedPage() throws IOException {
     if (hasCachedNextBatch || hasNextOverlappedPage()) {
       hasCachedNextBatch = false;
       return cachedBatchData;
@@ -329,10 +314,10 @@ public abstract class AbstractDataReader {
     openedChunkLoaders.add(chunkLoader);
     if (chunkLoader instanceof MemChunkLoader) {
       MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
-      chunkReader = new MemChunkReader(memChunkLoader.getChunk(), filter);
+      chunkReader = new MemChunkReader(memChunkLoader.getChunk(), getFilter());
     } else {
       Chunk chunk = chunkLoader.getChunk(metaData);
-      chunkReader = new ChunkReader(chunk, filter);
+      chunkReader = new ChunkReader(chunk, getFilter());
       chunkReader.hasNextSatisfiedPage();
     }
     return chunkReader;
@@ -376,9 +361,9 @@ public abstract class AbstractDataReader {
       }
     }
 
-    if (filter != null) {
+    if (getFilter() != null) {
       currentChunkMetaDataList.removeIf(
-          a -> !filter.satisfyStartEndTime(a.getStartTime(), a.getEndTime()));
+          a -> !getFilter().satisfyStartEndTime(a.getStartTime(), a.getEndTime()));
     }
     return currentChunkMetaDataList;
   }

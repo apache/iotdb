@@ -18,42 +18,43 @@
  */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Objects;
-
 public class RawDataReaderWithoutValueFilter extends AbstractDataReader implements IRawDataReader {
 
+  private Filter filter;
   private BatchData batchData;
   private boolean hasCachedBatchData = false;
   private boolean hasRemaining;
   private boolean managedByQueryManager;
 
   public RawDataReaderWithoutValueFilter(Path seriesPath, TSDataType dataType, Filter filter,
-      QueryContext context) throws StorageEngineException {
-    super(seriesPath, dataType, filter, context);
-  }
-
-  public RawDataReaderWithoutValueFilter(Path seriesPath, TSDataType dataType,
-      Filter filter, QueryContext context, QueryDataSource dataSource) {
-    super(seriesPath, dataType, filter, context, dataSource);
+      QueryContext context, QueryDataSource queryDataSource) {
+    super(seriesPath, dataType, context, queryDataSource.getSeqResources(),
+        queryDataSource.getUnseqResources());
+    this.filter = queryDataSource.setTTL(filter);
   }
 
   // for test
   public RawDataReaderWithoutValueFilter(Path seriesPath, TSDataType dataType,
       Filter filter, QueryContext context, List<TsFileResource> resources) {
-    super(seriesPath, dataType, filter, context, resources);
+    super(seriesPath, dataType, context, resources, new ArrayList<>());
+    this.filter = filter;
   }
 
+  @Override
+  protected Filter getFilter() {
+    return filter;
+  }
 
 
   /**
@@ -67,16 +68,9 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
       return true;
     }
 
-    // read remaining data in merge reader
-//    if (hasNextOverlappedPage()) {
-//      batchData = nextOverlappedPage();
-//      hasCachedBatchData = true;
-//      return true;
-//    }
-
     if (hasNextChunk()) {
       if (hasNextPage()) {
-        if (canUseCurrentPageStatistics()) {
+        if (!isPageOverlapped() && satisfyFilter(currentPageStatistics())) {
           batchData = nextPage();
           hasCachedBatchData = true;
           return true;
@@ -100,12 +94,6 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
     throw new IOException("no next batch");
   }
 
-  private BatchData nextPage() throws IOException {
-    return Objects.requireNonNull(overlappedPageReaders.poll().data, "No Batch data")
-            .getAllSatisfiedPageData();
-
-  }
-
 
   @Override
   public boolean isManagedByQueryManager() {
@@ -126,5 +114,6 @@ public class RawDataReaderWithoutValueFilter extends AbstractDataReader implemen
   public void setHasRemaining(boolean hasRemaining) {
     this.hasRemaining = hasRemaining;
   }
+
 
 }
