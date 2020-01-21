@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
 import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -36,11 +35,9 @@ public class MemChunkReaderByTimestamp implements IReaderByTimestamp {
   private boolean hasCachedTimeValuePair;
   private TimeValuePair cachedTimeValuePair;
 
-  public MemChunkReaderByTimestamp(List<ReadOnlyMemChunk> readableChunk) throws IOException {
+  public MemChunkReaderByTimestamp(ReadOnlyMemChunk memChunk) throws IOException {
     timeValuePairIterator = new PriorityMergeReader();
-    for (ReadOnlyMemChunk memChunk : readableChunk) {
-      timeValuePairIterator.addReader(memChunk.getIterator(), memChunk.getVersion());
-    }
+    timeValuePairIterator.addReader(memChunk.getIterator(), memChunk.getVersion());
   }
 
   @Override
