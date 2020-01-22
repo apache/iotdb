@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  *    }
  *
  *    while(hasNextPage()){
- *      if(canUseChunkStatistics()){
+ *      if(canUsePageStatistics()){
  *        Statistics statistics = currentPageStatistics();
  *        doSomething...
  *        skipCurrentPage();
