@@ -42,7 +42,7 @@ statement
     | DROP INDEX function=ID ON timeseriesPath #dropIndex //not support yet
     | MERGE #merge //not support yet
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
-    | ALTER USER userName=ID SET PASSWORD password=STRING_LITERAL #alterUser
+    | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
     | DROP USER userName=ID #dropUser
     | CREATE ROLE roleName=ID #createRole
     | DROP ROLE roleName=ID #dropRole
