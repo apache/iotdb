@@ -95,7 +95,7 @@ public class TTLTest {
         .getSystemDir(), sg1, new DirectFlushPolicy());
     MManager.getInstance().addPathToMTree(g1s1, TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.emptyMap());
-    storageGroupProcessor.addMeasurement("s1", TSDataType.INT64, TSEncoding.PLAIN,
+    storageGroupProcessor.addTimeseries(new Path(g1s1), TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.emptyMap());
   }
 

@@ -84,7 +84,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -361,12 +361,12 @@ public class StorageGroupProcessor {
   }
 
   private Schema constructSchema(String storageGroupName) {
-    List<MeasurementSchema> columnSchemaList;
-    columnSchemaList = MManager.getInstance().getSchemaForStorageGroup(storageGroupName);
+    Map<String, TimeseriesSchema> schemaMap;
+    schemaMap = MManager.getInstance().getStorageGroupSchemaMap(storageGroupName);
 
     Schema newSchema = new Schema();
-    for (MeasurementSchema measurementSchema : columnSchemaList) {
-      newSchema.registerMeasurement(measurementSchema);
+    for (Map.Entry<String, TimeseriesSchema> entry : schemaMap.entrySet()) {
+      newSchema.registerTimeseries(new Path(entry.getKey()), entry.getValue());
     }
     return newSchema;
   }
@@ -375,11 +375,11 @@ public class StorageGroupProcessor {
   /**
    * add a measurement into the schema.
    */
-  public void addMeasurement(String measurementId, TSDataType dataType, TSEncoding encoding,
+  public void addTimeseries(Path path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) {
     writeLock();
     try {
-      schema.registerMeasurement(new MeasurementSchema(measurementId, dataType, encoding,
+      schema.registerTimeseries(path, new TimeseriesSchema(path.getMeasurement(), dataType, encoding,
           compressor, props));
     } finally {
       writeUnlock();
@@ -822,7 +822,7 @@ public class StorageGroupProcessor {
   private List<TsFileResource> getFileReSourceListForQuery(List<TsFileResource> tsFileResources,
       String deviceId, String measurementId, QueryContext context) {
 
-    MeasurementSchema mSchema = schema.getMeasurementSchema(measurementId);
+    TimeseriesSchema mSchema = schema.getSeriesSchema(new Path(deviceId, measurementId));
     TSDataType dataType = mSchema.getType();
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();

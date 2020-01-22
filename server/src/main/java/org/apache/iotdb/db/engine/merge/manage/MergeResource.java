@@ -44,7 +44,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 /**
@@ -59,8 +59,8 @@ public class MergeResource {
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
-  private Map<String, MeasurementSchema> measurementSchemaMap = new HashMap<>();
-  private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
+  private Map<Path, TimeseriesSchema> timeseriesSchemaMap = new HashMap<>();
+  private Map<TimeseriesSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
   private long timeLowerBound = Long.MIN_VALUE;
 
@@ -94,12 +94,12 @@ public class MergeResource {
     fileReaderCache.clear();
     fileWriterCache.clear();
     modificationCache.clear();
-    measurementSchemaMap.clear();
+    timeseriesSchemaMap.clear();
     chunkWriterCache.clear();
   }
 
-  public MeasurementSchema getSchema(String measurementId) {
-    return measurementSchemaMap.get(measurementId);
+  public TimeseriesSchema getSchema(Path path) {
+    return timeseriesSchemaMap.get(path);
   }
 
   /**
@@ -158,7 +158,7 @@ public class MergeResource {
     List<Chunk>[] pathChunks = MergeUtils.collectUnseqChunks(paths, unseqFiles, this);
     IPointReader[] ret = new IPointReader[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
-      TSDataType dataType = getSchema(paths.get(i).getMeasurement()).getType();
+      TSDataType dataType = getSchema(paths.get(i)).getType();
       ret[i] = new CachedUnseqResourceMergeReader(pathChunks[i], dataType);
     }
     return ret;
@@ -168,8 +168,8 @@ public class MergeResource {
    * Construct the a new or get an existing ChunkWriter of a measurement. Different timeseries of
    * the same measurement shares the same instance.
    */
-  public IChunkWriter getChunkWriter(MeasurementSchema measurementSchema) {
-    return chunkWriterCache.computeIfAbsent(measurementSchema, ChunkWriterImpl::new);
+  public IChunkWriter getChunkWriter(TimeseriesSchema timeseriesSchema) {
+    return chunkWriterCache.computeIfAbsent(timeseriesSchema, ChunkWriterImpl::new);
   }
 
   /**
@@ -256,9 +256,10 @@ public class MergeResource {
     this.cacheDeviceMeta = cacheDeviceMeta;
   }
 
-  public void addMeasurements(List<MeasurementSchema> measurementSchemas) {
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
-      measurementSchemaMap.put(measurementSchema.getMeasurementId(), measurementSchema);
+  public void addTimeseriesSchemaMap(Map<String, TimeseriesSchema> schemasMap) {
+    for (Map.Entry<String, TimeseriesSchema> entry : schemasMap.entrySet()) {
+      timeseriesSchemaMap.put(new Path(entry.getKey()), entry.getValue());
     }
   }
+
 }

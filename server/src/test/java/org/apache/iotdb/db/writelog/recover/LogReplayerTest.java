@@ -45,7 +45,7 @@ import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.junit.Test;
 
@@ -74,8 +74,10 @@ public class LogReplayerTest {
 
     try {
       for (int i = 0; i < 5; i++) {
-        schema.registerMeasurement(
-            new MeasurementSchema("sensor" + i, TSDataType.INT64, TSEncoding.PLAIN));
+        for (int j = 0; j < 5; j++) {
+          schema.registerTimeseries(new Path(("device" + i), ("sensor" + j)),
+              new TimeseriesSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN));
+        }
       }
 
       LogReplayer replayer = new LogReplayer(logNodePrefix, tsFile.getPath(), modFile,

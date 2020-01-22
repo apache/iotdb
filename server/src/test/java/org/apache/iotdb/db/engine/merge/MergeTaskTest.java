@@ -67,7 +67,7 @@ public class MergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    Path path = new Path(deviceIds[0], timeseriesSchemas[0].getMeasurementId());
     SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
         Collections.singletonList(seqResources.get(0)),
         null, context);
@@ -88,7 +88,7 @@ public class MergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    Path path = new Path(deviceIds[0], timeseriesSchemas[0].getMeasurementId());
     SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
         Collections.singletonList(seqResources.get(0)),
         null, context);
@@ -110,7 +110,7 @@ public class MergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    Path path = new Path(deviceIds[0], timeseriesSchemas[0].getMeasurementId());
     SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
         Collections.singletonList(seqResources.get(0)),
         null, context);
@@ -131,7 +131,7 @@ public class MergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    Path path = new Path(deviceIds[0], timeseriesSchemas[0].getMeasurementId());
     SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
         Collections.singletonList(seqResources.get(0)),
         null, context);
@@ -156,7 +156,7 @@ public class MergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    Path path = new Path(deviceIds[0], timeseriesSchemas[0].getMeasurementId());
     SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
         Collections.singletonList(seqResources.get(0)),
         null, context);
@@ -177,7 +177,7 @@ public class MergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    Path path = new Path(deviceIds[0], timeseriesSchemas[0].getMeasurementId());
     SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
         Collections.singletonList(seqResources.get(2)),
         null, context);
@@ -198,7 +198,7 @@ public class MergeTaskTest extends MergeTest {
   public void mergeWithDeletionTest() throws Exception {
     try {
       seqResources.get(0).getModFile().write(new Deletion(new Path(deviceIds[0],
-          measurementSchemas[0].getMeasurementId()), 10000, 49));
+          timeseriesSchemas[0].getMeasurementId()), 10000, 49));
     } finally {
       seqResources.get(0).getModFile().close();
     }
@@ -216,7 +216,7 @@ public class MergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    Path path = new Path(deviceIds[0], timeseriesSchemas[0].getMeasurementId());
     SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
         Collections.singletonList(seqResources.get(0)),
         null, context);

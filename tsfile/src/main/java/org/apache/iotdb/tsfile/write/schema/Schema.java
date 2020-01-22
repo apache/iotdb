@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 
@@ -57,6 +58,10 @@ public class Schema {
     this.timeseriesSchemaMap = new LinkedHashMap<>();
   }
   
+  public Schema(Map<Path, TimeseriesSchema> knownSchema) {
+    this.timeseriesSchemaMap = knownSchema;
+  }
+
   /**
    * Create a row batch to write aligned data
    * @param deviceId the name of the device specified to be written in
@@ -88,6 +93,13 @@ public class Schema {
 
   public TimeseriesSchema getSeriesSchema(Path path) {
     return timeseriesSchemaMap.get(path);
+  }
+  
+  public TSDataType getTimeseriesDataType(Path path) {
+    if (!timeseriesSchemaMap.containsKey(path)) {
+      return null;
+    }
+    return timeseriesSchemaMap.get(path).getType();
   }
 
   public boolean containsDevice(String device) {

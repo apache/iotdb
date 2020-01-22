@@ -52,14 +52,20 @@ public class IMetadataQuerierByFileImplTest {
       // get a series of [startTime, endTime] of d1.s6 from the chunkGroupMetaData of
       // d1
       d1s6timeRangeList.add(new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
+      long[] startEndOffsets = new long[2];
+      startEndOffsets[0] = chunkMetaData.getOffsetOfChunkHeader();
+      startEndOffsets[1] = chunkMetaData.getOffsetOfChunkHeader() + 30;
+      d1chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
-    // d1chunkGroupMetaDataOffsetList.add(reader.readFileMetadata().getDeviceOffsetsMap().get("d1"));
+    
     List<ChunkMetaData> d2s1List = reader.getChunkMetadataList(new Path("d2.s1"));
     for (ChunkMetaData chunkMetaData : d2s1List) {
       d2s1timeRangeList.add(new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
+      long[] startEndOffsets = new long[2];
+      startEndOffsets[0] = chunkMetaData.getOffsetOfChunkHeader();
+      startEndOffsets[1] = chunkMetaData.getOffsetOfChunkHeader() + 20;
+      d2chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
-    // d2chunkGroupMetaDataOffsetList.add(reader.readFileMetadata().getDeviceOffsetsMap().get("d2"));
-
   }
 
   @After
@@ -91,7 +97,9 @@ public class IMetadataQuerierByFileImplTest {
     paths.add(new Path("d2.s1"));
 
     long spacePartitionStartPos = d1chunkGroupMetaDataOffsetList.get(0)[0];
-    long spacePartitionEndPos = d2chunkGroupMetaDataOffsetList.get(0)[1];
+    long spacePartitionEndPos = d1chunkGroupMetaDataOffsetList.get(1)[1];
+    System.out.println(spacePartitionStartPos);
+    System.out.println(spacePartitionEndPos);
     ArrayList<TimeRange> resTimeRanges = new ArrayList<>(
         metadataQuerierByFile.convertSpace2TimePartition(paths, spacePartitionStartPos, spacePartitionEndPos));
 
@@ -113,6 +121,8 @@ public class IMetadataQuerierByFileImplTest {
 
     long spacePartitionStartPos = d2chunkGroupMetaDataOffsetList.get(0)[0];
     long spacePartitionEndPos = d2chunkGroupMetaDataOffsetList.get(0)[1];
+    System.out.println(spacePartitionStartPos);
+    System.out.println(spacePartitionEndPos);
     ArrayList<TimeRange> inCandidates = new ArrayList<>();
     ArrayList<TimeRange> beforeCandidates = new ArrayList<>();
     ArrayList<TimeRange> resTimeRanges = new ArrayList<>(

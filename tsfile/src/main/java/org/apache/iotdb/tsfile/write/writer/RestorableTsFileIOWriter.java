@@ -34,12 +34,13 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 /**
@@ -50,13 +51,16 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   private static final Logger logger = LoggerFactory.getLogger(RestorableTsFileIOWriter.class);
 
   private long truncatedPosition = -1;
-  private Map<String, TimeseriesSchema> knownSchemas = new HashMap<>();
+  private Map<Path, TimeseriesSchema> knownSchemas = new HashMap<>();
 
   private int lastFlushedChunkGroupIndex = 0;
 
   private boolean crashed;
 
-  private Map<Path, List<ChunkMetaData>> metadatas = new HashMap<>();
+  /**
+   * all chunk group metadata which have been serialized on disk.
+   */
+  private Map<String, Map<String, List<ChunkMetaData>>> metadatas = new HashMap<>();
 
   long getTruncatedPosition() {
     return truncatedPosition;
@@ -106,7 +110,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     }
   }
 
-  public Map<String, TimeseriesSchema> getKnownSchema() {
+  public Map<Path, TimeseriesSchema> getKnownSchema() {
     return knownSchemas;
   }
 
@@ -121,10 +125,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @return chunks' metadata
    */
 
-  
-  /*
   public List<ChunkMetaData> getVisibleMetadataList(String deviceId, String measurementId, TSDataType dataType) { 
-    List<ChunkMetaData> chunkMetaDataList = new ArrayList<>(); 
+    List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
     if (metadatas.containsKey(deviceId) && metadatas.get(deviceId).containsKey(measurementId)) {
       for (ChunkMetaData chunkMetaData : metadatas.get(deviceId).get(measurementId)) { 
         // filter: if adevice'sensor is defined as float type, and data has been persistent. 
@@ -137,21 +139,23 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     }
     return chunkMetaDataList;
   }
-  */
+
    
 
   /**
    * add all appendChunkGroupMetadatas into memory. After calling this method,
    * other classes can read these metadata.
    */
-
-  /*
+  
   public void makeMetadataVisible() { 
-    List<ChunkGroupMetaData> newlyFlushedMetadataList = getAppendedRowGroupMetadata();
+    Pair<List<String>, List<List<ChunkMetaData>>> append = getAppendedRowGroupMetadata();
+    List<String> newlyFlushedDeviceList = append.left;
+    List<List<ChunkMetaData>> newlyFlushedMetadataList = append.right;
     if (!newlyFlushedMetadataList.isEmpty()) { 
-      for (ChunkGroupMetaData rowGroupMetaData : newlyFlushedMetadataList) { 
-        String deviceId = rowGroupMetaData.getDeviceID(); 
-        for (ChunkMetaData chunkMetaData : rowGroupMetaData.getChunkMetaDataList()) { 
+      for (int i = 0; i < newlyFlushedMetadataList.size(); i++) {
+        List<ChunkMetaData> rowGroupMetaData = newlyFlushedMetadataList.get(i);
+        String deviceId = newlyFlushedDeviceList.get(i);
+        for (ChunkMetaData chunkMetaData : rowGroupMetaData) { 
           String measurementId = chunkMetaData.getMeasurementUid(); 
           if (!metadatas.containsKey(deviceId)) {
             metadatas.put(deviceId, new HashMap<>()); 
@@ -164,7 +168,6 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       } 
     }
   }
-  */
    
   public boolean hasCrashed() {
     return crashed;
@@ -175,19 +178,21 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * of this method, or after the class instance is initialized if this is the
    * first time to call the method.
    *
-   * @return a list of ChunkGroupMetadata
+   * @return a list of ChunkMetadataList
    */
-  
-  /*
-  private List<ChunkGroupMetaData> getAppendedRowGroupMetadata() {
-    List<ChunkGroupMetaData> append = new ArrayList<>(); 
+  private Pair<List<String>, List<List<ChunkMetaData>>> getAppendedRowGroupMetadata() {
+    List<String> appendDevices = new ArrayList<>();
+    List<List<ChunkMetaData>> appendChunkGroupMetaDataList = new ArrayList<>();
     if (lastFlushedChunkGroupIndex < chunkGroupMetaDataList.size()) {
-      append.addAll(chunkGroupMetaDataList .subList(lastFlushedChunkGroupIndex, chunkGroupMetaDataList.size())); 
+      appendDevices.addAll(deviceList.subList(lastFlushedChunkGroupIndex, chunkGroupMetaDataList.size()));
+      appendChunkGroupMetaDataList.addAll(chunkGroupMetaDataList
+          .subList(lastFlushedChunkGroupIndex, chunkGroupMetaDataList.size())); 
       lastFlushedChunkGroupIndex = chunkGroupMetaDataList.size(); 
-    } 
+    }
+    Pair<List<String>, List<List<ChunkMetaData>>> append = 
+        new Pair<List<String>, List<List<ChunkMetaData>>>(appendDevices, appendChunkGroupMetaDataList);
     return append;
   }
-  */
 
   /**
    * Given a TsFile, generate a writable RestorableTsFileIOWriter. That is, for a
@@ -224,7 +229,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     return new RestorableTsFileIOWriter(file);
   }
 
-  public void addSchema(TimeseriesSchema schema) {
-    knownSchemas.put(schema.getMeasurementId(), schema);
+  public void addSchema(Path path, TimeseriesSchema schema) {
+    knownSchemas.put(path, schema);
   }
 }

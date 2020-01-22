@@ -42,7 +42,8 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -323,23 +324,23 @@ public class MTree implements Serializable {
    * Get ColumnSchema for given seriesPath. Notice: Path must be a complete Path from root to leaf
    * node.
    */
-  MeasurementSchema getSchemaForOnePath(String path) throws PathException {
+  TimeseriesSchema getSchemaForOnePath(String path) throws PathException {
     MNode leaf = getLeafByPath(path);
     return leaf.getSchema();
   }
 
-  MeasurementSchema getSchemaForOnePath(MNode node, String path) throws PathException {
+  TimeseriesSchema getSchemaForOnePath(MNode node, String path) throws PathException {
     MNode leaf = getLeafByPath(node, path);
     return leaf.getSchema();
   }
 
-  MeasurementSchema getSchemaForOnePathWithCheck(MNode node, String path)
+  TimeseriesSchema getSchemaForOnePathWithCheck(MNode node, String path)
       throws PathException {
     MNode leaf = getLeafByPathWithCheck(node, path);
     return leaf.getSchema();
   }
 
-  MeasurementSchema getSchemaForOnePathWithCheck(String path) throws PathException {
+  TimeseriesSchema getSchemaForOnePathWithCheck(String path) throws PathException {
     MNode leaf = getLeafByPathWithCheck(path);
     return leaf.getSchema();
   }
@@ -890,14 +891,14 @@ public class MTree implements Serializable {
    * @param path A seriesPath represented one Delta object
    * @return a list contains all column schema
    */
-  ArrayList<MeasurementSchema> getSchemaForOneType(String path) throws PathException {
+  ArrayList<TimeseriesSchema> getSchemaForOneType(String path) throws PathException {
     String[] nodes = MetaUtils.getNodeNames(path, PATH_SEPARATOR);
     if (nodes.length != 2 || !nodes[0].equals(getRoot().getName()) || !getRoot()
         .hasChild(nodes[1])) {
       throw new MTreePathException("Timeseries must be " + getRoot().getName()
           + ". X (X is one of the nodes of root's children)");
     }
-    HashMap<String, MeasurementSchema> leafMap = new HashMap<>();
+    HashMap<String, TimeseriesSchema> leafMap = new HashMap<>();
     putLeafToLeafMap(getRoot().getChild(nodes[1]), leafMap);
     return new ArrayList<>(leafMap.values());
   }
@@ -907,9 +908,9 @@ public class MTree implements Serializable {
    *
    * @return ArrayList<ColumnSchema> The list of the schema
    */
-  ArrayList<MeasurementSchema> getSchemaForOneStorageGroup(String path) {
+  ArrayList<TimeseriesSchema> getSchemaForOneStorageGroup(String path) {
     String[] nodes = MetaUtils.getNodeNames(path, PATH_SEPARATOR);
-    HashMap<String, MeasurementSchema> leafMap = new HashMap<>();
+    HashMap<String, TimeseriesSchema> leafMap = new HashMap<>();
     MNode cur = getRoot();
     for (int i = 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
@@ -922,14 +923,19 @@ public class MTree implements Serializable {
   /**
    * function for getting schema map for one storage group.
    */
-  Map<String, MeasurementSchema> getSchemaMapForOneStorageGroup(String path) {
+  Map<String, TimeseriesSchema> getSchemaMapForOneStorageGroup(String path) {
     String[] nodes = MetaUtils.getNodeNames(path, PATH_SEPARATOR);
     MNode cur = getRoot();
     for (int i = 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
     }
-    return cur.getSchemaMap();
+    HashMap<String, TimeseriesSchema> leafMap = new HashMap<>();
+    // cur is the storage group node
+    putLeafToLeafMapV2(cur, leafMap);
+    
+    return leafMap;
   }
+
 
   /**
    * function for getting num schema map for one file node.
@@ -943,7 +949,7 @@ public class MTree implements Serializable {
     return cur.getNumSchemaMap();
   }
 
-  private void putLeafToLeafMap(MNode node, HashMap<String, MeasurementSchema> leafMap) {
+  private void putLeafToLeafMap(MNode node, HashMap<String, TimeseriesSchema> leafMap) {
     if (node.isLeaf()) {
       if (!leafMap.containsKey(node.getName())) {
         leafMap.put(node.getName(), node.getSchema());
@@ -952,6 +958,18 @@ public class MTree implements Serializable {
     }
     for (MNode child : node.getChildren().values()) {
       putLeafToLeafMap(child, leafMap);
+    }
+  }
+  
+  private void putLeafToLeafMapV2(MNode node, HashMap<String, TimeseriesSchema> leafMap) {
+    if (node.isLeaf()) {
+      if (!leafMap.containsKey(node.getName())) {
+        leafMap.put(node.getFullPath(), node.getSchema());
+      }
+      return;
+    }
+    for (MNode child : node.getChildren().values()) {
+      putLeafToLeafMapV2(child, leafMap);
     }
   }
 
@@ -999,11 +1017,11 @@ public class MTree implements Serializable {
         String nodePath = parent + node;
         List<String> tsRow = new ArrayList<>(5);// get [name,storage group,resultDataType,encoding]
         tsRow.add(nodePath);
-        MeasurementSchema measurementSchema = node.getSchema();
+        TimeseriesSchema measurementSchema = node.getSchema();
         tsRow.add(node.getDataFileName());
         tsRow.add(measurementSchema.getType().toString());
         tsRow.add(measurementSchema.getEncodingType().toString());
-        tsRow.add(measurementSchema.getCompressor().toString());
+        tsRow.add(measurementSchema.getCompressionType().toString());
         res.add(tsRow);
       }
       return;
@@ -1061,7 +1079,7 @@ public class MTree implements Serializable {
     } else if (node.isLeaf()) {
       jsonObject.put("DataType", node.getSchema().getType());
       jsonObject.put("Encoding", node.getSchema().getEncodingType());
-      jsonObject.put("Compressor", node.getSchema().getCompressor());
+      jsonObject.put("Compressor", node.getSchema().getCompressionType());
       jsonObject.put("args", node.getSchema().getProps().toString());
       jsonObject.put("StorageGroup", node.getDataFileName());
     }

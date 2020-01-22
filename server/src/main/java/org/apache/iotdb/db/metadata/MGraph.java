@@ -34,7 +34,8 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 /**
  * Metadata Graph consists of one {@code MTree} and several {@code PTree}.
@@ -230,8 +231,8 @@ public class MGraph implements Serializable {
    *
    * @return a HashMap contains all distinct deviceId type separated by deviceId Type
    */
-  Map<String, List<MeasurementSchema>> getSchemaForAllType() throws PathException {
-    Map<String, List<MeasurementSchema>> res = new HashMap<>();
+  Map<String, List<TimeseriesSchema>> getSchemaForAllType() throws PathException {
+    Map<String, List<TimeseriesSchema>> res = new HashMap<>();
     List<String> typeList = mtree.getAllType();
     for (String type : typeList) {
       res.put(type, getSchemaForOneType("root." + type));
@@ -295,7 +296,7 @@ public class MGraph implements Serializable {
    * @param path A seriesPath represented one Delta object
    * @return a list contains all column schema
    */
-  ArrayList<MeasurementSchema> getSchemaForOneType(String path) throws PathException {
+  ArrayList<TimeseriesSchema> getSchemaForOneType(String path) throws PathException {
     return mtree.getSchemaForOneType(path);
   }
 
@@ -305,11 +306,11 @@ public class MGraph implements Serializable {
    * @param path the Path in a storage group
    * @return ArrayList<'   ColumnSchema   '> The list of the schema
    */
-  ArrayList<MeasurementSchema> getSchemaInOneStorageGroup(String path) {
+  ArrayList<TimeseriesSchema> getSchemaInOneStorageGroup(String path) {
     return mtree.getSchemaForOneStorageGroup(path);
   }
 
-  Map<String, MeasurementSchema> getSchemaMapForOneFileNode(String path) {
+  Map<String, TimeseriesSchema> getSchemaMapForOneFileNode(String path) {
     return mtree.getSchemaMapForOneStorageGroup(path);
   }
 
@@ -369,23 +370,23 @@ public class MGraph implements Serializable {
   }
 
   /**
-   * Get MeasurementSchema for given seriesPath. Notice: Path must be a complete Path from root to
+   * Get TimeseriesSchema for given seriesPath. Notice: Path must be a complete Path from root to
    * leaf node.
    */
-  MeasurementSchema getSchemaForOnePath(String path) throws PathException {
+  TimeseriesSchema getSchemaForOnePath(String path) throws PathException {
     return mtree.getSchemaForOnePath(path);
   }
 
-  MeasurementSchema getSchemaForOnePath(MNode node, String path) throws PathException {
+  TimeseriesSchema getSchemaForOnePath(MNode node, String path) throws PathException {
     return mtree.getSchemaForOnePath(node, path);
   }
 
-  MeasurementSchema getSchemaForOnePathWithCheck(MNode node, String path)
+  TimeseriesSchema getSchemaForOnePathWithCheck(MNode node, String path)
       throws PathException {
     return mtree.getSchemaForOnePathWithCheck(node, path);
   }
 
-  MeasurementSchema getSchemaForOnePathWithCheck(String path) throws PathException {
+  TimeseriesSchema getSchemaForOnePathWithCheck(String path) throws PathException {
     return mtree.getSchemaForOnePathWithCheck(path);
   }
 
@@ -416,4 +417,5 @@ public class MGraph implements Serializable {
     }
     return res;
   }
+
 }

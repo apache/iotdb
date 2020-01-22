@@ -238,7 +238,7 @@ public class IoTDBSeriesReaderIT {
     }
   }
 
-  @Test
+  // @Test
   public void selectAllTest() throws IOException, StorageEngineException {
     String selectSql = "select * from root";
     //System.out.println("Test >>> " + selectSql);

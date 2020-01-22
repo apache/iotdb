@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.util.List;
+import java.util.Map;
+
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 
 public class SchemaUtils {
@@ -36,9 +38,9 @@ public class SchemaUtils {
    * @throws WriteProcessException when the fileSchema cannot be created.
    */
   public static Schema constructSchema(String processorName) {
-    List<MeasurementSchema> columnSchemaList;
-    columnSchemaList = MManager.getInstance().getSchemaForStorageGroup(processorName);
-    return getSchemaFromColumnSchema(columnSchemaList);
+    Map<String, TimeseriesSchema> columnSchemaMap;
+    columnSchemaMap = MManager.getInstance().getStorageGroupSchemaMap(processorName);
+    return getSchemaFromColumnSchema(columnSchemaMap);
   }
 
   /**
@@ -47,10 +49,10 @@ public class SchemaUtils {
    * @param schemaList the schema of the columns in this file.
    * @return a Schema contains the provided schemas.
    */
-  public static Schema getSchemaFromColumnSchema(List<MeasurementSchema> schemaList) {
+  public static Schema getSchemaFromColumnSchema(Map<String, TimeseriesSchema> schemaMap) {
     Schema schema = new Schema();
-    for (MeasurementSchema measurementSchema : schemaList) {
-      schema.registerMeasurement(measurementSchema);
+    for (Map.Entry<String, TimeseriesSchema> entry : schemaMap.entrySet()) {
+      schema.registerTimeseries(new Path(entry.getKey()), entry.getValue());
     }
     return schema;
   }

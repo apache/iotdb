@@ -50,8 +50,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
@@ -88,8 +88,14 @@ public class SeqTsFileRecoverTest {
 
     schema = new Schema();
     for (int i = 0; i < 10; i++) {
-      schema.registerMeasurement(new MeasurementSchema("sensor" + i, TSDataType.INT64,
-          TSEncoding.PLAIN));
+      for (int j = 0; j < 10; j++) {
+        schema.registerTimeseries(new Path(("device" + i), ("sensor" + j)),
+            new TimeseriesSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN));
+      }
+    }
+    for (int j = 0; j < 10; j++) {
+      schema.registerTimeseries(new Path("device99", ("sensor" + j)),
+          new TimeseriesSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN));
     }
     writer = new TsFileWriter(tsF, schema);
 
@@ -127,6 +133,7 @@ public class SeqTsFileRecoverTest {
       }
       node.notifyStartFlush();
     }
+    
     resource = new TsFileResource(tsF);
   }
 

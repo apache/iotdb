@@ -38,10 +38,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -53,8 +54,8 @@ public class MergeUpgradeTest {
 
   private int seqFileNum = 2;
   private TSEncoding encoding = TSEncoding.RLE;
-  private MeasurementSchema[] measurementSchemas;
-  private int measurementNum = 5;
+  private TimeseriesSchema[] timeseriesSchemas;
+  private int timeseriesNum = 5;
   private long ptNum = 10;
   private boolean changeVersion = true;
   private String deviceName = "root.MergeUpgrade.device0";
@@ -104,9 +105,9 @@ public class MergeUpgradeTest {
   }
 
   private void prepareSeries() {
-    measurementSchemas = new MeasurementSchema[measurementNum];
-    for (int i = 0; i < measurementNum; i++) {
-      measurementSchemas[i] = new MeasurementSchema("sensor" + i, TSDataType.DOUBLE,
+    timeseriesSchemas = new TimeseriesSchema[timeseriesNum];
+    for (int i = 0; i < timeseriesNum; i++) {
+      timeseriesSchemas[i] = new TimeseriesSchema("sensor" + i, TSDataType.DOUBLE,
           encoding, CompressionType.UNCOMPRESSED);
     }
   }
@@ -144,14 +145,14 @@ public class MergeUpgradeTest {
 
   private void prepareData(TsFileResource tsFileResource, TsFileWriter fileWriter, long timeOffset,
       long ptNum, long valueOffset) throws WriteProcessException, IOException {
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
-      fileWriter.addMeasurement(measurementSchema);
+    for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
+      fileWriter.addTimeseries(new Path(deviceName, timeseriesSchema.getMeasurementId()), timeseriesSchema);
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       TSRecord record = new TSRecord(i, deviceName);
-      for (int k = 0; k < measurementNum; k++) {
-        record.addTuple(DataPoint.getDataPoint(measurementSchemas[k].getType(),
-            measurementSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
+      for (int k = 0; k < timeseriesNum; k++) {
+        record.addTuple(DataPoint.getDataPoint(timeseriesSchemas[k].getType(),
+            timeseriesSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
       }
       fileWriter.write(record);
       tsFileResource.updateStartTime(deviceName, i);

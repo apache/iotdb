@@ -69,6 +69,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   private EndianType endianType = EndianType.BIG_ENDIAN;
   private Set<String> cachedDevices;
   private Map<String, TimeseriesMetaData> cachedTimeseriesMetaDataMap;
+  private boolean cacheMetadata;
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the
@@ -104,17 +105,16 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
   
   // used in merge resource
-  /*
-  public TsFileSequenceReader(String file, boolean loadMetadata, boolean cacheDeviceMetadata) 
+  
+  // TODO: deviceMetadataMap
+  public TsFileSequenceReader(String file, boolean loadMetadata, boolean cacheMetadata) 
       throws IOException { 
     this(file, loadMetadata);
-    this.cacheDeviceMetadata = cacheDeviceMetadata; 
-    if (cacheDeviceMetadata) {
-      deviceMetadataMap = new HashMap<>(); 
+    this.cacheMetadata = cacheMetadata; 
+    if (cacheMetadata) {
+      cachedTimeseriesMetaDataMap = new HashMap<>(); 
     } 
   }
-  */
-   
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the
@@ -288,6 +288,17 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     return cachedTimeseriesMetaDataMap;
   }
+  
+  public List<ChunkMetaData> readChunkMetadataInDevice(String device) throws IOException {
+    if (tsFileMetaData == null) {
+      readFileMetadata();
+    }
+    if (tsFileMetaData.getDeviceOffsetsMap() == null) { 
+      return new ArrayList<>();
+    }
+    int[] deviceIndex = tsFileMetaData.getDeviceOffsetsMap().get(device);
+    return readChunkMetadataInDevice(deviceIndex[0], deviceIndex[1]);
+  }
 
   public List<ChunkMetaData> readChunkMetadataInDevice(int start, int end) throws IOException {
     if (tsFileMetaData == null) {
@@ -298,7 +309,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     long startOffsetOfChunkMetaDataList = 0;
     int numOfChunkMetaDatas = 0;
     int chunkMetaDataListDataSize = 0;
-    for (int i = start; i < end - 1; i++) {
+    for (int i = start; i < end; i++) {
       TimeseriesMetaData tsMetaData = TimeseriesMetaData
           .deserializeFrom(readData(tsOffsets[i], (int) (tsOffsets[i + 1] - tsOffsets[i])));
       if (tsMetaData != null) {
@@ -342,6 +353,24 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
     }
     return timeseriesMetaDataList;
+  }
+  
+  public List<Path> getAllPaths() throws IOException {
+    List<Path> paths = new ArrayList<>();
+    if (tsFileMetaData == null) {
+      readFileMetadata();
+    }
+    Map<String, int[]> deviceOffsetsMap = tsFileMetaData.getDeviceOffsetsMap();
+    for (Map.Entry<String, int[]> entry: deviceOffsetsMap.entrySet()) {
+      String deviceId = entry.getKey();
+      int[] deviceOffsets = entry.getValue();
+      List<TimeseriesMetaData> tsMetaDataList = 
+          readTimeseriesMetadataInDevice(deviceOffsets[0], deviceOffsets[1]);
+      for (TimeseriesMetaData tsMetaData : tsMetaDataList) {
+        paths.add(new Path(deviceId, tsMetaData.getMeasurementId()));
+      }
+    }
+    return paths;
   }
 
   /**
@@ -566,7 +595,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    *         the file should be truncated.
    */
 
-  public long selfCheck(Map<String, TimeseriesSchema> newSchema, boolean fastFinish) throws IOException {
+  public long selfCheck(Map<Path, TimeseriesSchema> newSchema, boolean fastFinish) throws IOException {
     File checkFile = FSFactoryProducer.getFSFactory().getFile(this.file);
     long fileSize;
     if (!checkFile.exists()) {
@@ -583,7 +612,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     String deviceID;
     long startOffsetOfChunkGroup = 0;
     long endOffsetOfChunkGroup;
-    // long versionOfChunkGroup = 0;
 
     if (fileSize < TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
         .getBytes().length) {
@@ -609,6 +637,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     boolean goon = true;
     byte marker;
     int chunkCnt = 0;
+    List<TimeseriesSchema> timeseriesSchemaList = new ArrayList<>();
     try {
       while (goon && (marker = this.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
@@ -625,10 +654,9 @@ public class TsFileSequenceReader implements AutoCloseable {
           // insertion is not tolerable
           ChunkHeader header = this.readChunkHeader();
           measurementID = header.getMeasurementID();
-          if (newSchema != null) {
-            newSchema.putIfAbsent(measurementID, new TimeseriesSchema(measurementID, header.getDataType(),
-                header.getEncodingType(), header.getCompressionType()));
-          }
+          TimeseriesSchema timeseriesSchema = new TimeseriesSchema(measurementID, header.getDataType(),
+              header.getEncodingType(), header.getCompressionType());
+          timeseriesSchemaList.add(timeseriesSchema);
           dataType = header.getDataType();
           Statistics<?> chunkStatistics = Statistics.getStatsByType(dataType);
           if (header.getNumOfPages() > 0) {
@@ -658,12 +686,18 @@ public class TsFileSequenceReader implements AutoCloseable {
           // because we can not guarantee the correctness of the deviceId.
           ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
           deviceID = chunkGroupFooter.getDeviceID();
+          if (newSchema != null) {
+            for (TimeseriesSchema tsSchema : timeseriesSchemaList) {
+              newSchema.putIfAbsent(new Path(deviceID, tsSchema.getMeasurementId()), tsSchema);
+            }
+          }
           endOffsetOfChunkGroup = this.position();
           newChunkGroup = true;
           truncatedPosition = this.position();
 
           totalChunkNum += chunkCnt;
           chunkCnt = 0;
+          timeseriesSchemaList = new ArrayList<>();
           break;
         default:
           // the disk file is corrupted, using this file may be dangerous

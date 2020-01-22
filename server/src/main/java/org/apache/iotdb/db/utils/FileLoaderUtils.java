@@ -21,10 +21,7 @@ package org.apache.iotdb.db.utils;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
@@ -50,17 +47,12 @@ public class FileLoaderUtils {
 
   public static void updateTsFileResource(TsFileMetaData metaData, TsFileSequenceReader reader,
       TsFileResource tsFileResource) throws IOException {
-    for (TsDeviceMetadataIndex index : metaData.getDeviceMap().values()) {
-      TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
-      List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata
-          .getChunkGroupMetaDataList();
-      for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
-        for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-          tsFileResource.updateStartTime(chunkGroupMetaData.getDeviceID(),
-              chunkMetaData.getStartTime());
-          tsFileResource
-              .updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
-        }
+    for (String device : metaData.getDeviceOffsetsMap().keySet()) {
+      List<ChunkMetaData> chunkMetadataListInOneDevice = reader
+          .readChunkMetadataInDevice(device);
+      for (ChunkMetaData chunkMetaData : chunkMetadataListInOneDevice) {
+        tsFileResource.updateStartTime(device, chunkMetaData.getStartTime());
+        tsFileResource.updateEndTime(device, chunkMetaData.getEndTime());
       }
     }
   }

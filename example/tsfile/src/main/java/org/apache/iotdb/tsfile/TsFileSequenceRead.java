@@ -21,7 +21,7 @@ package org.apache.iotdb.tsfile;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -29,10 +29,7 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -88,7 +85,7 @@ public class TsFileSequenceRead {
                 defaultTimeDecoder, null);
             BatchData batchData = reader1.getAllSatisfiedPageData();
             while (batchData.hasCurrent()) {
-              System.out.println(
+               System.out.println(
                   "\t\t\ttime, value: " + batchData.currentTime() + ", " + batchData
                       .currentValue());
               batchData.next();
@@ -105,21 +102,16 @@ public class TsFileSequenceRead {
       }
     }
     System.out.println("[Metadata]");
-    List<TsDeviceMetadataIndex> deviceMetadataIndexList = metaData.getDeviceMap().values().stream()
-        .sorted((x, y) -> (int) (x.getOffset() - y.getOffset())).collect(Collectors.toList());
-    for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
-      TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
-      List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
-      for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
-        System.out.println(String
-            .format("\t[Device]File Offset: %d, Device %s, Number of Chunk Groups %d",
-                index.getOffset(), chunkGroupMetaData.getDeviceID(),
-                chunkGroupMetaDataList.size()));
-
-        for (ChunkMetaData chunkMetadata : chunkGroupMetaData.getChunkMetaDataList()) {
-          System.out.println("\t\tMeasurement:" + chunkMetadata.getMeasurementUid());
-          System.out.println("\t\tFile offset:" + chunkMetadata.getOffsetOfChunkHeader());
-        }
+    Map<String, int[]> deviceOffsetsMap = metaData.getDeviceOffsetsMap();
+    for (Map.Entry<String, int[]>  entry: deviceOffsetsMap.entrySet()) {
+      String deviceId = entry.getKey();
+      List<ChunkMetaData> chunkMetadataList = 
+          reader.readChunkMetadataInDevice(entry.getValue()[0], entry.getValue()[1]);
+      System.out.println(String
+          .format("\t[Device]Device %s, Number of Chunk %d", deviceId, chunkMetadataList.size()));
+      for (ChunkMetaData chunkMetadata : chunkMetadataList) {
+        System.out.println("\t\tMeasurement:" + chunkMetadata.getMeasurementUid());
+        System.out.println("\t\tFile offset:" + chunkMetadata.getOffsetOfChunkHeader());
       }
     }
     reader.close();

@@ -53,7 +53,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -65,7 +64,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import java.io.File;
@@ -187,10 +186,9 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
             String.format("Cannot load file %s because the file has crashed.",
                 file.getAbsolutePath()));
       }
-      Map<String, MeasurementSchema> schemaMap = new HashMap<>();
-      List<ChunkGroupMetaData> chunkGroupMetaData = new ArrayList<>();
+      Map<Path, TimeseriesSchema> schemaMap = new HashMap<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
-        reader.selfCheck(schemaMap, chunkGroupMetaData, false);
+        reader.selfCheck(schemaMap, false);
       }
 
       FileLoaderUtils.checkTsFileResource(tsFileResource);
@@ -203,7 +201,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
       //create schemas if they doesn't exist
       if (plan.isAutoCreateSchema()) {
-        createSchemaAutomatically(chunkGroupMetaData, schemaMap, plan.getSgLevel());
+        createSchemaAutomatically(schemaMap, plan.getSgLevel());
       }
 
       StorageEngine.getInstance().loadNewTsFile(tsFileResource);
@@ -213,25 +211,25 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
   }
 
-  private void createSchemaAutomatically(List<ChunkGroupMetaData> chunkGroupMetaDatas,
-      Map<String, MeasurementSchema> knownSchemas, int sgLevel)
+  private void createSchemaAutomatically(Map<Path, TimeseriesSchema> knownSchemas, int sgLevel)
       throws CacheException, QueryProcessException, MetadataException, StorageEngineException {
-    if (chunkGroupMetaDatas.isEmpty()) {
+    if (knownSchemas.isEmpty()) {
       return;
     }
-    for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDatas) {
-      String device = chunkGroupMetaData.getDeviceID();
-      MNode node = mManager.getNodeByPathFromCache(device, true, sgLevel);
-      for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-        String fullPath =
-            device + IoTDBConstant.PATH_SEPARATOR + chunkMetaData.getMeasurementUid();
-        MeasurementSchema schema = knownSchemas.get(chunkMetaData.getMeasurementUid());
+    Set<String> devices = new HashSet<>();
+    for (Map.Entry<Path, TimeseriesSchema> entry : knownSchemas.entrySet()) {
+      Path fullPath = entry.getKey();
+      String device = fullPath.getDevice();
+      if (!devices.contains(device)) {
+        devices.add(device);
+        MNode node = mManager.getNodeByPathFromCache(device, true, sgLevel);
+        TimeseriesSchema schema = knownSchemas.get(fullPath);
         if (schema == null) {
           throw new MetadataException(String
-              .format("Can not get the schema of measurement [%s]",
-                  chunkMetaData.getMeasurementUid()));
+              .format("Can not get the schema of timeseries [%s]",
+                  fullPath.toString()));
         }
-        checkPathExists(node, fullPath, schema, true);
+        checkPathExists(node, fullPath.toString(), schema, true);
       }
     }
   }
@@ -382,7 +380,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return measurementNode;
   }
 
-  private void checkPathExists(MNode node, String fullPath, MeasurementSchema schema,
+  private void checkPathExists(MNode node, String fullPath, TimeseriesSchema schema,
       boolean autoCreateSchema)
       throws QueryProcessException, StorageEngineException, MetadataException {
     // check if timeseries exists
@@ -394,7 +392,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       }
       try {
         addPathToMTree(fullPath, schema.getType(), schema.getEncodingType(),
-            schema.getCompressor());
+            schema.getCompressionType());
       } catch (MetadataException e) {
         if (!e.getMessage().contains("already exist")) {
           throw e;

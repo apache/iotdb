@@ -40,7 +40,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -167,19 +166,19 @@ public class TsFileProcessorTest {
     assertEquals(dataType, right.get(0).getDataType());
 
     RestorableTsFileIOWriter tsFileIOWriter = processor.getWriter();
-    List<ChunkGroupMetaData> chunkGroupMetaDataList = tsFileIOWriter.getChunkGroupMetaDatas();
+    List<List<ChunkMetaData>> chunkMetaDataListInChunkGroups = 
+        tsFileIOWriter.getChunkMetadataListInChunkGroup();
     RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(
         SystemFileFactory.INSTANCE.getFile(filePath));
-    List<ChunkGroupMetaData> restoredChunkGroupMetaDataList = restorableTsFileIOWriter
-        .getChunkGroupMetaDatas();
-    assertEquals(chunkGroupMetaDataList.size(), restoredChunkGroupMetaDataList.size());
-    for (int i = 0; i < chunkGroupMetaDataList.size(); i++) {
-      ChunkGroupMetaData chunkGroupMetaData = chunkGroupMetaDataList.get(i);
-      ChunkGroupMetaData chunkGroupMetaDataRestore = restoredChunkGroupMetaDataList.get(i);
-      for (int j = 0; j < chunkGroupMetaData.getChunkMetaDataList().size(); j++) {
-        ChunkMetaData chunkMetaData = chunkGroupMetaData.getChunkMetaDataList().get(j);
-        ChunkMetaData chunkMetaDataRestore = chunkGroupMetaDataRestore.getChunkMetaDataList()
-            .get(j);
+    List<List<ChunkMetaData>> restoredChunkMetaDataListInChunkGroups = restorableTsFileIOWriter
+        .getChunkMetadataListInChunkGroup();
+    assertEquals(chunkMetaDataListInChunkGroups.size(), restoredChunkMetaDataListInChunkGroups.size());
+    for (int i = 0; i < chunkMetaDataListInChunkGroups.size(); i++) {
+      List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkMetaDataListInChunkGroups.get(i);
+      List<ChunkMetaData> chunkMetaDataListInOneChunkGroupRestore = restoredChunkMetaDataListInChunkGroups.get(i);
+      for (int j = 0; j < chunkMetaDataListInOneChunkGroup.size(); j++) {
+        ChunkMetaData chunkMetaData = chunkMetaDataListInOneChunkGroup.get(j);
+        ChunkMetaData chunkMetaDataRestore = chunkMetaDataListInOneChunkGroupRestore.get(j);
         assertEquals(chunkMetaData, chunkMetaDataRestore);
       }
     }

@@ -22,6 +22,7 @@ import java.io.File;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -29,7 +30,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 /**
  * Write an example TsFile as shown in README.
@@ -45,11 +46,17 @@ public class TsFileExample {
 
     // add measurements into file schema
     tsFileWriter
-        .addMeasurement(new MeasurementSchema("status", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+        .addTimeseries(new Path("root.ln.wf01.wt01", "status"), 
+            new TimeseriesSchema("status", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     tsFileWriter
-        .addMeasurement(new MeasurementSchema("temperature", TSDataType.FLOAT, TSEncoding.RLE));
+        .addTimeseries(new Path("root.ln.wf01.wt01", "temperature"), 
+            new TimeseriesSchema("temperature", TSDataType.FLOAT, TSEncoding.RLE));
     tsFileWriter
-        .addMeasurement(new MeasurementSchema("hardware", TSDataType.TEXT, TSEncoding.PLAIN));
+        .addTimeseries(new Path("root.ln.wf02.wt02", "temperature"), 
+            new TimeseriesSchema("temperature", TSDataType.FLOAT, TSEncoding.RLE));
+    tsFileWriter
+        .addTimeseries(new Path("root.ln.wf02.wt02", "hardware"), 
+            new TimeseriesSchema("hardware", TSDataType.TEXT, TSEncoding.PLAIN));
 
     // construct TSRecord
     TSRecord tsRecord = new TSRecord(1, "root.ln.wf01.wt01");

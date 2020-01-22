@@ -145,9 +145,7 @@ public class TsFileWriter implements AutoCloseable {
     }
   }
 
-  /**
-   * add a measurementSchema to this TsFile.
-   */
+  // TODO: device Template
   public void addDeviceTemplates(Map<String, TimeseriesSchema> template) throws WriteProcessException {
 
   }

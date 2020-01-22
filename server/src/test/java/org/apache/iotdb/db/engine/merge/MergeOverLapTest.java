@@ -42,7 +42,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -105,15 +105,18 @@ public class MergeOverLapTest extends MergeTest {
       long valueOffset)
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
-      fileWriter.addMeasurement(measurementSchema);
+    for (String deviceId : deviceIds) {
+      for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
+        fileWriter.addTimeseries(
+            new Path(deviceId, timeseriesSchema.getMeasurementId()), timeseriesSchema);
+      }
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (int j = 0; j < deviceNum; j++) {
         TSRecord record = new TSRecord(i, deviceIds[j]);
         for (int k = 0; k < measurementNum; k++) {
-          record.addTuple(DataPoint.getDataPoint(measurementSchemas[k].getType(),
-              measurementSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
+          record.addTuple(DataPoint.getDataPoint(timeseriesSchemas[k].getType(),
+              timeseriesSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
         }
         fileWriter.write(record);
         tsFileResource.updateStartTime(deviceIds[j], i);
@@ -124,8 +127,8 @@ public class MergeOverLapTest extends MergeTest {
         for (int j = 0; j < deviceNum; j++) {
           TSRecord record = new TSRecord(i, deviceIds[j]);
           for (int k = 0; k < measurementNum; k++) {
-            record.addTuple(DataPoint.getDataPoint(measurementSchemas[k].getType(),
-                measurementSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
+            record.addTuple(DataPoint.getDataPoint(timeseriesSchemas[k].getType(),
+                timeseriesSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
           }
           fileWriter.write(record);
           tsFileResource.updateStartTime(deviceIds[j], i);
@@ -147,7 +150,7 @@ public class MergeOverLapTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    Path path = new Path(deviceIds[0], timeseriesSchemas[0].getMeasurementId());
     SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
         Collections.singletonList(seqResources.get(0)),
         null, context);

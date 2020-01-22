@@ -54,7 +54,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -320,7 +320,7 @@ public class MManager {
         throw new MetadataException(e);
       }
       // the two map is stored in the storage group node
-      Map<String, MeasurementSchema> schemaMap = getStorageGroupSchemaMap(fileNodePath);
+      Map<String, TimeseriesSchema> schemaMap = getStorageGroupSchemaMap(fileNodePath);
       Map<String, Integer> numSchemaMap = getStorageGroupNumSchemaMap(fileNodePath);
       String lastNode = path.getMeasurement();
       boolean isNewMeasurement = true;
@@ -332,10 +332,10 @@ public class MManager {
         }
         if (schemaMap.containsKey(lastNode)) {
           isNewMeasurement = false;
-          MeasurementSchema columnSchema = schemaMap.get(lastNode);
+          TimeseriesSchema columnSchema = schemaMap.get(lastNode);
           if (!columnSchema.getType().equals(dataType)
               || !columnSchema.getEncodingType().equals(encoding)
-              || !columnSchema.getCompressor().equals(compressor)) {
+              || !columnSchema.getCompressionType().equals(compressor)) {
             throw new MetadataException(String.format(
                 "The resultDataType or encoding or compression of the last node %s is conflicting "
                     + "in the storage group %s", lastNode, fileNodePath));
@@ -356,7 +356,7 @@ public class MManager {
           } catch (IOException e) {
             throw new MetadataException(e.getMessage());
           }
-          MeasurementSchema columnSchema;
+          TimeseriesSchema columnSchema;
           try {
             columnSchema = getSchemaForOnePath(path.toString());
           } catch (PathException e) {
@@ -523,7 +523,7 @@ public class MManager {
     }
     String emptiedStorageGroup;
     // the two maps are stored in the storage group node
-    Map<String, MeasurementSchema> schemaMap = getStorageGroupSchemaMap(storageGroupName);
+    Map<String, TimeseriesSchema> schemaMap = getStorageGroupSchemaMap(storageGroupName);
     Map<String, Integer> numSchemaMap = getStorageGroupNumSchemaMap(storageGroupName);
     // Thread safety: just one thread can access/modify the schemaMap
     synchronized (schemaMap) {
@@ -840,7 +840,7 @@ public class MManager {
    */
   // future feature
   @SuppressWarnings("unused")
-  public Map<String, List<MeasurementSchema>> getSchemaForAllType() throws PathException {
+  public Map<String, List<TimeseriesSchema>> getSchemaForAllType() throws PathException {
 
     lock.readLock().lock();
     try {
@@ -916,7 +916,7 @@ public class MManager {
    * @deprecated Get all MeasurementSchemas for given delta object type.
    */
   @Deprecated
-  public List<MeasurementSchema> getSchemaForOneType(String path) throws PathException {
+  public List<TimeseriesSchema> getSchemaForOneType(String path) throws PathException {
     lock.readLock().lock();
     try {
       return mgraph.getSchemaForOneType(path);
@@ -926,9 +926,9 @@ public class MManager {
   }
 
   /**
-   * Get all MeasurementSchemas for the storage group seriesPath.
+   * Get all TimeseriesSchemas for the storage group seriesPath.
    */
-  public List<MeasurementSchema> getSchemaForStorageGroup(String path) {
+  public List<TimeseriesSchema> getSchemaForStorageGroup(String path) {
     lock.readLock().lock();
     try {
       return mgraph.getSchemaInOneStorageGroup(path);
@@ -940,7 +940,7 @@ public class MManager {
   /**
    * function for getting schema map for one file node.
    */
-  private Map<String, MeasurementSchema> getStorageGroupSchemaMap(String path) {
+  public Map<String, TimeseriesSchema> getStorageGroupSchemaMap(String path) {
 
     lock.readLock().lock();
     try {
@@ -1233,10 +1233,10 @@ public class MManager {
   }
 
   /**
-   * Get MeasurementSchema for given seriesPath. Notice: Path must be a complete Path from root to
+   * Get TimeseriesSchema for given seriesPath. Notice: Path must be a complete Path from root to
    * leaf node.
    */
-  private MeasurementSchema getSchemaForOnePath(String path) throws PathException {
+  private TimeseriesSchema getSchemaForOnePath(String path) throws PathException {
 
     lock.readLock().lock();
     try {
@@ -1249,7 +1249,7 @@ public class MManager {
   /**
    * function for getting schema for one path.
    */
-  private MeasurementSchema getSchemaForOnePath(MNode node, String path) throws PathException {
+  private TimeseriesSchema getSchemaForOnePath(MNode node, String path) throws PathException {
 
     lock.readLock().lock();
     try {
@@ -1262,7 +1262,7 @@ public class MManager {
   /**
    * function for getting schema for one path with check.
    */
-  private MeasurementSchema getSchemaForOnePathWithCheck(MNode node, String path)
+  private TimeseriesSchema getSchemaForOnePathWithCheck(MNode node, String path)
       throws PathException {
 
     lock.readLock().lock();
@@ -1276,7 +1276,7 @@ public class MManager {
   /**
    * function for getting schema for one path with check.
    */
-  private MeasurementSchema getSchemaForOnePathWithCheck(String path) throws PathException {
+  private TimeseriesSchema getSchemaForOnePathWithCheck(String path) throws PathException {
 
     lock.readLock().lock();
     try {

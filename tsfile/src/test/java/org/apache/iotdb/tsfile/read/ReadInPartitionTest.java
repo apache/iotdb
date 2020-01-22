@@ -79,8 +79,12 @@ public class ReadInPartitionTest {
       // get a series of [startTime, endTime] of d1.s6 from the chunkGroupMetaData of
       // d1
       d1s6timeRangeList.add(new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
+      long[] startEndOffsets = new long[2];
+      startEndOffsets[0] = chunkMetaData.getOffsetOfChunkHeader();
+      startEndOffsets[1] = chunkMetaData.getOffsetOfChunkHeader() + 30;
+      d1chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
-    // d1chunkGroupMetaDataOffsetList.add(reader.readFileMetadata().getDeviceOffsetsMap().get("d1"));
+    
     List<ChunkMetaData> d2s1List = reader.getChunkMetadataList(new Path("d2.s1"));
     for (ChunkMetaData chunkMetaData : d2s1List) {
       d2s1timeRangeList.add(new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
@@ -151,7 +155,6 @@ public class ReadInPartitionTest {
         d1chunkGroupMetaDataOffsetList.get(0)[1]);
     // get the transformed expression
     IExpression transformedExpression = queryExpression.getExpression();
-    System.out.println(transformedExpression);
 
     // test the transformed expression
     Assert.assertEquals(ExpressionType.GLOBAL_TIME, transformedExpression.getType());

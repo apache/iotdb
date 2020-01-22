@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
@@ -33,7 +34,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,9 +111,9 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logFiles(resource);
 
-    List<MeasurementSchema> measurementSchemas = MManager.getInstance()
-        .getSchemaForStorageGroup(storageGroupName);
-    resource.addMeasurements(measurementSchemas);
+    Map<String, TimeseriesSchema> timeseriesSchemasMap = MManager.getInstance()
+        .getStorageGroupSchemaMap(storageGroupName);
+    resource.addTimeseriesSchemaMap(timeseriesSchemasMap);
 
     List<String> storageGroupPaths = MManager.getInstance().getPaths(storageGroupName + ".*");
     List<Path> unmergedSeries = new ArrayList<>();

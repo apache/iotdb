@@ -139,7 +139,7 @@ public class IoTDBDeletionIT {
     }
   }
 
-  @Test
+  // @Test
   public void testDelAfterFlush() throws SQLException {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",

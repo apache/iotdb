@@ -38,7 +38,6 @@ import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -142,12 +141,16 @@ class MergeFileTask {
       newFileWriter.close();
       try (TsFileSequenceReader newFileReader =
           new TsFileSequenceReader(newFileWriter.getFile().getPath())) {
-        List<ChunkGroupMetaData> chunkGroupMetadataList = newFileWriter.getChunkGroupMetaDatas();
+        List<List<ChunkMetaData>> chunkMetadataListInChunkGroups = newFileWriter
+            .getChunkMetadataListInChunkGroup();
+        List<String> devices = newFileWriter.getDeviceList();
         if (logger.isDebugEnabled()) {
-          logger.debug("{} find {} merged chunk groups", taskName, chunkGroupMetadataList.size());
+          logger.debug("{} find {} merged chunk groups", taskName, chunkMetadataListInChunkGroups.size());
         }
-        for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetadataList) {
-          writeMergedChunkGroup(chunkGroupMetaData, newFileReader, oldFileWriter);
+        for (int i = 0; i < chunkMetadataListInChunkGroups.size(); i++) {
+          List<ChunkMetaData> chunkMetaDataList = chunkMetadataListInChunkGroups.get(i);
+          String deviceId = devices.get(i);
+          writeMergedChunkGroup(chunkMetaDataList, deviceId, newFileReader, oldFileWriter);
         }
       }
       oldFileWriter.endFile(new Schema(newFileWriter.getKnownSchema()));
@@ -184,12 +187,13 @@ class MergeFileTask {
     seqFile.setHistoricalVersions(newHistoricalVersions);
   }
 
-  private void writeMergedChunkGroup(ChunkGroupMetaData chunkGroupMetaData,
+  private void writeMergedChunkGroup(List<ChunkMetaData> chunkMetaDataList, String device,
       TsFileSequenceReader reader, TsFileIOWriter fileWriter)
       throws IOException {
-    fileWriter.startChunkGroup(chunkGroupMetaData.getDeviceID());
-    long version = chunkGroupMetaData.getVersion();
-    for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+    fileWriter.startChunkGroup(device);
+    // long version = chunkGroupMetaData.getVersion();
+    long version = 0;
+    for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       fileWriter.writeChunk(chunk, chunkMetaData);
       context.incTotalPointWritten(chunkMetaData.getNumOfPoints());

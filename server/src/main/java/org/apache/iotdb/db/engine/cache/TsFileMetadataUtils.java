@@ -27,10 +27,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -57,66 +54,27 @@ public class TsFileMetadataUtils {
   }
 
   /**
-   * get row group block meta data.
-   *
-   * @param resource -TsFile
-   * @param seriesPath -series path
-   * @param fileMetaData -tsfile meta data
-   * @return -device meta data
-   */
-  public static TsDeviceMetadata getTsDeviceMetaData(TsFileResource resource, Path seriesPath,
-      TsFileMetaData fileMetaData) throws IOException {
-    if (!fileMetaData.getMeasurementSchema().containsKey(seriesPath.getMeasurement())) {
-      return null;
-    } else {
-      // get the index information of TsDeviceMetadata
-      TsDeviceMetadataIndex index = fileMetaData.getDeviceMetadataIndex(seriesPath.getDevice());
-      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource, true);
-      // read TsDeviceMetadata from file
-      return tsFileReader.readTsDeviceMetaData(index);
-    }
-  }
-
-  /**
    * get ChunkMetaData List of measurements in sensorSet included in all ChunkGroups of this device. If
    * sensorSet is empty, then return metadata of all sensor included in this device.
+   * @throws IOException 
    */
   public static Map<Path, List<ChunkMetaData>> getChunkMetaDataList(
-      Set<String> sensorSet, TsDeviceMetadata tsDeviceMetadata) {
+      Set<String> sensorSet, String deviceId, TsFileResource resource) throws IOException {
     Map<Path, List<ChunkMetaData>> pathToChunkMetaDataList = new ConcurrentHashMap<>();
-    for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
-      List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
-          .getChunkMetaDataList();
-      String deviceId = chunkGroupMetaData.getDeviceID();
-      for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
-        if (sensorSet.isEmpty() || sensorSet.contains(chunkMetaData.getMeasurementUid())) {
-          Path path = new Path(deviceId, chunkMetaData.getMeasurementUid());
-          pathToChunkMetaDataList.putIfAbsent(path, new ArrayList<>());
-          chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
-          pathToChunkMetaDataList.get(path).add(chunkMetaData);
-        }
+    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource, true);
+    List<ChunkMetaData> chunkMetaDataListInOneDevice = tsFileReader
+        .readChunkMetadataInDevice(deviceId);
+    for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneDevice) {
+      if (sensorSet.isEmpty() || sensorSet.contains(chunkMetaData.getMeasurementUid())) {
+        Path path = new Path(deviceId, chunkMetaData.getMeasurementUid());
+        pathToChunkMetaDataList.putIfAbsent(path, new ArrayList<>());
+        // chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
+        pathToChunkMetaDataList.get(path).add(chunkMetaData);
       }
     }
     for (List<ChunkMetaData> chunkMetaDataList : pathToChunkMetaDataList.values()) {
       chunkMetaDataList.sort(Comparator.comparingLong(ChunkMetaData::getStartTime));
     }
     return pathToChunkMetaDataList;
-  }
-
-  public static List<ChunkMetaData> getChunkMetaDataList(String sensor,
-      TsDeviceMetadata tsDeviceMetadata) {
-    List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
-    for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
-      List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
-          .getChunkMetaDataList();
-
-      for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
-        if (sensor.equals(chunkMetaData.getMeasurementUid())) {
-          chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
-          chunkMetaDataList.add(chunkMetaData);
-        }
-      }
-    }
-    return chunkMetaDataList;
   }
 }

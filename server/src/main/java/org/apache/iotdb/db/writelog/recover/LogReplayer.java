@@ -174,7 +174,9 @@ public class LogReplayer {
     String[] measurementList = insertPlan.getMeasurements();
     TSDataType[] dataTypes = new TSDataType[measurementList.length];
     for (int i = 0; i < measurementList.length; i++) {
-      dataTypes[i] = schema.getMeasurementDataType(measurementList[i]);
+      Path path = new Path(insertPlan.getDeviceId(), measurementList[i]);
+      
+      dataTypes[i] = schema.getTimeseriesDataType(path);
     }
     insertPlan.setDataTypes(dataTypes);
     try {
