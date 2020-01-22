@@ -50,7 +50,7 @@ import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
-public abstract class AbstractDataReader {
+public abstract class AbstractSeriesReader {
 
   private final Path seriesPath;
   private final TSDataType dataType;
@@ -80,7 +80,7 @@ public abstract class AbstractDataReader {
   private long currentPageEndTime = Long.MAX_VALUE;
 
 
-  public AbstractDataReader(Path seriesPath, TSDataType dataType, QueryContext context,
+  public AbstractSeriesReader(Path seriesPath, TSDataType dataType, QueryContext context,
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seriesPath = seriesPath;
     this.dataType = dataType;
@@ -146,7 +146,7 @@ public abstract class AbstractDataReader {
     return firstChunkMetaData.getStatistics();
   }
 
-  public void skipChunkData() {
+  public void skipCurrentChunk() {
     hasCachedFirstChunkMetadata = false;
     firstChunkMetaData = null;
   }
@@ -201,7 +201,7 @@ public abstract class AbstractDataReader {
     return overlappedPageReaders.peek().data.getStatistics();
   }
 
-  public void skipPageData() {
+  public void skipCurrentPage() {
     overlappedPageReaders.poll();
   }
 

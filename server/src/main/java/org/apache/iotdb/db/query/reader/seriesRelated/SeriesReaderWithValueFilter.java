@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -31,14 +30,14 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.io.IOException;
 
 
-public class SeriesDataReaderWithValueFilter extends SeriesDataReaderWithoutValueFilter {
+public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter {
 
   private final Filter valueFilter;
   private boolean hasCachedTimeValuePair;
   private BatchData batchData;
   private TimeValuePair timeValuePair;
 
-  public SeriesDataReaderWithValueFilter(Path seriesPath, TSDataType dataType, Filter valueFilter,
+  public SeriesReaderWithValueFilter(Path seriesPath, TSDataType dataType, Filter valueFilter,
       QueryContext context, QueryDataSource dataSource) {
     super(seriesPath, dataType, null, context, dataSource);
     this.valueFilter = valueFilter;

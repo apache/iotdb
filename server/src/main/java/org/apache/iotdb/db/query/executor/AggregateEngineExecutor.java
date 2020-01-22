@@ -32,8 +32,8 @@ import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -103,7 +103,7 @@ public class AggregateEngineExecutor {
         .getAggrResultByName(aggres.get(i), tsDataType);
 
     // construct series reader without value filter
-    IAggregateReader seriesReader = new SeriesDataReaderWithoutValueFilter(
+    IAggregateReader seriesReader = new SeriesReaderWithoutValueFilter(
         selectedSeries.get(i), tsDataType, timeFilter, context,
         QueryResourceManager.getInstance()
             .getQueryDataSource(selectedSeries.get(i), context, timeFilter));
@@ -115,7 +115,7 @@ public class AggregateEngineExecutor {
         if (aggregateResult.isCalculatedAggregationResult()) {
           return aggregateResult;
         }
-        seriesReader.skipChunkData();
+        seriesReader.skipCurrentChunk();
         continue;
       }
       while (seriesReader.hasNextPage()) {
@@ -126,7 +126,7 @@ public class AggregateEngineExecutor {
           if (aggregateResult.isCalculatedAggregationResult()) {
             return aggregateResult;
           }
-          seriesReader.skipPageData();
+          seriesReader.skipCurrentPage();
           continue;
         }
         //cal by pagedata
@@ -154,7 +154,7 @@ public class AggregateEngineExecutor {
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       Path path = selectedSeries.get(i);
-      SeriesDataReaderByTimestamp seriesReaderByTimestamp = new SeriesDataReaderByTimestamp(path,
+      SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path,
           dataTypes.get(i), context,
           QueryResourceManager.getInstance().getQueryDataSource(path, context, null));
       readersOfSelectedSeries.add(seriesReaderByTimestamp);

@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.io.IOException;
-import java.util.Objects;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
@@ -32,13 +31,13 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 
 
-public class SeriesDataReaderByTimestamp extends AbstractDataReader implements
+public class SeriesReaderByTimestamp extends AbstractSeriesReader implements
     IReaderByTimestamp {
 
   private BatchData batchData;
   private UnaryFilter<Long> filter = TimeFilter.gtEq(Long.MIN_VALUE);
 
-  public SeriesDataReaderByTimestamp(Path seriesPath, TSDataType dataType, QueryContext context,
+  public SeriesReaderByTimestamp(Path seriesPath, TSDataType dataType, QueryContext context,
       QueryDataSource dataSource) {
     super(seriesPath, dataType, context, dataSource.getSeqResources(),
         dataSource.getUnseqResources());
@@ -64,12 +63,12 @@ public class SeriesDataReaderByTimestamp extends AbstractDataReader implements
   private boolean hasNext(long timestamp) throws IOException {
     while (super.hasNextChunk()) {
       if (!satisfyFilter(currentChunkStatistics())) {
-        skipChunkData();
+        skipCurrentChunk();
         continue;
       }
       while (super.hasNextPage()) {
         if (!satisfyFilter(currentPageStatistics())) {
-          skipPageData();
+          skipCurrentPage();
           continue;
         }
         if (!isPageOverlapped()) {

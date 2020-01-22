@@ -31,7 +31,7 @@ import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.IRawDataReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.RawDataReaderWithoutValueFilter;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -128,7 +128,7 @@ public class EngineExecutor {
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
       Path path = deduplicatedPaths.get(i);
-      SeriesDataReaderByTimestamp seriesReaderByTimestamp = new SeriesDataReaderByTimestamp(path,
+      SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path,
           deduplicatedDataTypes.get(i), context,
           QueryResourceManager.getInstance().getQueryDataSource(path, context, null));
       readersOfSelectedSeries.add(seriesReaderByTimestamp);

@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-public class RawDataReaderWithoutValueFilter extends AbstractDataReader implements IRawDataReader {
+public class RawDataReaderWithoutValueFilter extends AbstractSeriesReader implements IRawDataReader {
 
   private Filter filter;
   private BatchData batchData;

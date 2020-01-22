@@ -28,7 +28,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataReaderWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.*;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -41,7 +41,7 @@ import java.util.List;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
-  private List<SeriesDataReaderWithoutValueFilter> sequenceReaderList;
+  private List<SeriesReaderWithoutValueFilter> sequenceReaderList;
   private List<BatchData> batchDataList;
   private Filter timeFilter;
   private GroupByPlan groupByPlan;
@@ -76,7 +76,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      SeriesDataReaderWithoutValueFilter seqResourceIterateReader = new SeriesDataReaderWithoutValueFilter(
+      SeriesReaderWithoutValueFilter seqResourceIterateReader = new SeriesReaderWithoutValueFilter(
           path, dataTypes.get(i), timeFilter, context,
           QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter));
       sequenceReaderList.add(seqResourceIterateReader);
@@ -136,7 +136,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         if (result.isCalculatedAggregationResult()) {
           break;
         }
-        sequenceReader.skipChunkData();
+        sequenceReader.skipCurrentChunk();
         continue;
       }
 
@@ -151,7 +151,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           if (result.isCalculatedAggregationResult()) {
             break;
           }
-          sequenceReader.skipPageData();
+          sequenceReader.skipCurrentPage();
           continue;
         }
         while (sequenceReader.hasNextOverlappedPage()) {

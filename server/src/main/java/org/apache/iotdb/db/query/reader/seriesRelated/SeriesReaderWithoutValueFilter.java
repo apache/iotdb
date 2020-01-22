@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  *    if(canUseChunkStatistics()){
  *      Statistics statistics = currentChunkStatistics();
  *      doSomething...
+ *      skipCurrentChunk();
  *      continue;
  *    }
  *
@@ -39,6 +40,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  *      if(canUseChunkStatistics()){
  *        Statistics statistics = currentPageStatistics();
  *        doSomething...
+ *        skipCurrentPage();
  *        continue;
  *      }
  *
@@ -48,12 +50,12 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  *    }
  *  }
  */
-public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader implements
+public class SeriesReaderWithoutValueFilter extends AbstractSeriesReader implements
     IAggregateReader {
 
   private final Filter filter;
 
-  public SeriesDataReaderWithoutValueFilter(Path seriesPath, TSDataType dataType, Filter timeFilter,
+  public SeriesReaderWithoutValueFilter(Path seriesPath, TSDataType dataType, Filter timeFilter,
       QueryContext context, QueryDataSource queryDataSource) {
     super(seriesPath, dataType, context, queryDataSource.getSeqResources(),
         queryDataSource.getUnseqResources());
@@ -76,6 +78,6 @@ public class SeriesDataReaderWithoutValueFilter extends AbstractDataReader imple
   @Override
   public boolean canUseCurrentPageStatistics() throws IOException {
     Statistics currentPageStatistics = super.currentPageStatistics();
-    return super.isPageOverlapped() && satisfyFilter(currentPageStatistics);
+    return !super.isPageOverlapped() && satisfyFilter(currentPageStatistics);
   }
 }
