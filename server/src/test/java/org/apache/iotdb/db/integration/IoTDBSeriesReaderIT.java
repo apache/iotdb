@@ -38,7 +38,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.executor.EngineQueryRouter;
+import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -238,10 +238,7 @@ public class IoTDBSeriesReaderIT {
 
   @Test
   public void selectAllTest() throws IOException, StorageEngineException {
-    String selectSql = "select * from root";
-    //System.out.println("Test >>> " + selectSql);
-
-    EngineQueryRouter engineExecutor = new EngineQueryRouter();
+    QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     pathList.add(new Path(Constant.d0s0));
@@ -267,7 +264,7 @@ public class IoTDBSeriesReaderIT {
     QueryPlan queryPlan = new QueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPaths(pathList);
-    QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
+    QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -281,11 +278,7 @@ public class IoTDBSeriesReaderIT {
 
   @Test
   public void selectOneSeriesWithValueFilterTest() throws IOException, StorageEngineException {
-
-    String selectSql = "select s0 from root.vehicle.d0 where s0 >= 20";
-    //System.out.println("Test >>> " + selectSql);
-
-    EngineQueryRouter engineExecutor = new EngineQueryRouter();
+    QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     Path p = new Path(Constant.d0s0);
@@ -301,7 +294,7 @@ public class IoTDBSeriesReaderIT {
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPaths(pathList);
     queryPlan.setExpression(singleSeriesExpression);
-    QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
+    QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -317,10 +310,7 @@ public class IoTDBSeriesReaderIT {
 
   @Test
   public void seriesTimeDigestReadTest() throws IOException, StorageEngineException {
-    String selectSql = "select s0 from root.vehicle.d0 where time >= 22987";
-    //System.out.println("Test >>> " + selectSql);
-
-    EngineQueryRouter engineExecutor = new EngineQueryRouter();
+    QueryRouter queryRouter = new QueryRouter();
     Path path = new Path(Constant.d0s0);
     List<TSDataType> dataTypes = Collections.singletonList(TSDataType.INT32);
     SingleSeriesExpression expression = new SingleSeriesExpression(path, TimeFilter.gt(22987L));
@@ -332,7 +322,7 @@ public class IoTDBSeriesReaderIT {
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPaths(Collections.singletonList(path));
     queryPlan.setExpression(expression);
-    QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
+    QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -348,8 +338,7 @@ public class IoTDBSeriesReaderIT {
 
   @Test
   public void crossSeriesReadUpdateTest() throws IOException, StorageEngineException {
-    //System.out.println("Test >>> select s1 from root.vehicle.d0 where s0 < 111");
-    EngineQueryRouter engineExecutor = new EngineQueryRouter();
+    QueryRouter queryRouter = new QueryRouter();
     Path path1 = new Path(Constant.d0s0);
     Path path2 = new Path(Constant.d0s1);
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(path1,
@@ -368,7 +357,7 @@ public class IoTDBSeriesReaderIT {
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPaths(pathList);
     queryPlan.setExpression(singleSeriesExpression);
-    QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
+    QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {

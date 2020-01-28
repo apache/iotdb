@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.query.executor;
 
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -43,20 +41,20 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 /**
  * IoTDB query executor.
  */
-public class EngineExecutor {
+public class RawDataQueryExecutor {
 
   private List<Path> deduplicatedPaths;
   private List<TSDataType> deduplicatedDataTypes;
   private IExpression optimizedExpression;
 
-  public EngineExecutor(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
+  public RawDataQueryExecutor(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
       IExpression optimizedExpression) {
     this.deduplicatedPaths = deduplicatedPaths;
     this.deduplicatedDataTypes = deduplicatedDataTypes;
     this.optimizedExpression = optimizedExpression;
   }
 
-  public EngineExecutor(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes) {
+  public RawDataQueryExecutor(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes) {
     this.deduplicatedPaths = deduplicatedPaths;
     this.deduplicatedDataTypes = deduplicatedDataTypes;
   }
@@ -64,8 +62,7 @@ public class EngineExecutor {
   /**
    * without filter or with global time filter.
    */
-  public QueryDataSet executeWithoutValueFilter(QueryContext context)
-      throws StorageEngineException, IOException {
+  public QueryDataSet executeWithoutValueFilter(QueryContext context) throws StorageEngineException {
 
     Filter timeFilter = null;
     if (optimizedExpression != null) {
@@ -119,8 +116,7 @@ public class EngineExecutor {
    * @return QueryDataSet object
    * @throws StorageEngineException StorageEngineException
    */
-  public QueryDataSet executeWithValueFilter(QueryContext context)
-      throws StorageEngineException, IOException {
+  public QueryDataSet executeWithValueFilter(QueryContext context) throws StorageEngineException {
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(
         optimizedExpression, context);

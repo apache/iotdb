@@ -48,10 +48,10 @@ import java.util.Map;
  * Query entrance class of IoTDB query process. All query clause will be transformed to physical
  * plan, physical plan will be executed by EngineQueryRouter.
  */
-public class EngineQueryRouter implements IEngineQueryRouter {
+public class QueryRouter implements IQueryRouter {
 
   @Override
-  public QueryDataSet query(QueryPlan queryPlan, QueryContext context)
+  public QueryDataSet rawDataQuery(QueryPlan queryPlan, QueryContext context)
       throws StorageEngineException {
     IExpression expression = queryPlan.getExpression();
     List<Path> deduplicatedPaths = queryPlan.getDeduplicatedPaths();
@@ -61,33 +61,29 @@ public class EngineQueryRouter implements IEngineQueryRouter {
       try {
         IExpression optimizedExpression = ExpressionOptimizer.getInstance()
             .optimize(expression, deduplicatedPaths);
-        EngineExecutor engineExecutor = new EngineExecutor(deduplicatedPaths, deduplicatedDataTypes,
+        RawDataQueryExecutor rawDataQueryExecutor = new RawDataQueryExecutor(deduplicatedPaths, deduplicatedDataTypes,
             optimizedExpression);
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
           if (queryPlan.isAlign()) {
-            return engineExecutor.executeWithoutValueFilter(context);
+            return rawDataQueryExecutor.executeWithoutValueFilter(context);
           }
           else {
-            return engineExecutor.executeNonAlign(context);
+            return rawDataQueryExecutor.executeNonAlign(context);
           }
         } else {
-          return engineExecutor.executeWithValueFilter(context);
+          return rawDataQueryExecutor.executeWithValueFilter(context);
         }
 
-      } catch (QueryFilterOptimizationException | IOException e) {
+      } catch (QueryFilterOptimizationException e) {
         throw new StorageEngineException(e.getMessage());
       }
     } else {
-      EngineExecutor engineExecutor = new EngineExecutor(deduplicatedPaths, deduplicatedDataTypes);
-      try {
-        if (queryPlan.isAlign()) {
-          return engineExecutor.executeWithoutValueFilter(context);
-        }
-        else {
-          return engineExecutor.executeNonAlign(context);
-        }
-      } catch (IOException e) {
-        throw new StorageEngineException(e.getMessage());
+      RawDataQueryExecutor rawDataQueryExecutor = new RawDataQueryExecutor(deduplicatedPaths,
+          deduplicatedDataTypes);
+      if (queryPlan.isAlign()) {
+        return rawDataQueryExecutor.executeWithoutValueFilter(context);
+      } else {
+        return rawDataQueryExecutor.executeNonAlign(context);
       }
     }
   }
@@ -101,7 +97,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
     if (expression != null) {
       IExpression optimizedExpression = ExpressionOptimizer.getInstance()
           .optimize(expression, selectedSeries);
-      AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
+      AggregationExecutor engineExecutor = new AggregationExecutor(
           aggregationPlan);
       if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
         return engineExecutor.executeWithoutValueFilter(context);
@@ -109,7 +105,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
         return engineExecutor.executeWithValueFilter(context);
       }
     } else {
-      AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
+      AggregationExecutor engineExecutor = new AggregationExecutor(
           aggregationPlan);
       return engineExecutor.executeWithoutValueFilter(context);
     }
@@ -139,13 +135,9 @@ public class EngineQueryRouter implements IEngineQueryRouter {
     IExpression optimizedExpression = ExpressionOptimizer.getInstance()
         .optimize(expression, selectedSeries);
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-      GroupByWithoutValueFilterDataSet groupByEngine = new GroupByWithoutValueFilterDataSet(context,
-          groupByPlan);
-      return groupByEngine;
+      return new GroupByWithoutValueFilterDataSet(context, groupByPlan);
     } else {
-      GroupByWithValueFilterDataSet groupByEngine = new GroupByWithValueFilterDataSet(context,
-          groupByPlan);
-      return groupByEngine;
+      return new GroupByWithValueFilterDataSet(context, groupByPlan);
     }
   }
 

@@ -48,7 +48,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AggregateEngineExecutor {
+public class AggregationExecutor {
 
   private List<Path> selectedSeries;
   private List<TSDataType> dataTypes;
@@ -60,7 +60,7 @@ public class AggregateEngineExecutor {
    **/
   private int aggregateFetchSize;
 
-  public AggregateEngineExecutor(AggregationPlan aggregationPlan) {
+  public AggregationExecutor(AggregationPlan aggregationPlan) {
     this.selectedSeries = aggregationPlan.getDeduplicatedPaths();
     this.dataTypes = aggregationPlan.getDeduplicatedDataTypes();
     this.aggres = aggregationPlan.getDeduplicatedAggregations();

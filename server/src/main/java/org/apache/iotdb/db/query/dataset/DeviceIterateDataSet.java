@@ -31,7 +31,7 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
+import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -49,7 +49,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 public class DeviceIterateDataSet extends QueryDataSet {
 
   private DataSetType dataSetType;
-  private IEngineQueryRouter queryRouter;
+  private IQueryRouter queryRouter;
   private QueryContext context;
   private IExpression expression;
 
@@ -75,7 +75,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
   private Map<Path, TSDataType> tsDataTypeMap;
 
   public DeviceIterateDataSet(QueryPlan queryPlan, QueryContext context,
-      IEngineQueryRouter queryRouter) {
+      IQueryRouter queryRouter) {
     super(null, queryPlan.getDataTypes());
 
     // get deduplicated measurement columns (already deduplicated in TSServiceImpl.executeDataQuery)
@@ -200,7 +200,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
             queryPlan.setDeduplicatedPaths(executePaths);
             queryPlan.setDeduplicatedDataTypes(tsDataTypes);
             queryPlan.setExpression(expression);
-            currentDataSet = queryRouter.query(queryPlan, context);
+            currentDataSet = queryRouter.rawDataQuery(queryPlan, context);
             break;
           default:
             throw new IOException("unsupported DataSetType");

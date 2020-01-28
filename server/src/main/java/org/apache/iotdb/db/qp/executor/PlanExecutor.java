@@ -50,8 +50,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.DeviceIterateDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
-import org.apache.iotdb.db.query.executor.EngineQueryRouter;
-import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
+import org.apache.iotdb.db.query.executor.QueryRouter;
+import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -85,14 +85,14 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 public class PlanExecutor implements IPlanExecutor {
 
   // for data query
-  private IEngineQueryRouter queryRouter;
+  private IQueryRouter queryRouter;
   // for insert
   private StorageEngine storageEngine;
   // for system schema
   private MManager mManager;
 
   public PlanExecutor() {
-    queryRouter = new EngineQueryRouter();
+    queryRouter = new QueryRouter();
     storageEngine = StorageEngine.getInstance();
     mManager = MManager.getInstance();
   }
@@ -193,7 +193,7 @@ public class PlanExecutor implements IPlanExecutor {
         FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
         queryDataSet = fill(fillQueryPlan, context);
       } else {
-        queryDataSet = queryRouter.query(queryPlan, context);
+        queryDataSet = queryRouter.rawDataQuery(queryPlan, context);
       }
     }
     queryDataSet.setRowLimit(queryPlan.getRowLimit());
