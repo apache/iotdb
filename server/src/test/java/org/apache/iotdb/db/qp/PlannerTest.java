@@ -21,7 +21,6 @@ package org.apache.iotdb.db.qp;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -37,12 +36,12 @@ import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 
-public class QueryProcessorTest {
+public class PlannerTest {
 
   private CompressionType compressionType = CompressionType.valueOf(
       TSFileDescriptor.getInstance().getConfig().getCompressor());
   private MManager mManager = MManager.getInstance();
-  private QueryProcessor processor = new QueryProcessor(new QueryProcessExecutor());
+  private Planner processor = new Planner();
 
   static {
     MManager.getInstance().init();

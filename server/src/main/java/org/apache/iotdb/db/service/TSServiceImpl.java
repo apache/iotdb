@@ -37,9 +37,10 @@ import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
-import org.apache.iotdb.db.qp.QueryProcessor;
+import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.IPlanExecutor;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
@@ -90,7 +91,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       "meet error while parsing SQL to physical plan: {}";
   public static Vector<SqlArgument> sqlArgumentsList = new Vector<>();
 
-  protected QueryProcessor processor;
+  protected Planner processor;
+  private IPlanExecutor executor;
 
   // Record the username for every rpc connection (session).
   private Map<Long, String> sessionIdUsernameMap = new ConcurrentHashMap<>();
@@ -115,7 +117,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private ThreadLocal<Long> currSessionId = new ThreadLocal<>();
 
   public TSServiceImpl() {
-    processor = new QueryProcessor(new QueryProcessExecutor());
+    processor = new Planner();
+    executor = new PlanExecutor();
   }
 
   public static TSDataType getSeriesType(String path) throws QueryProcessException {
@@ -909,7 +912,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           IOException, MetadataException, SQLException {
 
     QueryContext context = new QueryContext(queryId);
-    QueryDataSet queryDataSet = processor.getExecutor().processQuery(physicalPlan, context);
+    QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryId2DataSet.put(queryId, queryDataSet);
     return queryDataSet;
   }
@@ -948,7 +951,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       throw new QueryProcessException(
           "Current system mode is read-only, does not support non-query operation");
     }
-    return processor.getExecutor().processNonQuery(plan);
+    return executor.processNonQuery(plan);
   }
 
   private TSExecuteStatementResp executeUpdateStatement(String statement, long sessionId) {
@@ -1173,7 +1176,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (status != null) {
         return new TSExecuteBatchStatementResp(status);
       }
-      Integer[] results = processor.getExecutor().insertBatch(batchInsertPlan);
+      Integer[] results = executor.insertBatch(batchInsertPlan);
 
       for (Integer result : results) {
         if (result != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

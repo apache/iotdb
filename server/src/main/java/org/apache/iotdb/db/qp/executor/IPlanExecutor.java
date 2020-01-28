@@ -18,35 +18,19 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
-
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-
-public interface IQueryProcessExecutor {
-
-  /**
-   * Process Non-Query Physical plan, including insert/update/delete operation of
-   * data/metadata/Privilege
-   *
-   * @param plan Physical Non-Query Plan
-   */
-  boolean processNonQuery(PhysicalPlan plan) throws QueryProcessException;
+public interface IPlanExecutor {
 
   /**
    * process query plan of qp layer, construct queryDataSet.
@@ -57,6 +41,14 @@ public interface IQueryProcessExecutor {
   QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException,
       QueryFilterOptimizationException, QueryProcessException, MetadataException, SQLException;
+
+  /**
+   * Process Non-Query Physical plan, including insert/update/delete operation of
+   * data/metadata/Privilege
+   *
+   * @param plan Physical Non-Query Plan
+   */
+  boolean processNonQuery(PhysicalPlan plan) throws QueryProcessException;
 
   /**
    * process aggregate plan of qp layer, construct queryDataSet.
@@ -115,17 +107,5 @@ public interface IQueryProcessExecutor {
    * @return result of each row
    */
   Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException;
-
-  boolean judgePathExists(Path fullPath);
-
-  /**
-   * Get data type of series
-   */
-  TSDataType getSeriesType(Path path) throws PathException;
-
-  /**
-   * Get all paths of a full path
-   */
-  List<String> getAllMatchedPaths(String originPath) throws MetadataException;
 
 }

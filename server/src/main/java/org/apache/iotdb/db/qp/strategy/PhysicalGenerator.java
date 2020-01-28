@@ -26,7 +26,6 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.crud.*;
@@ -47,10 +46,7 @@ import java.util.*;
  */
 public class PhysicalGenerator {
 
-  private IQueryProcessExecutor executor;
-
-  public PhysicalGenerator(IQueryProcessExecutor executor) {
-    this.executor = executor;
+  public PhysicalGenerator() {
   }
 
   public PhysicalPlan transformToPhysicalPlan(Operator operator)
@@ -225,8 +221,8 @@ public class PhysicalGenerator {
           Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
           Set<String> tmpDeviceSet = new HashSet<>();
           try {
-            List<String> actualPaths = executor
-                .getAllMatchedPaths(fullPath.getFullPath());  // remove stars to get actual paths
+            // remove stars to get actual paths
+            List<String> actualPaths = MManager.getInstance().getPaths(fullPath.getFullPath());
             for (String pathStr : actualPaths) {
               Path path = new Path(pathStr);
               String device = path.getDevice();
@@ -330,7 +326,7 @@ public class PhysicalGenerator {
       FilterOperator filterOperator = queryOperator.getFilterOperator();
 
       if (filterOperator != null) {
-        IExpression expression = filterOperator.transformToExpression(executor);
+        IExpression expression = filterOperator.transformToExpression();
         queryPlan.setExpression(expression);
       }
     }
@@ -356,7 +352,7 @@ public class PhysicalGenerator {
       FilterOperator newOperator = operator.clone();
       newOperator = concatFilterPath(noStarDevices.get(i), newOperator);
 
-      deviceToFilterMap.put(noStarDevices.get(i), newOperator.transformToExpression(executor));
+      deviceToFilterMap.put(noStarDevices.get(i), newOperator.transformToExpression());
     }
 
     return deviceToFilterMap;
@@ -410,7 +406,7 @@ public class PhysicalGenerator {
     List<TSDataType> dataTypes = new ArrayList<>(paths.size());
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-      TSDataType seriesType = executor.getSeriesType(path);
+      TSDataType seriesType = MManager.getInstance().getSeriesType(path);
       dataTypes.add(seriesType);
       queryPlan.addTypeMapping(path, seriesType);
     }

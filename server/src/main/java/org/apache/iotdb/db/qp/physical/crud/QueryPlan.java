@@ -23,8 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -60,17 +58,6 @@ public class QueryPlan extends PhysicalPlan {
 
   public QueryPlan(boolean isQuery, Operator.OperatorType operatorType) {
     super(isQuery, operatorType);
-  }
-
-  /**
-   * Check if all paths exist.
-   */
-  public void checkPaths(IQueryProcessExecutor executor) throws QueryProcessException {
-    for (Path path : paths) {
-      if (!executor.judgePathExists(path)) {
-        throw new QueryProcessException("Path doesn't exist: " + path);
-      }
-    }
   }
 
   public IExpression getExpression() {

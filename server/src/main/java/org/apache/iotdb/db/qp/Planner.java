@@ -25,7 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
@@ -40,18 +40,16 @@ import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
 /**
  * provide a integration method for other user.
  */
-public class QueryProcessor {
+public class Planner {
 
-  private IQueryProcessExecutor executor;
   private ParseDriver parseDriver;
 
-  public QueryProcessor(IQueryProcessExecutor executor) {
-    this.executor = executor;
+  public Planner() {
     this.parseDriver = new ParseDriver();
   }
 
-  public IQueryProcessExecutor getExecutor() {
-    return executor;
+  public IPlanExecutor getExecutor() {
+    return null;
   }
 
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
@@ -63,8 +61,8 @@ public class QueryProcessor {
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
       throws QueryProcessException, ParseCancellationException {
     Operator operator = parseDriver.parse(sqlStr, zoneId);
-    operator = logicalOptimize(operator, executor);
-    PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
+    operator = logicalOptimize(operator);
+    PhysicalGenerator physicalGenerator = new PhysicalGenerator();
     return physicalGenerator.transformToPhysicalPlan(operator);
   }
 
@@ -76,7 +74,7 @@ public class QueryProcessor {
    * @return optimized logical operator
    * @throws LogicalOptimizeException exception in logical optimizing
    */
-  private Operator logicalOptimize(Operator operator, IQueryProcessExecutor executor)
+  private Operator logicalOptimize(Operator operator)
       throws LogicalOperatorException {
     switch (operator.getType()) {
       case AUTHOR:
@@ -103,7 +101,7 @@ public class QueryProcessor {
       case UPDATE:
       case DELETE:
         SFWOperator root = (SFWOperator) operator;
-        return optimizeSFWOperator(root, executor);
+        return optimizeSFWOperator(root);
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }
@@ -116,9 +114,9 @@ public class QueryProcessor {
    * @return optimized select-from-where operator
    * @throws LogicalOptimizeException exception in SFW optimizing
    */
-  private SFWOperator optimizeSFWOperator(SFWOperator root, IQueryProcessExecutor executor)
+  private SFWOperator optimizeSFWOperator(SFWOperator root)
       throws LogicalOperatorException {
-    ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer(executor);
+    ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
     root = (SFWOperator) concatPathOptimizer.transform(root);
     FilterOperator filter = root.getFilterOperator();
     if (filter == null) {
