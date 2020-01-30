@@ -100,6 +100,11 @@ public class StorageEngine implements IService {
   private ScheduledExecutorService ttlCheckThread;
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
 
+  /**
+   * Time range for dividing storage group, the time unit is the same with IoTDB's TimestampPrecision
+   */
+  static long timePartitionInterval;
+
   private StorageEngine() {
     logger = LoggerFactory.getLogger(StorageEngine.class);
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
@@ -108,6 +113,23 @@ public class StorageEngine implements IService {
       FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));
     } catch (IOException e) {
       throw new StorageEngineFailureException(e);
+    }
+
+    // build time Interval to divide time partition
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        timePartitionInterval = IoTDBDescriptor.getInstance().
+            getConfig().getPartitionInterval() * 1000_000_000L;
+        break;
+      case "us":
+        timePartitionInterval = IoTDBDescriptor.getInstance().
+            getConfig().getPartitionInterval() * 1000_000L;
+        break;
+      default:
+        timePartitionInterval = IoTDBDescriptor.getInstance().
+            getConfig().getPartitionInterval() * 1000;
+        break;
     }
 
     // recover upgrade process
@@ -501,5 +523,14 @@ public class StorageEngine implements IService {
     // TODO-Cluster#350: integrate with time partitioning
     StorageGroupProcessor processor = processorMap.get(storageGroup);
     return processor.isFileAlreadyExist(tsFileResource);
+  }
+
+  public static long getTimePartitionInterval() {
+    return timePartitionInterval;
+  }
+
+  public static long fromTimeToTimePartition(long time) {
+
+    return time / StorageEngine.getTimePartitionInterval();
   }
 }
