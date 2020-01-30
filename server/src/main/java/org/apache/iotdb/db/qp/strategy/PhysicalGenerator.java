@@ -253,7 +253,6 @@ public class PhysicalGenerator {
     } else {
       queryPlan = new QueryPlan();
     }
-
     if (queryOperator.isGroupByDevice()) {
       // below is the core realization of GROUP_BY_DEVICE sql logic
       List<Path> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
@@ -372,6 +371,7 @@ public class PhysicalGenerator {
         queryPlan.setDeviceToFilterMap(concatFilterByDivice(prefixPaths, filterOperator));
       }
     } else {
+      queryPlan.setAlign(queryOperator.isAlign());
       List<Path> paths = queryOperator.getSelectedPaths();
       queryPlan.setPaths(paths);
 

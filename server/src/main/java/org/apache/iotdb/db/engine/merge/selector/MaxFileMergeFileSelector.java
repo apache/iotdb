@@ -154,19 +154,13 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
       // select next unseq files
       TsFileResource unseqFile = resource.getUnseqFiles().get(unseqIndex);
 
-      selectOverlappedSeqFiles(unseqFile);
+      if (seqSelectedNum != resource.getSeqFiles().size() && !UpgradeUtils.isNeedUpgrade(unseqFile)) {
+        selectOverlappedSeqFiles(unseqFile);
+      }
 
       // skip if the unseqFile and tmpSelectedSeqFiles has TsFileResources that need to be upgraded
-      boolean isNeedUpgrade = false;
-      if (UpgradeUtils.isNeedUpgrade(unseqFile)) {
-        isNeedUpgrade = true;
-      }
-      for (Integer seqIdx : tmpSelectedSeqFiles) {
-        if (UpgradeUtils.isNeedUpgrade(resource.getSeqFiles().get(seqIdx))) {
-          isNeedUpgrade = true;
-          break;
-        }
-      }
+      boolean isNeedUpgrade = checkForUpgrade(unseqFile);
+
       if (isNeedUpgrade) {
         tmpSelectedSeqFiles.clear();
         unseqIndex++;
@@ -178,31 +172,52 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
       long newCost = useTightBound ? calculateTightMemoryCost(unseqFile, tmpSelectedSeqFiles,
           startTime, timeLimit) :
           calculateLooseMemoryCost(unseqFile, tmpSelectedSeqFiles, startTime, timeLimit);
+      updateSelectedFiles(newCost, unseqFile);
 
-      if (totalCost + newCost < memoryBudget) {
-        selectedUnseqFiles.add(unseqFile);
-        maxSeqFileCost = tempMaxSeqFileCost;
-
-        for (Integer seqIdx : tmpSelectedSeqFiles) {
-          seqSelected[seqIdx] = true;
-          seqSelectedNum++;
-          selectedSeqFiles.add(resource.getSeqFiles().get(seqIdx));
-        }
-        totalCost += newCost;
-        logger.debug("Adding a new unseqFile {} and seqFiles {} as candidates, new cost {}, total"
-                + " cost {}",
-            unseqFile, tmpSelectedSeqFiles, newCost, totalCost);
-      }
       tmpSelectedSeqFiles.clear();
       unseqIndex++;
       timeConsumption = System.currentTimeMillis() - startTime;
     }
+    for (int i = 0; i < seqSelected.length; i++) {
+      if (seqSelected[i]) {
+        selectedSeqFiles.add(resource.getSeqFiles().get(i));
+      }
+    }
+  }
+
+  private void updateSelectedFiles(long newCost, TsFileResource unseqFile) {
+    if (totalCost + newCost < memoryBudget) {
+      selectedUnseqFiles.add(unseqFile);
+      maxSeqFileCost = tempMaxSeqFileCost;
+
+      for (Integer seqIdx : tmpSelectedSeqFiles) {
+        seqSelected[seqIdx] = true;
+        seqSelectedNum++;
+      }
+      totalCost += newCost;
+      logger.debug("Adding a new unseqFile {} and seqFiles {} as candidates, new cost {}, total"
+              + " cost {}",
+          unseqFile, tmpSelectedSeqFiles, newCost, totalCost);
+    }
+  }
+
+  private boolean checkForUpgrade(TsFileResource unseqFile) {
+    // reject the selection if it contains files that should be upgraded
+    boolean isNeedUpgrade = false;
+    if (UpgradeUtils.isNeedUpgrade(unseqFile)) {
+      isNeedUpgrade = true;
+    }
+    for (Integer seqIdx : tmpSelectedSeqFiles) {
+      if (UpgradeUtils.isNeedUpgrade(resource.getSeqFiles().get(seqIdx))) {
+        isNeedUpgrade = true;
+        break;
+      }
+    }
+    return isNeedUpgrade;
   }
 
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
-    if (seqSelectedNum == resource.getSeqFiles().size() || UpgradeUtils.isNeedUpgrade(unseqFile)) {
-      return;
-    }
+
     int tmpSelectedNum = 0;
     for (Entry<String, Long> deviceStartTimeEntry : unseqFile.getStartTimeMap().entrySet()) {
       String deviceId = deviceStartTimeEntry.getKey();
@@ -215,7 +230,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
         if (seqSelected[i] || !seqFile.getEndTimeMap().containsKey(deviceId)) {
           continue;
         }
-        Long seqEndTime = seqFile.getEndTimeMap().get(deviceId);
+        long seqEndTime = seqFile.getEndTimeMap().get(deviceId);
         if (unseqEndTime <= seqEndTime) {
           // the unseqFile overlaps current seqFile
           tmpSelectedSeqFiles.add(i);

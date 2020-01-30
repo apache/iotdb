@@ -1274,6 +1274,7 @@ public class StorageGroupProcessor {
         }
         return;
       }
+      waitForAllCurrentTsFileProcessorsClosed();
       if (unSequenceFileList.isEmpty() || sequenceFileTreeSet.isEmpty()) {
         logger.info("{} no files to be merged", storageGroupName);
         return;

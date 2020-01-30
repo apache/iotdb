@@ -31,4 +31,6 @@ public interface DataQueryExecutor {
 
   QueryDataSet executeWithValueFilter(
       QueryContext context) throws StorageEngineException, IOException;
+
+  QueryDataSet executeNonAlign(QueryContext context) throws StorageEngineException, IOException;
 }

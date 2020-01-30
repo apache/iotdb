@@ -107,9 +107,11 @@ Last Updated on November 12th, 2019 by Tian Jiang.
 | Latest Changes                                               | Related Committers                 |
 | ------------------------------------------------------------ | ---------------------------------- |
 | Add parameter sessionId in getTimeZone, getProperties, setStorageGroup, createTimeseries... | Tian Jiang|
+| Add struct TSQueryNonAlignDataSet                            | Haonan Hou|
 
 ## 3. Update
 
 | Latest Changes                                               | Related Committers     |
 | ------------------------------------------------------------ | ---------------------- |
 | Replace TS_SessionHandles with SessionIds, TSOperationHandle with queryIds  | Tian Jiang  |
+| Add optional TSQueryNonAlignDataSet in TSExecuteStatementResp, TSFetchResultsResp and required bool isAlign in TSFetchResultsReq | Haonan Hou |

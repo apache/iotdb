@@ -39,8 +39,6 @@ import java.util.List;
 
 public class IoTDBStatement implements Statement {
 
-  private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
-
   ZoneId zoneId;
   private ResultSet resultSet = null;
   private IoTDBConnection connection;
@@ -173,7 +171,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public void closeOnCompletion() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support closeOnCompletion");
   }
 
   @Override
@@ -201,17 +199,17 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean execute(String arg0, int arg1) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support execute");
   }
 
   @Override
   public boolean execute(String arg0, int[] arg1) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support execute");
   }
 
   @Override
   public boolean execute(String arg0, String[] arg1) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support execute");
   }
 
   /**
@@ -231,9 +229,16 @@ public class IoTDBStatement implements Statement {
     }
     if (execResp.isSetColumns()) {
       queryId = execResp.getQueryId();
-      this.resultSet = new IoTDBQueryResultSet(this,
-          execResp.getColumns(), execResp.getDataTypeList(),
-          execResp.ignoreTimeStamp, client, sql, queryId, sessionId, execResp.queryDataSet);
+      if (execResp.queryDataSet == null) {
+        this.resultSet = new IoTDBNonAlignQueryResultSet(this, execResp.getColumns(),
+            execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, sql, queryId,
+            sessionId, execResp.nonAlignQueryDataSet);
+      }
+      else {
+        this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
+            execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, sql, queryId,
+            sessionId, execResp.queryDataSet);
+      }
       return true;
     }
     return false;
@@ -330,9 +335,16 @@ public class IoTDBStatement implements Statement {
     } catch (IoTDBRPCException e) {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
-    this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
-        execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, sql, queryId,
-        sessionId, execResp.queryDataSet);
+    if (execResp.queryDataSet == null) {
+      this.resultSet = new IoTDBNonAlignQueryResultSet(this, execResp.getColumns(),
+          execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, sql, queryId,
+          sessionId, execResp.nonAlignQueryDataSet);
+    }
+    else {
+      this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
+          execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, sql, queryId,
+          sessionId, execResp.queryDataSet);
+    }
     return resultSet;
   }
 
@@ -361,17 +373,17 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int executeUpdate(String arg0, int arg1) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support executeUpdate");
   }
 
   @Override
   public int executeUpdate(String arg0, int[] arg1) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support executeUpdate");
   }
 
   @Override
   public int executeUpdate(String arg0, String[] arg1) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support executeUpdate");
   }
 
   private int executeUpdateSQL(String sql) throws TException, IoTDBSQLException {
@@ -424,38 +436,38 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public ResultSet getGeneratedKeys() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support getGeneratedKeys");
   }
 
   @Override
   public int getMaxFieldSize() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support getMaxFieldSize");
   }
 
   @Override
   public void setMaxFieldSize(int arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support getMaxFieldSize");
   }
 
   @Override
   public int getMaxRows() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support getMaxRows");
   }
 
   @Override
   public void setMaxRows(int num) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING +
+    throw new SQLException("Not support getMaxRows" +
         ". Please use the LIMIT clause in a query instead.");
   }
 
   @Override
   public boolean getMoreResults() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support getMoreResults");
   }
 
   @Override
   public boolean getMoreResults(int arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support getMoreResults");
   }
 
   @Override
@@ -480,12 +492,12 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int getResultSetConcurrency() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support getResultSetConcurrency");
   }
 
   @Override
   public int getResultSetHoldability() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support getResultSetHoldability");
   }
 
   @Override
@@ -496,7 +508,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int getUpdateCount() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return -1;
   }
 
   @Override
@@ -506,7 +518,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean isCloseOnCompletion() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support isCloseOnCompletion");
   }
 
   @Override
@@ -516,22 +528,22 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean isPoolable() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support isPoolable");
   }
 
   @Override
   public void setPoolable(boolean arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support setPoolable");
   }
 
   @Override
   public void setCursorName(String arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support setCursorName");
   }
 
   @Override
   public void setEscapeProcessing(boolean enable) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw new SQLException("Not support setEscapeProcessing");
   }
 
   private void checkConnection(String action) throws SQLException {

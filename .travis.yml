@@ -175,7 +175,7 @@ matrix:
 #        - mvn -B apache-rat:check
 #        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
     - os: linux
-      if: fork = false #only fork=true (i.e., the committer has permission to write the repo)
+#      if: fork = false #only fork=true (i.e., the committer has permission to write the repo)
       name: sonar-analysis
       dist: xenial
       jdk: openjdk8

@@ -67,7 +67,13 @@ public class EngineQueryRouter implements IEngineQueryRouter {
         DataQueryExecutor dataQueryExecutor = executorFactory.getExecutor(deduplicatedPaths, deduplicatedDataTypes,
             optimizedExpression);
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-          return dataQueryExecutor.executeWithoutValueFilter(context);
+
+          if (queryPlan.isAlign()) {
+            return dataQueryExecutor.executeWithoutValueFilter(context);
+          }
+          else {
+            return dataQueryExecutor.executeNonAlign(context);
+          }
         } else {
           return dataQueryExecutor.executeWithValueFilter(context);
         }
@@ -79,7 +85,12 @@ public class EngineQueryRouter implements IEngineQueryRouter {
       DataQueryExecutor dataQueryExecutor = executorFactory.getExecutor(deduplicatedPaths,
           deduplicatedDataTypes, null);
       try {
-        return dataQueryExecutor.executeWithoutValueFilter(context);
+        if (queryPlan.isAlign()) {
+          return dataQueryExecutor.executeWithoutValueFilter(context);
+        }
+        else {
+          return dataQueryExecutor.executeNonAlign(context);
+        }
       } catch (IOException e) {
         throw new StorageEngineException(e.getMessage());
       }
