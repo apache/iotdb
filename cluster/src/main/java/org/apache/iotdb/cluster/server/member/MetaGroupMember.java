@@ -910,7 +910,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return StatusUtils.PARTITION_TABLE_NOT_READY;
     }
 
-    PartitionGroup partitionGroup = PartitionUtils.partitionPlan(plan, partitionTable);
+    PartitionGroup partitionGroup = partitionTable.partitionPlan(plan);
     // the storage group is not found locally, forward it to the leader
     if (partitionGroup == null) {
       if (character != NodeCharacter.LEADER) {
@@ -942,12 +942,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     logger.debug("{}: Pulling timeseries schemas of {}", name, prefixPath);
     PartitionGroup partitionGroup;
     try {
-      partitionGroup = PartitionUtils.partitionByPathTime(prefixPath, 0, partitionTable);
+      partitionGroup = partitionTable.partitionByPathTime(prefixPath, 0);
     } catch (StorageGroupNotSetException e) {
       // the storage group is not found locally, but may be found in the leader, retry after
       // synchronizing with the leader
       if (syncLeader()) {
-        partitionGroup = PartitionUtils.partitionByPathTime(prefixPath, 0, partitionTable);
+        partitionGroup = partitionTable.partitionByPathTime(prefixPath, 0);
       } else {
         throw e;
       }
@@ -1023,8 +1023,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     PartitionGroup partitionGroup;
     try {
       // TODO-Cluster#350: use time in partitioning
-      partitionGroup = PartitionUtils.partitionByPathTime(path.getFullPath(), 0,
-          partitionTable);
+      partitionGroup = partitionTable.partitionByPathTime(path.getFullPath(), 0);
     } catch (StorageGroupNotSetException e) {
       throw new StorageEngineException(e);
     }
@@ -1081,8 +1080,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     PartitionGroup partitionGroup;
     try {
       // TODO-Cluster#350: use time in partitioning
-      partitionGroup = PartitionUtils.partitionByPathTime(path.getFullPath(), 0,
-          partitionTable);
+      partitionGroup = partitionTable.partitionByPathTime(path.getFullPath(), 0);
     } catch (StorageGroupNotSetException e) {
       throw new StorageEngineException(e);
     }

@@ -75,7 +75,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       return null;
     }
     try {
-      return PartitionUtils.partitionByPathRangeTime(path, startTime, endTime, partitionTable);
+      return partitionTable.partitionByPathRangeTime(path, startTime, endTime);
     } catch (StorageGroupNotSetException e) {
       LOGGER.error("The storage group of path {} doesn't exist.", path, e);
       return new MultiKeyMap<>();
@@ -89,7 +89,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       return null;
     }
     try {
-      return PartitionUtils.partitionByPathTime(path, 0, partitionTable);
+      return partitionTable.partitionByPathTime(path, 0);
     } catch (StorageGroupNotSetException e) {
       LOGGER.error("The storage group of path {} doesn't exist.", path, e);
       return new PartitionGroup();

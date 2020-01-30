@@ -22,7 +22,12 @@ package org.apache.iotdb.cluster.partition;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.collections4.map.MultiKeyMap;
+import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
+import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 /**
  * PartitionTable manages the map whose key is the StorageGroupName with a time interval and the
@@ -82,4 +87,13 @@ public interface PartitionTable {
   Map<Node, List<Integer>> getAllNodeSlots();
 
   int getSlotNum();
+
+  int calculateLogSlot(Log log);
+
+  PartitionGroup partitionPlan(PhysicalPlan plan) throws UnsupportedPlanException;
+
+  PartitionGroup partitionByPathTime(String path, long timestamp) throws StorageGroupNotSetException;
+
+  MultiKeyMap<Long, PartitionGroup> partitionByPathRangeTime(String path, long startTime,
+      long endTime) throws StorageGroupNotSetException;
 }
