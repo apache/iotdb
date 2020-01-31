@@ -55,7 +55,7 @@ import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
-public class SeriesDataRandomReader implements IDataRandomReader, ManagedSeriesReader {
+public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
 
   private final Path seriesPath;
   private final TSDataType dataType;
@@ -90,7 +90,7 @@ public class SeriesDataRandomReader implements IDataRandomReader, ManagedSeriesR
   private boolean hasRemaining;
   private boolean managedByQueryManager;
 
-  public SeriesDataRandomReader(Path seriesPath, TSDataType dataType, QueryContext context,
+  public SeriesReader(Path seriesPath, TSDataType dataType, QueryContext context,
       QueryDataSource dataSource, Filter timeFilter, Filter valueFilter) {
     this.seriesPath = seriesPath;
     this.dataType = dataType;
@@ -101,7 +101,7 @@ public class SeriesDataRandomReader implements IDataRandomReader, ManagedSeriesR
     this.valueFilter = valueFilter;
   }
 
-  public SeriesDataRandomReader(Path seriesPath, TSDataType dataType, QueryContext context,
+  public SeriesReader(Path seriesPath, TSDataType dataType, QueryContext context,
       List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
       Filter timeFilter, Filter valueFilter) {
     this.seriesPath = seriesPath;
@@ -482,7 +482,7 @@ public class SeriesDataRandomReader implements IDataRandomReader, ManagedSeriesR
     }
   }
 
-  public void close() throws IOException {
+  public void closeReader() throws IOException {
     if (firstChunkMetaData != null) {
       firstChunkMetaData.getChunkLoader().close();
     }
@@ -491,15 +491,15 @@ public class SeriesDataRandomReader implements IDataRandomReader, ManagedSeriesR
     }
   }
 
-  public IPointReader getIPointReader() {
-    return new Ite();
+  public IPointReader getPointReader() {
+    return new SeriesPointReader();
   }
 
-  public IBatchReader getIBatchReader() {
-    return new BatchIte();
+  public IBatchReader getBatchReader() {
+    return new SeriesBatchReader();
   }
 
-  private class BatchIte implements IBatchReader {
+  private class SeriesBatchReader implements IBatchReader {
 
     private BatchData batchData;
     private boolean hasCachedBatchData = false;
@@ -543,10 +543,11 @@ public class SeriesDataRandomReader implements IDataRandomReader, ManagedSeriesR
 
     @Override
     public void close() throws IOException {
+      closeReader();
     }
   }
 
-  private class Ite implements IPointReader {
+  private class SeriesPointReader implements IPointReader {
 
     private boolean hasCachedTimeValuePair;
     private BatchData batchData;
@@ -611,6 +612,7 @@ public class SeriesDataRandomReader implements IDataRandomReader, ManagedSeriesR
 
     @Override
     public void close() throws IOException {
+      closeReader();
     }
   }
 

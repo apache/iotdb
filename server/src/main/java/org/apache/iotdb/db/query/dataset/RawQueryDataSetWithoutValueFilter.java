@@ -27,7 +27,7 @@ import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataRandomReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -49,14 +49,14 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
 
   private static class ReadTask implements Runnable {
 
-    private final SeriesDataRandomReader reader;
+    private final SeriesReader reader;
     private final IBatchReader iBatchReader;
     private BlockingQueue<BatchData> blockingQueue;
 
-    public ReadTask(SeriesDataRandomReader reader,
+    public ReadTask(SeriesReader reader,
         BlockingQueue<BatchData> blockingQueue) {
       this.reader = reader;
-      this.iBatchReader = reader.getIBatchReader();
+      this.iBatchReader = reader.getBatchReader();
       this.blockingQueue = blockingQueue;
     }
 
@@ -105,7 +105,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
     }
   }
 
-  private List<SeriesDataRandomReader> seriesReaderWithoutValueFilterList;
+  private List<SeriesReader> seriesReaderWithoutValueFilterList;
 
   private TreeSet<Long> timeHeap;
 
@@ -141,7 +141,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
    * @param readers   readers in List(IPointReader) structure
    */
   public RawQueryDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-      List<SeriesDataRandomReader> readers) throws InterruptedException {
+      List<SeriesReader> readers) throws InterruptedException {
     super(paths, dataTypes);
     this.seriesReaderWithoutValueFilterList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
@@ -156,7 +156,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
   private void init() throws InterruptedException {
     timeHeap = new TreeSet<>();
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
-      SeriesDataRandomReader reader = seriesReaderWithoutValueFilterList.get(i);
+      SeriesReader reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
       pool.submit(new ReadTask(reader, blockingQueueArray[i]));
@@ -353,7 +353,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
       synchronized (seriesReaderWithoutValueFilterList.get(seriesIndex)) {
         // we only need to judge whether to submit another task when the queue is not full
         if (blockingQueueArray[seriesIndex].remainingCapacity() > 0) {
-          SeriesDataRandomReader reader = seriesReaderWithoutValueFilterList
+          SeriesReader reader = seriesReaderWithoutValueFilterList
               .get(seriesIndex);
           // if the reader isn't being managed and still has more data,
           // that means this read task leave the pool before because the queue has no more space

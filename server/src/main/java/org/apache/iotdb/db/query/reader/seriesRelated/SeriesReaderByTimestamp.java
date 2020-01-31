@@ -27,17 +27,16 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 
 
 public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
-  private SeriesDataRandomReader randomReader;
+  private SeriesReader randomReader;
   private BatchData batchData;
 
   public SeriesReaderByTimestamp(Path seriesPath, TSDataType dataType, QueryContext context,
       QueryDataSource dataSource) {
-    randomReader = new SeriesDataRandomReader(seriesPath, dataType, context,
+    randomReader = new SeriesReader(seriesPath, dataType, context,
         dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null);
   }
 

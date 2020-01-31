@@ -27,8 +27,8 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
-import org.apache.iotdb.db.query.reader.seriesRelated.IDataRandomReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataRandomReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.ISeriesReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.*;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -41,7 +41,7 @@ import java.util.List;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
-  private List<SeriesDataRandomReader> sequenceReaderList;
+  private List<SeriesReader> sequenceReaderList;
   private List<BatchData> batchDataList;
   private Filter timeFilter;
   private GroupByPlan groupByPlan;
@@ -76,7 +76,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      SeriesDataRandomReader seqResourceIterateReader = new SeriesDataRandomReader(
+      SeriesReader seqResourceIterateReader = new SeriesReader(
           path, dataTypes.get(i), context,
           QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
           timeFilter, null);
@@ -114,7 +114,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * @param idx series id
    */
   private AggregateResult nextSeries(int idx) throws IOException, QueryProcessException {
-    IDataRandomReader sequenceReader = sequenceReaderList.get(idx);
+    ISeriesReader sequenceReader = sequenceReaderList.get(idx);
     AggregateResult result = AggreResultFactory
         .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(idx),
             groupByPlan.getDeduplicatedDataTypes().get(idx));
