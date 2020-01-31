@@ -23,7 +23,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import java.io.IOException;
 
-public interface IAggregateReader {
+public interface ISeriesReader {
 
   boolean hasNextChunk() throws IOException;
 

@@ -28,9 +28,11 @@ import java.util.Objects;
 import java.util.PriorityQueue;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.MemChunkLoader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -38,6 +40,7 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -46,15 +49,19 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
-public abstract class AbstractSeriesReader {
+public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
 
   private final Path seriesPath;
   private final TSDataType dataType;
   private final QueryContext context;
+  private final Filter timeFilter;
+  private final Filter valueFilter;
 
   private final List<TsFileResource> seqFileResource;
   private final PriorityQueue<TsFileResource> unseqFileResource;
@@ -80,20 +87,58 @@ public abstract class AbstractSeriesReader {
   private long currentPageEndTime = Long.MAX_VALUE;
 
 
-  public AbstractSeriesReader(Path seriesPath, TSDataType dataType, QueryContext context,
-      List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+  private boolean hasRemaining;
+  private boolean managedByQueryManager;
+
+  public SeriesReader(Path seriesPath, TSDataType dataType, QueryContext context,
+      QueryDataSource dataSource, Filter timeFilter, Filter valueFilter) {
     this.seriesPath = seriesPath;
     this.dataType = dataType;
     this.context = context;
-    this.seqFileResource = seqFiles;
-    this.unseqFileResource = sortUnSeqFileResources(unseqFiles);
+    this.seqFileResource = dataSource.getSeqResources();
+    this.unseqFileResource = sortUnSeqFileResources(dataSource.getUnseqResources());
+    this.timeFilter = timeFilter;
+    this.valueFilter = valueFilter;
   }
 
-  protected abstract Filter getFilter();
+  public SeriesReader(Path seriesPath, TSDataType dataType, QueryContext context,
+      List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
+      Filter timeFilter, Filter valueFilter) {
+    this.seriesPath = seriesPath;
+    this.dataType = dataType;
+    this.context = context;
+    this.seqFileResource = seqFileResource;
+    this.unseqFileResource = sortUnSeqFileResources(unseqFileResource);
+    this.timeFilter = timeFilter;
+    this.valueFilter = valueFilter;
+  }
 
-  protected boolean satisfyFilter(Statistics statistics) {
-    return getFilter() == null
-        || getFilter().containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
+  protected boolean satisfyTimeFilter(Statistics statistics) {
+    return timeFilter == null
+        || timeFilter.containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
+  }
+
+  /**
+   * only be used for aggregate without value filter
+   *
+   * @return
+   */
+  @Override
+  public boolean canUseCurrentChunkStatistics() {
+    Statistics chunkStatistics = currentChunkStatistics();
+    return !isChunkOverlapped() && satisfyTimeFilter(chunkStatistics);
+  }
+
+  /**
+   * only be used for aggregate without value filter
+   *
+   * @return
+   * @throws IOException
+   */
+  @Override
+  public boolean canUseCurrentPageStatistics() throws IOException {
+    Statistics currentPageStatistics = currentPageStatistics();
+    return !isPageOverlapped() && satisfyTimeFilter(currentPageStatistics);
   }
 
   public boolean hasNextChunk() throws IOException {
@@ -181,8 +226,20 @@ public abstract class AbstractSeriesReader {
 
 
   public BatchData nextPage() throws IOException {
-    return Objects.requireNonNull(overlappedPageReaders.poll().data, "No Batch data")
+    BatchData pageData = Objects
+        .requireNonNull(overlappedPageReaders.poll().data, "No Batch data")
         .getAllSatisfiedPageData();
+    if (valueFilter == null) {
+      return pageData;
+    }
+    BatchData batchData = new BatchData(pageData.getDataType());
+    while (pageData.hasCurrent()) {
+      if (valueFilter.satisfy(pageData.currentTime(), pageData.currentValue())) {
+        batchData.putAnObject(pageData.currentTime(), pageData.currentValue());
+      }
+      pageData.next();
+    }
+    return batchData;
   }
 
   public boolean isPageOverlapped() {
@@ -251,10 +308,16 @@ public abstract class AbstractSeriesReader {
         }
 
         timeValuePair = mergeReader.nextTimeValuePair();
-        cachedBatchData.putAnObject(
-            timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
+        if (valueFilter == null) {
+          cachedBatchData.putAnObject(
+              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
+        } else if (valueFilter
+            .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+          cachedBatchData.putAnObject(
+              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
+        }
       }
-      hasCachedNextBatch = true;
+      hasCachedNextBatch = cachedBatchData.hasCurrent();
     }
     return hasCachedNextBatch;
   }
@@ -314,10 +377,10 @@ public abstract class AbstractSeriesReader {
     openedChunkLoaders.add(chunkLoader);
     if (chunkLoader instanceof MemChunkLoader) {
       MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
-      chunkReader = new MemChunkReader(memChunkLoader.getChunk(), getFilter());
+      chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
     } else {
       Chunk chunk = chunkLoader.getChunk(metaData);
-      chunkReader = new ChunkReader(chunk, getFilter());
+      chunkReader = new ChunkReader(chunk, timeFilter);
       chunkReader.hasNextSatisfiedPage();
     }
     return chunkReader;
@@ -361,9 +424,9 @@ public abstract class AbstractSeriesReader {
       }
     }
 
-    if (getFilter() != null) {
+    if (timeFilter != null) {
       currentChunkMetaDataList.removeIf(
-          a -> !getFilter().satisfyStartEndTime(a.getStartTime(), a.getEndTime()));
+          a -> !timeFilter.satisfyStartEndTime(a.getStartTime(), a.getEndTime()));
     }
     return currentChunkMetaDataList;
   }
@@ -400,6 +463,14 @@ public abstract class AbstractSeriesReader {
     }
   }
 
+  public void setTimeFilter(long timestamp) {
+    ((UnaryFilter) timeFilter).setValue(timestamp);
+  }
+
+  public Filter getTimeFilter() {
+    return timeFilter;
+  }
+
   protected class VersionPair<T> {
 
     protected long version;
@@ -411,7 +482,7 @@ public abstract class AbstractSeriesReader {
     }
   }
 
-  public void close() throws IOException {
+  public void closeReader() throws IOException {
     if (firstChunkMetaData != null) {
       firstChunkMetaData.getChunkLoader().close();
     }
@@ -419,4 +490,150 @@ public abstract class AbstractSeriesReader {
       openedChunkLoader.close();
     }
   }
+
+  public IPointReader getPointReader() {
+    return new SeriesPointReader();
+  }
+
+  public IBatchReader getBatchReader() {
+    return new SeriesBatchReader();
+  }
+
+  private class SeriesBatchReader implements IBatchReader {
+
+    private BatchData batchData;
+    private boolean hasCachedBatchData = false;
+
+    /**
+     * This method overrides the AbstractDataReader.hasNextOverlappedPage for pause reads, to
+     * achieve a continuous read
+     */
+    @Override
+    public boolean hasNextBatch() throws IOException {
+
+      if (hasCachedBatchData) {
+        return true;
+      }
+
+      while (hasNextChunk()) {
+        while (hasNextPage()) {
+          if (!isPageOverlapped()) {
+            batchData = nextPage();
+            hasCachedBatchData = true;
+            return true;
+          }
+          while (hasNextOverlappedPage()) {
+            batchData = nextOverlappedPage();
+            hasCachedBatchData = true;
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    @Override
+    public BatchData nextBatch() throws IOException {
+      if (hasCachedBatchData || hasNextBatch()) {
+        hasCachedBatchData = false;
+        return batchData;
+      }
+      throw new IOException("no next batch");
+    }
+
+    @Override
+    public void close() throws IOException {
+      closeReader();
+    }
+  }
+
+  private class SeriesPointReader implements IPointReader {
+
+    private boolean hasCachedTimeValuePair;
+    private BatchData batchData;
+    private TimeValuePair timeValuePair;
+
+    private boolean hasNext() throws IOException {
+      while (hasNextChunk()) {
+        while (hasNextPage()) {
+          if (hasNextOverlappedPage()) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    private boolean hasNextSatisfiedInCurrentBatch() {
+      while (batchData != null && batchData.hasCurrent()) {
+        timeValuePair = new TimeValuePair(batchData.currentTime(),
+            batchData.currentTsPrimitiveType());
+        hasCachedTimeValuePair = true;
+        batchData.next();
+        return true;
+      }
+      return false;
+    }
+
+    @Override
+    public boolean hasNextTimeValuePair() throws IOException {
+      if (hasCachedTimeValuePair) {
+        return true;
+      }
+
+      if (hasNextSatisfiedInCurrentBatch()) {
+        return true;
+      }
+
+      // has not cached timeValuePair
+      while (hasNext()) {
+        batchData = nextOverlappedPage();
+        if (hasNextSatisfiedInCurrentBatch()) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    @Override
+    public TimeValuePair nextTimeValuePair() throws IOException {
+      if (hasCachedTimeValuePair || hasNextTimeValuePair()) {
+        hasCachedTimeValuePair = false;
+        return timeValuePair;
+      } else {
+        throw new IOException("no next data");
+      }
+    }
+
+    @Override
+    public TimeValuePair currentTimeValuePair() throws IOException {
+      return timeValuePair;
+    }
+
+    @Override
+    public void close() throws IOException {
+      closeReader();
+    }
+  }
+
+  @Override
+  public boolean isManagedByQueryManager() {
+    return managedByQueryManager;
+  }
+
+  @Override
+  public void setManagedByQueryManager(boolean managedByQueryManager) {
+    this.managedByQueryManager = managedByQueryManager;
+  }
+
+  @Override
+  public boolean hasRemaining() {
+    return hasRemaining;
+  }
+
+  @Override
+  public void setHasRemaining(boolean hasRemaining) {
+    this.hasRemaining = hasRemaining;
+  }
+
 }

@@ -27,25 +27,22 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 
 
-public class SeriesReaderByTimestamp extends AbstractSeriesReader implements
-    IReaderByTimestamp {
+public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
+  private SeriesReader randomReader;
   private BatchData batchData;
-  private UnaryFilter<Long> filter = TimeFilter.gtEq(Long.MIN_VALUE);
 
   public SeriesReaderByTimestamp(Path seriesPath, TSDataType dataType, QueryContext context,
       QueryDataSource dataSource) {
-    super(seriesPath, dataType, context, dataSource.getSeqResources(),
-        dataSource.getUnseqResources());
+    randomReader = new SeriesReader(seriesPath, dataType, context,
+        dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null);
   }
 
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
-    filter.setValue(timestamp);
+    randomReader.setTimeFilter(timestamp);
     if (batchData == null || batchData.getTimeByIndex(batchData.length() - 1) < timestamp) {
       if (!hasNext(timestamp)) {
         return null;
@@ -61,20 +58,20 @@ public class SeriesReaderByTimestamp extends AbstractSeriesReader implements
   }
 
   private boolean hasNext(long timestamp) throws IOException {
-    while (super.hasNextChunk()) {
-      if (!satisfyFilter(currentChunkStatistics())) {
-        skipCurrentChunk();
+    while (randomReader.hasNextChunk()) {
+      if (!satisfyFilter(randomReader.currentChunkStatistics())) {
+        randomReader.skipCurrentChunk();
         continue;
       }
-      while (super.hasNextPage()) {
-        if (!satisfyFilter(currentPageStatistics())) {
-          skipCurrentPage();
+      while (randomReader.hasNextPage()) {
+        if (!satisfyFilter(randomReader.currentPageStatistics())) {
+          randomReader.skipCurrentPage();
           continue;
         }
-        if (!isPageOverlapped()) {
-          batchData = nextPage();
+        if (!randomReader.isPageOverlapped()) {
+          batchData = randomReader.nextPage();
         } else {
-          batchData = nextOverlappedPage();
+          batchData = randomReader.nextOverlappedPage();
         }
         if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
           return true;
@@ -84,13 +81,8 @@ public class SeriesReaderByTimestamp extends AbstractSeriesReader implements
     return false;
   }
 
-  @Override
-  protected boolean satisfyFilter(Statistics statistics) {
-    return filter.satisfy(statistics);
+  private boolean satisfyFilter(Statistics statistics) {
+    return randomReader.getTimeFilter().satisfy(statistics);
   }
 
-  @Override
-  protected Filter getFilter() {
-    return filter;
-  }
 }

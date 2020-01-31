@@ -24,20 +24,21 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.tsfile.read.IPointReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.RawDataReaderWithoutValueFilter;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public abstract class IFill {
 
   long queryTime;
   TSDataType dataType;
 
-  RawDataReaderWithoutValueFilter allDataReader;
+  IBatchReader allDataReader;
 
   public IFill(TSDataType dataType, long queryTime) {
     this.dataType = dataType;
@@ -55,8 +56,9 @@ public abstract class IFill {
   void constructReaders(Path path, QueryContext context, long beforeRange)
       throws StorageEngineException {
     Filter timeFilter = constructFilter(beforeRange);
-    allDataReader = new RawDataReaderWithoutValueFilter(path, dataType, timeFilter,
-        context, QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter));
+    allDataReader = new SeriesReader(path, dataType, context,
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
+        timeFilter, null).getBatchReader();
   }
 
   public abstract IPointReader getFillResult() throws IOException, UnSupportedFillTypeException;
