@@ -37,6 +37,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataBatchReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataRandomReader;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -198,10 +199,10 @@ public class MergeTaskTest extends MergeTest {
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
-    SeriesDataBatchReader tsFilesReader = new SeriesDataBatchReader(path,
-        measurementSchemas[0].getType(), context, list);
-    while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
+    SeriesDataRandomReader tsFilesReader = new SeriesDataRandomReader(path,
+        measurementSchemas[0].getType(), context, list, new ArrayList<>(), null, null);
+    while (tsFilesReader.hasNextOverlappedPage()) {
+      BatchData batchData = tsFilesReader.nextOverlappedPage();
       for (int i = 0; i < batchData.length(); i++) {
         if (batchData.getTimeByIndex(i) < 260) {
           assertEquals(batchData.getTimeByIndex(i) + 10000.0, batchData.getDoubleByIndex(i), 0.001);
