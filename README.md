@@ -32,7 +32,7 @@
 
 # Overview
 
-IoTDB (Internet of Things Database) is an integrated data management engine designed for time series data, which can provide users specific services, such as, data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input and complex data analysis in the industrial IoTDB field.
+IoTDB (Internet of Things Database) is a data management system for time series data, which can provide users specific services, such as, data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input and complex data analysis in the industrial IoTDB field.
 
 # Main Features
 
