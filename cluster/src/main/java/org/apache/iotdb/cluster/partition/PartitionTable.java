@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -48,7 +49,7 @@ import org.slf4j.LoggerFactory;
 public interface PartitionTable {
   // static final is not necessary, it is redundant for an interface
   Logger logger = LoggerFactory.getLogger(SlotPartitionTable.class);
-  long PARTITION_INTERVAL = ClusterDescriptor.getINSTANCE().getConfig().getPartitionInterval();
+  long PARTITION_INTERVAL = StorageEngine.getTimePartitionInterval();
 
   /**
    * Given the storageGroupName and the timestamp, return the list of nodes on which the storage
@@ -112,6 +113,7 @@ public interface PartitionTable {
         try {
           storageGroup = MManager.getInstance()
               .getStorageGroupNameByPath(((CreateTimeSeriesPlan) plan).getPath().getFullPath());
+          //timestamp is meaningless, use 0 instead.
           return PartitionUtils.calculateStorageGroupSlot(storageGroup, 0, this.getSlotNum());
         } catch (MetadataException e) {
           logger.error("Cannot find the storage group of {}", ((CreateTimeSeriesPlan) plan).getPath());

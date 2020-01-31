@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.utils;
 import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -34,8 +35,6 @@ import org.slf4j.LoggerFactory;
 public class PartitionUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(PartitionUtils.class);
-  private static long PARTITION_INTERVAL = ClusterDescriptor.getINSTANCE().getConfig().getPartitionInterval();
-
   private PartitionUtils() {
     // util class
   }
@@ -50,7 +49,7 @@ public class PartitionUtils {
 
   public static int calculateStorageGroupSlot(String storageGroupName, long timestamp,
       int slotNum) {
-    long partitionInstance = timestamp / PARTITION_INTERVAL; //FIXME considering the time unit
+    long partitionInstance = StorageEngine.fromTimeToTimePartition(timestamp);
     int hash = Murmur128Hash.hash(storageGroupName, partitionInstance, HASH_SALT);
     return Math.abs(hash % slotNum);
   }

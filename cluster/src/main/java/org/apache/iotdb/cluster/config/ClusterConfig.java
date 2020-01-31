@@ -41,9 +41,6 @@ public class ClusterConfig {
 
   @ClusterConsistent
   private int replicationNum = 2;
-  // default daily partition
-  @ClusterConsistent
-  private long partitionInterval = 24 * 3600 * 1000L;
 
   private int connectionTimeoutInMS = 20 * 1000;
 
@@ -98,14 +95,6 @@ public class ClusterConfig {
 
   public int getLocalDataPort() {
     return localDataPort;
-  }
-
-  public long getPartitionInterval() {
-    return partitionInterval;
-  }
-
-  public void setPartitionInterval(long partitionInterval) {
-    this.partitionInterval = partitionInterval;
   }
 
   public void setLocalDataPort(int localDataPort) {

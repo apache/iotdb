@@ -39,6 +39,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.ServerConfigConsistent;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
@@ -103,6 +104,7 @@ public class StorageEngine implements IService {
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's TimestampPrecision
    */
+  @ServerConfigConsistent
   static long timePartitionInterval;
 
   private StorageEngine() {
@@ -531,6 +533,6 @@ public class StorageEngine implements IService {
 
   public static long fromTimeToTimePartition(long time) {
 
-    return time / StorageEngine.getTimePartitionInterval();
+    return time / timePartitionInterval;
   }
 }

@@ -48,13 +48,8 @@ import org.slf4j.LoggerFactory;
 public class SlotPartitionTable implements PartitionTable {
 
   private static final Logger logger = LoggerFactory.getLogger(SlotPartitionTable.class);
-  private static long PARTITION_INTERVAL = ClusterDescriptor.getINSTANCE().getConfig().getPartitionInterval();
-
   private int replicationNum =
       ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
-  private long partitionInterval =
-      ClusterDescriptor.getINSTANCE().getConfig().getPartitionInterval();
-
   private List<Node> nodeRing = new ArrayList<>();
   // the slots held by each node
   private Map<Node, List<Integer>> nodeSlotMap = new ConcurrentHashMap<>();

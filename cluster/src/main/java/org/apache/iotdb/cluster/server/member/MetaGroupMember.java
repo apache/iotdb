@@ -178,6 +178,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     clientServer = new ClientServer(this);
   }
 
+  /**
+   * Tell all nodes in the group to close current TsFile.
+   * @param storageGroupName
+   * @param isSeq
+   */
   public void closePartition(String storageGroupName, boolean isSeq) {
     synchronized (logManager) {
       CloseFileLog log = new CloseFileLog(storageGroupName, isSeq);
