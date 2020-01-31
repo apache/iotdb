@@ -41,7 +41,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.seriesRelated.RawDataReaderWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -190,14 +190,15 @@ public class TTLTest {
     storageGroupProcessor.setDataTTL(500);
 
     // files after ttl
-    dataSource = storageGroupProcessor.query(sg1, s1, EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
+    dataSource = storageGroupProcessor
+        .query(sg1, s1, EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
     assertTrue(seqResource.size() < 4);
     assertEquals(0, unseqResource.size());
     Path path = new Path(sg1, s1);
-    RawDataReaderWithoutValueFilter reader = new RawDataReaderWithoutValueFilter(path,
-        TSDataType.INT64, null, EnvironmentUtils.TEST_QUERY_CONTEXT, dataSource);
+    SeriesDataBatchReader reader = new SeriesDataBatchReader(path,
+        TSDataType.INT64, null, null, EnvironmentUtils.TEST_QUERY_CONTEXT, dataSource);
 
     int cnt = 0;
     while (reader.hasNextBatch()) {
@@ -233,10 +234,10 @@ public class TTLTest {
     File unseqDir = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(), sg1);
 
     List<File> seqFiles = new ArrayList<>();
-    for(File directory : seqDir.listFiles()){
-      if(directory.isDirectory()){
-        for(File file : directory.listFiles()){
-          if(file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)){
+    for (File directory : seqDir.listFiles()) {
+      if (directory.isDirectory()) {
+        for (File file : directory.listFiles()) {
+          if (file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
             seqFiles.add(file);
           }
         }
@@ -244,10 +245,10 @@ public class TTLTest {
     }
 
     List<File> unseqFiles = new ArrayList<>();
-    for(File directory : unseqDir.listFiles()){
-      if(directory.isDirectory()){
-        for(File file : directory.listFiles()){
-          if(file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)){
+    for (File directory : unseqDir.listFiles()) {
+      if (directory.isDirectory()) {
+        for (File file : directory.listFiles()) {
+          if (file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
             unseqFiles.add(file);
           }
         }
@@ -262,10 +263,10 @@ public class TTLTest {
 
     // files after ttl
     seqFiles = new ArrayList<>();
-    for(File directory : seqDir.listFiles()){
-      if(directory.isDirectory()){
-        for(File file : directory.listFiles()){
-          if(file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)){
+    for (File directory : seqDir.listFiles()) {
+      if (directory.isDirectory()) {
+        for (File file : directory.listFiles()) {
+          if (file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
             seqFiles.add(file);
           }
         }
@@ -273,10 +274,10 @@ public class TTLTest {
     }
 
     unseqFiles = new ArrayList<>();
-    for(File directory : unseqDir.listFiles()){
-      if(directory.isDirectory()){
-        for(File file : directory.listFiles()){
-          if(file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)){
+    for (File directory : unseqDir.listFiles()) {
+      if (directory.isDirectory()) {
+        for (File file : directory.listFiles()) {
+          if (file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
             unseqFiles.add(file);
           }
         }

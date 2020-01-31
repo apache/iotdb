@@ -18,37 +18,59 @@
  */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
+import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import java.io.IOException;
 
+public class SeriesDataPointReader implements IPointReader {
 
-public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter {
-
-  private final Filter valueFilter;
+  private SeriesDataRandomReader randomReader;
   private boolean hasCachedTimeValuePair;
   private BatchData batchData;
   private TimeValuePair timeValuePair;
 
-  public SeriesReaderWithValueFilter(Path seriesPath, TSDataType dataType, Filter valueFilter,
-      QueryContext context, QueryDataSource dataSource) {
-    super(seriesPath, dataType, null, context, dataSource);
-    this.valueFilter = valueFilter;
+  public SeriesDataPointReader(Path seriesPath, TSDataType dataType, Filter timeFilter,
+      Filter valueFilter, QueryContext context, QueryDataSource dataSource) {
+    randomReader = new SeriesDataRandomReader(seriesPath, dataType, context,
+        dataSource.getSeqResources(), dataSource.getUnseqResources(), timeFilter, valueFilter);
+  }
+
+
+  private boolean hasNextOverlappedPage() throws IOException {
+    while (randomReader.hasNextChunk()) {
+      while (randomReader.hasNextPage()) {
+        if (randomReader.hasNextOverlappedPage()) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private boolean hasNextSatisfiedInCurrentBatch() {
+    while (batchData != null && batchData.hasCurrent()) {
+      timeValuePair = new TimeValuePair(batchData.currentTime(),
+          batchData.currentTsPrimitiveType());
+      hasCachedTimeValuePair = true;
+      batchData.next();
+      return true;
+    }
+    return false;
+  }
+
+  public TimeValuePair current() {
+    return timeValuePair;
   }
 
   @Override
-  protected boolean satisfyFilter(Statistics statistics) {
-    return valueFilter.satisfy(statistics);
-  }
-
-  public boolean hasNext() throws IOException {
+  public boolean hasNextTimeValuePair() throws IOException {
     if (hasCachedTimeValuePair) {
       return true;
     }
@@ -59,7 +81,7 @@ public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter 
 
     // has not cached timeValuePair
     while (hasNextOverlappedPage()) {
-      batchData = super.nextOverlappedPage();
+      batchData = randomReader.nextOverlappedPage();
       if (hasNextSatisfiedInCurrentBatch()) {
         return true;
       }
@@ -68,33 +90,8 @@ public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter 
   }
 
   @Override
-  public boolean hasNextOverlappedPage() throws IOException {
-    while (hasNextChunk()) {
-      while (hasNextPage()) {
-        if (super.hasNextOverlappedPage()) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  private boolean hasNextSatisfiedInCurrentBatch() {
-    while (batchData != null && batchData.hasCurrent()) {
-      if (valueFilter.satisfy(batchData.currentTime(), batchData.currentValue())) {
-        timeValuePair = new TimeValuePair(batchData.currentTime(),
-            batchData.currentTsPrimitiveType());
-        hasCachedTimeValuePair = true;
-        batchData.next();
-        return true;
-      }
-      batchData.next();
-    }
-    return false;
-  }
-
-  public TimeValuePair next() throws IOException {
-    if (hasCachedTimeValuePair || hasNext()) {
+  public TimeValuePair nextTimeValuePair() throws IOException {
+    if (hasCachedTimeValuePair || hasNextTimeValuePair()) {
       hasCachedTimeValuePair = false;
       return timeValuePair;
     } else {
@@ -102,7 +99,13 @@ public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter 
     }
   }
 
-  public TimeValuePair current() {
-    return timeValuePair;
+  @Override
+  public TimeValuePair currentTimeValuePair() throws IOException {
+    return null;
+  }
+
+  @Override
+  public void close() throws IOException {
+    randomReader.close();
   }
 }

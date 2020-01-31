@@ -27,8 +27,8 @@ import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.seriesRelated.IRawDataReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.RawDataReaderWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.seriesRelated.IDataIteratorReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataBatchReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -54,7 +54,8 @@ public class RawDataQueryExecutor {
     this.optimizedExpression = optimizedExpression;
   }
 
-  public RawDataQueryExecutor(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes) {
+  public RawDataQueryExecutor(List<Path> deduplicatedPaths,
+      List<TSDataType> deduplicatedDataTypes) {
     this.deduplicatedPaths = deduplicatedPaths;
     this.deduplicatedDataTypes = deduplicatedDataTypes;
   }
@@ -62,19 +63,20 @@ public class RawDataQueryExecutor {
   /**
    * without filter or with global time filter.
    */
-  public QueryDataSet executeWithoutValueFilter(QueryContext context) throws StorageEngineException {
+  public QueryDataSet executeWithoutValueFilter(QueryContext context)
+      throws StorageEngineException {
 
     Filter timeFilter = null;
     if (optimizedExpression != null) {
       timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
     }
 
-    List<IRawDataReader> readersOfSelectedSeries = new ArrayList<>();
+    List<IDataIteratorReader> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
       Path path = deduplicatedPaths.get(i);
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
-      IRawDataReader reader = new RawDataReaderWithoutValueFilter(path, dataType, timeFilter,
+      IDataIteratorReader reader = new SeriesDataBatchReader(path, dataType, timeFilter, null,
           context,
           QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter));
       readersOfSelectedSeries.add(reader);
@@ -95,12 +97,12 @@ public class RawDataQueryExecutor {
       timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
     }
 
-    List<IRawDataReader> readersOfSelectedSeries = new ArrayList<>();
+    List<IDataIteratorReader> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
       Path path = deduplicatedPaths.get(i);
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
-      IRawDataReader reader = new RawDataReaderWithoutValueFilter(path, dataType, timeFilter,
+      IDataIteratorReader reader = new SeriesDataBatchReader(path, dataType, timeFilter, null,
           context,
           QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter));
       readersOfSelectedSeries.add(reader);

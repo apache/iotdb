@@ -361,7 +361,8 @@ public class IoTDBSeriesReaderIT {
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      queryDataSet.next();
+      RowRecord next = queryDataSet.next();
+      System.out.println(next);
       cnt++;
     }
     assertEquals(22300, cnt);

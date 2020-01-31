@@ -29,33 +29,26 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-public class RawDataReaderWithoutValueFilter extends AbstractSeriesReader implements IRawDataReader {
+public class SeriesDataBatchReader implements IDataIteratorReader {
 
-  private Filter filter;
+  private SeriesDataRandomReader randomReader;
   private BatchData batchData;
   private boolean hasCachedBatchData = false;
   private boolean hasRemaining;
   private boolean managedByQueryManager;
 
-  public RawDataReaderWithoutValueFilter(Path seriesPath, TSDataType dataType, Filter filter,
-      QueryContext context, QueryDataSource queryDataSource) {
-    super(seriesPath, dataType, context, queryDataSource.getSeqResources(),
-        queryDataSource.getUnseqResources());
-    this.filter = queryDataSource.setTTL(filter);
+  public SeriesDataBatchReader(Path seriesPath, TSDataType dataType, Filter filter,
+      Filter valueFilter, QueryContext context, QueryDataSource queryDataSource) {
+    randomReader = new SeriesDataRandomReader(seriesPath, dataType, context,
+        queryDataSource, queryDataSource.setTTL(filter), valueFilter);
   }
 
   // for test
-  public RawDataReaderWithoutValueFilter(Path seriesPath, TSDataType dataType,
-      Filter filter, QueryContext context, List<TsFileResource> resources) {
-    super(seriesPath, dataType, context, resources, new ArrayList<>());
-    this.filter = filter;
+  public SeriesDataBatchReader(Path seriesPath, TSDataType dataType, QueryContext context,
+      List<TsFileResource> resources) {
+    randomReader = new SeriesDataRandomReader(seriesPath, dataType, context, resources,
+        new ArrayList<>(), null, null);
   }
-
-  @Override
-  protected Filter getFilter() {
-    return filter;
-  }
-
 
   /**
    * This method overrides the AbstractDataReader.hasNextOverlappedPage for pause reads, to achieve
@@ -68,15 +61,16 @@ public class RawDataReaderWithoutValueFilter extends AbstractSeriesReader implem
       return true;
     }
 
-    if (hasNextChunk()) {
-      if (hasNextPage()) {
-        if (!isPageOverlapped() && satisfyFilter(currentPageStatistics())) {
-          batchData = nextPage();
+    if (randomReader.hasNextChunk()) {
+      if (randomReader.hasNextPage()) {
+        if (!randomReader.isPageOverlapped() && randomReader
+            .satisfyFilter(randomReader.currentPageStatistics())) {
+          batchData = randomReader.nextPage();
           hasCachedBatchData = true;
           return true;
         }
-        if (hasNextOverlappedPage()) {
-          batchData = nextOverlappedPage();
+        if (randomReader.hasNextOverlappedPage()) {
+          batchData = randomReader.nextOverlappedPage();
           hasCachedBatchData = true;
           return true;
         }
@@ -92,6 +86,11 @@ public class RawDataReaderWithoutValueFilter extends AbstractSeriesReader implem
       return batchData;
     }
     throw new IOException("no next batch");
+  }
+
+  @Override
+  public void close() throws IOException {
+    randomReader.close();
   }
 
 
@@ -114,6 +113,5 @@ public class RawDataReaderWithoutValueFilter extends AbstractSeriesReader implem
   public void setHasRemaining(boolean hasRemaining) {
     this.hasRemaining = hasRemaining;
   }
-
 
 }

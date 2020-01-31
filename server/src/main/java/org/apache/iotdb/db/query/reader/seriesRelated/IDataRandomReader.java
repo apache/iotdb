@@ -18,14 +18,30 @@
  */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
-import java.io.IOException;
-import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public interface IRawDataReader extends ManagedSeriesReader{
+import java.io.IOException;
 
-  boolean hasNextBatch() throws IOException;
+public interface IDataRandomReader {
 
-  BatchData nextBatch() throws IOException;
+  boolean hasNextChunk() throws IOException;
 
+  boolean canUseCurrentChunkStatistics();
+
+  Statistics currentChunkStatistics();
+
+  void skipCurrentChunk() throws IOException;
+
+  boolean hasNextPage() throws IOException;
+
+  boolean canUseCurrentPageStatistics() throws IOException;
+
+  Statistics currentPageStatistics() throws IOException;
+
+  void skipCurrentPage() throws IOException;
+
+  boolean hasNextOverlappedPage() throws IOException;
+
+  BatchData nextOverlappedPage() throws IOException;
 }
