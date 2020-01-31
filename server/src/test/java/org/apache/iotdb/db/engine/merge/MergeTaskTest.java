@@ -36,11 +36,11 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataBatchReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataRandomReader;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -74,8 +74,9 @@ public class MergeTaskTest extends MergeTest {
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
-    SeriesDataBatchReader tsFilesReader = new SeriesDataBatchReader(path,
-        measurementSchemas[0].getType(), context, list);
+    IBatchReader tsFilesReader = new SeriesDataRandomReader(path,
+        measurementSchemas[0].getType(), context, list, new ArrayList<>(), null, null)
+        .getIBatchReader();
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
@@ -98,8 +99,9 @@ public class MergeTaskTest extends MergeTest {
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
-    SeriesDataBatchReader tsFilesReader = new SeriesDataBatchReader(path,
-        measurementSchemas[0].getType(), context, list);
+    IBatchReader tsFilesReader = new SeriesDataRandomReader(path,
+        measurementSchemas[0].getType(), context, list, new ArrayList<>(), null, null)
+        .getIBatchReader();
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
@@ -123,8 +125,9 @@ public class MergeTaskTest extends MergeTest {
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     List<TsFileResource> resources = new ArrayList<>();
     resources.add(seqResources.get(0));
-    SeriesDataBatchReader tsFilesReader = new SeriesDataBatchReader(path,
-        measurementSchemas[0].getType(), context, resources);
+    IBatchReader tsFilesReader = new SeriesDataRandomReader(path,
+        measurementSchemas[0].getType(), context, resources, new ArrayList<>(), null, null)
+        .getIBatchReader();
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
@@ -147,8 +150,9 @@ public class MergeTaskTest extends MergeTest {
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
-    SeriesDataBatchReader tsFilesReader = new SeriesDataBatchReader(path,
-        measurementSchemas[0].getType(), context, list);
+    IBatchReader tsFilesReader = new SeriesDataRandomReader(path,
+        measurementSchemas[0].getType(), context, list, new ArrayList<>(), null, null)
+        .getIBatchReader();
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
@@ -175,8 +179,9 @@ public class MergeTaskTest extends MergeTest {
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
-    SeriesDataBatchReader tsFilesReader = new SeriesDataBatchReader(path,
-        measurementSchemas[0].getType(), context, list);
+    IBatchReader tsFilesReader = new SeriesDataRandomReader(path,
+        measurementSchemas[0].getType(), context, list, new ArrayList<>(), null, null)
+        .getIBatchReader();
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
@@ -199,8 +204,9 @@ public class MergeTaskTest extends MergeTest {
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(2));
-    SeriesDataBatchReader tsFilesReader = new SeriesDataBatchReader(path,
-        measurementSchemas[0].getType(), context, list);
+    IBatchReader tsFilesReader = new SeriesDataRandomReader(path,
+        measurementSchemas[0].getType(), context, list, new ArrayList<>(), null, null)
+        .getIBatchReader();
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
@@ -239,8 +245,9 @@ public class MergeTaskTest extends MergeTest {
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     List<TsFileResource> resources = new ArrayList<>();
     resources.add(seqResources.get(0));
-    SeriesDataBatchReader tsFilesReader = new SeriesDataBatchReader(path,
-        measurementSchemas[0].getType(), context, resources);
+    IBatchReader tsFilesReader = new SeriesDataRandomReader(path,
+        measurementSchemas[0].getType(), context, resources, new ArrayList<>(), null, null)
+        .getIBatchReader();
     int count = 0;
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();

@@ -41,7 +41,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataBatchReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataRandomReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -52,6 +52,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -197,8 +198,9 @@ public class TTLTest {
     assertTrue(seqResource.size() < 4);
     assertEquals(0, unseqResource.size());
     Path path = new Path(sg1, s1);
-    SeriesDataBatchReader reader = new SeriesDataBatchReader(path,
-        TSDataType.INT64, null, null, EnvironmentUtils.TEST_QUERY_CONTEXT, dataSource);
+    IBatchReader reader = new SeriesDataRandomReader(path,
+        TSDataType.INT64, EnvironmentUtils.TEST_QUERY_CONTEXT, dataSource, null, null)
+        .getIBatchReader();
 
     int cnt = 0;
     while (reader.hasNextBatch()) {

@@ -20,16 +20,17 @@
 package org.apache.iotdb.db.query.timegenerator;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataPointReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesDataRandomReader;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.NodeType;
 
 public class EngineLeafNode implements Node {
 
-  private SeriesDataPointReader reader;
+  private IPointReader reader;
 
-  public EngineLeafNode(SeriesDataPointReader reader) {
-    this.reader = reader;
+  public EngineLeafNode(SeriesDataRandomReader reader) {
+    this.reader = reader.getIPointReader();
   }
 
   @Override

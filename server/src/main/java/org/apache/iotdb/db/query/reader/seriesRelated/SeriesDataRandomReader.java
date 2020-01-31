@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.MemChunkLoader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -48,11 +50,12 @@ import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
-public class SeriesDataRandomReader implements IDataRandomReader {
+public class SeriesDataRandomReader implements IDataRandomReader, ManagedSeriesReader {
 
   private final Path seriesPath;
   private final TSDataType dataType;
@@ -84,6 +87,9 @@ public class SeriesDataRandomReader implements IDataRandomReader {
   private long currentPageEndTime = Long.MAX_VALUE;
 
 
+  private boolean hasRemaining;
+  private boolean managedByQueryManager;
+
   public SeriesDataRandomReader(Path seriesPath, TSDataType dataType, QueryContext context,
       QueryDataSource dataSource, Filter timeFilter, Filter valueFilter) {
     this.seriesPath = seriesPath;
@@ -107,21 +113,32 @@ public class SeriesDataRandomReader implements IDataRandomReader {
     this.valueFilter = valueFilter;
   }
 
-  protected boolean satisfyFilter(Statistics statistics) {
+  protected boolean satisfyTimeFilter(Statistics statistics) {
     return timeFilter == null
         || timeFilter.containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
   }
 
+  /**
+   * only be used for aggregate without value filter
+   *
+   * @return
+   */
   @Override
   public boolean canUseCurrentChunkStatistics() {
     Statistics chunkStatistics = currentChunkStatistics();
-    return !isChunkOverlapped() && satisfyFilter(chunkStatistics);
+    return !isChunkOverlapped() && satisfyTimeFilter(chunkStatistics);
   }
 
+  /**
+   * only be used for aggregate without value filter
+   *
+   * @return
+   * @throws IOException
+   */
   @Override
   public boolean canUseCurrentPageStatistics() throws IOException {
     Statistics currentPageStatistics = currentPageStatistics();
-    return !isPageOverlapped() && satisfyFilter(currentPageStatistics);
+    return !isPageOverlapped() && satisfyTimeFilter(currentPageStatistics);
   }
 
   public boolean hasNextChunk() throws IOException {
@@ -473,4 +490,148 @@ public class SeriesDataRandomReader implements IDataRandomReader {
       openedChunkLoader.close();
     }
   }
+
+  public IPointReader getIPointReader() {
+    return new Ite();
+  }
+
+  public IBatchReader getIBatchReader() {
+    return new BatchIte();
+  }
+
+  private class BatchIte implements IBatchReader {
+
+    private BatchData batchData;
+    private boolean hasCachedBatchData = false;
+
+    /**
+     * This method overrides the AbstractDataReader.hasNextOverlappedPage for pause reads, to
+     * achieve a continuous read
+     */
+    @Override
+    public boolean hasNextBatch() throws IOException {
+
+      if (hasCachedBatchData) {
+        return true;
+      }
+
+      while (hasNextChunk()) {
+        while (hasNextPage()) {
+          if (!isPageOverlapped()) {
+            batchData = nextPage();
+            hasCachedBatchData = true;
+            return true;
+          }
+          while (hasNextOverlappedPage()) {
+            batchData = nextOverlappedPage();
+            hasCachedBatchData = true;
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    @Override
+    public BatchData nextBatch() throws IOException {
+      if (hasCachedBatchData || hasNextBatch()) {
+        hasCachedBatchData = false;
+        return batchData;
+      }
+      throw new IOException("no next batch");
+    }
+
+    @Override
+    public void close() throws IOException {
+    }
+  }
+
+  private class Ite implements IPointReader {
+
+    private boolean hasCachedTimeValuePair;
+    private BatchData batchData;
+    private TimeValuePair timeValuePair;
+
+    private boolean hasNext() throws IOException {
+      while (hasNextChunk()) {
+        while (hasNextPage()) {
+          if (hasNextOverlappedPage()) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    private boolean hasNextSatisfiedInCurrentBatch() {
+      while (batchData != null && batchData.hasCurrent()) {
+        timeValuePair = new TimeValuePair(batchData.currentTime(),
+            batchData.currentTsPrimitiveType());
+        hasCachedTimeValuePair = true;
+        batchData.next();
+        return true;
+      }
+      return false;
+    }
+
+    @Override
+    public boolean hasNextTimeValuePair() throws IOException {
+      if (hasCachedTimeValuePair) {
+        return true;
+      }
+
+      if (hasNextSatisfiedInCurrentBatch()) {
+        return true;
+      }
+
+      // has not cached timeValuePair
+      while (hasNext()) {
+        batchData = nextOverlappedPage();
+        if (hasNextSatisfiedInCurrentBatch()) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    @Override
+    public TimeValuePair nextTimeValuePair() throws IOException {
+      if (hasCachedTimeValuePair || hasNextTimeValuePair()) {
+        hasCachedTimeValuePair = false;
+        return timeValuePair;
+      } else {
+        throw new IOException("no next data");
+      }
+    }
+
+    @Override
+    public TimeValuePair currentTimeValuePair() throws IOException {
+      return timeValuePair;
+    }
+
+    @Override
+    public void close() throws IOException {
+    }
+  }
+
+  @Override
+  public boolean isManagedByQueryManager() {
+    return managedByQueryManager;
+  }
+
+  @Override
+  public void setManagedByQueryManager(boolean managedByQueryManager) {
+    this.managedByQueryManager = managedByQueryManager;
+  }
+
+  @Override
+  public boolean hasRemaining() {
+    return hasRemaining;
+  }
+
+  @Override
+  public void setHasRemaining(boolean hasRemaining) {
+    this.hasRemaining = hasRemaining;
+  }
+
 }

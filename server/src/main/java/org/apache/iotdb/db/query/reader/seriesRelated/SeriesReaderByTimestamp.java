@@ -82,7 +82,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     return false;
   }
 
-  protected boolean satisfyFilter(Statistics statistics) {
+  private boolean satisfyFilter(Statistics statistics) {
     return randomReader.getTimeFilter().satisfy(statistics);
   }
 
