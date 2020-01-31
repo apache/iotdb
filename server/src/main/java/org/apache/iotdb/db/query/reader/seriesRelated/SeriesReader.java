@@ -426,7 +426,16 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
 
     if (timeFilter != null) {
       currentChunkMetaDataList.removeIf(
-          a -> !timeFilter.satisfyStartEndTime(a.getStartTime(), a.getEndTime()));
+          a -> {
+            if (!timeFilter.satisfyStartEndTime(a.getStartTime(), a.getEndTime())) {
+              try {
+                a.getChunkLoader().close();
+              } catch (IOException e) {
+              }
+              return true;
+            }
+            return false;
+          });
     }
     return currentChunkMetaDataList;
   }
