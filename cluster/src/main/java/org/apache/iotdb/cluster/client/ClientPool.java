@@ -46,8 +46,10 @@ public class ClientPool {
    * @throws IOException
    */
   public AsyncClient getClient(Node node) throws IOException {
-    synchronized (node) {
-      Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(node, n -> new ArrayDeque<>());
+    //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
+    Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(node, n -> new ArrayDeque<>());
+    //TODO this pool may increase infinitely.
+    synchronized (clientStack) {
       if (clientStack.isEmpty()) {
         return clientFactory.getAsyncClient(node, this);
       } else {
@@ -62,8 +64,9 @@ public class ClientPool {
    * @param client
    */
   public void putClient(Node node, AsyncClient client) {
-    synchronized (node) {
-      Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(node, n -> new ArrayDeque<>());
+    //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
+    Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(node, n -> new ArrayDeque<>());
+    synchronized (clientStack) {
       clientStack.push(client);
     }
   }

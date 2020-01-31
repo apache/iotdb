@@ -165,12 +165,14 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         response.setLastLogTerm(logManager.getLastLogTerm());
 
         // The term of the last log needs to be same with leader's term in order to preserve safety.
-        if (logManager.getLastLogTerm() == leaderTerm) {
+        if (logManager.getLastLogTerm() == leaderTerm) {//TODO why?
           synchronized (syncLock) {
             logManager.commitLog(request.getCommitLogIndex());
             syncLock.notifyAll();
           }
         }
+        //TODO else?
+
         term.set(leaderTerm);
         setLeader(request.getLeader());
         if (character != NodeCharacter.FOLLOWER) {
@@ -438,6 +440,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   public void setLeader(Node leader) {
+    logger.info("{} has become a {}", leader, character);
     this.leader = leader;
   }
 

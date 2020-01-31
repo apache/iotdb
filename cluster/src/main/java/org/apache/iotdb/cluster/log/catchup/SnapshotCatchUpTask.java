@@ -58,6 +58,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Runnable {
     if (raftMember.getHeader() != null) {
       request.setHeader(raftMember.getHeader());
     }
+    //TODO out of memory if too much data?
     request.setSnapshotBytes(snapshot.serialize());
 
     AtomicBoolean succeed = new AtomicBoolean(false);
@@ -83,6 +84,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Runnable {
   public void run() {
     try {
       if (doSnapshotCatchUp()) {
+        logger.debug("Snapshot catch up {} finished, begin to catch up log", node);
         doLogCatchUp();
       }
     } catch (Exception e) {
