@@ -199,10 +199,10 @@ public class MergeTaskTest extends MergeTest {
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
-    SeriesDataRandomReader tsFilesReader = new SeriesDataRandomReader(path,
-        measurementSchemas[0].getType(), context, list, new ArrayList<>(), null, null);
-    while (tsFilesReader.hasNextOverlappedPage()) {
-      BatchData batchData = tsFilesReader.nextOverlappedPage();
+    SeriesDataBatchReader tsFilesReader = new SeriesDataBatchReader(path,
+        measurementSchemas[0].getType(), context, list);
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
         if (batchData.getTimeByIndex(i) < 260) {
           assertEquals(batchData.getTimeByIndex(i) + 10000.0, batchData.getDoubleByIndex(i), 0.001);

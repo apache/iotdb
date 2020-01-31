@@ -61,15 +61,14 @@ public class SeriesDataBatchReader implements IDataIteratorReader {
       return true;
     }
 
-    if (randomReader.hasNextChunk()) {
-      if (randomReader.hasNextPage()) {
-        if (!randomReader.isPageOverlapped() && randomReader
-            .satisfyFilter(randomReader.currentPageStatistics())) {
+    while (randomReader.hasNextChunk()) {
+      while (randomReader.hasNextPage()) {
+        if (!randomReader.isPageOverlapped()) {
           batchData = randomReader.nextPage();
           hasCachedBatchData = true;
           return true;
         }
-        if (randomReader.hasNextOverlappedPage()) {
+        while (randomReader.hasNextOverlappedPage()) {
           batchData = randomReader.nextOverlappedPage();
           hasCachedBatchData = true;
           return true;
