@@ -44,7 +44,9 @@ import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
 
 /**
- * MetaCluster manages cluster metadata, such as what nodes are in the cluster and data partition.
+ * MetaCluster manages the whole cluster metadata, such as what nodes are in the cluster and
+ * the data partition. Each node has one metaClusterServer instance,
+ * the single-node IoTDB instance is startup at the same time.
  */
 public class MetaClusterServer extends RaftServer implements TSMetaService.AsyncIface {
 

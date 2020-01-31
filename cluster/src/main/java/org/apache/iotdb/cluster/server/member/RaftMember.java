@@ -98,6 +98,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   private Map<Node, Long> lastCatchUpResponseTime = new ConcurrentHashMap<>();
 
+  //will be initialized as different implementations in the subclasses
   QueryProcessor queryProcessor;
   private ClientPool clientPool;
   // when the commit progress is updated by a heart beat, this object is notified so that we may
