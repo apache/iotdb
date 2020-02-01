@@ -52,11 +52,6 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     return batchData.getValueInTimestamp(timestamp);
   }
 
-  @Override
-  public boolean hasNext() throws IOException {
-    throw new IOException("hasNext in SeriesReaderByTimestamp is an empty method.");
-  }
-
   private boolean hasNext(long timestamp) throws IOException {
     while (randomReader.hasNextChunk()) {
       if (!satisfyFilter(randomReader.currentChunkStatistics())) {

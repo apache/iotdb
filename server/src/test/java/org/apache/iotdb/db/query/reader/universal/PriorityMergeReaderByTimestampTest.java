@@ -171,8 +171,7 @@ public class PriorityMergeReaderByTimestampTest {
       return null;
     }
 
-    @Override
-    public boolean hasNext() {
+    private boolean hasNext() {
       return hasNextTimeValuePair();
     }
   }

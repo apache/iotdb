@@ -38,8 +38,7 @@ public class MemChunkReaderByTimestamp implements IReaderByTimestamp {
     timeValuePairIterator = readableChunk.getIterator();
   }
 
-  @Override
-  public boolean hasNext() throws IOException {
+  private boolean hasNext() throws IOException {
     if (hasCachedTimeValuePair) {
       return true;
     }

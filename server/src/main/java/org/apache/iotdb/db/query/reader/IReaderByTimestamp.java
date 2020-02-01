@@ -35,6 +35,4 @@ public interface IReaderByTimestamp {
    * the same timestamp.
    */
   Object getValueInTimestamp(long timestamp) throws IOException;
-
-  boolean hasNext() throws IOException;
 }

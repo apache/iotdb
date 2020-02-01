@@ -70,10 +70,5 @@ public class FakedSeriesReaderByTimestamp implements IReaderByTimestamp {
     }
     return null;
   }
-
-  @Override
-  public boolean hasNext() {
-    return hasCachedTimeValuePair || iterator.hasNext();
-  }
 }
 

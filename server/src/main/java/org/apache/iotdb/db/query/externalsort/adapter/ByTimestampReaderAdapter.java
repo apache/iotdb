@@ -69,9 +69,4 @@ public class ByTimestampReaderAdapter implements IReaderByTimestamp {
     }
 
   }
-
-  @Override
-  public boolean hasNext() throws IOException {
-    return pointReader.hasNextTimeValuePair();
-  }
 }

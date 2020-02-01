@@ -64,8 +64,7 @@ public class DiskChunkReaderByTimestamp implements IReaderByTimestamp {
     return null;
   }
 
-  @Override
-  public boolean hasNext() throws IOException {
+  private boolean hasNext() throws IOException {
     if (data != null && data.hasCurrent()) {
       return true;
     }
