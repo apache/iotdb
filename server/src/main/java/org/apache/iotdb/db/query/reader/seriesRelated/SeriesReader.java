@@ -25,6 +25,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.PriorityQueue;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -69,6 +70,8 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
   private final List<ChunkMetaData> seqChunkMetadatas = new LinkedList<>();
   private final PriorityQueue<ChunkMetaData> unseqChunkMetadatas =
       new PriorityQueue<>(Comparator.comparingLong(ChunkMetaData::getStartTime));
+
+  private final List<IChunkLoader> openedChunkLoaders = new LinkedList<>();
 
   private boolean hasCachedFirstChunkMetadata;
   private ChunkMetaData firstChunkMetaData;
@@ -156,7 +159,6 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
   private void tryToInitFirstChunk() throws IOException {
     tryToFillChunkMetadatas();
     hasCachedFirstChunkMetadata = true;
-    firstChunkMetaData.getChunkLoader().close();
     if (!seqChunkMetadatas.isEmpty() && unseqChunkMetadatas.isEmpty()) {
       // only has seq
       firstChunkMetaData = seqChunkMetadatas.remove(0);
@@ -192,7 +194,6 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
 
   public void skipCurrentChunk() throws IOException {
     hasCachedFirstChunkMetadata = false;
-    firstChunkMetaData.getChunkLoader().close();
     firstChunkMetaData = null;
   }
 
@@ -410,6 +411,7 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
         if (chunkLoader == null) {
           chunkLoader =
               new ChunkLoaderImpl(new TsFileSequenceReader(resource.getFile().getAbsolutePath()));
+          openedChunkLoaders.add(chunkLoader);
         }
         data.setChunkLoader(chunkLoader);
       }
@@ -425,16 +427,7 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
 
     if (timeFilter != null) {
       currentChunkMetaDataList.removeIf(
-          a -> {
-            if (!timeFilter.satisfyStartEndTime(a.getStartTime(), a.getEndTime())) {
-              try {
-                a.getChunkLoader().close();
-              } catch (IOException e) {
-              }
-              return true;
-            }
-            return false;
-          });
+          a -> !timeFilter.satisfyStartEndTime(a.getStartTime(), a.getEndTime()));
     }
     return currentChunkMetaDataList;
   }
@@ -493,6 +486,9 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
   public void closeReader() throws IOException {
     if (firstChunkMetaData != null) {
       firstChunkMetaData.getChunkLoader().close();
+    }
+    for (IChunkLoader openedChunkLoader : openedChunkLoaders) {
+      openedChunkLoader.close();
     }
   }
 
