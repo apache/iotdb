@@ -76,6 +76,7 @@ public class DeviceMetaDataCacheTest {
 
   @After
   public void tearDown() throws Exception {
+    storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(systemDir);
   }
