@@ -85,6 +85,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
             }
             return;
           }
+          iBatchReader.close();
           // there are no batch data left in this reader
           // put the signal batch data into queue
           blockingQueue.put(SignalBatchData.getInstance());
