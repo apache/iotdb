@@ -23,7 +23,6 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -53,12 +52,10 @@ public class QueryResourceManager {
    * Key: query job id. Value: temporary file list used for external sorting.
    */
   private Map<Long, List<IExternalSortFileDeserializer>> externalSortFileMap;
-  private Map<String, TsFileSequenceReader> fileSequenceReaderMap;
 
   private QueryResourceManager() {
     filePathsManager = new QueryFileManager();
     externalSortFileMap = new ConcurrentHashMap<>();
-    fileSequenceReaderMap = new ConcurrentHashMap<>();
   }
 
   public static QueryResourceManager getInstance() {
@@ -74,20 +71,6 @@ public class QueryResourceManager {
       filePathsManager.addQueryId(queryId);
     }
     return queryId;
-  }
-
-  public TsFileSequenceReader getTsFileSequenceReader(String fileAbsolutePath) throws IOException {
-    fileSequenceReaderMap.putIfAbsent(fileAbsolutePath, new TsFileSequenceReader(fileAbsolutePath));
-    return fileSequenceReaderMap.get(fileAbsolutePath);
-  }
-
-  public void releaseAllTsFileSequenceReader() {
-    fileSequenceReaderMap.forEach((k, v) -> {
-      try {
-        v.close();
-      } catch (IOException e) {
-      }
-    });
   }
 
   /**

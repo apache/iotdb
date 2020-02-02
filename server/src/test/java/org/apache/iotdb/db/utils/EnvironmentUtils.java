@@ -73,7 +73,6 @@ public class EnvironmentUtils {
     }
 
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
-    QueryResourceManager.getInstance().releaseAllTsFileSequenceReader();
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
