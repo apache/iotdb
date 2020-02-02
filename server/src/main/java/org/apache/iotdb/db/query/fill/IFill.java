@@ -110,8 +110,9 @@ public abstract class IFill {
     }
 
     @Override
-    public void close() {
+    public void close() throws IOException {
       // no need to close
+      allDataReader.close();
     }
   }
 }

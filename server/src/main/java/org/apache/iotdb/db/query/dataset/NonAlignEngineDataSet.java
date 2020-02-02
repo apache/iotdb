@@ -185,6 +185,7 @@ public class NonAlignEngineDataSet extends QueryDataSet {
             }
             return;
           }
+          iBatchReader.close();
           blockingQueue.put(new Pair(null, null));
           // set the hasRemaining field in reader to false
           // tell the Consumer not to submit another task for this reader any more
