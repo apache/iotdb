@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.MemChunkLoader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
@@ -404,15 +405,11 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
       QueryUtils.modifyChunkMetaData(currentChunkMetaDataList, pathModifications);
     }
 
-    IChunkLoader chunkLoader = null;
-
     for (ChunkMetaData data : currentChunkMetaDataList) {
       if (data.getChunkLoader() == null) {
-        if (chunkLoader == null) {
-          chunkLoader =
-              new ChunkLoaderImpl(new TsFileSequenceReader(resource.getFile().getAbsolutePath()));
-        }
-        data.setChunkLoader(chunkLoader);
+        TsFileSequenceReader tsFileSequenceReader = QueryResourceManager.getInstance()
+            .getTsFileSequenceReader(resource.getFile().getAbsolutePath());
+        data.setChunkLoader(new ChunkLoaderImpl(tsFileSequenceReader));
       }
     }
     List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
