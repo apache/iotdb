@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -47,7 +46,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
 
   public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter filter) {
     this.readOnlyMemChunk = readableChunk;
-    timeValuePairIterator = readableChunk.getIterator();
+    timeValuePairIterator = readableChunk.getPointReader();
     this.filter = filter;
     this.dataType = readableChunk.getDataType();
   }

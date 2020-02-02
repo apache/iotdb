@@ -121,7 +121,7 @@ public class DeletionFileNodeTest {
         dataSource.getSeqResources().get(0).getReadOnlyMemChunk();
     int count = 0;
     for (ReadOnlyMemChunk chunk : timeValuePairs) {
-      IPointReader iterator = chunk.getIterator();
+      IPointReader iterator = chunk.getPointReader();
       while (iterator.hasNextTimeValuePair()) {
         iterator.nextTimeValuePair();
         count++;
@@ -220,7 +220,7 @@ public class DeletionFileNodeTest {
         dataSource.getUnseqResources().get(0).getReadOnlyMemChunk();
     int count = 0;
     for (ReadOnlyMemChunk chunk : timeValuePairs) {
-      IPointReader iterator = chunk.getIterator();
+      IPointReader iterator = chunk.getPointReader();
       while (iterator.hasNextTimeValuePair()) {
         iterator.nextTimeValuePair();
         count++;

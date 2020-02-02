@@ -31,18 +31,18 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 
 public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
-  private SeriesReader randomReader;
+  private SeriesReader seriesReader;
   private BatchData batchData;
 
   public SeriesReaderByTimestamp(Path seriesPath, TSDataType dataType, QueryContext context,
       QueryDataSource dataSource) {
-    randomReader = new SeriesReader(seriesPath, dataType, context,
+    seriesReader = new SeriesReader(seriesPath, dataType, context,
         dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null);
   }
 
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
-    randomReader.setTimeFilter(timestamp);
+    seriesReader.setTimeFilter(timestamp);
     if (batchData == null || batchData.getTimeByIndex(batchData.length() - 1) < timestamp) {
       if (!hasNext(timestamp)) {
         return null;
@@ -53,20 +53,20 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   }
 
   private boolean hasNext(long timestamp) throws IOException {
-    while (randomReader.hasNextChunk()) {
-      if (!satisfyFilter(randomReader.currentChunkStatistics())) {
-        randomReader.skipCurrentChunk();
+    while (seriesReader.hasNextChunk()) {
+      if (!satisfyTimeFilter(seriesReader.currentChunkStatistics())) {
+        seriesReader.skipCurrentChunk();
         continue;
       }
-      while (randomReader.hasNextPage()) {
-        if (!satisfyFilter(randomReader.currentPageStatistics())) {
-          randomReader.skipCurrentPage();
+      while (seriesReader.hasNextPage()) {
+        if (!satisfyTimeFilter(seriesReader.currentPageStatistics())) {
+          seriesReader.skipCurrentPage();
           continue;
         }
-        if (!randomReader.isPageOverlapped()) {
-          batchData = randomReader.nextPage();
+        if (!seriesReader.isPageOverlapped()) {
+          batchData = seriesReader.nextPage();
         } else {
-          batchData = randomReader.nextOverlappedPage();
+          batchData = seriesReader.nextOverlappedPage();
         }
         if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
           return true;
@@ -76,8 +76,8 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     return false;
   }
 
-  private boolean satisfyFilter(Statistics statistics) {
-    return randomReader.getTimeFilter().satisfy(statistics);
+  private boolean satisfyTimeFilter(Statistics statistics) {
+    return seriesReader.getTimeFilter().satisfy(statistics);
   }
 
 }

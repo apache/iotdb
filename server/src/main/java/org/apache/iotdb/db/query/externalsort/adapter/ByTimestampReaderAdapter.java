@@ -29,6 +29,8 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 public class ByTimestampReaderAdapter implements IReaderByTimestamp {
 
   private IPointReader pointReader;
+
+  // only cache the first point that >= timestamp
   private boolean hasCached;
   private TimeValuePair pair;
 
@@ -51,22 +53,14 @@ public class ByTimestampReaderAdapter implements IReaderByTimestamp {
 
     while (pointReader.hasNextTimeValuePair()) {
       pair = pointReader.nextTimeValuePair();
-      if (pair.getTimestamp() >= timestamp) {
+      if (pair.getTimestamp() == timestamp) {
+        return pair.getValue().getValue();
+      } else if (pair.getTimestamp() > timestamp) {
         hasCached = true;
-        break;
+        return null;
       }
     }
 
-    if (!hasCached) {
-      return null;
-    }
-
-    if (pair.getTimestamp() == timestamp) {
-      hasCached = false;
-      return pair.getValue().getValue();
-    } else {
-      return null;
-    }
-
+    return null;
   }
 }

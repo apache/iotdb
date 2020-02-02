@@ -26,8 +26,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
@@ -40,7 +38,6 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -100,7 +97,7 @@ public class LogReplayerTest {
       for (int i = 0; i < 5; i++) {
         ReadOnlyMemChunk memChunk = memTable.query("device" + i, "sensor" + i, TSDataType.INT64,
             Collections.emptyMap(), Long.MIN_VALUE);
-        IPointReader iterator = memChunk.getIterator();
+        IPointReader iterator = memChunk.getPointReader();
         if (i == 0) {
           assertFalse(iterator.hasNextTimeValuePair());
         } else {

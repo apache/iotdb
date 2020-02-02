@@ -45,7 +45,7 @@ public class ReadOnlyMemChunk {
 
   private TVList chunkData;
 
-  private IPointReader chunkDataReader;
+  private IPointReader chunkPointReader;
 
   public ReadOnlyMemChunk(String measurementUid, TSDataType dataType, TVList tvList,
       Map<String, String> props, long version) throws IOException {
@@ -58,7 +58,7 @@ public class ReadOnlyMemChunk {
     }
     tvList.sort();
     this.chunkData = tvList;
-    this.chunkDataReader = tvList.getIterator(floatPrecision);
+    this.chunkPointReader = tvList.getIterator(floatPrecision);
     initChunkMeta();
   }
 
@@ -104,15 +104,15 @@ public class ReadOnlyMemChunk {
   }
 
   public boolean isEmpty() throws IOException {
-    return !chunkDataReader.hasNextTimeValuePair();
+    return !chunkPointReader.hasNextTimeValuePair();
   }
 
   public ChunkMetaData getChunkMetaData() {
     return cachedMetaData;
   }
 
-  public IPointReader getIterator() {
-    return chunkDataReader;
+  public IPointReader getPointReader() {
+    return chunkPointReader;
   }
 
   public long getVersion() {

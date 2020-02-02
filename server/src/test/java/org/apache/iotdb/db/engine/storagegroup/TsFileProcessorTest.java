@@ -103,7 +103,7 @@ public class TsFileProcessorTest {
     int num = 1;
     for (; num <= 100; num++) {
       for (ReadOnlyMemChunk chunk : left) {
-        IPointReader iterator = chunk.getIterator();
+        IPointReader iterator = chunk.getPointReader();
         iterator.hasNextTimeValuePair();
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         assertEquals(num, timeValuePair.getTimestamp());
@@ -151,7 +151,7 @@ public class TsFileProcessorTest {
     int num = 1;
 
     for (ReadOnlyMemChunk chunk : left) {
-      IPointReader iterator = chunk.getIterator();
+      IPointReader iterator = chunk.getPointReader();
       for (; num <= 100; num++) {
         iterator.hasNextTimeValuePair();
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
@@ -268,7 +268,7 @@ public class TsFileProcessorTest {
 
     for (; num <= 100; num++) {
       for (ReadOnlyMemChunk chunk : left) {
-        IPointReader iterator = chunk.getIterator();
+        IPointReader iterator = chunk.getPointReader();
         iterator.hasNextTimeValuePair();
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         assertEquals(num, timeValuePair.getTimestamp());

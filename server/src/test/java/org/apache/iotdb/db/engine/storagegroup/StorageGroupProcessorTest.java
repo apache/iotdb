@@ -117,7 +117,7 @@ public class StorageGroupProcessorTest {
 
     long time = 16;
     for (ReadOnlyMemChunk memChunk : memChunks) {
-      IPointReader iterator = memChunk.getIterator();
+      IPointReader iterator = memChunk.getPointReader();
       while (iterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         Assert.assertEquals(time++, timeValuePair.getTimestamp());

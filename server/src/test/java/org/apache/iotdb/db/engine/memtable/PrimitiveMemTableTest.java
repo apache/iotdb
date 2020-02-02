@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.memtable;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.Random;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.MathUtils;
@@ -84,7 +83,7 @@ public class PrimitiveMemTableTest {
     ReadOnlyMemChunk memChunk = memTable
         .query(deviceId, measurementId[0], TSDataType.INT32, Collections.emptyMap(),
             Long.MIN_VALUE);
-    IPointReader iterator = memChunk.getIterator();
+    IPointReader iterator = memChunk.getPointReader();
     for (int i = 0; i < dataSize; i++) {
       iterator.hasNextTimeValuePair();
       TimeValuePair timeValuePair = iterator.nextTimeValuePair();
@@ -102,7 +101,7 @@ public class PrimitiveMemTableTest {
           ret[i].getValue().getValue());
     }
     IPointReader tvPair = memTable
-        .query(deviceId, sensorId, dataType, Collections.emptyMap(), Long.MIN_VALUE).getIterator();
+        .query(deviceId, sensorId, dataType, Collections.emptyMap(), Long.MIN_VALUE).getPointReader();
     Arrays.sort(ret);
     TimeValuePair last = null;
     for (int i = 0; i < ret.length; i++) {
