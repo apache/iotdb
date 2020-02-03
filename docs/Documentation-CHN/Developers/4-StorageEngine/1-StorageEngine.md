@@ -21,7 +21,7 @@
 
 # 存储引擎
 
-![avatar](StorageEngine.png)
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/73625255-03fe2680-467f-11ea-91ae-64407ef1125c.png">
 
 ## 设计思想
 

@@ -21,7 +21,7 @@
 
 # 查询引擎
 
-![avatar](QueryEngine.png)
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/73625242-f648a100-467e-11ea-921c-b954a3ecae7a.png">
 
 ## 设计思想
 
