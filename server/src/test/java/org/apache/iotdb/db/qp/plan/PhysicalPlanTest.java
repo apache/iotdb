@@ -71,7 +71,7 @@ public class PhysicalPlanTest {
   private QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
 
   @Before
-  public void before() throws QueryProcessException, StartupException {
+  public void before() throws QueryProcessException {
     Path path1 = new Path(
         new StringContainer(new String[]{"root", "vehicle", "d1", "s1"},
             TsFileConstant.PATH_SEPARATOR));
@@ -102,7 +102,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testMetadata()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=INT32,encoding=RLE";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
@@ -112,7 +112,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testMetadata2()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=int32,encoding=rle";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
@@ -122,7 +122,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testAuthor()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sql = "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.d1.s1";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     AuthorPlan plan = (AuthorPlan) processor.parseSQLToPhysicalPlan(sql);
@@ -134,7 +134,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testProperty()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sql = "add label label1021 to property propropro";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     PropertyPlan plan = (PropertyPlan) processor.parseSQLToPhysicalPlan(sql);
@@ -148,7 +148,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testAggregation()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "select sum(d1.s1) " + "from root.vehicle "
         + "where time <= 51 or !(time != 100 and time < 460)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
@@ -161,7 +161,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testGroupBy1()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr =
         "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
             + "group by([8,737], 3ms)";
@@ -209,7 +209,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testFill1()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time = 5000 Fill(int32[linear, 5m, 5m], boolean[previous, 5m])";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     if (!plan.isQuery()) {
@@ -263,7 +263,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQuery1()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 5000";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -273,7 +273,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQuery2()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -285,7 +285,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQuery3()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100 or s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -315,7 +315,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQuery5()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20 or s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -327,7 +327,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQuery6()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 20 or time < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -339,7 +339,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQuery7()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 2019-10-16 10:59:00+08:00 - 1d5h or time < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -350,7 +350,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testLimitOffset()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1,root.vehicle.d2 WHERE time < 10 "
         + "limit 100 offset 10 slimit 1 soffset 1";
     QueryPlan plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
@@ -362,7 +362,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQueryFloat1()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20.5e3";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -373,7 +373,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQueryFloat2()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20.5E-3";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -384,7 +384,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQueryFloat3()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.5";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -395,7 +395,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQueryFloat4()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.5";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -406,7 +406,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQueryFloat5()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -2.5";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -417,7 +417,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQueryFloat6()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -2.5E-1";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -428,7 +428,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQueryFloat7()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.5E2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -439,7 +439,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQueryFloat8()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > .2e2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -450,7 +450,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQueryFloat9()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > .2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -461,7 +461,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQueryFloat10()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -472,7 +472,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQueryFloat11()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -483,7 +483,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQueryFloat12()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -2.";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -494,7 +494,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQueryFloat13()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -.2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -505,7 +505,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testQueryFloat14()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -.2e2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -561,7 +561,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testGrantWatermarkEmbedding()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "GRANT WATERMARK_EMBEDDING to a,b";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     DataAuthPlan dataAuthPlan = (DataAuthPlan) plan;
@@ -571,7 +571,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testRevokeWatermarkEmbedding()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "REVOKE WATERMARK_EMBEDDING from a,b";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     DataAuthPlan dataAuthPlan = (DataAuthPlan) plan;
@@ -580,7 +580,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testConfiguration() throws QueryProcessException, MetadataException {
+  public void testConfiguration() throws QueryProcessException {
     String metadata = "load configuration";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     LoadConfigurationPlan plan = (LoadConfigurationPlan) processor.parseSQLToPhysicalPlan(metadata);
@@ -588,7 +588,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testShowDynamicParameter() throws QueryProcessException, MetadataException {
+  public void testShowDynamicParameter() throws QueryProcessException {
     String metadata = "show dynamic parameter";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     ShowPlan plan = (ShowPlan) processor.parseSQLToPhysicalPlan(metadata);
@@ -596,7 +596,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testShowFlushInfo() throws QueryProcessException, MetadataException {
+  public void testShowFlushInfo() throws QueryProcessException {
     String metadata = "show flush task info";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     ShowPlan plan = (ShowPlan) processor.parseSQLToPhysicalPlan(metadata);
@@ -604,7 +604,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testLoadFiles() throws QueryProcessException, MetadataException {
+  public void testLoadFiles() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
     String metadata = String.format("load %s", filePath);
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
@@ -636,7 +636,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testRemoveFile() throws QueryProcessException, MetadataException {
+  public void testRemoveFile() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
     String metadata = String.format("remove %s", filePath);
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
@@ -647,7 +647,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testMoveFile() throws QueryProcessException, MetadataException {
+  public void testMoveFile() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
     String targetDir = "user" + File.separator + "backup";
     String metadata = String.format("move %s %s", filePath, targetDir);

@@ -1176,6 +1176,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       return parseOrExpression(ctx.orExpression());
     } else {
       Path path = null;
+      if(ctx.TIME() != null || ctx.TIMESTAMP() != null) {
+        path = new Path(SQLConstant.RESERVED_TIME);
+      }
       if (ctx.prefixPath() != null) {
         path = parsePrefixPath(ctx.prefixPath());
       }
