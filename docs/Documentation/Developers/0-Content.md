@@ -19,8 +19,24 @@
 
 -->
 
-# 元数据管理
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/73625246-fc3e8200-467e-11ea-8815-67b9c4ab716e.png">
-
-IoTDB 的元数据管理采用目录树的形式，倒数第二层为设备层，最后一层为传感器层。
+# Chapter 0: Architecture
+* 1-Architecture
+# Chapter 1: TsFile
+* 1-TsFile
+* 2-Format
+* 3-Write
+* 4-Read
+# Chapter 2: QueryEngine
+* 1-QueryEngine
+* 2-Planner
+* 3-PlanExecutor
+# Chapter 3: SchemaManager
+* 1-SchemaManager
+# Chapter 4: StorageEngine
+* 1-StorageEngine
+* 2-WAL
+* 3-FlushManager
+* 4-MergeManager
+# Chapter 5: DataQuery
+* 1-DataQuery

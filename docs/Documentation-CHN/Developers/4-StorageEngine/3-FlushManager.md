@@ -43,7 +43,7 @@ FlushManager 可以接受 memtable 的持久化任务，提交者有两个，第
 
 ## MemTableFlushTask: 持久化任务
 
-![avatar](FlushPipeline.png)
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/73625254-03fe2680-467f-11ea-8197-115f3a749cbd.png">
 
 背景：每个 memtable 可包含多个 device，每个 device 可包含多个 measurement。
 
