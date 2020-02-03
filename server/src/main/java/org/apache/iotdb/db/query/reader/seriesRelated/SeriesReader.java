@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.MemChunkLoader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
@@ -178,15 +177,18 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
         && chunkStatistics.getEndTime() >= unseqChunkMetadatas.peek().getStartTime());
   }
 
+  @Override
   public Statistics currentChunkStatistics() {
     return firstChunkMetaData.getStatistics();
   }
 
+  @Override
   public void skipCurrentChunk() {
     hasCachedFirstChunkMetadata = false;
     firstChunkMetaData = null;
   }
 
+  @Override
   public boolean hasNextPage() throws IOException {
     if (!overlappedPageReaders.isEmpty()) {
       return true;
@@ -242,6 +244,7 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
         && pageStatistics.getEndTime() >= unseqChunkMetadatas.peek().getStartTime());
   }
 
+  @Override
   public Statistics currentPageStatistics() throws IOException {
     if (overlappedPageReaders.isEmpty() || overlappedPageReaders.peek().data == null) {
       throw new IOException("No next page statistics.");
@@ -249,10 +252,12 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
     return overlappedPageReaders.peek().data.getStatistics();
   }
 
+  @Override
   public void skipCurrentPage() {
     overlappedPageReaders.poll();
   }
 
+  @Override
   public boolean hasNextOverlappedPage() throws IOException {
 
     if (hasCachedNextBatch) {
@@ -351,6 +356,7 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
     }
   }
 
+  @Override
   public BatchData nextOverlappedPage() throws IOException {
     if (hasCachedNextBatch || hasNextOverlappedPage()) {
       hasCachedNextBatch = false;
