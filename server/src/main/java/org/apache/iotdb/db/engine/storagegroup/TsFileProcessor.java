@@ -219,8 +219,9 @@ public class TsFileProcessor {
 
   /**
    * Delete data which belongs to the timeseries `deviceId.measurementId` and the timestamp of which
-   * <= 'timestamp' in the deletion. <br/> <p> Delete data in both working MemTable and flushing
-   * MemTables.
+   * <= 'timestamp' in the deletion. <br/>
+   * <p>
+   * Delete data in both working MemTable and flushing MemTables.
    */
   public void deleteDataInMemory(Deletion deletion) {
     flushQueryLock.writeLock().lock();
