@@ -67,7 +67,7 @@ public class GroupByEngineDataSetTest {
     long unit = 3;
     long slidingStep = 5;
     long startTime = 8;
-    long endTime = 8 + 4 * 5 + 2;
+    long endTime = 8 + 4 * 5 + 3;
 
     long[] startTimeArray = {8, 13, 18, 23, 28};
     long[] endTimeArray = {11, 16, 21, 26, 31};
@@ -123,7 +123,7 @@ public class GroupByEngineDataSetTest {
     long unit = 3;
     long slidingStep = 3;
     long startTime = 8;
-    long endTime = 8 + 5 * 3 - 1;
+    long endTime = 8 + 5 * 3;
 
     long[] startTimeArray = {8, 11, 14, 17, 20};
     long[] endTimeArray = {11, 14, 17, 20, 23};
@@ -151,7 +151,7 @@ public class GroupByEngineDataSetTest {
     long unit = 3;
     long slidingStep = 3;
     long startTime = 8;
-    long endTime = 8 + 5 * 3 + 1;
+    long endTime = 8 + 5 * 3 + 2;
 
     long[] startTimeArray = {8, 11, 14, 17, 20, 23};
     long[] endTimeArray = {11, 14, 17, 20, 23, 25};

@@ -67,7 +67,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     //This is an open interval , [0-100)
     if (curStartTime < endTime) {
       hasCachedTimeInterval = true;
-      curEndTime = Math.min(curStartTime + interval, endTime + 1);
+      curEndTime = Math.min(curStartTime + interval, endTime);
       return true;
     } else {
       return false;
