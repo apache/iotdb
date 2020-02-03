@@ -405,7 +405,8 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
 
     for (ChunkMetaData data : currentChunkMetaDataList) {
       if (data.getChunkLoader() == null) {
-        TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance().get(resource, resource.isClosed());
+        TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
+            .get(resource, resource.isClosed());
         data.setChunkLoader(new ChunkLoaderImpl(tsFileSequenceReader));
       }
     }
@@ -476,9 +477,6 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
     }
   }
 
-  public void closeReader() {
-  }
-
   public IPointReader getPointReader() {
     return new SeriesPointReader();
   }
@@ -531,7 +529,6 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
 
     @Override
     public void close() throws IOException {
-      closeReader();
     }
   }
 
@@ -600,7 +597,6 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
 
     @Override
     public void close() throws IOException {
-      closeReader();
     }
   }
 
