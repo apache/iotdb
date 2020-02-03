@@ -45,4 +45,7 @@ Then,
    * Step 1: create a new folder named "7-RoadMap", and add document named `1-B.md` in folder "7-RoadMap";
    * Step 2: modify `0-Content.md` file by adding "# Chapter 7: RoadMap" in the end, and  adding `* 1-B.md` in the list of this new chapter.
 
+If you need to insert **figures** into documents, you can firstly update the figures in [this issue](https://github.com/thulab/iotdb/issues/543) for storing pictures in IoTDB website or other MD files.
+Drag a picture and then quote the figure's URL link. 
+
 > If you want to contribute more (for example, reviewing Changes, reporting bugs, or even being commiters), please refer to [this page](/#/Development/Contributing).
