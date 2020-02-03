@@ -384,7 +384,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterAlterUser(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_UPDATE_USER,
         AuthorOperator.AuthorType.UPDATE_USER);
-    authorOperator.setUserName(ctx.ID().getText());
+    if(ctx.ID() != null) {
+      authorOperator.setUserName(ctx.ID().getText());
+    } else {
+      authorOperator.setUserName(ctx.ROOT().getText());
+    }
     authorOperator.setNewPassword(removeStringQuote(ctx.password.getText()));
     initializedOperator = authorOperator;
     operatorType = SQLConstant.TOK_AUTHOR_UPDATE_USER;
