@@ -571,8 +571,8 @@ public class StorageGroupProcessor {
    * insert batch to tsfile processor thread-safety that the caller need to guarantee
    *
    * @param batchInsertPlan batch insert plan
-   * @param sequence        whether is sequence
-   * @param results         result array
+   * @param sequence whether is sequence
+   * @param results result array
    * @param timePartitionId time partition id
    */
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
@@ -667,10 +667,10 @@ public class StorageGroupProcessor {
   /**
    * get processor from hashmap, flush oldest processor if necessary
    *
-   * @param timeRangeId            time partition range
+   * @param timeRangeId time partition range
    * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
-   * @param fileList               file list to add new processor
-   * @param sequence               whether is sequence or not
+   * @param fileList file list to add new processor
+   * @param sequence whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRangeId,
       TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap,
@@ -1044,7 +1044,6 @@ public class StorageGroupProcessor {
       String deviceId, String measurementId, QueryContext context, Filter timeFilter) {
 
     MeasurementSchema mSchema = schema.getMeasurementSchema(measurementId);
-    TSDataType dataType = mSchema.getType();
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     long timeLowerBound = dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long
@@ -1064,7 +1063,8 @@ public class StorageGroupProcessor {
           // left: in-memory data, right: meta of disk data
           Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = tsFileResource
               .getUnsealedFileProcessor()
-              .query(deviceId, measurementId, dataType, mSchema.getProps(), context);
+              .query(deviceId, measurementId, mSchema.getType(), mSchema.getEncodingType(),
+                  mSchema.getProps(), context);
 
           tsfileResourcesForQuery.add(new TsFileResource(tsFileResource.getFile(),
               tsFileResource.getStartTimeMap(), tsFileResource.getEndTimeMap(), pair.left,
@@ -1103,9 +1103,9 @@ public class StorageGroupProcessor {
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param deviceId      the deviceId of the timeseries to be deleted.
+   * @param deviceId the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param timestamp     the delete range is (0, timestamp].
+   * @param timestamp the delete range is (0, timestamp].
    */
   public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
     // TODO: how to avoid partial deletion?
@@ -1445,16 +1445,13 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * Load a new tsfile to storage group processor. The mechanism of the sync module will make sure
-   * that there has no file which is overlapping with the new file.
+   * Load a new tsfile to storage group processor. Tne file may have overlap with other files.
    * <p>
-   * Firstly, determine the loading type of the file, whether it needs to be loaded in sequence list
    * or unsequence list.
    * <p>
    * Secondly, execute the loading process by the type.
    * <p>
    * Finally, update the latestTimeForEachDevice and latestFlushedTimeForEachDevice.
-   *
    * @param newTsFileResource tsfile resource
    * @UsedBy sync module.
    */
@@ -1479,7 +1476,8 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * Load a new tsfile to storage group processor. Tne file may have overlap with other files.
+   * Load a new tsfile to storage group processor. Tne file may have overlap with other files. <p>
+   * that there has no file which is overlapping with the new file.
    * <p>
    * Firstly, determine the loading type of the file, whether it needs to be loaded in sequence list
    * or unsequence list.
@@ -1659,7 +1657,7 @@ public class StorageGroupProcessor {
   /**
    * Execute the loading process by the type.
    *
-   * @param type           load type
+   * @param type load type
    * @param tsFileResource tsfile resource to be loaded
    * @UsedBy sync module, load external tsfile module.
    */

@@ -35,6 +35,7 @@ import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class AbstractMemTable implements IMemTable {
@@ -202,7 +203,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      Map<String, String> props, long timeLowerBound) throws IOException {
+      TSEncoding encoding, Map<String, String> props, long timeLowerBound) throws IOException {
     if (!checkPath(deviceId, measurement)) {
       return null;
     }
@@ -211,7 +212,7 @@ public abstract class AbstractMemTable implements IMemTable {
     TVList chunkCopy = memChunk.getTVList().clone();
 
     chunkCopy.setTimeOffset(undeletedTime);
-    return new ReadOnlyMemChunk(measurement, dataType, chunkCopy, props, getVersion());
+    return new ReadOnlyMemChunk(measurement, dataType, encoding, chunkCopy, props, getVersion());
   }
 
 

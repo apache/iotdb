@@ -24,14 +24,15 @@ import java.util.Collections;
 import java.util.Random;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.MathUtils;
-import org.apache.iotdb.tsfile.read.IPointReader;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -81,7 +82,7 @@ public class PrimitiveMemTableTest {
       memTable.write(deviceId, measurementId[0], TSDataType.INT32, i, i);
     }
     ReadOnlyMemChunk memChunk = memTable
-        .query(deviceId, measurementId[0], TSDataType.INT32, Collections.emptyMap(),
+        .query(deviceId, measurementId[0], TSDataType.INT32, TSEncoding.RLE, Collections.emptyMap(),
             Long.MIN_VALUE);
     IPointReader iterator = memChunk.getPointReader();
     for (int i = 0; i < dataSize; i++) {
@@ -93,15 +94,16 @@ public class PrimitiveMemTableTest {
   }
 
   private void write(IMemTable memTable, String deviceId, String sensorId, TSDataType dataType,
-      int size) throws IOException {
+      TSEncoding encoding, int size) throws IOException {
     TimeValuePair[] ret = genTimeValuePair(size, dataType);
 
-    for (int i = 0; i < ret.length; i++) {
-      memTable.write(deviceId, sensorId, dataType, ret[i].getTimestamp(),
-          ret[i].getValue().getValue());
+    for (TimeValuePair aRet : ret) {
+      memTable.write(deviceId, sensorId, dataType, aRet.getTimestamp(),
+          aRet.getValue().getValue());
     }
     IPointReader tvPair = memTable
-        .query(deviceId, sensorId, dataType, Collections.emptyMap(), Long.MIN_VALUE).getPointReader();
+        .query(deviceId, sensorId, dataType, encoding, Collections.emptyMap(), Long.MIN_VALUE)
+        .getPointReader();
     Arrays.sort(ret);
     TimeValuePair last = null;
     for (int i = 0; i < ret.length; i++) {
@@ -134,7 +136,7 @@ public class PrimitiveMemTableTest {
     IMemTable memTable = new PrimitiveMemTable();
     String deviceId = "d1";
     int size = 100;
-    write(memTable, deviceId, "s1", TSDataType.FLOAT, size);
+    write(memTable, deviceId, "s1", TSDataType.FLOAT, TSEncoding.RLE, size);
   }
 
   @Test
@@ -149,12 +151,12 @@ public class PrimitiveMemTableTest {
     int index = 0;
 
     int size = 10000;
-    write(memTable, deviceId, measurementId[index++], TSDataType.BOOLEAN, size);
-    write(memTable, deviceId, measurementId[index++], TSDataType.INT32, size);
-    write(memTable, deviceId, measurementId[index++], TSDataType.INT64, size);
-    write(memTable, deviceId, measurementId[index++], TSDataType.FLOAT, size);
-    write(memTable, deviceId, measurementId[index++], TSDataType.DOUBLE, size);
-    write(memTable, deviceId, measurementId[index++], TSDataType.TEXT, size);
+    write(memTable, deviceId, measurementId[index++], TSDataType.BOOLEAN, TSEncoding.RLE, size);
+    write(memTable, deviceId, measurementId[index++], TSDataType.INT32, TSEncoding.RLE, size);
+    write(memTable, deviceId, measurementId[index++], TSDataType.INT64, TSEncoding.RLE, size);
+    write(memTable, deviceId, measurementId[index++], TSDataType.FLOAT, TSEncoding.RLE, size);
+    write(memTable, deviceId, measurementId[index++], TSDataType.DOUBLE, TSEncoding.RLE, size);
+    write(memTable, deviceId, measurementId[index++], TSDataType.TEXT, TSEncoding.PLAIN, size);
   }
 
   private TimeValuePair[] genTimeValuePair(int size, TSDataType dataType) {
