@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.PriorityQueue;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -54,6 +46,9 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+
+import java.io.IOException;
+import java.util.*;
 
 public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
 
@@ -141,6 +136,7 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
     return !isPageOverlapped() && satisfyTimeFilter(currentPageStatistics);
   }
 
+  @Override
   public boolean hasNextChunk() throws IOException {
     if (hasCachedFirstChunkMetadata) {
       return true;
