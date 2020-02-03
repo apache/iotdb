@@ -32,6 +32,8 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.MemChunkLoader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
@@ -69,8 +71,6 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
   private final List<ChunkMetaData> seqChunkMetadatas = new LinkedList<>();
   private final PriorityQueue<ChunkMetaData> unseqChunkMetadatas =
       new PriorityQueue<>(Comparator.comparingLong(ChunkMetaData::getStartTime));
-
-  private final List<IChunkLoader> openedChunkLoaders = new LinkedList<>();
 
   private boolean hasCachedFirstChunkMetadata;
   private ChunkMetaData firstChunkMetaData;
@@ -374,7 +374,6 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
     }
     IChunkReader chunkReader;
     IChunkLoader chunkLoader = metaData.getChunkLoader();
-    openedChunkLoaders.add(chunkLoader);
     if (chunkLoader instanceof MemChunkLoader) {
       MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
       chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
@@ -404,15 +403,11 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
       QueryUtils.modifyChunkMetaData(currentChunkMetaDataList, pathModifications);
     }
 
-    IChunkLoader chunkLoader = null;
-
     for (ChunkMetaData data : currentChunkMetaDataList) {
       if (data.getChunkLoader() == null) {
-        if (chunkLoader == null) {
-          chunkLoader =
-              new ChunkLoaderImpl(new TsFileSequenceReader(resource.getFile().getAbsolutePath()));
-        }
-        data.setChunkLoader(chunkLoader);
+        TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
+            .get(resource, resource.isClosed());
+        data.setChunkLoader(new ChunkLoaderImpl(tsFileSequenceReader));
       }
     }
     List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
@@ -482,15 +477,6 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
     }
   }
 
-  public void closeReader() throws IOException {
-    if (firstChunkMetaData != null) {
-      firstChunkMetaData.getChunkLoader().close();
-    }
-    for (IChunkLoader openedChunkLoader : openedChunkLoaders) {
-      openedChunkLoader.close();
-    }
-  }
-
   public IPointReader getPointReader() {
     return new SeriesPointReader();
   }
@@ -543,7 +529,6 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
 
     @Override
     public void close() throws IOException {
-      closeReader();
     }
   }
 
@@ -612,7 +597,6 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
 
     @Override
     public void close() throws IOException {
-      closeReader();
     }
   }
 
