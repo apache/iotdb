@@ -96,7 +96,7 @@ public class LogReplayerTest {
 
       for (int i = 0; i < 5; i++) {
         ReadOnlyMemChunk memChunk = memTable.query("device" + i, "sensor" + i, TSDataType.INT64,
-            Collections.emptyMap(), Long.MIN_VALUE);
+            TSEncoding.RLE, Collections.emptyMap(), Long.MIN_VALUE);
         IPointReader iterator = memChunk.getPointReader();
         if (i == 0) {
           assertFalse(iterator.hasNextTimeValuePair());

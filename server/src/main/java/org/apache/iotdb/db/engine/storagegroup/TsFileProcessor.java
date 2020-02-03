@@ -58,6 +58,7 @@ import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -579,11 +580,12 @@ public class TsFileProcessor {
    *
    * @param deviceId      device id
    * @param measurementId sensor id
-   * @param dataType      data type
+   * @param dataType data type
+   * @param encoding encoding
    * @return left: the chunk data in memory; right: the chunkMetadatas of data on disk
    */
   public Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> query(String deviceId,
-      String measurementId, TSDataType dataType, Map<String, String> props, QueryContext context) {
+      String measurementId, TSDataType dataType, TSEncoding encoding, Map<String, String> props, QueryContext context) {
     flushQueryLock.readLock().lock();
     try {
       List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
@@ -591,15 +593,16 @@ public class TsFileProcessor {
         if (flushingMemTable.isSignalMemTable()) {
           continue;
         }
-        ReadOnlyMemChunk memChunk = flushingMemTable
-            .query(deviceId, measurementId, dataType, props, context.getQueryTimeLowerBound());
+        ReadOnlyMemChunk memChunk = flushingMemTable.query(deviceId, measurementId,
+            dataType, encoding, props, context.getQueryTimeLowerBound());
         if (memChunk != null) {
           readOnlyMemChunks.add(memChunk);
         }
       }
       if (workMemTable != null) {
-        ReadOnlyMemChunk memChunk = workMemTable.query(deviceId, measurementId, dataType, props,
-            context.getQueryTimeLowerBound());
+        ReadOnlyMemChunk memChunk = workMemTable
+            .query(deviceId, measurementId, dataType, encoding, props,
+                context.getQueryTimeLowerBound());
         if (memChunk != null) {
           readOnlyMemChunks.add(memChunk);
         }

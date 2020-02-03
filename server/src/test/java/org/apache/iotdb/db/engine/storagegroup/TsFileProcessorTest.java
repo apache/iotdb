@@ -41,6 +41,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -60,6 +61,7 @@ public class TsFileProcessorTest {
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
   private TSDataType dataType = TSDataType.INT32;
+  private TSEncoding encoding = TSEncoding.RLE;
   private Map<String, String> props = Collections.emptyMap();
   private QueryContext context;
 
@@ -84,7 +86,7 @@ public class TsFileProcessorTest {
         (tsFileProcessor) -> true, true);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
-        .query(deviceId, measurementId, dataType, props, context);
+        .query(deviceId, measurementId, dataType, encoding, props, context);
     List<ReadOnlyMemChunk> left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertTrue(left.isEmpty());
@@ -97,7 +99,7 @@ public class TsFileProcessorTest {
     }
 
     // query data in memory
-    pair = processor.query(deviceId, measurementId, dataType, props, context);
+    pair = processor.query(deviceId, measurementId, dataType, encoding, props, context);
     left = pair.left;
     assertFalse(left.isEmpty());
     int num = 1;
@@ -114,7 +116,7 @@ public class TsFileProcessorTest {
     // flush synchronously
     processor.syncFlush();
 
-    pair = processor.query(deviceId, measurementId, dataType, props, context);
+    pair = processor.query(deviceId, measurementId, dataType, encoding, props, context);
     left = pair.left;
     right = pair.right;
     assertTrue(left.isEmpty());
@@ -132,7 +134,7 @@ public class TsFileProcessorTest {
         (tsFileProcessor) -> true, true);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
-        .query(deviceId, measurementId, dataType, props, context);
+        .query(deviceId, measurementId, dataType, encoding, props, context);
     List<ReadOnlyMemChunk> left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertTrue(left.isEmpty());
@@ -145,7 +147,7 @@ public class TsFileProcessorTest {
     }
 
     // query data in memory
-    pair = processor.query(deviceId, measurementId, dataType, props, context);
+    pair = processor.query(deviceId, measurementId, dataType, encoding, props, context);
     left = pair.left;
     assertFalse(left.isEmpty());
     int num = 1;
@@ -163,7 +165,7 @@ public class TsFileProcessorTest {
     // flush synchronously
     processor.syncFlush();
 
-    pair = processor.query(deviceId, measurementId, dataType, props, context);
+    pair = processor.query(deviceId, measurementId, dataType, encoding, props, context);
     left = pair.left;
     right = pair.right;
     assertTrue(left.isEmpty());
@@ -201,7 +203,7 @@ public class TsFileProcessorTest {
         (tsFileProcessor) -> true, true);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
-        .query(deviceId, measurementId, dataType, props, context);
+        .query(deviceId, measurementId, dataType,encoding, props, context);
     List<ReadOnlyMemChunk> left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertTrue(left.isEmpty());
@@ -217,7 +219,7 @@ public class TsFileProcessorTest {
     }
     processor.syncFlush();
 
-    pair = processor.query(deviceId, measurementId, dataType, props, context);
+    pair = processor.query(deviceId, measurementId, dataType, encoding, props, context);
     left = pair.left;
     right = pair.right;
     assertTrue(left.isEmpty());
@@ -248,7 +250,7 @@ public class TsFileProcessorTest {
         }, (tsFileProcessor) -> true, true);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
-        .query(deviceId, measurementId, dataType, props, context);
+        .query(deviceId, measurementId, dataType,encoding, props, context);
     List<ReadOnlyMemChunk> left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertTrue(left.isEmpty());
@@ -261,7 +263,7 @@ public class TsFileProcessorTest {
     }
 
     // query data in memory
-    pair = processor.query(deviceId, measurementId, dataType, props, context);
+    pair = processor.query(deviceId, measurementId, dataType, encoding, props, context);
     left = pair.left;
     assertFalse(left.isEmpty());
     int num = 1;
