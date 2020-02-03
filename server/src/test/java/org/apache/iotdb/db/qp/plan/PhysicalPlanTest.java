@@ -148,7 +148,7 @@ public class PhysicalPlanTest {
       fail();
     }
     GroupByPlan mergePlan = (GroupByPlan) plan;
-    assertEquals(3L, mergePlan.getUnit());
+    assertEquals(3L, mergePlan.getInterval());
     assertEquals(3L, mergePlan.getSlidingStep());
     assertEquals(8L, mergePlan.getStartTime());
     assertEquals(737L, mergePlan.getEndTime());
@@ -164,7 +164,7 @@ public class PhysicalPlanTest {
       fail();
     }
     GroupByPlan mergePlan = (GroupByPlan) plan;
-    assertEquals(111, mergePlan.getUnit());
+    assertEquals(111, mergePlan.getInterval());
   }
 
   @Test
@@ -177,7 +177,7 @@ public class PhysicalPlanTest {
       fail();
     }
     GroupByPlan mergePlan = (GroupByPlan) plan;
-    assertEquals(3 * 60 * 60 * 1000, mergePlan.getUnit());
+    assertEquals(3 * 60 * 60 * 1000, mergePlan.getInterval());
     assertEquals(24 * 60 * 60 * 1000, mergePlan.getSlidingStep());
     assertEquals(1496379612000L, mergePlan.getStartTime());
     assertEquals(1497243612000L, mergePlan.getEndTime());

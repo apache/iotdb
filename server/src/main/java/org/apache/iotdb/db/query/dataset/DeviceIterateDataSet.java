@@ -89,7 +89,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
     if (queryPlan instanceof GroupByPlan) {
       this.dataSetType = DataSetType.GROUPBY;
       // assign parameters
-      this.unit = ((GroupByPlan) queryPlan).getUnit();
+      this.unit = ((GroupByPlan) queryPlan).getInterval();
       this.slidingStep = ((GroupByPlan) queryPlan).getSlidingStep();
       this.startTime = ((GroupByPlan) queryPlan).getStartTime();
       this.endTime = ((GroupByPlan) queryPlan).getEndTime();
@@ -173,7 +173,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
             groupByPlan.setEndTime(endTime);
             groupByPlan.setStartTime(startTime);
             groupByPlan.setSlidingStep(slidingStep);
-            groupByPlan.setUnit(unit);
+            groupByPlan.setInterval(unit);
             groupByPlan.setDeduplicatedPaths(executePaths);
             groupByPlan.setDeduplicatedDataTypes(tsDataTypes);
             groupByPlan.setDeduplicatedAggregations(executeAggregations);

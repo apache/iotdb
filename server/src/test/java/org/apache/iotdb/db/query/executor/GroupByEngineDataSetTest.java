@@ -33,7 +33,7 @@ import org.junit.Test;
 public class GroupByEngineDataSetTest {
 
   @Test
-  public void test1() throws IOException, PathException, StorageEngineException {
+  public void test1() throws IOException {
     long queryId = 1000L;
     long unit = 3;
     long slidingStep = 5;
@@ -44,7 +44,7 @@ public class GroupByEngineDataSetTest {
     long[] endTimeArray = {11, 16, 21, 26, 31};
 
     GroupByPlan groupByPlan = new GroupByPlan();
-    groupByPlan.setUnit(unit);
+    groupByPlan.setInterval(unit);
     groupByPlan.setSlidingStep(slidingStep);
     groupByPlan.setStartTime(startTime);
     groupByPlan.setEndTime(endTime);
@@ -73,7 +73,7 @@ public class GroupByEngineDataSetTest {
     long[] endTimeArray = {11, 16, 21, 26, 31};
 
     GroupByPlan groupByPlan = new GroupByPlan();
-    groupByPlan.setUnit(unit);
+    groupByPlan.setInterval(unit);
     groupByPlan.setSlidingStep(slidingStep);
     groupByPlan.setStartTime(startTime);
     groupByPlan.setEndTime(endTime);
@@ -101,7 +101,7 @@ public class GroupByEngineDataSetTest {
     long[] endTimeArray = {11, 14, 17, 20, 23};
 
     GroupByPlan groupByPlan = new GroupByPlan();
-    groupByPlan.setUnit(unit);
+    groupByPlan.setInterval(unit);
     groupByPlan.setSlidingStep(slidingStep);
     groupByPlan.setStartTime(startTime);
     groupByPlan.setEndTime(endTime);
@@ -129,7 +129,7 @@ public class GroupByEngineDataSetTest {
     long[] endTimeArray = {11, 14, 17, 20, 23};
 
     GroupByPlan groupByPlan = new GroupByPlan();
-    groupByPlan.setUnit(unit);
+    groupByPlan.setInterval(unit);
     groupByPlan.setSlidingStep(slidingStep);
     groupByPlan.setStartTime(startTime);
     groupByPlan.setEndTime(endTime);
@@ -157,7 +157,7 @@ public class GroupByEngineDataSetTest {
     long[] endTimeArray = {11, 14, 17, 20, 23, 25};
 
     GroupByPlan groupByPlan = new GroupByPlan();
-    groupByPlan.setUnit(unit);
+    groupByPlan.setInterval(unit);
     groupByPlan.setSlidingStep(slidingStep);
     groupByPlan.setStartTime(startTime);
     groupByPlan.setEndTime(endTime);

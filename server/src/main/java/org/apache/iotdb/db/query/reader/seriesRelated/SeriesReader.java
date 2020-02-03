@@ -129,12 +129,7 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
     return !isChunkOverlapped() && satisfyTimeFilter(chunkStatistics);
   }
 
-  /**
-   * only be used for aggregate without value filter
-   *
-   * @return
-   * @throws IOException
-   */
+
   @Override
   public boolean canUseCurrentPageStatistics() throws IOException {
     Statistics currentPageStatistics = currentPageStatistics();
