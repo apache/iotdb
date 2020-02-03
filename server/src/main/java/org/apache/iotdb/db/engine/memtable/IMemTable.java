@@ -56,7 +56,8 @@ public interface IMemTable {
 
   void insert(InsertPlan insertPlan) throws QueryProcessException;
 
-  void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end) throws QueryProcessException;
+  void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end)
+      throws QueryProcessException;
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
       TSEncoding encoding, Map<String, String> props, long timeLowerBound) throws IOException;

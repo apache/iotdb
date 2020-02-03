@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -341,8 +342,6 @@ public abstract class TVList {
 
   /**
    * this field is effective only in the Tvlist in a RealOnlyMemChunk.
-   *
-   * @return
    */
   public long getTimeOffset() {
     return timeOffset;
@@ -480,14 +479,14 @@ public abstract class TVList {
   }
 
   protected abstract TimeValuePair getTimeValuePair(int index, long time,
-      Integer floatPrecision);
+      Integer floatPrecision, TSEncoding encoding);
 
   public IPointReader getIterator() {
     return new Ite();
   }
 
-  public IPointReader getIterator(int floatPrecision) {
-    return new Ite(floatPrecision);
+  public IPointReader getIterator(int floatPrecision, TSEncoding encoding) {
+    return new Ite(floatPrecision, encoding);
   }
 
   private class Ite implements IPointReader {
@@ -496,12 +495,14 @@ public abstract class TVList {
     private boolean hasCachedPair;
     private int cur;
     private Integer floatPrecision;
+    private TSEncoding encoding;
 
     public Ite() {
     }
 
-    public Ite(int floatPrecision) {
+    public Ite(int floatPrecision, TSEncoding encoding) {
       this.floatPrecision = floatPrecision;
+      this.encoding = encoding;
     }
 
     @Override
@@ -516,7 +517,7 @@ public abstract class TVList {
           cur++;
           continue;
         }
-        cachedTimeValuePair = getTimeValuePair(cur, time, floatPrecision);
+        cachedTimeValuePair = getTimeValuePair(cur, time, floatPrecision, encoding);
         hasCachedPair = true;
         cur++;
         return true;

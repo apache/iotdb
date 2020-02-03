@@ -24,14 +24,13 @@ import java.util.Collections;
 import java.util.Random;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.MathUtils;
-import org.apache.iotdb.tsfile.read.IPointReader;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.junit.Assert;
@@ -95,7 +94,7 @@ public class PrimitiveMemTableTest {
   }
 
   private void write(IMemTable memTable, String deviceId, String sensorId, TSDataType dataType,
-      TSEncoding encoding,  int size) throws IOException {
+      TSEncoding encoding, int size) throws IOException {
     TimeValuePair[] ret = genTimeValuePair(size, dataType);
 
     for (TimeValuePair aRet : ret) {
@@ -103,7 +102,8 @@ public class PrimitiveMemTableTest {
           aRet.getValue().getValue());
     }
     IPointReader tvPair = memTable
-        .query(deviceId, sensorId, dataType,  encoding, Collections.emptyMap(), Long.MIN_VALUE).getPointReader();
+        .query(deviceId, sensorId, dataType, encoding, Collections.emptyMap(), Long.MIN_VALUE)
+        .getPointReader();
     Arrays.sort(ret);
     TimeValuePair last = null;
     for (int i = 0; i < ret.length; i++) {

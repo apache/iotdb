@@ -203,7 +203,7 @@ public class TsFileProcessorTest {
         (tsFileProcessor) -> true, true);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
-        .query(deviceId, measurementId, dataType,encoding, props, context);
+        .query(deviceId, measurementId, dataType, encoding, props, context);
     List<ReadOnlyMemChunk> left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertTrue(left.isEmpty());
@@ -250,7 +250,7 @@ public class TsFileProcessorTest {
         }, (tsFileProcessor) -> true, true);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
-        .query(deviceId, measurementId, dataType,encoding, props, context);
+        .query(deviceId, measurementId, dataType, encoding, props, context);
     List<ReadOnlyMemChunk> left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertTrue(left.isEmpty());
