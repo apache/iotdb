@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,7 +79,7 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
     int tokenInt = filter.getTokenIntType();
     if (filter.isLeaf()) {
       try {
-        ((BasicFunctionOperator) filter).setReversedTokenIntType();
+        ((FunctionOperator)filter).setReversedTokenIntType();
       } catch (LogicalOperatorException e) {
         logger.error("meet error while converting BasicFunction.", e);
         throw new LogicalOperatorException(

@@ -392,7 +392,7 @@ public class PhysicalGenerator {
       return operator;
     }
     BasicFunctionOperator basicOperator = (BasicFunctionOperator) operator;
-    Path filterPath = basicOperator.getSinglePath();
+    Path filterPath = basicOperator.getPath();
 
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
     if (SQLConstant.isReservedPath(filterPath) || filterPath.startWith(SQLConstant.ROOT)) {
@@ -400,7 +400,7 @@ public class PhysicalGenerator {
     }
 
     Path concatPath = filterPath.addPrefixPath(filterPath, prefix);
-    basicOperator.setSinglePath(concatPath);
+    basicOperator.setPath(concatPath);
 
     return basicOperator;
   }

@@ -1,0 +1,213 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iotdb.db.qp.logical.crud;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.ValueFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.StringContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * operator 'in' 'not in'
+ */
+public class InOperator extends FunctionOperator {
+
+  private boolean not;
+  protected Set<String> values;
+  private String valueToString;
+  private Logger logger = LoggerFactory.getLogger(InOperator.class);
+
+  /**
+   * In Operator Constructor.
+   *
+   * @param tokenIntType token in Int Type
+   * @param path path
+   * @param value value
+   * @throws LogicalOperatorException Logical Operator Exception
+   */
+  public InOperator(int tokenIntType, Path path, boolean not, Set<String> values)
+      throws SQLParserException {
+    super(tokenIntType);
+    operatorType = Operator.OperatorType.IN;
+    this.path = path;
+    this.values = values;
+    this.not = not;
+    List<String> valuesList = new ArrayList<>(values);
+    Collections.sort(valuesList);
+    this.valueToString = valuesList.toString();
+    isLeaf = true;
+    isSingle = true;
+  }
+
+  public Set<String> getValues() {
+    return values;
+  }
+
+  @Override
+  protected void reverseFunc(){
+    not = !not;
+  }
+
+  @Override
+  protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
+      IQueryProcessExecutor executor) throws LogicalOperatorException, PathException {
+    TSDataType type = executor.getSeriesType(path);
+    if (type == null) {
+      throw new PathException(
+          "given seriesPath:{" + path.getFullPath() + "} don't exist in metadata");
+    }
+    IUnaryExpression ret;
+
+    switch (type) {
+      case INT32:
+        Set<Integer> integerValues = new HashSet<>();
+        for (String val : values) {
+          integerValues.add(Integer.valueOf(val));
+        }
+        ret = In.getUnaryExpression(path, integerValues, not, valueToString);
+        break;
+      case INT64:
+        Set<Long> longValues = new HashSet<>();
+        for (String val : values) {
+          longValues.add(Long.valueOf(val));
+        }
+        ret = In.getUnaryExpression(path, longValues, not, valueToString);
+        break;
+      case BOOLEAN:
+        Set<Boolean> booleanValues = new HashSet<>();
+        for (String val : values) {
+          booleanValues.add(Boolean.valueOf(val));
+        }
+        ret = In.getUnaryExpression(path, booleanValues, not, valueToString);
+        break;
+      case FLOAT:
+        Set<Float> floatValues = new HashSet<>();
+        for (String val : values) {
+          floatValues.add(Float.parseFloat(val));
+        }
+        ret = In.getUnaryExpression(path, floatValues, not, valueToString);
+        break;
+      case DOUBLE:
+        Set<Double> doubleValues = new HashSet<>();
+        for (String val : values) {
+          doubleValues.add(Double.parseDouble(val));
+        }
+        ret = In.getUnaryExpression(path, doubleValues, not, valueToString);
+        break;
+      case TEXT:
+        Set<Binary> binaryValues = new HashSet<>();
+        for (String val : values) {
+          binaryValues.add(
+              (val.startsWith("'") && val.endsWith("'")) || (val.startsWith("\"") && val
+                  .endsWith("\"")) ? new Binary(val.substring(1, val.length() - 1))
+                  : new Binary(val));
+        }
+        ret = In.getUnaryExpression(path, binaryValues, not, valueToString);
+        break;
+      default:
+        throw new LogicalOperatorException(type.toString(), "");
+    }
+
+    return new Pair<>(ret, path.getFullPath());
+  }
+
+  @Override
+  public String showTree(int spaceNum) {
+    StringContainer sc = new StringContainer();
+    for (int i = 0; i < spaceNum; i++) {
+      sc.addTail("  ");
+    }
+    sc.addTail(path.toString(), this.tokenSymbol, not, valueToString, ", single\n");
+    return sc.toString();
+  }
+
+  @Override
+  public InOperator clone() {
+    InOperator ret;
+    try {
+      ret = new InOperator(this.tokenIntType, path.clone(), not, new HashSet<>(values));
+    } catch (SQLParserException e) {
+      logger.error("error clone:", e);
+      return null;
+    }
+    ret.tokenSymbol = tokenSymbol;
+    ret.isLeaf = isLeaf;
+    ret.isSingle = isSingle;
+    return ret;
+  }
+
+  @Override
+  public String toString() {
+    return "[" + path.getFullPath() + tokenSymbol + not + valueToString + "]";
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    InOperator that = (InOperator) o;
+    return Objects.equals(path, that.path) && Objects.equals(valueToString, that.valueToString)
+        && not == that.not;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), path, not, valueToString);
+  }
+
+  private static class In {
+
+    public static <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path,
+        Set<T> values, boolean not, String valueToString) {
+      if (path.equals("time")) {
+        return new GlobalTimeExpression(TimeFilter.in((Set<Long>) values, not, valueToString));
+      } else {
+        return new SingleSeriesExpression(path, ValueFilter.in(values, not, valueToString));
+      }
+    }
+
+    public <T extends Comparable<T>> Filter getValueFilter(T value) {
+      return ValueFilter.notEq(value);
+    }
+  }
+}

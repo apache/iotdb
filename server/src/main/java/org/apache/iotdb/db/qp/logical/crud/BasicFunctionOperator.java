@@ -39,7 +39,6 @@ import org.slf4j.LoggerFactory;
  */
 public class BasicFunctionOperator extends FunctionOperator {
 
-  protected Path path;
   protected String value;
   private Logger logger = LoggerFactory.getLogger(BasicFunctionOperator.class);
   private BasicOperatorType funcToken;
@@ -57,44 +56,19 @@ public class BasicFunctionOperator extends FunctionOperator {
     super(tokenIntType);
     operatorType = Operator.OperatorType.BASIC_FUNC;
     funcToken = BasicOperatorType.getBasicOpBySymbol(tokenIntType);
-    this.path = this.singlePath = path;
+    this.path = path;
     this.value = value;
     isLeaf = true;
     isSingle = true;
-  }
-
-  /**
-   * get path.
-   *
-   * @return path
-   */
-  public String getPath() {
-    return path.toString();
   }
 
   public String getValue() {
     return value;
   }
 
-  /**
-   * set reversed token.
-   *
-   * @throws LogicalOperatorException Logical Operator Exception
-   */
-  public void setReversedTokenIntType() throws LogicalOperatorException {
-    int intType = SQLConstant.reverseWords.get(tokenIntType);
-    setTokenIntType(intType);
-    funcToken = BasicOperatorType.getBasicOpBySymbol(intType);
-  }
-
   @Override
-  public Path getSinglePath() {
-    return singlePath;
-  }
-
-  @Override
-  public void setSinglePath(Path singlePath) {
-    this.path = this.singlePath = singlePath;
+  protected void reverseFunc(){
+    funcToken = BasicOperatorType.getBasicOpBySymbol(getTokenIntType());
   }
 
   @Override

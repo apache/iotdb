@@ -57,7 +57,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
    */
   private Path mergeSamePathFilter(FilterOperator filter) throws LogicalOptimizeException {
     if (filter.isLeaf()) {
-      return filter.getSinglePath();
+      return filter.getPath();
     }
     List<FilterOperator> children = filter.getChildren();
     checkInnerFilterLen(children);
@@ -73,14 +73,14 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     }
     if (childPath != null) {
       filter.setIsSingle(true);
-      filter.setSinglePath(childPath);
+      filter.setPath(childPath);
       return childPath;
     }
 
     // sort paths of BasicFunction by their single seriesPath. We don't sort children on non-leaf
     // layer.
     if (!children.isEmpty() && allIsBasic(children)) {
-      children.sort(Comparator.comparing(o -> o.getSinglePath().getFullPath()));
+      children.sort(Comparator.comparing(o -> o.getPath().getFullPath()));
     }
     List<FilterOperator> ret = new ArrayList<>();
     int firstNonSingleIndex = mergeSingleFilters(ret, filter);
@@ -96,7 +96,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     Path childPath = null;
     int firstNonSingleIndex;
     for (firstNonSingleIndex = 0; firstNonSingleIndex < children.size(); firstNonSingleIndex++) {
-      tempPath = children.get(firstNonSingleIndex).getSinglePath();
+      tempPath = children.get(firstNonSingleIndex).getPath();
       // sorted by seriesPath, all non-single filters are in the end
       if (tempPath == null) {
         break;
@@ -124,7 +124,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
         } else {
           // add a new inner node
           FilterOperator newFilter = new FilterOperator(filter.getTokenIntType(), true);
-          newFilter.setSinglePath(childPath);
+          newFilter.setPath(childPath);
           newFilter.setChildren(tempExtrNode);
           ret.add(newFilter);
           tempExtrNode = new ArrayList<>();
@@ -140,7 +140,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
       } else {
         // add a new inner node
         FilterOperator newFil = new FilterOperator(filter.getTokenIntType(), true);
-        newFil.setSinglePath(childPath);
+        newFil.setPath(childPath);
         newFil.setChildren(tempExtrNode);
         ret.add(newFil);
       }
@@ -157,7 +157,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     if (ret.size() == 1) {
       // all children have same seriesPath, which means this filter node is a single node
       filter.setIsSingle(true);
-      filter.setSinglePath(childPath);
+      filter.setPath(childPath);
       filter.setChildren(ret.get(0).getChildren());
       return childPath;
     } else {

@@ -137,9 +137,13 @@ andExpression
 
 predicate
     : (suffixPath | prefixPath) comparisonOperator constant
+    | (suffixPath | prefixPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
     ;
 
+inClause
+    : OPERATOR_NOT? OPERATOR_IN LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    ;
 
 fromClause
     : FROM prefixPath (COMMA prefixPath)*
@@ -745,6 +749,8 @@ OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 
 OPERATOR_NEQ : '!=' | '<>';
+
+OPERATOR_IN : 'IN' | 'in' | 'In' | 'iN';
 
 OPERATOR_AND
     : A N D

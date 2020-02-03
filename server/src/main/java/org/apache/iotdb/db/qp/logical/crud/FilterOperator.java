@@ -55,7 +55,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
   // isSingle being true means all recursive children of this filter belong to one seriesPath.
   protected boolean isSingle = false;
   // if isSingle = false, singlePath must be null
-  protected Path singlePath = null;
+  protected Path path = null;
 
   public FilterOperator(int tokenType) {
     super(tokenType);
@@ -94,12 +94,12 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     this.isSingle = b;
   }
 
-  public Path getSinglePath() {
-    return singlePath;
+  public Path getPath() {
+    return path;
   }
 
-  public void setSinglePath(Path path) {
-    this.singlePath = path;
+  public void setPath(Path path) {
+    this.path = path;
   }
 
   public boolean addChildOperator(FilterOperator op) {
@@ -114,7 +114,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    * @return QueryFilter in TsFile
    */
   public IExpression transformToExpression(IQueryProcessExecutor executor)
-      throws QueryProcessException, LogicalOperatorException {
+      throws QueryProcessException {
     if (isSingle) {
       Pair<IUnaryExpression, String> ret = transformToSingleQueryFilter(executor);
       return ret.left;
@@ -192,16 +192,16 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    */
   @Override
   public int compareTo(FilterOperator fil) {
-    if (singlePath == null && fil.singlePath == null) {
+    if (path == null && fil.path == null) {
       return 0;
     }
-    if (singlePath == null) {
+    if (path == null) {
       return 1;
     }
-    if (fil.singlePath == null) {
+    if (fil.path == null) {
       return -1;
     }
-    return fil.singlePath.toString().compareTo(singlePath.toString());
+    return fil.path.toString().compareTo(path.toString());
   }
 
   @Override
@@ -239,7 +239,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     }
     sc.addTail(this.tokenName);
     if (isSingle) {
-      sc.addTail("[single:", getSinglePath().toString(), "]");
+      sc.addTail("[single:", getPath().toString(), "]");
     }
     sc.addTail("\n");
     for (FilterOperator filter : childOperators) {
@@ -253,7 +253,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     StringContainer sc = new StringContainer();
     sc.addTail("[", this.tokenName);
     if (isSingle) {
-      sc.addTail("[single:", getSinglePath().toString(), "]");
+      sc.addTail("[single:", getPath().toString(), "]");
     }
     sc.addTail(" ");
     for (FilterOperator filter : childOperators) {
@@ -269,8 +269,8 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     ret.tokenSymbol = tokenSymbol;
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
-    if (singlePath != null) {
-      ret.singlePath = singlePath.clone();
+    if (path != null) {
+      ret.path = path.clone();
     }
     for (FilterOperator filterOperator : this.childOperators) {
       ret.addChildOperator(filterOperator.clone());

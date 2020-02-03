@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +37,21 @@ public class FunctionOperator extends FilterOperator {
   public FunctionOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.FUNC;
+  }
+
+  /**
+   * set reversed token.
+   *
+   * @throws LogicalOperatorException Logical Operator Exception
+   */
+  public void setReversedTokenIntType() throws LogicalOperatorException {
+    int intType = SQLConstant.reverseWords.get(tokenIntType);
+    setTokenIntType(intType);
+    reverseFunc();
+  }
+
+  protected void reverseFunc(){
+
   }
 
   @Override
