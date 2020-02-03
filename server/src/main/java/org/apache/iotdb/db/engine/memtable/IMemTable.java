@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.exception.query.PlannerException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -53,9 +54,10 @@ public interface IMemTable {
    */
   long memSize();
 
-  void insert(InsertPlan insertPlan);
+  void insert(InsertPlan insertPlan) throws PlannerException;
 
-  void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end);
+  void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end)
+      throws PlannerException;
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
       TSEncoding encoding, Map<String, String> props, long timeLowerBound) throws IOException;
