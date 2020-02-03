@@ -162,22 +162,19 @@ public class AggregationExecutor {
 
     List<AggregateResult> aggregateResults = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
-      TSDataType type = MManager.getInstance().getSeriesType(selectedSeries.get(i).getFullPath());
+      TSDataType type = dataTypes.get(i);
       AggregateResult result = AggreResultFactory.getAggrResultByName(aggres.get(i), type);
       aggregateResults.add(result);
     }
-    List<AggregateResult> batchDataList = aggregateWithValueFilter(aggregateResults,
-        timestampGenerator, readersOfSelectedSeries);
-    return constructDataSet(batchDataList);
+    aggregateWithValueFilter(aggregateResults, timestampGenerator, readersOfSelectedSeries);
+    return constructDataSet(aggregateResults);
   }
 
   /**
-   * calculation aggregate result with value filter.
+   * calculate aggregation result with value filter.
    */
-  private List<AggregateResult> aggregateWithValueFilter(
-      List<AggregateResult> aggregateResults,
-      EngineTimeGenerator timestampGenerator,
-      List<IReaderByTimestamp> readersOfSelectedSeries)
+  private void aggregateWithValueFilter(List<AggregateResult> aggregateResults,
+      EngineTimeGenerator timestampGenerator, List<IReaderByTimestamp> readersOfSelectedSeries)
       throws IOException {
 
     while (timestampGenerator.hasNext()) {
@@ -198,10 +195,6 @@ public class AggregationExecutor {
             readersOfSelectedSeries.get(i));
       }
     }
-
-    List<AggregateResult> aggregateResultList = new ArrayList<>();
-    aggregateResultList.addAll(aggregateResults);
-    return aggregateResultList;
   }
 
   /**
@@ -209,8 +202,7 @@ public class AggregationExecutor {
    *
    * @param aggregateResultList aggregate result list
    */
-  private QueryDataSet constructDataSet(List<AggregateResult> aggregateResultList)
-      throws IOException {
+  private QueryDataSet constructDataSet(List<AggregateResult> aggregateResultList) {
     List<TSDataType> dataTypes = new ArrayList<>();
     RowRecord record = new RowRecord(0);
     for (AggregateResult resultData : aggregateResultList) {

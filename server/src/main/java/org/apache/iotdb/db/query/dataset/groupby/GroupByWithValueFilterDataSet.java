@@ -60,7 +60,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    * constructor.
    */
   public GroupByWithValueFilterDataSet(QueryContext context, GroupByPlan groupByPlan)
-      throws PathException, IOException, StorageEngineException {
+      throws StorageEngineException {
     super(context, groupByPlan);
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
     initGroupBy(context, groupByPlan);
@@ -108,8 +108,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     long[] timestampArray = new long[timeStampFetchSize];
     int timeArrayLength = 0;
     if (hasCachedTimestamp) {
-      if (timestamp < endTime) {
-        if (timestamp >= startTime) {
+      if (timestamp < curEndTime) {
+        if (timestamp >= curStartTime) {
           hasCachedTimestamp = false;
           timestampArray[timeArrayLength++] = timestamp;
         }
@@ -129,7 +129,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
       timeArrayLength = 0;
       // judge if it's end
-      if (timestamp >= endTime) {
+      if (timestamp >= curEndTime) {
         hasCachedTimestamp = true;
         break;
       }
@@ -156,7 +156,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       throws IOException {
     for (int cnt = 1; cnt < timeStampFetchSize && timestampGenerator.hasNext(); cnt++) {
       timestamp = timestampGenerator.next();
-      if (timestamp < endTime) {
+      if (timestamp < curEndTime) {
         timestampArray[timeArrayLength++] = timestamp;
       } else {
         hasCachedTimestamp = true;
@@ -167,7 +167,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   private RowRecord constructRowRecord(List<AggregateResult> aggregateResultList) {
-    RowRecord record = new RowRecord(startTime);
+    RowRecord record = new RowRecord(curStartTime);
     for (int i = 0; i < paths.size(); i++) {
       AggregateResult aggregateResult = aggregateResultList.get(i);
       record.addField(aggregateResult.getResult(), aggregateResult.getDataType());

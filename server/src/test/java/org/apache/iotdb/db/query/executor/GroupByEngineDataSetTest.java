@@ -33,7 +33,7 @@ import org.junit.Test;
 public class GroupByEngineDataSetTest {
 
   @Test
-  public void test1() throws IOException, PathException, StorageEngineException {
+  public void test1() throws IOException {
     long queryId = 1000L;
     long unit = 3;
     long slidingStep = 5;
@@ -44,7 +44,7 @@ public class GroupByEngineDataSetTest {
     long[] endTimeArray = {11, 16, 21, 26, 31};
 
     GroupByPlan groupByPlan = new GroupByPlan();
-    groupByPlan.setUnit(unit);
+    groupByPlan.setInterval(unit);
     groupByPlan.setSlidingStep(slidingStep);
     groupByPlan.setStartTime(startTime);
     groupByPlan.setEndTime(endTime);
@@ -67,13 +67,13 @@ public class GroupByEngineDataSetTest {
     long unit = 3;
     long slidingStep = 5;
     long startTime = 8;
-    long endTime = 8 + 4 * 5 + 2;
+    long endTime = 8 + 4 * 5 + 3;
 
     long[] startTimeArray = {8, 13, 18, 23, 28};
     long[] endTimeArray = {11, 16, 21, 26, 31};
 
     GroupByPlan groupByPlan = new GroupByPlan();
-    groupByPlan.setUnit(unit);
+    groupByPlan.setInterval(unit);
     groupByPlan.setSlidingStep(slidingStep);
     groupByPlan.setStartTime(startTime);
     groupByPlan.setEndTime(endTime);
@@ -101,7 +101,7 @@ public class GroupByEngineDataSetTest {
     long[] endTimeArray = {11, 14, 17, 20, 23};
 
     GroupByPlan groupByPlan = new GroupByPlan();
-    groupByPlan.setUnit(unit);
+    groupByPlan.setInterval(unit);
     groupByPlan.setSlidingStep(slidingStep);
     groupByPlan.setStartTime(startTime);
     groupByPlan.setEndTime(endTime);
@@ -123,13 +123,13 @@ public class GroupByEngineDataSetTest {
     long unit = 3;
     long slidingStep = 3;
     long startTime = 8;
-    long endTime = 8 + 5 * 3 - 1;
+    long endTime = 8 + 5 * 3;
 
     long[] startTimeArray = {8, 11, 14, 17, 20};
     long[] endTimeArray = {11, 14, 17, 20, 23};
 
     GroupByPlan groupByPlan = new GroupByPlan();
-    groupByPlan.setUnit(unit);
+    groupByPlan.setInterval(unit);
     groupByPlan.setSlidingStep(slidingStep);
     groupByPlan.setStartTime(startTime);
     groupByPlan.setEndTime(endTime);
@@ -151,13 +151,13 @@ public class GroupByEngineDataSetTest {
     long unit = 3;
     long slidingStep = 3;
     long startTime = 8;
-    long endTime = 8 + 5 * 3 + 1;
+    long endTime = 8 + 5 * 3 + 2;
 
     long[] startTimeArray = {8, 11, 14, 17, 20, 23};
     long[] endTimeArray = {11, 14, 17, 20, 23, 25};
 
     GroupByPlan groupByPlan = new GroupByPlan();
-    groupByPlan.setUnit(unit);
+    groupByPlan.setInterval(unit);
     groupByPlan.setSlidingStep(slidingStep);
     groupByPlan.setStartTime(startTime);
     groupByPlan.setEndTime(endTime);

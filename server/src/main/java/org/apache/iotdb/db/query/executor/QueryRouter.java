@@ -114,8 +114,8 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException {
-    long unit = groupByPlan.getUnit();
+      throws QueryFilterOptimizationException, StorageEngineException {
+    long unit = groupByPlan.getInterval();
     long slidingStep = groupByPlan.getSlidingStep();
     long startTime = groupByPlan.getStartTime();
     long endTime = groupByPlan.getEndTime();

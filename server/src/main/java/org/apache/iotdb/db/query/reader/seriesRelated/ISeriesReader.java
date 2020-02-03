@@ -35,8 +35,14 @@ public interface ISeriesReader {
 
   boolean hasNextPage() throws IOException;
 
+  /**
+   * only be used without value filter
+   */
   boolean canUseCurrentPageStatistics() throws IOException;
 
+  /**
+   * only be used without value filter
+   */
   Statistics currentPageStatistics() throws IOException;
 
   void skipCurrentPage() throws IOException;

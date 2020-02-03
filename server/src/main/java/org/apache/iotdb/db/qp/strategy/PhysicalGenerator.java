@@ -178,7 +178,7 @@ public class PhysicalGenerator {
 
     if (queryOperator.isGroupBy()) {
       queryPlan = new GroupByPlan();
-      ((GroupByPlan) queryPlan).setUnit(queryOperator.getUnit());
+      ((GroupByPlan) queryPlan).setInterval(queryOperator.getUnit());
       ((GroupByPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
       ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
       ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
