@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional information regarding
  * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
@@ -31,27 +31,15 @@ public class MetricsWebUI {
     this.metricRegistry = metricRegistry;
   }
 
-  public MetricRegistry getMetricRegistry() {
-    return metricRegistry;
-  }
-
-  public void setMetricRegistry(MetricRegistry metricRegistry) {
-    this.metricRegistry = metricRegistry;
-  }
-
   public List<ServletContextHandler> getHandlers() {
     return handlers;
-  }
-
-  public void setHandlers(List<ServletContextHandler> handlers) {
-    this.handlers = handlers;
   }
 
   public void initialize() {
     MetricsPage masterPage = new MetricsPage(metricRegistry);
     QueryServlet queryServlet = new QueryServlet(masterPage);
     ServletContextHandler staticHandler = JettyUtil.createStaticHandler();
-    ServletContextHandler queryHandler = JettyUtil.createServletHandler("/",queryServlet);
+    ServletContextHandler queryHandler = JettyUtil.createServletHandler("/",queryServlet, "/");
     handlers.add(staticHandler);
     handlers.add(queryHandler);
   }

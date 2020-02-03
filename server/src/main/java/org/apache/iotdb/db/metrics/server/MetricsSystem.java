@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional information regarding
  * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
@@ -36,14 +36,6 @@ public class MetricsSystem {
     this.serverArgument = serverArgument;
   }
 
-  public ServerArgument getServerArgument() {
-    return serverArgument;
-  }
-
-  public void setServerArgument(ServerArgument serverArgument) {
-    this.serverArgument = serverArgument;
-  }
-
   public MetricRegistry getMetricRegistry() {
     return metricRegistry;
   }
@@ -55,23 +47,19 @@ public class MetricsSystem {
   public void start() {
     registerSource();
     registerSinks();
-    sinks.forEach(sink -> sink.start());
+    sinks.forEach(Sink::start);
   }
 
   public void stop() {
-    sinks.forEach(sink -> sink.stop());
+    sinks.forEach(Sink::stop);
   }
 
-  public void report() {
-    sinks.forEach(sink -> sink.report());
-  }
-
-  public void registerSource() {
+  private void registerSource() {
     MetricsSource source = new MetricsSource(serverArgument, metricRegistry);
     source.registerInfo();
     sources.add(source);
   }
 
-  public void registerSinks() {}
+  private void registerSinks() {}
 
 }

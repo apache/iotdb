@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional information regarding
  * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
@@ -20,11 +20,9 @@ import com.codahale.metrics.MetricRegistry;
 
 public class ConsoleSink implements Sink {
 
-  public MetricRegistry registry;
-  public ConsoleReporter reporter;
+  private ConsoleReporter reporter;
 
   public ConsoleSink(MetricRegistry registry) {
-    this.registry = registry;
     this.reporter = ConsoleReporter.forRegistry(registry).convertDurationsTo(TimeUnit.MILLISECONDS)
         .convertRatesTo(TimeUnit.SECONDS).build();
   }

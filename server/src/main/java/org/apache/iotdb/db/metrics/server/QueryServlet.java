@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional information regarding
  * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
@@ -28,16 +28,16 @@ public class QueryServlet extends HttpServlet {
 
   private static final long serialVersionUID = 1L;
 
-  private List<SqlArgument> list = TSServiceImpl.sqlArgumentsList;
   private MetricsPage page;
 
   public QueryServlet(MetricsPage page) {
     this.page = page;
+    List<SqlArgument> list = TSServiceImpl.sqlArgumentsList;
     this.page.setList(list);
   }
 
   @Override
-  protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+  protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
     resp.setContentType("text/html;charset=utf-8");
     req.setCharacterEncoding("utf-8");
     resp.setStatus(HttpServletResponse.SC_OK);

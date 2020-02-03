@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional information regarding
  * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
@@ -23,6 +23,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.StringTokenizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +67,7 @@ public class ServerArgument {
     } catch (UnknownHostException e) {
       logger.error("The host is unknow", e);
     }
-    return ia.getHostName();
+    return Objects.requireNonNull(ia).getHostName();
   }
 
   private String osName() {
@@ -75,8 +76,7 @@ public class ServerArgument {
 
   private int totalCores() {
     OperatingSystemMXBean osmxb = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-    int freeCores = osmxb.getAvailableProcessors();
-    return freeCores;
+    return osmxb.getAvailableProcessors();
   }
 
   private long totalMemory() {
@@ -93,20 +93,17 @@ public class ServerArgument {
 
   private long totalPhysicalMemory() {
     OperatingSystemMXBean osmxb = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-    long totalMemorySize = osmxb.getTotalPhysicalMemorySize() / 1024 / 1024;
-    return totalMemorySize;
+    return osmxb.getTotalPhysicalMemorySize() / 1024 / 1024;
   }
 
   private long usedPhysicalMemory() {
     OperatingSystemMXBean osmxb = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-    long usedMemorySize = (osmxb.getTotalPhysicalMemorySize() - osmxb.getFreePhysicalMemorySize()) / 1024 / 1024;
-    return usedMemorySize;
+    return (osmxb.getTotalPhysicalMemorySize() - osmxb.getFreePhysicalMemorySize()) / 1024 / 1024;
   }
 
   private long freePhysicalMemory() {
     OperatingSystemMXBean osmxb = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-    long freeMemorySize = osmxb.getFreePhysicalMemorySize() / 1024 / 1024;
-    return freeMemorySize;
+    return osmxb.getFreePhysicalMemorySize() / 1024 / 1024;
   }
 
   public int getPort() {
@@ -156,9 +153,9 @@ public class ServerArgument {
   public int getCpuRatio() {
     String osName = System.getProperty("os.name").toLowerCase();
     cpuRatio = 0;
-    if (osName.indexOf("windows") >= 0) {
+    if (osName.contains("windows")) {
       cpuRatio = getCpuRatioForWindows();
-    } else if (osName.indexOf("linux") >= 0) {
+    } else if (osName.contains("linux")) {
       cpuRatio = getCpuRateForLinux();
     } else {
       cpuRatio = 500;
@@ -175,16 +172,12 @@ public class ServerArgument {
       long[] c0 = readLinuxCpu();
       Thread.sleep(CPUTIME);
       long[] c1 = readLinuxCpu();
-      if (c0 != null && c1 != null) {
-        long idleCpuTime = c1[0] - c0[0];
-        long totalCpuTime = c1[1] - c0[1];
-        if (totalCpuTime == 0) {
-          return 100;
-        }
-        return (int)(100 * (1 - (double)idleCpuTime / totalCpuTime));
-      } else {
-        return 0;
+      long idleCpuTime = c1[0] - c0[0];
+      long totalCpuTime = c1[1] - c0[1];
+      if (totalCpuTime == 0) {
+        return 100;
       }
+      return (int)(100 * (1 - (double)idleCpuTime / totalCpuTime));
     } catch (Exception e) {
       logger.error("Get CPU Ratio failed", e);
       return 0;
@@ -243,7 +236,7 @@ public class ServerArgument {
         continue;
       }
       String cmd = line.substring(cmdidx, kmtidx).trim();
-      if (cmd.indexOf("wmic.exe") >= 0) {
+      if (cmd.contains("wmic.exe")) {
         continue;
       }
       String caption = line.substring(capidx, cmdidx).trim();
@@ -256,24 +249,24 @@ public class ServerArgument {
       if (caption.equals("System Idle Process") || caption.equals("System")) {
         if (s1.length() > 0) {
           if (!digitS1.get(0).equals("") && digitS1.get(0) != null) {
-            idletime += Long.valueOf(digitS1.get(0)).longValue();
+            idletime += Long.parseLong(digitS1.get(0));
           }
         }
         if (s2.length() > 0) {
           if (!digitS2.get(0).equals("") && digitS2.get(0) != null) {
-            idletime += Long.valueOf(digitS2.get(0)).longValue();
+            idletime += Long.parseLong(digitS2.get(0));
           }
         }
         continue;
       }
       if (s1.length() > 0) {
         if (!digitS1.get(0).equals("") && digitS1.get(0) != null) {
-          kneltime += Long.valueOf(digitS1.get(0)).longValue();
+          kneltime += Long.parseLong(digitS1.get(0));
         }
       }
       if (s2.length() > 0) {
         if (!digitS2.get(0).equals("") && digitS2.get(0) != null) {
-          kneltime += Long.valueOf(digitS2.get(0)).longValue();
+          kneltime += Long.parseLong(digitS2.get(0));
         }
       }
     }
@@ -288,15 +281,15 @@ public class ServerArgument {
    */
   private long[] readLinuxCpu() throws Exception {
     long[] retn = new long[2];
-    BufferedReader buffer = null;
+    BufferedReader buffer;
     long idleCpuTime = 0;
     long totalCpuTime = 0;
     buffer = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/stat")));
-    String line = null;
+    String line;
     while ((line = buffer.readLine()) != null) {
       if (line.startsWith("cpu")) {
         StringTokenizer tokenizer = new StringTokenizer(line);
-        List<String> temp = new ArrayList<String>();
+        List<String> temp = new ArrayList<>();
         while (tokenizer.hasMoreElements()) {
           temp.add(tokenizer.nextToken());
         }

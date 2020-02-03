@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional information regarding
  * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
@@ -14,11 +14,13 @@
  */
 package org.apache.iotdb.db.metrics.server;
 
+import com.codahale.metrics.MetricRegistry;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URL;
 import java.util.List;
-import javax.servlet.ServletException;
+import java.util.Objects;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -28,8 +30,6 @@ import org.eclipse.jetty.server.handler.ErrorHandler;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import com.codahale.metrics.MetricRegistry;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class JettyUtil {
 
@@ -41,7 +41,7 @@ public class JettyUtil {
       MetricRegistry mr = metricRegistry;
 
       @Override
-      protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+      protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setContentType("text/html;charset=utf-8");
         resp.setStatus(HttpServletResponse.SC_OK);
         PrintWriter out = resp.getWriter();
@@ -52,19 +52,19 @@ public class JettyUtil {
 
       @Override
       public void doPost(HttpServletRequest req, HttpServletResponse resp)
-          throws ServletException, IOException {
+          throws IOException {
         doGet(req, resp);
       }
     };
     
-    return createServletHandler("/json", httpServlet);
+    return createServletHandler("/json", httpServlet, "/");
   }
 
-  public static ServletContextHandler createServletHandler(String path, HttpServlet servlet) {
+  public static ServletContextHandler createServletHandler(String path, HttpServlet servlet, String pathSpec) {
     ServletContextHandler contextHandler = new ServletContextHandler(ServletContextHandler.SESSIONS);
     ServletHolder holder = new ServletHolder(servlet);
     contextHandler.setContextPath(path);
-    contextHandler.addServlet(holder, "/");
+    contextHandler.addServlet(holder, pathSpec);
     return contextHandler;
   }
 
@@ -73,7 +73,7 @@ public class JettyUtil {
     URL res = JettyUtil.class.getClassLoader().getResource("iotdb/ui/static");
     HttpServlet servlet = new DefaultServlet();
     ServletHolder holder = new ServletHolder(servlet);
-    holder.setInitParameter("resourceBase", res.toString());
+    holder.setInitParameter("resourceBase", Objects.requireNonNull(res).toString());
     contextHandler.setContextPath("/static");
     contextHandler.addServlet(holder, "/");
     return contextHandler;

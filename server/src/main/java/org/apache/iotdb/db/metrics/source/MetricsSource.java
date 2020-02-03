@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional information regarding
  * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
@@ -20,9 +20,9 @@ import com.codahale.metrics.MetricRegistry;
 
 public class MetricsSource implements Source {
 
-  public String sourceName = "iot-metrics";
-  public MetricRegistry metricRegistry;
-  public ServerArgument serverArgument;
+  private String sourceName = "iot-metrics";
+  private MetricRegistry metricRegistry;
+  private ServerArgument serverArgument;
 
   public MetricsSource(ServerArgument serverArgument, MetricRegistry metricRegistry) {
     this.serverArgument = serverArgument;
@@ -31,65 +31,35 @@ public class MetricsSource implements Source {
 
   public void registerInfo() {
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "host"), new Gauge<String>() {
-      public String getValue() {
-        return serverArgument.getHost();
-      }
-    });
+    metricRegistry.register(MetricRegistry.name(sourceName, "host"),
+        (Gauge<String>) () -> serverArgument.getHost());
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "port"), new Gauge<Integer>() {
-      public Integer getValue() {
-        return (int) serverArgument.getPort();
-      }
-    });
+    metricRegistry.register(MetricRegistry.name(sourceName, "port"),
+        (Gauge<Integer>) () -> (int) serverArgument.getPort());
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "cores"), new Gauge<Integer>() {
-      public Integer getValue() {
-        return (int) serverArgument.getCores();
-      }
-    });
+    metricRegistry.register(MetricRegistry.name(sourceName, "cores"),
+        (Gauge<Integer>) () -> (int) serverArgument.getCores());
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "cpu_ratio"), new Gauge<Integer>() {
-      public Integer getValue() {
-        return (int) serverArgument.getCpuRatio();
-      }
-    });
+    metricRegistry.register(MetricRegistry.name(sourceName, "cpu_ratio"),
+        (Gauge<Integer>) () -> (int) serverArgument.getCpuRatio());
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "total_memory"), new Gauge<Integer>() {
-      public Integer getValue() {
-        return (int) serverArgument.getTotalMemory();
-      }
-    });
+    metricRegistry.register(MetricRegistry.name(sourceName, "total_memory"),
+        (Gauge<Integer>) () -> (int) serverArgument.getTotalMemory());
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "max_memory"), new Gauge<Integer>() {
-      public Integer getValue() {
-        return (int) serverArgument.getMaxMemory();
-      }
-    });
+    metricRegistry.register(MetricRegistry.name(sourceName, "max_memory"),
+        (Gauge<Integer>) () -> (int) serverArgument.getMaxMemory());
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "free_memory"), new Gauge<Integer>() {
-      public Integer getValue() {
-        return (int) serverArgument.getFreeMemory();
-      }
-    });
+    metricRegistry.register(MetricRegistry.name(sourceName, "free_memory"),
+        (Gauge<Integer>) () -> (int) serverArgument.getFreeMemory());
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "totalPhysical_memory"), new Gauge<Integer>() {
-          public Integer getValue() {
-            return (int) serverArgument.getTotalPhysicalMemory();
-          }
-        });
+    metricRegistry.register(MetricRegistry.name(sourceName, "totalPhysical_memory"),
+        (Gauge<Integer>) () -> (int) serverArgument.getTotalPhysicalMemory());
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "freePhysical_memory"), new Gauge<Integer>() {
-          public Integer getValue() {
-            return (int) serverArgument.getFreePhysicalMemory();
-          }
-        });
+    metricRegistry.register(MetricRegistry.name(sourceName, "freePhysical_memory"),
+        (Gauge<Integer>) () -> (int) serverArgument.getFreePhysicalMemory());
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "usedPhysical_memory"), new Gauge<Integer>() {
-          public Integer getValue() {
-            return (int) serverArgument.getUsedPhysicalMemory();
-          }
-        });
+    metricRegistry.register(MetricRegistry.name(sourceName, "usedPhysical_memory"),
+        (Gauge<Integer>) () -> (int) serverArgument.getUsedPhysicalMemory());
   }
 
   @Override

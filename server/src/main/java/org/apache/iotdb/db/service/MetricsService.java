@@ -172,7 +172,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
     private Server server;
 
-    public MetricsServiceThread(Server server) {
+    MetricsServiceThread(Server server) {
       this.server = server;
     }
 
