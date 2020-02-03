@@ -23,7 +23,7 @@ package org.apache.iotdb.db.exception.query;
 import java.util.Date;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class OutOfTTLException extends QueryProcessException {
+public class OutOfTTLException extends PlannerException {
 
   private static final long serialVersionUID = -1197147887094603300L;
 

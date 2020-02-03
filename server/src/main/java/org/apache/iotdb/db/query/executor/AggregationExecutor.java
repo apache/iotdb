@@ -22,8 +22,7 @@ package org.apache.iotdb.db.query.executor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.exception.query.PlannerException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -74,7 +73,7 @@ public class AggregationExecutor {
    * @param context query context
    */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
-      throws StorageEngineException, IOException, QueryProcessException {
+      throws StorageEngineException, IOException, PlannerException {
 
     Filter timeFilter = null;
     if (expression != null) {
@@ -95,7 +94,7 @@ public class AggregationExecutor {
    * get aggregation result for one series
    */
   private AggregateResult aggregateOneSeries(int i, Filter timeFilter, QueryContext context)
-      throws IOException, QueryProcessException, StorageEngineException {
+      throws IOException, PlannerException, StorageEngineException {
 
     // construct AggregateResult
     TSDataType tsDataType = dataTypes.get(i);

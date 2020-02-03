@@ -21,7 +21,7 @@ package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class QueryInBatchStatementException extends ProcessException {
+public class QueryInBatchStatementException extends IoTDBException {
 
   private static final long serialVersionUID = 204423954433950490L;
 

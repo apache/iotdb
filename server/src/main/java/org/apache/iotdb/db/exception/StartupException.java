@@ -20,7 +20,7 @@ package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class StartupException extends ProcessException {
+public class StartupException extends IoTDBException {
 
   private static final long serialVersionUID = -8591716406230730147L;
 

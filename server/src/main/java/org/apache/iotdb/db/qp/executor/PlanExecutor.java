@@ -36,7 +36,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.PlannerException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
@@ -99,7 +99,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException, MetadataException, SQLException {
+      throws IOException, StorageEngineException, QueryFilterOptimizationException, PlannerException, MetadataException, SQLException {
     if (queryPlan instanceof QueryPlan) {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
@@ -107,12 +107,12 @@ public class PlanExecutor implements IPlanExecutor {
     } else if (queryPlan instanceof ShowPlan) {
       return processShowQuery((ShowPlan) queryPlan);
     } else {
-      throw new QueryProcessException(String.format("Unrecognized query plan %s", queryPlan));
+      throw new PlannerException(String.format("Unrecognized query plan %s", queryPlan));
     }
   }
 
   @Override
-  public boolean processNonQuery(PhysicalPlan plan) throws QueryProcessException {
+  public boolean processNonQuery(PhysicalPlan plan) throws PlannerException {
     switch (plan.getOperatorType()) {
       case DELETE:
         delete((DeletePlan) plan);
@@ -177,7 +177,7 @@ public class PlanExecutor implements IPlanExecutor {
 
 
   private QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
-      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
+      throws StorageEngineException, QueryFilterOptimizationException, PlannerException,
       IOException {
     QueryDataSet queryDataSet;
     if (queryPlan.isGroupByDevice()) {
@@ -202,7 +202,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowQuery(ShowPlan showPlan)
-      throws QueryProcessException, MetadataException, SQLException {
+      throws PlannerException, MetadataException, SQLException {
     switch (showPlan.getShowContentType()) {
       case TTL:
         return processShowTTLQuery((ShowTTLPlan) showPlan);
@@ -227,7 +227,7 @@ public class PlanExecutor implements IPlanExecutor {
       case COUNT_NODES:
         return processCountNodes((CountPlan) showPlan);
       default:
-        throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
+        throw new PlannerException(String.format("Unrecognized show plan %s", showPlan));
     }
   }
 
@@ -440,7 +440,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public void delete(DeletePlan deletePlan) throws QueryProcessException {
+  public void delete(DeletePlan deletePlan) throws PlannerException {
     try {
       MManager mManager = MManager.getInstance();
       Set<String> existingPaths = new HashSet<>();
@@ -448,12 +448,12 @@ public class PlanExecutor implements IPlanExecutor {
         existingPaths.addAll(mManager.getPaths(p.getFullPath()));
       }
       if (existingPaths.isEmpty()) {
-        throw new QueryProcessException(
+        throw new PlannerException(
             "TimeSeries does not exist and its data cannot be deleted");
       }
       for (String onePath : existingPaths) {
         if (!mManager.pathExist(onePath)) {
-          throw new QueryProcessException(String
+          throw new PlannerException(String
               .format("TimeSeries %s does not exist and its data cannot be deleted", onePath));
         }
       }
@@ -461,14 +461,14 @@ public class PlanExecutor implements IPlanExecutor {
         delete(new Path(path), deletePlan.getDeleteTime());
       }
     } catch (MetadataException e) {
-      throw new QueryProcessException(e);
+      throw new PlannerException(e);
     }
   }
 
-  private void operateLoadFiles(OperateFilePlan plan) throws QueryProcessException {
+  private void operateLoadFiles(OperateFilePlan plan) throws PlannerException {
     File file = plan.getFile();
     if (!file.exists()) {
-      throw new QueryProcessException(
+      throw new PlannerException(
           String.format("File path %s doesn't exists.", file.getPath()));
     }
     if (file.isDirectory()) {
@@ -478,7 +478,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private void recursionFileDir(File curFile, OperateFilePlan plan) throws QueryProcessException {
+  private void recursionFileDir(File curFile, OperateFilePlan plan) throws PlannerException {
     File[] files = curFile.listFiles();
     for (File file : files) {
       if (file.isDirectory()) {
@@ -489,7 +489,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private void loadFile(File file, OperateFilePlan plan) throws QueryProcessException {
+  private void loadFile(File file, OperateFilePlan plan) throws PlannerException {
     if (!file.getName().endsWith(TSFILE_SUFFIX)) {
       return;
     }
@@ -500,7 +500,7 @@ public class PlanExecutor implements IPlanExecutor {
       RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);
       if (restorableTsFileIOWriter.hasCrashed()) {
         restorableTsFileIOWriter.close();
-        throw new QueryProcessException(
+        throw new PlannerException(
             String.format("Cannot load file %s because the file has crashed.",
                 file.getAbsolutePath()));
       }
@@ -512,7 +512,7 @@ public class PlanExecutor implements IPlanExecutor {
 
       FileLoaderUtils.checkTsFileResource(tsFileResource);
       if (UpgradeUtils.isNeedUpgrade(tsFileResource)) {
-        throw new QueryProcessException(
+        throw new PlannerException(
             String.format(
                 "Cannot load file %s because the file's version is old which needs to be upgraded.",
                 file.getAbsolutePath()));
@@ -525,14 +525,14 @@ public class PlanExecutor implements IPlanExecutor {
 
       StorageEngine.getInstance().loadNewTsFile(tsFileResource);
     } catch (Exception e) {
-      throw new QueryProcessException(
+      throw new PlannerException(
           String.format("Cannot load file %s because %s", file.getAbsolutePath(), e.getMessage()));
     }
   }
 
   private void createSchemaAutomatically(List<ChunkGroupMetaData> chunkGroupMetaDatas,
       Map<String, MeasurementSchema> knownSchemas, int sgLevel)
-      throws CacheException, QueryProcessException, MetadataException, StorageEngineException {
+      throws CacheException, PlannerException, MetadataException, StorageEngineException {
     if (chunkGroupMetaDatas.isEmpty()) {
       return;
     }
@@ -553,61 +553,61 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private void operateRemoveFile(OperateFilePlan plan) throws QueryProcessException {
+  private void operateRemoveFile(OperateFilePlan plan) throws PlannerException {
     try {
       if (!StorageEngine.getInstance().deleteTsfile(plan.getFile())) {
-        throw new QueryProcessException(
+        throw new PlannerException(
             String.format("File %s doesn't exist.", plan.getFile().getName()));
       }
     } catch (StorageEngineException e) {
-      throw new QueryProcessException(
+      throw new PlannerException(
           String.format("Cannot remove file because %s", e.getMessage()));
     }
   }
 
-  private void operateMoveFile(OperateFilePlan plan) throws QueryProcessException {
+  private void operateMoveFile(OperateFilePlan plan) throws PlannerException {
     if (!plan.getTargetDir().exists() || !plan.getTargetDir().isDirectory()) {
-      throw new QueryProcessException(
+      throw new PlannerException(
           String.format("Target dir %s is invalid.", plan.getTargetDir().getPath()));
     }
     try {
       if (!StorageEngine.getInstance().moveTsfile(plan.getFile(), plan.getTargetDir())) {
-        throw new QueryProcessException(
+        throw new PlannerException(
             String.format("File %s doesn't exist.", plan.getFile().getName()));
       }
     } catch (StorageEngineException | IOException e) {
-      throw new QueryProcessException(
+      throw new PlannerException(
           String.format("Cannot move file %s to target directory %s because %s",
               plan.getFile().getPath(), plan.getTargetDir().getPath(), e.getMessage()));
     }
   }
 
-  private void operateTTL(SetTTLPlan plan) throws QueryProcessException {
+  private void operateTTL(SetTTLPlan plan) throws PlannerException {
     try {
       MManager.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
       StorageEngine.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
     } catch (PathException | StorageEngineException e) {
-      throw new QueryProcessException(e);
+      throw new PlannerException(e);
     } catch (IOException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new PlannerException(e.getMessage());
     }
   }
 
   @Override
   public QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
-      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
+      throws StorageEngineException, QueryFilterOptimizationException, PlannerException, IOException {
     return queryRouter.aggregate(aggregationPlan, context);
   }
 
   @Override
   public QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
-      throws IOException, QueryProcessException, StorageEngineException {
+      throws IOException, PlannerException, StorageEngineException {
     return queryRouter.fill(fillQueryPlan, context);
   }
 
   @Override
   public QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
-      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
+      throws StorageEngineException, QueryFilterOptimizationException, PlannerException, IOException {
     return queryRouter.groupBy(groupByPlan, context);
 
   }
@@ -617,24 +617,24 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public void delete(Path path, long timestamp) throws QueryProcessException {
+  public void delete(Path path, long timestamp) throws PlannerException {
     String deviceId = path.getDevice();
     String measurementId = path.getMeasurement();
     try {
       if (!mManager.pathExist(path.getFullPath())) {
-        throw new QueryProcessException(
+        throw new PlannerException(
             String.format("Time series %s does not exist.", path.getFullPath()));
       }
       mManager.getStorageGroupNameByPath(path.getFullPath());
       storageEngine.delete(deviceId, measurementId, timestamp);
     } catch (StorageGroupException | StorageEngineException e) {
-      throw new QueryProcessException(e);
+      throw new PlannerException(e);
     }
   }
 
 
   @Override
-  public void insert(InsertPlan insertPlan) throws QueryProcessException {
+  public void insert(InsertPlan insertPlan) throws PlannerException {
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
@@ -649,18 +649,18 @@ public class PlanExecutor implements IPlanExecutor {
       insertPlan.setDataTypes(dataTypes);
       storageEngine.insert(insertPlan);
     } catch (PathException | StorageEngineException | MetadataException e) {
-      throw new QueryProcessException(e);
+      throw new PlannerException(e);
     } catch (CacheException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new PlannerException(e.getMessage());
     }
   }
 
   private MNode checkPathExists(MNode node, String deviceId, String measurement, String strValue)
-      throws MetadataException, QueryProcessException, StorageEngineException {
+      throws MetadataException, PlannerException, StorageEngineException {
     // check if timeseries exists
     if (!node.hasChild(measurement)) {
       if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
-        throw new QueryProcessException(
+        throw new PlannerException(
             String.format("Current deviceId[%s] does not contain measurement:%s", deviceId,
                 measurement));
       }
@@ -674,7 +674,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
     MNode measurementNode = node.getChild(measurement);
     if (!measurementNode.isLeaf()) {
-      throw new QueryProcessException(
+      throw new PlannerException(
           String.format("Current Path is not leaf node. %s.%s", deviceId, measurement));
     }
     return measurementNode;
@@ -682,12 +682,12 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void checkPathExists(MNode node, String fullPath, MeasurementSchema schema,
       boolean autoCreateSchema)
-      throws QueryProcessException, StorageEngineException, MetadataException {
+      throws PlannerException, StorageEngineException, MetadataException {
     // check if timeseries exists
     String measurement = schema.getMeasurementId();
     if (!node.hasChild(measurement)) {
       if (!autoCreateSchema) {
-        throw new QueryProcessException(
+        throw new PlannerException(
             String.format("Path[%s] does not exist", fullPath));
       }
       try {
@@ -701,13 +701,13 @@ public class PlanExecutor implements IPlanExecutor {
     }
     MNode measurementNode = node.getChild(measurement);
     if (!measurementNode.isLeaf()) {
-      throw new QueryProcessException(
+      throw new PlannerException(
           String.format("Current Path is not leaf node. %s", fullPath));
     }
   }
 
   @Override
-  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws PlannerException {
     try {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
@@ -720,7 +720,7 @@ public class PlanExecutor implements IPlanExecutor {
         // check if timeseries exists
         if (!node.hasChild(measurementList[i])) {
           if (!conf.isAutoCreateSchemaEnabled()) {
-            throw new QueryProcessException(
+            throw new PlannerException(
                 String.format("Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurementList[i]));
           }
@@ -728,13 +728,13 @@ public class PlanExecutor implements IPlanExecutor {
         }
         MNode measurementNode = node.getChild(measurementList[i]);
         if (!measurementNode.isLeaf()) {
-          throw new QueryProcessException(
+          throw new PlannerException(
               String.format("Current Path is not leaf node. %s.%s", deviceId, measurementList[i]));
         }
 
         // check data type
         if (measurementNode.getSchema().getType() != batchInsertPlan.getDataTypes()[i]) {
-          throw new QueryProcessException(String
+          throw new PlannerException(String
               .format("Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
                   measurementList[i], batchInsertPlan.getDataTypes()[i],
                   measurementNode.getSchema().getType()));
@@ -743,13 +743,13 @@ public class PlanExecutor implements IPlanExecutor {
       return storageEngine.insertBatch(batchInsertPlan);
 
     } catch (PathException | StorageEngineException | MetadataException e) {
-      throw new QueryProcessException(e);
+      throw new PlannerException(e);
     } catch (CacheException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new PlannerException(e.getMessage());
     }
   }
 
-  private boolean operateAuthor(AuthorPlan author) throws QueryProcessException {
+  private boolean operateAuthor(AuthorPlan author) throws PlannerException {
     AuthorOperator.AuthorType authorType = author.getAuthorType();
     String userName = author.getUserName();
     String roleName = author.getRoleName();
@@ -761,7 +761,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       authorizer = LocalFileAuthorizer.getInstance();
     } catch (AuthException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new PlannerException(e.getMessage());
     }
     try {
       switch (authorType) {
@@ -807,16 +807,16 @@ public class PlanExecutor implements IPlanExecutor {
           authorizer.revokeRoleFromUser(roleName, userName);
           break;
         default:
-          throw new QueryProcessException("Unsupported operation " + authorType);
+          throw new PlannerException("Unsupported operation " + authorType);
       }
     } catch (AuthException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new PlannerException(e.getMessage());
     }
     return true;
   }
 
   private boolean operateWatermarkEmbedding(List<String> users, boolean useWatermark)
-      throws QueryProcessException {
+      throws PlannerException {
     IAuthorizer authorizer;
     try {
       authorizer = LocalFileAuthorizer.getInstance();
@@ -824,13 +824,13 @@ public class PlanExecutor implements IPlanExecutor {
         authorizer.setUserUseWaterMark(user, useWatermark);
       }
     } catch (AuthException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new PlannerException(e.getMessage());
     }
     return true;
   }
 
   private boolean createTimeSeries(CreateTimeSeriesPlan createTimeSeriesPlan)
-      throws QueryProcessException {
+      throws PlannerException {
     Path path = createTimeSeriesPlan.getPath();
     TSDataType dataType = createTimeSeriesPlan.getDataType();
     CompressionType compressor = createTimeSeriesPlan.getCompressor();
@@ -842,13 +842,13 @@ public class PlanExecutor implements IPlanExecutor {
         storageEngine.addTimeSeries(path, dataType, encoding, compressor, props);
       }
     } catch (StorageEngineException | MetadataException | PathException e) {
-      throw new QueryProcessException(e);
+      throw new PlannerException(e);
     }
     return true;
   }
 
   private boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan)
-      throws QueryProcessException {
+      throws PlannerException {
     List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
     try {
       deleteDataOfTimeSeries(deletePathList);
@@ -857,24 +857,24 @@ public class PlanExecutor implements IPlanExecutor {
         storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
       }
     } catch (MetadataException e) {
-      throw new QueryProcessException(e);
+      throw new PlannerException(e);
     }
     return true;
   }
 
   private boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan)
-      throws QueryProcessException {
+      throws PlannerException {
     Path path = setStorageGroupPlan.getPath();
     try {
       mManager.setStorageGroupToMTree(path.getFullPath());
     } catch (MetadataException e) {
-      throw new QueryProcessException(e);
+      throw new PlannerException(e);
     }
     return true;
   }
 
   private boolean deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan)
-      throws QueryProcessException {
+      throws PlannerException {
     List<Path> deletePathList = deleteStorageGroupPlan.getPaths();
     try {
       mManager.deleteStorageGroupsFromMTree(deletePathList);
@@ -882,7 +882,7 @@ public class PlanExecutor implements IPlanExecutor {
         storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
       }
     } catch (MetadataException e) {
-      throw new QueryProcessException(e);
+      throw new PlannerException(e);
     }
     return true;
   }
@@ -892,7 +892,7 @@ public class PlanExecutor implements IPlanExecutor {
    *
    * @param pathList deleted paths
    */
-  private void deleteDataOfTimeSeries(List<Path> pathList) throws QueryProcessException {
+  private void deleteDataOfTimeSeries(List<Path> pathList) throws PlannerException {
     for (Path p : pathList) {
       DeletePlan deletePlan = new DeletePlan();
       deletePlan.addPath(p);
@@ -901,7 +901,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private boolean operateProperty(PropertyPlan propertyPlan) throws QueryProcessException {
+  private boolean operateProperty(PropertyPlan propertyPlan) throws PlannerException {
     PropertyOperator.PropertyType propertyType = propertyPlan.getPropertyType();
     Path propertyPath = propertyPlan.getPropertyPath();
     Path metadataPath = propertyPlan.getMetadataPath();
@@ -923,16 +923,16 @@ public class PlanExecutor implements IPlanExecutor {
           mManager.unlinkMNodeFromPTree(propertyPath.getFullPath(), metadataPath.getFullPath());
           break;
         default:
-          throw new QueryProcessException("unknown namespace type:" + propertyType);
+          throw new PlannerException("unknown namespace type:" + propertyType);
       }
     } catch (PathException | IOException | MetadataException e) {
-      throw new QueryProcessException("meet error in " + propertyType + " . " + e.getMessage());
+      throw new PlannerException("meet error in " + propertyType + " . " + e.getMessage());
     }
     return true;
   }
 
   private QueryDataSet processAuthorQuery(AuthorPlan plan)
-      throws QueryProcessException {
+      throws PlannerException {
     AuthorType authorType = plan.getAuthorType();
     String userName = plan.getUserName();
     String roleName = plan.getRoleName();
@@ -941,7 +941,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       authorizer = LocalFileAuthorizer.getInstance();
     } catch (AuthException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new PlannerException(e.getMessage());
     }
 
     ListDataSet dataSet;
@@ -967,10 +967,10 @@ public class PlanExecutor implements IPlanExecutor {
           dataSet = executeListUserPrivileges(authorizer, userName, path);
           break;
         default:
-          throw new QueryProcessException("Unsupported operation " + authorType);
+          throw new PlannerException("Unsupported operation " + authorType);
       }
     } catch (AuthException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new PlannerException(e.getMessage());
     }
     return dataSet;
   }

@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.db.exception.query;
 
-import org.apache.iotdb.db.exception.ProcessException;
+import org.apache.iotdb.db.exception.IoTDBException;
 
-public class QueryProcessException extends ProcessException {
+public class PlannerException extends IoTDBException {
 
   private static final long serialVersionUID = -683191083844850054L;
 
-  public QueryProcessException(String message) {
+  public PlannerException(String message) {
     super(message);
   }
 
-  public QueryProcessException(ProcessException e) {
+  public PlannerException(IoTDBException e) {
     super(e.getMessage());
     errorCode = e.getErrorCode();
   }

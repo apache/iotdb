@@ -21,7 +21,7 @@ package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class MergeException extends ProcessException {
+public class MergeException extends IoTDBException {
 
   private static final long serialVersionUID = 5445240999141374140L;
 

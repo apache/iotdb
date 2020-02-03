@@ -27,7 +27,7 @@ import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.PlannerException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -84,7 +84,7 @@ public abstract class AbstractMemTable implements IMemTable {
   protected abstract IWritableMemChunk genMemSeries(TSDataType dataType);
 
   @Override
-  public void insert(InsertPlan insertPlan) throws QueryProcessException {
+  public void insert(InsertPlan insertPlan) throws PlannerException {
     try {
       for (int i = 0; i < insertPlan.getValues().length; i++) {
 
@@ -95,11 +95,11 @@ public abstract class AbstractMemTable implements IMemTable {
       long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
       memSize += recordSizeInByte;
     } catch (RuntimeException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new PlannerException(e.getMessage());
     }
   }
 
-  private static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
+  private static Object parseValue(TSDataType dataType, String value) throws PlannerException {
     try {
       switch (dataType) {
         case BOOLEAN:
@@ -111,7 +111,7 @@ public abstract class AbstractMemTable implements IMemTable {
               .equals(value)) {
             return true;
           } else {
-            throw new QueryProcessException(
+            throw new PlannerException(
                 "The BOOLEAN data type should be true/TRUE, false/FALSE or 0/1");
           }
         case INT32:
@@ -131,25 +131,25 @@ public abstract class AbstractMemTable implements IMemTable {
               return new Binary(value.substring(1, value.length() - 1));
             }
           } else {
-            throw new QueryProcessException("The TEXT data type should be covered by \" or '");
+            throw new PlannerException("The TEXT data type should be covered by \" or '");
           }
         default:
-          throw new QueryProcessException("Unsupported data type:" + dataType);
+          throw new PlannerException("Unsupported data type:" + dataType);
       }
     } catch (NumberFormatException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new PlannerException(e.getMessage());
     }
   }
 
   @Override
   public void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end)
-      throws QueryProcessException {
+      throws PlannerException {
     try {
       write(batchInsertPlan, start, end);
       long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan);
       memSize += recordSizeInByte;
     } catch (RuntimeException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new PlannerException(e.getMessage());
     }
   }
 

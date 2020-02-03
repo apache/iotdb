@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.PlannerException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -95,7 +95,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       AggregateResult res;
       try {
         res = nextIntervalAggregation(i);
-      } catch (QueryProcessException e) {
+      } catch (PlannerException e) {
         throw new IOException(e);
       }
       if (res == null) {
@@ -112,7 +112,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    *
    * @param idx series id
    */
-  private AggregateResult nextIntervalAggregation(int idx) throws IOException, QueryProcessException {
+  private AggregateResult nextIntervalAggregation(int idx) throws IOException, PlannerException {
     ISeriesReader reader = seriesReaders.get(idx);
     AggregateResult result = AggreResultFactory
         .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(idx),

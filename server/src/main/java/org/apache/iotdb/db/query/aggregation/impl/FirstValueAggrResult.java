@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.PlannerException;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -41,14 +41,14 @@ public class FirstValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromStatistics(Statistics statistics)
-      throws QueryProcessException {
+      throws PlannerException {
     if (hasResult()) {
       return;
     }
 
     Object firstVal = statistics.getFirstValue();
     if (firstVal == null) {
-      throw new QueryProcessException("ChunkMetaData contains no FIRST value");
+      throw new PlannerException("ChunkMetaData contains no FIRST value");
     }
     setValue(firstVal);
   }

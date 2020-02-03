@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.PlannerException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -113,7 +113,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    * @return QueryFilter in TsFile
    */
   public IExpression transformToExpression()
-      throws QueryProcessException {
+      throws PlannerException {
     if (isSingle) {
       Pair<IUnaryExpression, String> ret = transformToSingleQueryFilter();
       return ret.left;
@@ -147,7 +147,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    *
    * @return - pair.left: UnaryQueryFilter constructed by its one child; pair.right: Path
    * represented by this child.
-   * @throws QueryProcessException exception in filter transforming
+   * @throws PlannerException exception in filter transforming
    */
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter()
       throws LogicalOperatorException, PathException {

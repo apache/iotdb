@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
 import java.util.Collection;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.PlannerException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator.PropertyType;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
@@ -78,7 +78,7 @@ public class TSPlanContextPropertyTest {
   }
 
   @Test
-  public void testAnalyzeMetadata() throws QueryProcessException {
+  public void testAnalyzeMetadata() throws PlannerException {
     Planner processor = new Planner();
     PropertyPlan plan = (PropertyPlan) processor.parseSQLToPhysicalPlan(inputSQL);
     assertEquals(propertyType, plan.getPropertyType());

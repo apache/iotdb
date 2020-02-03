@@ -23,7 +23,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 /**
  * This exception is thrown while meeting error in transforming logical operator to physical plan.
  */
-public class LogicalOperatorException extends QueryProcessException {
+public class LogicalOperatorException extends PlannerException {
 
   private static final long serialVersionUID = 7573857366601268706L;
 

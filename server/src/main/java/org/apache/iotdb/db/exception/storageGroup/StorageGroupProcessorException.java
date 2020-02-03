@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.exception.storageGroup;
 
-import org.apache.iotdb.db.exception.ProcessException;
+import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class StorageGroupProcessorException extends ProcessException {
+public class StorageGroupProcessorException extends IoTDBException {
 
   private static final long serialVersionUID = 7373978140952977661L;
 

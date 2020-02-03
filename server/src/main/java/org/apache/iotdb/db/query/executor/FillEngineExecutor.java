@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.PlannerException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -59,7 +59,7 @@ public class FillEngineExecutor {
    * @param context query context
    */
   public QueryDataSet execute(QueryContext context)
-      throws StorageEngineException, QueryProcessException, IOException {
+      throws StorageEngineException, PlannerException, IOException {
     RowRecord record = new RowRecord(queryTime);
 
     for (int i = 0; i < selectedSeries.size(); i++) {
