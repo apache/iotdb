@@ -219,9 +219,8 @@ public class TsFileProcessor {
 
   /**
    * Delete data which belongs to the timeseries `deviceId.measurementId` and the timestamp of which
-   * <= 'timestamp' in the deletion. <br/>
-   * <p>
-   * Delete data in both working MemTable and flushing MemTables.
+   * <= 'timestamp' in the deletion. <br/> <p> Delete data in both working MemTable and flushing
+   * MemTables.
    */
   public void deleteDataInMemory(Deletion deletion) {
     flushQueryLock.writeLock().lock();
@@ -578,14 +577,15 @@ public class TsFileProcessor {
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
    * ChunkMetadata of data on disk.
    *
-   * @param deviceId      device id
+   * @param deviceId device id
    * @param measurementId sensor id
    * @param dataType data type
    * @param encoding encoding
    * @return left: the chunk data in memory; right: the chunkMetadatas of data on disk
    */
   public Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> query(String deviceId,
-      String measurementId, TSDataType dataType, TSEncoding encoding, Map<String, String> props, QueryContext context) {
+      String measurementId, TSDataType dataType, TSEncoding encoding, Map<String, String> props,
+      QueryContext context) {
     flushQueryLock.readLock().lock();
     try {
       List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
