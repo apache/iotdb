@@ -58,7 +58,6 @@ public class InOperator extends FunctionOperator {
    * @param tokenIntType token in Int Type
    * @param path path
    * @param values values
-   * @throws LogicalOperatorException Logical Operator Exception
    */
   public InOperator(int tokenIntType, Path path, boolean not, Set<String> values) {
     super(tokenIntType);
@@ -155,12 +154,7 @@ public class InOperator extends FunctionOperator {
   @Override
   public InOperator clone() {
     InOperator ret;
-    try {
-      ret = new InOperator(this.tokenIntType, singlePath.clone(), not, new HashSet<>(values));
-    } catch (SQLParserException e) {
-      logger.error("error clone:", e);
-      return null;
-    }
+    ret = new InOperator(this.tokenIntType, singlePath.clone(), not, new HashSet<>(values));
     ret.tokenSymbol = tokenSymbol;
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
