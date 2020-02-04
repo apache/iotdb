@@ -221,8 +221,7 @@ public class QueryPlan extends PhysicalPlan {
     this.deduplicatedPaths = deduplicatedPaths;
   }
 
-  public void setDeduplicatedDataTypes(
-      List<TSDataType> deduplicatedDataTypes) {
+  public void setDeduplicatedDataTypes(List<TSDataType> deduplicatedDataTypes) {
     this.deduplicatedDataTypes = deduplicatedDataTypes;
   }
 
