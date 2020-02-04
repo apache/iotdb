@@ -60,19 +60,19 @@ import static org.junit.Assert.*;
 
 public class SeriesReaderTest {
 
-  static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
-  TSEncoding encoding = TSEncoding.PLAIN;
-  int seqFileNum = 5;
-  int unseqFileNum = 5;
-  int measurementNum = 10;
-  int deviceNum = 10;
-  long ptNum = 100;
-  long flushInterval = 20;
-  String[] deviceIds;
-  MeasurementSchema[] measurementSchemas;
+  private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
+  private TSEncoding encoding = TSEncoding.PLAIN;
+  private int seqFileNum = 5;
+  private int unseqFileNum = 5;
+  private int measurementNum = 10;
+  private int deviceNum = 10;
+  private long ptNum = 100;
+  private long flushInterval = 20;
+  private String[] deviceIds;
+  private MeasurementSchema[] measurementSchemas;
 
-  List<TsFileResource> seqResources = new ArrayList<>();
-  List<TsFileResource> unseqResources = new ArrayList<>();
+  private List<TsFileResource> seqResources = new ArrayList<>();
+  private List<TsFileResource> unseqResources = new ArrayList<>();
 
 
   @Before
