@@ -754,7 +754,7 @@ OPERATOR_LTE : '<=';
 
 OPERATOR_NEQ : '!=' | '<>';
 
-OPERATOR_IN : 'IN' | 'in' | 'In' | 'iN';
+OPERATOR_IN : I N;
 
 OPERATOR_AND
     : A N D
