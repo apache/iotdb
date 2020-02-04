@@ -125,6 +125,8 @@ public class AggregationExecutor {
       aggregateResultList.add(aggregateResult);
       isCalculatedList.add(false);
     }
+    int isCalculatedNum = series.getValue().size();
+
     while (seriesReader.hasNextChunk()) {
       if (seriesReader.canUseCurrentChunkStatistics()) {
         Statistics chunkStatistics = seriesReader.currentChunkStatistics();
@@ -134,8 +136,9 @@ public class AggregationExecutor {
             aggregateResult.updateResultFromStatistics(chunkStatistics);
             if (aggregateResult.isCalculatedAggregationResult()) {
               isCalculatedList.set(i, true);
+              isCalculatedNum--;
             }
-            if (isCalculatedList.stream().allMatch(element -> element == Boolean.TRUE)) {
+            if (isCalculatedNum == 0) {
               return aggregateResultList;
             }
           }
@@ -153,8 +156,9 @@ public class AggregationExecutor {
               aggregateResult.updateResultFromStatistics(pageStatistic);
               if (aggregateResult.isCalculatedAggregationResult()) {
                 isCalculatedList.set(i, true);
+                isCalculatedNum--;
               }
-              if (isCalculatedList.stream().allMatch(element -> element == Boolean.TRUE)) {
+              if (isCalculatedNum == 0) {
                 return aggregateResultList;
               }
             }
@@ -165,13 +169,14 @@ public class AggregationExecutor {
         //cal by pagedata
         while (seriesReader.hasNextOverlappedPage()) {
           for (int i = 0; i < aggregateResultList.size(); i++) {
-            if (!isCalculatedList.get(i)) {
+            if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
               AggregateResult aggregateResult = aggregateResultList.get(i);
               aggregateResult.updateResultFromPageData(seriesReader.nextOverlappedPage());
               if (aggregateResult.isCalculatedAggregationResult()) {
                 isCalculatedList.set(i, true);
+                isCalculatedNum--;
               }
-              if (isCalculatedList.stream().allMatch(element -> element == Boolean.TRUE)) {
+              if (isCalculatedNum == 0) {
                 return aggregateResultList;
               }
             }
