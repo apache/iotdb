@@ -46,13 +46,15 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
 
   private static final Logger logger = LoggerFactory.getLogger(PartitionedSnapshotLogManager.class);
 
+  //TODO
   Map<Integer, T> slotSnapshots = new HashMap<>();
+  private SnapshotFactory factory;
   Map<Integer, Collection<MeasurementSchema>> slotTimeseries = new HashMap<>();
   long snapshotLastLogId;
   long snapshotLastLogTerm;
   PartitionTable partitionTable;
   Node header;
-  private SnapshotFactory factory;
+
 
   public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
       Node header, SnapshotFactory<T> factory) {

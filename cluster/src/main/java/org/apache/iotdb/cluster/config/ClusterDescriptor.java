@@ -76,56 +76,52 @@ public class ClusterDescriptor {
   private void loadProps() {
 
     String url = getPropsUrl();
-    if (url == null) {
-      return;
-    }
-
-    try (InputStream inputStream = new FileInputStream(new File(url))) {
-      logger.info("Start to read config file {}", url);
-      Properties properties = new Properties();
-      properties.load(inputStream);
-
-      config.setLocalIP(properties.getProperty("LOCAL_IP", config.getLocalIP()));
-
-      config.setLocalMetaPort(Integer.parseInt(properties.getProperty("LOCAL_META_PORT",
-          String.valueOf(config.getLocalMetaPort()))));
-
-      config.setLocalDataPort(Integer.parseInt(properties.getProperty("LOCAL_DATA_PORT",
-          Integer.toString(config.getLocalDataPort()))));
-
-      config.setLocalClientPort(Integer.parseInt(properties.getProperty("LOCAL_CLIENT_PORT",
-          Integer.toString(config.getLocalDataPort()))));
-
-      config.setMaxConcurrentClientNum(Integer.parseInt(properties.getProperty(
-          "MAX_CONCURRENT_CLIENT_NUM", String.valueOf(config.getMaxConcurrentClientNum()))));
-
-      config.setReplicationNum(Integer.parseInt(properties.getProperty(
-          "REPLICA_NUM", String.valueOf(config.getReplicationNum()))));
-
-      config.setRpcThriftCompressionEnabled(Boolean.parseBoolean(properties.getProperty(
-          "ENABLE_THRIFT_COMPRESSION", String.valueOf(config.isRpcThriftCompressionEnabled()))));
-
-      config.setConnectionTimeoutInMS(Integer.parseInt(properties.getProperty("CONNECTION_TIME_OUT_MS",
-          String.valueOf(config.getConnectionTimeoutInMS()))));
-      RaftServer.connectionTimeoutInMS = config.getConnectionTimeoutInMS();
-
-      String seedUrls = properties.getProperty("SEED_NODES");
-      if (seedUrls != null) {
-        List<String> urlList = new ArrayList<>();
-        String[] split = seedUrls.split(",");
-        for (String nodeUrl : split) {
-          nodeUrl = nodeUrl.trim();
-          if ("".equals(nodeUrl)) {
-            continue;
-          }
-          urlList.add(nodeUrl);
-        }
-        config.setSeedNodeUrls(urlList);
+    Properties properties = System.getProperties();
+    if (url != null) {
+      try (InputStream inputStream = new FileInputStream(new File(url))) {
+        logger.info("Start to read config file {}", url);
+        properties.load(inputStream);
+      } catch (IOException e) {
+        logger.warn("Fail to find config file {}", url, e);
       }
+    }
+    config.setLocalIP(properties.getProperty("LOCAL_IP", config.getLocalIP()));
 
+    config.setLocalMetaPort(Integer.parseInt(properties.getProperty("LOCAL_META_PORT",
+        String.valueOf(config.getLocalMetaPort()))));
 
-    } catch (IOException e) {
-      logger.warn("Fail to find config file {}", url, e);
+    config.setLocalDataPort(Integer.parseInt(properties.getProperty("LOCAL_DATA_PORT",
+        Integer.toString(config.getLocalDataPort()))));
+
+    config.setLocalClientPort(Integer.parseInt(properties.getProperty("LOCAL_CLIENT_PORT",
+        Integer.toString(config.getLocalDataPort()))));
+
+    config.setMaxConcurrentClientNum(Integer.parseInt(properties.getProperty(
+        "MAX_CONCURRENT_CLIENT_NUM", String.valueOf(config.getMaxConcurrentClientNum()))));
+
+    config.setReplicationNum(Integer.parseInt(properties.getProperty(
+        "REPLICA_NUM", String.valueOf(config.getReplicationNum()))));
+
+    config.setRpcThriftCompressionEnabled(Boolean.parseBoolean(properties.getProperty(
+        "ENABLE_THRIFT_COMPRESSION", String.valueOf(config.isRpcThriftCompressionEnabled()))));
+
+    config
+        .setConnectionTimeoutInMS(Integer.parseInt(properties.getProperty("CONNECTION_TIME_OUT_MS",
+            String.valueOf(config.getConnectionTimeoutInMS()))));
+    RaftServer.connectionTimeoutInMS = config.getConnectionTimeoutInMS();
+
+    String seedUrls = properties.getProperty("SEED_NODES");
+    if (seedUrls != null) {
+      List<String> urlList = new ArrayList<>();
+      String[] split = seedUrls.split(",");
+      for (String nodeUrl : split) {
+        nodeUrl = nodeUrl.trim();
+        if ("".equals(nodeUrl)) {
+          continue;
+        }
+        urlList.add(nodeUrl);
+      }
+      config.setSeedNodeUrls(urlList);
     }
   }
 
