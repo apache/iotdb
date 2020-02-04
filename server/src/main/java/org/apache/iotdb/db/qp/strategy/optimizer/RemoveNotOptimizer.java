@@ -57,10 +57,16 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
       case KW_OR:
         // replace children in-place for efficiency
         List<FilterOperator> children = filter.getChildren();
+        if(children.size() < 2){
+         throw new LogicalOptimizeException("Filter has some time series don't correspond to any known time series");
+        }
         children.set(0, removeNot(children.get(0)));
         children.set(1, removeNot(children.get(1)));
         return filter;
       case KW_NOT:
+        if(filter.getChildren().size() < 1){
+          throw new LogicalOptimizeException("Filter has some time series don't correspond to any known time series");
+        }
         return reverseFilter(filter.getChildren().get(0));
       default:
         throw new LogicalOptimizeException("removeNot", tokenInt);

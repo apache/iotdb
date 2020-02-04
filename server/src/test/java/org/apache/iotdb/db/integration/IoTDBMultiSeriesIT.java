@@ -383,12 +383,17 @@ public class IoTDBMultiSeriesIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("select s10 from root.vehicle.d0");
-      fail("not throw exception when select unknown time series");
+      statement.execute("select s0, s10 from root.vehicle.*");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        assertEquals(23400, cnt);
+      }
     } catch (SQLException e) {
-      assertEquals(
-          "Statement format is not right: Path: \"root.vehicle.d0.s10\" doesn't correspond to any known time series",
-          e.getMessage());
+      e.printStackTrace();
+      fail();
     }
   }
 
@@ -399,11 +404,11 @@ public class IoTDBMultiSeriesIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("select s1 from root.vehicle.d0 where s0 < 111 and s10 < 111");
+      statement.execute("select s0 from root.vehicle.d0 where s10 < 111");
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
       assertEquals(
-          "Statement format is not right: Path: \"root.vehicle.d0.s10\" doesn't correspond to any known time series",
+          "Statement format is not right: Filter has some time series don't correspond to any known time series",
           e.getMessage());
     }
   }
@@ -419,6 +424,7 @@ public class IoTDBMultiSeriesIT {
           "select s1 from root.vehicle.d0 where root.vehicle.d0.s0 < 111 and root.vehicle.d0.s10 < 111");
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
+      e.printStackTrace();
       assertEquals(
           "Statement format is not right: Path: [root.vehicle.d0.s10] doesn't correspond to any known time series",
           e.getMessage());
