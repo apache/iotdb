@@ -445,8 +445,13 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
     while (seqChunkMetadatas.isEmpty() && !seqFileResource.isEmpty()) {
       seqChunkMetadatas.addAll(loadSatisfiedChunkMetadatas(seqFileResource.remove(0)));
     }
-    // Fill unsequence chunkMetadatas until it is not empty
+    // Fill unsequence chunkMetadatas until there are no overlapped unseqFileResources
     while (unseqChunkMetadatas.isEmpty() && !unseqFileResource.isEmpty()) {
+      unseqChunkMetadatas.addAll(loadSatisfiedChunkMetadatas(unseqFileResource.poll()));
+    }
+    while (!unseqChunkMetadatas.isEmpty() && !unseqFileResource.isEmpty()
+            && unseqChunkMetadatas.peek().getEndTime() >=
+            unseqFileResource.peek().getStartTimeMap().get(seriesPath.getDevice())) {
       unseqChunkMetadatas.addAll(loadSatisfiedChunkMetadatas(unseqFileResource.poll()));
     }
   }
