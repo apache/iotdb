@@ -125,7 +125,7 @@ public class AggregationExecutor {
       aggregateResultList.add(aggregateResult);
       isCalculatedList.add(false);
     }
-    int isCalculatedNum = series.getValue().size();
+    int remainingToCalculate = series.getValue().size();
 
     while (seriesReader.hasNextChunk()) {
       if (seriesReader.canUseCurrentChunkStatistics()) {
@@ -136,10 +136,10 @@ public class AggregationExecutor {
             aggregateResult.updateResultFromStatistics(chunkStatistics);
             if (aggregateResult.isCalculatedAggregationResult()) {
               isCalculatedList.set(i, true);
-              isCalculatedNum--;
-            }
-            if (isCalculatedNum == 0) {
-              return aggregateResultList;
+              remainingToCalculate--;
+              if (remainingToCalculate == 0) {
+                return aggregateResultList;
+              }
             }
           }
         }
@@ -156,10 +156,10 @@ public class AggregationExecutor {
               aggregateResult.updateResultFromStatistics(pageStatistic);
               if (aggregateResult.isCalculatedAggregationResult()) {
                 isCalculatedList.set(i, true);
-                isCalculatedNum--;
-              }
-              if (isCalculatedNum == 0) {
-                return aggregateResultList;
+                remainingToCalculate--;
+                if (remainingToCalculate == 0) {
+                  return aggregateResultList;
+                }
               }
             }
           }
@@ -174,9 +174,9 @@ public class AggregationExecutor {
               aggregateResult.updateResultFromPageData(seriesReader.nextOverlappedPage());
               if (aggregateResult.isCalculatedAggregationResult()) {
                 isCalculatedList.set(i, true);
-                isCalculatedNum--;
+                remainingToCalculate--;
               }
-              if (isCalculatedNum == 0) {
+              if (remainingToCalculate == 0) {
                 return aggregateResultList;
               }
             }
