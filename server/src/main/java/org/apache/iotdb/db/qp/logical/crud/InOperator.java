@@ -58,14 +58,13 @@ public class InOperator extends FunctionOperator {
    *
    * @param tokenIntType token in Int Type
    * @param path path
-   * @param value value
+   * @param values values
    * @throws LogicalOperatorException Logical Operator Exception
    */
-  public InOperator(int tokenIntType, Path path, boolean not, Set<String> values)
-      throws SQLParserException {
+  public InOperator(int tokenIntType, Path path, boolean not, Set<String> values) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.IN;
-    this.path = path;
+    this.singlePath = path;
     this.values = values;
     this.not = not;
     List<String> valuesList = new ArrayList<>(values);
@@ -80,17 +79,17 @@ public class InOperator extends FunctionOperator {
   }
 
   @Override
-  protected void reverseFunc(){
+  public void reverseFunc() {
     not = !not;
   }
 
   @Override
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
       IQueryProcessExecutor executor) throws LogicalOperatorException, PathException {
-    TSDataType type = executor.getSeriesType(path);
+    TSDataType type = executor.getSeriesType(singlePath);
     if (type == null) {
       throw new PathException(
-          "given seriesPath:{" + path.getFullPath() + "} don't exist in metadata");
+          "given seriesPath:{" + singlePath.getFullPath() + "} don't exist in metadata");
     }
     IUnaryExpression ret;
 
@@ -100,35 +99,35 @@ public class InOperator extends FunctionOperator {
         for (String val : values) {
           integerValues.add(Integer.valueOf(val));
         }
-        ret = In.getUnaryExpression(path, integerValues, not, valueToString);
+        ret = In.getUnaryExpression(singlePath, integerValues, not, valueToString);
         break;
       case INT64:
         Set<Long> longValues = new HashSet<>();
         for (String val : values) {
           longValues.add(Long.valueOf(val));
         }
-        ret = In.getUnaryExpression(path, longValues, not, valueToString);
+        ret = In.getUnaryExpression(singlePath, longValues, not, valueToString);
         break;
       case BOOLEAN:
         Set<Boolean> booleanValues = new HashSet<>();
         for (String val : values) {
           booleanValues.add(Boolean.valueOf(val));
         }
-        ret = In.getUnaryExpression(path, booleanValues, not, valueToString);
+        ret = In.getUnaryExpression(singlePath, booleanValues, not, valueToString);
         break;
       case FLOAT:
         Set<Float> floatValues = new HashSet<>();
         for (String val : values) {
           floatValues.add(Float.parseFloat(val));
         }
-        ret = In.getUnaryExpression(path, floatValues, not, valueToString);
+        ret = In.getUnaryExpression(singlePath, floatValues, not, valueToString);
         break;
       case DOUBLE:
         Set<Double> doubleValues = new HashSet<>();
         for (String val : values) {
           doubleValues.add(Double.parseDouble(val));
         }
-        ret = In.getUnaryExpression(path, doubleValues, not, valueToString);
+        ret = In.getUnaryExpression(singlePath, doubleValues, not, valueToString);
         break;
       case TEXT:
         Set<Binary> binaryValues = new HashSet<>();
@@ -138,13 +137,13 @@ public class InOperator extends FunctionOperator {
                   .endsWith("\"")) ? new Binary(val.substring(1, val.length() - 1))
                   : new Binary(val));
         }
-        ret = In.getUnaryExpression(path, binaryValues, not, valueToString);
+        ret = In.getUnaryExpression(singlePath, binaryValues, not, valueToString);
         break;
       default:
         throw new LogicalOperatorException(type.toString(), "");
     }
 
-    return new Pair<>(ret, path.getFullPath());
+    return new Pair<>(ret, singlePath.getFullPath());
   }
 
   @Override
@@ -153,7 +152,7 @@ public class InOperator extends FunctionOperator {
     for (int i = 0; i < spaceNum; i++) {
       sc.addTail("  ");
     }
-    sc.addTail(path.toString(), this.tokenSymbol, not, valueToString, ", single\n");
+    sc.addTail(singlePath.toString(), this.tokenSymbol, not, valueToString, ", single\n");
     return sc.toString();
   }
 
@@ -161,7 +160,7 @@ public class InOperator extends FunctionOperator {
   public InOperator clone() {
     InOperator ret;
     try {
-      ret = new InOperator(this.tokenIntType, path.clone(), not, new HashSet<>(values));
+      ret = new InOperator(this.tokenIntType, singlePath.clone(), not, new HashSet<>(values));
     } catch (SQLParserException e) {
       logger.error("error clone:", e);
       return null;
@@ -174,7 +173,7 @@ public class InOperator extends FunctionOperator {
 
   @Override
   public String toString() {
-    return "[" + path.getFullPath() + tokenSymbol + not + valueToString + "]";
+    return "[" + singlePath.getFullPath() + tokenSymbol + not + valueToString + "]";
   }
 
   @Override
@@ -186,13 +185,14 @@ public class InOperator extends FunctionOperator {
       return false;
     }
     InOperator that = (InOperator) o;
-    return Objects.equals(path, that.path) && Objects.equals(valueToString, that.valueToString)
+    return Objects.equals(singlePath, that.singlePath) && Objects
+        .equals(valueToString, that.valueToString)
         && not == that.not;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), path, not, valueToString);
+    return Objects.hash(super.hashCode(), singlePath, not, valueToString);
   }
 
   private static class In {

@@ -78,14 +78,7 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
   private FilterOperator reverseFilter(FilterOperator filter) throws LogicalOperatorException {
     int tokenInt = filter.getTokenIntType();
     if (filter.isLeaf()) {
-      try {
-        ((FunctionOperator)filter).setReversedTokenIntType();
-      } catch (LogicalOperatorException e) {
-        logger.error("meet error while converting BasicFunction.", e);
-        throw new LogicalOperatorException(
-            "Convert BasicFuntion to reserved meet failed: previous token: "
-                + tokenInt + "tokenName: " + SQLConstant.tokenNames.get(tokenInt));
-      }
+      ((FunctionOperator)filter).reverseFunc();
       return filter;
     }
     switch (tokenInt) {

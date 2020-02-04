@@ -55,7 +55,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
   // isSingle being true means all recursive children of this filter belong to one seriesPath.
   protected boolean isSingle = false;
   // if isSingle = false, singlePath must be null
-  protected Path path = null;
+  protected Path singlePath = null;
 
   public FilterOperator(int tokenType) {
     super(tokenType);
@@ -94,12 +94,12 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     this.isSingle = b;
   }
 
-  public Path getPath() {
-    return path;
+  public Path getSinglePath() {
+    return singlePath;
   }
 
-  public void setPath(Path path) {
-    this.path = path;
+  public void setSinglePath(Path singlePath) {
+    this.singlePath = singlePath;
   }
 
   public boolean addChildOperator(FilterOperator op) {
@@ -192,16 +192,16 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    */
   @Override
   public int compareTo(FilterOperator fil) {
-    if (path == null && fil.path == null) {
+    if (singlePath == null && fil.singlePath == null) {
       return 0;
     }
-    if (path == null) {
+    if (singlePath == null) {
       return 1;
     }
-    if (fil.path == null) {
+    if (fil.singlePath == null) {
       return -1;
     }
-    return fil.path.toString().compareTo(path.toString());
+    return fil.singlePath.toString().compareTo(singlePath.toString());
   }
 
   @Override
@@ -239,7 +239,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     }
     sc.addTail(this.tokenName);
     if (isSingle) {
-      sc.addTail("[single:", getPath().toString(), "]");
+      sc.addTail("[single:", getSinglePath().toString(), "]");
     }
     sc.addTail("\n");
     for (FilterOperator filter : childOperators) {
@@ -253,7 +253,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     StringContainer sc = new StringContainer();
     sc.addTail("[", this.tokenName);
     if (isSingle) {
-      sc.addTail("[single:", getPath().toString(), "]");
+      sc.addTail("[single:", getSinglePath().toString(), "]");
     }
     sc.addTail(" ");
     for (FilterOperator filter : childOperators) {
@@ -269,8 +269,8 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     ret.tokenSymbol = tokenSymbol;
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
-    if (path != null) {
-      ret.path = path.clone();
+    if (singlePath != null) {
+      ret.singlePath = singlePath.clone();
     }
     for (FilterOperator filterOperator : this.childOperators) {
       ret.addChildOperator(filterOperator.clone());

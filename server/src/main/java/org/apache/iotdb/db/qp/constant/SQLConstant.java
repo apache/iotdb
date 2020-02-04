@@ -209,7 +209,6 @@ public class SQLConstant {
 
   static {
     reverseWords.put(KW_AND, KW_OR);
-    reverseWords.put(IN, IN);
     reverseWords.put(KW_OR, KW_AND);
     reverseWords.put(EQUAL, NOTEQUAL);
     reverseWords.put(NOTEQUAL, EQUAL);

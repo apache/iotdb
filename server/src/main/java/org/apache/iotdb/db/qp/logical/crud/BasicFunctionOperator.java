@@ -56,7 +56,7 @@ public class BasicFunctionOperator extends FunctionOperator {
     super(tokenIntType);
     operatorType = Operator.OperatorType.BASIC_FUNC;
     funcToken = BasicOperatorType.getBasicOpBySymbol(tokenIntType);
-    this.path = path;
+    this.singlePath = path;
     this.value = value;
     isLeaf = true;
     isSingle = true;
@@ -67,38 +67,40 @@ public class BasicFunctionOperator extends FunctionOperator {
   }
 
   @Override
-  protected void reverseFunc(){
-    funcToken = BasicOperatorType.getBasicOpBySymbol(getTokenIntType());
+  public void reverseFunc() {
+    int intType = SQLConstant.reverseWords.get(tokenIntType);
+    setTokenIntType(intType);
+    funcToken = BasicOperatorType.getBasicOpBySymbol(intType);
   }
 
   @Override
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
       IQueryProcessExecutor executor) throws LogicalOperatorException, PathException {
-    TSDataType type = executor.getSeriesType(path);
+    TSDataType type = executor.getSeriesType(singlePath);
     if (type == null) {
       throw new PathException(
-          "given seriesPath:{" + path.getFullPath() + "} don't exist in metadata");
+          "given seriesPath:{" + singlePath.getFullPath() + "} don't exist in metadata");
     }
     IUnaryExpression ret;
 
     switch (type) {
       case INT32:
-        ret = funcToken.getUnaryExpression(path, Integer.valueOf(value));
+        ret = funcToken.getUnaryExpression(singlePath, Integer.valueOf(value));
         break;
       case INT64:
-        ret = funcToken.getUnaryExpression(path, Long.valueOf(value));
+        ret = funcToken.getUnaryExpression(singlePath, Long.valueOf(value));
         break;
       case BOOLEAN:
-        ret = funcToken.getUnaryExpression(path, Boolean.valueOf(value));
+        ret = funcToken.getUnaryExpression(singlePath, Boolean.valueOf(value));
         break;
       case FLOAT:
-        ret = funcToken.getUnaryExpression(path, Float.valueOf(value));
+        ret = funcToken.getUnaryExpression(singlePath, Float.valueOf(value));
         break;
       case DOUBLE:
-        ret = funcToken.getUnaryExpression(path, Double.valueOf(value));
+        ret = funcToken.getUnaryExpression(singlePath, Double.valueOf(value));
         break;
       case TEXT:
-        ret = funcToken.getUnaryExpression(path,
+        ret = funcToken.getUnaryExpression(singlePath,
             (value.startsWith("'") && value.endsWith("'")) || (value.startsWith("\"") && value
                 .endsWith("\""))
                 ? new Binary(value.substring(1, value.length() - 1)) : new Binary(value));
@@ -107,7 +109,7 @@ public class BasicFunctionOperator extends FunctionOperator {
         throw new LogicalOperatorException(type.toString(), "");
     }
 
-    return new Pair<>(ret, path.getFullPath());
+    return new Pair<>(ret, singlePath.getFullPath());
   }
 
   @Override
@@ -116,7 +118,7 @@ public class BasicFunctionOperator extends FunctionOperator {
     for (int i = 0; i < spaceNum; i++) {
       sc.addTail("  ");
     }
-    sc.addTail(path.toString(), this.tokenSymbol, value, ", single\n");
+    sc.addTail(singlePath.toString(), this.tokenSymbol, value, ", single\n");
     return sc.toString();
   }
 
@@ -124,7 +126,7 @@ public class BasicFunctionOperator extends FunctionOperator {
   public BasicFunctionOperator clone() {
     BasicFunctionOperator ret;
     try {
-      ret = new BasicFunctionOperator(this.tokenIntType, path.clone(), value);
+      ret = new BasicFunctionOperator(this.tokenIntType, singlePath.clone(), value);
     } catch (SQLParserException e) {
       logger.error("error clone:", e);
       return null;
@@ -137,7 +139,7 @@ public class BasicFunctionOperator extends FunctionOperator {
 
   @Override
   public String toString() {
-    return "[" + path.getFullPath() + tokenSymbol + value + "]";
+    return "[" + singlePath.getFullPath() + tokenSymbol + value + "]";
   }
 
   @Override
@@ -149,13 +151,13 @@ public class BasicFunctionOperator extends FunctionOperator {
       return false;
     }
     BasicFunctionOperator that = (BasicFunctionOperator) o;
-    return Objects.equals(path, that.path) &&
+    return Objects.equals(singlePath, that.singlePath) &&
         Objects.equals(value, that.value) &&
         funcToken == that.funcToken;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), path, value, funcToken);
+    return Objects.hash(super.hashCode(), singlePath, value, funcToken);
   }
 }
