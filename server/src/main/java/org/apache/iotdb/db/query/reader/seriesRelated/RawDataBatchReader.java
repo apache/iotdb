@@ -32,24 +32,24 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 
-public class RawDataReader implements IBatchReader, ManagedSeriesReader {
+public class RawDataBatchReader implements IBatchReader, ManagedSeriesReader {
 
   private final SeriesReader seriesReader;
   private boolean hasRemaining;
   private boolean managedByQueryManager;
 
-  public RawDataReader(SeriesReader seriesReader) {
+  public RawDataBatchReader(SeriesReader seriesReader) {
     this.seriesReader = seriesReader;
   }
 
-  public RawDataReader(Path seriesPath, TSDataType dataType, QueryContext context,
+  public RawDataBatchReader(Path seriesPath, TSDataType dataType, QueryContext context,
       QueryDataSource dataSource, Filter timeFilter, Filter valueFilter) {
     this.seriesReader = new SeriesReader(seriesPath, dataType, context, dataSource, timeFilter,
         valueFilter);
   }
 
   @TestOnly
-  public RawDataReader(Path seriesPath, TSDataType dataType, QueryContext context,
+  public RawDataBatchReader(Path seriesPath, TSDataType dataType, QueryContext context,
       List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
       Filter timeFilter, Filter valueFilter) {
     this.seriesReader = new SeriesReader(seriesPath, dataType, context, seqFileResource,

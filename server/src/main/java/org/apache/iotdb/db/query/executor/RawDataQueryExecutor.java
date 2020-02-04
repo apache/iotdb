@@ -28,8 +28,7 @@ import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.RawDataReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.RawDataBatchReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -77,7 +76,7 @@ public class RawDataQueryExecutor {
       Path path = deduplicatedPaths.get(i);
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
-      ManagedSeriesReader reader = new RawDataReader(path, dataType, context,
+      ManagedSeriesReader reader = new RawDataBatchReader(path, dataType, context,
           QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
           timeFilter, null);
       readersOfSelectedSeries.add(reader);
@@ -103,7 +102,7 @@ public class RawDataQueryExecutor {
       Path path = deduplicatedPaths.get(i);
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
-      ManagedSeriesReader reader = new RawDataReader(path, dataType, context,
+      ManagedSeriesReader reader = new RawDataBatchReader(path, dataType, context,
           QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
           timeFilter, null);
       readersOfSelectedSeries.add(reader);
