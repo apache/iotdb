@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
@@ -65,7 +64,12 @@ public class EngineQueryRouter implements IEngineQueryRouter {
         EngineExecutor engineExecutor = new EngineExecutor(deduplicatedPaths, deduplicatedDataTypes,
             optimizedExpression);
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-          return engineExecutor.executeWithoutValueFilter(context);
+          if (queryPlan.isAlign()) {
+            return engineExecutor.executeWithoutValueFilter(context);
+          }
+          else {
+            return engineExecutor.executeNonAlign(context);
+          }
         } else {
           return engineExecutor.executeWithValueFilter(context);
         }
@@ -76,7 +80,12 @@ public class EngineQueryRouter implements IEngineQueryRouter {
     } else {
       EngineExecutor engineExecutor = new EngineExecutor(deduplicatedPaths, deduplicatedDataTypes);
       try {
-        return engineExecutor.executeWithoutValueFilter(context);
+        if (queryPlan.isAlign()) {
+          return engineExecutor.executeWithoutValueFilter(context);
+        }
+        else {
+          return engineExecutor.executeNonAlign(context);
+        }
       } catch (IOException e) {
         throw new StorageEngineException(e.getMessage());
       }

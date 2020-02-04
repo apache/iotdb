@@ -139,7 +139,7 @@ public class SyncReceiverLogAnalyzerTest {
 
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
-      assertTrue(processor.getSequenceFileList().isEmpty());
+      assertTrue(processor.getSequenceFileTreeSet().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 

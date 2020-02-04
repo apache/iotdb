@@ -59,6 +59,7 @@ public class IoTDBFlushQueryMergeTest {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    Locale.setDefault(Locale.ENGLISH);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     insertData();
@@ -121,14 +122,14 @@ public class IoTDBFlushQueryMergeTest {
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 10; j < 20; j++) {
-          statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
+          statement.execute(String.format(insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
         }
       }
       statement.execute("FLUSH");
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 0; j < 10; j++) {
-          statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
+          statement.execute(String.format(insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
         }
       }
       statement.execute("FLUSH root.group1");
@@ -136,7 +137,7 @@ public class IoTDBFlushQueryMergeTest {
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 0; j < 30; j++) {
-          statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
+          statement.execute(String.format(insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
         }
       }
       statement.execute("FLUSH root.group1 true");

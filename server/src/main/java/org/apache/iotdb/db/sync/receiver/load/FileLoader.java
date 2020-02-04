@@ -152,7 +152,7 @@ public class FileLoader implements IFileLoader {
       curType = LoadType.DELETE;
     }
     try {
-      if (!StorageEngine.getInstance().deleteTsfile(deletedTsFile)) {
+      if (!StorageEngine.getInstance().deleteTsfileForSync(deletedTsFile)) {
         LOGGER.info("The file {} to be deleted doesn't exist.", deletedTsFile.getAbsolutePath());
       }
     } catch (StorageEngineException e) {

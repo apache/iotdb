@@ -24,7 +24,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -34,37 +34,56 @@ import org.apache.thrift.TException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
-public class IoTDBQueryResultSet extends AbstractIoTDBResultSet {
+public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
 
-  private static final int START_INDEX = 2;
-  private static final String VALUE_IS_NULL = "The value got by %s (column name) is NULL.";
-  private int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
-  private boolean align = true;
+  private static final int TIMESTAMP_STR_LENGTH = 4;
+  private static final String EMPTY_STR = "";
 
-  private TSQueryDataSet tsQueryDataSet = null;
-  private byte[] time; // used to cache the current time value
-  private byte[] currentBitmap; // used to cache the current bitmap for every column
-  private static final int FLAG = 0x80; // used to do `and` operation with bitmap to judge whether the value is null
+  private TSQueryNonAlignDataSet tsQueryNonAlignDataSet = null;
+  private byte[][] times; // used for disable align
 
-
-  public IoTDBQueryResultSet(Statement statement, List<String> columnNameList,
-      List<String> columnTypeList, boolean ignoreTimeStamp, TSIService.Iface client,
-      String sql, long queryId, long sessionId, TSQueryDataSet dataset)
-      throws SQLException {
+  // for disable align clause
+  public IoTDBNonAlignQueryResultSet(Statement statement, List<String> columnNameList,
+                                     List<String> columnTypeList, boolean ignoreTimeStamp, TSIService.Iface client,
+                                     String sql, long queryId, long sessionId, TSQueryNonAlignDataSet dataset)
+          throws SQLException {
     super(statement, columnNameList, columnTypeList, ignoreTimeStamp, client, sql, queryId, sessionId);
-    time = new byte[Long.BYTES];
-    currentBitmap = new byte[columnNameList.size()];
-    this.tsQueryDataSet = dataset;
+
+    times = new byte[columnNameList.size()][Long.BYTES];
+
+    super.columnNameList = new ArrayList<>();
+    // deduplicate and map
+    super.columnOrdinalMap = new HashMap<>();
+    super.columnOrdinalMap.put(TIMESTAMP_STR, 1);
+    super.columnTypeDeduplicatedList = new ArrayList<>();
+    int index = START_INDEX;
+    for (int i = 0; i < columnNameList.size(); i++) {
+      String name = columnNameList.get(i);
+      super.columnNameList.add(TIMESTAMP_STR + name);
+      super.columnNameList.add(name);
+      if (!columnOrdinalMap.containsKey(name)) {
+        columnOrdinalMap.put(name, index++);
+        columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
+      }
+    }
+    this.tsQueryNonAlignDataSet = dataset;
   }
 
   @Override
   public long getLong(String columnName) throws SQLException {
     checkRecord();
-    if (columnName.equals(TIMESTAMP_STR)) {
-      return BytesUtils.bytesToLong(time);
+    if (columnName.startsWith(TIMESTAMP_STR)) {
+      String column = columnName.substring(TIMESTAMP_STR_LENGTH);
+      int index = columnOrdinalMap.get(column) - START_INDEX;
+      if (times[index] != null)
+        return BytesUtils.bytesToLong(times[index]);
+      else
+        throw new SQLException(String.format(VALUE_IS_NULL, columnName));
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (values[index] != null) {
@@ -76,8 +95,7 @@ public class IoTDBQueryResultSet extends AbstractIoTDBResultSet {
 
   @Override
   protected boolean fetchResults() throws SQLException {
-    rowsIndex = 0;
-    TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, align);
+    TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, false);
     try {
       TSFetchResultsResp resp = client.fetchResults(req);
 
@@ -89,62 +107,64 @@ public class IoTDBQueryResultSet extends AbstractIoTDBResultSet {
       if (!resp.hasResultSet) {
         emptyResultSet = true;
       } else {
-        tsQueryDataSet = resp.getQueryDataSet();
+        tsQueryNonAlignDataSet = resp.getNonAlignQueryDataSet();
+        if (tsQueryNonAlignDataSet == null) {
+          return false;
+        }
       }
       return resp.hasResultSet;
     } catch (TException e) {
       throw new SQLException(
-          "Cannot fetch result from server, because of network connection: {} ", e);
+              "Cannot fetch result from server, because of network connection: {} ", e);
     }
   }
 
   @Override
   protected boolean hasCachedResults() {
-    return (tsQueryDataSet != null && tsQueryDataSet.time.hasRemaining());
+    return (tsQueryNonAlignDataSet != null && hasTimesRemaining());
+  }
+
+  // check if has times remaining for disable align clause
+  private boolean hasTimesRemaining() {
+    for (ByteBuffer time : tsQueryNonAlignDataSet.timeList) {
+      if (time.hasRemaining()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override
   protected void constructOneRow() {
-    tsQueryDataSet.time.get(time);
-    for (int i = 0; i < tsQueryDataSet.bitmapList.size(); i++) {
-      ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(i);
-      // another new 8 row, should move the bitmap buffer position to next byte
-      if (rowsIndex % 8 == 0) {
-        currentBitmap[i] = bitmapBuffer.get();
-      }
+    for (int i = 0; i < tsQueryNonAlignDataSet.timeList.size(); i++) {
+      times[i] = null;
       values[i] = null;
-      if (!isNull(i, rowsIndex)) {
-        ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(i);
+      if (tsQueryNonAlignDataSet.timeList.get(i).remaining() >= Long.BYTES) {
+
+        times[i] = new byte[Long.BYTES];
+
+        tsQueryNonAlignDataSet.timeList.get(i).get(times[i]);
+        ByteBuffer valueBuffer = tsQueryNonAlignDataSet.valueList.get(i);
         TSDataType dataType = columnTypeDeduplicatedList.get(i);
         switch (dataType) {
           case BOOLEAN:
-            if (values[i] == null) {
-              values[i] = new byte[1];
-            }
+            values[i] = new byte[1];
             valueBuffer.get(values[i]);
             break;
           case INT32:
-            if (values[i] == null) {
-              values[i] = new byte[Integer.BYTES];
-            }
+            values[i] = new byte[Integer.BYTES];
             valueBuffer.get(values[i]);
             break;
           case INT64:
-            if (values[i] == null) {
-              values[i] = new byte[Long.BYTES];
-            }
+            values[i] = new byte[Long.BYTES];
             valueBuffer.get(values[i]);
             break;
           case FLOAT:
-            if (values[i] == null) {
-              values[i] = new byte[Float.BYTES];
-            }
+            values[i] = new byte[Float.BYTES];
             valueBuffer.get(values[i]);
             break;
           case DOUBLE:
-            if (values[i] == null) {
-              values[i] = new byte[Double.BYTES];
-            }
+            values[i] = new byte[Double.BYTES];
             valueBuffer.get(values[i]);
             break;
           case TEXT:
@@ -153,28 +173,18 @@ public class IoTDBQueryResultSet extends AbstractIoTDBResultSet {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+                    String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
         }
       }
+      else {
+        values[i] = EMPTY_STR.getBytes();
+      }
     }
-    rowsIndex++;
-  }
-
-  /**
-   * judge whether the specified column value is null in the current position
-   *
-   * @param index series index
-   * @param rowNum current position
-   */
-  private boolean isNull(int index, int rowNum) {
-    byte bitmap = currentBitmap[index];
-    int shift = rowNum % 8;
-    return ((FLAG >>> shift) & bitmap) == 0;
   }
 
   @Override
   protected void checkRecord() throws SQLException {
-    if (Objects.isNull(tsQueryDataSet)) {
+    if (Objects.isNull(tsQueryNonAlignDataSet)) {
       throw new SQLException("No record remains");
     }
   }
@@ -182,22 +192,18 @@ public class IoTDBQueryResultSet extends AbstractIoTDBResultSet {
   @Override
   protected String getValueByName(String columnName) throws SQLException {
     checkRecord();
-    if (columnName.equals(TIMESTAMP_STR)) {
-      return String.valueOf(BytesUtils.bytesToLong(time));
+    if (columnName.startsWith(TIMESTAMP_STR)) {
+      String column = columnName.substring(TIMESTAMP_STR_LENGTH);
+      int index = columnOrdinalMap.get(column) - START_INDEX;
+      if (times[index] == null || times[index].length == 0) {
+        return null;
+      }
+      return String.valueOf(BytesUtils.bytesToLong(times[index]));
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (index < 0 || index >= values.length || values[index] == null) {
+    if (index < 0 || index >= values.length || values[index] == null || values[index].length < 1) {
       return null;
     }
     return getString(index, columnTypeDeduplicatedList.get(index), values);
-  }
-
-  public boolean isIgnoreTimeStamp() {
-    return ignoreTimeStamp;
-  }
-
-  
-  public boolean isAlign() {
-    return align;
   }
 }

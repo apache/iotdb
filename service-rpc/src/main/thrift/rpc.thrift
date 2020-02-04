@@ -41,6 +41,8 @@ struct TSExecuteStatementResp {
   // Data type list of columns in select statement of SQL
   6: optional list<string> dataTypeList
   7: optional TSQueryDataSet queryDataSet
+  // for disable align statements, queryDataSet is null and nonAlignQueryDataSet is not null
+  8: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
 }
 
 enum TSProtocolVersion {
@@ -140,12 +142,15 @@ struct TSFetchResultsReq{
 	2: required string statement
 	3: required i32 fetchSize
 	4: required i64 queryId
+	5: required bool isAlign
 }
 
 struct TSFetchResultsResp{
 	1: required TSStatus status
 	2: required bool hasResultSet
-	3: optional TSQueryDataSet queryDataSet
+  3: required bool isAlign
+	4: optional TSQueryDataSet queryDataSet
+	5: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
 }
 
 struct TSFetchMetadataResp{
@@ -219,12 +224,19 @@ struct ServerProperties {
 }
 
 struct TSQueryDataSet{
-   // ByteBuffer for time column
-   1: required binary time
-   // ByteBuffer for each column values
-   2: required list<binary> valueList
-   // Bitmap for each column to indicate whether it is a null value
-   3: required list<binary> bitmapList
+    // ByteBuffer for time column
+    1: required binary time
+    // ByteBuffer for each column values
+    2: required list<binary> valueList
+    // Bitmap for each column to indicate whether it is a null value
+    3: required list<binary> bitmapList
+}
+
+struct TSQueryNonAlignDataSet{
+    // ByteBuffer for each time column
+	  1: required list<binary> timeList
+	  // ByteBuffer for each column values
+    2: required list<binary> valueList
 }
 
 

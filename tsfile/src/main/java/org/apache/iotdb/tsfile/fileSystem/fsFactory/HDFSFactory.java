@@ -64,6 +64,21 @@ public class HDFSFactory implements FSFactory {
     }
   }
 
+  @Override
+  public File getFileWithParent(String pathname) {
+    try {
+      File res = (File) constructorWithPathname.newInstance(pathname);
+      if (!res.exists()) {
+        res.getParentFile().mkdirs();
+      }
+      return res;
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to get file: {}. Please check your dependency of Hadoop module.", pathname, e);
+      return null;
+    }
+  }
+
   public File getFile(String pathname) {
     try {
       return (File) constructorWithPathname.newInstance(pathname);

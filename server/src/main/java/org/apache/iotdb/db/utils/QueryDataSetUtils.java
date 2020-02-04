@@ -175,7 +175,6 @@ public class QueryDataSetUtils {
     return tsQueryDataSet;
   }
 
-
   public static long[] readTimesFromBuffer(ByteBuffer buffer, int size) {
     long[] times = new long[size];
     for (int i = 0; i < size; i++) {

@@ -180,7 +180,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       bitmapBAOSList[seriesIndex] = new PublicBAOS();
     }
 
-    // used to record a bitmap for every 8 row record
+    // used to record a bitmap for every 8 row records
     int[] currentBitmapList = new int[seriesNum];
     int rowCount = 0;
     while (rowCount < fetchSize) {

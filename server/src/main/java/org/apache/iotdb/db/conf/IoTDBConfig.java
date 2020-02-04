@@ -36,20 +36,17 @@ import java.util.regex.Pattern;
 
 public class IoTDBConfig {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
+  /* Names of Watermark methods */
+  public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
   static final String CONFIG_NAME = "iotdb-engine.properties";
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
-
   /**
    * Port which the metrics service listens to.
    */
   private int metricsPort = 8181;
-
-  /* Names of Watermark methods */
-  public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
-
   private String rpcAddress = "0.0.0.0";
 
   /**
@@ -126,6 +123,11 @@ public class IoTDBConfig {
    * Schema directory, including storage set of values.
    */
   private String schemaDir = "data/system/schema";
+
+  /**
+   * Sync directory, including the lock file, uuid file, device owner map
+   */
+  private String syncDir = "data/system/sync";
 
   /**
    * Query directory, stores temporary files of query
@@ -452,11 +454,21 @@ public class IoTDBConfig {
   private String kerberosPrincipal = "principal";
 
   /**
+   * the num of memtable in each storage group
+   */
+  private int memtableNumInEachStorageGroup = 10;
+
+  /**
    * default TTL for storage groups that are not set TTL by statements, in ms
    * Notice: if this property is changed, previous created storage group which are not set TTL will
    * also be affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
+  /**
+   * Time range for partitioning data inside each storage group, the unit is second
+   */
+  private long partitionInterval = 604800;
+
 
   //just for test
   //wait for 60 second by default.
@@ -466,15 +478,34 @@ public class IoTDBConfig {
     // empty constructor
   }
 
+  public int getMemtableNumInEachStorageGroup() {
+    return memtableNumInEachStorageGroup;
+  }
+
+  public void setMemtableNumInEachStorageGroup(int memtableNumInEachStorageGroup) {
+    this.memtableNumInEachStorageGroup = memtableNumInEachStorageGroup;
+  }
+
+  public long getPartitionInterval() {
+    return partitionInterval;
+  }
+
+  public void setPartitionInterval(long partitionInterval) {
+    this.partitionInterval = partitionInterval;
+  }
+
   public ZoneId getZoneID() {
     return zoneID;
+  }
+
+  void setZoneID(ZoneId zoneID) {
+    this.zoneID = zoneID;
   }
 
   void updatePath() {
     formulateFolders();
     confirmMultiDirStrategy();
   }
-
 
   /**
    * if the folders are relative paths, add IOTDB_HOME as the path prefix
@@ -483,6 +514,7 @@ public class IoTDBConfig {
     baseDir = addHomeDir(baseDir);
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
+    syncDir = addHomeDir(syncDir);
     walFolder = addHomeDir(walFolder);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
@@ -558,6 +590,10 @@ public class IoTDBConfig {
     return dataDirs;
   }
 
+  void setDataDirs(String[] dataDirs) {
+    this.dataDirs = dataDirs;
+  }
+
   public int getMetricsPort() {
     return metricsPort;
   }
@@ -582,12 +618,12 @@ public class IoTDBConfig {
     this.rpcPort = rpcPort;
   }
 
-  public void setTimestampPrecision(String timestampPrecision) {
-    this.timestampPrecision = timestampPrecision;
-  }
-
   public String getTimestampPrecision() {
     return timestampPrecision;
+  }
+
+  public void setTimestampPrecision(String timestampPrecision) {
+    this.timestampPrecision = timestampPrecision;
   }
 
   public boolean isEnableWal() {
@@ -630,6 +666,14 @@ public class IoTDBConfig {
     this.schemaDir = schemaDir;
   }
 
+  public String getSyncDir() {
+    return syncDir;
+  }
+
+  public void setSyncDir(String syncDir) {
+    this.syncDir = syncDir;
+  }
+
   public String getQueryDir() {
     return queryDir;
   }
@@ -644,10 +688,6 @@ public class IoTDBConfig {
 
   void setWalFolder(String walFolder) {
     this.walFolder = walFolder;
-  }
-
-  void setDataDirs(String[] dataDirs) {
-    this.dataDirs = dataDirs;
   }
 
   public String getMultiDirStrategyClassName() {
@@ -688,10 +728,6 @@ public class IoTDBConfig {
 
   void setConcurrentQueryThread(int concurrentQueryThread) {
     this.concurrentQueryThread = concurrentQueryThread;
-  }
-
-  void setZoneID(ZoneId zoneID) {
-    this.zoneID = zoneID;
   }
 
   public long getTsFileSizeThreshold() {
@@ -1031,12 +1067,12 @@ public class IoTDBConfig {
     this.watermarkBitString = watermarkBitString;
   }
 
-  public void setWatermarkMethod(String watermarkMethod) {
-    this.watermarkMethod = watermarkMethod;
-  }
-
   public String getWatermarkMethod() {
     return this.watermarkMethod;
+  }
+
+  public void setWatermarkMethod(String watermarkMethod) {
+    this.watermarkMethod = watermarkMethod;
   }
 
   public String getWatermarkMethodName() {
