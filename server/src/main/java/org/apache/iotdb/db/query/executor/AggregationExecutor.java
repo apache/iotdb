@@ -223,13 +223,8 @@ public class AggregationExecutor {
     Map<Path, List<Integer>> seriesMap = new HashMap<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       Path series = selectedSeries.get(i);
-      if (seriesMap.containsKey(series)) {
-        seriesMap.get(series).add(i);
-      } else {
-        List<Integer> indexList = new ArrayList<>();
-        indexList.add(i);
-        seriesMap.put(series, indexList);
-      }
+      List<Integer> indexList = seriesMap.computeIfAbsent(series, (key) -> new ArrayList<>());
+      indexList.add(i);
     }
     return seriesMap;
   }
