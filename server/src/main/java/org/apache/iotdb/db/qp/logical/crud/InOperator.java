@@ -26,7 +26,6 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -40,8 +39,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * operator 'in' 'not in'
@@ -50,7 +47,6 @@ public class InOperator extends FunctionOperator {
 
   private boolean not;
   protected Set<String> values;
-  private Logger logger = LoggerFactory.getLogger(InOperator.class);
 
   /**
    * In Operator Constructor.
