@@ -35,8 +35,12 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 public class RawDataBatchReader implements IBatchReader, ManagedSeriesReader {
 
   private final SeriesReader seriesReader;
+
   private boolean hasRemaining;
   private boolean managedByQueryManager;
+
+  private BatchData batchData;
+  private boolean hasCachedBatchData = false;
 
   public RawDataBatchReader(SeriesReader seriesReader) {
     this.seriesReader = seriesReader;
@@ -55,9 +59,6 @@ public class RawDataBatchReader implements IBatchReader, ManagedSeriesReader {
     this.seriesReader = new SeriesReader(seriesPath, dataType, context, seqFileResource,
         unseqFileResource, timeFilter, valueFilter);
   }
-
-  private BatchData batchData;
-  private boolean hasCachedBatchData = false;
 
   /**
    * This method overrides the AbstractDataReader.hasNextOverlappedPage for pause reads, to achieve

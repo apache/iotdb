@@ -43,15 +43,10 @@ public class AggregateReader implements IAggregateReader {
     return seriesReader.hasNextChunk();
   }
 
-  /**
-   * only be used for aggregate without value filter
-   *
-   * @return
-   */
   @Override
   public boolean canUseCurrentChunkStatistics() {
     Statistics chunkStatistics = currentChunkStatistics();
-    return !seriesReader.isChunkOverlapped() && satisfyTimeFilter(chunkStatistics);
+    return !seriesReader.isChunkOverlapped() && containedByTimeFilter(chunkStatistics);
   }
 
   @Override
@@ -60,7 +55,7 @@ public class AggregateReader implements IAggregateReader {
   }
 
   @Override
-  public void skipCurrentChunk() throws IOException {
+  public void skipCurrentChunk() {
     seriesReader.skipCurrentChunk();
   }
 
@@ -73,7 +68,7 @@ public class AggregateReader implements IAggregateReader {
   @Override
   public boolean canUseCurrentPageStatistics() throws IOException {
     Statistics currentPageStatistics = currentPageStatistics();
-    return !seriesReader.isPageOverlapped() && satisfyTimeFilter(currentPageStatistics);
+    return !seriesReader.isPageOverlapped() && containedByTimeFilter(currentPageStatistics);
   }
 
   @Override
@@ -97,7 +92,7 @@ public class AggregateReader implements IAggregateReader {
   }
 
 
-  private boolean satisfyTimeFilter(Statistics statistics) {
+  private boolean containedByTimeFilter(Statistics statistics) {
     Filter timeFilter = seriesReader.getTimeFilter();
     return timeFilter == null
         || timeFilter.containStartEndTime(statistics.getStartTime(), statistics.getEndTime());

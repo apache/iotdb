@@ -435,7 +435,7 @@ public class SeriesReader {
     return timeFilter;
   }
 
-  protected class VersionPair<T> {
+  private class VersionPair<T> {
 
     protected long version;
     protected T data;
