@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -35,6 +36,7 @@ public class ReadOnlyMemChunk {
 
   private String measurementUid;
   private TSDataType dataType;
+  private TSEncoding encoding;
 
   private long version;
   Map<String, String> props;
@@ -47,10 +49,11 @@ public class ReadOnlyMemChunk {
 
   private IPointReader chunkPointReader;
 
-  public ReadOnlyMemChunk(String measurementUid, TSDataType dataType, TVList tvList,
-      Map<String, String> props, long version) throws IOException {
+  public ReadOnlyMemChunk(String measurementUid, TSDataType dataType, TSEncoding encoding,
+      TVList tvList, Map<String, String> props, long version) throws IOException {
     this.measurementUid = measurementUid;
     this.dataType = dataType;
+    this.encoding = encoding;
     this.version = version;
     this.props = props;
     if (props.containsKey(Encoder.MAX_POINT_NUMBER)) {
@@ -58,7 +61,7 @@ public class ReadOnlyMemChunk {
     }
     tvList.sort();
     this.chunkData = tvList;
-    this.chunkPointReader = tvList.getIterator(floatPrecision);
+    this.chunkPointReader = tvList.getIterator(floatPrecision, encoding);
     initChunkMeta();
   }
 
@@ -66,7 +69,7 @@ public class ReadOnlyMemChunk {
     Statistics statsByType = Statistics.getStatsByType(dataType);
     ChunkMetaData metaData = new ChunkMetaData(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
-      IPointReader iterator = chunkData.getIterator(floatPrecision);
+      IPointReader iterator = chunkData.getIterator(floatPrecision, encoding);
       while (iterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         switch (dataType) {

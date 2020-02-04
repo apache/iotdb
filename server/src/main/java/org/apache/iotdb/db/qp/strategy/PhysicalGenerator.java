@@ -212,6 +212,9 @@ public class PhysicalGenerator {
       Map<String, TSDataType> dataTypeConsistencyChecker = new HashMap<>();
       List<Path> paths = new ArrayList<>();
 
+      boolean isNotExistMeasurement = true;
+      boolean isConstMeasurement = false;
+
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix
         Path suffixPath = suffixPaths.get(i);
         Set<String> deviceSetOfGivenSuffix = new HashSet<>();
@@ -223,6 +226,9 @@ public class PhysicalGenerator {
           try {
             // remove stars to get actual paths
             List<String> actualPaths = MManager.getInstance().getPaths(fullPath.getFullPath());
+            if (isNotExistMeasurement && !actualPaths.isEmpty()) {
+              isNotExistMeasurement = false;
+            }
             for (String pathStr : actualPaths) {
               Path path = new Path(pathStr);
               String device = path.getDevice();

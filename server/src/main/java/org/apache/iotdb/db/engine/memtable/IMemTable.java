@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.query.PlannerException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 /**
  * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of
@@ -55,10 +56,11 @@ public interface IMemTable {
 
   void insert(InsertPlan insertPlan) throws PlannerException;
 
-  void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end) throws PlannerException;
+  void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end)
+      throws PlannerException;
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      Map<String, String> props, long timeLowerBound) throws IOException;
+      TSEncoding encoding, Map<String, String> props, long timeLowerBound) throws IOException;
 
   /**
    * putBack all the memory resources.

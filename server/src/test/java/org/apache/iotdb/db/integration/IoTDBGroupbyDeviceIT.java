@@ -460,7 +460,7 @@ public class IoTDBGroupbyDeviceIT {
     String[] retArray = new String[]{
             "2,root.vehicle.d0,1,1,3,0,0,",
             "22,root.vehicle.d0,0,0,0,0,0,",
-            "42,root.vehicle.d0,1,1,0,0,0,",
+            "42,root.vehicle.d0,0,0,0,0,0,",
             "2,root.vehicle.d1,0,null,null,null,null,",
             "22,root.vehicle.d1,0,null,null,null,null,",
             "42,root.vehicle.d1,0,null,null,null,null,",
