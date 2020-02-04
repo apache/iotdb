@@ -206,7 +206,7 @@ public class DataTransferManager implements IDataTransferManager {
     executorService.scheduleWithFixedDelay(() -> {
       try {
         syncAll();
-      } catch (SyncConnectionException | IOException | TException e) {
+      } catch (Exception e) {
         logger.error("Sync failed", e);
       }
     }, SyncConstant.SYNC_PROCESS_DELAY, SyncConstant.SYNC_PROCESS_PERIOD, TimeUnit.SECONDS);
@@ -421,11 +421,16 @@ public class DataTransferManager implements IDataTransferManager {
     try {
       if (syncSchemaLogFile.exists()) {
         try (BufferedReader br = new BufferedReader(new FileReader(syncSchemaLogFile))) {
-          return Integer.parseInt(br.readLine());
+          String pos = br.readLine();
+          if(pos != null) {
+            return Integer.parseInt(pos);
+          }
         }
       }
     } catch (IOException e) {
       logger.error("Can not find file {}", syncSchemaLogFile.getAbsoluteFile(), e);
+    } catch (NumberFormatException e){
+      logger.error("Sync schema pos is not valid", e);
     }
     return 0;
   }
