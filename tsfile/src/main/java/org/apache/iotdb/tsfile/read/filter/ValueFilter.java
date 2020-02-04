@@ -52,8 +52,8 @@ public class ValueFilter {
     return new ValueLtEq(value);
   }
 
-  public static <T extends  Comparable<T>> ValueIn<T> in(Set<T> values, boolean not, String valueToString){
-    return new ValueIn(values, not, valueToString);
+  public static <T extends  Comparable<T>> ValueIn<T> in(Set<T> values, boolean not){
+    return new ValueIn(values, not);
   }
 
   public static ValueNotFilter not(Filter filter) {
@@ -66,8 +66,8 @@ public class ValueFilter {
 
   public static class ValueIn<T extends Comparable<T>> extends In<T> {
 
-    private ValueIn(Set<T> values, boolean not, String valueToString) {
-      super(values, FilterType.VALUE_FILTER, not, valueToString);
+    private ValueIn(Set<T> values, boolean not) {
+      super(values, FilterType.VALUE_FILTER, not);
     }
   }
 

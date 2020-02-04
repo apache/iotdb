@@ -60,14 +60,14 @@ public class TimeFilter {
     return new TimeNotEq(value);
   }
 
-  public static TimeIn in(Set<Long> values, boolean not, String valueToString) {
-    return new TimeIn(values, not, valueToString);
+  public static TimeIn in(Set<Long> values, boolean not) {
+    return new TimeIn(values, not);
   }
 
   public static class TimeIn extends In {
 
-    private TimeIn(Set<Long> values, boolean not, String valueToString) {
-      super(values, FilterType.TIME_FILTER,not,  valueToString);
+    private TimeIn(Set<Long> values, boolean not) {
+      super(values, FilterType.TIME_FILTER,not);
     }
   }
 

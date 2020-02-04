@@ -50,7 +50,6 @@ public class InOperator extends FunctionOperator {
 
   private boolean not;
   protected Set<String> values;
-  private String valueToString;
   private Logger logger = LoggerFactory.getLogger(InOperator.class);
 
   /**
@@ -67,9 +66,6 @@ public class InOperator extends FunctionOperator {
     this.singlePath = path;
     this.values = values;
     this.not = not;
-    List<String> valuesList = new ArrayList<>(values);
-    Collections.sort(valuesList);
-    this.valueToString = valuesList.toString();
     isLeaf = true;
     isSingle = true;
   }
@@ -99,35 +95,35 @@ public class InOperator extends FunctionOperator {
         for (String val : values) {
           integerValues.add(Integer.valueOf(val));
         }
-        ret = In.getUnaryExpression(singlePath, integerValues, not, valueToString);
+        ret = In.getUnaryExpression(singlePath, integerValues, not);
         break;
       case INT64:
         Set<Long> longValues = new HashSet<>();
         for (String val : values) {
           longValues.add(Long.valueOf(val));
         }
-        ret = In.getUnaryExpression(singlePath, longValues, not, valueToString);
+        ret = In.getUnaryExpression(singlePath, longValues, not);
         break;
       case BOOLEAN:
         Set<Boolean> booleanValues = new HashSet<>();
         for (String val : values) {
           booleanValues.add(Boolean.valueOf(val));
         }
-        ret = In.getUnaryExpression(singlePath, booleanValues, not, valueToString);
+        ret = In.getUnaryExpression(singlePath, booleanValues, not);
         break;
       case FLOAT:
         Set<Float> floatValues = new HashSet<>();
         for (String val : values) {
           floatValues.add(Float.parseFloat(val));
         }
-        ret = In.getUnaryExpression(singlePath, floatValues, not, valueToString);
+        ret = In.getUnaryExpression(singlePath, floatValues, not);
         break;
       case DOUBLE:
         Set<Double> doubleValues = new HashSet<>();
         for (String val : values) {
           doubleValues.add(Double.parseDouble(val));
         }
-        ret = In.getUnaryExpression(singlePath, doubleValues, not, valueToString);
+        ret = In.getUnaryExpression(singlePath, doubleValues, not);
         break;
       case TEXT:
         Set<Binary> binaryValues = new HashSet<>();
@@ -137,7 +133,7 @@ public class InOperator extends FunctionOperator {
                   .endsWith("\"")) ? new Binary(val.substring(1, val.length() - 1))
                   : new Binary(val));
         }
-        ret = In.getUnaryExpression(singlePath, binaryValues, not, valueToString);
+        ret = In.getUnaryExpression(singlePath, binaryValues, not);
         break;
       default:
         throw new LogicalOperatorException(type.toString(), "");
@@ -152,7 +148,7 @@ public class InOperator extends FunctionOperator {
     for (int i = 0; i < spaceNum; i++) {
       sc.addTail("  ");
     }
-    sc.addTail(singlePath.toString(), this.tokenSymbol, not, valueToString, ", single\n");
+    sc.addTail(singlePath.toString(), this.tokenSymbol, not, values, ", single\n");
     return sc.toString();
   }
 
@@ -173,7 +169,9 @@ public class InOperator extends FunctionOperator {
 
   @Override
   public String toString() {
-    return "[" + singlePath.getFullPath() + tokenSymbol + not + valueToString + "]";
+    List<String> valuesList = new ArrayList<>(values);
+    Collections.sort(valuesList);
+    return "[" + singlePath.getFullPath() + tokenSymbol + not + valuesList + "]";
   }
 
   @Override
@@ -185,24 +183,23 @@ public class InOperator extends FunctionOperator {
       return false;
     }
     InOperator that = (InOperator) o;
-    return Objects.equals(singlePath, that.singlePath) && Objects
-        .equals(valueToString, that.valueToString)
-        && not == that.not;
+    return Objects.equals(singlePath, that.singlePath) && values.containsAll(that.values)
+        && values.size() == that.values.size() && not == that.not;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), singlePath, not, valueToString);
+    return Objects.hash(super.hashCode(), singlePath, not, values);
   }
 
   private static class In {
 
     public static <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path,
-        Set<T> values, boolean not, String valueToString) {
+        Set<T> values, boolean not) {
       if (path.equals("time")) {
-        return new GlobalTimeExpression(TimeFilter.in((Set<Long>) values, not, valueToString));
+        return new GlobalTimeExpression(TimeFilter.in((Set<Long>) values, not));
       } else {
-        return new SingleSeriesExpression(path, ValueFilter.in(values, not, valueToString));
+        return new SingleSeriesExpression(path, ValueFilter.in(values, not));
       }
     }
 

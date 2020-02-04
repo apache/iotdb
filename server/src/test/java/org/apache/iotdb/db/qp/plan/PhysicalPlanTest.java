@@ -519,17 +519,12 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 in (25, 30, 40)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
-    List<String> valuesList = new ArrayList<>();
-    valuesList.add("25");
-    valuesList.add("30");
-    valuesList.add("40");
-    Collections.sort(valuesList);
     Set<Float> values = new HashSet<>();
     values.add(25.0f);
     values.add(30.0f);
     values.add(40.0f);
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
-        ValueFilter.in(values, false, valuesList.toString()));
+        ValueFilter.in(values, false));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -538,24 +533,19 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 not in (25, 30, 40)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
-    List<String> valuesList = new ArrayList<>();
-    valuesList.add("25");
-    valuesList.add("30");
-    valuesList.add("40");
-    Collections.sort(valuesList);
     Set<Float> values = new HashSet<>();
     values.add(25.0f);
     values.add(30.0f);
     values.add(40.0f);
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
-        ValueFilter.in(values, true, valuesList.toString()));
+        ValueFilter.in(values, true));
     assertEquals(expect.toString(), queryFilter.toString());
 
     sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE not(s1 not in (25, 30, 40))";
     plan = processor.parseSQLToPhysicalPlan(sqlStr);
     queryFilter = ((QueryPlan) plan).getExpression();
     expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
-        ValueFilter.in(values, false, valuesList.toString()));
+        ValueFilter.in(values, false));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 

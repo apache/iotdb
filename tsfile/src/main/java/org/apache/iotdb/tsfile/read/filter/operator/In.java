@@ -21,7 +21,10 @@ package org.apache.iotdb.tsfile.read.filter.operator;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -42,18 +45,15 @@ public class In<T extends Comparable<T>> implements Filter {
 
   private boolean not;
 
-  private String valueToString;
-
   private FilterType filterType;
 
   public In() {
   }
 
-  public In(Set<T> values, FilterType filterType, boolean not, String valueToString) {
+  public In(Set<T> values, FilterType filterType, boolean not) {
     this.values = values;
     this.filterType = filterType;
     this.not = not;
-    this.valueToString = valueToString;
   }
 
   @Override
@@ -79,7 +79,7 @@ public class In<T extends Comparable<T>> implements Filter {
 
   @Override
   public Filter clone() {
-    return new In(values, filterType, not, valueToString);
+    return new In(new HashSet(values), filterType, not);
   }
 
   @Override
@@ -88,7 +88,6 @@ public class In<T extends Comparable<T>> implements Filter {
       outputStream.write(getSerializeId().ordinal());
       outputStream.write(filterType.ordinal());
       ReadWriteIOUtils.write(not, outputStream);
-      ReadWriteIOUtils.write(valueToString, outputStream);
       outputStream.write(values.size());
       for (T value : values) {
         ReadWriteIOUtils.writeObject(value, outputStream);
@@ -102,7 +101,6 @@ public class In<T extends Comparable<T>> implements Filter {
   public void deserialize(ByteBuffer buffer) {
     filterType = FilterType.values()[buffer.get()];
     not = ReadWriteIOUtils.readBool(buffer);
-    valueToString = ReadWriteIOUtils.readString(buffer);
     values = new HashSet<>();
     for (int i = 0; i < buffer.get(); i++) {
       values.add((T) ReadWriteIOUtils.readObject(buffer));
@@ -111,7 +109,9 @@ public class In<T extends Comparable<T>> implements Filter {
 
   @Override
   public String toString() {
-    return filterType + " < " + "reverse: " + not + ", " + valueToString;
+    List<T> valueList = new ArrayList<>(values);
+    Collections.sort(valueList);
+    return filterType + " < " + "reverse: " + not + ", " + valueList;
   }
 
   @Override
