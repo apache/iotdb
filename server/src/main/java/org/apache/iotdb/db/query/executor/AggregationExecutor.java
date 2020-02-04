@@ -129,10 +129,15 @@ public class AggregationExecutor {
       if (seriesReader.canUseCurrentChunkStatistics()) {
         Statistics chunkStatistics = seriesReader.currentChunkStatistics();
         for (int i = 0; i < aggregateResultList.size(); i++) {
-          AggregateResult aggregateResult = aggregateResultList.get(i);
-          aggregateResult.updateResultFromStatistics(chunkStatistics);
-          if (aggregateResult.isCalculatedAggregationResult()) {
-            isCalculatedList.set(i, true);
+          if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
+            AggregateResult aggregateResult = aggregateResultList.get(i);
+            aggregateResult.updateResultFromStatistics(chunkStatistics);
+            if (aggregateResult.isCalculatedAggregationResult()) {
+              isCalculatedList.set(i, true);
+            }
+            if (isCalculatedList.stream().allMatch(element -> element == Boolean.TRUE)) {
+              return aggregateResultList;
+            }
           }
         }
         seriesReader.skipCurrentChunk();
@@ -143,11 +148,14 @@ public class AggregationExecutor {
         if (seriesReader.canUseCurrentPageStatistics()) {
           Statistics pageStatistic = seriesReader.currentPageStatistics();
           for (int i = 0; i < aggregateResultList.size(); i++) {
-            if (!isCalculatedList.get(i)) {
+            if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
               AggregateResult aggregateResult = aggregateResultList.get(i);
               aggregateResult.updateResultFromStatistics(pageStatistic);
               if (aggregateResult.isCalculatedAggregationResult()) {
                 isCalculatedList.set(i, true);
+              }
+              if (isCalculatedList.stream().allMatch(element -> element == Boolean.TRUE)) {
+                return aggregateResultList;
               }
             }
           }
@@ -163,6 +171,9 @@ public class AggregationExecutor {
               if (aggregateResult.isCalculatedAggregationResult()) {
                 isCalculatedList.set(i, true);
               }
+              if (isCalculatedList.stream().allMatch(element -> element == Boolean.TRUE)) {
+                return aggregateResultList;
+              }
             }
           }
         }
@@ -170,7 +181,6 @@ public class AggregationExecutor {
     }
     return aggregateResultList;
   }
-
 
   /**
    * execute aggregate function with value filter.
