@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.PriorityQueue;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -54,6 +46,9 @@ import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
+import java.io.IOException;
+import java.util.*;
+
 public class SeriesReader {
 
   private final Path seriesPath;
@@ -80,8 +75,6 @@ public class SeriesReader {
 
   private boolean hasCachedNextBatch;
   private BatchData cachedBatchData;
-
-  private long currentPageEndTime = Long.MAX_VALUE;
 
 
   public SeriesReader(Path seriesPath, TSDataType dataType, QueryContext context,
@@ -113,7 +106,7 @@ public class SeriesReader {
     if (hasCachedFirstChunkMetadata) {
       return true;
     }
-    // init first chunkReader whose startTime is minimum
+    // init first chunk metadata whose startTime is minimum
     tryToInitFirstChunk();
 
     return hasCachedFirstChunkMetadata;
@@ -193,10 +186,11 @@ public class SeriesReader {
   }
 
 
-  public BatchData nextPage() throws IOException {
+  protected BatchData nextPage() throws IOException {
     BatchData pageData = Objects
         .requireNonNull(overlappedPageReaders.poll().data, "No Batch data")
         .getAllSatisfiedPageData();
+    // only need to consider valueFilter because timeFilter has been set into the page reader
     if (valueFilter == null) {
       return pageData;
     }
@@ -210,7 +204,7 @@ public class SeriesReader {
     return batchData;
   }
 
-  public boolean isPageOverlapped() {
+  protected boolean isPageOverlapped() {
     Statistics pageStatistics = overlappedPageReaders.peek().data.getStatistics();
     return mergeReader.hasNextTimeValuePair()
         || (!seqChunkMetadatas.isEmpty()
@@ -240,7 +234,7 @@ public class SeriesReader {
 
     if (mergeReader.hasNextTimeValuePair()) {
       cachedBatchData = new BatchData(dataType);
-      currentPageEndTime = mergeReader.getCurrentLargestEndTime();
+      long currentPageEndTime = mergeReader.getCurrentLargestEndTime();
       while (mergeReader.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = mergeReader.currentTimeValuePair();
         if (timeValuePair.getTimestamp() > currentPageEndTime) {
@@ -276,11 +270,8 @@ public class SeriesReader {
         }
 
         timeValuePair = mergeReader.nextTimeValuePair();
-        if (valueFilter == null) {
-          cachedBatchData.putAnObject(
-              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
-        } else if (valueFilter
-            .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+        if (valueFilter == null || valueFilter
+                .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
           cachedBatchData.putAnObject(
               timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
         }
@@ -291,7 +282,7 @@ public class SeriesReader {
   }
 
   private void putAllDirectlyOverlappedPageReadersIntoMergeReader() throws IOException {
-
+    long currentPageEndTime;
     if (mergeReader.hasNextTimeValuePair()) {
       currentPageEndTime = mergeReader.getCurrentLargestEndTime();
     } else if (!overlappedPageReaders.isEmpty()) {
@@ -420,8 +411,14 @@ public class SeriesReader {
     while (seqChunkMetadatas.isEmpty() && !seqFileResource.isEmpty()) {
       seqChunkMetadatas.addAll(loadSatisfiedChunkMetadatas(seqFileResource.remove(0)));
     }
-    // Fill unsequence chunkMetadatas until it is not empty
+
+    // Fill unsequence chunkMetadatas until there are no overlapped unseqFileResources
     while (unseqChunkMetadatas.isEmpty() && !unseqFileResource.isEmpty()) {
+      unseqChunkMetadatas.addAll(loadSatisfiedChunkMetadatas(unseqFileResource.poll()));
+    }
+    while (!unseqChunkMetadatas.isEmpty() && !unseqFileResource.isEmpty()
+            && unseqChunkMetadatas.peek().getEndTime() >=
+            unseqFileResource.peek().getStartTimeMap().get(seriesPath.getDevice())) {
       unseqChunkMetadatas.addAll(loadSatisfiedChunkMetadatas(unseqFileResource.poll()));
     }
   }
