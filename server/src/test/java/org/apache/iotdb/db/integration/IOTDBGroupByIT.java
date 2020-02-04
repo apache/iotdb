@@ -267,7 +267,7 @@ public class IOTDBGroupByIT {
         "222,null,null,null,null",
         "242,400.4,400.4,250,250",
         "262,null,null,null,null",
-        "282,500.5,500.5,300,300",
+        "282,null,null,null,null",
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -345,7 +345,7 @@ public class IOTDBGroupByIT {
         "222,null,null",
         "242,400.4,400.4",
         "262,null,null",
-        "282,500.5,500.5"
+        "282,null,null"
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");

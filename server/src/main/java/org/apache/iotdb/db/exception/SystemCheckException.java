@@ -21,7 +21,7 @@ package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class SystemCheckException extends ProcessException {
+public class SystemCheckException extends IoTDBException {
 
   private static final long serialVersionUID = 3845398095925149972L;
 

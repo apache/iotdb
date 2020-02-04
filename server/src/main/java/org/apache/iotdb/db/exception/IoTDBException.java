@@ -20,12 +20,12 @@
 
 package org.apache.iotdb.db.exception;
 
-public class ProcessException extends Exception {
+public class IoTDBException extends Exception {
 
   private static final long serialVersionUID = 8480450962311247736L;
   protected int errorCode;
 
-  public ProcessException(String message) {
+  public IoTDBException(String message) {
     super(message);
   }
 

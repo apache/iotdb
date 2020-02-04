@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.exception;
 
-public class TsFileProcessorException extends ProcessException {
+public class TsFileProcessorException extends IoTDBException {
 
   private static final long serialVersionUID = 3749107630243950925L;
 

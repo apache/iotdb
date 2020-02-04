@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.aggregation;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.PlannerException;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -60,7 +60,7 @@ public abstract class AggregateResult {
    * @param statistics chunkStatistics or pageStatistics
    */
   public abstract void updateResultFromStatistics(Statistics statistics)
-      throws QueryProcessException;
+      throws PlannerException;
 
   /**
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page

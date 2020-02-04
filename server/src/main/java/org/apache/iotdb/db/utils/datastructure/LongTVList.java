@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -172,7 +173,8 @@ public class LongTVList extends TVList {
   }
 
   @Override
-  protected TimeValuePair getTimeValuePair(int index, long time, Integer floatPrecision) {
+  protected TimeValuePair getTimeValuePair(int index, long time, Integer floatPrecision,
+      TSEncoding encoding) {
     return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT64, getLong(index)));
   }
 

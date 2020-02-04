@@ -21,7 +21,7 @@ package org.apache.iotdb.db.exception.query;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class UnSupportedFillTypeException extends QueryProcessException {
+public class UnSupportedFillTypeException extends PlannerException {
 
   private static final long serialVersionUID = 2166251102397630376L;
 

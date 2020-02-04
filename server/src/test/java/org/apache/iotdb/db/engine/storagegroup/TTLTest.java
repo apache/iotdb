@@ -30,7 +30,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.PlannerException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -124,7 +124,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLWrite() throws QueryProcessException {
+  public void testTTLWrite() throws PlannerException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
@@ -149,7 +149,7 @@ public class TTLTest {
     storageGroupProcessor.insert(insertPlan);
   }
 
-  private void prepareData() throws QueryProcessException {
+  private void prepareData() throws PlannerException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
@@ -177,7 +177,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLRead() throws IOException, QueryProcessException, StorageEngineException {
+  public void testTTLRead() throws IOException, PlannerException, StorageEngineException {
     prepareData();
 
     // files before ttl
@@ -226,7 +226,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLRemoval() throws StorageEngineException, QueryProcessException {
+  public void testTTLRemoval() throws StorageEngineException, PlannerException {
     prepareData();
 
     storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
@@ -291,7 +291,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testParseSetTTL() throws QueryProcessException {
+  public void testParseSetTTL() throws PlannerException {
     Planner planner = new Planner();
     SetTTLPlan plan = (SetTTLPlan) planner
         .parseSQLToPhysicalPlan("SET TTL TO " + sg1 + " 10000");
@@ -304,7 +304,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testParseShowTTL() throws QueryProcessException {
+  public void testParseShowTTL() throws PlannerException {
     Planner planner = new Planner();
     ShowTTLPlan plan = (ShowTTLPlan) planner.parseSQLToPhysicalPlan("SHOW ALL TTL");
     assertTrue(plan.getStorageGroups().isEmpty());
@@ -320,7 +320,7 @@ public class TTLTest {
 
   @Test
   public void testShowTTL()
-      throws IOException, QueryProcessException, QueryFilterOptimizationException, StorageEngineException, MetadataException, SQLException {
+      throws IOException, PlannerException, QueryFilterOptimizationException, StorageEngineException, MetadataException, SQLException {
     MManager.getInstance().setTTL(sg1, ttl);
 
     ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());
@@ -336,7 +336,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLCleanFile() throws QueryProcessException {
+  public void testTTLCleanFile() throws PlannerException {
     prepareData();
     storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
 

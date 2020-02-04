@@ -119,6 +119,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeRoleFromUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeWatermarkEmbeddingContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RootOrIdContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectConstElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetColContext;
@@ -996,6 +997,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   @Override
+  public void enterSelectConstElement(SelectConstElementContext ctx) {
+    super.enterSelectConstElement(ctx);
+  }
+
+  @Override
   public void enterFromClause(FromClauseContext ctx) {
     super.enterFromClause(ctx);
     FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
@@ -1167,12 +1173,15 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       return parseOrExpression(ctx.orExpression());
     } else {
       Path path = null;
-      BasicFunctionOperator basic = null;
+      BasicFunctionOperator basic;
       if (ctx.prefixPath() != null) {
         path = parsePrefixPath(ctx.prefixPath());
       }
       if (ctx.suffixPath() != null) {
         path = parseSuffixPath(ctx.suffixPath());
+      }
+      if(ctx.TIME() != null || ctx.TIMESTAMP() != null) {
+        path = new Path(SQLConstant.RESERVED_TIME);
       }
       if (ctx.constant().dateExpression() != null) {
         if (!path.equals(SQLConstant.RESERVED_TIME)) {

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class SyncConnectionException extends ProcessException {
+public class SyncConnectionException extends IoTDBException {
 
   private static final long serialVersionUID = -6661904365503849681L;
 

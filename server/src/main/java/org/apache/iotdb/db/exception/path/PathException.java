@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.exception.path;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.PlannerException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class PathException extends QueryProcessException {
+public class PathException extends PlannerException {
 
   private static final long serialVersionUID = 2141197032898163234L;
 

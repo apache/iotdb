@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.exception.metadata;
 
-import org.apache.iotdb.db.exception.ProcessException;
+import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
  * If query metadata constructs schema but passes illegal parameters to EncodingConvertor or
  * DataTypeConvertor,this exception will be threw.
  */
-public class MetadataException extends ProcessException {
+public class MetadataException extends IoTDBException {
 
   private static final long serialVersionUID = 3415275599091623570L;
 
@@ -39,7 +39,7 @@ public class MetadataException extends ProcessException {
     errorCode = TSStatusCode.METADATA_ERROR.getStatusCode();
   }
 
-  public MetadataException(ProcessException exception) {
+  public MetadataException(IoTDBException exception) {
     super(exception.getMessage());
     this.errorCode = exception.getErrorCode();
   }

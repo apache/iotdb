@@ -32,7 +32,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.PlannerException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -121,7 +121,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     executor = new PlanExecutor();
   }
 
-  public static TSDataType getSeriesType(String path) throws QueryProcessException {
+  public static TSDataType getSeriesType(String path) throws PlannerException {
     switch (path.toLowerCase()) {
         // authorization queries
       case COLUMN_ROLE:
@@ -154,7 +154,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         case SQLConstant.SUM:
           return TSDataType.DOUBLE;
         default:
-          throw new QueryProcessException("aggregate does not support " + aggrType + " function.");
+          throw new PlannerException("aggregate does not support " + aggrType + " function.");
       }
     }
     return MManager.getInstance().getSeriesType(path);
@@ -335,7 +335,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = getStatus(TSStatusCode.METADATA_ERROR, req.getType());
           break;
       }
-    } catch (QueryProcessException | MetadataException | OutOfMemoryError e) {
+    } catch (PlannerException | MetadataException | OutOfMemoryError e) {
       logger.error(
           String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()), e);
       status = getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
@@ -471,7 +471,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       result.add(Statement.EXECUTE_FAILED);
       batchErrorMessage.append(TSStatusCode.METADATA_ERROR.getStatusCode()).append("\n");
       return false;
-    } catch (QueryProcessException e) {
+    } catch (PlannerException e) {
       logger.info(
           "Error occurred when executing {}, meet error while parsing SQL to physical plan: {}",
           statement,
@@ -530,7 +530,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.error("check metadata error: ", e);
       return getTSExecuteStatementResp(
           getStatus(TSStatusCode.METADATA_ERROR, "Check metadata error: " + e.getMessage()));
-    } catch (QueryProcessException e) {
+    } catch (PlannerException e) {
       logger.info(ERROR_PARSING_SQL, e.getMessage());
       return getTSExecuteStatementResp(
           getStatus(
@@ -560,13 +560,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlign()) {
         if (plan.getOperatorType() == OperatorType.AGGREGATION) {
-          throw new QueryProcessException("Aggregation doesn't support disable align clause.");
+          throw new PlannerException("Aggregation doesn't support disable align clause.");
         }
         if (plan.getOperatorType() == OperatorType.FILL) {
-          throw new QueryProcessException("Fill doesn't support disable align clause.");
+          throw new PlannerException("Fill doesn't support disable align clause.");
         }
         if (plan.getOperatorType() == OperatorType.GROUPBY) {
-          throw new QueryProcessException("Group by doesn't support disable align clause.");
+          throw new PlannerException("Group by doesn't support disable align clause.");
         }
       }
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
@@ -612,7 +612,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       physicalPlan =
           processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
-    } catch (QueryProcessException | SQLParserException e) {
+    } catch (PlannerException | SQLParserException e) {
       logger.info(ERROR_PARSING_SQL, e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }
@@ -626,7 +626,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private TSExecuteStatementResp getShowQueryColumnHeaders(ShowPlan showPlan)
-      throws QueryProcessException {
+      throws PlannerException {
     switch (showPlan.getShowContentType()) {
       case TTL:
         return StaticResps.TTL_RESP;
@@ -652,7 +652,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return StaticResps.COUNT_TIMESERIES;
       default:
         logger.error("Unsupported show content type: {}", showPlan.getShowContentType());
-        throw new QueryProcessException(
+        throw new PlannerException(
             "Unsupported show content type:" + showPlan.getShowContentType());
     }
   }
@@ -680,7 +680,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   /** get ResultSet schema */
   private TSExecuteStatementResp getQueryColumnHeaders(PhysicalPlan physicalPlan, String username)
-      throws AuthException, TException, QueryProcessException {
+      throws AuthException, TException, PlannerException {
 
     List<String> respColumns = new ArrayList<>();
     List<String> columnsTypes = new ArrayList<>();
@@ -713,7 +713,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // wide means not group by device
   private void getWideQueryHeaders(
       QueryPlan plan, List<String> respColumns, List<String> columnTypes)
-      throws TException, QueryProcessException {
+      throws TException, PlannerException {
     // Restore column header of aggregate to func(column_name), only
     // support single aggregate function for now
     List<Path> paths = plan.getPaths();
@@ -908,7 +908,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   /** create QueryDataSet and buffer it for fetchResults */
   private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan)
-      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
+      throws PlannerException, QueryFilterOptimizationException, StorageEngineException,
           IOException, MetadataException, SQLException {
 
     QueryContext context = new QueryContext(queryId);
@@ -946,9 +946,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  private boolean executeNonQuery(PhysicalPlan plan) throws QueryProcessException {
+  private boolean executeNonQuery(PhysicalPlan plan) throws PlannerException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new QueryProcessException(
+      throw new PlannerException(
           "Current system mode is read-only, does not support non-query operation");
     }
     return executor.processNonQuery(plan);
@@ -959,7 +959,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     PhysicalPlan physicalPlan;
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId));
-    } catch (QueryProcessException | SQLParserException e) {
+    } catch (PlannerException | SQLParserException e) {
       logger.info(ERROR_PARSING_SQL, e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }
@@ -1300,7 +1300,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     boolean execRet;
     try {
       execRet = executeNonQuery(plan);
-    } catch (QueryProcessException e) {
+    } catch (PlannerException e) {
       logger.debug("meet error while processing non-query. ", e);
       return new TSStatus(new TSStatusType(e.getErrorCode(), e.getMessage()));
     }

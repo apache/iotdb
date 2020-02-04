@@ -20,7 +20,7 @@ package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class SyncDeviceOwnerConflictException extends ProcessException {
+public class SyncDeviceOwnerConflictException extends IoTDBException {
 
   private static final long serialVersionUID = -5037926672199248044L;
 
