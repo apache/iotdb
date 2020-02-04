@@ -27,7 +27,8 @@ import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReader;
+import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.RawDataReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -38,7 +39,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.common.SignalBatchData;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -49,14 +49,12 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
 
   private static class ReadTask implements Runnable {
 
-    private final SeriesReader reader;
-    private final IBatchReader iBatchReader;
+    private final ManagedSeriesReader reader;
     private BlockingQueue<BatchData> blockingQueue;
 
-    public ReadTask(SeriesReader reader,
+    public ReadTask(ManagedSeriesReader reader,
         BlockingQueue<BatchData> blockingQueue) {
       this.reader = reader;
-      this.iBatchReader = reader.getBatchReader();
       this.blockingQueue = blockingQueue;
     }
 
@@ -67,8 +65,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
           // if the task is submitted, there must be free space in the queue
           // so here we don't need to check whether the queue has free space
           // the reader has next batch
-          while (iBatchReader.hasNextBatch()) {
-            BatchData batchData = iBatchReader.nextBatch();
+          while (reader.hasNextBatch()) {
+            BatchData batchData = reader.nextBatch();
             // iterate until we get first batch data with valid value
             if (batchData.isEmpty()) {
               continue;
@@ -105,7 +103,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
     }
   }
 
-  private List<SeriesReader> seriesReaderWithoutValueFilterList;
+  private List<ManagedSeriesReader> seriesReaderWithoutValueFilterList;
 
   private TreeSet<Long> timeHeap;
 
@@ -141,7 +139,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
    * @param readers   readers in List(IPointReader) structure
    */
   public RawQueryDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-      List<SeriesReader> readers) throws InterruptedException {
+      List<ManagedSeriesReader> readers) throws InterruptedException {
     super(paths, dataTypes);
     this.seriesReaderWithoutValueFilterList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
@@ -156,7 +154,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
   private void init() throws InterruptedException {
     timeHeap = new TreeSet<>();
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
-      SeriesReader reader = seriesReaderWithoutValueFilterList.get(i);
+      ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
       pool.submit(new ReadTask(reader, blockingQueueArray[i]));
@@ -353,8 +351,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
       synchronized (seriesReaderWithoutValueFilterList.get(seriesIndex)) {
         // we only need to judge whether to submit another task when the queue is not full
         if (blockingQueueArray[seriesIndex].remainingCapacity() > 0) {
-          SeriesReader reader = seriesReaderWithoutValueFilterList
-              .get(seriesIndex);
+          ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(seriesIndex);
           // if the reader isn't being managed and still has more data,
           // that means this read task leave the pool before because the queue has no more space
           // now we should submit it again

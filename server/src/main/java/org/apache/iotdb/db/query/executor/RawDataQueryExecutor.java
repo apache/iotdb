@@ -27,6 +27,8 @@ import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.RawDataReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
@@ -70,12 +72,12 @@ public class RawDataQueryExecutor {
       timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
     }
 
-    List<SeriesReader> readersOfSelectedSeries = new ArrayList<>();
+    List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
       Path path = deduplicatedPaths.get(i);
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
-      SeriesReader reader = new SeriesReader(path, dataType, context,
+      ManagedSeriesReader reader = new RawDataReader(path, dataType, context,
           QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
           timeFilter, null);
       readersOfSelectedSeries.add(reader);
@@ -96,12 +98,12 @@ public class RawDataQueryExecutor {
       timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
     }
 
-    List<SeriesReader> readersOfSelectedSeries = new ArrayList<>();
+    List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
       Path path = deduplicatedPaths.get(i);
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
-      SeriesReader reader = new SeriesReader(path, dataType, context,
+      ManagedSeriesReader reader = new RawDataReader(path, dataType, context,
           QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
           timeFilter, null);
       readersOfSelectedSeries.add(reader);

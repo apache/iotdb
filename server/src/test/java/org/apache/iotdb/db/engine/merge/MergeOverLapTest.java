@@ -37,6 +37,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.seriesRelated.RawDataReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReader;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -157,9 +158,8 @@ public class MergeOverLapTest extends MergeTest {
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     List<TsFileResource> resources = new ArrayList<>();
     resources.add(seqResources.get(0));
-    IBatchReader tsFilesReader = new SeriesReader(path,
-        measurementSchemas[0].getType(), context, resources, new ArrayList<>(), null, null)
-        .getBatchReader();
+    IBatchReader tsFilesReader = new RawDataReader(path, measurementSchemas[0].getType(), context,
+        resources, new ArrayList<>(), null, null);
     int cnt = 0;
     try {
       while (tsFilesReader.hasNextBatch()) {

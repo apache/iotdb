@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.PlannerException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
@@ -26,21 +29,22 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
-import org.apache.iotdb.db.query.reader.seriesRelated.ISeriesReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.AggregateReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.*;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
-  private List<SeriesReader> seriesReaders;
+  private List<IAggregateReader> seriesReaders;
   private List<BatchData> cachedBatchDataList;
   private Filter timeFilter;
   private GroupByPlan groupByPlan;
@@ -76,7 +80,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-      SeriesReader seriesReader = new SeriesReader(path, dataTypes.get(i), context,
+      IAggregateReader seriesReader = new AggregateReader(path, dataTypes.get(i), context,
           QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
           timeFilter, null);
       seriesReaders.add(seriesReader);
@@ -113,7 +117,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * @param idx series id
    */
   private AggregateResult nextIntervalAggregation(int idx) throws IOException, PlannerException {
-    ISeriesReader reader = seriesReaders.get(idx);
+    IAggregateReader reader = seriesReaders.get(idx);
     AggregateResult result = AggreResultFactory
         .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(idx),
             groupByPlan.getDeduplicatedDataTypes().get(idx));
