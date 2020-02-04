@@ -29,8 +29,8 @@ public class EngineLeafNode implements Node {
 
   private IPointReader reader;
 
-  public EngineLeafNode(SeriesReader reader) {
-    this.reader = reader.getPointReader();
+  public EngineLeafNode(IPointReader reader) {
+    this.reader = reader;
   }
 
   @Override

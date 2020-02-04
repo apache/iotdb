@@ -36,6 +36,8 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
@@ -97,7 +99,7 @@ public class SeriesReaderTest {
     try {
       SeriesReader seriesReader = new SeriesReader(new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
               TSDataType.INT32, new QueryContext(), seqResources, unseqResources, null, null);
-      IBatchReader batchReader = seriesReader.getBatchReader();
+      IBatchReader batchReader = new RawDataBatchReader(seriesReader);
       int count = 0;
       while (batchReader.hasNextBatch()) {
         BatchData batchData = batchReader.nextBatch();
@@ -127,6 +129,31 @@ public class SeriesReaderTest {
 
   @Test
   public void pointTest() {
+    try {
+      SeriesReader seriesReader = new SeriesReader(new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
+              TSDataType.INT32, new QueryContext(), seqResources, unseqResources, null, null);
+      IPointReader pointReader = new RawDataPointReader(seriesReader);
+      long expectedTime = 0;
+      while (pointReader.hasNextTimeValuePair()) {
+        TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
+        assertEquals(expectedTime, timeValuePair.getTimestamp());
+        int value = timeValuePair.getValue().getInt();
+        if (expectedTime < 200) {
+          assertEquals(20000+expectedTime, value);
+        }
+        else if (expectedTime < 260 || (expectedTime >= 300 && expectedTime < 380) || expectedTime >= 400) {
+          assertEquals(10000+expectedTime, value);
+        }
+        else {
+          assertEquals(expectedTime, value);
+        }
+        expectedTime++;
+
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail();
+    }
 
   }
 
