@@ -86,7 +86,8 @@ public class AggregationExecutor {
     Map<Path, List<Integer>> seriesMap = mergeSameSeries(selectedSeries);
     AggregateResult[] aggregateResultList = new AggregateResult[selectedSeries.size()];
     for (Map.Entry<Path, List<Integer>> entry : seriesMap.entrySet()) {
-      List<AggregateResult> aggregateResults = aggregateOneSeries(entry, timeFilter, context);
+      List<AggregateResult> aggregateResults = groupAggregationsBySeries(entry, timeFilter,
+          context);
       int index = 0;
       for (int i : entry.getValue()) {
         aggregateResultList[i] = aggregateResults.get(index);
@@ -97,10 +98,19 @@ public class AggregationExecutor {
     return constructDataSet(Arrays.asList(aggregateResultList));
   }
 
-  private List<AggregateResult> aggregateOneSeries(Map.Entry<Path, List<Integer>> series,
+  /**
+   * get aggregation result for one series
+   *
+   * @param series series map
+   * @param timeFilter time filter
+   * @param context query context
+   * @return AggregateResult list
+   */
+  private List<AggregateResult> groupAggregationsBySeries(Map.Entry<Path, List<Integer>> series,
       Filter timeFilter, QueryContext context)
       throws IOException, PlannerException, StorageEngineException {
     List<AggregateResult> aggregateResultList = new ArrayList<>();
+    List<Boolean> isCalculatedList = new ArrayList<>();
     Path seriesPath = series.getKey();
     TSDataType tsDataType = dataTypes.get(series.getValue().get(0));
     // construct series reader without value filter
@@ -113,12 +123,17 @@ public class AggregationExecutor {
       AggregateResult aggregateResult = AggreResultFactory
           .getAggrResultByName(aggregations.get(i), tsDataType);
       aggregateResultList.add(aggregateResult);
+      isCalculatedList.add(false);
     }
     while (seriesReader.hasNextChunk()) {
       if (seriesReader.canUseCurrentChunkStatistics()) {
         Statistics chunkStatistics = seriesReader.currentChunkStatistics();
-        for (AggregateResult aggregateResult : aggregateResultList) {
+        for (int i = 0; i < aggregateResultList.size(); i++) {
+          AggregateResult aggregateResult = aggregateResultList.get(i);
           aggregateResult.updateResultFromStatistics(chunkStatistics);
+          if (aggregateResult.isCalculatedAggregationResult()) {
+            isCalculatedList.set(i, true);
+          }
         }
         seriesReader.skipCurrentChunk();
         continue;
@@ -127,16 +142,28 @@ public class AggregationExecutor {
         //cal by pageheader
         if (seriesReader.canUseCurrentPageStatistics()) {
           Statistics pageStatistic = seriesReader.currentPageStatistics();
-          for (AggregateResult aggregateResult : aggregateResultList) {
-            aggregateResult.updateResultFromStatistics(pageStatistic);
+          for (int i = 0; i < aggregateResultList.size(); i++) {
+            if (!isCalculatedList.get(i)) {
+              AggregateResult aggregateResult = aggregateResultList.get(i);
+              aggregateResult.updateResultFromStatistics(pageStatistic);
+              if (aggregateResult.isCalculatedAggregationResult()) {
+                isCalculatedList.set(i, true);
+              }
+            }
           }
           seriesReader.skipCurrentPage();
           continue;
         }
         //cal by pagedata
         while (seriesReader.hasNextOverlappedPage()) {
-          for (AggregateResult aggregateResult : aggregateResultList) {
-            aggregateResult.updateResultFromPageData(seriesReader.nextOverlappedPage());
+          for (int i = 0; i < aggregateResultList.size(); i++) {
+            if (!isCalculatedList.get(i)) {
+              AggregateResult aggregateResult = aggregateResultList.get(i);
+              aggregateResult.updateResultFromPageData(seriesReader.nextOverlappedPage());
+              if (aggregateResult.isCalculatedAggregationResult()) {
+                isCalculatedList.set(i, true);
+              }
+            }
           }
         }
       }
@@ -219,11 +246,18 @@ public class AggregationExecutor {
     return dataSet;
   }
 
+  /**
+   * Merge same series and convert to series map. For example: Given: paths: s1, s2, s3, s1 and
+   * aggregations: count, sum, count, sum seriesMap: s1 -> 0, 3; s2 -> 2; s3 -> 3
+   *
+   * @param selectedSeries selected series
+   * @return series map
+   */
   private Map<Path, List<Integer>> mergeSameSeries(List<Path> selectedSeries) {
     Map<Path, List<Integer>> seriesMap = new HashMap<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       Path series = selectedSeries.get(i);
-      List<Integer> indexList = seriesMap.computeIfAbsent(series, (key) -> new ArrayList<>());
+      List<Integer> indexList = seriesMap.computeIfAbsent(series, key -> new ArrayList<>());
       indexList.add(i);
     }
     return seriesMap;
