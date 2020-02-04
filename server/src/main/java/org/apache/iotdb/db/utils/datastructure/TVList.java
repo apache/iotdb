@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-@SuppressWarnings("unused")
 public abstract class TVList {
 
   private static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
@@ -542,7 +541,7 @@ public abstract class TVList {
 
     @Override
     public void close() throws IOException {
-
+      // Do nothing because of this is an in memory object
     }
   }
 

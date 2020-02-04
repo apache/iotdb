@@ -28,7 +28,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
@@ -105,7 +105,7 @@ public class LogReplayer {
       }
     } catch (IOException e) {
       throw new StorageGroupProcessorException("Cannot replay logs" + e.getMessage());
-    } catch (PlannerException e) {
+    } catch (QueryProcessException e) {
       throw new StorageGroupProcessorException(
           "Cannot replay logs for query processor exception" + e.getMessage());
     } finally {
@@ -129,7 +129,7 @@ public class LogReplayer {
     }
   }
 
-  private void replayBatchInsert(BatchInsertPlan batchInsertPlan) throws PlannerException {
+  private void replayBatchInsert(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       Long lastEndTime = currentTsFileResource.getEndTimeMap().get(batchInsertPlan.getDeviceId());
@@ -150,7 +150,7 @@ public class LogReplayer {
     recoverMemTable.insertBatch(batchInsertPlan, 0, batchInsertPlan.getRowCount());
   }
 
-  private void replayInsert(InsertPlan insertPlan) throws PlannerException {
+  private void replayInsert(InsertPlan insertPlan) throws QueryProcessException {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       Long lastEndTime = currentTsFileResource.getEndTimeMap().get(insertPlan.getDeviceId());

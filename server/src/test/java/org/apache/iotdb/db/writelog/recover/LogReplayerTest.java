@@ -35,6 +35,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -52,7 +53,7 @@ import org.junit.Test;
 public class LogReplayerTest {
 
   @Test
-  public void test() throws IOException, StorageGroupProcessorException {
+  public void test() throws IOException, StorageGroupProcessorException, QueryProcessException {
     String logNodePrefix = "testLogNode";
     File tsFile = SystemFileFactory.INSTANCE.getFile("temp", "1-1-1.tsfile");
     File modF = SystemFileFactory.INSTANCE.getFile("test.mod");

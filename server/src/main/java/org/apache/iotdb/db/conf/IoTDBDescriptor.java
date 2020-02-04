@@ -27,7 +27,7 @@ import java.net.URL;
 import java.time.ZoneId;
 import java.util.Properties;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
@@ -432,7 +432,7 @@ public class IoTDBDescriptor {
         .getProperty("compressor", TSFileDescriptor.getInstance().getConfig().getCompressor()));
   }
 
-  public void loadHotModifiedProps() throws PlannerException {
+  public void loadHotModifiedProps() throws QueryProcessException {
     String url = getPropsUrl();
     if (url == null) {
       return;
@@ -487,7 +487,7 @@ public class IoTDBDescriptor {
 
     } catch (Exception e) {
       logger.warn("Fail to reload config file {}", url, e);
-      throw new PlannerException(String.format("Fail to reload config file %s because %s", url, e.getMessage()));
+      throw new QueryProcessException(String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
   }
 

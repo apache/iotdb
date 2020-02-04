@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -31,7 +31,6 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.seriesRelated.AggregateReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -99,7 +98,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       AggregateResult res;
       try {
         res = nextIntervalAggregation(i);
-      } catch (PlannerException e) {
+      } catch (QueryProcessException e) {
         throw new IOException(e);
       }
       if (res == null) {
@@ -116,7 +115,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    *
    * @param idx series id
    */
-  private AggregateResult nextIntervalAggregation(int idx) throws IOException, PlannerException {
+  private AggregateResult nextIntervalAggregation(int idx) throws IOException, QueryProcessException {
     IAggregateReader reader = seriesReaders.get(idx);
     AggregateResult result = AggreResultFactory
         .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(idx),

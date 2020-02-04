@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.executor;
 
 import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
@@ -41,18 +41,18 @@ public interface IQueryRouter {
    * Execute aggregation query.
    */
   QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException, IOException, PlannerException;
+      throws QueryFilterOptimizationException, StorageEngineException, IOException, QueryProcessException;
 
   /**
    * Execute groupBy query.
    */
   QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException,
-      PlannerException, IOException;
+      QueryProcessException, IOException;
 
   /**
    * Execute fill query.
    */
   QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
-      throws StorageEngineException, PlannerException, IOException;
+      throws StorageEngineException, QueryProcessException, IOException;
 }

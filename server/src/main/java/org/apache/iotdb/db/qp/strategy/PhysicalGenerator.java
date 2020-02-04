@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -46,11 +46,8 @@ import java.util.*;
  */
 public class PhysicalGenerator {
 
-  public PhysicalGenerator() {
-  }
-
   public PhysicalPlan transformToPhysicalPlan(Operator operator)
-      throws PlannerException {
+      throws QueryProcessException {
     List<Path> paths;
     switch (operator.getType()) {
       case AUTHOR:
@@ -60,7 +57,7 @@ public class PhysicalGenerator {
               author.getPassWord(), author.getNewPassword(), author.getPrivilegeList(),
               author.getNodeName());
         } catch (AuthException e) {
-          throw new PlannerException(e.getMessage());
+          throw new QueryProcessException(e.getMessage());
         }
       case GRANT_WATERMARK_EMBEDDING:
       case REVOKE_WATERMARK_EMBEDDING:
@@ -173,7 +170,7 @@ public class PhysicalGenerator {
 
 
   private PhysicalPlan transformQuery(QueryOperator queryOperator)
-      throws PlannerException {
+      throws QueryProcessException {
     QueryPlan queryPlan;
 
     if (queryOperator.isGroupBy()) {
@@ -188,7 +185,7 @@ public class PhysicalGenerator {
       queryPlan = new FillQueryPlan();
       FilterOperator timeFilter = queryOperator.getFilterOperator();
       if (!timeFilter.isSingle()) {
-        throw new PlannerException("Slice query must select a single time point");
+        throw new QueryProcessException("Slice query must select a single time point");
       }
       long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
       ((FillQueryPlan) queryPlan).setQueryTime(time);
@@ -213,7 +210,6 @@ public class PhysicalGenerator {
       List<Path> paths = new ArrayList<>();
 
       boolean isNotExistMeasurement = true;
-      boolean isConstMeasurement = false;
 
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix
         Path suffixPath = suffixPaths.get(i);
@@ -261,7 +257,7 @@ public class PhysicalGenerator {
               TSDataType dataType = TSServiceImpl.getSeriesType(pathForDataType);
               if (dataTypeConsistencyChecker.containsKey(measurementChecked)) {
                 if (!dataType.equals(dataTypeConsistencyChecker.get(measurementChecked))) {
-                  throw new PlannerException(
+                  throw new QueryProcessException(
                       "The data types of the same measurement column should be the same across "
                           + "devices in GROUP_BY_DEVICE sql. For more details please refer to the "
                           + "SQL document.");
@@ -300,7 +296,7 @@ public class PhysicalGenerator {
       }
 
       if (measurements.isEmpty()) {
-        throw new PlannerException("do not select any existing series");
+        throw new QueryProcessException("do not select any existing series");
       }
 
       // slimit trim on the measurementColumnList
@@ -350,7 +346,7 @@ public class PhysicalGenerator {
   //  root.ln.d2 -> root.ln.d2.s1 < 20 AND root.ln.d2.s2 > 10)]
   private Map<String, IExpression> concatFilterByDivice(List<Path> fromPaths,
       FilterOperator operator)
-      throws PlannerException {
+      throws QueryProcessException {
     Map<String, IExpression> deviceToFilterMap = new HashMap<>();
     // remove stars in fromPaths and get deviceId with deduplication
     List<String> noStarDevices = removeStarsInDeviceWithUnique(fromPaths);
@@ -446,12 +442,12 @@ public class PhysicalGenerator {
   }
 
   private List<String> slimitTrimColumn(List<String> columnList, int seriesLimit, int seriesOffset)
-      throws PlannerException {
+      throws QueryProcessException {
     int size = columnList.size();
 
     // check parameter range
     if (seriesOffset >= size) {
-      throw new PlannerException("SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.");
+      throw new QueryProcessException("SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.");
     }
     int endPosition = seriesOffset + seriesLimit;
     if (endPosition > size) {

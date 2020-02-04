@@ -28,7 +28,7 @@ import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -75,7 +75,7 @@ public class AggregationExecutor {
    * @param context query context
    */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
-      throws StorageEngineException, IOException, PlannerException {
+      throws StorageEngineException, IOException, QueryProcessException {
 
     Filter timeFilter = null;
     if (expression != null) {
@@ -108,7 +108,7 @@ public class AggregationExecutor {
    */
   private List<AggregateResult> groupAggregationsBySeries(Map.Entry<Path, List<Integer>> series,
       Filter timeFilter, QueryContext context)
-      throws IOException, PlannerException, StorageEngineException {
+      throws IOException, QueryProcessException, StorageEngineException {
     List<AggregateResult> aggregateResultList = new ArrayList<>();
     List<Boolean> isCalculatedList = new ArrayList<>();
     Path seriesPath = series.getKey();

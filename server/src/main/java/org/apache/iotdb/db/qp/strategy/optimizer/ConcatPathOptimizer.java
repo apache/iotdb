@@ -40,8 +40,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   private static final String WARNING_NO_SUFFIX_PATHS = "given SFWOperator doesn't have suffix paths, cannot concat seriesPath";
   private static final String WARNING_NO_PREFIX_PATHS = "given SFWOperator doesn't have prefix paths, cannot concat seriesPath";
 
-  public ConcatPathOptimizer() {
-  }
 
   @Override
   public Operator transform(Operator operator) throws LogicalOptimizeException {

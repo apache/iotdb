@@ -25,7 +25,7 @@ import static org.junit.Assert.fail;
 import java.io.File;
 import java.io.IOException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -65,7 +65,7 @@ public class PhysicalPlanTest {
   private Planner processor = new Planner();
 
   @Before
-  public void before() throws PlannerException, MetadataException {
+  public void before() throws QueryProcessException, MetadataException {
     MManager.getInstance().init();
     MManager.getInstance().setStorageGroupToMTree("root.vehicle");
     MManager.getInstance().addPathToMTree("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
@@ -85,7 +85,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testMetadata() throws PlannerException {
+  public void testMetadata() throws QueryProcessException {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=INT32,encoding=RLE";
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
@@ -94,7 +94,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testMetadata2() throws PlannerException {
+  public void testMetadata2() throws QueryProcessException {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=int32,encoding=rle";
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
@@ -103,7 +103,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testAuthor() throws PlannerException {
+  public void testAuthor() throws QueryProcessException {
     String sql = "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.d1.s1";
     Planner processor = new Planner();
     AuthorPlan plan = (AuthorPlan) processor.parseSQLToPhysicalPlan(sql);
@@ -114,7 +114,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testProperty() throws PlannerException {
+  public void testProperty() throws QueryProcessException {
     String sql = "add label label1021 to property propropro";
     Planner processor = new Planner();
     PropertyPlan plan = (PropertyPlan) processor.parseSQLToPhysicalPlan(sql);
@@ -127,7 +127,7 @@ public class PhysicalPlanTest {
   // TODO uncomment these code when implement aggregation and fill function
 
   @Test
-  public void testAggregation() throws PlannerException {
+  public void testAggregation() throws QueryProcessException {
     String sqlStr = "select sum(d1.s1) " + "from root.vehicle "
         + "where time <= 51 or !(time != 100 and time < 460)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
@@ -139,7 +139,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testGroupBy1() throws PlannerException {
+  public void testGroupBy1() throws QueryProcessException {
     String sqlStr =
         "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
             + "group by([8,737], 3ms)";
@@ -155,7 +155,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testGroupBy2() throws PlannerException {
+  public void testGroupBy2() throws QueryProcessException {
     String sqlStr =
         "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
             + "group by([123,2017-6-2T12:00:12+07:00], 111ms)";
@@ -168,7 +168,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testGroupBy3() throws PlannerException {
+  public void testGroupBy3() throws QueryProcessException {
     String sqlStr =
         "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
             + "group by([2017-6-2T12:00:12+07:00,2017-6-12T12:00:12+07:00], 3h, 24h)";
@@ -184,7 +184,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testFill1() throws PlannerException {
+  public void testFill1() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time = 5000 Fill(int32[linear, 5m, 5m], boolean[previous, 5m])";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     if (!plan.isQuery()) {
@@ -201,7 +201,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testFill2() throws PlannerException {
+  public void testFill2() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time = 5000 Fill(int32[linear], boolean[previous])";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     if (!plan.isQuery()) {
@@ -236,7 +236,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQuery1() throws PlannerException {
+  public void testQuery1() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 5000";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -245,7 +245,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQuery2() throws PlannerException {
+  public void testQuery2() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -256,7 +256,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQuery3() throws PlannerException {
+  public void testQuery3() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100 or s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -268,7 +268,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQuery4() throws PlannerException {
+  public void testQuery4() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100 and s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -284,7 +284,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQuery5() throws PlannerException {
+  public void testQuery5() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20 or s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -295,7 +295,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQuery6() throws PlannerException {
+  public void testQuery6() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 20 or time < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -306,7 +306,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQuery7() throws PlannerException {
+  public void testQuery7() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 2019-10-16 10:59:00+08:00 - 1d5h or time < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -316,7 +316,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testLimitOffset() throws PlannerException {
+  public void testLimitOffset() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1,root.vehicle.d2 WHERE time < 10 "
         + "limit 100 offset 10 slimit 1 soffset 1";
     QueryPlan plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
@@ -327,7 +327,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQueryFloat1() throws PlannerException {
+  public void testQueryFloat1() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20.5e3";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -337,7 +337,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQueryFloat2() throws PlannerException {
+  public void testQueryFloat2() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20.5E-3";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -347,7 +347,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQueryFloat3() throws PlannerException {
+  public void testQueryFloat3() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.5";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -357,7 +357,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQueryFloat4() throws PlannerException {
+  public void testQueryFloat4() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.5";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -367,7 +367,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQueryFloat5() throws PlannerException {
+  public void testQueryFloat5() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -2.5";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -377,7 +377,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQueryFloat6() throws PlannerException {
+  public void testQueryFloat6() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -2.5E-1";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -387,7 +387,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQueryFloat7() throws PlannerException {
+  public void testQueryFloat7() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.5E2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -397,7 +397,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQueryFloat8() throws PlannerException {
+  public void testQueryFloat8() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > .2e2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -407,7 +407,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQueryFloat9() throws PlannerException {
+  public void testQueryFloat9() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > .2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -417,7 +417,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQueryFloat10() throws PlannerException {
+  public void testQueryFloat10() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -427,7 +427,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQueryFloat11() throws PlannerException {
+  public void testQueryFloat11() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -437,7 +437,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQueryFloat12() throws PlannerException {
+  public void testQueryFloat12() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -2.";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -447,7 +447,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQueryFloat13() throws PlannerException {
+  public void testQueryFloat13() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -.2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -457,7 +457,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQueryFloat14() throws PlannerException {
+  public void testQueryFloat14() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -.2e2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -467,7 +467,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testGrantWatermarkEmbedding() throws PlannerException {
+  public void testGrantWatermarkEmbedding() throws QueryProcessException {
     String sqlStr = "GRANT WATERMARK_EMBEDDING to a,b";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     DataAuthPlan dataAuthPlan = (DataAuthPlan) plan;
@@ -476,7 +476,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testRevokeWatermarkEmbedding() throws PlannerException {
+  public void testRevokeWatermarkEmbedding() throws QueryProcessException {
     String sqlStr = "REVOKE WATERMARK_EMBEDDING from a,b";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     DataAuthPlan dataAuthPlan = (DataAuthPlan) plan;
@@ -485,7 +485,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testConfiguration() throws PlannerException {
+  public void testConfiguration() throws QueryProcessException {
     String metadata = "load configuration";
     Planner processor = new Planner();
     LoadConfigurationPlan plan = (LoadConfigurationPlan) processor.parseSQLToPhysicalPlan(metadata);
@@ -493,7 +493,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testShowDynamicParameter() throws PlannerException {
+  public void testShowDynamicParameter() throws QueryProcessException {
     String metadata = "show dynamic parameter";
     Planner processor = new Planner();
     ShowPlan plan = (ShowPlan) processor.parseSQLToPhysicalPlan(metadata);
@@ -501,7 +501,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testShowFlushInfo() throws PlannerException {
+  public void testShowFlushInfo() throws QueryProcessException {
     String metadata = "show flush task info";
     Planner processor = new Planner();
     ShowPlan plan = (ShowPlan) processor.parseSQLToPhysicalPlan(metadata);
@@ -509,7 +509,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testLoadFiles() throws PlannerException {
+  public void testLoadFiles() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
     String metadata = String.format("load %s", filePath);
     Planner processor = new Planner();
@@ -541,7 +541,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testRemoveFile() throws PlannerException {
+  public void testRemoveFile() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
     String metadata = String.format("remove %s", filePath);
     Planner processor = new Planner();
@@ -552,7 +552,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testMoveFile() throws PlannerException {
+  public void testMoveFile() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
     String targetDir = "user" + File.separator + "backup";
     String metadata = String.format("move %s %s", filePath, targetDir);

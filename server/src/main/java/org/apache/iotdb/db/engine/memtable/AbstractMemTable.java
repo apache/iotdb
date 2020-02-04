@@ -27,7 +27,7 @@ import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -85,7 +85,7 @@ public abstract class AbstractMemTable implements IMemTable {
   protected abstract IWritableMemChunk genMemSeries(TSDataType dataType);
 
   @Override
-  public void insert(InsertPlan insertPlan) throws PlannerException {
+  public void insert(InsertPlan insertPlan) throws QueryProcessException {
     try {
       for (int i = 0; i < insertPlan.getValues().length; i++) {
 
@@ -96,25 +96,22 @@ public abstract class AbstractMemTable implements IMemTable {
       long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
       memSize += recordSizeInByte;
     } catch (RuntimeException e) {
-      throw new PlannerException(e.getMessage());
+      throw new QueryProcessException(e.getMessage());
     }
   }
 
-  private static Object parseValue(TSDataType dataType, String value) throws PlannerException {
+  private static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
     try {
       switch (dataType) {
         case BOOLEAN:
           value = value.toLowerCase();
-          if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEN_FALSE
-              .equals(value)) {
+          if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEN_FALSE.equals(value)) {
             return false;
-          } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEN_TRUE
-              .equals(value)) {
-            return true;
-          } else {
-            throw new PlannerException(
-                "The BOOLEAN data type should be true/TRUE, false/FALSE or 0/1");
           }
+          if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEN_TRUE.equals(value)) {
+            return true;
+          }
+          throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
         case INT32:
           return Integer.parseInt(value);
         case INT64:
@@ -131,26 +128,25 @@ public abstract class AbstractMemTable implements IMemTable {
             } else {
               return new Binary(value.substring(1, value.length() - 1));
             }
-          } else {
-            throw new PlannerException("The TEXT data type should be covered by \" or '");
           }
+          throw new QueryProcessException("The TEXT data type should be covered by \" or '");
         default:
-          throw new PlannerException("Unsupported data type:" + dataType);
+          throw new QueryProcessException("Unsupported data type:" + dataType);
       }
     } catch (NumberFormatException e) {
-      throw new PlannerException(e.getMessage());
+      throw new QueryProcessException(e.getMessage());
     }
   }
 
   @Override
   public void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end)
-      throws PlannerException {
+      throws QueryProcessException {
     try {
       write(batchInsertPlan, start, end);
       long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan);
       memSize += recordSizeInByte;
     } catch (RuntimeException e) {
-      throw new PlannerException(e.getMessage());
+      throw new QueryProcessException(e.getMessage());
     }
   }
 
@@ -203,7 +199,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      TSEncoding encoding, Map<String, String> props, long timeLowerBound) throws IOException {
+      TSEncoding encoding, Map<String, String> props, long timeLowerBound)
+      throws IOException, QueryProcessException {
     if (!checkPath(deviceId, measurement)) {
       return null;
     }

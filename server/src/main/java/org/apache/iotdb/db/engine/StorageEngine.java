@@ -32,7 +32,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.path.PathException;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupNotSetException;
@@ -206,7 +206,7 @@ public class StorageEngine implements IService {
    * @param insertPlan physical plan of insertion
    */
   public void insert(InsertPlan insertPlan)
-      throws StorageEngineException, PlannerException {
+      throws StorageEngineException, QueryProcessException {
 
     StorageGroupProcessor storageGroupProcessor;
     try {
@@ -220,8 +220,8 @@ public class StorageEngine implements IService {
     // TODO monitor: update statistics
     try {
       storageGroupProcessor.insert(insertPlan);
-    } catch (PlannerException e) {
-      throw new PlannerException(e);
+    } catch (QueryProcessException e) {
+      throw new QueryProcessException(e);
     }
   }
 
@@ -244,7 +244,7 @@ public class StorageEngine implements IService {
     // TODO monitor: update statistics
     try {
       return storageGroupProcessor.insertBatch(batchInsertPlan);
-    } catch (PlannerException e) {
+    } catch (QueryProcessException e) {
       throw new StorageEngineException(e);
     }
   }

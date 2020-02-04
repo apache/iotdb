@@ -40,7 +40,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -97,7 +97,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInBufferWriteCache() throws
-      StorageEngineException, PlannerException, IOException {
+      StorageEngineException, QueryProcessException, IOException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -133,7 +133,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInBufferWriteFile()
-      throws StorageEngineException, IOException, PlannerException {
+      throws StorageEngineException, IOException, QueryProcessException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -185,7 +185,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInOverflowCache()
-      throws StorageEngineException, PlannerException, IOException {
+      throws StorageEngineException, QueryProcessException, IOException {
     // insert sequence data
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -233,7 +233,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInOverflowFile()
-      throws StorageEngineException, PlannerException, IOException {
+      throws StorageEngineException, QueryProcessException, IOException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);

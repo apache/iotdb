@@ -20,9 +20,7 @@ package org.apache.iotdb.tsfile.read.common;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class RowRecord {
 

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -143,7 +143,7 @@ public class PlannerTest {
   }
 
   @Test(expected = ParseCancellationException.class)
-  public void parseErrorSQLToPhysicalPlan() throws PlannerException {
+  public void parseErrorSQLToPhysicalPlan() throws QueryProcessException {
     String createTSStatement = "create timeseriess root.vehicle.d1.s1 with datatype=INT32,encoding=RLE";
     processor.parseSQLToPhysicalPlan(createTSStatement);
   }

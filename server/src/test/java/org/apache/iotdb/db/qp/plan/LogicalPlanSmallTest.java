@@ -21,7 +21,7 @@ package org.apache.iotdb.db.qp.plan;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.logical.RootOperator;
@@ -170,7 +170,7 @@ public class LogicalPlanSmallTest {
   }
 
   @Test(expected = LogicalOptimizeException.class)
-  public void testSoffsetExceedColumnNum() throws PlannerException {
+  public void testSoffsetExceedColumnNum() throws QueryProcessException {
     String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 2 soffset 1";
     RootOperator operator = (RootOperator) parseDriver
         .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());

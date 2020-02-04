@@ -27,7 +27,6 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.seriesRelated.RawDataPointReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -36,11 +35,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 
 public class EngineNodeConstructor extends AbstractNodeConstructor {
-
-  public EngineNodeConstructor() {
-    // nothing to initialize
-    // TODO: make this a util class
-  }
 
   /**
    * Construct expression node.

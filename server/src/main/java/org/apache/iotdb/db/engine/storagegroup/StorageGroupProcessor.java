@@ -44,7 +44,7 @@ import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
@@ -461,7 +461,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void insert(InsertPlan insertPlan) throws PlannerException {
+  public void insert(InsertPlan insertPlan) throws QueryProcessException {
     // reject insertions that are out of ttl
     if (!checkTTL(insertPlan.getTime())) {
       throw new OutOfTTLException(insertPlan.getTime(), (System.currentTimeMillis() - dataTTL));
@@ -484,7 +484,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws PlannerException {
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
     writeLock();
     try {
       Integer[] results = new Integer[batchInsertPlan.getRowCount()];
@@ -577,7 +577,7 @@ public class StorageGroupProcessor {
    */
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
       int start, int end, boolean sequence, Integer[] results, long timePartitionId)
-      throws PlannerException {
+      throws QueryProcessException {
     // return when start <= end
     if (start >= end) {
       return;
@@ -612,7 +612,7 @@ public class StorageGroupProcessor {
 
 
   private void insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
-      throws PlannerException {
+      throws QueryProcessException {
     TsFileProcessor tsFileProcessor;
     boolean result;
     long timePartitionId = fromTimeToTimePartition(insertPlan.getTime());

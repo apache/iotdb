@@ -25,7 +25,7 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -64,9 +64,9 @@ public abstract class ReaderTestHelper {
     EnvironmentUtils.cleanDir(systemDir);
   }
 
-  abstract protected void insertData() throws IOException, PlannerException;
+  abstract protected void insertData() throws IOException, QueryProcessException;
 
-  protected void insertOneRecord(long time, int num) throws PlannerException {
+  protected void insertOneRecord(long time, int num) throws QueryProcessException {
     TSRecord record = new TSRecord(time, deviceId);
     record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(num)));
     storageGroupProcessor.insert(new InsertPlan(record));

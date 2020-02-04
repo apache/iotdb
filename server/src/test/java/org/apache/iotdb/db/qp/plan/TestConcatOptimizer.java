@@ -24,7 +24,7 @@ import java.io.IOException;
 import org.antlr.v4.runtime.RecognitionException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -75,14 +75,14 @@ public class TestConcatOptimizer {
   }
 
   @Test
-  public void testConcat1() throws PlannerException, RecognitionException {
+  public void testConcat1() throws QueryProcessException, RecognitionException {
     String inputSQL = "select s1 from root.laptop.d1";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
     assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).toString());
   }
 
   @Test
-  public void testConcat2() throws PlannerException, RecognitionException {
+  public void testConcat2() throws QueryProcessException, RecognitionException {
     String inputSQL = "select s1 from root.laptop.*";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
     assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).toString());
@@ -91,7 +91,7 @@ public class TestConcatOptimizer {
   }
 
   @Test
-  public void testConcat3() throws PlannerException, RecognitionException{
+  public void testConcat3() throws QueryProcessException, RecognitionException{
     String inputSQL = "select s1 from root.laptop.d1 where s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
     SingleSeriesExpression seriesExpression = new SingleSeriesExpression(

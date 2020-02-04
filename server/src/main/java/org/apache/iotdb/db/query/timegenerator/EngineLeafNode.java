@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.timegenerator;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReader;
 import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.NodeType;

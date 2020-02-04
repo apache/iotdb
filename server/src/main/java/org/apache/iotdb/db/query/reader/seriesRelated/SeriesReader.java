@@ -33,7 +33,6 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.MemChunkLoader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;

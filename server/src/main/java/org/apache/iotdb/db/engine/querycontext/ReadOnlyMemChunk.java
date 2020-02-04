@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.querycontext;
 
 import java.io.IOException;
 import java.util.Map;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.reader.MemChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -31,7 +32,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
-//TODO: merge ReadOnlyMemChunk and WritableMemChunk and IWritableMemChunk
 public class ReadOnlyMemChunk {
 
   private String measurementUid;
@@ -50,7 +50,8 @@ public class ReadOnlyMemChunk {
   private IPointReader chunkPointReader;
 
   public ReadOnlyMemChunk(String measurementUid, TSDataType dataType, TSEncoding encoding,
-      TVList tvList, Map<String, String> props, long version) throws IOException {
+      TVList tvList, Map<String, String> props, long version)
+      throws IOException, QueryProcessException {
     this.measurementUid = measurementUid;
     this.dataType = dataType;
     this.encoding = encoding;
@@ -65,7 +66,7 @@ public class ReadOnlyMemChunk {
     initChunkMeta();
   }
 
-  private void initChunkMeta() throws IOException {
+  private void initChunkMeta() throws IOException, QueryProcessException {
     Statistics statsByType = Statistics.getStatsByType(dataType);
     ChunkMetaData metaData = new ChunkMetaData(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
@@ -92,7 +93,7 @@ public class ReadOnlyMemChunk {
             statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
             break;
           default:
-            throw new RuntimeException("Unsupported data types");
+            throw new QueryProcessException("Unsupported data type:" + dataType);
         }
       }
     }

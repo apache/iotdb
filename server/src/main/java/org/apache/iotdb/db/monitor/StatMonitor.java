@@ -35,7 +35,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeManagerStatConstants;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeProcessorStatConstants;
@@ -387,7 +387,7 @@ public class StatMonitor implements IService {
           numInsert.incrementAndGet();
           pointNum = entry.getValue().dataPointList.size();
           numPointsInsert.addAndGet(pointNum);
-        } catch (StorageEngineException | PlannerException e) {
+        } catch (StorageEngineException | QueryProcessException e) {
           numInsertError.incrementAndGet();
           logger.error("Inserting stat points error.", e);
         }

@@ -23,7 +23,7 @@ import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 import java.util.Collection;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -66,7 +66,7 @@ public class TSPlanContextAuthorTest {
   }
 
   @Test
-  public void testAnalyzeAuthor() throws PlannerException {
+  public void testAnalyzeAuthor() throws QueryProcessException {
     Planner processor = new Planner();
     AuthorPlan author = (AuthorPlan) processor.parseSQLToPhysicalPlan(inputSQL);
     if (author == null) {

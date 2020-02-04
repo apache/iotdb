@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -40,7 +40,7 @@ public interface IPlanExecutor {
    */
   QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException,
-      QueryFilterOptimizationException, PlannerException, MetadataException, SQLException;
+      QueryFilterOptimizationException, QueryProcessException, MetadataException, SQLException;
 
   /**
    * Process Non-Query Physical plan, including insert/update/delete operation of
@@ -48,25 +48,25 @@ public interface IPlanExecutor {
    *
    * @param plan Physical Non-Query Plan
    */
-  boolean processNonQuery(PhysicalPlan plan) throws PlannerException;
+  boolean processNonQuery(PhysicalPlan plan) throws QueryProcessException;
 
   /**
    * process aggregate plan of qp layer, construct queryDataSet.
    */
   QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
-      throws IOException, PlannerException, StorageEngineException, QueryFilterOptimizationException;
+      throws IOException, QueryProcessException, StorageEngineException, QueryFilterOptimizationException;
 
   /**
    * process group by plan of qp layer, construct queryDataSet.
    */
   QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
-      throws IOException, PlannerException, StorageEngineException, QueryFilterOptimizationException;
+      throws IOException, QueryProcessException, StorageEngineException, QueryFilterOptimizationException;
 
   /**
    * process fill plan of qp layer, construct queryDataSet.
    */
   QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
-      throws IOException, PlannerException, StorageEngineException;
+      throws IOException, QueryProcessException, StorageEngineException;
 
   /**
    * execute update command and return whether the operator is successful.
@@ -77,14 +77,14 @@ public interface IPlanExecutor {
    * @param value     - in type of string
    */
   void update(Path path, long startTime, long endTime, String value)
-      throws PlannerException;
+      throws QueryProcessException;
 
   /**
    * execute delete command and return whether the operator is successful.
    *
    * @param deletePlan physical delete plan
    */
-  void delete(DeletePlan deletePlan) throws PlannerException;
+  void delete(DeletePlan deletePlan) throws QueryProcessException;
 
   /**
    * execute delete command and return whether the operator is successful.
@@ -92,20 +92,20 @@ public interface IPlanExecutor {
    * @param path       : delete series seriesPath
    * @param deleteTime end time in delete command
    */
-  void delete(Path path, long deleteTime) throws PlannerException;
+  void delete(Path path, long deleteTime) throws QueryProcessException;
 
   /**
    * execute insert command and return whether the operator is successful.
    *
    * @param insertPlan physical insert plan
    */
-  void insert(InsertPlan insertPlan) throws PlannerException;
+  void insert(InsertPlan insertPlan) throws QueryProcessException;
 
   /**
    * execute batch insert plan
    *
    * @return result of each row
    */
-  Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws PlannerException;
+  Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException;
 
 }

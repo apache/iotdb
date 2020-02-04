@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -82,7 +82,7 @@ public class StorageGroupProcessorTest {
 
 
   @Test
-  public void testUnseqUnsealedDelete() throws PlannerException, IOException {
+  public void testUnseqUnsealedDelete() throws QueryProcessException, IOException {
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     processor.insert(new InsertPlan(record));
@@ -129,7 +129,7 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testSequenceSyncClose() throws PlannerException {
+  public void testSequenceSyncClose() throws QueryProcessException {
     for (int j = 1; j <= 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -148,7 +148,7 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testIoTDBRowBatchWriteAndSyncClose() throws PlannerException {
+  public void testIoTDBRowBatchWriteAndSyncClose() throws QueryProcessException {
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -205,7 +205,7 @@ public class StorageGroupProcessorTest {
 
 
   @Test
-  public void testSeqAndUnSeqSyncClose() throws PlannerException {
+  public void testSeqAndUnSeqSyncClose() throws QueryProcessException {
 
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
@@ -237,7 +237,7 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testMerge() throws PlannerException {
+  public void testMerge() throws QueryProcessException {
 
     mergeLock = new AtomicLong(0);
     for (int j = 21; j <= 30; j++) {

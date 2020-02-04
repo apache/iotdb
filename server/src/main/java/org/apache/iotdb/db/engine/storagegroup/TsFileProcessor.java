@@ -46,7 +46,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseTsFile
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTimeCallBack;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.query.PlannerException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -151,7 +151,7 @@ public class TsFileProcessor {
    * @param insertPlan physical plan of insertion
    * @return succeed or fail
    */
-  public boolean insert(InsertPlan insertPlan) throws PlannerException {
+  public boolean insert(InsertPlan insertPlan) throws QueryProcessException {
 
     if (workMemTable == null) {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
@@ -181,7 +181,7 @@ public class TsFileProcessor {
   }
 
   public boolean insertBatch(BatchInsertPlan batchInsertPlan, int start, int end,
-      Integer[] results) throws PlannerException {
+      Integer[] results) throws QueryProcessException {
 
     if (workMemTable == null) {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
@@ -601,9 +601,8 @@ public class TsFileProcessor {
         }
       }
       if (workMemTable != null) {
-        ReadOnlyMemChunk memChunk = workMemTable
-            .query(deviceId, measurementId, dataType, encoding, props,
-                context.getQueryTimeLowerBound());
+        ReadOnlyMemChunk memChunk = workMemTable.query(deviceId, measurementId, dataType, encoding,
+            props, context.getQueryTimeLowerBound());
         if (memChunk != null) {
           readOnlyMemChunks.add(memChunk);
         }
@@ -621,7 +620,7 @@ public class TsFileProcessor {
       chunkMetaDataList.removeIf(context::chunkNotSatisfy);
 
       return new Pair<>(readOnlyMemChunks, chunkMetaDataList);
-    } catch (IOException e) {
+    } catch (IOException | QueryProcessException e) {
       logger.error("get ReadOnlyMemChunk has error", e);
     } finally {
       flushQueryLock.readLock().unlock();
