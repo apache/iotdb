@@ -329,7 +329,7 @@ public class SeriesReader {
 
   private IChunkReader initChunkReader(ChunkMetaData metaData) throws IOException {
     if (metaData == null) {
-      return null;
+      throw new IOException("Can't init null chunkMeta");
     }
     IChunkReader chunkReader;
     IChunkLoader chunkLoader = metaData.getChunkLoader();

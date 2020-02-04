@@ -66,32 +66,27 @@ public class RawDataQueryExecutor {
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
       throws StorageEngineException {
 
-    Filter timeFilter = null;
-    if (optimizedExpression != null) {
-      timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
-    }
-
-    List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
-    for (int i = 0; i < deduplicatedPaths.size(); i++) {
-      Path path = deduplicatedPaths.get(i);
-      TSDataType dataType = deduplicatedDataTypes.get(i);
-
-      ManagedSeriesReader reader = new RawDataBatchReader(path, dataType, context,
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
-          timeFilter, null);
-      readersOfSelectedSeries.add(reader);
-    }
+    List<ManagedSeriesReader> managedSeriesReaderList = createManagedSeriesReaderList(context);
 
     try {
       return new RawQueryDataSetWithoutValueFilter(deduplicatedPaths, deduplicatedDataTypes,
-          readersOfSelectedSeries);
+          managedSeriesReaderList);
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       throw new StorageEngineException(e.getMessage());
     }
   }
 
   public QueryDataSet executeNonAlign(QueryContext context) throws StorageEngineException {
 
+    List<ManagedSeriesReader> managedSeriesReaderList = createManagedSeriesReaderList(context);
+
+    return new NonAlignEngineDataSet(deduplicatedPaths, deduplicatedDataTypes,
+        managedSeriesReaderList);
+  }
+
+  private List<ManagedSeriesReader> createManagedSeriesReaderList(QueryContext context)
+      throws StorageEngineException {
     Filter timeFilter = null;
     if (optimizedExpression != null) {
       timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
@@ -107,9 +102,7 @@ public class RawDataQueryExecutor {
           timeFilter, null);
       readersOfSelectedSeries.add(reader);
     }
-
-    return new NonAlignEngineDataSet(deduplicatedPaths, deduplicatedDataTypes,
-        readersOfSelectedSeries);
+    return readersOfSelectedSeries;
   }
 
   /**
