@@ -78,8 +78,6 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
   private boolean hasCachedNextBatch;
   private BatchData cachedBatchData;
 
-  private long currentPageEndTime = Long.MAX_VALUE;
-
 
   private boolean hasRemaining;
   private boolean managedByQueryManager;
@@ -135,7 +133,7 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
     if (hasCachedFirstChunkMetadata) {
       return true;
     }
-    // init first chunkReader whose startTime is minimum
+    // init first chunk metadata whose startTime is minimum
     tryToInitFirstChunk();
 
     return hasCachedFirstChunkMetadata;
@@ -218,10 +216,11 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
   }
 
 
-  public BatchData nextPage() throws IOException {
+  protected BatchData nextPage() throws IOException {
     BatchData pageData = Objects
         .requireNonNull(overlappedPageReaders.poll().data, "No Batch data")
         .getAllSatisfiedPageData();
+    // only need to consider valueFilter because timeFilter has been set into the page reader
     if (valueFilter == null) {
       return pageData;
     }
@@ -235,7 +234,7 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
     return batchData;
   }
 
-  public boolean isPageOverlapped() {
+  protected boolean isPageOverlapped() {
     Statistics pageStatistics = overlappedPageReaders.peek().data.getStatistics();
     return mergeReader.hasNextTimeValuePair()
         || (!seqChunkMetadatas.isEmpty()
@@ -268,7 +267,7 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
 
     if (mergeReader.hasNextTimeValuePair()) {
       cachedBatchData = new BatchData(dataType);
-      currentPageEndTime = mergeReader.getCurrentLargestEndTime();
+      long currentPageEndTime = mergeReader.getCurrentLargestEndTime();
       while (mergeReader.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = mergeReader.currentTimeValuePair();
         if (timeValuePair.getTimestamp() > currentPageEndTime) {
@@ -304,11 +303,8 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
         }
 
         timeValuePair = mergeReader.nextTimeValuePair();
-        if (valueFilter == null) {
-          cachedBatchData.putAnObject(
-              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
-        } else if (valueFilter
-            .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+        if (valueFilter == null || valueFilter
+                .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
           cachedBatchData.putAnObject(
               timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
         }
@@ -319,7 +315,7 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
   }
 
   private void putAllDirectlyOverlappedPageReadersIntoMergeReader() throws IOException {
-
+    long currentPageEndTime;
     if (mergeReader.hasNextTimeValuePair()) {
       currentPageEndTime = mergeReader.getCurrentLargestEndTime();
     } else if (!overlappedPageReaders.isEmpty()) {
@@ -505,7 +501,7 @@ public class SeriesReader implements ISeriesReader, ManagedSeriesReader {
             hasCachedBatchData = true;
             return true;
           }
-          while (hasNextOverlappedPage()) {
+          if (hasNextOverlappedPage()) {
             batchData = nextOverlappedPage();
             hasCachedBatchData = true;
             return true;
