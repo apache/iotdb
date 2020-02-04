@@ -136,7 +136,7 @@ andExpression
     ;
 
 predicate
-    : (suffixPath | prefixPath) comparisonOperator constant
+    : (TIME | TIMESTAMP | suffixPath | prefixPath) comparisonOperator constant
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
     ;
 
@@ -231,7 +231,7 @@ comparisonOperator
     ;
 
 insertColumnSpec
-    : LR_BRACKET TIMESTAMP (COMMA nodeNameWithoutStar)* RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)* RR_BRACKET
     ;
 
 insertValuesSpec
@@ -726,6 +726,10 @@ ALIGN
 
 COMPRESSION
     : C O M P R E S S I O N
+    ;
+
+TIME
+    : T I M E
     ;
 //============================
 // End of the keywords list
