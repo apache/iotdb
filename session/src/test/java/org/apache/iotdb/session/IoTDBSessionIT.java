@@ -61,6 +61,24 @@ public class IoTDBSessionIT {
     EnvironmentUtils.cleanEnv();
   }
 
+  @Test
+  public void testInsertByObject()
+      throws IoTDBSessionException, SQLException, ClassNotFoundException, TException, IoTDBRPCException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    session.setStorageGroup("root.sg1");
+
+    createTimeseries();
+    insertInObject();
+
+    // sql test
+    insert_via_sql();
+    query3();
+
+    session.close();
+  }
+
   // it's will output too much to travis, so ignore it
   public void testTime()
       throws IoTDBSessionException, SQLException, ClassNotFoundException, TException, IoTDBRPCException {
@@ -306,6 +324,17 @@ public class IoTDBSessionIT {
     }
 
     session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+  }
+
+  private void insertInObject() throws IoTDBSessionException {
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    for (long time = 0; time < 100; time++) {
+      session.insert(deviceId, time, measurements, 1L, 1L, 1L);
+    }
   }
 
   private void insert() throws IoTDBSessionException {

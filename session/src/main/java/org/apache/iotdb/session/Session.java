@@ -25,7 +25,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.iotdb.rpc.IoTDBRPCException;
@@ -233,6 +235,39 @@ public class Session {
   }
 
   /**
+   * use batch interface to insert data in multiple device
+   *
+   * @param rowBatchMap data batch in multiple device
+   */
+  public Map<String, TSExecuteBatchStatementResp> insertMultipleDeviceBatch
+      (Map<String, RowBatch> rowBatchMap) throws IoTDBSessionException {
+    Map<String, TSExecuteBatchStatementResp> result = new HashMap<>();
+    for(Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()){
+      sortRowBatch(dataInOneDevice.getValue());
+      result.put(dataInOneDevice.getKey(), insertBatch(dataInOneDevice.getValue()));
+    }
+
+    return result;
+  }
+
+  /**
+   * use batch interface to insert sorted data in multiple device
+   * times in row batch must be sorted before!
+   *
+   * @param rowBatchMap data batch in multiple device
+   */
+  public Map<String, TSExecuteBatchStatementResp> insertMultipleDeviceSortedBatch
+  (Map<String, RowBatch> rowBatchMap) throws IoTDBSessionException {
+    Map<String, TSExecuteBatchStatementResp> result = new HashMap<>();
+    for(Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()){
+      checkSorted(dataInOneDevice.getValue());
+      result.put(dataInOneDevice.getKey(), insertBatch(dataInOneDevice.getValue()));
+    }
+
+    return result;
+  }
+
+  /**
    * use batch interface to insert data
    *
    * @param rowBatch data batch
@@ -358,6 +393,23 @@ public class Session {
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }
+  }
+
+  /**
+   * insert data in one row, if you want improve your performance, please use insertInBatch method
+   * or insertBatch method
+   *
+   * @see Session#insertInBatch(List, List, List, List)
+   * @see Session#insertBatch(RowBatch)
+   */
+  public TSStatus insert(String deviceId, long time, List<String> measurements,
+      Object... values) throws IoTDBSessionException {
+    List<String> stringValues = new ArrayList<>();
+    for (Object o : values) {
+      stringValues.add(o.toString());
+    }
+
+    return insert(deviceId, time, measurements, stringValues);
   }
 
   /**

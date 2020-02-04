@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb;
 
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.session.IoTDBSessionException;
 import org.apache.iotdb.session.Session;
@@ -29,10 +34,6 @@ import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.thrift.TException;
-
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class SessionExample {
 
@@ -70,6 +71,17 @@ public class SessionExample {
       values.add("2");
       values.add("3");
       session.insert(deviceId, time, measurements, values);
+    }
+  }
+
+  private static void insertInObject() throws IoTDBSessionException {
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    for (long time = 0; time < 100; time++) {
+      session.insert(deviceId, time, measurements, 1L, 1L, 1L);
     }
   }
 
@@ -148,6 +160,57 @@ public class SessionExample {
     if (rowBatch.batchSize != 0) {
       session.insertBatch(rowBatch);
       rowBatch.reset();
+    }
+  }
+
+  private static void insertMultipleDeviceRowBatch() throws IoTDBSessionException {
+    // The schema of sensors of one device
+    Schema schema1 = new Schema();
+    schema1.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema1.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema1.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+
+    RowBatch rowBatch1 = schema1.createRowBatch("root.sg1.d1", 100);
+
+    Schema schema2 = new Schema();
+    schema2.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema2.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema2.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+
+    RowBatch rowBatch2 = schema1.createRowBatch("root.sg1.d2", 100);
+
+    Map<String, RowBatch> rowBatchMap = new HashMap<>();
+    rowBatchMap.put("root.sg1.d1", rowBatch1);
+    rowBatchMap.put("root.sg1.d2", rowBatch2);
+
+    long[] timestamps1 = rowBatch1.timestamps;
+    Object[] values1 = rowBatch1.values;
+    long[] timestamps2 = rowBatch2.timestamps;
+    Object[] values2 = rowBatch2.values;
+
+    for (long time = 0; time < 100; time++) {
+      int row1 = rowBatch1.batchSize++;
+      int row2 = rowBatch2.batchSize++;
+      timestamps1[row1] = time;
+      timestamps2[row2] = time;
+      for (int i = 0; i < 3; i++) {
+        long[] sensor1 = (long[]) values1[i];
+        sensor1[row1] = i;
+        long[] sensor2 = (long[]) values2[i];
+        sensor2[row2] = i;
+      }
+      if (rowBatch1.batchSize == rowBatch1.getMaxBatchSize()) {
+        session.insertMultipleDeviceBatch(rowBatchMap);
+
+        rowBatch1.reset();
+        rowBatch2.reset();
+      }
+    }
+
+    if (rowBatch1.batchSize != 0) {
+      session.insertMultipleDeviceBatch(rowBatchMap);
+      rowBatch1.reset();
+      rowBatch2.reset();
     }
   }
 
