@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.reader.seriesRelated.RawDataPointReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -57,7 +58,7 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
         Path path = ((SingleSeriesExpression) expression).getSeriesPath();
         TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
         return new EngineLeafNode(
-            new SeriesReader(path, dataType, context,
+            new RawDataPointReader(path, dataType, context,
                 QueryResourceManager.getInstance().getQueryDataSource(path, context, filter),
                 null, filter));
       } catch (PathException e) {

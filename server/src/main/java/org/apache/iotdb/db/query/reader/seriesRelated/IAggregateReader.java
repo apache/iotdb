@@ -23,7 +23,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import java.io.IOException;
 
-public interface ISeriesReader {
+public interface IAggregateReader {
 
   boolean hasNextChunk() throws IOException;
 
@@ -31,7 +31,7 @@ public interface ISeriesReader {
 
   Statistics currentChunkStatistics();
 
-  void skipCurrentChunk() throws IOException;
+  void skipCurrentChunk();
 
   boolean hasNextPage() throws IOException;
 
@@ -45,7 +45,7 @@ public interface ISeriesReader {
    */
   Statistics currentPageStatistics() throws IOException;
 
-  void skipCurrentPage() throws IOException;
+  void skipCurrentPage();
 
   boolean hasNextOverlappedPage() throws IOException;
 

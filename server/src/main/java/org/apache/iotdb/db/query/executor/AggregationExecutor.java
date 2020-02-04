@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
@@ -36,8 +30,8 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.seriesRelated.ISeriesReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.AggregateReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -48,6 +42,10 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class AggregationExecutor {
 
@@ -104,7 +102,8 @@ public class AggregationExecutor {
     Path seriesPath = series.getKey();
     TSDataType tsDataType = dataTypes.get(series.getValue().get(0));
     // construct series reader without value filter
-    ISeriesReader seriesReader = new SeriesReader(seriesPath, tsDataType, context,
+    IAggregateReader seriesReader = new AggregateReader(
+        selectedSeries.get(i), tsDataType, context,
         QueryResourceManager.getInstance()
             .getQueryDataSource(seriesPath, context, timeFilter), timeFilter, null);
 
