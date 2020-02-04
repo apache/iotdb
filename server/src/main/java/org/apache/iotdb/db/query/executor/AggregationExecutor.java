@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.query.executor;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
@@ -42,10 +48,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class AggregationExecutor {
 
@@ -103,9 +105,8 @@ public class AggregationExecutor {
     TSDataType tsDataType = dataTypes.get(series.getValue().get(0));
     // construct series reader without value filter
     IAggregateReader seriesReader = new AggregateReader(
-        selectedSeries.get(i), tsDataType, context,
-        QueryResourceManager.getInstance()
-            .getQueryDataSource(seriesPath, context, timeFilter), timeFilter, null);
+        series.getKey(), tsDataType, context, QueryResourceManager.getInstance()
+        .getQueryDataSource(seriesPath, context, timeFilter), timeFilter, null);
 
     for (int i : series.getValue()) {
       // construct AggregateResult
