@@ -174,7 +174,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    *
    * @return MemTable byte size. If the value is -1, there is no valid solution.
    */
-  private int calcMemTableSize(double ratio) {
+  private long calcMemTableSize(double ratio) {
     // when unit is byte, it's likely to cause Long type overflow.
     // so when b is larger than Integer.MAC_VALUE use the unit KB.
     double a = maxMemTableNum;
@@ -187,7 +187,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
             / magnification / magnification;
     double tempValue = b * b - 4 * a * c;
     double memTableSize = ((b + Math.sqrt(tempValue)) / (2 * a));
-    return tempValue < 0 ? -1 : (int) (memTableSize * magnification);
+    return tempValue < 0 ? -1 : (long) (memTableSize * magnification);
   }
 
   /**
