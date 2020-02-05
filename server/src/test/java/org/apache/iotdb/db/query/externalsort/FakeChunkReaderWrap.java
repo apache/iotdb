@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.query.externalsort;
 
-import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 

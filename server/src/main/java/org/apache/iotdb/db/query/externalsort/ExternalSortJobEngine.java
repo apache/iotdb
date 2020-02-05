@@ -20,7 +20,7 @@ package org.apache.iotdb.db.query.externalsort;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 

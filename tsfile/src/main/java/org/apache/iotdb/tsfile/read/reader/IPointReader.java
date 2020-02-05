@@ -16,22 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.read.reader;
 
-package org.apache.iotdb.db.query.reader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import java.io.IOException;
 
-/**
- * provides additional interfaces to make it able to be run in a thread pool concurrently within a
- * query.
- */
-public interface ManagedSeriesReader extends IBatchReader {
+public interface IPointReader {
 
-  boolean isManagedByQueryManager();
+  boolean hasNextTimeValuePair() throws IOException;
 
-  void setManagedByQueryManager(boolean managedByQueryManager);
+  TimeValuePair nextTimeValuePair() throws IOException;
 
-  boolean hasRemaining();
+  TimeValuePair currentTimeValuePair() throws IOException;
 
-  void setHasRemaining(boolean hasRemaining);
+  void close() throws IOException;
 }

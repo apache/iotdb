@@ -28,7 +28,7 @@ import java.util.Random;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 import org.apache.iotdb.db.query.reader.universal.FakedSeriesReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
