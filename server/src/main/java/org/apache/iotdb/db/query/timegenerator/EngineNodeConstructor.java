@@ -26,7 +26,7 @@ import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesRawDataPointReader;
+import org.apache.iotdb.db.query.reader.seriesrelated.SeriesRawDataPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;

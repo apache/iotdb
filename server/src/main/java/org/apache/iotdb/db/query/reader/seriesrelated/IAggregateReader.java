@@ -16,26 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.query.reader.seriesrelated;
 
-package org.apache.iotdb.db.query.reader.resourceRelated;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import java.io.IOException;
-import java.util.List;
-import org.apache.iotdb.db.query.reader.chunkRelated.CachedDiskChunkReader;
-import org.apache.iotdb.db.query.reader.universal.CachedPriorityMergeReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
-public class CachedUnseqResourceMergeReader extends CachedPriorityMergeReader {
+public interface IAggregateReader {
 
-  public CachedUnseqResourceMergeReader(List<Chunk> chunks, TSDataType dataType)
-      throws IOException {
-    super(dataType);
-    int priorityValue = 1;
-    for (Chunk chunk : chunks) {
-      ChunkReader chunkReader = new ChunkReader(chunk, null);
-      addReader(new CachedDiskChunkReader(chunkReader), priorityValue++);
-    }
-  }
+  boolean hasNextChunk() throws IOException;
+
+  boolean canUseCurrentChunkStatistics();
+
+  Statistics currentChunkStatistics();
+
+  void skipCurrentChunk();
+
+  boolean hasNextPage() throws IOException;
+
+  /**
+   * only be used without value filter
+   */
+  boolean canUseCurrentPageStatistics() throws IOException;
+
+  /**
+   * only be used without value filter
+   */
+  Statistics currentPageStatistics() throws IOException;
+
+  void skipCurrentPage();
+
+  boolean hasNextOverlappedPage() throws IOException;
+
+  BatchData nextOverlappedPage() throws IOException;
 }

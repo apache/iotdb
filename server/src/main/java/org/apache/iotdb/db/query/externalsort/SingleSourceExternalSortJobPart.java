@@ -20,7 +20,7 @@
 
  import java.io.IOException;
  import org.apache.iotdb.tsfile.read.IPointReader;
- import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
+ import org.apache.iotdb.db.query.reader.chunkrelated.ChunkReaderWrap;
 
 
  public class SingleSourceExternalSortJobPart extends ExternalSortJobPart {

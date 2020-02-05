@@ -29,8 +29,8 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesAggregateReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader;
+import org.apache.iotdb.db.query.reader.seriesrelated.SeriesAggregateReader;
+import org.apache.iotdb.db.query.reader.seriesrelated.IAggregateReader;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -115,7 +115,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    *
    * @param idx series id
    */
-  private AggregateResult nextIntervalAggregation(int idx) throws IOException, QueryProcessException {
+  private AggregateResult nextIntervalAggregation(int idx)
+      throws IOException, QueryProcessException {
     IAggregateReader reader = seriesReaders.get(idx);
     AggregateResult result = AggreResultFactory
         .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(idx),
@@ -131,13 +132,13 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     while (reader.hasNextChunk()) {
       Statistics chunkStatistics = reader.currentChunkStatistics();
       if (chunkStatistics.getStartTime() >= curEndTime) {
-        break;
+        return result;
       }
       if (reader.canUseCurrentChunkStatistics() && timeRange.contains(
           new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
         result.updateResultFromStatistics(chunkStatistics);
         if (result.isCalculatedAggregationResult()) {
-          break;
+          return result;
         }
         reader.skipCurrentChunk();
         continue;
@@ -146,13 +147,13 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       while (reader.hasNextPage()) {
         Statistics pageStatistics = reader.currentPageStatistics();
         if (pageStatistics.getStartTime() >= curEndTime) {
-          break;
+          return result;
         }
         if (reader.canUseCurrentPageStatistics() && timeRange.contains(
             new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
           result.updateResultFromStatistics(pageStatistics);
           if (result.isCalculatedAggregationResult()) {
-            break;
+            return result;
           }
           reader.skipCurrentPage();
           continue;
