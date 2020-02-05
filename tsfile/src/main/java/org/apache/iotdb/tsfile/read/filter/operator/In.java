@@ -78,7 +78,7 @@ public class In<T extends Comparable<T>> implements Filter {
   }
 
   @Override
-  public Filter clone() {
+  public Filter copy() {
     return new In(new HashSet(values), filterType, not);
   }
 

@@ -32,6 +32,9 @@ import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
 
 public class TimeFilter {
 
+  private TimeFilter() {
+  }
+
   public static TimeEq eq(long value) {
     return new TimeEq(value);
   }

@@ -148,7 +148,7 @@ public class InOperator extends FunctionOperator {
   }
 
   @Override
-  public InOperator clone() {
+  public InOperator copy() {
     InOperator ret;
     ret = new InOperator(this.tokenIntType, singlePath.clone(), not, new HashSet<>(values));
     ret.tokenSymbol = tokenSymbol;

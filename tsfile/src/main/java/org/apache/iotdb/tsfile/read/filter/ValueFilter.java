@@ -32,6 +32,9 @@ import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
 
 public class ValueFilter {
 
+  private ValueFilter() {
+  }
+
   public static <T extends Comparable<T>> ValueEq<T> eq(T value) {
     return new ValueEq(value);
   }

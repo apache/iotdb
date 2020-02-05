@@ -123,12 +123,12 @@ public class BasicFunctionOperator extends FunctionOperator {
   }
 
   @Override
-  public BasicFunctionOperator clone() {
+  public BasicFunctionOperator copy() {
     BasicFunctionOperator ret;
     try {
       ret = new BasicFunctionOperator(this.tokenIntType, singlePath.clone(), value);
     } catch (SQLParserException e) {
-      logger.error("error clone:", e);
+      logger.error("error copy:", e);
       return null;
     }
     ret.tokenSymbol = tokenSymbol;

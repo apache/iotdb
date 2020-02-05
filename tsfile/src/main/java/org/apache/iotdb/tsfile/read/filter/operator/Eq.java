@@ -82,7 +82,7 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
   }
 
   @Override
-  public Filter clone() {
+  public Filter copy() {
     return new Eq(value, filterType);
   }
 

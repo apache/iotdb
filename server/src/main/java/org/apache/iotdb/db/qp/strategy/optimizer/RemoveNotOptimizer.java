@@ -26,15 +26,10 @@ import java.util.List;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class RemoveNotOptimizer implements IFilterOptimizer {
-
-  private static final Logger logger = LoggerFactory.getLogger(RemoveNotOptimizer.class);
 
   /**
    * get DNF(disjunctive normal form) for this filter operator tree. Before getDNF, this op tree

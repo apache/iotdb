@@ -169,9 +169,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   private SelectOperator selectOp;
   private UpdateOperator updateOp;
   private QueryOperator queryOp;
-  private boolean isAndWhereClause = false;
-  private boolean isOrWhereClause = false;
-  private boolean isNotWhereClause = false;
   private DeleteDataOperator deleteDataOp;
 
   LogicalGenerator(ZoneId zoneId) {
@@ -1118,6 +1115,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
 
   private FilterOperator parseOrExpression(OrExpressionContext ctx) {
+    boolean isOrWhereClause = false;
     if (ctx.andExpression().size() == 1) {
       isOrWhereClause = false;
       return parseAndExpression(ctx.andExpression(0));
@@ -1142,6 +1140,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   private FilterOperator parseAndExpression(AndExpressionContext ctx) {
+    boolean isAndWhereClause = false;
     if (ctx.predicate().size() == 1) {
       isAndWhereClause = false;
       return parsePredicate(ctx.predicate(0));
@@ -1168,7 +1167,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   private FilterOperator parsePredicate(PredicateContext ctx) {
     if (ctx.OPERATOR_NOT() != null) {
-      isNotWhereClause = true;
+      boolean isNotWhereClause = true;
       FilterOperator notOp = new FilterOperator(SQLConstant.KW_NOT);
       notOp.addChildOperator(parseOrExpression(ctx.orExpression()));
       return notOp;
