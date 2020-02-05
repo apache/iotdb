@@ -1115,12 +1115,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
 
   private FilterOperator parseOrExpression(OrExpressionContext ctx) {
-    boolean isOrWhereClause = false;
     if (ctx.andExpression().size() == 1) {
-      isOrWhereClause = false;
       return parseAndExpression(ctx.andExpression(0));
     }
-    isOrWhereClause = true;
     FilterOperator binaryOp = new FilterOperator(SQLConstant.KW_OR);
     if (ctx.andExpression().size() > 2) {
       binaryOp.addChildOperator(parseAndExpression(ctx.andExpression(0)));
@@ -1140,12 +1137,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   private FilterOperator parseAndExpression(AndExpressionContext ctx) {
-    boolean isAndWhereClause = false;
     if (ctx.predicate().size() == 1) {
-      isAndWhereClause = false;
       return parsePredicate(ctx.predicate(0));
     }
-    isAndWhereClause = true;
     FilterOperator binaryOp = new FilterOperator(SQLConstant.KW_AND);
     int size = ctx.predicate().size();
     if (size > 2) {
@@ -1167,7 +1161,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   private FilterOperator parsePredicate(PredicateContext ctx) {
     if (ctx.OPERATOR_NOT() != null) {
-      boolean isNotWhereClause = true;
       FilterOperator notOp = new FilterOperator(SQLConstant.KW_NOT);
       notOp.addChildOperator(parseOrExpression(ctx.orExpression()));
       return notOp;
@@ -1183,6 +1176,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       }
       if (ctx.suffixPath() != null) {
         path = parseSuffixPath(ctx.suffixPath());
+      }
+      if (path == null) {
+        throw new SQLParserException("Path is null, please check the sql.");
       }
       if (ctx.inClause() != null) {
         return parseInOperator(ctx.inClause(), path);
