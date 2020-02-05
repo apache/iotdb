@@ -137,9 +137,13 @@ andExpression
 
 predicate
     : (TIME | TIMESTAMP | suffixPath | prefixPath) comparisonOperator constant
+    | (TIME | TIMESTAMP | suffixPath | prefixPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
     ;
 
+inClause
+    : OPERATOR_NOT? OPERATOR_IN LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    ;
 
 fromClause
     : FROM prefixPath (COMMA prefixPath)*
@@ -749,6 +753,8 @@ OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 
 OPERATOR_NEQ : '!=' | '<>';
+
+OPERATOR_IN : I N;
 
 OPERATOR_AND
     : A N D
