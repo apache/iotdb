@@ -98,8 +98,8 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     return singlePath;
   }
 
-  public void setSinglePath(Path path) {
-    this.singlePath = path;
+  public void setSinglePath(Path singlePath) {
+    this.singlePath = singlePath;
   }
 
   public boolean addChildOperator(FilterOperator op) {
@@ -114,7 +114,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    * @return QueryFilter in TsFile
    */
   public IExpression transformToExpression(IQueryProcessExecutor executor)
-      throws QueryProcessException, LogicalOperatorException {
+      throws QueryProcessException {
     if (isSingle) {
       Pair<IUnaryExpression, String> ret = transformToSingleQueryFilter(executor);
       return ret.left;
@@ -263,8 +263,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     return sc.toString();
   }
 
-  @Override
-  public FilterOperator clone() {
+  public FilterOperator copy() {
     FilterOperator ret = new FilterOperator(this.tokenIntType);
     ret.tokenSymbol = tokenSymbol;
     ret.isLeaf = isLeaf;
@@ -273,7 +272,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
       ret.singlePath = singlePath.clone();
     }
     for (FilterOperator filterOperator : this.childOperators) {
-      ret.addChildOperator(filterOperator.clone());
+      ret.addChildOperator(filterOperator.copy());
     }
     return ret;
   }
