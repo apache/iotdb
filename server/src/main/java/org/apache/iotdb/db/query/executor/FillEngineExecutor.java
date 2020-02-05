@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.query.executor;
 
+import javax.activation.UnsupportedDataTypeException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
+import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -67,9 +69,23 @@ public class FillEngineExecutor {
       Path path = selectedSeries.get(i);
       TSDataType dataType = dataTypes.get(i);
       IFill fill;
+      long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
       if (!typeIFillMap.containsKey(dataType)) {
-        fill = new PreviousFill(dataType, queryTime,
-            IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval());
+        switch (dataType) {
+          case INT32:
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+            fill = new LinearFill(dataType, queryTime, defaultFillInterval, defaultFillInterval);
+            break;
+          case BOOLEAN:
+          case TEXT:
+            fill = new PreviousFill(dataType, queryTime,
+                IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval());
+            break;
+          default:
+            throw new UnsupportedDataTypeException("do not support datatype " + dataType);
+        }
       } else {
         fill = typeIFillMap.get(dataType).copy();
       }

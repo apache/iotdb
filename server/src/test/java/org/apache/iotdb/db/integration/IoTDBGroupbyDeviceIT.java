@@ -509,7 +509,7 @@ public class IoTDBGroupbyDeviceIT {
   @Test
   public void fillTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "3,root.vehicle.d0,10000,40000,3.33,null,null,",
+        "3,root.vehicle.d0,10000,40208,3.33,null,null,",
         "3,root.vehicle.d1,999,null,null,null,null,",
     };
 
