@@ -19,23 +19,17 @@
 
 package org.apache.iotdb.db.query.fill;
 
-import java.io.IOException;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
-import org.apache.iotdb.db.query.context.QueryContext;
-<<<<<<< HEAD
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
-=======
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.IPointReader;
->>>>>>> 0b636dc926f73764a61fd208d956a0bbaaae75b7
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import java.io.IOException;
 
 public class LinearFill extends IFill {
 

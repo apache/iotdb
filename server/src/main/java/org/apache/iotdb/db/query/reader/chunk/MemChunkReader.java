@@ -118,7 +118,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   @Override
   public List<IPageReader> getPageReaderList() throws IOException {
     return Collections.singletonList(
-        new org.apache.iotdb.db.query.reader.chunkrelated.MemPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
+        new MemPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
   }
 
 }

@@ -32,20 +32,20 @@ import java.io.IOException;
 
 public class SeriesRawDataPointReader implements IPointReader {
 
-  private final org.apache.iotdb.db.query.reader.seriesrelated.SeriesReader seriesReader;
+  private final SeriesReader seriesReader;
 
   private boolean hasCachedTimeValuePair;
   private BatchData batchData;
   private TimeValuePair timeValuePair;
 
 
-  public SeriesRawDataPointReader(org.apache.iotdb.db.query.reader.seriesrelated.SeriesReader seriesReader) {
+  public SeriesRawDataPointReader(SeriesReader seriesReader) {
     this.seriesReader = seriesReader;
   }
 
   public SeriesRawDataPointReader(Path seriesPath, TSDataType dataType, QueryContext context,
       QueryDataSource dataSource, Filter timeFilter, Filter valueFilter) {
-    this.seriesReader = new org.apache.iotdb.db.query.reader.seriesrelated.SeriesReader(seriesPath, dataType, context, dataSource, timeFilter,
+    this.seriesReader = new SeriesReader(seriesPath, dataType, context, dataSource, timeFilter,
         valueFilter);
   }
 
