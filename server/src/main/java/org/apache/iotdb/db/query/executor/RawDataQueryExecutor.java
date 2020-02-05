@@ -86,6 +86,7 @@ public class RawDataQueryExecutor {
       return new RawQueryDataSetWithoutValueFilter(deduplicatedPaths, deduplicatedDataTypes,
           readersOfSelectedSeries);
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       throw new StorageEngineException(e.getMessage());
     }
   }
