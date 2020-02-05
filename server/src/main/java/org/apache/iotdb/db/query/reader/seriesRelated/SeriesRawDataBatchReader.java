@@ -32,7 +32,7 @@ import java.io.IOException;
 import java.util.List;
 
 
-public class RawDataBatchReader implements ManagedSeriesReader {
+public class SeriesRawDataBatchReader implements ManagedSeriesReader {
 
   private final SeriesReader seriesReader;
 
@@ -42,18 +42,18 @@ public class RawDataBatchReader implements ManagedSeriesReader {
   private BatchData batchData;
   private boolean hasCachedBatchData = false;
 
-  public RawDataBatchReader(SeriesReader seriesReader) {
+  public SeriesRawDataBatchReader(SeriesReader seriesReader) {
     this.seriesReader = seriesReader;
   }
 
-  public RawDataBatchReader(Path seriesPath, TSDataType dataType, QueryContext context,
+  public SeriesRawDataBatchReader(Path seriesPath, TSDataType dataType, QueryContext context,
       QueryDataSource dataSource, Filter timeFilter, Filter valueFilter) {
     this.seriesReader = new SeriesReader(seriesPath, dataType, context, dataSource, timeFilter,
         valueFilter);
   }
 
   @TestOnly
-  public RawDataBatchReader(Path seriesPath, TSDataType dataType, QueryContext context,
+  public SeriesRawDataBatchReader(Path seriesPath, TSDataType dataType, QueryContext context,
       List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
       Filter timeFilter, Filter valueFilter) {
     this.seriesReader = new SeriesReader(seriesPath, dataType, context, seqFileResource,

@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.io.IOException;
 
 
-public class RawDataPointReader implements IPointReader {
+public class SeriesRawDataPointReader implements IPointReader {
 
   private final SeriesReader seriesReader;
 
@@ -39,11 +39,11 @@ public class RawDataPointReader implements IPointReader {
   private TimeValuePair timeValuePair;
 
 
-  public RawDataPointReader(SeriesReader seriesReader) {
+  public SeriesRawDataPointReader(SeriesReader seriesReader) {
     this.seriesReader = seriesReader;
   }
 
-  public RawDataPointReader(Path seriesPath, TSDataType dataType, QueryContext context,
+  public SeriesRawDataPointReader(Path seriesPath, TSDataType dataType, QueryContext context,
       QueryDataSource dataSource, Filter timeFilter, Filter valueFilter) {
     this.seriesReader = new SeriesReader(seriesPath, dataType, context, dataSource, timeFilter,
         valueFilter);
