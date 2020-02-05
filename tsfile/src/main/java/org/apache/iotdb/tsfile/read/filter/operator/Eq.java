@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import java.util.Objects;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -45,7 +44,8 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
   @Override
   public boolean satisfy(Statistics statistics) {
     if (filterType == FilterType.TIME_FILTER) {
-      return ((Long) value) >= statistics.getStartTime() && ((Long) value) <= statistics.getEndTime();
+      return ((Long) value) >= statistics.getStartTime() && ((Long) value) <= statistics
+          .getEndTime();
     } else {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return true;
@@ -82,7 +82,7 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
   }
 
   @Override
-  public Filter clone() {
+  public Filter copy() {
     return new Eq(value, filterType);
   }
 

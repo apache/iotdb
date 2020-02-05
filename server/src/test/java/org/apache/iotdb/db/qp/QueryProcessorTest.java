@@ -137,6 +137,10 @@ public class QueryProcessorTest {
     String fillStatement = "select sensor1 from root.vehicle.device1 where time = 50 Fill(int32[linear, 5m, 5m], boolean[previous, 5m])";
     PhysicalPlan plan10 = processor.parseSQLToPhysicalPlan(fillStatement);
     assertEquals(OperatorType.FILL, plan10.getOperatorType());
+
+    String insertTimeStatement = "insert into root.vehicle.d0(time,s0) values(10,100)";
+    PhysicalPlan plan11 = processor.parseSQLToPhysicalPlan(insertTimeStatement);
+    assertEquals(OperatorType.INSERT, plan11.getOperatorType());
   }
 
   @Test(expected = ParseCancellationException.class)

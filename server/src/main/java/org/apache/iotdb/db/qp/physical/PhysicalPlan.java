@@ -41,6 +41,17 @@ public abstract class PhysicalPlan {
   private Operator.OperatorType operatorType;
   private static final int NULL_VALUE_LEN = -1;
 
+  //for cluster mode
+  protected boolean canbeSplit = false;
+
+  /**
+   * whether the plan can be split into more than one Plans.
+   * Only used in the cluster mode.
+   */
+  public boolean canbeSplit() {
+    return canbeSplit;
+  }
+
   protected PhysicalPlan(boolean isQuery) {
     this.isQuery = isQuery;
   }

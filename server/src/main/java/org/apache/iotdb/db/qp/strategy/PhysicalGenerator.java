@@ -406,7 +406,7 @@ public class PhysicalGenerator {
     // remove stars in fromPaths and get deviceId with deduplication
     List<String> noStarDevices = removeStarsInDeviceWithUnique(fromPaths);
     for (int i = 0; i < noStarDevices.size(); i++) {
-      FilterOperator newOperator = operator.clone();
+      FilterOperator newOperator = operator.copy();
       newOperator = concatFilterPath(noStarDevices.get(i), newOperator);
 
       deviceToFilterMap.put(noStarDevices.get(i), newOperator.transformToExpression(executor));

@@ -26,6 +26,7 @@ public class ShowDevicesPlan extends ShowPlan{
   public ShowDevicesPlan(ShowContentType showContentType, Path path) {
     super(showContentType);
     this.path = path;
+    canbeSplit = true;
   }
 
   public Path getPath() {

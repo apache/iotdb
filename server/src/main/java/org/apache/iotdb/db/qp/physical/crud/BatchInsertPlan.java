@@ -55,12 +55,14 @@ public class BatchInsertPlan extends PhysicalPlan {
 
   public BatchInsertPlan() {
     super(false, OperatorType.BATCHINSERT);
+    super.canbeSplit = true;
   }
 
   public BatchInsertPlan(String deviceId, List<String> measurements) {
     super(false, OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     setMeasurements(measurements);
+    super.canbeSplit = true;
   }
 
   public BatchInsertPlan(String deviceId, String[] measurements, List<Integer> dataTypes) {
@@ -68,6 +70,7 @@ public class BatchInsertPlan extends PhysicalPlan {
     this.deviceId = deviceId;
     this.measurements = measurements;
     setDataTypes(dataTypes);
+    super.canbeSplit = true;
   }
 
   public int getStart() {

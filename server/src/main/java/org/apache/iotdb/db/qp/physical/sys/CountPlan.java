@@ -31,6 +31,7 @@ public class CountPlan extends ShowPlan {
   public CountPlan(ShowContentType showContentType, Path path) {
     super(showContentType);
     this.path = path;
+    canbeSplit = true;
   }
 
   public CountPlan(ShowContentType showContentType, Path path, int level) {

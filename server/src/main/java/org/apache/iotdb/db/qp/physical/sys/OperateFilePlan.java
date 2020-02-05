@@ -34,6 +34,7 @@ public class OperateFilePlan extends PhysicalPlan {
   public OperateFilePlan(File file, OperatorType operatorType) {
     super(false, operatorType);
     this.file = file;
+    canbeSplit = true;
   }
 
   public OperateFilePlan(File file, OperatorType operatorType, boolean autoCreateSchema, int sgLevel) {
@@ -41,12 +42,14 @@ public class OperateFilePlan extends PhysicalPlan {
     this.file = file;
     this.autoCreateSchema = autoCreateSchema;
     this.sgLevel = sgLevel;
+    canbeSplit = true;
   }
 
   public OperateFilePlan(File file, File targetDir, OperatorType operatorType) {
     super(false, operatorType);
     this.file = file;
     this.targetDir = targetDir;
+    canbeSplit = true;
   }
 
   @Override
