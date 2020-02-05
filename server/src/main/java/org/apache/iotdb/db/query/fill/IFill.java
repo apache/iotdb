@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.query.reader.seriesrelated.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -48,14 +48,11 @@ public abstract class IFill {
   public IFill() {
   }
 
-  public abstract IFill copy(Path path);
+  public abstract IFill copy();
 
-  public abstract void constructReaders(Path path, QueryContext context)
-      throws IOException, StorageEngineException;
-
-  void constructReaders(Path path, QueryContext context, long beforeRange)
+  public void constructReaders(Path path, QueryContext context)
       throws StorageEngineException {
-    Filter timeFilter = constructFilter(beforeRange);
+    Filter timeFilter = constructFilter();
     allDataReader = new SeriesRawDataBatchReader(path, dataType, context,
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
         timeFilter, null);
@@ -75,13 +72,7 @@ public abstract class IFill {
     this.queryTime = queryTime;
   }
 
-  private Filter constructFilter(long beforeRange) {
-    // if the fill time range is not set, beforeRange will be set to -1.
-    if (beforeRange == -1) {
-      return null;
-    }
-    return TimeFilter.gtEq(queryTime - beforeRange);
-  }
+  abstract Filter constructFilter();
 
   class TimeValuePairPointReader implements IPointReader {
 

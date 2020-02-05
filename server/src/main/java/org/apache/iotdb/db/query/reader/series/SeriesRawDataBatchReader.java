@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader.seriesRelated;
+package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -98,6 +98,7 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
 
   @Override
   public void close() throws IOException {
+    //no resources need to close
   }
 
 

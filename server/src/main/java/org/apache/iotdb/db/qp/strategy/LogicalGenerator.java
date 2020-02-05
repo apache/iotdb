@@ -781,20 +781,21 @@ public class LogicalGenerator extends SqlBaseBaseListener {
           , dataType, ctx.linearClause().LINEAR().getText()));
     }
 
+    int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
     if (ctx.linearClause() != null) {
       if (ctx.linearClause().DURATION(0) != null) {
         long beforeRange = parseDuration(ctx.linearClause().DURATION(0).getText());
         long afterRange = parseDuration(ctx.linearClause().DURATION(1).getText());
         fillTypes.put(dataType, new LinearFill(beforeRange, afterRange));
       } else {
-        fillTypes.put(dataType, new LinearFill(-1, -1));
+        fillTypes.put(dataType, new LinearFill(defaultFillInterval, defaultFillInterval));
       }
     } else {
       if (ctx.previousClause().DURATION() != null) {
         long preRange = parseDuration(ctx.previousClause().DURATION().getText());
         fillTypes.put(dataType, new PreviousFill(preRange));
       } else {
-        fillTypes.put(dataType, new PreviousFill(-1));
+        fillTypes.put(dataType, new PreviousFill(defaultFillInterval));
       }
     }
   }

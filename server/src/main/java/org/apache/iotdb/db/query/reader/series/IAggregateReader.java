@@ -16,31 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader.chunkRelated;
+package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
 import java.io.IOException;
 
-public class MemPageReader implements IPageReader {
+public interface IAggregateReader {
 
-  private BatchData batchData;
-  private Statistics statistics;
+  boolean hasNextChunk() throws IOException;
 
-  public MemPageReader(BatchData batchData, Statistics statistics) {
-    this.batchData = batchData;
-    this.statistics = statistics;
-  }
+  boolean canUseCurrentChunkStatistics();
 
-  @Override
-  public BatchData getAllSatisfiedPageData() throws IOException {
-    return batchData;
-  }
+  Statistics currentChunkStatistics();
 
-  @Override
-  public Statistics getStatistics() {
-    return statistics;
-  }
+  void skipCurrentChunk();
+
+  boolean hasNextPage() throws IOException;
+
+  /**
+   * only be used without value filter
+   */
+  boolean canUseCurrentPageStatistics() throws IOException;
+
+  /**
+   * only be used without value filter
+   */
+  Statistics currentPageStatistics() throws IOException;
+
+  void skipCurrentPage();
+
+  boolean hasNextOverlappedPage() throws IOException;
+
+  BatchData nextOverlappedPage() throws IOException;
 }

@@ -16,9 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader.seriesRelated;
+package org.apache.iotdb.db.query.reader.series;
 
-import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
@@ -27,6 +26,8 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+
+import java.io.IOException;
 
 
 public class SeriesReaderByTimestamp implements IReaderByTimestamp {
@@ -43,10 +44,9 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
     seriesReader.setTimeFilter(timestamp);
-    if (batchData == null || batchData.getTimeByIndex(batchData.length() - 1) < timestamp) {
-      if (!hasNext(timestamp)) {
-        return null;
-      }
+    if ((batchData == null || batchData.getTimeByIndex(batchData.length() - 1) < timestamp)
+        && !hasNext(timestamp)) {
+      return null;
     }
 
     return batchData.getValueInTimestamp(timestamp);

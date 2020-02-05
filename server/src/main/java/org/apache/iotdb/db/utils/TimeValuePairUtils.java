@@ -64,32 +64,6 @@ public class TimeValuePairUtils {
     }
   }
 
-  public static void setCurrentTimeValuePair(BatchData data, TimeValuePair current) {
-    current.setTimestamp(data.currentTime());
-    switch (data.getDataType()) {
-      case INT32:
-        current.getValue().setInt(data.getInt());
-        break;
-      case INT64:
-        current.getValue().setLong(data.getLong());
-        break;
-      case FLOAT:
-        current.getValue().setFloat(data.getFloat());
-        break;
-      case DOUBLE:
-        current.getValue().setDouble(data.getDouble());
-        break;
-      case TEXT:
-        current.getValue().setBinary(data.getBinary());
-        break;
-      case BOOLEAN:
-        current.getValue().setBoolean(data.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(data.getDataType()));
-    }
-  }
-
   public static void setTimeValuePair(TimeValuePair from, TimeValuePair to) {
     to.setTimestamp(from.getTimestamp());
     switch (from.getValue().getDataType()) {

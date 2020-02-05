@@ -17,15 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.reader.resourceRelated;
+package org.apache.iotdb.db.query.reader.resource;
 
-import java.io.IOException;
-import java.util.List;
-import org.apache.iotdb.db.query.reader.chunkRelated.CachedDiskChunkReader;
+import org.apache.iotdb.db.query.reader.chunk.ChunkDataIterator;
 import org.apache.iotdb.db.query.reader.universal.CachedPriorityMergeReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+
+import java.io.IOException;
+import java.util.List;
 
 public class CachedUnseqResourceMergeReader extends CachedPriorityMergeReader {
 
@@ -35,7 +36,7 @@ public class CachedUnseqResourceMergeReader extends CachedPriorityMergeReader {
     int priorityValue = 1;
     for (Chunk chunk : chunks) {
       ChunkReader chunkReader = new ChunkReader(chunk, null);
-      addReader(new CachedDiskChunkReader(chunkReader), priorityValue++);
+      addReader(new ChunkDataIterator(chunkReader), priorityValue++);
     }
   }
 }

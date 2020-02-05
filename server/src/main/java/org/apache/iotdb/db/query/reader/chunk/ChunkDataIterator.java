@@ -16,27 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.query.reader.chunk;
 
-package org.apache.iotdb.db.query.reader.chunkRelated;
-
-import java.io.IOException;
+import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
-public class CachedDiskChunkReader implements IPointReader {
+import java.io.IOException;
 
-  private ChunkReader chunkReader;
+/**
+ * To read chunk data on disk, this class implements an interface {@link IPointReader} based on the
+ * data reader {@link ChunkReader}. <p> Note that <code>ChunkReader</code> is an abstract class with
+ * three concrete classes, two of which are used here: <code>ChunkReaderWithoutFilter</code> and
+ * <code>ChunkReaderWithFilter</code>. <p>
+ */
+public class ChunkDataIterator implements IPointReader {
+
+  private IChunkReader chunkReader;
   private BatchData data;
-  private TimeValuePair prev;
-  private TimeValuePair current;
 
-  public CachedDiskChunkReader(ChunkReader chunkReader) {
+  public ChunkDataIterator(IChunkReader chunkReader) {
     this.chunkReader = chunkReader;
-    this.prev =
-        TimeValuePairUtils.getEmptyTimeValuePair(chunkReader.getChunkHeader().getDataType());
   }
 
   @Override
@@ -54,35 +57,19 @@ public class CachedDiskChunkReader implements IPointReader {
   }
 
   @Override
-  public TimeValuePair nextTimeValuePair() throws IOException {
-    TimeValuePairUtils.setCurrentTimeValuePair(data, prev);
+  public TimeValuePair nextTimeValuePair() {
+    TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(data);
     data.next();
-    if (data.hasCurrent()) {
-      TimeValuePairUtils.setCurrentTimeValuePair(data, currentTimeValuePair());
-    } else {
-      while (chunkReader.hasNextSatisfiedPage()) {
-        data = chunkReader.nextPageData();
-        if (data.hasCurrent()) {
-          TimeValuePairUtils.setCurrentTimeValuePair(data, currentTimeValuePair());
-          break;
-        }
-      }
-    }
-    return prev;
+    return timeValuePair;
   }
 
   @Override
   public TimeValuePair currentTimeValuePair() {
-    if (current == null) {
-      this.current =
-          TimeValuePairUtils.getEmptyTimeValuePair(chunkReader.getChunkHeader().getDataType());
-      TimeValuePairUtils.setCurrentTimeValuePair(data, current);
-    }
-    return current;
+    return TimeValuePairUtils.getCurrentTimeValuePair(data);
   }
 
   @Override
-  public void close() {
+  public void close() throws IOException {
     this.chunkReader.close();
   }
 }

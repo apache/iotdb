@@ -16,16 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader.chunkRelated;
+package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -118,7 +118,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   @Override
   public List<IPageReader> getPageReaderList() throws IOException {
     return Collections.singletonList(
-        new MemPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
+        new org.apache.iotdb.db.query.reader.chunkrelated.MemPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
   }
 
 }
