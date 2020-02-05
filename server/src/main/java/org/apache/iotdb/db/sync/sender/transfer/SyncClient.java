@@ -418,11 +418,16 @@ public class SyncClient implements ISyncClient {
     try {
       if (syncSchemaLogFile.exists()) {
         try (BufferedReader br = new BufferedReader(new FileReader(syncSchemaLogFile))) {
-          return Integer.parseInt(br.readLine());
+          String pos = br.readLine();
+          if(pos != null) {
+            return Integer.parseInt(pos);
+          }
         }
       }
     } catch (IOException e) {
       logger.error("Can not find file {}", syncSchemaLogFile.getAbsoluteFile(), e);
+    } catch (NumberFormatException e){
+      logger.error("Sync schema pos is not valid", e);
     }
     return 0;
   }
