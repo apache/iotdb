@@ -105,6 +105,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   // know if this node is synchronized with the leader
   private Object syncLock = new Object();
 
+  // when the header of the group is removed from the cluster, the members of the group should no
+  // longer accept writes, but they still can be read candidates for weak consistency reads and
+  // provide snapshots for the new holders
+  private volatile boolean readOnly = false;
+
   public RaftMember() {
   }
 
@@ -652,6 +657,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   TSStatus processPlanLocally(PhysicalPlan plan) {
     logger.debug("{}: Processing plan {}", name, plan);
     synchronized (logManager) {
+      if (readOnly) {
+        return StatusUtils.NODE_READ_ONLY;
+      }
+
       PhysicalPlanLog log = new PhysicalPlanLog();
       log.setCurrLogTerm(getTerm().get());
       log.setPreviousLogIndex(logManager.getLastLogIndex());
@@ -796,6 +805,12 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       resultHandler.onComplete(result);
     } catch (IOException e) {
       resultHandler.onError(e);
+    }
+  }
+
+  public void setReadOnly() {
+    synchronized (logManager) {
+      readOnly = true;
     }
   }
 }

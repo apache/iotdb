@@ -271,6 +271,13 @@ service TSMetaService extends RaftService {
   **/
   AddNodeResponse addNode(1: Node node)
 
+  /**
+  * Remove a node from the cluster. If the node is not in the cluster or the cluster size will
+  * less than replication number, the request will be rejected.
+  * return -1(RESPONSE_AGREE) or -3(RESPONSE_REJECT) or -9(RESPONSE_CLUSTER_TOO_SMALL)
+  **/
+  long removeNode(1: Node node)
+
   TNodeStatus queryNodeStatus()
 
   Node checkAlive()

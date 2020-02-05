@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -176,4 +177,8 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     return member;
   }
 
+  @Override
+  public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) throws TException {
+    member.removeNode(node, resultHandler);
+  }
 }

@@ -48,6 +48,7 @@ import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
 import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
@@ -229,7 +230,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
     long thisMetaLastLogIndex = metaGroupMember.getLogManager().getLastLogIndex();
     long thisMetaLastLogTerm = metaGroupMember.getLogManager().getLastLogTerm();
-    long thisMetaTerm = metaGroupMember.getTerm().get();
 
     // term of the electors's MetaGroupMember is not verified, so 0 and 1 are used to make sure
     // the verification does not fail
@@ -479,7 +479,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
-  public void pullSnapshots(List<Integer> slots, Node newNode) {
+  /**
+   * Pull snapshots from the previous holders after newNode joins the cluster.
+   * @param slots
+   * @param newNode
+   */
+  public void pullNodeAdditionSnapshots(List<Integer> slots, Node newNode) {
     synchronized (logManager) {
       logger.info("{} pulling {} slots from remote", name, slots.size());
       PartitionedSnapshot snapshot = (PartitionedSnapshot) logManager.getSnapshot();
@@ -499,17 +504,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       for (Entry<Node, List<Integer>> entry : holderSlotsMap.entrySet()) {
         Node node = entry.getKey();
         List<Integer> nodeSlots = entry.getValue();
-        pullFileSnapshot(node, nodeSlots);
+        pullFileSnapshot(metaGroupMember.getPartitionTable().getHeaderGroup(node),  nodeSlots);
       }
     }
   }
 
-  private void pullFileSnapshot(Node node, List<Integer> nodeSlots) {
-    PartitionGroup prevHolders =
-        new PartitionGroup(metaGroupMember.getPartitionTable().getHeaderGroup(node));
-
+  private void pullFileSnapshot(PartitionGroup prevHolders,  List<Integer> nodeSlots) {
     Future<Map<Integer, FileSnapshot>> snapshotFuture =
-        pullSnapshotService.submit(new PullSnapshotTask(node, nodeSlots, this,
+        pullSnapshotService.submit(new PullSnapshotTask(prevHolders.getHeader(), nodeSlots, this,
             prevHolders, FileSnapshot::new));
     for (int slot : nodeSlots) {
       logManager.setSnapshot(new RemoteFileSnapshot(snapshotFuture), slot);
@@ -718,7 +720,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
     try {
       if (reader.hasNextBatch()) {
-        int count = 0;
         BatchData batchData = reader.nextBatch();
 
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -741,6 +742,35 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       resultHandler.onComplete(MManager.getInstance().getPaths(path));
     } catch (MetadataException e) {
       resultHandler.onError(e);
+    }
+  }
+
+  /**
+   * When the node does not play a member in a group any more, the corresponding local data should
+   * be removed.
+   */
+  public void removeLocalData(List<Integer> slots) {
+    for (Integer slot : slots) {
+      //TODO-Cluster: remove the data in the slot
+    }
+  }
+
+  /**
+   * When a node is removed and it is not the header of the group, the member should take over
+   * some slots from the removed group, and add a new node to the group the removed node was in the
+   * group.
+   */
+  public void removeNode(Node removedNode, NodeRemovalResult removalResult) {
+    synchronized (allNodes) {
+      if (allNodes.contains(removedNode)) {
+        // update the group if the deleted node was in it
+        allNodes = metaGroupMember.getPartitionTable().getHeaderGroup(getHeader());
+      }
+      List<Integer> slotsToPull = removalResult.getNewSlotOwners().get(getHeader());
+      if (slotsToPull != null) {
+        // pull the slots that should be taken over
+        pullFileSnapshot(removalResult.getRemovedGroup(), slotsToPull);
+      }
     }
   }
 }

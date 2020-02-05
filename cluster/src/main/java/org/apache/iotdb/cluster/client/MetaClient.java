@@ -46,7 +46,9 @@ public class MetaClient extends AsyncClient {
   public void onComplete() {
     super.onComplete();
     // return itself to the pool if the job is done
-    pool.putClient(node, this);
+    if (pool != null) {
+      pool.putClient(node, this);
+    }
   }
 
   public static class Factory implements ClientFactory {

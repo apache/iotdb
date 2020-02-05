@@ -427,7 +427,7 @@ public class DataGroupMemberTest extends MemberTest {
       hasInitialSnapshots = false;
       partitionTable.addNode(TestUtils.getNode(10));
       List<Integer> requiredSlots = Arrays.asList(19, 39, 59, 79, 99);
-      dataGroupMember.pullSnapshots(requiredSlots, TestUtils.getNode(10));
+      dataGroupMember.pullNodeAdditionSnapshots(requiredSlots, TestUtils.getNode(10));
       assertEquals(requiredSlots.size(), receivedSnapshots.size());
       for (Integer requiredSlot : requiredSlots) {
         receivedSnapshots.get(requiredSlot).getRemoteSnapshot();

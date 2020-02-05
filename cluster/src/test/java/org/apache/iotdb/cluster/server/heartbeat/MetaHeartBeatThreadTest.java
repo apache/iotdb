@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.LogManager;
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -57,6 +58,11 @@ public class MetaHeartBeatThreadTest extends HeartBeatThreadTest {
 
     @Override
     public PartitionGroup addNode(Node node) {
+      return null;
+    }
+
+    @Override
+    public NodeRemovalResult removeNode(Node node) {
       return null;
     }
 

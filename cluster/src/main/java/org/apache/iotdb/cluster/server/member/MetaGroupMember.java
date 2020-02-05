@@ -54,6 +54,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.NotInSameGroupException;
+import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
@@ -62,8 +63,10 @@ import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
@@ -72,17 +75,7 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.query.reader.RemoteSeriesReaderByTimestamp;
 import org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader;
-import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
-import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
-import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
+import org.apache.iotdb.cluster.rpc.thrift.*;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.server.ClientServer;
 import org.apache.iotdb.cluster.server.DataClusterServer;
@@ -138,8 +131,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   public static final int REPLICATION_NUM =
       ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
 
-  private TProtocolFactory protocolFactory;
-
   // blind nodes are nodes that does not know the nodes in the cluster
   private Set<Node> blindNodes = new HashSet<>();
   private Set<Node> idConflictNodes = new HashSet<>();
@@ -150,7 +141,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private ClientServer clientServer;
 
   private LogApplier metaLogApplier = new MetaLogApplier(this);
-  private LogApplier dataLogApplier = new DataLogApplier(this);
   private DataGroupMember.Factory dataMemberFactory;
 
   private MetaSingleSnapshotLogManager logManager;
@@ -165,8 +155,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       throws IOException {
     super("Meta", new ClientPool(new MetaClient.Factory(new TAsyncClientManager(), factory)));
     allNodes = new ArrayList<>();
-    this.protocolFactory = factory;
-    dataMemberFactory = new Factory(protocolFactory, this, dataLogApplier,
+    LogApplier dataLogApplier = new DataLogApplier(this);
+    dataMemberFactory = new Factory(factory, this, dataLogApplier,
         new TAsyncClientManager());
     dataClientPool =
         new ClientPool(new DataClient.Factory(new TAsyncClientManager(), factory));
@@ -292,7 +282,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup, thisNode);
             getDataClusterServer().addDataGroupMember(dataGroupMember);
             dataGroupMember.start();
-            dataGroupMember.pullSnapshots(partitionTable.getNodeSlots(newNode), newNode);
+            dataGroupMember.pullNodeAdditionSnapshots(partitionTable.getNodeSlots(newNode), newNode);
           } catch (TTransportException e) {
             logger.error("Fail to create data newMember for new header {}", newNode, e);
           }
@@ -610,20 +600,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         switch (result) {
           case OK:
             logger.info("Join request of {} is accepted", node);
-            // add node is instantly applied to update the partition table
-            try {
-              logManager.getApplier().apply(addNodeLog);
-            } catch (QueryProcessException e) {
-              logManager.removeLastLog();
-              resultHandler.onError(e);
-              return true;
-            }
+            logManager.commitLog(addNodeLog.getCurrLogIndex());
             synchronized (partitionTable) {
               response.setPartitionTableBytes(partitionTable.serialize());
             }
             response.setRespNum((int) Response.RESPONSE_AGREE);
             resultHandler.onComplete(response);
-            logManager.commitLog(logManager.getLastLogIndex());
             return true;
           case TIME_OUT:
             logger.info("Join request of {} timed out", node);
@@ -1220,10 +1202,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     return nodeStatus;
   }
 
-  ClientServer getClientServer() {
-    return clientServer;
-  }
-
   @Override
   public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
     resultHandler.onComplete(new TNodeStatus());
@@ -1240,6 +1218,119 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     DataClusterServer dataClusterServer = getDataClusterServer();
     if (dataClusterServer != null) {
       dataClusterServer.setPartitionTable(partitionTable);
+    }
+  }
+
+  @Override
+  public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
+    if (partitionTable == null) {
+      logger.info("Cannot add node now because the partition table is not set");
+      resultHandler.onError(new PartitionTableUnavailableException(thisNode));
+      return;
+    }
+
+    // try to process the request locally, if it cannot be processed locally, forward it
+    if (processRemoveNodeLocally(node, resultHandler)) {
+      return;
+    }
+
+    if (character == NodeCharacter.FOLLOWER && leader != null) {
+      logger.info("Forward the node removal request of {} to leader {}", node, leader);
+      if (forwardRemoveNode(node, resultHandler)) {
+        return;
+      }
+    }
+    resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+  }
+
+  private boolean forwardRemoveNode(Node node, AsyncMethodCallback resultHandler) {
+    TSMetaService.AsyncClient client = (TSMetaService.AsyncClient) connectNode(leader);
+    if (client != null) {
+      try {
+        client.removeNode(node, new GenericForwardHandler(resultHandler));
+        return true;
+      } catch (TException e) {
+        logger.warn("Cannot connect to node {}", node, e);
+      }
+    }
+    return false;
+  }
+
+  private boolean processRemoveNodeLocally(Node node, AsyncMethodCallback resultHandler) {
+    if (character == NodeCharacter.LEADER) {
+      if (allNodes.size() <= ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum()) {
+        resultHandler.onComplete(Response.RESPONSE_CLUSTER_TOO_SMALL);
+        return true;
+      }
+
+      Node target = null;
+      synchronized (allNodes) {
+        for (Node n : allNodes) {
+          if (n.ip.equals(node.ip) && n.metaPort == node.metaPort){
+            target = n;
+            break;
+          }
+        }
+      }
+
+      if (target == null) {
+        logger.debug("Node {} is not in the cluster", node);
+        resultHandler.onComplete(Response.RESPONSE_REJECT);
+        return true;
+      }
+
+      // node removal must be serialized
+      synchronized (logManager) {
+        RemoveNodeLog removeNodeLog = new RemoveNodeLog();
+        removeNodeLog.setCurrLogTerm(getTerm().get());
+        removeNodeLog.setPreviousLogIndex(logManager.getLastLogIndex());
+        removeNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
+        removeNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+
+        removeNodeLog.setRemovedNode(target);
+
+        logManager.appendLog(removeNodeLog);
+
+        logger.info("Send the node removal request of {} to other nodes", target);
+        AppendLogResult result = sendLogToAllGroups(removeNodeLog);
+
+        switch (result) {
+          case OK:
+            logger.info("Join request of {} is accepted", target);
+            logManager.commitLog(removeNodeLog.getCurrLogIndex());
+            resultHandler.onComplete(Response.RESPONSE_AGREE);
+            return true;
+          case TIME_OUT:
+            logger.info("Join request of {} timed out", target);
+            resultHandler.onError(new RequestTimeOutException(removeNodeLog));
+            logManager.removeLastLog();
+            return true;
+          case LEADERSHIP_STALE:
+          default:
+            logManager.removeLastLog();
+            // if the leader is found, forward to it
+        }
+      }
+    }
+    return false;
+  }
+
+  public void applyRemoveNode(Node oldNode) {
+    synchronized (allNodes) {
+      if (allNodes.contains(oldNode)) {
+        logger.debug("Removing a node {} from {}", oldNode, allNodes);
+        allNodes.remove(oldNode);
+        idNodeMap.remove(oldNode.nodeIdentifier);
+
+        // update the partition table
+        NodeRemovalResult result = partitionTable.removeNode(oldNode);
+
+        getDataClusterServer().removeNode(oldNode, result);
+        if (oldNode == leader) {
+          setCharacter(NodeCharacter.ELECTOR);
+          lastHeartBeatReceivedTime = Long.MIN_VALUE;
+        }
+      }
     }
   }
 }

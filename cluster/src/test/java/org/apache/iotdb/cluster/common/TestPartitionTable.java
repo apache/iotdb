@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.common;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -35,6 +36,11 @@ public class TestPartitionTable implements PartitionTable {
 
   @Override
   public PartitionGroup addNode(Node node) {
+    return null;
+  }
+
+  @Override
+  public NodeRemovalResult removeNode(Node node) {
     return null;
   }
 

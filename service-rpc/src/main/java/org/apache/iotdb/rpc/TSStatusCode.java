@@ -65,7 +65,8 @@ public enum TSStatusCode {
   PARTITION_NOT_READY(700),
   TIME_OUT(701),
   NO_LEADER(702),
-  UNSUPPORTED_OPERATION(703);
+  UNSUPPORTED_OPERATION(703),
+  NODE_READ_ONLY(704);
 
 
   private int statusCode;

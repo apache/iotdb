@@ -68,6 +68,12 @@ public interface PartitionTable {
   PartitionGroup addNode(Node node);
 
   /**
+   * Remove a node and update the partition table.
+   * @param node
+   */
+  NodeRemovalResult removeNode(Node node);
+
+  /**
    *
    * @return All data groups where all VNodes of this node is the header. The first index
    * indicates the VNode and the second index indicates the data group of one VNode.

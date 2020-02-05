@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.exception.NoHeaderNodeException;
 import org.apache.iotdb.cluster.exception.NotInSameGroupException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -88,7 +89,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         if (partitionTable != null) {
           try {
             member = createNewMember(header);
-          } catch (NotInSameGroupException e) {
+          } catch (NotInSameGroupException | TTransportException e) {
             ex = e;
           }
         } else {
@@ -103,7 +104,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     }
   }
 
-  private DataGroupMember createNewMember(Node header) throws NotInSameGroupException {
+  private DataGroupMember createNewMember(Node header)
+      throws NotInSameGroupException, TTransportException {
     DataGroupMember member;
     synchronized (partitionTable) {
       // it may be that the header and this node are in the same group, but it is the first time
@@ -114,6 +116,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         member = dataMemberFactory.create(partitionGroup, thisNode);
         headerGroupMap.put(header, member);
         logger.info("Created a member for header {}", header);
+        member.start();
       } else {
         logger.info("This node {} does not belong to the group {}", thisNode, partitionGroup);
         throw new NotInSameGroupException(partitionTable.getHeaderGroup(header),
@@ -298,6 +301,41 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     }
   }
 
+  public void removeNode(Node node, NodeRemovalResult removalResult) {
+    Iterator<Entry<Node, DataGroupMember>> entryIterator = headerGroupMap.entrySet().iterator();
+    synchronized (headerGroupMap) {
+      while (entryIterator.hasNext()) {
+        Entry<Node, DataGroupMember> entry = entryIterator.next();
+        DataGroupMember dataGroupMember = entry.getValue();
+        if (dataGroupMember.getHeader().equals(node)) {
+          // the group is removed as the node is removed, so new writes should be rejected as
+          // they belong to the new holder, but the member is kept alive for other nodes to pull
+          // snapshots
+          dataGroupMember.setReadOnly();
+          //TODO-Cluster: when to call removeLocalData?
+        } else {
+          if (node.equals(thisNode)) {
+            // this node is removed, it is no more replica of other groups
+            List<Integer> nodeSlots = partitionTable.getNodeSlots(dataGroupMember.getHeader());
+            dataGroupMember.removeLocalData(nodeSlots);
+            entryIterator.remove();
+          } else {
+            // the group should be updated and pull new slots from the removed node
+            dataGroupMember.removeNode(node, removalResult);
+          }
+        }
+      }
+      PartitionGroup newGroup = removalResult.getNewGroup();
+      if (newGroup != null) {
+        try {
+          createNewMember(newGroup.getHeader());
+        } catch (NotInSameGroupException | TTransportException e) {
+          // ignored
+        }
+      }
+    }
+  }
+
   @Override
   public void pullTimeSeriesSchema(PullSchemaRequest request,
       AsyncMethodCallback<PullSchemaResp> resultHandler) {
@@ -319,7 +357,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   public void pullSnapshots() {
     List<Integer> slots = partitionTable.getNodeSlots(thisNode);
     DataGroupMember dataGroupMember = headerGroupMap.get(thisNode);
-    dataGroupMember.pullSnapshots(slots, thisNode);
+    dataGroupMember.pullNodeAdditionSnapshots(slots, thisNode);
   }
 
 
