@@ -39,14 +39,14 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-public class FillEngineExecutor {
+public class FillQueryExecutor {
 
   private List<Path> selectedSeries;
   private List<TSDataType> dataTypes;
   private long queryTime;
   private Map<TSDataType, IFill> typeIFillMap;
 
-  public FillEngineExecutor(List<Path> selectedSeries,
+  public FillQueryExecutor(List<Path> selectedSeries,
       List<TSDataType> dataTypes,
       long queryTime,
       Map<TSDataType, IFill> typeIFillMap) {
