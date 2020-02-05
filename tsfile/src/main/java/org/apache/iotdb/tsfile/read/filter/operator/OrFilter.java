@@ -44,8 +44,8 @@ public class OrFilter extends BinaryFilter implements Serializable {
   }
 
   @Override
-  public Filter clone() {
-    return new OrFilter(left.clone(), right.clone());
+  public Filter copy() {
+    return new OrFilter(left.copy(), right.copy());
   }
 
   @Override

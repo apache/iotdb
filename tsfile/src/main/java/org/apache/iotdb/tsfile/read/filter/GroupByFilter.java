@@ -95,7 +95,7 @@ public class GroupByFilter implements Filter, Serializable {
   }
 
   @Override
-  public Filter clone() {
+  public Filter copy() {
     return new GroupByFilter(interval, slidingStep, startTime, endTime);
   }
 

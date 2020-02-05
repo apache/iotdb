@@ -24,7 +24,6 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
-import org.apache.iotdb.tsfile.read.filter.operator.Eq;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
@@ -63,7 +62,7 @@ public abstract class UnaryFilter<T extends Comparable<T>> implements Filter, Se
   public abstract String toString();
 
   @Override
-  public abstract Filter clone();
+  public abstract Filter copy();
 
   @Override
   public void serialize(DataOutputStream outputStream) {
