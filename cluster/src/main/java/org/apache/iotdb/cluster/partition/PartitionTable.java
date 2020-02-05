@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -49,7 +50,6 @@ import org.slf4j.LoggerFactory;
 public interface PartitionTable {
   // static final is not necessary, it is redundant for an interface
   Logger logger = LoggerFactory.getLogger(SlotPartitionTable.class);
-  long PARTITION_INTERVAL = StorageEngine.getTimePartitionInterval();
 
   /**
    * Given the storageGroupName and the timestamp, return the list of nodes on which the storage
@@ -181,8 +181,9 @@ public interface PartitionTable {
       long startTime, long endTime) throws StorageGroupNotSetException {
     MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = new MultiKeyMap<>();
     String storageGroup = MManager.getInstance().getStorageGroupNameByPath(path);
+    long partitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     while (startTime <= endTime) {
-      long nextTime = (startTime / PARTITION_INTERVAL + 1) * PARTITION_INTERVAL; //FIXME considering the time unit
+      long nextTime = (startTime / partitionInterval + 1) * partitionInterval; //FIXME considering the time unit
       timeRangeMapRaftGroup.put(startTime, Math.min(nextTime - 1, endTime),
           this.route(storageGroup, startTime));
       startTime = nextTime;

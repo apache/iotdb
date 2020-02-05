@@ -297,7 +297,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // TODO-Cluster#352: The problem of duplicated data in remote files is partially resolved by
     //  tracking the merge history using the version numbers of the merged files. But a better
     //  solution still remains to be found.
-    String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
+    String separatorString = File.separator.equals("\\") ? "\\\\" : "/";
+    String[] pathSegments = resource.getFile().getAbsolutePath().split(separatorString);
     int segSize = pathSegments.length;
     // {storageGroupName}/{fileName}
     String storageGroupName = pathSegments[segSize - 2];
@@ -341,7 +342,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   private void loadRemoteResource(RemoteTsFileResource resource) {
     // remote/{nodeIdentifier}/{storageGroupName}/{fileName}
-    String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
+    String separatorString = File.separator.equals("\\") ? "\\\\" : "/";
+    String[] pathSegments = resource.getFile().getAbsolutePath().split(separatorString);
     int segSize = pathSegments.length;
     String storageGroupName = pathSegments[segSize - 2];
     File remoteModFile =
@@ -365,7 +367,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   private File pullRemoteFile(RemoteTsFileResource resource, Node node) {
     logger.debug("{}: pulling remote file {} from {}", name, resource, node);
 
-    String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
+    String separatorString = File.separator.equals("\\") ? "\\\\" : "/";
+    String[] pathSegments = resource.getFile().getAbsolutePath().split(separatorString);
     int segSize = pathSegments.length;
     // remote/{nodeIdentifier}/{storageGroupName}/{fileName}
     String tempFileName =

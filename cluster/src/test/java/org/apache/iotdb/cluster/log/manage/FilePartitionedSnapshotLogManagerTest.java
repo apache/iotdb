@@ -59,7 +59,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
     manager.commitLog(10);
 
     // create files for sgs
-    for (int i = 0; i < 3; i++) {
+    for (int i = 1; i < 4; i++) {
       String sg = TestUtils.getTestSg(i);
       for (int j = 0; j < 4; j++) {
         // closed files
@@ -72,7 +72,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
 
     manager.takeSnapshot();
     PartitionedSnapshot snapshot = (PartitionedSnapshot) manager.getSnapshot();
-    for (int i = 0; i < 3; i++) {
+    for (int i = 1; i < 4; i++) {
       FileSnapshot fileSnapshot =
           (FileSnapshot) snapshot.getSnapshot(PartitionUtils.calculateStorageGroupSlot(
               TestUtils.getTestSg(i), 0, 100));

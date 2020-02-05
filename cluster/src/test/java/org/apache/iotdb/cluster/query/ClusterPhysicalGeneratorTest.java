@@ -47,10 +47,9 @@ public class ClusterPhysicalGeneratorTest extends BaseQueryTest{
   @Test
   public void test() throws QueryProcessException {
     QueryOperator operator = new QueryOperator(SQLConstant.TOK_QUERY);
-    operator.setGroupByDevice(true);
 
     SelectOperator selectOperator = new SelectOperator(SQLConstant.TOK_SELECT);
-    selectOperator.setSuffixPathList(Collections.singletonList(new Path("*")));
+    selectOperator.setSuffixPathList(pathList);
     FromOperator fromOperator = new FromOperator(SQLConstant.TOK_FROM);
     fromOperator.addPrefixTablePath(new Path(TestUtils.getTestSg(0)));
 
@@ -58,8 +57,7 @@ public class ClusterPhysicalGeneratorTest extends BaseQueryTest{
     operator.setFromOperator(fromOperator);
     QueryPlan plan = (QueryPlan) physicalGenerator.transformToPhysicalPlan(operator);
 
-    // TODO: Enable this when IOTDB-412 is fixed
-    //assertEquals(pathList, plan.getDeduplicatedPaths());
+    assertEquals(pathList, plan.getDeduplicatedPaths());
     assertEquals(dataTypes, plan.getDeduplicatedDataTypes());
   }
 }
