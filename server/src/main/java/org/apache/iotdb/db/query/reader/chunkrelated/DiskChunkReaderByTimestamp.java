@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader.chunkRelated;
+package org.apache.iotdb.db.query.reader.chunkrelated;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;

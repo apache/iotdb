@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.read.IPointReader;
-import org.apache.iotdb.db.query.reader.resourceRelated.CachedUnseqResourceMergeReader;
+import org.apache.iotdb.db.query.reader.resourcerelated.CachedUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;

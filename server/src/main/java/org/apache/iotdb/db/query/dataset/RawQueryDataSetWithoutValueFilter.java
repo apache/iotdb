@@ -260,12 +260,10 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
           // move next
           cachedBatchDataArray[seriesIndex].next();
 
-          // get next batch if current batch is empty
-          if (!cachedBatchDataArray[seriesIndex].hasCurrent()) {
-            // still have remaining batch data in queue
-            if (!noMoreDataInQueueArray[seriesIndex]) {
-              fillCache(seriesIndex);
-            }
+          // get next batch if current batch is empty and  still have remaining batch data in queue
+          if (!cachedBatchDataArray[seriesIndex].hasCurrent()
+              && !noMoreDataInQueueArray[seriesIndex]) {
+            fillCache(seriesIndex);
           }
 
           // try to put the next timestamp into the heap
@@ -400,16 +398,14 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
         // move next
         cachedBatchDataArray[seriesIndex].next();
 
-        // get next batch if current batch is empty
-        if (!cachedBatchDataArray[seriesIndex].hasCurrent()) {
-          // still have remaining batch data in queue
-          if (!noMoreDataInQueueArray[seriesIndex]) {
-            try {
-              fillCache(seriesIndex);
-            } catch (InterruptedException e) {
-              LOGGER.error("Interrupted while taking from the blocking queue: ", e);
-              Thread.currentThread().interrupt();
-            }
+        // get next batch if current batch is empty and still have remaining batch data in queue
+        if (!cachedBatchDataArray[seriesIndex].hasCurrent()
+            && !noMoreDataInQueueArray[seriesIndex]) {
+          try {
+            fillCache(seriesIndex);
+          } catch (InterruptedException e) {
+            LOGGER.error("Interrupted while taking from the blocking queue: ", e);
+            Thread.currentThread().interrupt();
           }
         }
 

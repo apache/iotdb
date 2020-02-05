@@ -28,7 +28,7 @@ import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.query.externalsort.adapter.ByTimestampReaderAdapter;
 import org.apache.iotdb.tsfile.read.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
+import org.apache.iotdb.db.query.reader.chunkrelated.ChunkReaderWrap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

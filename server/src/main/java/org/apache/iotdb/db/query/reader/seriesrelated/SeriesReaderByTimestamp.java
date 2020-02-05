@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader.seriesRelated;
+package org.apache.iotdb.db.query.reader.seriesrelated;
 
 import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -43,10 +43,9 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
     seriesReader.setTimeFilter(timestamp);
-    if (batchData == null || batchData.getTimeByIndex(batchData.length() - 1) < timestamp) {
-      if (!hasNext(timestamp)) {
-        return null;
-      }
+    if ((batchData == null || batchData.getTimeByIndex(batchData.length() - 1) < timestamp)
+        && !hasNext(timestamp)) {
+      return null;
     }
 
     return batchData.getValueInTimestamp(timestamp);

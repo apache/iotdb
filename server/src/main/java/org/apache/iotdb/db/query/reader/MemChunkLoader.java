@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
 public class MemChunkLoader implements IChunkLoader {
+
   private final ReadOnlyMemChunk chunk;
 
   public MemChunkLoader(ReadOnlyMemChunk chunk) {
@@ -34,18 +35,18 @@ public class MemChunkLoader implements IChunkLoader {
 
 
   @Override
-  public Chunk getChunk(ChunkMetaData chunkMetaData) throws IOException {
-    return null;
+  public Chunk getChunk(ChunkMetaData chunkMetaData) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void close() throws IOException {
-
+    //no resources need to close
   }
 
   @Override
   public void clear() {
-
+    //no cache need clear
   }
 
   public ReadOnlyMemChunk getChunk() {

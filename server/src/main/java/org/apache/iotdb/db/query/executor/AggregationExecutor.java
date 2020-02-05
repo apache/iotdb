@@ -36,9 +36,9 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesAggregateReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.seriesrelated.SeriesAggregateReader;
+import org.apache.iotdb.db.query.reader.seriesrelated.IAggregateReader;
+import org.apache.iotdb.db.query.reader.seriesrelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -101,9 +101,9 @@ public class AggregationExecutor {
   /**
    * get aggregation result for one series
    *
-   * @param series series map
+   * @param series     series map
    * @param timeFilter time filter
-   * @param context query context
+   * @param context    query context
    * @return AggregateResult list
    */
   private List<AggregateResult> groupAggregationsBySeries(Map.Entry<Path, List<Integer>> series,
@@ -248,11 +248,9 @@ public class AggregationExecutor {
    * @param aggregateResultList aggregate result list
    */
   private QueryDataSet constructDataSet(List<AggregateResult> aggregateResultList) {
-    List<TSDataType> dataTypes = new ArrayList<>();
     RowRecord record = new RowRecord(0);
     for (AggregateResult resultData : aggregateResultList) {
       TSDataType dataType = resultData.getDataType();
-      dataTypes.add(dataType);
       record.addField(resultData.getResult(), dataType);
     }
 
