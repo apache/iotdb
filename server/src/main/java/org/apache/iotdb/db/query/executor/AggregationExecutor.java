@@ -36,7 +36,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.seriesRelated.AggregateReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
@@ -114,7 +114,7 @@ public class AggregationExecutor {
     Path seriesPath = series.getKey();
     TSDataType tsDataType = dataTypes.get(series.getValue().get(0));
     // construct series reader without value filter
-    IAggregateReader seriesReader = new AggregateReader(
+    IAggregateReader seriesReader = new SeriesAggregateReader(
         series.getKey(), tsDataType, context, QueryResourceManager.getInstance()
         .getQueryDataSource(seriesPath, context, timeFilter), timeFilter, null);
 

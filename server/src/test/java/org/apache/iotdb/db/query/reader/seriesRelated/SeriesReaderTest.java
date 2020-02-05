@@ -99,7 +99,7 @@ public class SeriesReaderTest {
     try {
       SeriesReader seriesReader = new SeriesReader(new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
               TSDataType.INT32, new QueryContext(), seqResources, unseqResources, null, null);
-      IBatchReader batchReader = new RawDataBatchReader(seriesReader);
+      IBatchReader batchReader = new SeriesRawDataBatchReader(seriesReader);
       int count = 0;
       while (batchReader.hasNextBatch()) {
         BatchData batchData = batchReader.nextBatch();
@@ -132,7 +132,7 @@ public class SeriesReaderTest {
     try {
       SeriesReader seriesReader = new SeriesReader(new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
               TSDataType.INT32, new QueryContext(), seqResources, unseqResources, null, null);
-      IPointReader pointReader = new RawDataPointReader(seriesReader);
+      IPointReader pointReader = new SeriesRawDataPointReader(seriesReader);
       long expectedTime = 0;
       while (pointReader.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = pointReader.nextTimeValuePair();

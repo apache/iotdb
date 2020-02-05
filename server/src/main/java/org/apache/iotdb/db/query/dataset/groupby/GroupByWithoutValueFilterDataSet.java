@@ -29,7 +29,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
-import org.apache.iotdb.db.query.reader.seriesRelated.AggregateReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -79,7 +79,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-      IAggregateReader seriesReader = new AggregateReader(path, dataTypes.get(i), context,
+      IAggregateReader seriesReader = new SeriesAggregateReader(path, dataTypes.get(i), context,
           QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
           timeFilter, null);
       seriesReaders.add(seriesReader);

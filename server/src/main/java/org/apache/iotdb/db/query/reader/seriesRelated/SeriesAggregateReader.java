@@ -28,11 +28,11 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 
-public class AggregateReader implements IAggregateReader {
+public class SeriesAggregateReader implements IAggregateReader {
 
   private final SeriesReader seriesReader;
 
-  public AggregateReader(Path seriesPath, TSDataType dataType, QueryContext context,
+  public SeriesAggregateReader(Path seriesPath, TSDataType dataType, QueryContext context,
       QueryDataSource dataSource, Filter timeFilter, Filter valueFilter) {
     this.seriesReader = new SeriesReader(seriesPath, dataType, context, dataSource, timeFilter,
         valueFilter);

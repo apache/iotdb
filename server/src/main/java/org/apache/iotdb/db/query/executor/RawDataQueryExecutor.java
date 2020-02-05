@@ -28,7 +28,7 @@ import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.RawDataBatchReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -66,27 +66,6 @@ public class RawDataQueryExecutor {
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
       throws StorageEngineException {
 
-    List<ManagedSeriesReader> managedSeriesReaderList = createManagedSeriesReaderList(context);
-
-    try {
-      return new RawQueryDataSetWithoutValueFilter(deduplicatedPaths, deduplicatedDataTypes,
-          managedSeriesReaderList);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new StorageEngineException(e.getMessage());
-    }
-  }
-
-  public QueryDataSet executeNonAlign(QueryContext context) throws StorageEngineException {
-
-    List<ManagedSeriesReader> managedSeriesReaderList = createManagedSeriesReaderList(context);
-
-    return new NonAlignEngineDataSet(deduplicatedPaths, deduplicatedDataTypes,
-        managedSeriesReaderList);
-  }
-
-  private List<ManagedSeriesReader> createManagedSeriesReaderList(QueryContext context)
-      throws StorageEngineException {
     Filter timeFilter = null;
     if (optimizedExpression != null) {
       timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
@@ -97,12 +76,40 @@ public class RawDataQueryExecutor {
       Path path = deduplicatedPaths.get(i);
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
-      ManagedSeriesReader reader = new RawDataBatchReader(path, dataType, context,
+      ManagedSeriesReader reader = new SeriesRawDataBatchReader(path, dataType, context,
           QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
           timeFilter, null);
       readersOfSelectedSeries.add(reader);
     }
-    return readersOfSelectedSeries;
+
+    try {
+      return new RawQueryDataSetWithoutValueFilter(deduplicatedPaths, deduplicatedDataTypes,
+          readersOfSelectedSeries);
+    } catch (InterruptedException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
+  }
+
+  public QueryDataSet executeNonAlign(QueryContext context) throws StorageEngineException {
+
+    Filter timeFilter = null;
+    if (optimizedExpression != null) {
+      timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
+    }
+
+    List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
+    for (int i = 0; i < deduplicatedPaths.size(); i++) {
+      Path path = deduplicatedPaths.get(i);
+      TSDataType dataType = deduplicatedDataTypes.get(i);
+
+      ManagedSeriesReader reader = new SeriesRawDataBatchReader(path, dataType, context,
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
+          timeFilter, null);
+      readersOfSelectedSeries.add(reader);
+    }
+
+    return new NonAlignEngineDataSet(deduplicatedPaths, deduplicatedDataTypes,
+        readersOfSelectedSeries);
   }
 
   /**
