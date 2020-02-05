@@ -48,14 +48,11 @@ public abstract class IFill {
   public IFill() {
   }
 
-  public abstract IFill copy(Path path);
+  public abstract IFill copy();
 
-  public abstract void constructReaders(Path path, QueryContext context)
-      throws IOException, StorageEngineException;
-
-  void constructReaders(Path path, QueryContext context, long beforeRange)
+  public void constructReaders(Path path, QueryContext context)
       throws StorageEngineException {
-    Filter timeFilter = constructFilter(beforeRange);
+    Filter timeFilter = constructFilter();
     allDataReader = new SeriesRawDataBatchReader(path, dataType, context,
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
         timeFilter, null);
@@ -75,13 +72,7 @@ public abstract class IFill {
     this.queryTime = queryTime;
   }
 
-  private Filter constructFilter(long beforeRange) {
-    // if the fill time range is not set, beforeRange will be set to -1.
-    if (beforeRange == -1) {
-      return null;
-    }
-    return TimeFilter.gtEq(queryTime - beforeRange);
-  }
+  abstract Filter constructFilter();
 
   class TimeValuePairPointReader implements IPointReader {
 

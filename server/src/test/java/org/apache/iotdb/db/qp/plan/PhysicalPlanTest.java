@@ -24,6 +24,7 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -207,11 +208,12 @@ public class PhysicalPlanTest {
     if (!plan.isQuery()) {
       fail();
     }
+    int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
     FillQueryPlan mergePlan = (FillQueryPlan) plan;
     assertEquals(5000, mergePlan.getQueryTime());
-    assertEquals(-1, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
-    assertEquals(-1, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
-    assertEquals(-1,
+    assertEquals(defaultFillInterval, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
+    assertEquals(defaultFillInterval, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
+    assertEquals(defaultFillInterval,
         ((PreviousFill) mergePlan.getFillType().get(TSDataType.BOOLEAN)).getBeforeRange());
   }
 
@@ -219,7 +221,7 @@ public class PhysicalPlanTest {
   public void testFill3() {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time = 5000 Fill(int32[linear, 5m], boolean[previous])";
     try {
-      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+      processor.parseSQLToPhysicalPlan(sqlStr);
     } catch (Exception e) {
       assertTrue(true);
     }
@@ -229,9 +231,9 @@ public class PhysicalPlanTest {
   public void testFill4() {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 5000 Fill(int32[linear], boolean[previous])";
     try {
-      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+      processor.parseSQLToPhysicalPlan(sqlStr);
     } catch (Exception e) {
-      assertEquals("Only \"=\" can be used in fill function", e.getMessage().toString());
+      assertEquals("Only \"=\" can be used in fill function", e.getMessage());
     }
   }
 

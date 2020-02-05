@@ -26,6 +26,9 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 public class PreviousFill extends IFill {
 
@@ -43,14 +46,18 @@ public class PreviousFill extends IFill {
   }
 
   @Override
-  public IFill copy(Path path) {
+  public IFill copy() {
     return new PreviousFill(dataType, queryTime, beforeRange);
   }
 
   @Override
-  public void constructReaders(Path path, QueryContext context)
-      throws IOException, StorageEngineException {
-    super.constructReaders(path, context, beforeRange);
+  Filter constructFilter() {
+    if (beforeRange == -1) {
+      beforeRange = Long.MAX_VALUE;
+    }
+    // time in [queryTime - beforeRange, queryTime]
+    return FilterFactory.and(TimeFilter.gtEq(queryTime - beforeRange),
+        TimeFilter.ltEq(queryTime));
   }
 
   public long getBeforeRange() {

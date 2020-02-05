@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.executor;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -67,15 +68,16 @@ public class FillEngineExecutor {
       TSDataType dataType = dataTypes.get(i);
       IFill fill;
       if (!typeIFillMap.containsKey(dataType)) {
-        fill = new PreviousFill(dataType, queryTime, 0);
+        fill = new PreviousFill(dataType, queryTime,
+            IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval());
       } else {
-        fill = typeIFillMap.get(dataType).copy(path);
+        fill = typeIFillMap.get(dataType).copy();
       }
       fill.setDataType(dataType);
       fill.setQueryTime(queryTime);
       fill.constructReaders(path, context);
 
-      TimeValuePair timeValuePair = fill.getFillResult().currentTimeValuePair();
+      TimeValuePair timeValuePair = fill.getFillResult().nextTimeValuePair();
       if (timeValuePair.getValue() == null) {
         record.addField(new Field(null));
       } else {
