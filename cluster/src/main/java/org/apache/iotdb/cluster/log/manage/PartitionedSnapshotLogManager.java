@@ -87,7 +87,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
     for (MNode sgNode : allSgNodes) {
       String storageGroupName = sgNode.getFullPath();
       int slot = PartitionUtils.calculateStorageGroupSlot(storageGroupName, 0,
-          partitionTable.getSlotNum());
+          partitionTable.getTotalSlotNumbers());
 
       Collection<MeasurementSchema> schemas = slotTimeseries.computeIfAbsent(slot,
           s -> new HashSet<>());

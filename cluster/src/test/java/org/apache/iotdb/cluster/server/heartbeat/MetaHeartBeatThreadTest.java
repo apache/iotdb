@@ -101,7 +101,7 @@ public class MetaHeartBeatThreadTest extends HeartBeatThreadTest {
     }
 
     @Override
-    public int getSlotNum() {
+    public int getTotalSlotNumbers() {
       return 100;
     }
   };

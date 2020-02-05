@@ -915,7 +915,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return StatusUtils.PARTITION_TABLE_NOT_READY;
     }
 
-    PartitionGroup partitionGroup = partitionTable.partitionPlan(plan);
+    PartitionGroup partitionGroup = null;
+    try {
+      partitionGroup = partitionTable.partitionPlan(plan);
+    } catch (StorageGroupNotSetException e) {
+      logger.debug("Storage group is not found for plan {}", plan);
+    }
     // the storage group is not found locally, forward it to the leader
     if (partitionGroup == null) {
       if (character != NodeCharacter.LEADER) {

@@ -91,7 +91,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       String storageGroupName = entry.getKey();
       // TODO-Cluster#350: add time partitioning
       int slotNum = PartitionUtils.calculateStorageGroupSlot(storageGroupName, 0,
-          partitionTable.getSlotNum());
+          partitionTable.getTotalSlotNumbers());
 
       FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
           s -> new FileSnapshot());

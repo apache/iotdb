@@ -34,6 +34,18 @@ public class TestPartitionTable implements PartitionTable {
   }
 
   @Override
+  public int getHashKey(String storageGroupName, long timestamp) {
+    //TODO
+    return 0;
+  }
+
+  @Override
+  public PartitionGroup route(int hashkey) {
+    //TODO
+    return null;
+  }
+
+  @Override
   public PartitionGroup addNode(Node node) {
     return null;
   }
@@ -79,7 +91,7 @@ public class TestPartitionTable implements PartitionTable {
   }
 
   @Override
-  public int getSlotNum() {
+  public int getTotalSlotNumbers() {
     return 100;
   }
 }

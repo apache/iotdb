@@ -44,26 +44,38 @@ import org.slf4j.LoggerFactory;
 
 /**
  * SlotPartitionTable manages the slots (data partition) of each node using a look-up table.
+ * Slot: 1,2,3...
  */
 public class SlotPartitionTable implements PartitionTable {
 
   private static final Logger logger = LoggerFactory.getLogger(SlotPartitionTable.class);
   private int replicationNum =
       ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
+
+  //all nodes
   private List<Node> nodeRing = new ArrayList<>();
+  //normally, it is equal to ClusterConstant.SLOT_NUM.
+  private int totalSlotNumbers;
+
+  //The following fields are used for determining which node a data item belongs to.
   // the slots held by each node
   private Map<Node, List<Integer>> nodeSlotMap = new ConcurrentHashMap<>();
   // each slot is managed by whom
-  private Map<Integer, Node> slotNodeMap = new ConcurrentHashMap<>();
+  private Map<Integer, Node> slotNodeMap = new ConcurrentHashMap<>();//TODO a List is enough
   // the nodes that each slot belongs to before a new node is added, used for the new node to
   // find the data source
   private Map<Node, Map<Integer, Node>> previousNodeMap = new ConcurrentHashMap<>();
 
-  // the data groups which this node belongs to
+  //the filed is used for determining which nodes need to be a group.
+  // the data groups which this node belongs to.
   private List<PartitionGroup> localGroups;
-  private Node thisNode;
-  private int slotNum;
 
+  private Node thisNode;
+
+  /**
+   * only used for deserialize.
+   * @param thisNode
+   */
   public SlotPartitionTable(Node thisNode) {
     this.thisNode = thisNode;
   }
@@ -72,9 +84,9 @@ public class SlotPartitionTable implements PartitionTable {
     this(nodes, thisNode, ClusterConstant.SLOT_NUM);
   }
 
-  public SlotPartitionTable(Collection<Node> nodes, Node thisNode, int slotNum) {
+  public SlotPartitionTable(Collection<Node> nodes, Node thisNode, int totalSlotNumbers) {
     this.thisNode = thisNode;
-    this.slotNum = slotNum;
+    this.totalSlotNumbers = totalSlotNumbers;
     init(nodes);
   }
 
@@ -89,19 +101,19 @@ public class SlotPartitionTable implements PartitionTable {
   private void assignPartitions() {
     // evenly assign the slots to each node
     int nodeNum = nodeRing.size();
-    int slotsPerNode = slotNum / nodeNum;
-    for (Node node : nodeRing) {
-      List<Integer> nodeSlots = new ArrayList<>();
-      nodeSlotMap.put(node, nodeSlots);
-    }
-
-    for (int i = 0; i < slotNum; i++) {
-      int nodeIdx = i / slotsPerNode;
-      if (nodeIdx >= nodeNum) {
-        // the last node may receive a little more if total slots cannot de divided by node number
-        nodeIdx--;
+    int slotsPerNode = totalSlotNumbers / nodeNum;
+      for (Node node : nodeRing) {
+        List<Integer> nodeSlots = new ArrayList<>();
+        nodeSlotMap.put(node, nodeSlots);
       }
-      nodeSlotMap.get(nodeRing.get(nodeIdx)).add(i);
+
+      for (int i = 0; i < totalSlotNumbers; i++) {
+        int nodeIdx = i / slotsPerNode;
+        if (nodeIdx >= nodeNum) {
+          // the last node may receive a little more if total slots cannot de divided by node number
+          nodeIdx--;
+        }
+        nodeSlotMap.get(nodeRing.get(nodeIdx)).add(i);
     }
 
     // build the index to find a node by slot
@@ -157,12 +169,23 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public PartitionGroup route(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
-      int slot = PartitionUtils.calculateStorageGroupSlot(storageGroupName, timestamp, getSlotNum());
+      int slot = PartitionUtils.calculateStorageGroupSlot(storageGroupName, timestamp, getTotalSlotNumbers());
       Node node = slotNodeMap.get(slot);
       logger.debug("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp,
           slot, node);
       return getHeaderGroup(node);
     }
+  }
+  @Override
+  public int getHashKey(String storageGroupName, long timestamp){
+    return PartitionUtils.calculateStorageGroupSlot(storageGroupName, timestamp, getTotalSlotNumbers());
+  }
+
+  @Override
+  public PartitionGroup route(int hashKey) {
+    Node node = slotNodeMap.get(hashKey);
+    logger.debug("The slot of {} is held by {}", hashKey, node);
+    return getHeaderGroup(node);
   }
 
 
@@ -219,7 +242,7 @@ public class SlotPartitionTable implements PartitionTable {
     // move the slots to the new node if any previous node have more slots than the new average
     List<Integer> newSlots = new ArrayList<>();
     Map<Integer, Node> previousHolders = new HashMap<>();
-    int newAvg = slotNum / nodeRing.size();
+    int newAvg = totalSlotNumbers / nodeRing.size();
     for (Entry<Node, List<Integer>> entry : nodeSlotMap.entrySet()) {
       List<Integer> slots = entry.getValue();
       int transferNum = slots.size() - newAvg;
@@ -248,7 +271,7 @@ public class SlotPartitionTable implements PartitionTable {
     DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
 
     try {
-      dataOutputStream.writeInt(slotNum);
+      dataOutputStream.writeInt(totalSlotNumbers);
       dataOutputStream.writeInt(nodeSlotMap.size());
       for (Entry<Node, List<Integer>> entry : nodeSlotMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
@@ -275,7 +298,7 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public void deserialize(ByteBuffer buffer) {
     logger.info("Initializing the partition table from buffer");
-    slotNum = buffer.getInt();
+    totalSlotNumbers = buffer.getInt();
     int size = buffer.getInt();
     Map<Integer, Node> idNodeMap = new HashMap<>();
     for (int i = 0; i < size; i++) {
@@ -334,8 +357,8 @@ public class SlotPartitionTable implements PartitionTable {
   }
 
   @Override
-  public int getSlotNum() {
-    return slotNum;
+  public int getTotalSlotNumbers() {
+    return totalSlotNumbers;
   }
 
 
@@ -348,7 +371,7 @@ public class SlotPartitionTable implements PartitionTable {
       return false;
     }
     SlotPartitionTable that = (SlotPartitionTable) o;
-    return slotNum == that.slotNum &&
+    return totalSlotNumbers == that.totalSlotNumbers &&
         Objects.equals(nodeRing, that.nodeRing) &&
         Objects.equals(nodeSlotMap, that.nodeSlotMap) &&
         Objects.equals(slotNodeMap, that.slotNodeMap) &&
