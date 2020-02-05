@@ -36,12 +36,13 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.seriesrelated.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.seriesrelated.IAggregateReader;
+import org.apache.iotdb.db.query.reader.seriesrelated.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.seriesrelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -101,9 +102,9 @@ public class AggregationExecutor {
   /**
    * get aggregation result for one series
    *
-   * @param series     series map
+   * @param series series map
    * @param timeFilter time filter
-   * @param context    query context
+   * @param context query context
    * @return AggregateResult list
    */
   private List<AggregateResult> groupAggregationsBySeries(Map.Entry<Path, List<Integer>> series,
@@ -128,6 +129,7 @@ public class AggregationExecutor {
     int remainingToCalculate = series.getValue().size();
 
     while (seriesReader.hasNextChunk()) {
+      // cal by chunk statistics
       if (seriesReader.canUseCurrentChunkStatistics()) {
         Statistics chunkStatistics = seriesReader.currentChunkStatistics();
         for (int i = 0; i < aggregateResultList.size(); i++) {
@@ -147,7 +149,7 @@ public class AggregationExecutor {
         continue;
       }
       while (seriesReader.hasNextPage()) {
-        //cal by pageheader
+        //cal by page statistics
         if (seriesReader.canUseCurrentPageStatistics()) {
           Statistics pageStatistic = seriesReader.currentPageStatistics();
           for (int i = 0; i < aggregateResultList.size(); i++) {
@@ -166,18 +168,19 @@ public class AggregationExecutor {
           seriesReader.skipCurrentPage();
           continue;
         }
-        //cal by pagedata
+        // cal by page data
         while (seriesReader.hasNextOverlappedPage()) {
           for (int i = 0; i < aggregateResultList.size(); i++) {
+            BatchData nextOverlappedPageData = seriesReader.nextOverlappedPage();
             if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
               AggregateResult aggregateResult = aggregateResultList.get(i);
-              aggregateResult.updateResultFromPageData(seriesReader.nextOverlappedPage());
+              aggregateResult.updateResultFromPageData(nextOverlappedPageData);
               if (aggregateResult.isCalculatedAggregationResult()) {
                 isCalculatedList.set(i, true);
                 remainingToCalculate--;
-              }
-              if (remainingToCalculate == 0) {
-                return aggregateResultList;
+                if (remainingToCalculate == 0) {
+                  return aggregateResultList;
+                }
               }
             }
           }

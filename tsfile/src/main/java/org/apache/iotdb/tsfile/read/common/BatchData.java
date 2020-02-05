@@ -521,5 +521,12 @@ public class BatchData implements Serializable {
     return new BatchDataIterator(this);
   }
 
-
+  /**
+   * This method is used to reset batch data when more than one group by aggregation functions
+   * visit the same batch data
+   */
+  public void resetBatchData() {
+    this.readCurArrayIndex = 0;
+    this.readCurListIndex = 0;
+  }
 }
