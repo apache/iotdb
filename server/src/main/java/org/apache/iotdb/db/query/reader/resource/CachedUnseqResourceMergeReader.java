@@ -16,16 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.externalsort.serialize;
+
+package org.apache.iotdb.db.query.reader.resource;
+
+import org.apache.iotdb.db.query.reader.chunk.ChunkDataIterator;
+import org.apache.iotdb.db.query.reader.universal.CachedPriorityMergeReader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
+import java.util.List;
 
-public interface IExternalSortFileDeserializer extends IPointReader {
+public class CachedUnseqResourceMergeReader extends CachedPriorityMergeReader {
 
-  @Override
-  default TimeValuePair currentTimeValuePair() throws IOException {
-    throw new IOException("IExternalSortFileDeserializer doesn't implement current() method.");
+  public CachedUnseqResourceMergeReader(List<Chunk> chunks, TSDataType dataType)
+      throws IOException {
+    super(dataType);
+    int priorityValue = 1;
+    for (Chunk chunk : chunks) {
+      ChunkReader chunkReader = new ChunkReader(chunk, null);
+      addReader(new ChunkDataIterator(chunkReader), priorityValue++);
+    }
   }
 }

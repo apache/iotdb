@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.reader;
+package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 

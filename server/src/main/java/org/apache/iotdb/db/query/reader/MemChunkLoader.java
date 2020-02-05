@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.query.reader;
 
-import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+
+import java.io.IOException;
 
 public class MemChunkLoader implements IChunkLoader {
 

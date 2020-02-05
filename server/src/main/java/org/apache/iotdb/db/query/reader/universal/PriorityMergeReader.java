@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.universal;
 
-import org.apache.iotdb.tsfile.read.IPointReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 import java.io.IOException;

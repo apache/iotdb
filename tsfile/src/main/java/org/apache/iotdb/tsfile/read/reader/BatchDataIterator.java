@@ -16,38 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader.seriesrelated;
+package org.apache.iotdb.tsfile.read.reader;
 
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import java.io.IOException;
 
-public interface IAggregateReader {
+public class BatchDataIterator implements IPointReader {
 
-  boolean hasNextChunk() throws IOException;
+  private BatchData batchData;
 
-  boolean canUseCurrentChunkStatistics();
+  public BatchDataIterator(BatchData batchData) {
+    this.batchData = batchData;
+  }
 
-  Statistics currentChunkStatistics();
+  @Override
+  public boolean hasNextTimeValuePair() {
+    return batchData.hasCurrent();
+  }
 
-  void skipCurrentChunk();
+  @Override
+  public TimeValuePair nextTimeValuePair() {
+    TimeValuePair timeValuePair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
+    batchData.next();
+    return timeValuePair;
+  }
 
-  boolean hasNextPage() throws IOException;
+  @Override
+  public TimeValuePair currentTimeValuePair() {
+    return new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
+  }
 
-  /**
-   * only be used without value filter
-   */
-  boolean canUseCurrentPageStatistics() throws IOException;
-
-  /**
-   * only be used without value filter
-   */
-  Statistics currentPageStatistics() throws IOException;
-
-  void skipCurrentPage();
-
-  boolean hasNextOverlappedPage() throws IOException;
-
-  BatchData nextOverlappedPage() throws IOException;
+  @Override
+  public void close() throws IOException {
+    batchData = null;
+  }
 }

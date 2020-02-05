@@ -16,26 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.read.reader;
 
-package org.apache.iotdb.db.query.reader.resourcerelated;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 import java.io.IOException;
-import java.util.List;
-import org.apache.iotdb.db.query.reader.chunkrelated.ChunkDataIterator;
-import org.apache.iotdb.db.query.reader.universal.CachedPriorityMergeReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
-public class CachedUnseqResourceMergeReader extends CachedPriorityMergeReader {
+public interface IPointReader {
 
-  public CachedUnseqResourceMergeReader(List<Chunk> chunks, TSDataType dataType)
-      throws IOException {
-    super(dataType);
-    int priorityValue = 1;
-    for (Chunk chunk : chunks) {
-      ChunkReader chunkReader = new ChunkReader(chunk, null);
-      addReader(new ChunkDataIterator(chunkReader), priorityValue++);
-    }
-  }
+  boolean hasNextTimeValuePair() throws IOException;
+
+  TimeValuePair nextTimeValuePair() throws IOException;
+
+  TimeValuePair currentTimeValuePair() throws IOException;
+
+  void close() throws IOException;
 }

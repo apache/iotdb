@@ -16,17 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read;
+package org.apache.iotdb.db.query.reader.series;
+
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import java.io.IOException;
 
-public interface IPointReader {
+public interface IAggregateReader {
 
-  boolean hasNextTimeValuePair() throws IOException;
+  boolean hasNextChunk() throws IOException;
 
-  TimeValuePair nextTimeValuePair() throws IOException;
+  boolean canUseCurrentChunkStatistics();
 
-  TimeValuePair currentTimeValuePair() throws IOException;
+  Statistics currentChunkStatistics();
 
-  void close() throws IOException;
+  void skipCurrentChunk();
+
+  boolean hasNextPage() throws IOException;
+
+  /**
+   * only be used without value filter
+   */
+  boolean canUseCurrentPageStatistics() throws IOException;
+
+  /**
+   * only be used without value filter
+   */
+  Statistics currentPageStatistics() throws IOException;
+
+  void skipCurrentPage();
+
+  boolean hasNextOverlappedPage() throws IOException;
+
+  BatchData nextOverlappedPage() throws IOException;
 }
