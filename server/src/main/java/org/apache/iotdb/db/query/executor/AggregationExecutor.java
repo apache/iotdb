@@ -84,9 +84,9 @@ public class AggregationExecutor {
     }
 
     //TODO use multi-thread
-    Map<Path, List<Integer>> seriesMap = mergeSameSeries(selectedSeries);
+    Map<Path, List<Integer>> pathToAggrIndexesMap = mergeSameSeries(selectedSeries);
     AggregateResult[] aggregateResultList = new AggregateResult[selectedSeries.size()];
-    for (Map.Entry<Path, List<Integer>> entry : seriesMap.entrySet()) {
+    for (Map.Entry<Path, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
       List<AggregateResult> aggregateResults = groupAggregationsBySeries(entry, timeFilter,
           context);
       int index = 0;
@@ -102,31 +102,32 @@ public class AggregationExecutor {
   /**
    * get aggregation result for one series
    *
-   * @param series series map
+   * @param pathToAggrIndexes entry of path to aggregation indexes map
    * @param timeFilter time filter
    * @param context query context
    * @return AggregateResult list
    */
-  private List<AggregateResult> groupAggregationsBySeries(Map.Entry<Path, List<Integer>> series,
+  private List<AggregateResult> groupAggregationsBySeries(
+      Map.Entry<Path, List<Integer>> pathToAggrIndexes,
       Filter timeFilter, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException {
     List<AggregateResult> aggregateResultList = new ArrayList<>();
     List<Boolean> isCalculatedList = new ArrayList<>();
-    Path seriesPath = series.getKey();
-    TSDataType tsDataType = dataTypes.get(series.getValue().get(0));
+    Path seriesPath = pathToAggrIndexes.getKey();
+    TSDataType tsDataType = dataTypes.get(pathToAggrIndexes.getValue().get(0));
     // construct series reader without value filter
     IAggregateReader seriesReader = new SeriesAggregateReader(
-        series.getKey(), tsDataType, context, QueryResourceManager.getInstance()
+        pathToAggrIndexes.getKey(), tsDataType, context, QueryResourceManager.getInstance()
         .getQueryDataSource(seriesPath, context, timeFilter), timeFilter, null);
 
-    for (int i : series.getValue()) {
+    for (int i : pathToAggrIndexes.getValue()) {
       // construct AggregateResult
       AggregateResult aggregateResult = AggreResultFactory
           .getAggrResultByName(aggregations.get(i), tsDataType);
       aggregateResultList.add(aggregateResult);
       isCalculatedList.add(false);
     }
-    int remainingToCalculate = series.getValue().size();
+    int remainingToCalculate = pathToAggrIndexes.getValue().size();
 
     while (seriesReader.hasNextChunk()) {
       // cal by chunk statistics

@@ -50,7 +50,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * Merges same series to one map. For example: Given: paths: s1, s2, s3, s1 and aggregations:
    * count, sum, count, sum seriesMap: s1 -> 0, 3; s2 -> 2; s3 -> 3
    */
-  private Map<Path, List<Integer>> seriesReaders;
+  private Map<Path, List<Integer>> pathToAggrIndexesMap;
 
   /**
    * Maps path and its aggregate reader
@@ -67,7 +67,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       throws StorageEngineException {
     super(context, groupByPlan);
 
-    this.seriesReaders = new HashMap<>();
+    this.pathToAggrIndexesMap = new HashMap<>();
     this.aggregateReaders = new HashMap<>();
     this.timeFilter = null;
     this.cachedBatchDataList = new ArrayList<>();
@@ -92,7 +92,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-      List<Integer> indexList = seriesReaders.computeIfAbsent(path, key -> new ArrayList<>());
+      List<Integer> indexList = pathToAggrIndexesMap
+          .computeIfAbsent(path, key -> new ArrayList<>());
       indexList.add(i);
       if (!aggregateReaders.containsKey(path)) {
         IAggregateReader seriesReader = new SeriesAggregateReader(path, dataTypes.get(i), context,
@@ -112,9 +113,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     hasCachedTimeInterval = false;
     RowRecord record = new RowRecord(curStartTime);
     AggregateResult[] aggregateResultList = new AggregateResult[paths.size()];
-    for (Map.Entry<Path, List<Integer>> entry : seriesReaders.entrySet()) {
+    for (Map.Entry<Path, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
       List<AggregateResult> aggregateResults;
-      AggregateResult res;
       try {
         aggregateResults = nextIntervalAggregation(entry);
       } catch (QueryProcessException e) {
@@ -139,14 +139,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * calculate the group by result of one series
    *
-   * @param seriesReader series reader map
+   * @param pathToAggrIndexes entry of path to aggregation indexes map
    */
   private List<AggregateResult> nextIntervalAggregation(Map.Entry<Path,
-      List<Integer>> seriesReader) throws IOException, QueryProcessException {
+      List<Integer>> pathToAggrIndexes) throws IOException, QueryProcessException {
     List<AggregateResult> aggregateResultList = new ArrayList<>();
     List<BatchData> batchDataList = new ArrayList<>();
     List<Boolean> isCalculatedList = new ArrayList<>();
-    List<Integer> indexList = seriesReader.getValue();
+    List<Integer> indexList = pathToAggrIndexes.getValue();
 
     int remainingToCalculate = indexList.size();
     TSDataType tsDataType = groupByPlan.getDeduplicatedDataTypes().get(indexList.get(0));
@@ -171,7 +171,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
     }
     TimeRange timeRange = new TimeRange(curStartTime, curEndTime - 1);
-    IAggregateReader reader = aggregateReaders.get(seriesReader.getKey());
+    IAggregateReader reader = aggregateReaders.get(pathToAggrIndexes.getKey());
 
     while (reader.hasNextChunk()) {
       // cal by chunk statistics
@@ -229,7 +229,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
             if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
               AggregateResult result = aggregateResultList.get(i);
               calcBatchData(result, batchData);
-              int idx = seriesReader.getValue().get(i);
+              int idx = pathToAggrIndexes.getValue().get(i);
               if (batchData.hasCurrent()) {
                 cachedBatchDataList.set(idx, batchData);
               }
@@ -256,8 +256,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * this batchData >= curEndTime
    */
-  private void calcBatchData(AggregateResult result, BatchData batchData)
-      throws IOException {
+  private void calcBatchData(AggregateResult result, BatchData batchData) throws IOException {
     if (batchData == null || !batchData.hasCurrent()) {
       return;
     }
