@@ -863,7 +863,9 @@ public class MManager {
 
   /**
    * Get devices info with given prefixPath.
-   *
+   * @param prefixPath a prefix of a full path.
+   *              if the wildcard is not at the tail, then each wildcard can only match one level,
+   *              otherwise it can match to the tail.
    * @return A HashSet instance which stores devices names with given prefixPath.
    */
   public List<String> getDevices(String prefixPath) throws MetadataException {
@@ -878,7 +880,10 @@ public class MManager {
 
   /**
    * Get all nodes from the given level
-   *
+   * @param prefixPath can be a prefix of a full path. Can not be a full path. can not have wildcard.
+   *  But, the level of the prefixPath can be smaller than the given level, e.g., prefixPath = root.a
+   *  while the given level is 5
+   * @param nodeLevel the level can not be smaller than the level of the prefixPath
    * @return A List instance which stores all node at given level
    */
   public List<String> getNodesList(String prefixPath, int nodeLevel) throws SQLException {
@@ -946,7 +951,7 @@ public class MManager {
 
   /**
    * Calculate the count of storage-group nodes included in given seriesPath.
-   *
+   * @param path can only be root.something  FIXME I do not know what it is used for...
    * @return The total count of storage-group nodes.
    */
   // future feature
@@ -964,6 +969,9 @@ public class MManager {
   /**
    * Get the file name for given seriesPath Notice: This method could be called if and only if the
    * seriesPath includes one node whose {@code isStorageGroup} is true.
+   *
+   * @param path a prefix of a fullpath. The prefix should contains the name of a storage group.
+   * DO NOT SUPPORT WILDCARD.
    *
    * @return A String represented the file name
    */
@@ -1048,6 +1056,10 @@ public class MManager {
 
   /**
    * return a HashMap contains all the paths separated by storage group name.
+   * @param path a prefix of a path which contains a storage group name.
+   *              if the wildcard is not at the tail, then each wildcard can only match one level,
+   *              otherwise it can match to the tail.
+   * @return (sg name, timeseries) pairs
    */
   Map<String, List<String>> getAllPathGroupByStorageGroup(String path)
       throws MetadataException {
@@ -1088,6 +1100,9 @@ public class MManager {
   /**
    * Return all paths for given seriesPath if the seriesPath is abstract. Or return the seriesPath
    * itself.
+   * @param path  can be a prefix or a full path.
+   *              if the wildcard is not at the tail, then each wildcard can only match one level,
+   *              otherwise it can match to the tail.
    */
   public List<String> getPaths(String path) throws MetadataException {
 
@@ -1106,6 +1121,12 @@ public class MManager {
 
   /**
    * function for getting all timeseries paths under the given seriesPath.
+   * @param path can be root, root.*  root.*.*.a etc..
+   *              if the wildcard is not at the tail, then each wildcard can only match one level,
+   *              otherwise it can match to the tail.
+   * @return  for each storage group, return a List which size =5 (name, sg name, data type,
+   * encoding, and compressor).
+   * TODO the structure needs to optimize
    */
   public List<List<String>> getShowTimeseriesPath(String path) throws MetadataException {
     lock.readLock().lock();
@@ -1118,6 +1139,8 @@ public class MManager {
 
   /**
    * function for getting leaf node path in the next level of given seriesPath.
+   * @param path a prefix of a full path which has a storage group name. do not support wildcard.
+   *    can not be a full path.
    */
   List<String> getLeafNodePathInNextLevel(String path) throws MetadataException {
     lock.readLock().lock();
@@ -1130,6 +1153,7 @@ public class MManager {
 
   /**
    * function for getting leaf node path in the next level of given seriesPath.
+   * @param path do not accept wildcard. can not be a full path.
    */
   public Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {
     lock.readLock().lock();
@@ -1462,7 +1486,6 @@ public class MManager {
       lock.writeLock().unlock();
     }
   }
-
 
   public void collectSeries(MNode startingNode, Collection<MeasurementSchema> timeseriesSchemas) {
     Deque<MNode> nodeDeque = new ArrayDeque<>();
