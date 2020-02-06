@@ -26,16 +26,11 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
-import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
-import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -60,12 +55,12 @@ public class SeriesReaderTest {
 
   @Before
   public void setUp() throws MetadataException, PathException, IOException, WriteProcessException {
-    SeriesTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
+    SeriesReaderTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    SeriesTestUtil.tearDown(seqResources, unseqResources);
+    SeriesReaderTestUtil.tearDown(seqResources, unseqResources);
   }
 
   @Test

@@ -57,12 +57,12 @@ public class SeriesAggregateReaderTest {
 
   @Before
   public void setUp() throws MetadataException, PathException, IOException, WriteProcessException {
-    SeriesTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
+    SeriesReaderTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    SeriesTestUtil.tearDown(seqResources, unseqResources);
+    SeriesReaderTestUtil.tearDown(seqResources, unseqResources);
   }
 
   @Test

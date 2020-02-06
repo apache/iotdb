@@ -45,7 +45,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-public class SeriesTestUtil {
+public class SeriesReaderTestUtil {
 
   private static int seqFileNum = 5;
   private static int unseqFileNum = 5;
