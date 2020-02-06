@@ -98,7 +98,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
     this.constMeasurements = queryPlan.getConstMeasurements();
     this.positionOfNotExistMeasurements = queryPlan.getPositionOfNotExistMeasurements();
     this.positionOfConstMeasurements = queryPlan.getPositionOfConstMeasurements();
-    BuildOutDataTypes();
+    //BuildOutDataTypes();
 
     if (queryPlan instanceof GroupByPlan) {
       this.dataSetType = DataSetType.GROUPBY;

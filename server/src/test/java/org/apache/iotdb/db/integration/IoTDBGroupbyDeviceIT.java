@@ -970,4 +970,369 @@ public class IoTDBGroupbyDeviceIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void selectConstantAndNonExistTestUnorder2() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "1,root.vehicle.d0,101,null,11,null,22,null,null,null,",
+        "2,root.vehicle.d0,10000,null,11,2.22,22,null,null,null,",
+        "3,root.vehicle.d0,null,null,11,3.33,22,null,null,null,",
+        "4,root.vehicle.d0,null,null,11,4.44,22,null,null,null,",
+        "50,root.vehicle.d0,10000,null,11,null,22,null,null,null,",
+        "60,root.vehicle.d0,null,aaaaa,11,null,22,null,aaaaa,null,",
+        "70,root.vehicle.d0,null,bbbbb,11,null,22,null,bbbbb,null,",
+        "80,root.vehicle.d0,null,ccccc,11,null,22,null,ccccc,null,",
+        "100,root.vehicle.d0,99,null,11,null,22,null,null,true,",
+        "101,root.vehicle.d0,99,ddddd,11,null,22,null,ddddd,null,",
+        "102,root.vehicle.d0,80,fffff,11,10.0,22,null,fffff,null,",
+        "103,root.vehicle.d0,99,null,11,null,22,null,null,null,",
+        "104,root.vehicle.d0,90,null,11,null,22,null,null,null,",
+        "105,root.vehicle.d0,99,null,11,11.11,22,null,null,null,",
+        "106,root.vehicle.d0,99,null,11,null,22,null,null,null,",
+        "1000,root.vehicle.d0,22222,null,11,1000.11,22,null,null,null,",
+        "946684800000,root.vehicle.d0,null,good,11,null,22,null,good,null,",
+        "1,root.vehicle.d1,999,null,11,null,22,null,null,null,",
+        "1000,root.vehicle.d1,888,null,11,null,22,null,null,null,",
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select s0, s3,\"11\", s2, \"22\", s5, s3, s4 from root.vehicle.* group by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,Device,s0,s3,11,s2,22,s5,s3,s4,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(4));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(5));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(6));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(7));
+        // non exist column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(8));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(9));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(10));
+
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(19, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectConstantAndNonExistTestUnorder3() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "1,root.vehicle.d0,101,null,11,null,22,null,null,null,",
+        "2,root.vehicle.d0,10000,null,11,2.22,22,null,null,null,",
+        "3,root.vehicle.d0,null,null,11,3.33,22,null,null,null,",
+        "4,root.vehicle.d0,null,null,11,4.44,22,null,null,null,",
+        "50,root.vehicle.d0,10000,null,11,null,22,null,null,null,",
+        "60,root.vehicle.d0,null,null,11,null,22,null,aaaaa,null,",
+        "70,root.vehicle.d0,null,null,11,null,22,null,bbbbb,null,",
+        "80,root.vehicle.d0,null,null,11,null,22,null,ccccc,null,",
+        "100,root.vehicle.d0,99,null,11,null,22,null,null,true,",
+        "101,root.vehicle.d0,99,null,11,null,22,null,ddddd,null,",
+        "102,root.vehicle.d0,80,null,11,10.0,22,null,fffff,null,",
+        "103,root.vehicle.d0,99,null,11,null,22,null,null,null,",
+        "104,root.vehicle.d0,90,null,11,null,22,null,null,null,",
+        "105,root.vehicle.d0,99,null,11,11.11,22,null,null,null,",
+        "106,root.vehicle.d0,99,null,11,null,22,null,null,null,",
+        "1000,root.vehicle.d0,22222,null,11,1000.11,22,null,null,null,",
+        "946684800000,root.vehicle.d0,null,null,11,null,22,null,good,null,",
+        "1,root.vehicle.d1,999,null,11,null,22,null,null,null,",
+        "1000,root.vehicle.d1,888,null,11,null,22,null,null,null,",
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select s0, s5, \"11\", s2, \"22\", s5, s3, s4 from root.vehicle.* group by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,Device,s0,s5,11,s2,22,s5,s3,s4,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
+        // non exist column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(4));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(5));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(6));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(7));
+        // non exist column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(8));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(9));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(10));
+
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(19, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectConstantAndNonExistTestShifting() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "1,root.vehicle.d0,101,null,null,11,null,22,null,null,null,",
+        "2,root.vehicle.d0,10000,null,null,11,2.22,22,null,null,null,",
+        "3,root.vehicle.d0,null,null,null,11,3.33,22,null,null,null,",
+        "4,root.vehicle.d0,null,null,null,11,4.44,22,null,null,null,",
+        "50,root.vehicle.d0,10000,null,null,11,null,22,null,null,null,",
+        "60,root.vehicle.d0,null,null,null,11,null,22,null,aaaaa,null,",
+        "70,root.vehicle.d0,null,null,null,11,null,22,null,bbbbb,null,",
+        "80,root.vehicle.d0,null,null,null,11,null,22,null,ccccc,null,",
+        "100,root.vehicle.d0,99,null,null,11,null,22,null,null,true,",
+        "101,root.vehicle.d0,99,null,null,11,null,22,null,ddddd,null,",
+        "102,root.vehicle.d0,80,null,null,11,10.0,22,null,fffff,null,",
+        "103,root.vehicle.d0,99,null,null,11,null,22,null,null,null,",
+        "104,root.vehicle.d0,90,null,null,11,null,22,null,null,null,",
+        "105,root.vehicle.d0,99,null,null,11,11.11,22,null,null,null,",
+        "106,root.vehicle.d0,99,null,null,11,null,22,null,null,null,",
+        "1000,root.vehicle.d0,22222,null,null,11,1000.11,22,null,null,null,",
+        "946684800000,root.vehicle.d0,null,null,null,11,null,22,null,good,null,",
+        "1,root.vehicle.d1,999,null,null,11,null,22,null,null,null,",
+        "1000,root.vehicle.d1,888,null,null,11,null,22,null,null,null,",
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select s0, s5, s5, \"11\", s2, \"22\", s5, s3, s4 from root.vehicle.* group by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,Device,s0,s5,s5,11,s2,22,s5,s3,s4,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
+        // non exist column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(4));
+        // non exist column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(5));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(7));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(8));
+        // non exist column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(9));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(10));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(11));
+
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(19, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectConstantAndNonExistTestShifting2() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "1,root.vehicle.d0,101,101,null,11,null,22,null,null,null,",
+        "2,root.vehicle.d0,10000,10000,null,11,2.22,22,null,null,null,",
+        "3,root.vehicle.d0,null,null,null,11,3.33,22,null,null,null,",
+        "4,root.vehicle.d0,null,null,null,11,4.44,22,null,null,null,",
+        "50,root.vehicle.d0,10000,10000,null,11,null,22,null,null,null,",
+        "60,root.vehicle.d0,null,null,null,11,null,22,null,aaaaa,null,",
+        "70,root.vehicle.d0,null,null,null,11,null,22,null,bbbbb,null,",
+        "80,root.vehicle.d0,null,null,null,11,null,22,null,ccccc,null,",
+        "100,root.vehicle.d0,99,99,null,11,null,22,null,null,true,",
+        "101,root.vehicle.d0,99,99,null,11,null,22,null,ddddd,null,",
+        "102,root.vehicle.d0,80,80,null,11,10.0,22,null,fffff,null,",
+        "103,root.vehicle.d0,99,99,null,11,null,22,null,null,null,",
+        "104,root.vehicle.d0,90,90,null,11,null,22,null,null,null,",
+        "105,root.vehicle.d0,99,99,null,11,11.11,22,null,null,null,",
+        "106,root.vehicle.d0,99,99,null,11,null,22,null,null,null,",
+        "1000,root.vehicle.d0,22222,22222,null,11,1000.11,22,null,null,null,",
+        "946684800000,root.vehicle.d0,null,null,null,11,null,22,null,good,null,",
+        "1,root.vehicle.d1,999,999,null,11,null,22,null,null,null,",
+        "1000,root.vehicle.d1,888,888,null,11,null,22,null,null,null,",
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select s0, s0, s5, \"11\", s2, \"22\", s5, s3, s4 from root.vehicle.* group by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,Device,s0,s0,s5,11,s2,22,s5,s3,s4,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
+        // non exist column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(5));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(7));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(8));
+        // non exist column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(9));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(10));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(11));
+
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(19, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectConstantAndNonExistTestShifting3() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "1,root.vehicle.d0,101,101,null,11,null,11,22,null,null,null,",
+        "2,root.vehicle.d0,10000,10000,null,11,2.22,11,22,null,null,null,",
+        "3,root.vehicle.d0,null,null,null,11,3.33,11,22,null,null,null,",
+        "4,root.vehicle.d0,null,null,null,11,4.44,11,22,null,null,null,",
+        "50,root.vehicle.d0,10000,10000,null,11,null,11,22,null,null,null,",
+        "60,root.vehicle.d0,null,null,null,11,null,11,22,null,aaaaa,null,",
+        "70,root.vehicle.d0,null,null,null,11,null,11,22,null,bbbbb,null,",
+        "80,root.vehicle.d0,null,null,null,11,null,11,22,null,ccccc,null,",
+        "100,root.vehicle.d0,99,99,null,11,null,11,22,null,null,true,",
+        "101,root.vehicle.d0,99,99,null,11,null,11,22,null,ddddd,null,",
+        "102,root.vehicle.d0,80,80,null,11,10.0,11,22,null,fffff,null,",
+        "103,root.vehicle.d0,99,99,null,11,null,11,22,null,null,null,",
+        "104,root.vehicle.d0,90,90,null,11,null,11,22,null,null,null,",
+        "105,root.vehicle.d0,99,99,null,11,11.11,11,22,null,null,null,",
+        "106,root.vehicle.d0,99,99,null,11,null,11,22,null,null,null,",
+        "1000,root.vehicle.d0,22222,22222,null,11,1000.11,11,22,null,null,null,",
+        "946684800000,root.vehicle.d0,null,null,null,11,null,11,22,null,good,null,",
+        "1,root.vehicle.d1,999,999,null,11,null,11,22,null,null,null,",
+        "1000,root.vehicle.d1,888,888,null,11,null,11,22,null,null,null,",
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select s0, s0, s5, \"11\", s2, \"11\", \"22\", s5, s3, s4 from root.vehicle.* group by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,Device,s0,s0,s5,11,s2,11,22,s5,s3,s4,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
+        // non exist column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(5));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(7));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(8));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(9));
+        // non exist column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(10));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(11));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(12));
+
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(19, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }

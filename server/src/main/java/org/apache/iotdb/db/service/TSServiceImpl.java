@@ -781,7 +781,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private void getGroupByDeviceQueryHeaders(QueryPlan plan, List<String> respColumns,
                                             List<String> columnTypes) {
     // set columns in TSExecuteStatementResp. Note this is without deduplication.
-    List<String> measurementColumns = plan.getMeasurements();
     respColumns.add(SQLConstant.GROUPBY_DEVICE_COLUMN_NAME);
 
     // get column types and do deduplication
@@ -791,43 +790,80 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     List<String> deduplicatedMeasurementColumns = new ArrayList<>();
     Set<String> tmpColumnSet = new HashSet<>();
     Map<String, TSDataType> checker = plan.getDataTypeConsistencyChecker();
-    for (String column : measurementColumns) {
-      TSDataType dataType = checker.get(column);
-
-      if (!tmpColumnSet.contains(column)) {
-        // Note that this deduplication strategy is consistent with that of client IoTDBQueryResultSet.
-        tmpColumnSet.add(column);
-        deduplicatedMeasurementColumns.add(column);
-        deduplicatedColumnsType.add(dataType);
-      }
-    }
-    // build column header with constant and non exist column
+    // build column header with constant and non exist column and deduplicate
     int loc = 0;
+    // size of total column
     int totalSize = plan.getNotExistMeasurements().size() + plan.getConstMeasurements().size()
         + plan.getMeasurements().size();
+    // not exist column loc
     int notExistMeasurementsLoc = 0;
+    // constant column loc
     int constMeasurementsLoc = 0;
+    // normal column loc
     int resLoc = 0;
+    // after removing duplicate, we must shift column position
+    int shiftLoc = 0;
     while (loc < totalSize) {
-      String curColumn = null;
+      boolean isNonExist = false;
+      boolean isConstant = false;
+      TSDataType type = null;
+      String column = null;
+      // not exist
       if (notExistMeasurementsLoc < plan.getNotExistMeasurements().size()
           && loc == plan.getPositionOfNotExistMeasurements().get(notExistMeasurementsLoc)) {
-        respColumns.add(plan.getNotExistMeasurements().get(notExistMeasurementsLoc));
-        curColumn = TSDataType.TEXT.toString();
-        //columnTypes.add(TSDataType.TEXT.toString());
+        // for shifting
+        plan.getPositionOfNotExistMeasurements().set(notExistMeasurementsLoc, loc - shiftLoc);
+
+        type = TSDataType.TEXT;
+        column = plan.getNotExistMeasurements().get(notExistMeasurementsLoc);
         notExistMeasurementsLoc++;
-      } else if (constMeasurementsLoc < plan.getConstMeasurements().size()
+        isNonExist = true;
+      }
+      // constant
+      else if (constMeasurementsLoc < plan.getConstMeasurements().size()
           && loc == plan.getPositionOfConstMeasurements().get(constMeasurementsLoc)) {
-        respColumns.add(plan.getConstMeasurements().get(constMeasurementsLoc));
-        curColumn = TSDataType.TEXT.toString();
+        // for shifting
+        plan.getPositionOfConstMeasurements().set(constMeasurementsLoc, loc - shiftLoc);
+
+        type = TSDataType.TEXT;
+        column = plan.getConstMeasurements().get(constMeasurementsLoc);
         constMeasurementsLoc++;
-      } else {
-        curColumn = checker.get(plan.getMeasurements().get(resLoc)).toString();
-        respColumns.add(plan.getMeasurements().get(resLoc));
+        isConstant = true;
+      }
+      // normal series
+      else {
+        type = checker.get(plan.getMeasurements().get(resLoc));
+        column = plan.getMeasurements().get(resLoc);
         resLoc++;
       }
 
-      columnTypes.add(curColumn);
+      columnTypes.add(type.toString());
+      respColumns.add(column);
+      // deduplicate part
+      if (!tmpColumnSet.contains(column)) {
+        // Note that this deduplication strategy is consistent with that of client IoTDBQueryResultSet.
+        tmpColumnSet.add(column);
+        if(!isNonExist && ! isConstant) {
+          // only refer to those normal measurements
+          deduplicatedMeasurementColumns.add(column);
+        }
+        deduplicatedColumnsType.add(type);
+      }
+      else if(isConstant){
+        shiftLoc++;
+        constMeasurementsLoc--;
+        plan.getConstMeasurements().remove(constMeasurementsLoc);
+        plan.getPositionOfConstMeasurements().remove(constMeasurementsLoc);
+      }
+      else if(isNonExist){
+        shiftLoc++;
+        notExistMeasurementsLoc--;
+        plan.getNotExistMeasurements().remove(notExistMeasurementsLoc);
+        plan.getPositionOfNotExistMeasurements().remove(notExistMeasurementsLoc);
+      }
+      else {
+        shiftLoc++;
+      }
       loc++;
     }
 
