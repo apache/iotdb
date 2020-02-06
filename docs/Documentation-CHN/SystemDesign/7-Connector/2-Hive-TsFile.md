@@ -71,7 +71,7 @@ public interface IReaderSet {
 
 * private List<QueryDataSet> dataSetList = new ArrayList<>();
 
-  这个分片所生成的所有的QueryDataSet
+  这个分片所生成的所有的 QueryDataSet
 
 * private List<String> deviceIdList = new ArrayList<>();
 
