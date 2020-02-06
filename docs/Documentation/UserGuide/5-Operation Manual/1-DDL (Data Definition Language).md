@@ -91,7 +91,7 @@ The results are shown below respectly:
 It is worth noting that when the queried path does not exist, the system will return no timeseries.  
 
 ### Count Timeseries
-IoTDB is able to use `COUNT TIMESERIES<Path>` to count the number of timeseries in the path. SQL statements are as follows:
+IoTDB is able to use `COUNT TIMESERIES <Path>` to count the number of timeseries in the path. SQL statements are as follows:
 ```
 IoTDB > COUNT TIMESERIES root
 IoTDB > COUNT TIMESERIES root.ln
@@ -146,10 +146,15 @@ IoTDB> delete timeseries root.ln.wf02.*
 ```
 
 ### Show Devices
-IoTDB supports users to check the devices using  `SHOW DEVICES` statement.
+
+Similar to `Show Timeseries`, IoTDB also supports two ways of viewing devices:
+
+* `SHOW DEVICES` statement presents all devices information, which is equal to `SHOW DEVICES root`.
+* `SHOW DEVICES <PrefixPath>` statement specifies the `PrefixPath` and returns the devices information under the given level.
 SQL statement is as follows:
 ```
 IoTDB> show devices
+IoTDB> show devices root.ln
 ```
 
 ## TTL

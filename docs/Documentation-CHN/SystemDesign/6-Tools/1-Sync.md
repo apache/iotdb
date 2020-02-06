@@ -19,13 +19,6 @@
 
 -->
 
-# 数据文件
+## 数据回传工具
 
-TsFile 是 IoTDB 的底层数据文件，专门为时间序列数据设计的列式文件格式。
-
-
-## 相关文档
-
-* [文件格式](/#/SystemDesign/progress/chap1/sec2)
-* [写流程](/#/SystemDesign/progress/chap1/sec3)
-* [读流程](/#/SystemDesign/progress/chap1/sec4)
+数据回传工具可以将一个 IoTDB 实例的数据文件定期传输到另一个 IoTDB 实例。
