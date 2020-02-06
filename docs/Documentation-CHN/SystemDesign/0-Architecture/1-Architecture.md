@@ -47,9 +47,9 @@ IoTDB 采用客户端-服务器架构，如下图所示。
 
 IoTDB 与大数据系统进行了对接。
 
-* [Hadoop-TsFile](/#/SystemDesign/progress/chap6/sec1)
-* [Hive-TsFile](/#/SystemDesign/progress/chap6/sec2)
-* [Spark-TsFile](/#/SystemDesign/progress/chap6/sec3)
-* [Spark-IoTDB](/#/SystemDesign/progress/chap6/sec4)
-* [Grafana](/#/SystemDesign/progress/chap6/sec5)
+* [Hadoop-TsFile](/#/SystemDesign/progress/chap7/sec1)
+* [Hive-TsFile](/#/SystemDesign/progress/chap7/sec2)
+* [Spark-TsFile](/#/SystemDesign/progress/chap7/sec3)
+* [Spark-IoTDB](/#/SystemDesign/progress/chap7/sec4)
+* [Grafana](/#/SystemDesign/progress/chap7/sec5)
 
