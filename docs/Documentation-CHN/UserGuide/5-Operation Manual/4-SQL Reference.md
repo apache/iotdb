@@ -143,11 +143,22 @@ Note: The path can be prefix path or timeseries path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
-* 显示设备语句
+* 显示所有设备语句
 
 ```
 SHOW DEVICES
 Eg: IoTDB > SHOW DEVICES
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* 显示特定设备语句
+
+```
+SHOW DEVICES <PrefixPath>
+Eg: IoTDB > SHOW TIMESERIES root
+Eg: IoTDB > SHOW TIMESERIES root.ln
+Eg: IoTDB > SHOW TIMESERIES root.*.wf01
+Note: The path can be prefix path or star path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
