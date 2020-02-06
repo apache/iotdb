@@ -96,7 +96,7 @@ public interface IReaderSet {
 
 这个类继承了`AbstractSerDe`，也是我们实现Hive从自定义输入格式中读取数据所必须的。
 
-它覆写了`AbstractSerDe`的`initialize()`方法，在这个方法里，从用户的建表 sql 里，解析出相应的设备名，传感器名以及传感器对应的类型。还要构建出`ObjectInspector`对象，这个对象主要负责数据类型的转化，由于Tsfile只支持原始数据类型，所以当出现其他数据类型时，需要抛出异常，具体的构建过程在`createObjectInspectorWorker()`方法中可以看到
+它覆写了`AbstractSerDe`的`initialize()`方法，在这个方法里，从用户的建表 sql 里，解析出相应的设备名，传感器名以及传感器对应的类型。还要构建出`ObjectInspector`对象，这个对象主要负责数据类型的转化，由于 TsFile 只支持原始数据类型，所以当出现其他数据类型时，需要抛出异常，具体的构建过程在`createObjectInspectorWorker()`方法中可以看到。
 
 这个类的最主要职责就是序列化和反序列化不同文件格式的数据，由于我们的 Hive 连接器暂时只支持读取操作，并不支持 insert 操作，所以只有反序列化的过程，所以仅覆写了`deserialize(Writable)`方法，该方法里调用了`TsFileDeserializer`的`deserialize()`方法。
 
