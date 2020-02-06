@@ -18,17 +18,22 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
+import java.util.Set;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 import org.apache.iotdb.tsfile.read.filter.operator.Eq;
 import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
+import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.read.filter.operator.Lt;
 import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
 
 public class TimeFilter {
+
+  private TimeFilter() {
+  }
 
   public static TimeEq eq(long value) {
     return new TimeEq(value);
@@ -56,6 +61,17 @@ public class TimeFilter {
 
   public static TimeNotEq notEq(long value) {
     return new TimeNotEq(value);
+  }
+
+  public static TimeIn in(Set<Long> values, boolean not) {
+    return new TimeIn(values, not);
+  }
+
+  public static class TimeIn extends In {
+
+    private TimeIn(Set<Long> values, boolean not) {
+      super(values, FilterType.TIME_FILTER,not);
+    }
   }
 
   public static class TimeEq extends Eq {

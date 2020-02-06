@@ -42,7 +42,7 @@ statement
     | DROP INDEX function=ID ON timeseriesPath #dropIndex //not support yet
     | MERGE #merge //not support yet
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
-    | ALTER USER userName=ID SET PASSWORD password=STRING_LITERAL #alterUser
+    | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
     | DROP USER userName=ID #dropUser
     | CREATE ROLE roleName=ID #createRole
     | DROP ROLE roleName=ID #dropRole
@@ -136,10 +136,14 @@ andExpression
     ;
 
 predicate
-    : (suffixPath | prefixPath) comparisonOperator constant
+    : (TIME | TIMESTAMP | suffixPath | prefixPath) comparisonOperator constant
+    | (TIME | TIMESTAMP | suffixPath | prefixPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
     ;
 
+inClause
+    : OPERATOR_NOT? OPERATOR_IN LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    ;
 
 fromClause
     : FROM prefixPath (COMMA prefixPath)*
@@ -231,7 +235,7 @@ comparisonOperator
     ;
 
 insertColumnSpec
-    : LR_BRACKET TIMESTAMP (COMMA nodeNameWithoutStar)* RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)* RR_BRACKET
     ;
 
 insertValuesSpec
@@ -727,6 +731,10 @@ ALIGN
 COMPRESSION
     : C O M P R E S S I O N
     ;
+
+TIME
+    : T I M E
+    ;
 //============================
 // End of the keywords list
 //============================
@@ -745,6 +753,8 @@ OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 
 OPERATOR_NEQ : '!=' | '<>';
+
+OPERATOR_IN : I N;
 
 OPERATOR_AND
     : A N D
