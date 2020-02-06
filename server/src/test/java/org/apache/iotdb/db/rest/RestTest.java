@@ -13,12 +13,16 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 public class RestTest {
   private static final String REST_URI
       = "http://localhost:8181/rest/query";
+
+  private static final String LOGIN
+      = "http://localhost:8181/rest/login";
 
   private static String[] creationSqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",
@@ -120,20 +124,26 @@ public class RestTest {
   @Test
   public void testQuery() {
     Client client = ClientBuilder.newClient();
-    String json = "{\n"
+    String json1 = "{\n"
         + "  \"range\": {\n"
-        + "    \"from\": \"1\",\n"
+        + "    \"from\": \"0\",\n"
         + "    \"to\": \"300\",\n"
         + "  },\n"
         + "  \n"
         + "  \"targets\": [\n"
-        + "     { \"target\": \"root.ln.wf01.wt01\", \"type\": \"timeserie\" },\n"
+        + "     { \"target\": \"root.ln.wf01.wt01.temperature\", \"type\": \"timeserie\" },\n"
         + "  ]\n"
         + "}";
+
+    String json2 = "{username : \"root\", password : \"root\"}";
+    client.target(LOGIN)
+        .request(MediaType.TEXT_PLAIN)
+        .post(Entity.entity(json2, MediaType.TEXT_PLAIN));
     Response response = client.target(REST_URI)
         .request(MediaType.TEXT_PLAIN)
-        .post(Entity.entity(json, MediaType.TEXT_PLAIN));
+        .post(Entity.entity(json1, MediaType.TEXT_PLAIN));
     String result = response.readEntity(String.class);
-    System.out.println(result);
+    Assert.assertEquals("[{\"datapoints\":[[1,\"1.1\"],[2,\"2.2\"],[3,\"3.3\"],[4,\"4.4\"],[5,\"5.5\"]],\"target\":\"root.ln.wf01.wt01.temperature\"}]"
+        , result);
   }
 }

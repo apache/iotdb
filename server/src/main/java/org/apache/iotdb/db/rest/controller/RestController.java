@@ -21,9 +21,7 @@ package org.apache.iotdb.db.rest.controller;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.Consumes;
-import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -46,7 +44,7 @@ import org.slf4j.LoggerFactory;
 public class RestController {
 
   private static final Logger logger = LoggerFactory.getLogger(RestController.class);
-  private RestService restService = new RestService();
+  private RestService restService = RestService.getInstance();
 
   /**
    * http request to login IoTDB

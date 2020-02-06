@@ -29,6 +29,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -75,7 +76,7 @@ public class RestService {
     String to = timeRange.right;
     String suffixPath = s.substring(s.lastIndexOf('.') + 1);
     String prefixPath = s.substring(0, s.lastIndexOf('.'));
-    String sql = "SELECT " + suffixPath + " FROM root."
+    String sql = "SELECT " + suffixPath + " FROM"
         + prefixPath + " WHERE time > " + from + " and time < " + to;
     logger.info(sql);
     QueryOperator queryOperator = generateOperator(suffixPath, prefixPath, timeRange);
@@ -110,8 +111,8 @@ public class RestService {
     while(queryDataSet.hasNext()) {
       TimeValues timeValues = new TimeValues();
       args = queryDataSet.next().toString().split("\t");
-      timeValues.setTime(Long.parseLong(args[1]));
-      timeValues.setValue(args[0]);
+      timeValues.setTime(Long.parseLong(args[0]));
+      timeValues.setValue(args[1]);
       list.add(timeValues);
     }
     return list;
@@ -135,18 +136,41 @@ public class RestService {
    */
   private QueryOperator generateOperator(String suffixPath, String prefixPath, Pair<String, String> timeRange) {
     FilterOperator binaryOp = new FilterOperator(SQLConstant.KW_AND);
-    binaryOp.addChildOperator(
-        new BasicFunctionOperator(SQLConstant.GREATERTHAN,
-            new Path(SQLConstant.RESERVED_TIME),
-            String.valueOf(parseTimeFormat(timeRange.left))
-        )
-    );
-    binaryOp.addChildOperator(
-        new BasicFunctionOperator(SQLConstant.LESSTHAN,
-            new Path(SQLConstant.RESERVED_TIME),
-            String.valueOf(parseTimeFormat(timeRange.right))
-        )
-    );
+    long timeLeft;
+    long timeRight;
+    if(!NumberUtils.isDigits(timeRange.left)) {
+      timeLeft = parseTimeFormat(timeRange.left);
+      binaryOp.addChildOperator(
+          new BasicFunctionOperator(SQLConstant.GREATERTHAN,
+              new Path(SQLConstant.RESERVED_TIME),
+              String.valueOf(timeLeft)
+          )
+      );
+    } else {
+      binaryOp.addChildOperator(
+          new BasicFunctionOperator(SQLConstant.GREATERTHAN,
+              new Path(SQLConstant.RESERVED_TIME),
+              timeRange.left
+          )
+      );
+    }
+
+    if(!NumberUtils.isDigits(timeRange.right)) {
+      timeRight = parseTimeFormat(timeRange.right);
+      binaryOp.addChildOperator(
+          new BasicFunctionOperator(SQLConstant.LESSTHAN,
+              new Path(SQLConstant.RESERVED_TIME),
+              String.valueOf(timeRight)
+          )
+      );
+    } else {
+      binaryOp.addChildOperator(
+          new BasicFunctionOperator(SQLConstant.LESSTHAN,
+              new Path(SQLConstant.RESERVED_TIME),
+              timeRange.right
+          )
+      );
+    }
     QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
     SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
     selectOp.addSelectPath(new Path(suffixPath));
@@ -253,10 +277,18 @@ public class RestService {
       long time = tv.getTime();
       String value = tv.getValue();
       JSONArray jsonArray = new JSONArray();
-      jsonArray.add(value);
       jsonArray.add(time);
+      jsonArray.add(value);
       dataPoints.add(jsonArray);
     }
     obj.put("datapoints", dataPoints);
+  }
+
+  public static RestService getInstance() {
+    return RestServiceHolder.INSTANCE;
+  }
+
+  private static class RestServiceHolder {
+    private static final RestService INSTANCE = new RestService();
   }
 }
