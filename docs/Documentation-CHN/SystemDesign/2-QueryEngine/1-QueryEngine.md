@@ -60,5 +60,5 @@
 
 ## 相关文档
 
-* [查询计划生成器](2-Planner.md)
-* [计划执行器](3-PlanExecutor.md)
+* [查询计划生成器](/#/SystemDesign/progress/chap2/sec2)
+* [计划执行器](/#/SystemDesign/progress/chap2/sec3)
