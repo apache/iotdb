@@ -18,34 +18,22 @@
  */
 package org.apache.iotdb.db.rest.controller;
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.sql.SQLException;
-import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
-import org.apache.iotdb.db.rest.model.TimeValues;
 import org.apache.iotdb.db.rest.service.RestService;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,14 +50,16 @@ public class RestController {
 
   /**
    * http request to login IoTDB
-   * @param username username for login IoTDB
-   * @param password password for login IoTDB
    */
 
-  @Path("/login/{username}&&{password}")
+  @Path("/login")
   @POST
-  public void login(@PathParam("username") String username, @PathParam("password") String password)
+  @Consumes(MediaType.TEXT_PLAIN)
+  public void login(@Context HttpServletRequest request)
       throws AuthException {
+    JSONObject jsonObject = restService.getRequestBodyJson(request);
+    String username = (String)jsonObject.get("username");
+    String password = (String)jsonObject.get("password");
     logger.info("{}: receive http request from username {}", IoTDBConstant.GLOBAL_DB_NAME,
         username);
     IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
@@ -85,18 +75,16 @@ public class RestController {
   /**
    *
    * @param request this request will be in json format.
-   * @param response this response will be in json format.
    * @return json in String
    */
   @Path("/query")
-  @GET
-  @Produces(MediaType.APPLICATION_JSON)
-  @Consumes(MediaType.APPLICATION_JSON)
-  public String query(HttpServletRequest request, HttpServletResponse response) {
+  @POST
+  @Produces(MediaType.TEXT_PLAIN)
+  @Consumes(MediaType.TEXT_PLAIN)
+  public String query(@Context HttpServletRequest request) {
     String targetStr = "target";
-    response.setStatus(200);
     try {
-      JSONObject jsonObject = getRequestBodyJson(request);
+      JSONObject jsonObject = restService.getRequestBodyJson(request);
       assert jsonObject != null;
       JSONObject range = (JSONObject) jsonObject.get("range");
       Pair<String, String> timeRange = new Pair<>((String) range.get("from"), (String) range.get("to"));
@@ -108,13 +96,13 @@ public class RestController {
           return "[]";
         }
         String target = (String) object.get(targetStr);
-        String type = getJsonType(jsonObject);
+        String type = restService.getJsonType(jsonObject);
         JSONObject obj = new JSONObject();
         obj.put("target", target);
         if (type.equals("table")) {
-          setJsonTable(obj, target, timeRange);
+          restService.setJsonTable(obj, target, timeRange);
         } else if (type.equals("timeserie")) {
-          setJsonTimeseries(obj, target, timeRange);
+          restService.setJsonTimeseries(obj, target, timeRange);
         }
         result.add(i, obj);
       }
@@ -125,83 +113,4 @@ public class RestController {
     }
     return null;
   }
-
-  /**
-   * get request body JSON.
-   *
-   * @param request http request
-   * @return request JSON
-   * @throws JSONException JSONException
-   */
-  private JSONObject getRequestBodyJson(HttpServletRequest request) throws JSONException {
-    try {
-      BufferedReader br = request.getReader();
-      StringBuilder sb = new StringBuilder();
-      String line;
-      while ((line = br.readLine()) != null) {
-        sb.append(line);
-      }
-      return JSON.parseObject(sb.toString());
-    } catch (IOException e) {
-      logger.error("getRequestBodyJson failed", e);
-    }
-    return null;
-  }
-
-  /**
-   * get JSON type of input JSON object.
-   *
-   * @param jsonObject JSON Object
-   * @return type (string)
-   * @throws JSONException JSONException
-   */
-  private String getJsonType(JSONObject jsonObject) throws JSONException {
-    JSONArray array = (JSONArray) jsonObject.get("targets"); // []
-    JSONObject object = (JSONObject) array.get(0); // {}
-    return (String) object.get("type");
-  }
-
-  private void setJsonTable(JSONObject obj, String target,
-      Pair<String, String> timeRange)
-      throws JSONException, StorageEngineException, QueryFilterOptimizationException,
-      MetadataException, IOException, StorageGroupException, SQLException, QueryProcessException, AuthException {
-    List<TimeValues> timeValues = restService.querySeries(target, timeRange);
-    JSONArray columns = new JSONArray();
-    JSONObject column = new JSONObject();
-    column.put("text", "Time");
-    column.put("type", "time");
-    columns.add(column);
-    column = new JSONObject();
-    column.put("text", "Number");
-    column.put("type", "number");
-    columns.add(column);
-    obj.put("columns", columns);
-    JSONArray values = new JSONArray();
-    for (TimeValues tv : timeValues) {
-      JSONArray value = new JSONArray();
-      value.add(tv.getTime());
-      value.add(tv.getValue());
-      values.add(value);
-    }
-    obj.put("values", values);
-  }
-
-  private void setJsonTimeseries(JSONObject obj, String target,
-      Pair<String, String> timeRange)
-      throws JSONException, StorageEngineException, QueryFilterOptimizationException,
-      MetadataException, IOException, StorageGroupException, SQLException, QueryProcessException, AuthException {
-    List<TimeValues> timeValues = restService.querySeries(target, timeRange);
-    logger.info("query size: {}", timeValues.size());
-    JSONArray dataPoints = new JSONArray();
-    for (TimeValues tv : timeValues) {
-      long time = tv.getTime();
-      String value = tv.getValue();
-      JSONArray jsonArray = new JSONArray();
-      jsonArray.add(value);
-      jsonArray.add(time);
-      dataPoints.add(jsonArray);
-    }
-    obj.put("datapoints", dataPoints);
-  }
-
 }

@@ -18,10 +18,17 @@
  */
 package org.apache.iotdb.db.rest.service;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONException;
+import com.alibaba.fastjson.JSONObject;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import javax.servlet.http.HttpServletRequest;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -62,7 +69,7 @@ public class RestService {
   private String username;
 
 
-  public List<TimeValues> querySeries(String s, Pair<String, String> timeRange)
+  private List<TimeValues> querySeries(String s, Pair<String, String> timeRange)
       throws QueryProcessException, StorageGroupException, AuthException, MetadataException, QueryFilterOptimizationException, SQLException, StorageEngineException, IOException {
     String from = timeRange.left;
     String to = timeRange.right;
@@ -173,5 +180,83 @@ public class RestService {
 
   public void setUsername(String username) {
     this.username = username;
+  }
+
+  /**
+   * get request body JSON.
+   *
+   * @param request http request
+   * @return request JSON
+   * @throws JSONException JSONException
+   */
+  public JSONObject getRequestBodyJson(HttpServletRequest request) throws JSONException {
+    try {
+      BufferedReader br = new BufferedReader(new InputStreamReader(request.getInputStream()));
+      StringBuilder sb = new StringBuilder();
+      String line;
+      while ((line = br.readLine()) != null) {
+        sb.append(line);
+      }
+      return JSON.parseObject(sb.toString());
+    } catch (IOException e) {
+      logger.error("getRequestBodyJson failed", e);
+    }
+    return null;
+  }
+
+  /**
+   * get JSON type of input JSON object.
+   *
+   * @param jsonObject JSON Object
+   * @return type (string)
+   * @throws JSONException JSONException
+   */
+  public String getJsonType(JSONObject jsonObject) throws JSONException {
+    JSONArray array = (JSONArray) jsonObject.get("targets"); // []
+    JSONObject object = (JSONObject) array.get(0); // {}
+    return (String) object.get("type");
+  }
+
+  public void setJsonTable(JSONObject obj, String target,
+      Pair<String, String> timeRange)
+      throws JSONException, StorageEngineException, QueryFilterOptimizationException,
+      MetadataException, IOException, StorageGroupException, SQLException, QueryProcessException, AuthException {
+    List<TimeValues> timeValues = querySeries(target, timeRange);
+    JSONArray columns = new JSONArray();
+    JSONObject column = new JSONObject();
+    column.put("text", "Time");
+    column.put("type", "time");
+    columns.add(column);
+    column = new JSONObject();
+    column.put("text", "Number");
+    column.put("type", "number");
+    columns.add(column);
+    obj.put("columns", columns);
+    JSONArray values = new JSONArray();
+    for (TimeValues tv : timeValues) {
+      JSONArray value = new JSONArray();
+      value.add(tv.getTime());
+      value.add(tv.getValue());
+      values.add(value);
+    }
+    obj.put("values", values);
+  }
+
+  public void setJsonTimeseries(JSONObject obj, String target,
+      Pair<String, String> timeRange)
+      throws JSONException, StorageEngineException, QueryFilterOptimizationException,
+      MetadataException, IOException, StorageGroupException, SQLException, QueryProcessException, AuthException {
+    List<TimeValues> timeValues = querySeries(target, timeRange);
+    logger.info("query size: {}", timeValues.size());
+    JSONArray dataPoints = new JSONArray();
+    for (TimeValues tv : timeValues) {
+      long time = tv.getTime();
+      String value = tv.getValue();
+      JSONArray jsonArray = new JSONArray();
+      jsonArray.add(value);
+      jsonArray.add(time);
+      dataPoints.add(jsonArray);
+    }
+    obj.put("datapoints", dataPoints);
   }
 }
