@@ -85,8 +85,8 @@
 
 ## 相关文档
 
-* [写前日志 (WAL)](2-WAL.md)
+* [写前日志 (WAL)](/#/SystemDesign/progress/chap4/sec2)
 
-* [memtable 持久化](3-FlushManager.md)
+* [memtable 持久化](/#/SystemDesign/progress/chap4/sec3)
 
-* [文件合并机制](4-MergeManager.md)
+* [文件合并机制](/#/SystemDesign/progress/chap4/sec4)
