@@ -33,8 +33,8 @@ IoTDB 采用客户端-服务器架构，如下图所示。
 
 其中服务器端主要包括查询引擎，用来处理用户的所有请求，并分发到对应的管理组件，包括数据写入层、数据查询、元数据管理、权限管理等模块。
 
-* [数据文件](https://iotdb.apache.org/#/SystemDesign/progress/chap1/sec1)
-* [查询引擎](https://iotdb.apache.org/#/SystemDesign/progress/chap2/sec1)
-* [元数据管理](https://iotdb.apache.org/#/SystemDesign/progress/chap3/sec1)
-* [存储引擎](https://iotdb.apache.org/#/SystemDesign/progress/chap4/sec1)
-* [数据查询](https://iotdb.apache.org/#/SystemDesign/progress/chap5/sec1)
+* [数据文件](/#/SystemDesign/progress/chap1/sec1)
+* [查询引擎](/#/SystemDesign/progress/chap2/sec1)
+* [元数据管理](/#/SystemDesign/progress/chap3/sec1)
+* [存储引擎](/#/SystemDesign/progress/chap4/sec1)
+* [数据查询](/#/SystemDesign/progress/chap5/sec1)

@@ -85,8 +85,8 @@
 
 ## 相关文档
 
-* [写前日志 (WAL)](https://iotdb.apache.org/#/SystemDesign/progress/chap4/sec2)
+* [写前日志 (WAL)](/#/SystemDesign/progress/chap4/sec2)
 
-* [memtable 持久化](https://iotdb.apache.org/#/SystemDesign/progress/chap4/sec3)
+* [memtable 持久化](/#/SystemDesign/progress/chap4/sec3)
 
-* [文件合并机制](https://iotdb.apache.org/#/SystemDesign/progress/chap4/sec4)
+* [文件合并机制](/#/SystemDesign/progress/chap4/sec4)
