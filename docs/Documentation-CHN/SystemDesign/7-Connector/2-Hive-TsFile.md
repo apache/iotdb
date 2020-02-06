@@ -81,7 +81,7 @@ public interface IReaderSet {
 
   当前正在被处理的 QueryDataSet 的下标
   
-这个类在构造函数里，调用了`TSFRecordReader`的`initialize(TSFInputSplit, Configuration, IReaderSet, List<QueryDataSet>, List<String>)`方法去初始化上面提到的一些类字段。它覆写了`RecordReader`的`next()`方法，用以返回从tsfile里读出的数据。
+这个类在构造函数里，调用了`TSFRecordReader`的`initialize(TSFInputSplit, Configuration, IReaderSet, List<QueryDataSet>, List<String>)`方法去初始化上面提到的一些类字段。它覆写了`RecordReader`的`next()`方法，用以返回从 TsFile 里读出的数据。
   
 ##### next(NullWritable, MapWritable)
 
