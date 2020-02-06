@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.query.executor;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
@@ -36,15 +42,13 @@ import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-
-import java.io.IOException;
-import java.util.*;
 
 public class AggregationExecutor {
 
@@ -80,9 +84,9 @@ public class AggregationExecutor {
     }
 
     //TODO use multi-thread
-    Map<Path, List<Integer>> seriesMap = mergeSameSeries(selectedSeries);
+    Map<Path, List<Integer>> pathToAggrIndexesMap = mergeSameSeries(selectedSeries);
     AggregateResult[] aggregateResultList = new AggregateResult[selectedSeries.size()];
-    for (Map.Entry<Path, List<Integer>> entry : seriesMap.entrySet()) {
+    for (Map.Entry<Path, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
       List<AggregateResult> aggregateResults = groupAggregationsBySeries(entry, timeFilter,
           context);
       int index = 0;
@@ -98,33 +102,35 @@ public class AggregationExecutor {
   /**
    * get aggregation result for one series
    *
-   * @param series     series map
+   * @param pathToAggrIndexes entry of path to aggregation indexes map
    * @param timeFilter time filter
-   * @param context    query context
+   * @param context query context
    * @return AggregateResult list
    */
-  private List<AggregateResult> groupAggregationsBySeries(Map.Entry<Path, List<Integer>> series,
+  private List<AggregateResult> groupAggregationsBySeries(
+      Map.Entry<Path, List<Integer>> pathToAggrIndexes,
       Filter timeFilter, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException {
     List<AggregateResult> aggregateResultList = new ArrayList<>();
     List<Boolean> isCalculatedList = new ArrayList<>();
-    Path seriesPath = series.getKey();
-    TSDataType tsDataType = dataTypes.get(series.getValue().get(0));
+    Path seriesPath = pathToAggrIndexes.getKey();
+    TSDataType tsDataType = dataTypes.get(pathToAggrIndexes.getValue().get(0));
     // construct series reader without value filter
     IAggregateReader seriesReader = new SeriesAggregateReader(
-        series.getKey(), tsDataType, context, QueryResourceManager.getInstance()
+        pathToAggrIndexes.getKey(), tsDataType, context, QueryResourceManager.getInstance()
         .getQueryDataSource(seriesPath, context, timeFilter), timeFilter, null);
 
-    for (int i : series.getValue()) {
+    for (int i : pathToAggrIndexes.getValue()) {
       // construct AggregateResult
       AggregateResult aggregateResult = AggreResultFactory
           .getAggrResultByName(aggregations.get(i), tsDataType);
       aggregateResultList.add(aggregateResult);
       isCalculatedList.add(false);
     }
-    int remainingToCalculate = series.getValue().size();
+    int remainingToCalculate = pathToAggrIndexes.getValue().size();
 
     while (seriesReader.hasNextChunk()) {
+      // cal by chunk statistics
       if (seriesReader.canUseCurrentChunkStatistics()) {
         Statistics chunkStatistics = seriesReader.currentChunkStatistics();
         for (int i = 0; i < aggregateResultList.size(); i++) {
@@ -144,7 +150,7 @@ public class AggregationExecutor {
         continue;
       }
       while (seriesReader.hasNextPage()) {
-        //cal by pageheader
+        //cal by page statistics
         if (seriesReader.canUseCurrentPageStatistics()) {
           Statistics pageStatistic = seriesReader.currentPageStatistics();
           for (int i = 0; i < aggregateResultList.size(); i++) {
@@ -163,18 +169,20 @@ public class AggregationExecutor {
           seriesReader.skipCurrentPage();
           continue;
         }
-        //cal by pagedata
+        // cal by page data
         while (seriesReader.hasNextOverlappedPage()) {
+          BatchData nextOverlappedPageData = seriesReader.nextOverlappedPage();
           for (int i = 0; i < aggregateResultList.size(); i++) {
             if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
               AggregateResult aggregateResult = aggregateResultList.get(i);
-              aggregateResult.updateResultFromPageData(seriesReader.nextOverlappedPage());
+              aggregateResult.updateResultFromPageData(nextOverlappedPageData);
+              nextOverlappedPageData.resetBatchData();
               if (aggregateResult.isCalculatedAggregationResult()) {
                 isCalculatedList.set(i, true);
                 remainingToCalculate--;
-              }
-              if (remainingToCalculate == 0) {
-                return aggregateResultList;
+                if (remainingToCalculate == 0) {
+                  return aggregateResultList;
+                }
               }
             }
           }

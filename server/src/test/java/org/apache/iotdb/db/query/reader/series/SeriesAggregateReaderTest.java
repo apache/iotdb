@@ -26,24 +26,26 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class SeriesReaderTest {
+public class SeriesAggregateReaderTest {
 
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
   private List<String> deviceIds = new ArrayList<>();
@@ -64,64 +66,54 @@ public class SeriesReaderTest {
   }
 
   @Test
-  public void batchTest() {
+  public void aggregateTest() {
     try {
-      SeriesReader seriesReader = new SeriesReader(
-          new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
-          TSDataType.INT32, new QueryContext(), seqResources, unseqResources, null, null);
-      IBatchReader batchReader = new SeriesRawDataBatchReader(seriesReader);
-      int count = 0;
-      while (batchReader.hasNextBatch()) {
-        BatchData batchData = batchReader.nextBatch();
-        assertEquals(TSDataType.INT32, batchData.getDataType());
-        assertEquals(20, batchData.length());
-        for (int i = 0; i < batchData.length(); i++) {
-          long expectedTime = i + 20 * count;
-          assertEquals(expectedTime, batchData.currentTime());
-          if (expectedTime < 200) {
-            assertEquals(20000 + expectedTime, batchData.getInt());
-          } else if (expectedTime < 260 || (expectedTime >= 300 && expectedTime < 380)
-              || expectedTime >= 400) {
-            assertEquals(10000 + expectedTime, batchData.getInt());
-          } else {
-            assertEquals(expectedTime, batchData.getInt());
+      Path path = new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0");
+      QueryDataSource queryDataSource = new QueryDataSource(path, seqResources, unseqResources);
+      SeriesAggregateReader seriesReader = new SeriesAggregateReader(path, TSDataType.INT32,
+          new QueryContext(), queryDataSource, null, null);
+      AggregateResult aggregateResult = AggreResultFactory
+          .getAggrResultByName("count", TSDataType.INT32);
+      while (seriesReader.hasNextChunk()) {
+        if (seriesReader.canUseCurrentChunkStatistics()) {
+          Statistics chunkStatistics = seriesReader.currentChunkStatistics();
+          aggregateResult.updateResultFromStatistics(chunkStatistics);
+          seriesReader.skipCurrentChunk();
+          continue;
+        }
+        int loopTime = 0;
+        while (seriesReader.hasNextPage()) {
+          if (seriesReader.canUseCurrentPageStatistics()) {
+            Statistics pageStatistic = seriesReader.currentPageStatistics();
+            if (loopTime == 0) {
+              assertEquals(260, pageStatistic.getStartTime());
+              assertEquals(279, pageStatistic.getEndTime());
+            } else if (loopTime == 1) {
+              assertEquals(280, pageStatistic.getStartTime());
+              assertEquals(299, pageStatistic.getEndTime());
+            } else {
+              assertEquals(380, pageStatistic.getStartTime());
+              assertEquals(399, pageStatistic.getEndTime());
+            }
+            assertEquals(20, pageStatistic.getCount());
+            aggregateResult.updateResultFromStatistics(pageStatistic);
+            seriesReader.skipCurrentPage();
+            continue;
           }
-          batchData.next();
+
+          while (seriesReader.hasNextOverlappedPage()) {
+            BatchData nextOverlappedPageData = seriesReader.nextOverlappedPage();
+            aggregateResult.updateResultFromPageData(nextOverlappedPageData);
+            nextOverlappedPageData.resetBatchData();
+            assertEquals(true, nextOverlappedPageData.hasCurrent());
+          }
+          loopTime++;
         }
-        count++;
       }
-    } catch (IOException e) {
+      assertEquals(500L, aggregateResult.getResult());
+    } catch (IOException | QueryProcessException e) {
       e.printStackTrace();
       fail();
     }
-  }
-
-  @Test
-  public void pointTest() {
-    try {
-      SeriesReader seriesReader = new SeriesReader(
-          new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
-          TSDataType.INT32, new QueryContext(), seqResources, unseqResources, null, null);
-      IPointReader pointReader = new SeriesRawDataPointReader(seriesReader);
-      long expectedTime = 0;
-      while (pointReader.hasNextTimeValuePair()) {
-        TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
-        assertEquals(expectedTime, timeValuePair.getTimestamp());
-        int value = timeValuePair.getValue().getInt();
-        if (expectedTime < 200) {
-          assertEquals(20000 + expectedTime, value);
-        } else if (expectedTime < 260 || (expectedTime >= 300 && expectedTime < 380)
-            || expectedTime >= 400) {
-          assertEquals(10000 + expectedTime, value);
-        } else {
-          assertEquals(expectedTime, value);
-        }
-        expectedTime++;
-      }
-    } catch (IOException e) {
-      e.printStackTrace();
-      fail();
-    }
-
   }
 }
