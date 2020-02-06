@@ -19,24 +19,25 @@
 
 -->
 
-## 查询引擎
+# 查询基础组件
 
-### 设计原理
+## 设计原理
 
-查询引擎中需要处理 聚合查询和非聚合查询两类，每种查询又包含时间条件过滤和基于值过滤。其中聚合的查询更关注statistics信息，非聚合查询更关注遍历方式，而带有值过滤的查询会转化为递增时间戳查询。所以server端提供了4种不同形式的接口完成不同形式的查询：
+IoTDB server 模块共提供 4 种不同形式的针对单个时间序列的读取接口，以支持不同形式的查询。
 
-* 单个点遍历形式，返回 timeValuePair
-* 批量点遍历形式，返回 BatchData
-* 带有statistics的聚合查询接口
-* 使用递增时间戳查询对应值
+* 按批遍历形式，返回 BatchData（主要用于不带值过滤的原始数据查询）
+* 聚合查询接口 （主要用于聚合查询和降采样查询）
+* 单点遍历形式，返回 TimeValuePair （主要用于带值过滤的查询）
+* 按递增时间戳查询对应值（主要用于带值过滤的查询）
 
-### 相关接口
+## 相关接口
 
-以上四种读取数据的方式对应代码里的四个接口
+以上四种读取单个时间序列数据的方式对应代码里的四个接口
 
-#### org.apache.iotdb.tsfile.read.reader.IPointReader
+### org.apache.iotdb.tsfile.read.reader.IPointReader
 
-##### 主要方法
+#### 主要方法
+
 ```
 // 判断是否还有数据点
 boolean hasNextTimeValuePair() throws IOException;
@@ -47,7 +48,9 @@ TimeValuePair nextTimeValuePair() throws IOException;
 // 获得当前数据点，不移动游标
 TimeValuePair currentTimeValuePair() throws IOException;
 ```
-##### 一般使用流程
+
+#### 一般使用流程
+
 ```
 while (pointReader.hasNextTimeValuePair()) {
 	TimeValuePair timeValuePair = pointReader.currentTimeValuePair();
@@ -60,9 +63,10 @@ while (pointReader.hasNextTimeValuePair()) {
 }
 ```
 
-#### org.apache.iotdb.tsfile.read.reader.IBatchReader
+### org.apache.iotdb.tsfile.read.reader.IBatchReader
 
-##### 主要方法
+#### 主要方法
+
 ```
 // 判断是否还有BatchData
 boolean hasNextBatch() throws IOException;
@@ -71,7 +75,8 @@ boolean hasNextBatch() throws IOException;
 BatchData nextBatch() throws IOException;
 ```
 
-##### 一般使用流程
+#### 一般使用流程
+
 ```
 while (batchReader. hasNextBatch()) {
 	BatchData batchData = batchReader.nextBatch();
@@ -81,15 +86,16 @@ while (batchReader. hasNextBatch()) {
 }
 ```
 
-#### org.apache.iotdb.db.query.reader.IReaderByTimestamp
+### org.apache.iotdb.db.query.reader.IReaderByTimestamp
 
-##### 主要方法
+#### 主要方法
+
 ``` 
 // 得到给定时间戳的值，如果不存在返回null（要求传入的 timestamp 是递增的）
 Object getValueInTimestamp(long timestamp) throws IOException;
 ```
 
-##### 一般使用流程
+#### 一般使用流程
 
 该接口在带值过滤的查询中被使用，TimeGenerator生成时间戳后，使用该接口获得该时间戳对应的value
 
@@ -100,9 +106,10 @@ while (timeGenerator.hasNext()) {
 }
 ```
 
-#### org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader
+### org.apache.iotdb.db.query.reader.seriesRelated.IAggregateReader
 
-##### 主要方法
+#### 主要方法
+
 ```
 // 判断是否还有Chunk
 boolean hasNextChunk() throws IOException;
@@ -135,7 +142,8 @@ boolean hasNextOverlappedPage() throws IOException;
 BatchData nextOverlappedPage() throws IOException;
 ```
 
-##### 一般使用流程
+#### 一般使用流程
+
 ```
 while (aggregateReader.hasNextChunk()) {
   if (aggregateReader.canUseCurrentChunkStatistics()) {
@@ -170,11 +178,12 @@ while (aggregateReader.hasNextChunk()) {
 }
 ```
 
-### 具体实现类
+## 具体实现类
 
-上述四个接口都有其对应的实现类，这四个实现类的内部都有一个SeriesReader的引用，SeriesReader是一个基础的工具类，封装了对于一个时间序列读取操作的基本方法。所以，下面先介绍一下SeriesReader的实现，然后再依次介绍四个接口实现类的具体实现。
+上述四个接口都有其对应的实现类，这四个实现类的内部都有一个 SeriesReader 对象，SeriesReader是一个基础的工具类，
+封装了对于一个时间序列读取操作的基本方法。所以，下面先介绍一下SeriesReader的实现，然后再依次介绍四个接口实现类的具体实现。
 
-#### org.apache.iotdb.db.query.reader.seriesRelated.SeriesReader
+### org.apache.iotdb.db.query.reader.seriesRelated.SeriesReader
 
 首先介绍一下SeriesReader里的几个重要字段
 
@@ -223,18 +232,19 @@ while (aggregateReader.hasNextChunk()) {
 	 
 下面介绍一下SeriesReader里的重要方法
 
-##### hasNextChunk()
+#### hasNextChunk()
+
 这个方法判断该时间序列还有没有下一个chunk。
 
 如果`hasCachedFirstChunkMetadata`为`true`，则代表当前已经缓存了第一个`ChunkMetaData`，且该`ChunkMetaData`并未被使用，直接返回`true`；若`hasCachedFirstChunkMetadata`为`false`，我们调用`tryToInitFirstChunk()`，尝试去解开顺序文件和乱序文件，并从中选出开始时间最小的chunk meta data赋值给`firstChunkMetaData`，并将`hasCachedFirstChunkMetadata`置为`true`。
 
-##### tryToInitFirstChunk()
+#### tryToInitFirstChunk()
 
 这个方法尝试去初始化当前的chunk meta data。
 
 首先调用`tryToFillChunkMetadatas()`去尝试解开顺序和乱序文件，并填充`seqChunkMetadatas`和`unseqChunkMetadatas`，之后再从这二者里选出开始时间最小的。如果只有顺序的，直接取出`seqChunkMetadatas`的第一个；如果只有乱序的，直接取出`unseqChunkMetadatas`的第一个，如果既有顺序的又有乱序的，比较两者第一个的开始时间大小，取较小者取出。
 
-##### tryToFillChunkMetadatas()
+#### tryToFillChunkMetadatas()
 
 这个方法尝试解开顺序和乱序文件。
 
@@ -244,47 +254,47 @@ while (aggregateReader.hasNextChunk()) {
 
 而乱序文件之间可能会相互重叠，仅仅解开第一个乱序文件是不够的，还需要解开与`unseqChunkMetadatas`中第一个chunk meta data时间有重叠的所有乱序文件。
 
-##### isChunkOverlapped()
+#### isChunkOverlapped()
 
 这个方法判断当前的chunk有没有其他与之重叠的chunk存在。
 
 如果`mergeReader`里仍然有数据，或者`seqChunkMetadatas`里有与`firstChunkMetaData`时间重叠的，或者`unseqChunkMetadatas`里有与`firstChunkMetaData`时间重叠的，则返回`true`；反之，返回`false`。
 
-##### currentChunkStatistics()
+#### currentChunkStatistics()
 
 返回`firstChunkMetaData`的统计信息。
 
-##### skipCurrentChunk()
+#### skipCurrentChunk()
 
 跳过当前chunk。只需要将`hasCachedFirstChunkMetadata`置为`false`，`firstChunkMetaData`置为`null`即可。
 
-##### hasNextPage()
+#### hasNextPage()
 
 这个方法判断是否有下一个Page，一般在`firstChunkMetaData`不可直接使用时，继续解成Page。
 
 首先调用`fillOverlappedPageReaders()`去将`firstChunkMetaData`解开为`PageReader`，解开的`PageReader`都放进`overlappedPageReaders`里。并将`hasCachedFirstChunkMetadata`置为`false`，`firstChunkMetaData`置为`null`。若`overlappedPageReaders`为空则返回`false`，若不为空，返回`true`。
 
-##### isPageOverlapped()
+#### isPageOverlapped()
 
 这个方法判断当前的Page有没有其他与之重叠的Page存在。
 
 如果`mergeReader`里仍然有数据，或者`seqChunkMetadatas`里有与`overlappedPageReaders`里第一个`PageReader`时间重叠的，或者`unseqChunkMetadatas`里有与`overlappedPageReaders`里第一个`PageReader`时间重叠的，则返回`true`；反之，返回`false`。
 
-##### nextPage()
+#### nextPage()
 
 须与`isPageOverlapped()`方法搭配使用。
 
 当`overlappedPageReaders`里第一个Page没有与之重叠的其他Page时，直接获得`overlappedPageReaders`的第一个Page里符合过滤条件的所有data。
 
-##### currentPageStatistics()
+#### currentPageStatistics()
 
 返回`overlappedPageReaders`里第一个Page的统计信息。
 
-##### skipCurrentPage()
+#### skipCurrentPage()
 
 跳过当前Page。只需要将`overlappedPageReaders`里第一个PageReader删掉即可。
 
-##### hasNextOverlappedPage()
+#### hasNextOverlappedPage()
 
 这个方法判断当前还有没有重叠的Page。
 
@@ -298,11 +308,11 @@ while (aggregateReader.hasNextChunk()) {
 
 完成迭代后将获得数据缓存在`cachedBatchData`中，并将`hasCachedNextBatch`置为`true`。
 
-##### nextOverlappedPage()
+#### nextOverlappedPage()
 
 将缓存的`cachedBatchData`返回，并将`hasCachedNextBatch`置为`false`。
 
-#### org.apache.iotdb.db.query.reader.seriesRelated.SeriesRawDataPointReader
+### org.apache.iotdb.db.query.reader.seriesRelated.SeriesRawDataPointReader
 
 `SeriesRawDataPointReader`实现了`IPointReader`。
 
@@ -319,7 +329,7 @@ while (seriesReader.hasNextChunk()) {
 return false;
 ```
 
-#### org.apache.iotdb.db.query.reader.seriesRelated.SeriesRawDataBatchReader
+### org.apache.iotdb.db.query.reader.seriesRelated.SeriesRawDataBatchReader
 
 `SeriesRawDataBatchReader`实现了`IBatchReader`。
 
@@ -349,7 +359,7 @@ while (seriesReader.hasNextChunk()) {
 return false;
 ```
 
-#### org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp
+### org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp
 
 `SeriesReaderByTimestamp`实现了`IReaderByTimestamp`。
 
@@ -389,16 +399,16 @@ while (seriesReader.hasNextChunk()) {
 return false;
 ```
 
-#### org.apache.iotdb.db.query.reader.seriesRelated.SeriesAggregateReader
+### org.apache.iotdb.db.query.reader.seriesRelated.SeriesAggregateReader
 
 `SeriesAggregateReader`实现了`IAggregateReader`
 
 `IAggregateReader`的大部分接口方法都在`SeriesReader`有对应实现，除了`canUseCurrentChunkStatistics()`和`canUseCurrentPageStatistics()`两个方法。
 
-##### canUseCurrentChunkStatistics()
+#### canUseCurrentChunkStatistics()
 
 先调用`SeriesReader`的`currentChunkStatistics()`方法，获得当前chunk的统计信息，再调用`SeriesReader`的`isChunkOverlapped()`方法判断当前chunk是否重叠，如果当前chunk不重叠，且其统计信息满足过滤条件，则返回`true`，否则返回`false`。
 
-##### canUseCurrentPageStatistics()
+#### canUseCurrentPageStatistics()
 
 先调用`SeriesReader`的`currentPageStatistics()`方法，获得当前page的统计信息，再调用`SeriesReader`的`isPageOverlapped()`方法判断当前page是否重叠，如果当前page不重叠，且其统计信息满足过滤条件，则返回`true`，否则返回`false`。
