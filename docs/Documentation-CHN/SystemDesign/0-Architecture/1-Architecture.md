@@ -38,3 +38,18 @@ IoTDB 采用客户端-服务器架构，如下图所示。
 * [元数据管理](/#/SystemDesign/progress/chap3/sec1)
 * [存储引擎](/#/SystemDesign/progress/chap4/sec1)
 * [数据查询](/#/SystemDesign/progress/chap5/sec1)
+
+## 系统工具
+
+* [数据同步工具](/#/SystemDesign/progress/chap6/sec1)
+
+## 连接器
+
+IoTDB 与大数据系统进行了对接。
+
+* [Hadoop-TsFile](/#/SystemDesign/progress/chap6/sec1)
+* [Hive-TsFile](/#/SystemDesign/progress/chap6/sec2)
+* [Spark-TsFile](/#/SystemDesign/progress/chap6/sec3)
+* [Spark-IoTDB](/#/SystemDesign/progress/chap6/sec4)
+* [Grafana](/#/SystemDesign/progress/chap6/sec5)
+

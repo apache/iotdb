@@ -19,28 +19,6 @@
 
 -->
 
+## 数据回传工具
 
-# Chapter 0: Architecture
-* 1-Architecture
-# Chapter 1: TsFile
-* 1-TsFile
-* 2-Format
-* 3-Write
-* 4-Read
-# Chapter 2: QueryEngine
-* 1-QueryEngine
-* 2-Planner
-* 3-PlanExecutor
-# Chapter 3: SchemaManager
-* 1-SchemaManager
-# Chapter 4: StorageEngine
-* 1-StorageEngine
-* 2-WAL
-* 3-FlushManager
-* 4-MergeManager
-# Chapter 5: DataQuery
-* 1-DataQuery
-# Chapter 6: Tools
-* 1-Sync
-# Chapter 7: Connector
-* 2-Hive-TsFile
+数据回传工具可以将一个 IoTDB 实例的数据文件定期传输到另一个 IoTDB 实例。
