@@ -65,7 +65,10 @@ IoTDB 所有官网上的内容都在项目根目录的 docs 中：
 * In progress -> master
 * major_version.x -> rel/major_version （如 0.9.x -> rel/0.9）
 
-Markdown 中的图片可上传至 https://github.com/thulab/iotdb/issues/543 获得 url
+注意事项：
+
+* Markdown 中的图片可上传至 https://github.com/thulab/iotdb/issues/543 获得 url
+* 新增加的系统设计文档和用户手册的 md 文件，需要在英文版对应的根目录下的 0-Content.md 中增加索引
 
 ## 贡献代码
 
