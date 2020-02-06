@@ -21,8 +21,9 @@
 
 # 降采样查询
 
-降采样查询的结果集都会继承 `GroupByEngineDataSet`，该类包含如下字段：
+* org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet
 
+降采样查询的结果集都会继承 `GroupByEngineDataSet`，该类包含如下字段：
 
 ## 不带值过滤条件的降采样查询
 
