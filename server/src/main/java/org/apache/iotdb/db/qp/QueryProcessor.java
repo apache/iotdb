@@ -68,6 +68,12 @@ public class QueryProcessor {
     return physicalGenerator.transformToPhysicalPlan(operator);
   }
 
+  public PhysicalPlan logicalPlanToPhysicalPlan(Operator operator) throws QueryProcessException {
+    operator = logicalOptimize(operator, executor);
+    PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
+    return physicalGenerator.transformToPhysicalPlan(operator);
+  }
+
 
   /**
    * given an unoptimized logical operator tree and return a optimized result.

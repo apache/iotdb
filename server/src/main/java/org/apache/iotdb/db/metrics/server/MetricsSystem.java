@@ -15,12 +15,12 @@
 package org.apache.iotdb.db.metrics.server;
 
 import java.util.ArrayList;
-import org.apache.iotdb.db.metrics.sink.MetricsServletSink;
+import org.apache.iotdb.db.metrics.sink.JsonServletSink;
 import org.apache.iotdb.db.metrics.sink.Sink;
 import org.apache.iotdb.db.metrics.source.MetricsSource;
 import org.apache.iotdb.db.metrics.source.Source;
-import org.eclipse.jetty.servlet.ServletContextHandler;
 import com.codahale.metrics.MetricRegistry;
+import org.eclipse.jetty.servlet.ServletHolder;
 
 public class MetricsSystem {
 
@@ -40,8 +40,11 @@ public class MetricsSystem {
     return metricRegistry;
   }
 
-  public ServletContextHandler getServletHandlers() {
-    return new MetricsServletSink(metricRegistry).getHandler();
+  /**
+   * to get a json Servlet Holder
+   */
+  public ServletHolder getServletHolder() {
+    return new JsonServletSink(metricRegistry).getHolder();
   }
 
   public void start() {

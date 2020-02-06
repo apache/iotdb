@@ -121,6 +121,11 @@
             <artifactId>stream</artifactId>
             <version>2.9.5</version>
         </dependency>
+        <dependency>
+            <groupId>org.glassfish.jersey.containers</groupId>
+            <artifactId>jersey-container-servlet</artifactId>
+            <version>2.30</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

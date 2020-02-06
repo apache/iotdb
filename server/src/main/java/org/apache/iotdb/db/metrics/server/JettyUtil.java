@@ -33,7 +33,7 @@ import org.eclipse.jetty.servlet.ServletHolder;
 
 public class JettyUtil {
 
-  public static ServletContextHandler createMetricsServletHandler(ObjectMapper mapper,MetricRegistry metricRegistry) {
+  public static ServletHolder createJsonServletHolder(ObjectMapper mapper,MetricRegistry metricRegistry) {
     HttpServlet httpServlet = new HttpServlet() {
       private static final long serialVersionUID = 1L;
 
@@ -56,27 +56,14 @@ public class JettyUtil {
         doGet(req, resp);
       }
     };
-    
-    return createServletHandler("/json", httpServlet, "/");
+
+    return new ServletHolder(httpServlet);
   }
 
-  public static ServletContextHandler createServletHandler(String path, HttpServlet servlet, String pathSpec) {
-    ServletContextHandler contextHandler = new ServletContextHandler(ServletContextHandler.SESSIONS);
-    ServletHolder holder = new ServletHolder(servlet);
-    contextHandler.setContextPath(path);
-    contextHandler.addServlet(holder, pathSpec);
-    return contextHandler;
-  }
-
-  public static ServletContextHandler createStaticHandler() {
-    ServletContextHandler contextHandler = new ServletContextHandler(ServletContextHandler.SESSIONS);
-    URL res = JettyUtil.class.getClassLoader().getResource("iotdb/ui/static");
-    HttpServlet servlet = new DefaultServlet();
-    ServletHolder holder = new ServletHolder(servlet);
-    holder.setInitParameter("resourceBase", Objects.requireNonNull(res).toString());
-    contextHandler.setContextPath("/static");
-    contextHandler.addServlet(holder, "/");
-    return contextHandler;
+  public static ServletHolder createStaticServletHolder() {
+    ServletHolder holder = new ServletHolder("static", DefaultServlet.class);
+    holder.setInitParameter("dirAllowed", "true");
+    return holder;
   }
 
   public static Server getJettyServer(List<ServletContextHandler> handlers, int port) {

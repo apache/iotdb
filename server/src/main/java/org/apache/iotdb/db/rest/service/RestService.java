@@ -1,0 +1,177 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iotdb.db.rest.service;
+
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.QueryProcessor;
+import org.apache.iotdb.db.qp.constant.DatetimeUtils;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.rest.model.TimeValues;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class RestService {
+
+  protected QueryProcessor processor = new QueryProcessor(new QueryProcessExecutor());
+  private static final Logger logger = LoggerFactory.getLogger(RestService.class);
+  private static final String INFO_NOT_LOGIN = "{}: Not login.";
+  private String username;
+
+
+  public List<TimeValues> querySeries(String s, Pair<String, String> timeRange)
+      throws QueryProcessException, StorageGroupException, AuthException, MetadataException, QueryFilterOptimizationException, SQLException, StorageEngineException, IOException {
+    String from = timeRange.left;
+    String to = timeRange.right;
+    String suffixPath = s.substring(s.lastIndexOf('.') + 1);
+    String prefixPath = s.substring(0, s.lastIndexOf('.'));
+    String sql = "SELECT " + suffixPath + " FROM root."
+        + prefixPath + " WHERE time > " + from + " and time < " + to;
+    logger.info(sql);
+    QueryOperator queryOperator = generateOperator(suffixPath, prefixPath, timeRange);
+    QueryPlan plan = (QueryPlan) processor.logicalPlanToPhysicalPlan(queryOperator);
+    List<Path> paths = plan.getPaths();
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+    }
+
+    // check seriesPath exists
+    if (paths.isEmpty()) {
+      throw new PathException("The path doesn't exist");
+    }
+
+    // check file level set
+    try {
+      checkFileLevelSet(paths);
+    } catch (StorageGroupException e) {
+      logger.error("meet error while checking file level.", e);
+      throw new StorageGroupException(e.getMessage());
+    }
+
+    // check permissions
+    if (!checkAuthorization(paths, plan)) {
+      throw new AuthException("Don't have permissions");
+    }
+
+    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    QueryDataSet queryDataSet = processor.getExecutor().processQuery(plan, context);
+    String[] args;
+    List<TimeValues> list = new ArrayList<>();
+    while(queryDataSet.hasNext()) {
+      TimeValues timeValues = new TimeValues();
+      args = queryDataSet.next().toString().split("\t");
+      timeValues.setTime(Long.parseLong(args[1]));
+      timeValues.setValue(args[0]);
+      list.add(timeValues);
+    }
+    return list;
+  }
+
+  private boolean checkLogin() {
+    return username != null;
+  }
+
+  private boolean checkAuthorization(List<Path> paths, PhysicalPlan plan) throws AuthException {
+    return AuthorityChecker.check(username, paths, plan.getOperatorType(), null);
+  }
+
+  private void checkFileLevelSet(List<Path> paths) throws StorageGroupException {
+    MManager.getInstance().checkFileLevel(paths);
+  }
+
+
+  /**
+   * generate select statement operator
+   */
+  private QueryOperator generateOperator(String suffixPath, String prefixPath, Pair<String, String> timeRange) {
+    FilterOperator binaryOp = new FilterOperator(SQLConstant.KW_AND);
+    binaryOp.addChildOperator(
+        new BasicFunctionOperator(SQLConstant.GREATERTHAN,
+            new Path(SQLConstant.RESERVED_TIME),
+            String.valueOf(parseTimeFormat(timeRange.left))
+        )
+    );
+    binaryOp.addChildOperator(
+        new BasicFunctionOperator(SQLConstant.LESSTHAN,
+            new Path(SQLConstant.RESERVED_TIME),
+            String.valueOf(parseTimeFormat(timeRange.right))
+        )
+    );
+    QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
+    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    selectOp.addSelectPath(new Path(suffixPath));
+    FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
+    fromOp.addPrefixTablePath(new Path(prefixPath));
+    queryOp.setFilterOperator(binaryOp);
+    queryOp.setSelectOperator(selectOp);
+    queryOp.setFromOperator(fromOp);
+    return queryOp;
+  }
+
+  /**
+   * function for parsing time format.
+   */
+  private long parseTimeFormat(String timestampStr) throws SQLParserException {
+    if (timestampStr == null || timestampStr.trim().equals("")) {
+      throw new SQLParserException("input timestamp cannot be empty");
+    }
+    if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
+      return System.currentTimeMillis();
+    }
+    try {
+      return DatetimeUtils.convertDatetimeStrToLong(timestampStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (Exception e) {
+      throw new SQLParserException(String
+          .format("Input time format %s error. "
+              + "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or "
+              + "refer to user document for more info.", timestampStr));
+    }
+  }
+
+  public void setUsername(String username) {
+    this.username = username;
+  }
+}

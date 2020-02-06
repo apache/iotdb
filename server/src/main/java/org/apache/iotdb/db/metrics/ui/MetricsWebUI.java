@@ -14,37 +14,34 @@
  */
 package org.apache.iotdb.db.metrics.ui;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.metrics.server.JettyUtil;
 import org.apache.iotdb.db.metrics.server.QueryServlet;
-import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import com.codahale.metrics.MetricRegistry;
+import org.eclipse.jetty.servlet.ServletHolder;
 
 public class MetricsWebUI {
 
-  private List<ServletContextHandler> handlers = new ArrayList<>();
+  private ServletContextHandler handler = new ServletContextHandler(ServletContextHandler.SESSIONS);
   private MetricRegistry metricRegistry;
 
   public MetricsWebUI(MetricRegistry metricRegistry) {
     this.metricRegistry = metricRegistry;
   }
 
-  public List<ServletContextHandler> getHandlers() {
-    return handlers;
-  }
-
   public void initialize() {
     MetricsPage masterPage = new MetricsPage(metricRegistry);
     QueryServlet queryServlet = new QueryServlet(masterPage);
-    ServletContextHandler staticHandler = JettyUtil.createStaticHandler();
-    ServletContextHandler queryHandler = JettyUtil.createServletHandler("/",queryServlet, "/");
-    handlers.add(staticHandler);
-    handlers.add(queryHandler);
+    handler.setContextPath("/metrics");
+    handler.setResourceBase(
+        String.valueOf(MetricsWebUI.class.getClassLoader().getResource("iotdb/ui/static")));
+    ServletHolder queryServletHolder = new ServletHolder(queryServlet);
+    handler.addServlet(queryServletHolder, "/query");
+    ServletHolder staticServletHolder = JettyUtil.createStaticServletHolder();
+    handler.addServlet(staticServletHolder, "/");
   }
 
-  public Server getServer(int port) {
-    return JettyUtil.getJettyServer(handlers, port);
+  public ServletContextHandler getHandler() {
+    return handler;
   }
 }

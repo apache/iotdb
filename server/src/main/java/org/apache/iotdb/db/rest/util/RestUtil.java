@@ -16,29 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.http;
+package org.apache.iotdb.db.rest.util;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.glassfish.jersey.servlet.ServletContainer;
 
-public class QueryServlet extends HttpServlet {
+public class RestUtil {
+  public static ServletContextHandler getRestContextHandler() {
+    ServletContextHandler ctx =
+        new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
 
-  @Override
-  protected void doGet(HttpServletRequest req, HttpServletResponse resp)
-      throws ServletException, IOException {
-    PrintWriter out = resp.getWriter();
-    resp.setContentType("application/json");
-    resp.setCharacterEncoding("UTF-8");
-
-  }
-
-  @Override
-  protected void doPost(HttpServletRequest req, HttpServletResponse resp)
-      throws ServletException, IOException {
-    super.doPost(req, resp);
+    ctx.setContextPath("/rest");
+    ServletHolder serHol = ctx.addServlet(ServletContainer.class, "/*");
+    serHol.setInitParameter("jersey.config.server.provider.packages",
+        "org.apache.iotdb.db.rest.controller");
+    serHol.setInitOrder(1);
+    return ctx;
   }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.http;
+package org.apache.iotdb.db.rest.model;
 
 public class TimeValues {
 
