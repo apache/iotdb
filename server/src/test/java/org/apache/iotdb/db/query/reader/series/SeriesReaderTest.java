@@ -23,41 +23,26 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -66,15 +51,8 @@ import org.junit.Test;
 public class SeriesReaderTest {
 
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
-  private TSEncoding encoding = TSEncoding.PLAIN;
-  private int seqFileNum = 5;
-  private int unseqFileNum = 5;
-  private int measurementNum = 10;
-  private int deviceNum = 10;
-  private long ptNum = 100;
-  private long flushInterval = 20;
-  private String[] deviceIds;
-  private MeasurementSchema[] measurementSchemas;
+  private List<String> deviceIds = new ArrayList<>();
+  private List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private List<TsFileResource> seqResources = new ArrayList<>();
   private List<TsFileResource> unseqResources = new ArrayList<>();
@@ -82,21 +60,12 @@ public class SeriesReaderTest {
 
   @Before
   public void setUp() throws MetadataException, PathException, IOException, WriteProcessException {
-    MManager.getInstance().init();
-    prepareSeries();
-    prepareFiles(seqFileNum, unseqFileNum);
+    SeriesTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    removeFiles();
-    seqResources.clear();
-    unseqResources.clear();
-    TsFileMetaDataCache.getInstance().clear();
-    DeviceMetaDataCache.getInstance().clear();
-    MManager.getInstance().clear();
-    EnvironmentUtils.cleanAllDir();
-    MergeManager.getINSTANCE().stop();
+    SeriesTestUtil.tearDown(seqResources, unseqResources);
   }
 
   @Test
@@ -153,160 +122,11 @@ public class SeriesReaderTest {
           assertEquals(expectedTime, value);
         }
         expectedTime++;
-
       }
     } catch (IOException e) {
       e.printStackTrace();
       fail();
     }
 
-  }
-
-  @Test
-  public void aggregateTest() {
-    try {
-      Path path = new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0");
-      QueryDataSource queryDataSource = new QueryDataSource(path, seqResources, unseqResources);
-      SeriesAggregateReader seriesReader = new SeriesAggregateReader(path, TSDataType.INT32,
-          new QueryContext(), queryDataSource, null, null);
-      AggregateResult aggregateResult = AggreResultFactory
-          .getAggrResultByName("count", TSDataType.INT32);
-      while (seriesReader.hasNextChunk()) {
-        if (seriesReader.canUseCurrentChunkStatistics()) {
-          Statistics chunkStatistics = seriesReader.currentChunkStatistics();
-          aggregateResult.updateResultFromStatistics(chunkStatistics);
-          seriesReader.skipCurrentChunk();
-          continue;
-        }
-        int loopTime = 0;
-        while (seriesReader.hasNextPage()) {
-          if (seriesReader.canUseCurrentPageStatistics()) {
-            Statistics pageStatistic = seriesReader.currentPageStatistics();
-            if (loopTime == 0) {
-              assertEquals(260, pageStatistic.getStartTime());
-              assertEquals(279, pageStatistic.getEndTime());
-            } else if (loopTime == 1) {
-              assertEquals(280, pageStatistic.getStartTime());
-              assertEquals(299, pageStatistic.getEndTime());
-            } else {
-              assertEquals(380, pageStatistic.getStartTime());
-              assertEquals(399, pageStatistic.getEndTime());
-            }
-            assertEquals(20, pageStatistic.getCount());
-            aggregateResult.updateResultFromStatistics(pageStatistic);
-            seriesReader.skipCurrentPage();
-            continue;
-          }
-
-          while (seriesReader.hasNextOverlappedPage()) {
-            BatchData nextOverlappedPageData = seriesReader.nextOverlappedPage();
-            aggregateResult.updateResultFromPageData(nextOverlappedPageData);
-            nextOverlappedPageData.resetBatchData();
-            assertEquals(true, nextOverlappedPageData.hasCurrent());
-          }
-          loopTime++;
-        }
-      }
-      assertEquals(500L, aggregateResult.getResult());
-    } catch (IOException | QueryProcessException e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
-
-
-  private void prepareSeries() throws MetadataException, PathException {
-    measurementSchemas = new MeasurementSchema[measurementNum];
-    for (int i = 0; i < measurementNum; i++) {
-      measurementSchemas[i] = new MeasurementSchema("sensor" + i, TSDataType.INT32,
-          encoding, CompressionType.UNCOMPRESSED);
-    }
-    deviceIds = new String[deviceNum];
-    for (int i = 0; i < deviceNum; i++) {
-      deviceIds[i] = SERIES_READER_TEST_SG + PATH_SEPARATOR + "device" + i;
-    }
-    MManager.getInstance().setStorageGroupToMTree(SERIES_READER_TEST_SG);
-    for (String device : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
-        MManager.getInstance().addPathToMTree(
-            device + PATH_SEPARATOR + measurementSchema.getMeasurementId(), measurementSchema
-                .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
-            Collections.emptyMap());
-      }
-    }
-  }
-
-  private void removeFiles() throws IOException {
-    for (TsFileResource tsFileResource : seqResources) {
-      tsFileResource.remove();
-    }
-    for (TsFileResource tsFileResource : unseqResources) {
-      tsFileResource.remove();
-    }
-
-    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
-    FileReaderManager.getInstance().stop();
-  }
-
-  private void prepareFiles(int seqFileNum, int unseqFileNum)
-      throws IOException, WriteProcessException {
-    for (int i = 0; i < seqFileNum; i++) {
-      File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
-          i + "seq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
-              + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
-              + ".tsfile"));
-      TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setClosed(true);
-      tsFileResource.setHistoricalVersions(Collections.singleton((long) i));
-      seqResources.add(tsFileResource);
-      prepareFile(tsFileResource, i * ptNum, ptNum, 0);
-    }
-    for (int i = 0; i < unseqFileNum; i++) {
-      File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
-          i + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR
-              + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
-              + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
-              + ".tsfile"));
-      TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setClosed(true);
-      tsFileResource.setHistoricalVersions(Collections.singleton((long) (i + seqFileNum)));
-      unseqResources.add(tsFileResource);
-      prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
-    }
-
-    File file = new File(TestConstant.BASE_OUTPUT_PATH
-        .concat(unseqFileNum + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
-            + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
-            + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0 + ".tsfile"));
-    TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setClosed(true);
-    tsFileResource.setHistoricalVersions(Collections.singleton((long) (seqFileNum + unseqFileNum)));
-    unseqResources.add(tsFileResource);
-    prepareFile(tsFileResource, 0, ptNum * 2, 20000);
-  }
-
-  private void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
-      long valueOffset)
-      throws IOException, WriteProcessException {
-    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
-      fileWriter.addMeasurement(measurementSchema);
-    }
-    for (long i = timeOffset; i < timeOffset + ptNum; i++) {
-      for (int j = 0; j < deviceNum; j++) {
-        TSRecord record = new TSRecord(i, deviceIds[j]);
-        for (int k = 0; k < measurementNum; k++) {
-          record.addTuple(DataPoint.getDataPoint(measurementSchemas[k].getType(),
-              measurementSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
-        }
-        fileWriter.write(record);
-        tsFileResource.updateStartTime(deviceIds[j], i);
-        tsFileResource.updateEndTime(deviceIds[j], i);
-      }
-      if ((i + 1) % flushInterval == 0) {
-        fileWriter.flushForTest(tsFileResource.getHistoricalVersions().iterator().next());
-      }
-    }
-    fileWriter.close();
   }
 }
