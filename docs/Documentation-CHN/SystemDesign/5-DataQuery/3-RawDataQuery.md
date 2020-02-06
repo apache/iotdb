@@ -19,22 +19,23 @@
 
 -->
 
-### 原始数据查询
+# 原始数据查询
 
-#### 设计原理
+## 设计原理
 
-原始数据查询根据是否包含值过滤条件，可以分为两类，无过滤条件 or 仅包含时间过滤条件这一类里又可以分为两类
+原始数据查询根据是否包含值过滤条件，可以分为两类。不包含值过滤条件时，根据结果集结构又可分为两类。
 
-* 无过滤条件 or 仅包含时间过滤条件
-	* 按时间戳对齐方式返回
-	* 不按时间戳对齐方式返回
+* 不包含值过滤条件（无过滤条件 or 仅包含时间过滤条件）
+	* 结果集按时间戳对齐（默认原始数据查询）
+	* 结果集不按时间戳对齐（disable align）
 * 包含值过滤条件
+	* 结果集按时间戳对齐
 
-#### 代码介绍
+以上三种查询在代码中对应三种不同的 DataSet，封装了这三种查询的执行逻辑。
 
-以上三种查询在代码中对应三种不同的DataSet，封装了这三种查询的执行逻辑。
+## 不包含值过滤条件 + 结果集按时间戳对齐
 
-##### org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter
+### org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter
 
 `RawQueryDataSetWithoutValueFilter`实现了没有值过滤条件，且需要按照时间戳对齐的查询逻辑。虽然最后的查询结果需要每个时间序列按照时间戳对齐，但是每个时间序列的查询是可以做并行化的。这里借助消费者-生产者队列的思想，将每个时间序列获取数据的操作与最后对所有时间序列进行对齐的操作解耦。每个时间序列对应一个生产者线程，且有其对应的`BlockingQueue`，生产者任务负责读取相应的时间序列的数据放进`BlockingQueue`中；消费者线程只有一个，负责从每个时间序列的`BlockingQueue`中取出数据，进行时间戳对齐之后，将结果组装成`TSQueryDataSet`形式返回。
 
@@ -42,7 +43,7 @@
 
 下面就先介绍生产者的代码，它被封装在是`RawQueryDataSetWithoutValueFilter`的一个内部类`ReadTask`中，实现了`Runnable`接口。
 
-###### org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter.ReadTask
+### org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter.ReadTask
 
 `ReadTask`中有两个字段
 
@@ -67,7 +68,8 @@ void setHasRemaining(boolean hasRemaining);
 
 下面看一下`ReadTask`的`run()`方法，执行流程的解释以注释的形式展现在代码中
 
-###### run()
+#### run()
+
 ```
 public void run() {
   try {
@@ -136,7 +138,7 @@ public void run() {
   
 在消费者`RawQueryDataSetWithoutValueFilter`的构造函数里首先调用了`init()`方法
 
-###### int()
+#### int()
 
 ```
 private void init() throws InterruptedException {
@@ -160,7 +162,8 @@ private void init() throws InterruptedException {
 	}
 }
 ```
-######  fillCache(int)
+
+####  fillCache(int)
 
 该方法负责从阻塞队列中取出数据，并填充缓存，具体逻辑见下文注释
 
@@ -228,14 +231,17 @@ for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
 }
 ```
 
+## 不包含值过滤条件 + 结果集不按时间戳对齐
 
-#### org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet
+### org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet
 
 `NonAlignEngineDataSet`实现了没有值过滤条件，且不需要按照时间戳对齐的查询逻辑。这里的查询逻辑跟`RawQueryDataSetWithoutValueFilter`很类似，但是它的消费者逻辑更为简单，因为不需要做时间戳对齐的操作。并且每个生产者任务中也可以做更多的工作，不仅可以从Reader中取出BatchData，还可以进一步讲取出的BatchData格式化为结果集需要的输出，从而提高了程序的并行度。如此，消费者只需要从每个阻塞队列里取出数据，set进`TSQueryNonAlignDataSet`相应的位置即可。
 
 具体的查询逻辑，在此就不再赘述了，可以参照`RawQueryDataSetWithoutValueFilter`的查询逻辑分析。
 
-#### org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter
+## 包含值过滤条件 + 结果集按时间戳对齐
+
+### org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter
 
 `EngineDataSetWithValueFilter`实现了有值过滤条件的查询逻辑。
 
@@ -259,7 +265,7 @@ for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
   
 它的主要查询逻辑封装在`cacheRowRecord()`方法中，具体分析见代码中的注释
 
-##### cacheRowRecord()
+#### cacheRowRecord()
 
 ```
 private boolean cacheRowRecord() throws IOException {
@@ -293,4 +299,3 @@ private boolean cacheRowRecord() throws IOException {
 	return hasCachedRowRecord;
 }
 ```
-
