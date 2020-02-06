@@ -89,7 +89,7 @@ public interface IReaderSet {
 
 1. 首先判断`dataSetList`当前位置的`QueryDataSet`还有没有值，如果没有值，则将`currentIndex`递增1，直到找到第一个有值的`QueryDataSet`
 2. 然后调用`QueryDataSet`的`next()`方法获得`RowRecord`
-3. 最后调用`TSFRecordReader`的`getCurrentValue()`方法，将`RowRecord`中的值set进`MapWritable`里
+3. 最后调用`TSFRecordReader`的`getCurrentValue()`方法，将`RowRecord`中的值放入`MapWritable`里
 
 
 #### org.apache.iotdb.hive.TsFileSerDe
