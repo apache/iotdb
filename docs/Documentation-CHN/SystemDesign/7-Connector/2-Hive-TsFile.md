@@ -85,7 +85,7 @@ public interface IReaderSet {
   
 ##### next(NullWritable, MapWritable)
 
-我们注意到它从 TsFile 读取出来数据之后，是以`MapWritable`的形式返回的，这里的`MapWritable`其实就是一个`Map`，只不过它的key与value都做了序列化与反序列化的特殊适配，它的读取流程如下
+我们注意到它从 TsFile 读取出来数据之后，是以`MapWritable`的形式返回的，这里的`MapWritable`其实就是一个`Map`，只不过它的 key 与 value 都做了序列化与反序列化的特殊适配，它的读取流程如下
 
 1. 首先判断`dataSetList`当前位置的`QueryDataSet`还有没有值，如果没有值，则将`currentIndex`递增1，直到找到第一个有值的`QueryDataSet`
 2. 然后调用`QueryDataSet`的`next()`方法获得`RowRecord`
