@@ -45,7 +45,7 @@ Hive 连接器需要能够解析 TsFile 的文件格式，转化为 Hive 能够�
 
 #### org.apache.iotdb.hive.TSFHiveInputFormat
 
-该类主要负责对输入的 TsFile 文件的格式化操作，它继承了`FileInputFormat<NullWritable, MapWritable>`类，一些通用的格式化操作在`FileInputFormat`中已经有实现，这个类覆写了它的`getSplits(JobConf, int)`方法，自定义了对于tsfile文件的分片方式；以及`getRecordReader(InputSpli, JobConf, Reporter)`方法，用于生成具体从一个分片中读取数据的
+该类主要负责对输入的 TsFile 文件的格式化操作，它继承了`FileInputFormat<NullWritable, MapWritable>`类，一些通用的格式化操作在`FileInputFormat`中已经有实现，这个类覆写了它的`getSplits(JobConf, int)`方法，自定义了对于 TsFile 文件的分片方式；以及`getRecordReader(InputSpli, JobConf, Reporter)`方法，用于生成具体从一个分片中读取数据的
 `TSFHiveRecordReader`。
 
 #### org.apache.iotdb.hive.TSFHiveRecordReader
