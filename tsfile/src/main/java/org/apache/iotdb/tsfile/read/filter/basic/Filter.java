@@ -65,7 +65,7 @@ public interface Filter {
    */
   boolean containStartEndTime(long startTime, long endTime);
 
-  Filter clone();
+  Filter copy();
 
   void serialize(DataOutputStream outputStream);
 
