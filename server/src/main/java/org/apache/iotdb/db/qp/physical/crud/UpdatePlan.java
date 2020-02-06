@@ -37,7 +37,6 @@ public class UpdatePlan extends PhysicalPlan {
 
   public UpdatePlan() {
     super(false, Operator.OperatorType.UPDATE);
-    canbeSplit = true;
   }
 
   /**
@@ -53,7 +52,6 @@ public class UpdatePlan extends PhysicalPlan {
     setValue(value);
     setPath(path);
     addInterval(new Pair<>(startTime, endTime));
-    canbeSplit = true;
   }
 
   /**
@@ -68,7 +66,6 @@ public class UpdatePlan extends PhysicalPlan {
     setValue(value);
     setPath(path);
     intervals = list;
-    canbeSplit = true;
   }
 
   public List<Pair<Long, Long>> getIntervals() {

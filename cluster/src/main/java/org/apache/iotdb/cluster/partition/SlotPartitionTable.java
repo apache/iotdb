@@ -177,14 +177,14 @@ public class SlotPartitionTable implements PartitionTable {
     }
   }
   @Override
-  public int getHashKey(String storageGroupName, long timestamp){
+  public int getSlot(String storageGroupName, long timestamp){
     return PartitionUtils.calculateStorageGroupSlot(storageGroupName, timestamp, getTotalSlotNumbers());
   }
 
   @Override
-  public PartitionGroup route(int hashKey) {
-    Node node = slotNodeMap.get(hashKey);
-    logger.debug("The slot of {} is held by {}", hashKey, node);
+  public PartitionGroup route(int slot) {
+    Node node = slotNodeMap.get(slot);
+    logger.debug("The slot of {} is held by {}", slot, node);
     return getHeaderGroup(node);
   }
 

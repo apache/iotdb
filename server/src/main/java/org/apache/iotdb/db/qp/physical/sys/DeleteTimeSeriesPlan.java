@@ -31,7 +31,6 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
   public DeleteTimeSeriesPlan (List<Path> deletePathList) {
 	  super(false, Operator.OperatorType.DELETE_TIMESERIES);
 	  this.deletePathList = deletePathList;
-    canbeSplit = true;
   }
   
   @Override

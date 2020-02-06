@@ -26,7 +26,6 @@ public class ShowTimeSeriesPlan extends ShowPlan{
   public ShowTimeSeriesPlan(ShowContentType showContentType, Path path) {
     super(showContentType);
     this.path = path;
-    canbeSplit = true;
   }
 
   public Path getPath() {

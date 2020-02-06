@@ -39,7 +39,7 @@ public class BatchInsertPlan extends PhysicalPlan {
   private String[] measurements;
   private TSDataType[] dataTypes;
 
-  private long[] times;
+  private long[] times; // times should be sorted. It is done in the session API.
   private ByteBuffer timeBuffer;
 
   private Object[] columns;
@@ -55,14 +55,17 @@ public class BatchInsertPlan extends PhysicalPlan {
 
   public BatchInsertPlan() {
     super(false, OperatorType.BATCHINSERT);
-    super.canbeSplit = true;
   }
 
   public BatchInsertPlan(String deviceId, List<String> measurements) {
     super(false, OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     setMeasurements(measurements);
-    super.canbeSplit = true;
+  }
+  public BatchInsertPlan(String deviceId, String[] measurements) {
+    super(false, OperatorType.BATCHINSERT);
+    this.deviceId = deviceId;
+    setMeasurements(measurements);
   }
 
   public BatchInsertPlan(String deviceId, String[] measurements, List<Integer> dataTypes) {
@@ -70,7 +73,6 @@ public class BatchInsertPlan extends PhysicalPlan {
     this.deviceId = deviceId;
     this.measurements = measurements;
     setDataTypes(dataTypes);
-    super.canbeSplit = true;
   }
 
   public int getStart() {
@@ -334,6 +336,10 @@ public class BatchInsertPlan extends PhysicalPlan {
     }
   }
 
+  public void setDataTypes(TSDataType[] dataTypes) {
+    this.dataTypes = dataTypes;
+  }
+
   public Object[] getColumns() {
     return columns;
   }
@@ -387,4 +393,5 @@ public class BatchInsertPlan extends PhysicalPlan {
   public void setRowCount(int size) {
     this.rowCount = size;
   }
+
 }

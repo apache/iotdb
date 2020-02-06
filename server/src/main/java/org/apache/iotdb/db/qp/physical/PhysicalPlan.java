@@ -41,8 +41,8 @@ public abstract class PhysicalPlan {
   private Operator.OperatorType operatorType;
   private static final int NULL_VALUE_LEN = -1;
 
-  //for cluster mode
-  protected boolean canbeSplit = false;
+  //for cluster mode, whether the plan may be splitted into several sub plans
+  protected boolean canbeSplit = true;
 
   /**
    * whether the plan can be split into more than one Plans.

@@ -34,7 +34,7 @@ public class TestPartitionTable implements PartitionTable {
   }
 
   @Override
-  public int getHashKey(String storageGroupName, long timestamp) {
+  public int getSlot(String storageGroupName, long timestamp) {
     //TODO
     return 0;
   }

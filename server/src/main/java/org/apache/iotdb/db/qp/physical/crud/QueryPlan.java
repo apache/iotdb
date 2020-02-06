@@ -56,12 +56,10 @@ public class QueryPlan extends PhysicalPlan {
   public QueryPlan() {
     super(true);
     setOperatorType(Operator.OperatorType.QUERY);
-    super.canbeSplit = true;
   }
 
   public QueryPlan(boolean isQuery, Operator.OperatorType operatorType) {
     super(isQuery, operatorType);
-    super.canbeSplit = true;
   }
 
   /**

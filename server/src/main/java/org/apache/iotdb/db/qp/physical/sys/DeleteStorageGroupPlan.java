@@ -31,7 +31,6 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
   public DeleteStorageGroupPlan (List<Path> deletePathList) {
 	  super(false, Operator.OperatorType.DELETE_STORAGE_GROUP);
 	  this.deletePathList = deletePathList;
-	  canbeSplit = true;
   }
   
   @Override

@@ -42,6 +42,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
 
   public CreateTimeSeriesPlan() {
     super(false, Operator.OperatorType.CREATE_TIMESERIES);
+    canbeSplit = false;
   }
 
   public CreateTimeSeriesPlan(Path path, TSDataType dataType, TSEncoding encoding,
@@ -52,6 +53,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     this.encoding = encoding;
     this.compressor = compressor;
     this.props = props;
+    canbeSplit = false;
   }
   
   public Path getPath() {

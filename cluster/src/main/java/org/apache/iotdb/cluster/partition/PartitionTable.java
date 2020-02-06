@@ -32,12 +32,16 @@ import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.sys.*;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,9 +69,9 @@ public interface PartitionTable {
    * @param timestamp
    * @return
    */
-  int getHashKey(String storageGroupName, long timestamp);
+  int getSlot(String storageGroupName, long timestamp);
 
-  PartitionGroup route(int hashkey);
+  PartitionGroup route(int slot);
   /**
    * Add a new node to update the partition table.
    * @param node
@@ -112,6 +116,10 @@ public interface PartitionTable {
 
   int getTotalSlotNumbers();
 
+  //==============================================================================================//
+  //All the follwoing are default methods.
+  //==============================================================================================//
+
   default int calculateLogSlot(Log log) {
     if (log instanceof PhysicalPlanLog) {
       PhysicalPlanLog physicalPlanLog = ((PhysicalPlanLog) log);
@@ -146,184 +154,261 @@ public interface PartitionTable {
     return 0;
   }
 
-  default PartitionGroup partitionPlan(PhysicalPlan plan)
-      throws UnsupportedPlanException, StorageGroupNotSetException {
+  default PartitionGroup routePlan(PhysicalPlan plan)
+      throws UnsupportedPlanException, StorageGroupNotSetException, IllegalPathException {
     //the if clause can be removed after the program is stable
+    if (PartitionUtils.isLocalPlan(plan)) {
+      logger.error("{} is a local plan. Please run it locally directly", plan);
+    } else if (PartitionUtils.isGlobalPlan(plan)) {
+      logger.error("{} is a global plan. Please forward it to all partitionGroups", plan);
+    }
     if (plan.canbeSplit()) {
-      logger.error("{} can be split. call an incorrect partitionMethod");
+      logger.error("{} can be split. Please call splitPlanAndMapToGroups");
     }
     throw new UnsupportedPlanException(plan);
   }
 
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(PhysicalPlan plan)
-      throws UnsupportedPlanException, StorageGroupNotSetException {
+  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(PhysicalPlan plan)
+      throws UnsupportedPlanException, StorageGroupNotSetException , IllegalPathException {
     //the if clause can be removed after the program is stable
+    if (PartitionUtils.isLocalPlan(plan)) {
+      logger.error("{} is a local plan. Please run it locally directly", plan);
+    } else if (PartitionUtils.isGlobalPlan(plan)) {
+      logger.error("{} is a global plan. Please forward it to all partitionGroups", plan);
+    }
     if (!plan.canbeSplit()) {
-      logger.error("{} can be split. call an incorrect partitionMethod");
+      logger.error("{} cannot be split. Please call routePlan");
     }
     throw new UnsupportedPlanException(plan);
   }
 
   //CRUD
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(AggregationPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
 
+  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(QueryPlan plan)
+      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException {
+    //TODO
     return null;
   }
 
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(BatchInsertPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
+  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(AggregationPlan plan)
+      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException {
+    //TODO
     return null;
   }
 
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(DeletePlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
+  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(DeletePlan plan)
+      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException {
+    //TODO
     return null;
   }
 
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(FillQueryPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
+  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(FillQueryPlan plan)
+      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException {
+    //TODO
     return null;
   }
 
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(GroupByPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
+  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(GroupByPlan plan)
+      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException {
+    //TODO
     return null;
   }
 
-  default PartitionGroup partitionPlan(InsertPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
+  default PartitionGroup routePlan(InsertPlan plan)
+      throws StorageGroupNotSetException {
     return partitionByPathTime(plan.getDeviceId(), plan.getTime());
   }
 
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(QueryPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
-    return null;
+  default PartitionGroup routePlan(CreateTimeSeriesPlan plan)
+      throws StorageGroupNotSetException {
+    return partitionByPathTime(plan.getPath().getFullPath(), 0);
   }
 
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(UpdatePlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
+
+  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(BatchInsertPlan plan)
+      throws StorageGroupNotSetException {
+    String storageGroup = MManager.getInstance().getStorageGroupNameByPath(plan.getDeviceId());
+    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
+    MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = new MultiKeyMap<>();
+    long[] times = plan.getTimes();
+
+    long startTime = (times[0] / PARTITION_INTERVAL ) * PARTITION_INTERVAL;//included
+    long endTime = startTime + PARTITION_INTERVAL;//excluded
+    int startLoc = 0; //included
+
+    //Map<PartitionGroup>
+    Map<PartitionGroup, List<Integer>> splitMap = new HashMap<>();
+    //for each List in split, they are range1.start, range.end, range2.start, range2.end, ...
+    for (int i = 1; i < times.length; i++) {// times are sorted in session API.
+      if (times[i] >= endTime) {
+        // a new range.
+        PartitionGroup group = route(storageGroup, startTime);
+        List<Integer> ranges = splitMap.computeIfAbsent(group, x -> new ArrayList<>());
+        ranges.add(startLoc);//includec
+        ranges.add(i);//excluded
+        //next init
+        startLoc = i;
+        startTime = endTime;
+        endTime = (times[i] / PARTITION_INTERVAL + 1) * PARTITION_INTERVAL;
+      }
+    }
+    //the final range
+    PartitionGroup group = route(storageGroup, startTime);
+    List<Integer> ranges = splitMap.computeIfAbsent(group, x -> new ArrayList<>());
+    ranges.add(startLoc);//includec
+    ranges.add(times.length);//excluded
+
+    List<Integer> locs;
+    for(Map.Entry<PartitionGroup, List<Integer>> entry : splitMap.entrySet()) {
+      //generate a new times and values
+      locs = entry.getValue();
+      int count = 0;
+      for (int i = 0; i < locs.size(); i += 2) {
+        int start = locs.get(i);
+        int end = locs.get(i + 1);
+        count += end - start;
+      }
+      long[] subTimes = new long[count];
+      int destLoc = 0;
+      Object[] values = new Object[plan.getMeasurements().length];
+      for (int i = 0; i < values.length; i ++) {
+        switch (plan.getDataTypes()[i]) {
+          case TEXT:
+            values[i] = new Binary[count];
+            break;
+          case FLOAT:
+            values[i] = new float[count];
+            break;
+          case INT32:
+            values[i] = new int[count];
+            break;
+          case INT64:
+            values[i] = new long[count];
+            break;
+          case DOUBLE:
+            values[i] = new double[count];
+            break;
+          case BOOLEAN:
+            values[i] = new boolean[count];
+            break;
+        }
+      }
+      for (int i = 0; i < locs.size(); i += 2) {
+        int start = locs.get(i);
+        int end = locs.get(i + 1);
+        System.arraycopy(plan.getTimes(), start, subTimes, destLoc, end - start);
+        for (int k = 0; k < values.length; k ++) {
+          System.arraycopy(plan.getColumns()[k], start, values[k], destLoc, end - start);
+        }
+        destLoc += end -start;
+      }
+      BatchInsertPlan newBatch = PartitionUtils.copy(plan, subTimes, values);
+      result.put(newBatch, entry.getKey());
+    }
+    return result;
+  }
+
+  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(UpdatePlan plan)
+      throws UnsupportedPlanException {
+    logger.error("UpdatePlan is not implemented");
     throw new UnsupportedPlanException(plan);
   }
 
 
   //SYS
 
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(AuthorPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
-    return null;
+  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(AuthorPlan plan)
+      throws UnsupportedPlanException {
+    logger.error("AuthorPlan is a global plan");
+    throw new UnsupportedPlanException(plan);
   }
 
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(CountPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
-    return null;
-  }
-
-  default PartitionGroup partitionPlan(CreateTimeSeriesPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-    return partitionByPathTime(plan.getPath().getFullPath(), 0);
-  }
-
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(DataAuthPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
-    return null;
-  }
-
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(DeleteStorageGroupPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
-    return null;
-  }
-
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(DeleteTimeSeriesPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
-    return null;
-  }
-
-  default PartitionGroup partitionPlan(LoadConfigurationPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
-    return null;
-  }
-
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(LoadDataPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
-    return null;
-  }
-
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(OperateFilePlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
-    return null;
-  }
-
-  default PartitionGroup partitionPlan(PropertyPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
-    return null;
-  }
-
-  default PartitionGroup partitionPlan(SetStorageGroupPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
-    return null;
-  }
-
-  default PartitionGroup partitionPlan(SetTTLPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
-    return null;
-  }
-
-  default PartitionGroup partitionPlan(ShowChildPathsPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
-    return null;
-  }
-
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(ShowDevicesPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-
-    return null;
-  }
-
-  default PartitionGroup partitionPlan(ShowPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-    //TODO this plan is duplicated with other show...
-    logger.error("not implemented, {}", plan);
-    return null;
-  }
-
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(ShowTimeSeriesPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException {
-    //show timeseries is quite special because it has the behavior of wildcard at the tail of the path
+  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CountPlan plan)
+      throws StorageGroupNotSetException, IllegalPathException {
+    //CountPlan is quite special because it has the behavior of wildcard at the tail of the path
     // even though there is no wildcard
-
-    return null;
-  }
-
-  default Map<PhysicalPlan, PartitionGroup> partitionPlanIntoMore(ShowTTLPlan plan) {
-    Map<Integer, List<String>> stroageGroupTeams = new HashMap<>();
-    for (String storageGroup : plan.getStorageGroups()) {
-      int slot = getHashKey(storageGroup, 0);
-      stroageGroupTeams.computeIfAbsent(slot, x ->new ArrayList<String>());
-      stroageGroupTeams.get(slot).add(storageGroup);
+    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(plan.getPath().getFullPath()+".*");
+    if (sgPathMap.isEmpty()) {
+     throw new StorageGroupNotSetException(plan.getPath().getFullPath());
     }
-    Map<PhysicalPlan, PartitionGroup> result =new HashMap<>();
-    for (Map.Entry<Integer, List<String>> entry : stroageGroupTeams.entrySet()) {
-      result.put(new ShowTTLPlan(entry.getValue()), route(entry.getKey()));
+    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
+    if (plan.getShowContentType().equals(ShowContentType.COUNT_TIMESERIES)) {
+      //support wildcard
+      for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
+        CountPlan plan1 = new CountPlan(ShowContentType.COUNT_TIMESERIES, new Path(entry.getValue()), plan.getLevel());
+        result.put(plan1, route(entry.getKey(), 0));
+      }
+    } else {
+      //do support wildcard
+      if (sgPathMap.size() == 1) {
+        // the path of the original plan has only one SG, or there is only one SG in the system.
+        for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
+          //actually, there is only one entry
+          result.put(plan, route(entry.getKey(), 0));
+        }
+      } else {
+        // the path of the original plan contains more than one SG, and we added a wildcard at the tail.
+        // we have to remove it.
+        for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
+          CountPlan plan1 = new CountPlan(ShowContentType.COUNT_TIMESERIES,
+              new Path(entry.getValue().substring(0, entry.getValue().lastIndexOf(".*"))), plan.getLevel());
+          result.put(plan1, route(entry.getKey(), 0));
+        }
+      }
     }
     return result;
+  }
+
+  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(DataAuthPlan plan)
+      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException {
+    //TODO
+    //why this plan has not Path field?
+    return null;
+  }
+
+
+
+  default PartitionGroup routePlan(ShowChildPathsPlan plan)
+      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException  {
+    try {
+      return route(MManager.getInstance().getStorageGroupNameByPath(plan.getPath().getFullPath()), 0);
+    } catch (StorageGroupNotSetException e) {
+      //the path is too short to have no a storage group name, e.g., "root"
+      //so we can do it locally.
+      return getLocalGroups().get(0);
+    }
+  }
+
+  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(ShowDevicesPlan plan)
+      throws IllegalPathException {
+    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup("path");
+    Map<PhysicalPlan, PartitionGroup> result =new HashMap<>();
+    for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
+      result.put(new ShowDevicesPlan(plan.getShowContentType(), new Path(entry.getValue())), route(entry.getKey(), 0));
+    }
+    return result;
+  }
+
+  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(ShowTimeSeriesPlan plan)
+      throws StorageGroupNotSetException, IllegalPathException {
+    //show timeseries is quite special because it has the behavior of wildcard at the tail of the path
+    // even though there is no wildcard
+    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(plan.getPath().getFullPath()+".*");
+    if (sgPathMap.isEmpty()) {
+      throw new StorageGroupNotSetException(plan.getPath().getFullPath());
+    }
+    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
+      for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
+        ShowTimeSeriesPlan newShow = new ShowTimeSeriesPlan(ShowContentType.TIMESERIES, new Path(entry.getValue()));
+        result.put(newShow, route(entry.getKey(), 0));
+      }
+    return result;
+  }
+
+  default PartitionGroup routePlan(PropertyPlan plan)
+      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException {
+    logger.error("PropertyPlan is not implemented");
+    throw new UnsupportedPlanException(plan);
   }
 
   /**
@@ -356,9 +441,5 @@ public interface PartitionTable {
       startTime = nextTime;
     }
     return timeRangeMapRaftGroup;
-  }
-
-  default List<List<String>> splitPaths(List<String> paths) {
-    return null;
   }
 }

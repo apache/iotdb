@@ -986,6 +986,21 @@ public class MManager {
   }
 
   /**
+   *
+   * @param prefix support wildcard, e.g., "root.*.a".
+   *               The behaviors are the same no matter whether there is a wildcard at the tail of
+   *               the prefix, i.e., "root.*.a.b" has the same meaning with "root.*.a.b.*"
+   * @return All storage groups that begin with the prefix
+   * @throws IllegalPathException
+   */
+  public Collection<String> getStorageGroupNamesByPrefix(String prefix) throws IllegalPathException  {
+    if (!prefix.endsWith("*")) {
+      prefix = prefix + "*";
+    }
+    return determineStorageGroup(prefix).keySet();
+  }
+
+  /**
    * function for getting file name by path. TODO: return value unused
    */
   private String getStorageGroupNameByPath(MNode node, String path) throws MetadataException {
@@ -1111,22 +1126,22 @@ public class MManager {
     }
   }
 
-  /**
-   * silimar with determineStorageGroup. But this method allow users do not write the wildcard at
-   * the end of the tail.
-   * e.g., "root" is the same with "root.*"
-   * @param path
-   * @return
-   * @throws IllegalPathException
-   */
-  public Map<String, String> determineStorageGroupMoreRelax(String path) throws IllegalPathException {
-    lock.readLock().lock();
-    try {
-      return mgraph.determineStorageGroup(path);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
+//  /**
+//   * silimar with determineStorageGroup. But this method allow users do not write the wildcard at
+//   * the end of the tail.
+//   * e.g., "root" is the same with "root.*"
+//   * @param path
+//   * @return
+//   * @throws IllegalPathException
+//   */
+//  public Map<String, String> determineStorageGroupMoreRelax(String path) throws IllegalPathException {
+//    lock.readLock().lock();
+//    try {
+//      return mgraph.determineStorageGroup(path);
+//    } finally {
+//      lock.readLock().unlock();
+//    }
+//  }
 
   /**
    * Return all paths for given seriesPath if the seriesPath is abstract. Or return the seriesPath

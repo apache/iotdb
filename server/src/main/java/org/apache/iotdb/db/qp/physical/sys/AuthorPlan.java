@@ -123,7 +123,6 @@ public class AuthorPlan extends PhysicalPlan {
         break;
       default:
     }
-    canbeSplit = true;
   }
 
   public AuthorOperator.AuthorType getAuthorType() {

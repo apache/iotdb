@@ -35,7 +35,6 @@ public class DeletePlan extends PhysicalPlan {
 
   public DeletePlan() {
     super(false, Operator.OperatorType.DELETE);
-    canbeSplit = true;
   }
 
   /**
@@ -48,7 +47,6 @@ public class DeletePlan extends PhysicalPlan {
     super(false, Operator.OperatorType.DELETE);
     this.deleteTime = deleteTime;
     this.paths.add(path);
-    canbeSplit = true;
   }
 
   /**
@@ -61,7 +59,6 @@ public class DeletePlan extends PhysicalPlan {
     super(false, Operator.OperatorType.DELETE);
     this.deleteTime = deleteTime;
     this.paths = paths;
-    canbeSplit = true;
   }
 
   public long getDeleteTime() {

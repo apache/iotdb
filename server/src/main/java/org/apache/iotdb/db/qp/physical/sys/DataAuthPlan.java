@@ -30,7 +30,6 @@ public class DataAuthPlan extends PhysicalPlan {
   public DataAuthPlan(OperatorType operatorType, List<String> users) {
     super(false, operatorType);
     this.users = users;
-    canbeSplit = true;
   }
 
   public List<String> getUsers() {

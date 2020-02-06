@@ -28,7 +28,6 @@ public class ShowTTLPlan extends ShowPlan {
   public ShowTTLPlan(List<String> storageGroups) {
     super(ShowContentType.TTL);
     this.storageGroups = storageGroups;
-    canbeSplit = true;
   }
 
   @Override

@@ -37,7 +37,6 @@ public class LoadDataPlan extends PhysicalPlan {
     super(false, Operator.OperatorType.LOADDATA);
     this.inputFilePath = inputFilePath;
     this.measureType = measureType;
-    canbeSplit = true;
   }
 
   @Override
