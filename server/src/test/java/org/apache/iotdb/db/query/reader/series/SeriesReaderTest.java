@@ -201,6 +201,8 @@ public class SeriesReaderTest {
           while (seriesReader.hasNextOverlappedPage()) {
             BatchData nextOverlappedPageData = seriesReader.nextOverlappedPage();
             aggregateResult.updateResultFromPageData(nextOverlappedPageData);
+            nextOverlappedPageData.resetBatchData();
+            assertEquals(true, nextOverlappedPageData.hasCurrent());
           }
           loopTime++;
         }
