@@ -152,9 +152,9 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 ```
 SHOW DEVICES <PrefixPath>
-Eg: IoTDB > SHOW TIMESERIES root
-Eg: IoTDB > SHOW TIMESERIES root.ln
-Eg: IoTDB > SHOW TIMESERIES root.*.wf01
+Eg: IoTDB > SHOW DEVICES root
+Eg: IoTDB > SHOW DEVICES root.ln
+Eg: IoTDB > SHOW DEVICES root.*.wf01
 Note: The path can be prefix path or star path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
