@@ -75,7 +75,7 @@ public interface IReaderSet {
 
 * private List<String> deviceIdList = new ArrayList<>();
 
-  设备名列表，这个顺序与dataSetList的顺序一致，即deviceIdList[i]是dataSetList[i]的设备名.
+  设备名列表，这个顺序与 dataSetList 的顺序一致，即 deviceIdList[i] 是 dataSetList[i] 的设备名.
 
 * private int currentIndex = 0;
 
