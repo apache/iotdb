@@ -266,18 +266,19 @@ public class AggregationExecutor {
 
   /**
    * Merge same series and convert to series map. For example: Given: paths: s1, s2, s3, s1 and
-   * aggregations: count, sum, count, sum seriesMap: s1 -> 0, 3; s2 -> 2; s3 -> 3
+   * aggregations: count, sum, count, sum. Then: pathToAggrIndexesMap: s1 -> 0, 3; s2 -> 2; s3 -> 3
    *
    * @param selectedSeries selected series
-   * @return series map
+   * @return path to aggregation indexes map
    */
   private Map<Path, List<Integer>> mergeSameSeries(List<Path> selectedSeries) {
-    Map<Path, List<Integer>> seriesMap = new HashMap<>();
+    Map<Path, List<Integer>> pathToAggrIndexesMap = new HashMap<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       Path series = selectedSeries.get(i);
-      List<Integer> indexList = seriesMap.computeIfAbsent(series, key -> new ArrayList<>());
+      List<Integer> indexList = pathToAggrIndexesMap
+          .computeIfAbsent(series, key -> new ArrayList<>());
       indexList.add(i);
     }
-    return seriesMap;
+    return pathToAggrIndexesMap;
   }
 }

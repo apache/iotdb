@@ -65,3 +65,10 @@
 ## AbstractSeriesReader
 
 单个时间序列的基础 Reader 类。输入为一个 QueryDataSource，包括顺序和乱序文件列表。
+
+## 相关文档
+
+* [基础查询组件](/#/SystemDesign/progress/chap5/sec2)
+* [原始数据查询](/#/SystemDesign/progress/chap5/sec3)
+* [聚合查询](/#/SystemDesign/progress/chap5/sec4)
+* [降采样查询](/#/SystemDesign/progress/chap5/sec5)
