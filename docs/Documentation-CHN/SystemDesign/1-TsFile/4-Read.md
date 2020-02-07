@@ -27,44 +27,8 @@
 
 
 
-[1 过滤条件和查询表达式](#1-%E8%BF%87%E6%BB%A4%E6%9D%A1%E4%BB%B6%E5%92%8C%E6%9F%A5%E8%AF%A2%E8%A1%A8%E8%BE%BE%E5%BC%8F)
-
-
-&emsp;&emsp;[1.1 Filter](#11-Filter)
-
-&emsp;&emsp;[1.2 Expression表达式](#12-Expression%E8%A1%A8%E8%BE%BE%E5%BC%8F)
-
-&emsp;&emsp;&emsp;&emsp;[1.2.1 SingleSeriesExpression表达式](#121-SingleSeriesExpression%E8%A1%A8%E8%BE%BE%E5%BC%8F)
-
-&emsp;&emsp;&emsp;&emsp;[1.2.2 GlobalTimeExpression表达式](#122-GlobalTimeExpression%E8%A1%A8%E8%BE%BE%E5%BC%8F)
-
-&emsp;&emsp;&emsp;&emsp;[1.2.3 IExpression表达式](#123-IExpression%E8%A1%A8%E8%BE%BE%E5%BC%8F)
-
-&emsp;&emsp;&emsp;&emsp;[1.2.4 可执行表达式](#124-%E5%8F%AF%E6%89%A7%E8%A1%8C%E8%A1%A8%E8%BE%BE%E5%BC%8F)
-
-&emsp;&emsp;&emsp;&emsp;[1.2.5 IExpression转化为可执行表达式的优化算法](#125-IExpression%E8%BD%AC%E5%8C%96%E4%B8%BA%E5%8F%AF%E6%89%A7%E8%A1%8C%E8%A1%A8%E8%BE%BE%E5%BC%8F%E7%9A%84%E4%BC%98%E5%8C%96%E7%AE%97%E6%B3%95)
-
-[2 TsFile查询执行过程](#2-TsFile%E6%9F%A5%E8%AF%A2%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B)
-
-&emsp;&emsp;[2.1 设计原理](#21-%E8%AE%BE%E8%AE%A1%E5%8E%9F%E7%90%86)
-
-&emsp;&emsp;[2.2 三大查询组件](#22-%E4%B8%89%E5%A4%A7%E6%9F%A5%E8%AF%A2%E7%BB%84%E4%BB%B6)
-
-&emsp;&emsp;&emsp;&emsp;[2.2.1 FileSeriesReader 组件](#221-FileSeriesReader-%E7%BB%84%E4%BB%B6)
-
-&emsp;&emsp;&emsp;&emsp;[2.2.2 FileSeriesReaderByTimestamp 组件](#222-FileSeriesReaderByTimestamp-%E7%BB%84%E4%BB%B6)
-
-&emsp;&emsp;&emsp;&emsp;[2.2.3 TimeGeneratorImpl 组件](#223-TimeGeneratorImpl-%E7%BB%84%E4%BB%B6)
-
-&emsp;&emsp;[2.3 归并查询](#23-%E5%BD%92%E5%B9%B6%E6%9F%A5%E8%AF%A2)
-
-&emsp;&emsp;[2.4 连接查询](#24-%E8%BF%9E%E6%8E%A5%E6%9F%A5%E8%AF%A2)
-
-&emsp;&emsp;[2.5 查询入口](#25-%E6%9F%A5%E8%AF%A2%E5%85%A5%E5%8F%A3)
-
-&emsp;&emsp;[2.6 相关代码介绍](#26-%E7%9B%B8%E5%85%B3%E4%BB%A3%E7%A0%81%E4%BB%8B%E7%BB%8D)
-
-
+[1 过滤条件和查询表达式](#1-%E8%BF%87%E6%BB%A4%E6%9D%A1%E4%BB%B6%E5%92%8C%E6%9F%A5%E8%AF%A2%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>
+&emsp;&emsp;[1.1 Filter](#11-Filter)<br>&emsp;&emsp;[1.2 Expression表达式](#12-Expression%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>&emsp;&emsp;&emsp;&emsp;[1.2.1 SingleSeriesExpression 表达式](#121-SingleSeriesExpression%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>&emsp;&emsp;&emsp;&emsp;[1.2.2 GlobalTimeExpression 表达式](#122-GlobalTimeExpression%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>&emsp;&emsp;&emsp;&emsp;[1.2.3 IExpression 表达式](#123-IExpression%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>&emsp;&emsp;&emsp;&emsp;[1.2.4 可执行表达式](#124-%E5%8F%AF%E6%89%A7%E8%A1%8C%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>&emsp;&emsp;&emsp;&emsp;[1.2.5 IExpression 转化为可执行表达式的优化算法](#125-IExpression%E8%BD%AC%E5%8C%96%E4%B8%BA%E5%8F%AF%E6%89%A7%E8%A1%8C%E8%A1%A8%E8%BE%BE%E5%BC%8F%E7%9A%84%E4%BC%98%E5%8C%96%E7%AE%97%E6%B3%95)<br>[2 TsFile 查询执行过程](#2-TsFile%E6%9F%A5%E8%AF%A2%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B)<br>&emsp;&emsp;[2.1 设计原理](#21-%E8%AE%BE%E8%AE%A1%E5%8E%9F%E7%90%86)<br>&emsp;&emsp;[2.2 三大查询组件](#22-%E4%B8%89%E5%A4%A7%E6%9F%A5%E8%AF%A2%E7%BB%84%E4%BB%B6)<br>&emsp;&emsp;&emsp;&emsp;[2.2.1 FileSeriesReader 组件](#221-FileSeriesReader-%E7%BB%84%E4%BB%B6)<br>&emsp;&emsp;&emsp;&emsp;[2.2.2 FileSeriesReaderByTimestamp 组件](#222-FileSeriesReaderByTimestamp-%E7%BB%84%E4%BB%B6)<br>&emsp;&emsp;&emsp;&emsp;[2.2.3 TimeGeneratorImpl 组件](#223-TimeGeneratorImpl-%E7%BB%84%E4%BB%B6)<br>&emsp;&emsp;[2.3 归并查询](#23-%E5%BD%92%E5%B9%B6%E6%9F%A5%E8%AF%A2)<br>&emsp;&emsp;[2.4 连接查询](#24-%E8%BF%9E%E6%8E%A5%E6%9F%A5%E8%AF%A2)<br>&emsp;&emsp;[2.5 查询入口](#25-%E6%9F%A5%E8%AF%A2%E5%85%A5%E5%8F%A3)<br>&emsp;&emsp;[2.6 相关代码介绍](#26-%E7%9B%B8%E5%85%B3%E4%BB%A3%E7%A0%81%E4%BB%8B%E7%BB%8D)<br>
 ## 1 过滤条件和查询表达式
 
 本章节首先介绍 Tsfile 文件读取时需要用到的过滤条件和查询表达式的相关定义；其次介绍如何将用户输入的过滤条件转化为系统可以执行的查询条件。
@@ -126,19 +90,19 @@ OrFilter| \<Filter> &#124;&#124; \<Filter>| 1. value > 100 &#124;&#124; time >  
 
 ### 1.2 Expression表达式
 
-当给过滤条件赋予一定的时间序列含义时，我们就可以得到表达式。例如，“数值大于10”仅表示过滤条件，无实际的查询意义；然而“序列‘d1.s1’的数值大于10”就一条表达式。特殊地，如果仅对时间戳做限定的过滤条件，由于本身具有“时间戳”这一属性，可以构成表达式，称为GlobalTimeExpression。以下章节将对表达式进行展开介绍。
+当给过滤条件赋予一定的时间序列含义时，我们就可以得到表达式。例如，“数值大于10”仅表示过滤条件，无实际的查询意义；然而“序列‘d1.s1’的数值大于10”就一条表达式。特殊地，如果仅对时间戳做限定的过滤条件，由于本身具有“时间戳”这一属性，可以构成表达式，称为 GlobalTimeExpression。以下章节将对表达式进行展开介绍。
 
 #### 1.2.1 SingleSeriesExpression表达式
 
-SingleSeriesExpression表示针对某一指定时间序列的过滤条件，一个SingleSeriesExpression包含一个Path和一个Filter。Path表示该时间序列的路径；Filter即为2.1章节中介绍的Filter，表示相应的过滤条件。
+SingleSeriesExpression 表示针对某一指定时间序列的过滤条件，一个 SingleSeriesExpression 包含一个 Path 和一个 Filter。Path 表示该时间序列的路径；Filter 即为2.1章节中介绍的 Filter，表示相应的过滤条件。
 
-SingleSeriesExpression的结构如下：
+SingleSeriesExpression 的结构如下：
 
     SingleSeriesExpression
-        Path: 该SingleSeriesExpression指定的时间序列的路径
+        Path: 该 SingleSeriesExpression 指定的时间序列的路径
         Filter：过滤条件
 
-在一次查询中，一个SingleSeriesExpression表示该时间序列的数据点必须满足Filter所表示的过滤条件。下面给出SingleSeriesExpression的示例及对应的表示方法。
+在一次查询中，一个 SingleSeriesExpression 表示该时间序列的数据点必须满足 Filter所表示的过滤条件。下面给出 SingleSeriesExpression 的示例及对应的表示方法。
 
 例1. 
 
@@ -146,7 +110,7 @@ SingleSeriesExpression的结构如下：
         Path: "d1.s1"
         Filter: AndFilter(ValueGt(100), ValueLt(200))
 
-该SingleSeriesExpression表示"d1.s1"这一时间序列必须满足条件“值大于100且值小于200”。
+该 SingleSeriesExpression 表示"d1.s1"这一时间序列必须满足条件“值大于100且值小于200”。
 
 其符号化的表达方式为：SingleSeriesExpression(“d1.s1”, value > 100 && value < 200)
 
@@ -157,44 +121,44 @@ SingleSeriesExpression的结构如下：
         Path：“d1.s1”
         Filter：AndFilter(AndFilter(ValueGt(100), ValueLt(200)), TimeGt(14152176545))
     
-该SingleSeriesExpression表示"d1.s1"这一时间序列必须满足条件“值大于100且小于200且时间戳大于14152176545”。
+该 SingleSeriesExpression 表示"d1.s1"这一时间序列必须满足条件“值大于100且小于200且时间戳大于14152176545”。
     
 其符号化表达方式为：SingleSeriesExpression(“d1.s1”, (value > 100 && value < 200) && time > 14152176545)
 
-#### 1.2.2 GlobalTimeExpression表达式
-GlobalTimeExpression表示全局的时间过滤条件，一个GlobalTimeExpression包含一个Filter，且该Filter中包含的子Filter必须全为时间过滤条件。在一次查询中，一个GlobalTimeExpression表示所有被选择列的数据点必须满足该表达式中Filter所表示的过滤条件。GlobalTimeExpression的结构如下：
+#### 1.2.2 GlobalTimeExpression 表达式
+GlobalTimeExpression 表示全局的时间过滤条件，一个 GlobalTimeExpression 包含一个 Filter，且该 Filter 中包含的子 Filter 必须全为时间过滤条件。在一次查询中，一个 GlobalTimeExpression 表示所有被选择列的数据点必须满足该表达式中 Filter 所表示的过滤条件。GlobalTimeExpression 的结构如下：
 
 
     GlobalTimeExpression
-        Filter: 由一个或多个时间过滤条件组成的Filter。
+        Filter: 由一个或多个时间过滤条件组成的 Filter。
         此处的Filter形式化定义如下：
             Filter := TimeFilter | AndExpression | OrExpression
             AndExpression := Filter && Filter
             OrExpression := Filter && Filter
 
-下面给出GlobalTimeExpression的一些例子，均采用符号化表示方法。
+下面给出 GlobalTimeExpression 的一些例子，均采用符号化表示方法。
 1. GlobalTimeExpression(time > 14152176545 && time < 14152176645)表示所有被选择的列的时间戳必须满足“大于14152176545且小于14152176645”
 2. GlobalTimeExpression((time > 100 && time < 200) || (time > 400 && time < 500))表示所有被选择列的时间戳必须满足“大于100且小于200”或“大于400且小于500”
 
-#### 1.2.3 IExpression表达式
-IExpression表示一次查询的所有列上的过滤条件总和。一个IExpression可以是一个SingleSeriesExpression或者一个GlobalTimeExpression，这种情况下，IExpression也称为一元表达式，即UnaryExpression。一个IExpression也可以由两个IExpression通过逻辑关系“与”、“或”进行连接。通过关系“与”连接得到的表达式又称为“与表达式”，即“AndExpression”。同理，通过关系“或”连接的表达式称为“或表达式”，即“OrExpression”。由两个IExpression连接成的表达式又称为二元表达式，即BinaryExpression。一元表达式、二元表达式都是IExpression。
+#### 1.2.3 IExpression 表达式
+IExpression 表示一次查询的所有列上的过滤条件总和。一个 IExpression 可以是一个 SingleSeriesExpression 或者一个 GlobalTimeExpression，这种情况下，IExpression 也称为一元表达式，即 UnaryExpression。一个 IExpression 也可以由两个 IExpression 通过逻辑关系“与”、“或”进行连接。通过关系“与”连接得到的表达式又称为“与表达式”，即“AndExpression”。同理，通过关系“或”连接的表达式称为“或表达式”，即“OrExpression”。由两个 IExpression 连接成的表达式又称为二元表达式，即 BinaryExpression。一元表达式、二元表达式都是 IExpression。
 
-下面给出IExpression的形式化定义。
+下面给出 IExpression 的形式化定义。
 
     IExpression := SingleSeriesExpression | GlobalTimeExpression | AndExpression | OrExpression
     AndExpression := IExpression && IExpression
     OrExpression := IExpression || IExpression
 
-我们采用一种类似于树形结构的表示方法来表示IExpression，其中SingleSeriesExpression和GlobalTimeExpression均采用上文中介绍的符号化表示方法。下面给出示例。
+我们采用一种类似于树形结构的表示方法来表示 IExpression，其中 SingleSeriesExpression 和 GlobalTimeExpression 均采用上文中介绍的符号化表示方法。下面给出示例。
 
-1. 只包含一个SingleSeriesExpression的IExpression：
+1. 只包含一个 SingleSeriesExpression 的 IExpression：
    
         IExpression(SingleSeriesExpression(“d1.s1”, value > 100 && value < 200))
 
-2. 只包含一个GlobalTimeExpression的IExpression：
+2. 只包含一个 GlobalTimeExpression 的 IExpression：
 
         IExpression(GlobalTimeExpression (time > 14152176545 && time < 14152176645))
-3. 包含多个SingleSeriesExpression的IExpression：
+3. 包含多个 SingleSeriesExpression 的 IExpression：
 
         IExpression(
             AndExpression
@@ -202,9 +166,9 @@ IExpression表示一次查询的所有列上的过滤条件总和。一个IExpre
                 SingleSeriesExpression(“d1.s2”, value > 0.5 && value < 1.5)
         )
 
-    **解释**：该IExpression为一个AndExpression，其中要求"d1.s1"和"d1.s2"必须同时满足其对应的Filter。
+    **解释**：该 IExpression 为一个 AndExpression，其中要求"d1.s1"和"d1.s2"必须同时满足其对应的 Filter。
 
-4. 同时包含SingleSeriesExpression和GlobalTimeExpression的IExpression
+4. 同时包含 SingleSeriesExpression 和 GlobalTimeExpression 的 IExpression
 
         IExpression(
             AndExpression
@@ -214,16 +178,16 @@ IExpression表示一次查询的所有列上的过滤条件总和。一个IExpre
                 GlobalTimeExpression(time > 14152176545 && time < 14152176645)
         )
 
-    **解释**：该IExpression为一个AndExpression，其要求"d1.s1"和"d1.s2"必须同时满足其对应的Filter，且时间列必须满足GlobalTimeExpression定义的Filter条件。
+    **解释**：该 IExpression 为一个 AndExpression，其要求"d1.s1"和"d1.s2"必须同时满足其对应的 Filter，且时间列必须满足 GlobalTimeExpression 定义的 Filter 条件。
 
 
 #### 1.2.4 可执行表达式
 
-便于理解执行过程，定义可执行表达式的概念。可执行表达式是带有一定限制条件的IExpression。用户输入的查询条件或构造的IExpression将经过特定的优化算法（该算法将在后面章节中介绍）转化为可执行表达式。满足下面任意条件的IExpression即为可执行表达式。
-1. IExpression为单一的GlobalTimeExpression
-2. IExpression为单一的SingleSeriesExpression
-3. IExpression为AndExpression，且叶子节点均为SingleSeriesExpression
-4. IExpression为OrExpression，且叶子节点均为SingleSeriesExpression
+便于理解执行过程，定义可执行表达式的概念。可执行表达式是带有一定限制条件的 IExpression。用户输入的查询条件或构造的 IExpression 将经过特定的优化算法（该算法将在后面章节中介绍）转化为可执行表达式。满足下面任意条件的 IExpression 即为可执行表达式。
+1. IExpression 为单一的 GlobalTimeExpression
+2. IExpression 为单一的 SingleSeriesExpression
+3. IExpression 为 AndExpression，且叶子节点均为 SingleSeriesExpression
+4. IExpression 为 OrExpression，且叶子节点均为 SingleSeriesExpression
 
 可执行表达式的形式化定义为：
 
@@ -240,7 +204,7 @@ IExpression表示一次查询的所有列上的过滤条件总和。一个IExpre
 
 是否为可执行表达式：是
 
-**解释**：该IExpression为一个SingleSeriesExpression，满足条件1
+**解释**：该 IExpression 为一个 SingleSeriesExpression，满足条件1
 
 ----------------------------------
 例2：
@@ -249,7 +213,7 @@ IExpression表示一次查询的所有列上的过滤条件总和。一个IExpre
 
 是否为可执行表达式：是
 
-**解释**：该IExpression为一个GlobalTimeExpression，满足条件2
+**解释**：该 IExpression 为一个 GlobalTimeExpression，满足条件2
 
 -----------------------
 例3：
@@ -262,7 +226,7 @@ IExpression表示一次查询的所有列上的过滤条件总和。一个IExpre
 
 是否为可执行表达式：否
 
-**解释**：该IExpression为一个AndExpression，但其中包含了GlobalTimeExpression，不满足条件3
+**解释**：该 IExpression 为一个 AndExpression，但其中包含了 GlobalTimeExpression，不满足条件3
 
 --------------------------
 
@@ -278,7 +242,7 @@ IExpression表示一次查询的所有列上的过滤条件总和。一个IExpre
 
 是否为可执行表达式：是
 
-**解释**：该IExpression作为一个OrExpression，其中叶子结点都是SingleSeriesExpression，满足条件4.
+**解释**：该 IExpression 作为一个 OrExpression，其中叶子结点都是 SingleSeriesExpression，满足条件4.
 
 ----------------------------
 
@@ -294,18 +258,18 @@ IExpression表示一次查询的所有列上的过滤条件总和。一个IExpre
 
 是否为可执行表达式：否
 
-**解释**：该IExpression为一个AndExpression，但其叶子结点中包含了GlobalTimeExpression，不满足条件3
+**解释**：该 IExpression 为一个 AndExpression，但其叶子结点中包含了 GlobalTimeExpression，不满足条件3
 
 #### 1.2.5 IExpression转化为可执行表达式的优化算法
 
-本章节介绍将IExpression转化为一个可执行表达式的算法。
+本章节介绍将 IExpression 转化为一个可执行表达式的算法。
 
-如果一个IExpression不是一个可执行表达式，那么它一定是一个AndExpression或者OrExpression，且该IExpression既包含了GlobalTimeExpression又包含了SingleSeriesExpression。根据前面章节的定义，我们知道AndExpression和OrExpression均由两个IExpression构成，即
+如果一个 IExpression 不是一个可执行表达式，那么它一定是一个 AndExpression 或者 OrExpression，且该 IExpression 既包含了 GlobalTimeExpression 又包含了 SingleSeriesExpression。根据前面章节的定义，我们知道 AndExpression 和 OrExpression 均由两个 IExpression 构成，即
 
     AndExpression := <IExpression> AND <IExpression>
     OrExpression := <IExpression> OR <IExpression>
 
-令运算复左右两侧的表达式分别称为LeftIExpression和RightIExpression，即
+令运算复左右两侧的表达式分别称为 LeftIExpression 和 RightIExpression，即
 
     AndExpression := <LeftIExpression> AND <RightIExpression>
     OrExpression := <LeftIExpression> OR <RightIExpression>
@@ -314,11 +278,11 @@ IExpression表示一次查询的所有列上的过滤条件总和。一个IExpre
 
     IExpression optimize(IExpression expression, List<Path> selectedSeries)
 
-    输入：待转换的IExpression表达式，需要投影的时间序列
-    输出：转换后的IExpression，即可执行表达式
+    输入：待转换的 IExpression 表达式，需要投影的时间序列
+    输出：转换后的 IExpression，即可执行表达式
 
-在介绍优化算法的具体步骤之前，我们首先介绍表达式、过滤条件合并基本的方法。这些方法将在optimize()方法中使用。
-* combineTwoGlobalTimeExpression方法将两个GlobalTimeExpression合并为一个GlobalTimeExpression。
+在介绍优化算法的具体步骤之前，我们首先介绍表达式、过滤条件合并基本的方法。这些方法将在 optimize() 方法中使用。
+* combineTwoGlobalTimeExpression 方法将两个 GlobalTimeExpression 合并为一个 GlobalTimeExpression。
   
   该方法接受三个输入参数，方法的定义为：
 
@@ -334,10 +298,10 @@ IExpression表示一次查询的所有列上的过滤条件总和。一个IExpre
         输出：GlobalTimeExpression，最终合并后的表达式
     
     该方法分为两个步骤：
-    1. 设leftGlobalTimeExpression的Filter为filter1；rightGlobalTimeExpression的Filter为filter2，则首先将其合并为一个新的Filter，设其为filter3。两个Filter合并的策略见后文介绍的MergeFilter方法。
-    2. 创建一个新的GlobalTimeExpression，并将Filter3作为其Filter，返回该GlobalTimeExpression。
+    1. 设 leftGlobalTimeExpression 的 Filter 为 filter1；rightGlobalTimeExpression 的 Filter 为 filter2，则首先将其合并为一个新的Filter，设其为 filter3。两个 Filter 合并的策略见后文介绍的 MergeFilter 方法。
+    2. 创建一个新的 GlobalTimeExpression，并将 filter3 作为其 Filter，返回该 GlobalTimeExpression。
 
-    下面给出一个合并两个GlobalTimeExpression的例子。
+    下面给出一个合并两个 GlobalTimeExpression 的例子。
 
 
     三个参数分别为：
@@ -351,11 +315,11 @@ IExpression表示一次查询的所有列上的过滤条件总和。一个IExpre
         GlobalTimeExpression(Filter: (time > 100 && time < 200) || (time > 300 && time < 400))
 
 
-* MergeFilter方法合并两个Filter。该方法接受三个参数，分别为：
+* MergeFilter 方法合并两个 Filter。该方法接受三个参数，分别为：
 
-        Filter1：第一个待合并的Filter
-        Filter2：第二个待合并的Filter
-        Relation：两个待合并Filter之间的关系（relation的取值为AND或OR）
+        Filter1：第一个待合并的 Filter
+        Filter2：第二个待合并的 Filter
+        Relation：两个待合并 Filter 之间的关系（ relation 的取值为 AND 或 OR）
 
     则，该方法执行的策略为
 
@@ -364,9 +328,9 @@ IExpression表示一次查询的所有列上的过滤条件总和。一个IExpre
         else if relation == OR:
             return OrFilter(Filter1, Filter2)
 
-    算法实现是，使用FilterFactory类中的AndFilter and(Filter left, Filter right)和OrFilter or(Filter left, Filter right)方法进行实现。
+    算法实现是，使用 FilterFactory 类中的 AndFilter and(Filter left, Filter right) 和 OrFilter or(Filter left, Filter right)方法进行实现。
 
-* handleOneGlobalExpression将GlobalTimeExpression和IExpression合并为一个可执行表达式。该方法返回的可执行表达式仅由SingleSeriesExpression组成。方法的定义如下：
+* handleOneGlobalExpression 将 GlobalTimeExpression 和 IExpression 合并为一个可执行表达式。该方法返回的可执行表达式仅由 SingleSeriesExpression 组成。方法的定义如下：
 
         IExpression handleOneGlobalTimeExpression(
             GlobalTimeExpression globalTimeExpression,
@@ -377,15 +341,15 @@ IExpression表示一次查询的所有列上的过滤条件总和。一个IExpre
         输入参数1：GlobalTimeExpression
         输入参数2：IExpression
         输入参数3：被投影的时间序列
-        输入参数4：两个待合并的表达式之间的关系，relation的取值为AND或OR）
+        输入参数4：两个待合并的表达式之间的关系，relation 的取值为 AND 或 OR）
 
-        输出：合并后的IExpression，即为可执行表达式。
+        输出：合并后的 IExpression，即为可执行表达式。
 
-    该方法首先调用optimize()方法，将输入的第二个参数IExpression转化为可执行表达式（从optimize()方法上看为递归调用），然后再分为两种情况进行合并。
+    该方法首先调用 optimize() 方法，将输入的第二个参数 IExpression 转化为可执行表达式（从 optimize() 方法上看为递归调用），然后再分为两种情况进行合并。
 
-    *情况一*：GlobalTimeExpression和优化后的IExpression的关系为AND。这种情况下，记GlobalTimeExpression的Filter为tFilter，则只需要tFilter合并到IExpression的每个SingleSeriesExpression的Filter中即可。void addTimeFilterToQueryFilter(Filter timeFilter, IExpression expression)为具体实现方法。例如：
+    *情况一*：GlobalTimeExpression 和优化后的 IExpression 的关系为 AND。这种情况下，记 GlobalTimeExpression 的 Filter 为 tFilter，则只需要 tFilter 合并到 IExpression 的每个 SingleSeriesExpression 的 Filter 中即可。void addTimeFilterToQueryFilter(Filter timeFilter, IExpression expression)为具体实现方法。例如：
 
-    设要将如下GlobaLTimeFilter和IExpression合并，
+    设要将如下 GlobaLTimeFilter 和 IExpression 合并，
 
         1. GlobaLTimeFilter(tFilter)
         2. IExpression
@@ -404,13 +368,13 @@ IExpression表示一次查询的所有列上的过滤条件总和。一个IExpre
                     SingleSeriesExpression(“path2”, AndFilter(filter2, tFilter))
                 SingleSeriesExpression(“path3”, AndFilter(filter3, tFilter))
 
-    *情况二*：GlobalTimeExpression和IExpression的关系为OR。该情况下的合并步骤如下：
-    1. 得到该查询所要投影的所有时间序列，其为一个Path的集合，以一个包含三个投影时间序列的查询为例，记所有要投影的列为PathList{path1,path2,path3}。
-    2. 记GlobalTimeExpression的Filter为tFilter，调用pushGlobalTimeFilterToAllSeries()方法为每个Path创建一个对应的SingleSeriesExpression，且每个SingleSeriesExpression的Filter值均为tFilter；将所有新创建的SingleSeriesExpression用OR运算符进行连接，得到一个OrExpression，记其为orExpression
-    3. 将步骤二得到的orExpression与IExpression按照关系OR进行合并，得到最终的结果。
+    *情况二*：GlobalTimeExpression 和 IExpression 的关系为 OR。该情况下的合并步骤如下：
+    1. 得到该查询所要投影的所有时间序列，其为一个 Path 的集合，以一个包含三个投影时间序列的查询为例，记所有要投影的列为 PathList{path1, path2, path3}。
+    2. 记 GlobalTimeExpression 的 Filter 为 tFilter，调用 pushGlobalTimeFilterToAllSeries() 方法为每个 Path 创建一个对应的 SingleSeriesExpression，且每个 SingleSeriesExpression 的 Filter 值均为 tFilter；将所有新创建的 SingleSeriesExpression 用 OR 运算符进行连接，得到一个 OrExpression，记其为 orExpression
+    3. 将步骤二得到的 orExpression 与 IExpression 按照关系 OR 进行合并，得到最终的结果。
 
 
-    例如，将如下GlobaLTimeFilter和IExpression按照关系OR进行合并，设该查询的被投影列为PathList{path1, path2, path3}
+    例如，将如下 GlobaLTimeFilter 和 IExpression 按照关系 OR 进行合并，设该查询的被投影列为 PathList{path1, path2, path3}
 
         1. GlobaLTimeFilter(tFilter)
         2. IExpression
@@ -431,11 +395,11 @@ IExpression表示一次查询的所有列上的过滤条件总和。一个IExpre
                         SingleSeriesExpression(“path2”, tFilter)
                     SingleSeriesExpression(“path3”, tFilter)
 
-* MergeIExpression方法将两个IExpression合并为一个可执行表达式。该方法接受三个参数，分别为
+* MergeIExpression 方法将两个 IExpression 合并为一个可执行表达式。该方法接受三个参数，分别为
 
-        IExpression1：待合并的第一个IExpression
-        IExpression2：待合并的第二个IExpression
-        relation：两个待合并的IExpression的关系（Relation的取值为AND或OR）
+        IExpression1：待合并的第一个 IExpression
+        IExpression2：待合并的第二个 IExpression
+        relation：两个待合并的 IExpression 的关系（Relation 的取值为 AND 或 OR）
 
     该方法的执行策略为：
 
@@ -444,19 +408,19 @@ IExpression表示一次查询的所有列上的过滤条件总和。一个IExpre
         else if relation == OR:
             return OrExpression(IExpression1, IExpression2)
 
-使用以上四种基本的过滤条件、表达式合并方法，optimize()算法的执行步骤如下：
-1. 如果IExpression为一元表达式，即单一的SingleSeriesExpression或单一的GlobalTimeExpression，则直接将其返回；否则，执行步骤二
-2. 算法达到该步骤，说明IExpression为AndExpression或OrExpression。
+使用以上四种基本的过滤条件、表达式合并方法，optimize() 算法的执行步骤如下：
+1. 如果 IExpression 为一元表达式，即单一的 SingleSeriesExpression 或单一的 GlobalTimeExpression，则直接将其返回；否则，执行步骤二
+2. 算法达到该步骤，说明 IExpression 为 AndExpression 或 OrExpression。
    
    a. 如果LeftIExpression和RightIExpression均为GlobalTimeExpression，则执行combineTwoGlobalTimeExpression方法，并返回对应的结果。
 
-   b. 如果LeftIExpression为GlobalTimeExpression，而RightIExpression不是GlobalTimeExpression，则调用handleOneGlobalTimeExpressionr()方法进行合并。
+   b. 如果 LeftIExpression 为 GlobalTimeExpression，而 RightIExpression 不是GlobalTimeExpression，则调用 handleOneGlobalTimeExpressionr() 方法进行合并。
 
-   c. 如果LeftIExpression不是GlobalTimeExpression，而RightIExpression是GlobalTimeExpression，则调用handleOneGlobalTimeExpressionr()方法进行合并。
+   c. 如果 LeftIExpression 不是 GlobalTimeExpression，而 RightIExpression 是 GlobalTimeExpression，则调用 handleOneGlobalTimeExpressionr()方法进行合并。
 
-   d. 如果LeftIExpression和RightIExpression均 不是GlobalTimeExpression，则对LeftIExpression递归调用optimize()方法得到左可执行表达式；对RightIExpression递归调用optimize()方法得到右可执行表达式。使用MergeIExpression方法，根据type的值将左可执行表达式和右可执行表达式合并为一个IExpression。
+   d. 如果 LeftIExpression 和 RightIExpression 均不是 GlobalTimeExpression，则对 LeftIExpression 递归调用 optimize() 方法得到左可执行表达式；对 RightIExpression 递归调用 optimize() 方法得到右可执行表达式。使用 MergeIExpression 方法，根据 type 的值将左可执行表达式和右可执行表达式合并为一个 IExpression。
 
-## 2 TsFile查询执行过程
+## 2 TsFile 查询执行过程
 
 ### 2.1 设计原理
 
@@ -466,7 +430,7 @@ TsFile 文件层查询接口只包含原始数据查询，根据是否包含值�
 
 * 归并查询
 
-	生成多个reader，按照 time 对齐，返回结果集。
+	生成多个 reader，按照 time 对齐，返回结果集。
 
 * 连接查询
 
@@ -515,9 +479,9 @@ org.apache.iotdb.tsfile.read.query.dataset.DataSetWithoutTimeGenerator
 
 （2） 初始化堆，依次访问每一个 FileSeriesReader，如果该 FileSeriesReader 中还有数据点，则获取数据点的时间戳并放入堆中。此时每个时间序列最多有1个时间戳被放入到堆中，即该序列最小的时间戳。
 
-（3） 如果堆的 size > 0，获取堆顶的时间戳，记为t，并将其在堆中删除，进入步骤（4）；如果堆的size等于0，则跳到步骤（5），结束数据合并过程。
+（3） 如果堆的 size > 0，获取堆顶的时间戳，记为t，并将其在堆中删除，进入步骤（4）；如果堆的 size 等于0，则跳到步骤（5），结束数据合并过程。
 
-（4） 创建新的RowRecord。依次遍历每一条时间序列。在处理其中一条时间序列时，如果该序列没有更多的数据点，则将该列标记为null并添加在RowRecord中；否则，判断最小的时间戳是否与t相同，若不相同，则将该列标记为null并添加在RowRecord中。若相同，将该数据点添加在RowRecord中，同时判断该时间序列是否有新的数据点，若存在，则将下一个时间戳$t'$添加在堆中，并将$t'$设为当前时间序列的最小时间戳。最后，返回步骤（3）。
+（4） 创建新的 RowRecord。依次遍历每一条时间序列。在处理其中一条时间序列时，如果该序列没有更多的数据点，则将该列标记为 null 并添加在 RowRecord 中；否则，判断最小的时间戳是否与 t 相同，若不相同，则将该列标记为 null 并添加在 RowRecord 中。若相同，将该数据点添加在 RowRecord 中，同时判断该时间序列是否有新的数据点，若存在，则将下一个时间戳 t' 添加在堆中，并将 t' 设为当前时间序列的最小时间戳。最后，返回步骤（3）。
 
 （5） 结束数据合并过程。
 
@@ -533,9 +497,9 @@ org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator
 
 （3）	如果“时间戳计算模块”中还有下一个时间戳，则计算出下一个时间戳 t ，进入步骤（4）；否则，结束查询。
 
-（4）	根据t，在每个时间序列上使用FileSeriesReaderByTimestamp 组件获取在时间戳 t 下的数据点；如果在该时间戳下没有对应的数据点，则用null表示。
+（4）	根据 t，在每个时间序列上使用 FileSeriesReaderByTimestamp 组件获取在时间戳 t 下的数据点；如果在该时间戳下没有对应的数据点，则用 null 表示。
 
-（5）	将步骤（4）中得到的所有数据点合并成一个RowRecord，此时得到一条查询结果，返回步骤（3）计算下一个查询结果。
+（5）	将步骤（4）中得到的所有数据点合并成一个 RowRecord，此时得到一条查询结果，返回步骤（3）计算下一个查询结果。
 
 
 ### 2.5 查询入口
@@ -548,7 +512,7 @@ TsFileExecutor 接收一个 QueryExpression ，执行该查询并返回相应的
 
 （2）如果无过滤条件，执行归并查询。如果该 QueryExpression 包含 Filter（过滤条件），则通过 ExpressionOptimizer 对该 QueryExpression 的 Filter 进行优化。如果是 GlobalTimeExpression，执行归并查询。如果包含值过滤，交给 ExecutorWithTimeGenerator 执行连接查询。
 
-（3） 生成对应的QueryDataSet，迭代地生成RowRecord，将查询结果返回。
+（3） 生成对应的 QueryDataSet，迭代地生成 RowRecord，将查询结果返回。
 
 
 
