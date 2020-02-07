@@ -55,34 +55,13 @@ public class RawDataQueryExecutor {
     this.optimizedExpression = optimizedExpression;
   }
 
-  public RawDataQueryExecutor(List<Path> deduplicatedPaths,
-      List<TSDataType> deduplicatedDataTypes) {
-    this.deduplicatedPaths = deduplicatedPaths;
-    this.deduplicatedDataTypes = deduplicatedDataTypes;
-  }
-
   /**
    * without filter or with global time filter.
    */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
       throws StorageEngineException {
 
-    Filter timeFilter = null;
-    if (optimizedExpression != null) {
-      timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
-    }
-
-    List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
-    for (int i = 0; i < deduplicatedPaths.size(); i++) {
-      Path path = deduplicatedPaths.get(i);
-      TSDataType dataType = deduplicatedDataTypes.get(i);
-
-      ManagedSeriesReader reader = new SeriesRawDataBatchReader(path, dataType, context,
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
-          timeFilter, null);
-      readersOfSelectedSeries.add(reader);
-    }
-
+    List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     try {
       return new RawQueryDataSetWithoutValueFilter(deduplicatedPaths, deduplicatedDataTypes,
           readersOfSelectedSeries);
@@ -93,7 +72,13 @@ public class RawDataQueryExecutor {
   }
 
   public QueryDataSet executeNonAlign(QueryContext context) throws StorageEngineException {
+    List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
+    return new NonAlignEngineDataSet(deduplicatedPaths, deduplicatedDataTypes,
+        readersOfSelectedSeries);
+  }
 
+  private List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context)
+      throws StorageEngineException {
     Filter timeFilter = null;
     if (optimizedExpression != null) {
       timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
@@ -109,9 +94,7 @@ public class RawDataQueryExecutor {
           timeFilter, null);
       readersOfSelectedSeries.add(reader);
     }
-
-    return new NonAlignEngineDataSet(deduplicatedPaths, deduplicatedDataTypes,
-        readersOfSelectedSeries);
+    return readersOfSelectedSeries;
   }
 
   /**

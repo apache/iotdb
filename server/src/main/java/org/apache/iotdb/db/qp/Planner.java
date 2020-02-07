@@ -35,6 +35,7 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
+import org.apache.iotdb.db.utils.TestOnly;
 
 /**
  * provide a integration method for other user.
@@ -47,10 +48,7 @@ public class Planner {
     this.parseDriver = new ParseDriver();
   }
 
-  public IPlanExecutor getExecutor() {
-    return null;
-  }
-
+  @TestOnly
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
       throws QueryProcessException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
