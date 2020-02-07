@@ -113,7 +113,6 @@ public class IoTDBSeriesReaderIT {
 
       // insert large amount of data time range : 3000 ~ 13600
       for (int time = 3000; time < 13600; time++) {
-        // System.out.println("===" + time);
         String sql = String
             .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 100);
         statement.execute(sql);
@@ -268,7 +267,7 @@ public class IoTDBSeriesReaderIT {
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      RowRecord rowRecord = queryDataSet.next();
+      queryDataSet.next();
       cnt++;
     }
     assertEquals(23400, cnt);
@@ -298,9 +297,7 @@ public class IoTDBSeriesReaderIT {
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      RowRecord rowRecord = queryDataSet.next();
-      String result = rowRecord.toString();
-      // System.out.println(result);
+      queryDataSet.next();
       cnt++;
     }
     assertEquals(16940, cnt);
@@ -326,9 +323,7 @@ public class IoTDBSeriesReaderIT {
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      RowRecord rowRecord = queryDataSet.next();
-      String result = rowRecord.toString();
-      // System.out.println(result);
+      queryDataSet.next();
       cnt++;
     }
     assertEquals(3012, cnt);
@@ -361,8 +356,7 @@ public class IoTDBSeriesReaderIT {
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      RowRecord next = queryDataSet.next();
-      System.out.println(next);
+      queryDataSet.next();
       cnt++;
     }
     assertEquals(22300, cnt);
