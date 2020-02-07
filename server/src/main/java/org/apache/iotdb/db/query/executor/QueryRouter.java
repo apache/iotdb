@@ -55,18 +55,19 @@ public class QueryRouter implements IQueryRouter {
       throws StorageEngineException {
     IExpression expression = queryPlan.getExpression();
     List<Path> deduplicatedPaths = queryPlan.getDeduplicatedPaths();
-    List<TSDataType> deduplicatedDataTypes = queryPlan.getDeduplicatedDataTypes();
 
-    IExpression optimizedExpression = null;
+    IExpression optimizedExpression;
     try {
       optimizedExpression = expression == null ? null : ExpressionOptimizer.getInstance()
           .optimize(expression, deduplicatedPaths);
     } catch (QueryFilterOptimizationException e) {
       throw new StorageEngineException(e.getMessage());
     }
-    RawDataQueryExecutor rawDataQueryExecutor = new RawDataQueryExecutor(deduplicatedPaths,
-        deduplicatedDataTypes, optimizedExpression);
-    if (!queryPlan.isAlign()) {
+    queryPlan.setExpression(optimizedExpression);
+
+    RawDataQueryExecutor rawDataQueryExecutor = new RawDataQueryExecutor(queryPlan);
+
+    if (!queryPlan.isAlignByTime()) {
       return rawDataQueryExecutor.executeNonAlign(context);
     }
 
@@ -80,25 +81,27 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException {
-    IExpression expression = aggregationPlan.getExpression();
-    List<Path> selectedSeries = aggregationPlan.getDeduplicatedPaths();
+      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
+      IOException {
 
-    if (expression != null) {
-      IExpression optimizedExpression = ExpressionOptimizer.getInstance()
-          .optimize(expression, selectedSeries);
-      AggregationExecutor engineExecutor = new AggregationExecutor(
-          aggregationPlan);
-      if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-        return engineExecutor.executeWithoutValueFilter(context);
-      } else {
-        return engineExecutor.executeWithValueFilter(context);
-      }
-    } else {
-      AggregationExecutor engineExecutor = new AggregationExecutor(
-          aggregationPlan);
-      return engineExecutor.executeWithoutValueFilter(context);
+    IExpression expression = aggregationPlan.getExpression();
+    List<Path> deduplicatedPaths = aggregationPlan.getDeduplicatedPaths();
+
+    // optimize expression to an executable one
+    IExpression optimizedExpression =
+        expression == null ? null :
+            ExpressionOptimizer.getInstance().optimize(expression, deduplicatedPaths);
+
+    aggregationPlan.setExpression(optimizedExpression);
+
+    AggregationExecutor engineExecutor = new AggregationExecutor(aggregationPlan);
+
+    if (optimizedExpression != null
+        && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME) {
+      return engineExecutor.executeWithValueFilter(context);
     }
+
+    return engineExecutor.executeWithoutValueFilter(context);
   }
 
 
@@ -122,8 +125,11 @@ public class QueryRouter implements IQueryRouter {
       expression = BinaryExpression.and(expression, timeExpression);
     }
 
+    // optimize expression to an executable one
     IExpression optimizedExpression = ExpressionOptimizer.getInstance()
         .optimize(expression, selectedSeries);
+    groupByPlan.setExpression(optimizedExpression);
+
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
       return new GroupByWithoutValueFilterDataSet(context, groupByPlan);
     } else {

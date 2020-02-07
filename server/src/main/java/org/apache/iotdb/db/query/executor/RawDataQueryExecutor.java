@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
@@ -48,11 +49,10 @@ public class RawDataQueryExecutor {
   private List<TSDataType> deduplicatedDataTypes;
   private IExpression optimizedExpression;
 
-  public RawDataQueryExecutor(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
-      IExpression optimizedExpression) {
-    this.deduplicatedPaths = deduplicatedPaths;
-    this.deduplicatedDataTypes = deduplicatedDataTypes;
-    this.optimizedExpression = optimizedExpression;
+  public RawDataQueryExecutor(QueryPlan queryPlan) {
+    this.deduplicatedPaths = queryPlan.getDeduplicatedPaths();
+    this.deduplicatedDataTypes = queryPlan.getDeduplicatedDataTypes();
+    this.optimizedExpression = queryPlan.getExpression();
   }
 
   /**

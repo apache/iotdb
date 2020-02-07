@@ -558,7 +558,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } else {
         resp = getQueryColumnHeaders(plan, username);
       }
-      if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlign()) {
+      if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
         if (plan.getOperatorType() == OperatorType.AGGREGATION) {
           throw new QueryProcessException("Aggregation doesn't support disable align clause.");
         }
@@ -581,7 +581,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
-      if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlign()) {
+      if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
         TSQueryNonAlignDataSet result = fillRpcNonAlignReturnData(fetchSize, newDataSet, username);
         resp.setNonAlignQueryDataSet(result);
         resp.setQueryId(queryId);

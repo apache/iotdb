@@ -37,13 +37,13 @@ public class QueryPlan extends PhysicalPlan {
   private List<Path> deduplicatedPaths = new ArrayList<>();
   private List<TSDataType> deduplicatedDataTypes = new ArrayList<>();
 
-
   private IExpression expression = null;
 
   private int rowLimit = 0;
   private int rowOffset = 0;
 
-  private boolean isAlign = true; // for disable align sql
+  private boolean alignByTime = true; // for disable align sql
+
   private boolean isGroupByDevice = false; // for group by device sql
   private List<String> measurements; // for group by device sql, e.g. temperature
   private Map<String, Set<String>> measurementsGroupByDevice; // for group by device sql, e.g. root.ln.d1 -> temperature
@@ -129,12 +129,12 @@ public class QueryPlan extends PhysicalPlan {
     isGroupByDevice = groupByDevice;
   }
   
-  public boolean isAlign() {
-    return isAlign;
+  public boolean isAlignByTime() {
+    return alignByTime;
   }
   
-  public void setAlign(boolean align) {
-    isAlign = align;
+  public void setAlignByTime(boolean align) {
+    alignByTime = align;
   }
 
   public void setMeasurements(List<String> measurements) {

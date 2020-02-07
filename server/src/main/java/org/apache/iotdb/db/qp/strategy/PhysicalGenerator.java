@@ -320,7 +320,7 @@ public class PhysicalGenerator {
         queryPlan.setDeviceToFilterMap(concatFilterByDivice(prefixPaths, filterOperator));
       }
     } else {
-      queryPlan.setAlign(queryOperator.isAlign());
+      queryPlan.setAlignByTime(queryOperator.isAlign());
       List<Path> paths = queryOperator.getSelectedPaths();
       queryPlan.setPaths(paths);
 

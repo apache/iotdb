@@ -84,11 +84,10 @@ public class AggregationExecutor {
     }
 
     //TODO use multi-thread
-    Map<Path, List<Integer>> pathToAggrIndexesMap = mergeSameSeries(selectedSeries);
+    Map<Path, List<Integer>> pathToAggrIndexesMap = groupAggregationsBySeries(selectedSeries);
     AggregateResult[] aggregateResultList = new AggregateResult[selectedSeries.size()];
     for (Map.Entry<Path, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
-      List<AggregateResult> aggregateResults = groupAggregationsBySeries(entry, timeFilter,
-          context);
+      List<AggregateResult> aggregateResults = aggregateOneSeries(entry, timeFilter, context);
       int index = 0;
       for (int i : entry.getValue()) {
         aggregateResultList[i] = aggregateResults.get(index);
@@ -107,7 +106,7 @@ public class AggregationExecutor {
    * @param context query context
    * @return AggregateResult list
    */
-  private List<AggregateResult> groupAggregationsBySeries(
+  private List<AggregateResult> aggregateOneSeries(
       Map.Entry<Path, List<Integer>> pathToAggrIndexes,
       Filter timeFilter, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException {
@@ -271,7 +270,7 @@ public class AggregationExecutor {
    * @param selectedSeries selected series
    * @return path to aggregation indexes map
    */
-  private Map<Path, List<Integer>> mergeSameSeries(List<Path> selectedSeries) {
+  private Map<Path, List<Integer>> groupAggregationsBySeries(List<Path> selectedSeries) {
     Map<Path, List<Integer>> pathToAggrIndexesMap = new HashMap<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       Path series = selectedSeries.get(i);
