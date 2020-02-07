@@ -23,24 +23,24 @@
 
 本章节介绍 TsFile 的读取流程，内容总体上分为两部分，对过滤条件和时间表达式的介绍，以及对查询流程的详细介绍。
 
-1 过滤条件和查询表达式<br>
-&emsp;&emsp;1.1 Filter<br>
-&emsp;&emsp;1.2 Expression表达式<br>
-&emsp;&emsp;&emsp;&emsp;1.2.1 SingleSeriesExpression 表达式<br>
-&emsp;&emsp;&emsp;&emsp;1.2.2 GlobalTimeExpression 表达式<br>
-&emsp;&emsp;&emsp;&emsp;1.2.3 IExpression 表达式<br>
-&emsp;&emsp;&emsp;&emsp;1.2.4 可执行表达式<br>
-&emsp;&emsp;&emsp;&emsp;1.2.5 IExpression 转化为可执行表达式的优化算法<br>
-2 TsFile 查询执行过程<br>
-&emsp;&emsp;2.1 设计原理<br>
-&emsp;&emsp;2.2 三大查询组件<br>
-&emsp;&emsp;&emsp;&emsp;2.2.1 FileSeriesReader 组件<br>
-&emsp;&emsp;&emsp;&emsp;2.2.2 FileSeriesReaderByTimestamp 组件<br>
-&emsp;&emsp;&emsp;&emsp;2.2.3 TimeGeneratorImpl 组件<br>
-&emsp;&emsp;2.3 归并查询<br>
-&emsp;&emsp;2.4 连接查询<br>
-&emsp;&emsp;2.5 查询入口<br>
-&emsp;&emsp;2.6 相关代码介绍<br>
+* 1 过滤条件和查询表达式
+    * 1.1 Filter
+    * 1.2 Expression表达式
+        * 1.2.1 SingleSeriesExpression 表达式
+        * 1.2.2 GlobalTimeExpression 表达式
+        * 1.2.3 IExpression 表达式
+        * 1.2.4 可执行表达式
+        * 1.2.5 IExpression 转化为可执行表达式的优化算法
+* 2 TsFile 查询执行过程
+    * 2.1 设计原理
+    * 2.2 三大查询组件
+        * 2.2.1 FileSeriesReader 组件
+        * 2.2.2 FileSeriesReaderByTimestamp 组件
+        * 2.2.3 TimeGeneratorImpl 组件
+    * 2.3 归并查询
+    * 2.4 连接查询
+    * 2.5 查询入口
+    * 2.6 相关代码介绍
 
 ## 1 过滤条件和查询表达式
 

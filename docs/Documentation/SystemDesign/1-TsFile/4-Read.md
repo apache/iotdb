@@ -23,24 +23,25 @@
 
 This chapter introduces how to read TsFile. The content is mainly divided into two parts, the introduction of Filters and Expressions , and the detailed illustration of query process in TsFile.
 
-[1 Filters Expressions](#1-Filters-and-Expressions)<br>
-&emsp;&emsp;[1.1 Filter](#11-Filter)<br>
-&emsp;&emsp;[1.2 Expression](#12-Expression)<br>
-&emsp;&emsp;&emsp;&emsp;[1.2.1 SingleSeriesExpression](#121-SingleSeriesExpression)<br>
-&emsp;&emsp;&emsp;&emsp;[1.2.2 GlobalTimeExpression](#122-GlobalTimeExpression)<br>
-&emsp;&emsp;&emsp;&emsp;[1.2.3 IExpression](#123-IExpression)<br>
-&emsp;&emsp;&emsp;&emsp;[1.2.4 Executable Expression](#124-Executable-Expression)<br>
-&emsp;&emsp;&emsp;&emsp;[1.2.5 The Algorithm Transforming IExpression to an Executable Expression](#125-The-Algorithm-Transforming-IExpression-to-an-Executable-Expression)<br>
-[2 Query Execution of TsFile](#2-Query-Execution-of-TsFile)<br>
-&emsp;&emsp;[2.1 Design](#21-Design)<br>
-&emsp;&emsp;[2.2 Three Components](#22-Three-Components)<br>
-&emsp;&emsp;&emsp;&emsp;[2.2.1 FileSeriesReader](#221-FileSeriesReader)<br>
-&emsp;&emsp;&emsp;&emsp;[2.2.2 FileSeriesReaderByTimestamp](#222-FileSeriesReaderByTimestamp)<br>
-&emsp;&emsp;&emsp;&emsp;[2.2.3 TimeGeneratorImpl](#223-TimeGeneratorImpl)<br>
-&emsp;&emsp;[2.3 Merge Query](#23-Merge-Query)<br>
-&emsp;&emsp;[2.4 Join Query](#24-Join-Query)<br>
-&emsp;&emsp;[2.5 Query of TsFile](#25-Query-of-TsFile)<br>
-&emsp;&emsp;[2.6 Related Concepts](#26-Related-Concepts)<br>
+- [TsFile Read Process](#TsFile-Read-Process)
+  - [1 Filters and Expressions](#1-Filters-and-Expressions)
+    - [1.1 Filter](#11-Filter)
+    - [1.2 Expression](#12-Expression)
+      - [1.2.1 SingleSeriesExpression](#121-SingleSeriesExpression)
+      - [1.2.2 GlobalTimeExpression](#122-GlobalTimeExpression)
+      - [1.2.3 IExpression](#123-IExpression)
+      - [1.2.4 Executable Expression](#124-Executable-Expression)
+      - [1.2.5 The Algorithm Transforming IExpression to an Executable Expression](#125-The-Algorithm-Transforming-IExpression-to-an-Executable-Expression)
+  - [2 Query Execution of TsFile](#2-Query-Execution-of-TsFile)
+    - [2.1 Design](#21-Design)
+    - [2.2 Three Components](#22-Three-Components)
+      - [2.2.1 FileSeriesReader](#221-FileSeriesReader)
+      - [2.2.2 FileSeriesReaderByTimestamp](#222-FileSeriesReaderByTimestamp)
+      - [2.2.3 TimeGeneratorImpl](#223-TimeGeneratorImpl)
+    - [2.3 Merge Query](#23-Merge-Query)
+    - [2.4 Join Query](#24-Join-Query)
+    - [2.5 Query of TsFile](#25-Query-of-TsFile)
+    - [2.6 Related Concepts](#26-Related-Concepts)
 ## 1 Filters and Expressions
 
 ### 1.1 Filter
