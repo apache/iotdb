@@ -22,7 +22,6 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
@@ -53,7 +52,8 @@ public class MetricsPage {
     String tmpStr;
     try {
       URL resource = MetricsPage.class.getClassLoader().getResource("iotdb/ui/static/index.html");
-      InputStream is = Objects.requireNonNull(resource).openStream();
+      assert resource != null;
+      InputStream is = resource.openStream();
       BufferedReader br = new BufferedReader(new InputStreamReader(is));
       while ((tmpStr = br.readLine()) != null) {
         html.append(tmpStr);
