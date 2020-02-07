@@ -65,8 +65,8 @@ public class AndFilter extends BinaryFilter {
   }
 
   @Override
-  public Filter clone() {
-    return new AndFilter(left.clone(), right.clone());
+  public Filter copy() {
+    return new AndFilter(left.copy(), right.copy());
   }
 
   @Override

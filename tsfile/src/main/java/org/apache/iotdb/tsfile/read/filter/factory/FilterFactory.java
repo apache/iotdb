@@ -30,8 +30,6 @@ import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class FilterFactory {
 
