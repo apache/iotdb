@@ -90,16 +90,24 @@ public class PlanExecutor implements IPlanExecutor {
   private StorageEngine storageEngine;
   // for system schema
   private MManager mManager;
+  // for administration
+  private IAuthorizer authorizer;
 
-  public PlanExecutor() {
+  public PlanExecutor() throws QueryProcessException {
     queryRouter = new QueryRouter();
     storageEngine = StorageEngine.getInstance();
     mManager = MManager.getInstance();
+    try {
+      authorizer = LocalFileAuthorizer.getInstance();
+    } catch (AuthException e) {
+      throw new QueryProcessException(e.getMessage());
+    }
   }
 
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException, MetadataException, SQLException {
+      throws IOException, StorageEngineException, QueryFilterOptimizationException,
+      QueryProcessException, MetadataException, SQLException {
     if (queryPlan instanceof QueryPlan) {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
@@ -175,7 +183,6 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-
   private QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
       IOException {
@@ -185,13 +192,13 @@ public class PlanExecutor implements IPlanExecutor {
     } else {
       if (queryPlan instanceof GroupByPlan) {
         GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
-        return groupBy(groupByPlan, context);
+        return queryRouter.groupBy(groupByPlan, context);
       } else if (queryPlan instanceof AggregationPlan) {
         AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
-        queryDataSet = aggregate(aggregationPlan, context);
+        queryDataSet = queryRouter.aggregate(aggregationPlan, context);
       } else if (queryPlan instanceof FillQueryPlan) {
         FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
-        queryDataSet = fill(fillQueryPlan, context);
+        queryDataSet = queryRouter.fill(fillQueryPlan, context);
       } else {
         queryDataSet = queryRouter.rawDataQuery(queryPlan, context);
       }
@@ -593,25 +600,6 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
-      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
-    return queryRouter.aggregate(aggregationPlan, context);
-  }
-
-  @Override
-  public QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
-      throws IOException, QueryProcessException, StorageEngineException {
-    return queryRouter.fill(fillQueryPlan, context);
-  }
-
-  @Override
-  public QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
-      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
-    return queryRouter.groupBy(groupByPlan, context);
-
-  }
-
-  @Override
   public void update(Path path, long startTime, long endTime, String value) {
     throw new UnsupportedOperationException("update is not supported now");
   }
@@ -757,12 +745,6 @@ public class PlanExecutor implements IPlanExecutor {
     String newPassword = author.getNewPassword();
     Set<Integer> permissions = author.getPermissions();
     Path nodeName = author.getNodeName();
-    IAuthorizer authorizer;
-    try {
-      authorizer = LocalFileAuthorizer.getInstance();
-    } catch (AuthException e) {
-      throw new QueryProcessException(e.getMessage());
-    }
     try {
       switch (authorType) {
         case UPDATE_USER:
@@ -817,9 +799,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean operateWatermarkEmbedding(List<String> users, boolean useWatermark)
       throws QueryProcessException {
-    IAuthorizer authorizer;
     try {
-      authorizer = LocalFileAuthorizer.getInstance();
       for (String user : users) {
         authorizer.setUserUseWaterMark(user, useWatermark);
       }
@@ -937,34 +917,28 @@ public class PlanExecutor implements IPlanExecutor {
     String userName = plan.getUserName();
     String roleName = plan.getRoleName();
     Path path = plan.getNodeName();
-    IAuthorizer authorizer;
-    try {
-      authorizer = LocalFileAuthorizer.getInstance();
-    } catch (AuthException e) {
-      throw new QueryProcessException(e.getMessage());
-    }
 
     ListDataSet dataSet;
 
     try {
       switch (authorType) {
         case LIST_ROLE:
-          dataSet = executeListRole(authorizer);
+          dataSet = executeListRole();
           break;
         case LIST_USER:
-          dataSet = executeListUser(authorizer);
+          dataSet = executeListUser();
           break;
         case LIST_ROLE_USERS:
-          dataSet = executeListRoleUsers(authorizer, roleName);
+          dataSet = executeListRoleUsers(roleName);
           break;
         case LIST_USER_ROLES:
-          dataSet = executeListUserRoles(authorizer, userName);
+          dataSet = executeListUserRoles(userName);
           break;
         case LIST_ROLE_PRIVILEGE:
-          dataSet = executeListRolePrivileges(authorizer, roleName, path);
+          dataSet = executeListRolePrivileges(roleName, path);
           break;
         case LIST_USER_PRIVILEGE:
-          dataSet = executeListUserPrivileges(authorizer, userName, path);
+          dataSet = executeListUserPrivileges(userName, path);
           break;
         default:
           throw new QueryProcessException("Unsupported operation " + authorType);
@@ -975,7 +949,7 @@ public class PlanExecutor implements IPlanExecutor {
     return dataSet;
   }
 
-  private ListDataSet executeListRole(IAuthorizer authorizer) {
+  private ListDataSet executeListRole() {
     int index = 0;
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
@@ -993,7 +967,7 @@ public class PlanExecutor implements IPlanExecutor {
     return dataSet;
   }
 
-  private ListDataSet executeListUser(IAuthorizer authorizer) {
+  private ListDataSet executeListUser() {
     List<String> userList = authorizer.listAllUsers();
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
@@ -1011,7 +985,7 @@ public class PlanExecutor implements IPlanExecutor {
     return dataSet;
   }
 
-  private ListDataSet executeListRoleUsers(IAuthorizer authorizer, String roleName)
+  private ListDataSet executeListRoleUsers(String roleName)
       throws AuthException {
     Role role = authorizer.getRole(roleName);
     if (role == null) {
@@ -1037,7 +1011,7 @@ public class PlanExecutor implements IPlanExecutor {
     return dataSet;
   }
 
-  private ListDataSet executeListUserRoles(IAuthorizer authorizer, String userName)
+  private ListDataSet executeListUserRoles(String userName)
       throws AuthException {
     User user = authorizer.getUser(userName);
     if (user != null) {
@@ -1060,7 +1034,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private ListDataSet executeListRolePrivileges(IAuthorizer authorizer, String roleName, Path path)
+  private ListDataSet executeListRolePrivileges(String roleName, Path path)
       throws AuthException {
     Role role = authorizer.getRole(roleName);
     if (role != null) {
@@ -1086,7 +1060,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private ListDataSet executeListUserPrivileges(IAuthorizer authorizer, String userName, Path path)
+  private ListDataSet executeListUserPrivileges(String userName, Path path)
       throws AuthException {
     User user = authorizer.getUser(userName);
     if (user == null) {

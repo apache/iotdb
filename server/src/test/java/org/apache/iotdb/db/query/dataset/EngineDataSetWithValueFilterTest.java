@@ -23,6 +23,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
@@ -81,6 +82,9 @@ public class EngineDataSetWithValueFilterTest {
 
   static {
     MManager.getInstance().init();
+  }
+
+  public EngineDataSetWithValueFilterTest() throws QueryProcessException {
   }
 
   @Before

@@ -51,24 +51,6 @@ public interface IPlanExecutor {
   boolean processNonQuery(PhysicalPlan plan) throws QueryProcessException;
 
   /**
-   * process aggregate plan of qp layer, construct queryDataSet.
-   */
-  QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
-      throws IOException, QueryProcessException, StorageEngineException, QueryFilterOptimizationException;
-
-  /**
-   * process group by plan of qp layer, construct queryDataSet.
-   */
-  QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
-      throws IOException, QueryProcessException, StorageEngineException, QueryFilterOptimizationException;
-
-  /**
-   * process fill plan of qp layer, construct queryDataSet.
-   */
-  QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
-      throws IOException, QueryProcessException, StorageEngineException;
-
-  /**
    * execute update command and return whether the operator is successful.
    *
    * @param path      : update series seriesPath
