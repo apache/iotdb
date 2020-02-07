@@ -27,7 +27,7 @@
 
 ## 不带值过滤条件的聚合查询
 
-对于不带值过滤条件的聚合查询，通过 `executeWithoutValueFilter()` 方法获得结果并构建 dataSet。首先使用 `mergeSameSeries()` 方法将对于相同时间序列的聚合查询合并，例如：如果需要计算count(s1), sum(s2), count(s3), sum(s1)，即需要计算s1的两个聚合值，那么将会得到pathToAggrIndexesMap结果为：s1 -> 0, 3; s2 -> 2; s3 -> 3。
+对于不带值过滤条件的聚合查询，通过 `executeWithoutValueFilter()` 方法获得结果并构建 dataSet。首先使用 `mergeSameSeries()` 方法将对于相同时间序列的聚合查询合并，例如：如果需要计算count(s1), sum(s2), count(s3), sum(s1)，即需要计算s1的两个聚合值，那么将会得到pathToAggrIndexesMap结果为：s1 -> 0, 3; s2 -> 1; s3 -> 2。
 
 那么将会得到 `pathToAggrIndexesMap`，其中每一个 entry 都是一个 series 的聚合查询，因此可以通过调用 `groupAggregationsBySeries()` 方法计算出其聚合值 `aggregateResults`。在最后创建结果集之前，需要将其顺序还原为用户查询的顺序。最后使用 `constructDataSet()` 方法创建结果集并返回。
 
