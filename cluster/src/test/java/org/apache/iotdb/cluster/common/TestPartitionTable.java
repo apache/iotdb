@@ -25,6 +25,7 @@ import java.util.Map;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.metadata.MManager;
 
 public class TestPartitionTable implements PartitionTable {
 
@@ -34,7 +35,7 @@ public class TestPartitionTable implements PartitionTable {
   }
 
   @Override
-  public int getSlot(String storageGroupName, long timestamp) {
+  public int getPartitionKey(String storageGroupName, long timestamp) {
     //TODO
     return 0;
   }
@@ -42,6 +43,11 @@ public class TestPartitionTable implements PartitionTable {
   @Override
   public PartitionGroup route(int hashkey) {
     //TODO
+    return null;
+  }
+
+  @Override
+  public Node routeToHeader(String storageGroupName, long timestamp) {
     return null;
   }
 
@@ -93,5 +99,10 @@ public class TestPartitionTable implements PartitionTable {
   @Override
   public int getTotalSlotNumbers() {
     return 100;
+  }
+
+  @Override
+  public MManager getMManager() {
+    return MManager.getInstance();
   }
 }

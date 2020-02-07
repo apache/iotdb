@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.partition;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +49,7 @@ import org.slf4j.LoggerFactory;
 /**
  * PartitionTable manages the map whose key is the StorageGroupName with a time interval and the
  * value is a PartitionGroup with contains all nodes that manage the corresponding data.
+ * TODO currently, we do not support auto-create storage group in the cluster mode.
  */
 public interface PartitionTable {
   // static final is not necessary, it is redundant for an interface
@@ -63,15 +65,26 @@ public interface PartitionTable {
    */
   PartitionGroup route(String storageGroupName, long timestamp);
 
+  PartitionGroup route(int hashKey);
+
+  /**
+   * Given the storageGroupName and the timestamp, return the header node of the partitionGroup by
+   * which the storage group and the corresponding time interval is managed.
+   * @param storageGroupName
+   * @param timestamp
+   * @return
+   */
+  Node routeToHeader(String storageGroupName, long timestamp);
+
   /**
    * get a unicode value for a sg and a timestamp.
    * @param storageGroupName
    * @param timestamp
    * @return
    */
-  int getSlot(String storageGroupName, long timestamp);
+  int getPartitionKey(String storageGroupName, long timestamp);
 
-  PartitionGroup route(int slot);
+
   /**
    * Add a new node to update the partition table.
    * @param node
@@ -116,6 +129,9 @@ public interface PartitionTable {
 
   int getTotalSlotNumbers();
 
+  MManager getMManager();
+
+
   //==============================================================================================//
   //All the follwoing are default methods.
   //==============================================================================================//
@@ -127,7 +143,7 @@ public interface PartitionTable {
       String storageGroup = null;
       if (plan instanceof CreateTimeSeriesPlan) {
         try {
-          storageGroup = MManager.getInstance()
+          storageGroup = getMManager()
               .getStorageGroupNameByPath(((CreateTimeSeriesPlan) plan).getPath().getFullPath());
           //timestamp is meaningless, use 0 instead.
           return PartitionUtils.calculateStorageGroupSlot(storageGroup, 0, this.getTotalSlotNumbers());
@@ -137,7 +153,7 @@ public interface PartitionTable {
         }
       } else if (plan instanceof InsertPlan || plan instanceof BatchInsertPlan) {
         try {
-          storageGroup = MManager.getInstance()
+          storageGroup = getMManager()
               .getStorageGroupNameByPath(((InsertPlan) plan).getDeviceId());
         } catch (StorageGroupNotSetException e) {
           logger.error("Cannot find the storage group of {}", ((CreateTimeSeriesPlan) plan).getPath());
@@ -156,6 +172,15 @@ public interface PartitionTable {
 
   default PartitionGroup routePlan(PhysicalPlan plan)
       throws UnsupportedPlanException, StorageGroupNotSetException, IllegalPathException {
+    if (plan instanceof InsertPlan) {
+      return routePlan((InsertPlan) plan);
+    } else if (plan instanceof CreateTimeSeriesPlan) {
+      return routePlan((CreateTimeSeriesPlan) plan);
+    } else if (plan instanceof ShowChildPathsPlan) {
+      return routePlan((ShowChildPathsPlan) plan);
+    } else if (plan instanceof PropertyPlan) {
+      return routePlan((PropertyPlan) plan);
+    }
     //the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalPlan(plan)) {
       logger.error("{} is a local plan. Please run it locally directly", plan);
@@ -168,8 +193,48 @@ public interface PartitionTable {
     throw new UnsupportedPlanException(plan);
   }
 
+  default PartitionGroup routePlan(InsertPlan plan)
+      throws StorageGroupNotSetException {
+    return partitionByPathTime(plan.getDeviceId(), plan.getTime());
+  }
+
+  default PartitionGroup routePlan(CreateTimeSeriesPlan plan)
+      throws StorageGroupNotSetException {
+    return partitionByPathTime(plan.getPath().getFullPath(), 0);
+  }
+
+  default PartitionGroup routePlan(ShowChildPathsPlan plan)
+      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException  {
+    try {
+      return route(getMManager().getStorageGroupNameByPath(plan.getPath().getFullPath()), 0);
+    } catch (StorageGroupNotSetException e) {
+      //the path is too short to have no a storage group name, e.g., "root"
+      //so we can do it locally.
+      return getLocalGroups().get(0);
+    }
+  }
+
+  default PartitionGroup routePlan(PropertyPlan plan)
+      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException {
+    logger.error("PropertyPlan is not implemented");
+    throw new UnsupportedPlanException(plan);
+  }
+
   default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(PhysicalPlan plan)
       throws UnsupportedPlanException, StorageGroupNotSetException , IllegalPathException {
+    if (plan instanceof BatchInsertPlan) {
+      return splitAndRoutePlan((BatchInsertPlan) plan);
+    } else if (plan instanceof ShowTimeSeriesPlan) {
+      return splitAndRoutePlan((ShowTimeSeriesPlan) plan);
+    } else if (plan instanceof UpdatePlan) {
+      return splitAndRoutePlan((UpdatePlan) plan);
+    } else if (plan instanceof CountPlan) {
+      return splitAndRoutePlan((CountPlan) plan);
+    } else if (plan instanceof DataAuthPlan) {
+      return splitAndRoutePlan((DataAuthPlan) plan);
+    } else if (plan instanceof ShowDevicesPlan) {
+      return splitAndRoutePlan((ShowDevicesPlan) plan);
+    }
     //the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalPlan(plan)) {
       logger.error("{} is a local plan. Please run it locally directly", plan);
@@ -182,128 +247,87 @@ public interface PartitionTable {
     throw new UnsupportedPlanException(plan);
   }
 
-  //CRUD
-
-  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(QueryPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException {
-    //TODO
-    return null;
-  }
-
-  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(AggregationPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException {
-    //TODO
-    return null;
-  }
-
-  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(DeletePlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException {
-    //TODO
-    return null;
-  }
-
-  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(FillQueryPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException {
-    //TODO
-    return null;
-  }
-
-  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(GroupByPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException {
-    //TODO
-    return null;
-  }
-
-  default PartitionGroup routePlan(InsertPlan plan)
-      throws StorageGroupNotSetException {
-    return partitionByPathTime(plan.getDeviceId(), plan.getTime());
-  }
-
-  default PartitionGroup routePlan(CreateTimeSeriesPlan plan)
-      throws StorageGroupNotSetException {
-    return partitionByPathTime(plan.getPath().getFullPath(), 0);
-  }
-
-
   default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(BatchInsertPlan plan)
-      throws StorageGroupNotSetException {
-    String storageGroup = MManager.getInstance().getStorageGroupNameByPath(plan.getDeviceId());
+      throws UnsupportedPlanException, StorageGroupNotSetException , IllegalPathException  {
+    String storageGroup = getMManager().getStorageGroupNameByPath(plan.getDeviceId());
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
     MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = new MultiKeyMap<>();
     long[] times = plan.getTimes();
-
-    long startTime = (times[0] / PARTITION_INTERVAL ) * PARTITION_INTERVAL;//included
-    long endTime = startTime + PARTITION_INTERVAL;//excluded
-    int startLoc = 0; //included
-
-    //Map<PartitionGroup>
-    Map<PartitionGroup, List<Integer>> splitMap = new HashMap<>();
-    //for each List in split, they are range1.start, range.end, range2.start, range2.end, ...
-    for (int i = 1; i < times.length; i++) {// times are sorted in session API.
-      if (times[i] >= endTime) {
-        // a new range.
-        PartitionGroup group = route(storageGroup, startTime);
-        List<Integer> ranges = splitMap.computeIfAbsent(group, x -> new ArrayList<>());
-        ranges.add(startLoc);//includec
-        ranges.add(i);//excluded
-        //next init
-        startLoc = i;
-        startTime = endTime;
-        endTime = (times[i] / PARTITION_INTERVAL + 1) * PARTITION_INTERVAL;
-      }
+    if(times.length == 0) {
+      return Collections.emptyMap();
     }
-    //the final range
-    PartitionGroup group = route(storageGroup, startTime);
-    List<Integer> ranges = splitMap.computeIfAbsent(group, x -> new ArrayList<>());
-    ranges.add(startLoc);//includec
-    ranges.add(times.length);//excluded
+    long startTime = (times[0] / PARTITION_INTERVAL ) * PARTITION_INTERVAL;//included
+      long endTime = startTime + PARTITION_INTERVAL;//excluded
+      int startLoc = 0; //included
 
-    List<Integer> locs;
-    for(Map.Entry<PartitionGroup, List<Integer>> entry : splitMap.entrySet()) {
-      //generate a new times and values
-      locs = entry.getValue();
-      int count = 0;
-      for (int i = 0; i < locs.size(); i += 2) {
-        int start = locs.get(i);
-        int end = locs.get(i + 1);
-        count += end - start;
-      }
-      long[] subTimes = new long[count];
-      int destLoc = 0;
-      Object[] values = new Object[plan.getMeasurements().length];
-      for (int i = 0; i < values.length; i ++) {
-        switch (plan.getDataTypes()[i]) {
-          case TEXT:
-            values[i] = new Binary[count];
-            break;
-          case FLOAT:
-            values[i] = new float[count];
-            break;
-          case INT32:
-            values[i] = new int[count];
-            break;
-          case INT64:
-            values[i] = new long[count];
-            break;
-          case DOUBLE:
-            values[i] = new double[count];
-            break;
-          case BOOLEAN:
-            values[i] = new boolean[count];
-            break;
+      //Map<PartitionGroup>
+      Map<PartitionGroup, List<Integer>> splitMap = new HashMap<>();
+      //for each List in split, they are range1.start, range.end, range2.start, range2.end, ...
+      for (int i = 1; i < times.length; i++) {// times are sorted in session API.
+        if (times[i] >= endTime) {
+          // a new range.
+          PartitionGroup group = route(storageGroup, startTime);
+          List<Integer> ranges = splitMap.computeIfAbsent(group, x -> new ArrayList<>());
+          ranges.add(startLoc);//include
+          ranges.add(i);//excluded
+          //next init
+          startLoc = i;
+          startTime = endTime;
+          endTime = (times[i] / PARTITION_INTERVAL + 1) * PARTITION_INTERVAL;
         }
       }
-      for (int i = 0; i < locs.size(); i += 2) {
-        int start = locs.get(i);
-        int end = locs.get(i + 1);
-        System.arraycopy(plan.getTimes(), start, subTimes, destLoc, end - start);
-        for (int k = 0; k < values.length; k ++) {
-          System.arraycopy(plan.getColumns()[k], start, values[k], destLoc, end - start);
+      //the final range
+      PartitionGroup group = route(storageGroup, startTime);
+      List<Integer> ranges = splitMap.computeIfAbsent(group, x -> new ArrayList<>());
+      ranges.add(startLoc);//includec
+      ranges.add(times.length);//excluded
+
+      List<Integer> locs;
+      for(Map.Entry<PartitionGroup, List<Integer>> entry : splitMap.entrySet()) {
+        //generate a new times and values
+        locs = entry.getValue();
+        int count = 0;
+        for (int i = 0; i < locs.size(); i += 2) {
+          int start = locs.get(i);
+          int end = locs.get(i + 1);
+          count += end - start;
         }
-        destLoc += end -start;
-      }
-      BatchInsertPlan newBatch = PartitionUtils.copy(plan, subTimes, values);
-      result.put(newBatch, entry.getKey());
+        long[] subTimes = new long[count];
+        int destLoc = 0;
+        Object[] values = new Object[plan.getMeasurements().length];
+        for (int i = 0; i < values.length; i ++) {
+          switch (plan.getDataTypes()[i]) {
+            case TEXT:
+              values[i] = new Binary[count];
+              break;
+            case FLOAT:
+              values[i] = new float[count];
+              break;
+            case INT32:
+              values[i] = new int[count];
+              break;
+            case INT64:
+              values[i] = new long[count];
+              break;
+            case DOUBLE:
+              values[i] = new double[count];
+              break;
+            case BOOLEAN:
+              values[i] = new boolean[count];
+              break;
+          }
+        }
+        for (int i = 0; i < locs.size(); i += 2) {
+          int start = locs.get(i);
+          int end = locs.get(i + 1);
+          System.arraycopy(plan.getTimes(), start, subTimes, destLoc, end - start);
+          for (int k = 0; k < values.length; k ++) {
+            System.arraycopy(plan.getColumns()[k], start, values[k], destLoc, end - start);
+          }
+          destLoc += end -start;
+        }
+        BatchInsertPlan newBatch = PartitionUtils.copy(plan, subTimes, values);
+        result.put(newBatch, entry.getKey());
     }
     return result;
   }
@@ -314,20 +338,12 @@ public interface PartitionTable {
     throw new UnsupportedPlanException(plan);
   }
 
-
-  //SYS
-
-  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(AuthorPlan plan)
-      throws UnsupportedPlanException {
-    logger.error("AuthorPlan is a global plan");
-    throw new UnsupportedPlanException(plan);
-  }
-
+  //TODO this case can be optimized, see the related UT for better understanding.
   default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CountPlan plan)
       throws StorageGroupNotSetException, IllegalPathException {
     //CountPlan is quite special because it has the behavior of wildcard at the tail of the path
     // even though there is no wildcard
-    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(plan.getPath().getFullPath()+".*");
+    Map<String, String> sgPathMap = getMManager().determineStorageGroup(plan.getPath().getFullPath()+".*");
     if (sgPathMap.isEmpty()) {
      throw new StorageGroupNotSetException(plan.getPath().getFullPath());
     }
@@ -339,7 +355,7 @@ public interface PartitionTable {
         result.put(plan1, route(entry.getKey(), 0));
       }
     } else {
-      //do support wildcard
+      //do not support wildcard
       if (sgPathMap.size() == 1) {
         // the path of the original plan has only one SG, or there is only one SG in the system.
         for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
@@ -366,22 +382,12 @@ public interface PartitionTable {
     return null;
   }
 
-
-
-  default PartitionGroup routePlan(ShowChildPathsPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException  {
-    try {
-      return route(MManager.getInstance().getStorageGroupNameByPath(plan.getPath().getFullPath()), 0);
-    } catch (StorageGroupNotSetException e) {
-      //the path is too short to have no a storage group name, e.g., "root"
-      //so we can do it locally.
-      return getLocalGroups().get(0);
-    }
-  }
-
+  //TODO this case can be optimized, see the related UT for better understanding.
   default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(ShowDevicesPlan plan)
       throws IllegalPathException {
-    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup("path");
+    //show devices is quite special because it has the behavior of wildcard at the tail of the path
+    // even though there is no wildcard
+    Map<String, String> sgPathMap = getMManager().determineStorageGroup(plan.getPath().getFullPath()+".*");
     Map<PhysicalPlan, PartitionGroup> result =new HashMap<>();
     for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
       result.put(new ShowDevicesPlan(plan.getShowContentType(), new Path(entry.getValue())), route(entry.getKey(), 0));
@@ -389,11 +395,12 @@ public interface PartitionTable {
     return result;
   }
 
+  //TODO this case can be optimized, see the related UT for better understanding.
   default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(ShowTimeSeriesPlan plan)
       throws StorageGroupNotSetException, IllegalPathException {
     //show timeseries is quite special because it has the behavior of wildcard at the tail of the path
     // even though there is no wildcard
-    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(plan.getPath().getFullPath()+".*");
+    Map<String, String> sgPathMap = getMManager().determineStorageGroup(plan.getPath().getFullPath()+".*");
     if (sgPathMap.isEmpty()) {
       throw new StorageGroupNotSetException(plan.getPath().getFullPath());
     }
@@ -405,11 +412,7 @@ public interface PartitionTable {
     return result;
   }
 
-  default PartitionGroup routePlan(PropertyPlan plan)
-      throws UnsupportedPlanException,StorageGroupNotSetException, IllegalPathException {
-    logger.error("PropertyPlan is not implemented");
-    throw new UnsupportedPlanException(plan);
-  }
+
 
   /**
    * @param path can be an incomplete path (but should contain a storage group name)
@@ -420,7 +423,7 @@ public interface PartitionTable {
    */
   default PartitionGroup partitionByPathTime(String path, long timestamp)
       throws StorageGroupNotSetException {
-    String storageGroup = MManager.getInstance().getStorageGroupNameByPath(path);
+    String storageGroup = getMManager().getStorageGroupNameByPath(path);
     return this.route(storageGroup, timestamp);
   }
 
@@ -433,7 +436,7 @@ public interface PartitionTable {
   default  MultiKeyMap<Long, PartitionGroup> partitionByPathRangeTime(String path,
       long startTime, long endTime) throws StorageGroupNotSetException {
     MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = new MultiKeyMap<>();
-    String storageGroup = MManager.getInstance().getStorageGroupNameByPath(path);
+    String storageGroup = getMManager().getStorageGroupNameByPath(path);
     while (startTime <= endTime) {
       long nextTime = (startTime / PARTITION_INTERVAL + 1) * PARTITION_INTERVAL; //FIXME considering the time unit
       timeRangeMapRaftGroup.put(startTime, Math.min(nextTime - 1, endTime),

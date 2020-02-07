@@ -108,7 +108,6 @@ public class ClusterDescriptor {
     config
         .setConnectionTimeoutInMS(Integer.parseInt(properties.getProperty("CONNECTION_TIME_OUT_MS",
             String.valueOf(config.getConnectionTimeoutInMS()))));
-    RaftServer.connectionTimeoutInMS = config.getConnectionTimeoutInMS();
 
     String seedUrls = properties.getProperty("SEED_NODES");
     if (seedUrls != null) {

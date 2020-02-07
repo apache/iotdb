@@ -39,6 +39,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
+import org.apache.iotdb.db.metadata.MManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +72,7 @@ public class SlotPartitionTable implements PartitionTable {
   private List<PartitionGroup> localGroups;
 
   private Node thisNode;
+  MManager mManager = MManager.getInstance();
 
   /**
    * only used for deserialize.
@@ -169,15 +171,12 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public PartitionGroup route(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
-      int slot = PartitionUtils.calculateStorageGroupSlot(storageGroupName, timestamp, getTotalSlotNumbers());
-      Node node = slotNodeMap.get(slot);
-      logger.debug("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp,
-          slot, node);
+      Node node = routeToHeader(storageGroupName, timestamp);
       return getHeaderGroup(node);
     }
   }
   @Override
-  public int getSlot(String storageGroupName, long timestamp){
+  public int getPartitionKey(String storageGroupName, long timestamp){
     return PartitionUtils.calculateStorageGroupSlot(storageGroupName, timestamp, getTotalSlotNumbers());
   }
 
@@ -185,9 +184,23 @@ public class SlotPartitionTable implements PartitionTable {
   public PartitionGroup route(int slot) {
     Node node = slotNodeMap.get(slot);
     logger.debug("The slot of {} is held by {}", slot, node);
+    if (node == null) {
+      logger.warn("The slot {} is incorrect", slot);
+      return null;
+    }
     return getHeaderGroup(node);
   }
 
+  @Override
+  public Node routeToHeader(String storageGroupName, long timestamp) {
+    synchronized (nodeRing) {
+      int slot = PartitionUtils.calculateStorageGroupSlot(storageGroupName, timestamp, getTotalSlotNumbers());
+      Node node = slotNodeMap.get(slot);
+      logger.debug("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp,
+          slot, node);
+      return node;
+    }
+  }
 
   @Override
   public PartitionGroup addNode(Node node) {
@@ -267,6 +280,8 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public ByteBuffer serialize() {
+    //thisNode is not need to serialized;
+
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream(4096);
     DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
 
@@ -297,6 +312,8 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public void deserialize(ByteBuffer buffer) {
+    //thisNode is not need to deserialized;
+
     logger.info("Initializing the partition table from buffer");
     totalSlotNumbers = buffer.getInt();
     int size = buffer.getInt();
@@ -359,6 +376,11 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public int getTotalSlotNumbers() {
     return totalSlotNumbers;
+  }
+
+  @Override
+  public MManager getMManager() {
+    return mManager;
   }
 
 

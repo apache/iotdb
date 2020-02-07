@@ -106,17 +106,7 @@ public class StorageEngine implements IService {
    */
   @ServerConfigConsistent
   static long timePartitionInterval;
-
-  private StorageEngine() {
-    logger = LoggerFactory.getLogger(StorageEngine.class);
-    systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
-    // create systemDir
-    try {
-      FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));
-    } catch (IOException e) {
-      throw new StorageEngineFailureException(e);
-    }
-
+  static {
     // build time Interval to divide time partition
     String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
     switch (timePrecision) {
@@ -133,7 +123,17 @@ public class StorageEngine implements IService {
             getConfig().getPartitionInterval() * 1000;
         break;
     }
+  }
 
+  private StorageEngine() {
+    logger = LoggerFactory.getLogger(StorageEngine.class);
+    systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
+    // create systemDir
+    try {
+      FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));
+    } catch (IOException e) {
+      throw new StorageEngineFailureException(e);
+    }
     // recover upgrade process
     UpgradeUtils.recoverUpgrade();
     /*

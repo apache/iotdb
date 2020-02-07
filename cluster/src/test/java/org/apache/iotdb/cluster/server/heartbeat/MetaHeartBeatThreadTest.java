@@ -42,6 +42,8 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.utils.PartitionUtils;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 
@@ -52,6 +54,21 @@ public class MetaHeartBeatThreadTest extends HeartBeatThreadTest {
   private PartitionTable partitionTable = new PartitionTable() {
     @Override
     public PartitionGroup route(String storageGroupName, long timestamp) {
+      return null;
+    }
+
+    @Override
+    public int getPartitionKey(String storageGroupName, long timestamp) {
+      return PartitionUtils.calculateStorageGroupSlot(storageGroupName, timestamp, getTotalSlotNumbers());
+    }
+
+    @Override
+    public PartitionGroup route(int slot) {
+      return null;
+    }
+
+    @Override
+    public Node routeToHeader(String storageGroupName, long timestamp) {
       return null;
     }
 
@@ -103,6 +120,11 @@ public class MetaHeartBeatThreadTest extends HeartBeatThreadTest {
     @Override
     public int getTotalSlotNumbers() {
       return 100;
+    }
+
+    @Override
+    public MManager getMManager() {
+      return MManager.getInstance();
     }
   };
 

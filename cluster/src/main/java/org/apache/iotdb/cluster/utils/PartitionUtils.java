@@ -21,12 +21,14 @@ package org.apache.iotdb.cluster.utils;
 
 import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
 
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
@@ -55,14 +57,16 @@ public class PartitionUtils {
    * @return
    */
   public static boolean isLocalPlan(PhysicalPlan plan) {
-    return plan instanceof LoadDataPlan
+    //QueryPlan is hard to be splited, so we do it locally and use a remote series reader to get data.
+    return plan instanceof QueryPlan
+        || plan instanceof LoadDataPlan
         || plan instanceof OperateFilePlan
         || (plan instanceof ShowPlan
               && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.DYNAMIC_PARAMETER))
         || (plan instanceof ShowPlan
-              && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.FLUSH_TASK_INFO))
+        && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.FLUSH_TASK_INFO))
         || (plan instanceof ShowPlan
-              && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.VERSION));
+        && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.VERSION));
   }
 
   /**
@@ -73,6 +77,7 @@ public class PartitionUtils {
   public static boolean isGlobalPlan(PhysicalPlan plan) {
     // TODO-Cluster#348: support more plans
     return plan instanceof SetStorageGroupPlan
+          || plan instanceof DeletePlan // because deletePlan has an infinite time range.
           || plan instanceof SetTTLPlan
           || plan instanceof ShowTTLPlan
           || plan instanceof LoadConfigurationPlan
@@ -87,6 +92,10 @@ public class PartitionUtils {
     long partitionInstance = StorageEngine.fromTimeToTimePartition(timestamp);
     int hash = Murmur128Hash.hash(storageGroupName, partitionInstance, HASH_SALT);
     return Math.abs(hash % slotNum);
+  }
+
+  public static int calculateStorageGroupSlot(String storageGroupName, long timestamp) {
+    return calculateStorageGroupSlot(storageGroupName, timestamp, ClusterConstant.SLOT_NUM);
   }
 
   public static BatchInsertPlan copy(BatchInsertPlan plan, long[] times, Object[] values) {

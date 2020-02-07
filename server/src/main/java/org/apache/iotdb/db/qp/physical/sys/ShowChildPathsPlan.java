@@ -28,6 +28,7 @@ public class ShowChildPathsPlan extends ShowPlan {
   public ShowChildPathsPlan(ShowContentType showContentType, Path path) {
     super(showContentType);
     this.path = path;
+    canbeSplit = false;
   }
 
   public Path getPath() {
