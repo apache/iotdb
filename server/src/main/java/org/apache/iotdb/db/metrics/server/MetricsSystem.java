@@ -49,7 +49,6 @@ public class MetricsSystem {
 
   public void start() {
     registerSource();
-    registerSinks();
     sinks.forEach(Sink::start);
   }
 
@@ -62,7 +61,5 @@ public class MetricsSystem {
     source.registerInfo();
     sources.add(source);
   }
-
-  private void registerSinks() {}
 
 }
