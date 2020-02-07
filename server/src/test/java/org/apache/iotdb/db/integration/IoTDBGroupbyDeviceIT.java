@@ -1335,4 +1335,154 @@ public class IoTDBGroupbyDeviceIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void selectConstantAndNonExistTestShifting4() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "1,root.vehicle.d0,null,101,null,11,null,11,22,null,null,101,",
+        "2,root.vehicle.d0,null,10000,null,11,2.22,11,22,null,null,10000,",
+        "3,root.vehicle.d0,null,null,null,11,3.33,11,22,null,null,null,",
+        "4,root.vehicle.d0,null,null,null,11,4.44,11,22,null,null,null,",
+        "50,root.vehicle.d0,null,10000,null,11,null,11,22,null,null,10000,",
+        "60,root.vehicle.d0,null,null,null,11,null,11,22,null,aaaaa,null,",
+        "70,root.vehicle.d0,null,null,null,11,null,11,22,null,bbbbb,null,",
+        "80,root.vehicle.d0,null,null,null,11,null,11,22,null,ccccc,null,",
+        "100,root.vehicle.d0,null,99,null,11,null,11,22,null,null,99,",
+        "101,root.vehicle.d0,null,99,null,11,null,11,22,null,ddddd,99,",
+        "102,root.vehicle.d0,null,80,null,11,10.0,11,22,null,fffff,80,",
+        "103,root.vehicle.d0,null,99,null,11,null,11,22,null,null,99,",
+        "104,root.vehicle.d0,null,90,null,11,null,11,22,null,null,90,",
+        "105,root.vehicle.d0,null,99,null,11,11.11,11,22,null,null,99,",
+        "106,root.vehicle.d0,null,99,null,11,null,11,22,null,null,99,",
+        "1000,root.vehicle.d0,null,22222,null,11,1000.11,11,22,null,null,22222,",
+        "946684800000,root.vehicle.d0,null,null,null,11,null,11,22,null,good,null,",
+        "1,root.vehicle.d1,null,999,null,11,null,11,22,null,null,999,",
+        "1000,root.vehicle.d1,null,888,null,11,null,11,22,null,null,888,",
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select s5, s0, s5, \"11\", s2, \"11\", \"22\", s5, s3, s0 from root.vehicle.* group by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,Device,s5,s0,s5,11,s2,11,22,s5,s3,s0,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
+        // non exist column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(5));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(7));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(8));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(9));
+        // non exist column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(10));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(11));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(12));
+
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(19, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectConstantAndNonExistTestWithUnorderedDevice() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "1,root.vehicle.d1,null,999,null,11,null,11,22,null,null,999,",
+        "1000,root.vehicle.d1,null,888,null,11,null,11,22,null,null,888,",
+        "1,root.vehicle.d0,null,101,null,11,null,11,22,null,null,101,",
+        "2,root.vehicle.d0,null,10000,null,11,2.22,11,22,null,null,10000,",
+        "3,root.vehicle.d0,null,null,null,11,3.33,11,22,null,null,null,",
+        "4,root.vehicle.d0,null,null,null,11,4.44,11,22,null,null,null,",
+        "50,root.vehicle.d0,null,10000,null,11,null,11,22,null,null,10000,",
+        "60,root.vehicle.d0,null,null,null,11,null,11,22,null,aaaaa,null,",
+        "70,root.vehicle.d0,null,null,null,11,null,11,22,null,bbbbb,null,",
+        "80,root.vehicle.d0,null,null,null,11,null,11,22,null,ccccc,null,",
+        "100,root.vehicle.d0,null,99,null,11,null,11,22,null,null,99,",
+        "101,root.vehicle.d0,null,99,null,11,null,11,22,null,ddddd,99,",
+        "102,root.vehicle.d0,null,80,null,11,10.0,11,22,null,fffff,80,",
+        "103,root.vehicle.d0,null,99,null,11,null,11,22,null,null,99,",
+        "104,root.vehicle.d0,null,90,null,11,null,11,22,null,null,90,",
+        "105,root.vehicle.d0,null,99,null,11,11.11,11,22,null,null,99,",
+        "106,root.vehicle.d0,null,99,null,11,null,11,22,null,null,99,",
+        "1000,root.vehicle.d0,null,22222,null,11,1000.11,11,22,null,null,22222,",
+        "946684800000,root.vehicle.d0,null,null,null,11,null,11,22,null,good,null,",
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select s5, s0, s5, \"11\", s2, \"11\", \"22\", s5, s3, s0 from root.vehicle.d1, root.vehicle.d0  group by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,Device,s5,s0,s5,11,s2,11,22,s5,s3,s0,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
+        // non exist column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(5));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(7));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(8));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(9));
+        // non exist column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(10));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(11));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(12));
+
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(19, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }
