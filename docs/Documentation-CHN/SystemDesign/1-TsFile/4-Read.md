@@ -28,7 +28,24 @@
 
 
 [1 过滤条件和查询表达式](#1-%E8%BF%87%E6%BB%A4%E6%9D%A1%E4%BB%B6%E5%92%8C%E6%9F%A5%E8%AF%A2%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>
-&emsp;&emsp;[1.1 Filter](#11-Filter)<br>&emsp;&emsp;[1.2 Expression表达式](#12-Expression%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>&emsp;&emsp;&emsp;&emsp;[1.2.1 SingleSeriesExpression 表达式](#121-SingleSeriesExpression%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>&emsp;&emsp;&emsp;&emsp;[1.2.2 GlobalTimeExpression 表达式](#122-GlobalTimeExpression%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>&emsp;&emsp;&emsp;&emsp;[1.2.3 IExpression 表达式](#123-IExpression%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>&emsp;&emsp;&emsp;&emsp;[1.2.4 可执行表达式](#124-%E5%8F%AF%E6%89%A7%E8%A1%8C%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>&emsp;&emsp;&emsp;&emsp;[1.2.5 IExpression 转化为可执行表达式的优化算法](#125-IExpression%E8%BD%AC%E5%8C%96%E4%B8%BA%E5%8F%AF%E6%89%A7%E8%A1%8C%E8%A1%A8%E8%BE%BE%E5%BC%8F%E7%9A%84%E4%BC%98%E5%8C%96%E7%AE%97%E6%B3%95)<br>[2 TsFile 查询执行过程](#2-TsFile%E6%9F%A5%E8%AF%A2%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B)<br>&emsp;&emsp;[2.1 设计原理](#21-%E8%AE%BE%E8%AE%A1%E5%8E%9F%E7%90%86)<br>&emsp;&emsp;[2.2 三大查询组件](#22-%E4%B8%89%E5%A4%A7%E6%9F%A5%E8%AF%A2%E7%BB%84%E4%BB%B6)<br>&emsp;&emsp;&emsp;&emsp;[2.2.1 FileSeriesReader 组件](#221-FileSeriesReader-%E7%BB%84%E4%BB%B6)<br>&emsp;&emsp;&emsp;&emsp;[2.2.2 FileSeriesReaderByTimestamp 组件](#222-FileSeriesReaderByTimestamp-%E7%BB%84%E4%BB%B6)<br>&emsp;&emsp;&emsp;&emsp;[2.2.3 TimeGeneratorImpl 组件](#223-TimeGeneratorImpl-%E7%BB%84%E4%BB%B6)<br>&emsp;&emsp;[2.3 归并查询](#23-%E5%BD%92%E5%B9%B6%E6%9F%A5%E8%AF%A2)<br>&emsp;&emsp;[2.4 连接查询](#24-%E8%BF%9E%E6%8E%A5%E6%9F%A5%E8%AF%A2)<br>&emsp;&emsp;[2.5 查询入口](#25-%E6%9F%A5%E8%AF%A2%E5%85%A5%E5%8F%A3)<br>&emsp;&emsp;[2.6 相关代码介绍](#26-%E7%9B%B8%E5%85%B3%E4%BB%A3%E7%A0%81%E4%BB%8B%E7%BB%8D)<br>
+&emsp;&emsp;[1.1 Filter](#11-Filter)<br>
+&emsp;&emsp;[1.2 Expression表达式](#12-Expression%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>
+&emsp;&emsp;&emsp;&emsp;[1.2.1 SingleSeriesExpression 表达式](#121-SingleSeriesExpression%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>
+&emsp;&emsp;&emsp;&emsp;[1.2.2 GlobalTimeExpression 表达式](#122-GlobalTimeExpression%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>
+&emsp;&emsp;&emsp;&emsp;[1.2.3 IExpression 表达式](#123-IExpression%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>
+&emsp;&emsp;&emsp;&emsp;[1.2.4 可执行表达式](#124-%E5%8F%AF%E6%89%A7%E8%A1%8C%E8%A1%A8%E8%BE%BE%E5%BC%8F)<br>
+&emsp;&emsp;&emsp;&emsp;[1.2.5 IExpression 转化为可执行表达式的优化算法](#125-IExpression%E8%BD%AC%E5%8C%96%E4%B8%BA%E5%8F%AF%E6%89%A7%E8%A1%8C%E8%A1%A8%E8%BE%BE%E5%BC%8F%E7%9A%84%E4%BC%98%E5%8C%96%E7%AE%97%E6%B3%95)<br>
+[2 TsFile 查询执行过程](#2-TsFile%E6%9F%A5%E8%AF%A2%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B)<br>
+&emsp;&emsp;[2.1 设计原理](#21-%E8%AE%BE%E8%AE%A1%E5%8E%9F%E7%90%86)<br>
+&emsp;&emsp;[2.2 三大查询组件](#22-%E4%B8%89%E5%A4%A7%E6%9F%A5%E8%AF%A2%E7%BB%84%E4%BB%B6)<br>
+&emsp;&emsp;&emsp;&emsp;[2.2.1 FileSeriesReader 组件](#221-FileSeriesReader-%E7%BB%84%E4%BB%B6)<br>
+&emsp;&emsp;&emsp;&emsp;[2.2.2 FileSeriesReaderByTimestamp 组件](#222-FileSeriesReaderByTimestamp-%E7%BB%84%E4%BB%B6)<br>
+&emsp;&emsp;&emsp;&emsp;[2.2.3 TimeGeneratorImpl 组件](#223-TimeGeneratorImpl-%E7%BB%84%E4%BB%B6)<br>
+&emsp;&emsp;[2.3 归并查询](#23-%E5%BD%92%E5%B9%B6%E6%9F%A5%E8%AF%A2)<br>
+&emsp;&emsp;[2.4 连接查询](#24-%E8%BF%9E%E6%8E%A5%E6%9F%A5%E8%AF%A2)<br>
+&emsp;&emsp;[2.5 查询入口](#25-%E6%9F%A5%E8%AF%A2%E5%85%A5%E5%8F%A3)<br>
+&emsp;&emsp;[2.6 相关代码介绍](#26-%E7%9B%B8%E5%85%B3%E4%BB%A3%E7%A0%81%E4%BB%8B%E7%BB%8D)<br>
+
 ## 1 过滤条件和查询表达式
 
 本章节首先介绍 Tsfile 文件读取时需要用到的过滤条件和查询表达式的相关定义；其次介绍如何将用户输入的过滤条件转化为系统可以执行的查询条件。
