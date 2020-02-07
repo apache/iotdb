@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.common;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.*;
@@ -514,5 +515,18 @@ public class BatchData implements Serializable {
       }
     }
     return null;
+  }
+
+  public BatchDataIterator getBatchDataIterator() {
+    return new BatchDataIterator(this);
+  }
+
+  /**
+   * This method is used to reset batch data when more than one group by aggregation functions
+   * visit the same batch data
+   */
+  public void resetBatchData() {
+    this.readCurArrayIndex = 0;
+    this.readCurListIndex = 0;
   }
 }

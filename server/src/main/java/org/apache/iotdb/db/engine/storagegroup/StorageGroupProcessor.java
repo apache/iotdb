@@ -18,28 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
-import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -86,12 +64,24 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 
 /**
@@ -581,8 +571,8 @@ public class StorageGroupProcessor {
    * insert batch to tsfile processor thread-safety that the caller need to guarantee
    *
    * @param batchInsertPlan batch insert plan
-   * @param sequence        whether is sequence
-   * @param results         result array
+   * @param sequence whether is sequence
+   * @param results result array
    * @param timePartitionId time partition id
    */
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
@@ -677,10 +667,10 @@ public class StorageGroupProcessor {
   /**
    * get processor from hashmap, flush oldest processor if necessary
    *
-   * @param timeRangeId            time partition range
+   * @param timeRangeId time partition range
    * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
-   * @param fileList               file list to add new processor
-   * @param sequence               whether is sequence or not
+   * @param fileList file list to add new processor
+   * @param sequence whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRangeId,
       TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap,
@@ -985,7 +975,7 @@ public class StorageGroupProcessor {
 
   // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSource query(String deviceId, String measurementId, QueryContext context,
-      QueryFileManager filePathsManager) {
+      QueryFileManager filePathsManager, Filter timeFilter) {
     insertLock.readLock().lock();
     mergeLock.readLock().lock();
     synchronized (lruForSensorUsedInQuery) {
@@ -996,9 +986,9 @@ public class StorageGroupProcessor {
     }
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(sequenceFileTreeSet,
-          deviceId, measurementId, context);
+          deviceId, measurementId, context, timeFilter);
       List<TsFileResource> unseqResources = getFileResourceListForQuery(unSequenceFileList,
-          deviceId, measurementId, context);
+          deviceId, measurementId, context, timeFilter);
       QueryDataSource dataSource = new QueryDataSource(new Path(deviceId, measurementId),
           seqResources, unseqResources);
       // used files should be added before mergeLock is unlocked, or they may be deleted by
@@ -1051,10 +1041,9 @@ public class StorageGroupProcessor {
    */
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources,
-      String deviceId, String measurementId, QueryContext context) {
+      String deviceId, String measurementId, QueryContext context, Filter timeFilter) {
 
     MeasurementSchema mSchema = schema.getMeasurementSchema(measurementId);
-    TSDataType dataType = mSchema.getType();
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     long timeLowerBound = dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long
@@ -1062,8 +1051,7 @@ public class StorageGroupProcessor {
     context.setQueryTimeLowerBound(timeLowerBound);
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      // TODO: try filtering files if the query contains time filter
-      if (!testResourceDevice(tsFileResource, deviceId)) {
+      if (!isTsFileResourceSatisfied(tsFileResource, deviceId, timeFilter)) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1073,9 +1061,10 @@ public class StorageGroupProcessor {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
           // left: in-memory data, right: meta of disk data
-          Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = tsFileResource
+          Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = tsFileResource
               .getUnsealedFileProcessor()
-              .query(deviceId, measurementId, dataType, mSchema.getProps(), context);
+              .query(deviceId, measurementId, mSchema.getType(), mSchema.getEncodingType(),
+                  mSchema.getProps(), context);
 
           tsfileResourcesForQuery.add(new TsFileResource(tsFileResource.getFile(),
               tsFileResource.getStartTimeMap(), tsFileResource.getEndTimeMap(), pair.left,
@@ -1091,13 +1080,20 @@ public class StorageGroupProcessor {
   /**
    * @return true if the device is contained in the TsFile and it lives beyond TTL
    */
-  private boolean testResourceDevice(TsFileResource tsFileResource, String deviceId) {
+  private boolean isTsFileResourceSatisfied(TsFileResource tsFileResource, String deviceId,
+      Filter timeFilter) {
     if (!tsFileResource.containsDevice(deviceId)) {
       return false;
     }
     if (dataTTL != Long.MAX_VALUE) {
       Long deviceEndTime = tsFileResource.getEndTimeMap().get(deviceId);
       return deviceEndTime == null || checkTTL(deviceEndTime);
+    }
+
+    if (timeFilter != null) {
+      long startTime = tsFileResource.getStartTimeMap().get(deviceId);
+      long endTime = tsFileResource.getEndTimeMap().getOrDefault(deviceId, Long.MAX_VALUE);
+      return timeFilter.satisfyStartEndTime(startTime, endTime);
     }
     return true;
   }
@@ -1107,9 +1103,9 @@ public class StorageGroupProcessor {
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param deviceId      the deviceId of the timeseries to be deleted.
+   * @param deviceId the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param timestamp     the delete range is (0, timestamp].
+   * @param timestamp the delete range is (0, timestamp].
    */
   public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
     // TODO: how to avoid partial deletion?
@@ -1449,16 +1445,13 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * Load a new tsfile to storage group processor. The mechanism of the sync module will make sure
-   * that there has no file which is overlapping with the new file.
+   * Load a new tsfile to storage group processor. Tne file may have overlap with other files.
    * <p>
-   * Firstly, determine the loading type of the file, whether it needs to be loaded in sequence list
    * or unsequence list.
    * <p>
    * Secondly, execute the loading process by the type.
    * <p>
    * Finally, update the latestTimeForEachDevice and latestFlushedTimeForEachDevice.
-   *
    * @param newTsFileResource tsfile resource
    * @UsedBy sync module.
    */
@@ -1483,7 +1476,8 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * Load a new tsfile to storage group processor. Tne file may have overlap with other files.
+   * Load a new tsfile to storage group processor. Tne file may have overlap with other files. <p>
+   * that there has no file which is overlapping with the new file.
    * <p>
    * Firstly, determine the loading type of the file, whether it needs to be loaded in sequence list
    * or unsequence list.
@@ -1663,7 +1657,7 @@ public class StorageGroupProcessor {
   /**
    * Execute the loading process by the type.
    *
-   * @param type           load type
+   * @param type load type
    * @param tsFileResource tsfile resource to be loaded
    * @UsedBy sync module, load external tsfile module.
    */

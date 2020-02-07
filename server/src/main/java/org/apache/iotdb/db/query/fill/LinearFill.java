@@ -19,20 +19,23 @@
 
 package org.apache.iotdb.db.query.fill;
 
-import java.io.IOException;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import java.io.IOException;
 
 public class LinearFill extends IFill {
 
   private long beforeRange;
   private long afterRange;
+  private BatchData batchData;
 
   public LinearFill(long beforeRange, long afterRange) {
     this.beforeRange = beforeRange;
@@ -47,6 +50,7 @@ public class LinearFill extends IFill {
     super(dataType, queryTime);
     this.beforeRange = beforeRange;
     this.afterRange = afterRange;
+    batchData = new BatchData();
   }
 
   public long getBeforeRange() {
@@ -66,22 +70,33 @@ public class LinearFill extends IFill {
   }
 
   @Override
-  public IFill copy(Path path) {
+  public IFill copy() {
     return new LinearFill(dataType, queryTime, beforeRange, afterRange);
   }
 
   @Override
-  public void constructReaders(Path path, QueryContext context)
-      throws IOException, StorageEngineException {
-    super.constructReaders(path, context, beforeRange);
+  Filter constructFilter() {
+    if (beforeRange == -1) {
+      beforeRange = Long.MAX_VALUE;
+    }
+    if (afterRange == -1) {
+      afterRange = Long.MAX_VALUE;
+    }
+    // [queryTIme - beforeRange, queryTime + afterRange]
+    return FilterFactory.and(TimeFilter.gtEq(queryTime - beforeRange),
+        TimeFilter.ltEq(queryTime + afterRange));
   }
 
   @Override
   public IPointReader getFillResult() throws IOException, UnSupportedFillTypeException {
     TimeValuePair beforePair = null;
     TimeValuePair afterPair = null;
-    while (allDataReader.hasNext()) {
-      afterPair = allDataReader.next();
+    while (batchData.hasCurrent() || allDataReader.hasNextBatch()) {
+      if (!batchData.hasCurrent() && allDataReader.hasNextBatch()) {
+        batchData = allDataReader.nextBatch();
+      }
+      afterPair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
+      batchData.next();
       if (afterPair.getTimestamp() <= queryTime) {
         beforePair = afterPair;
       } else {

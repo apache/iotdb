@@ -25,9 +25,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
@@ -113,7 +113,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     this(file, loadMetadata);
     this.cacheDeviceMetadata = cacheDeviceMetadata;
     if (cacheDeviceMetadata) {
-      deviceMetadataMap = new HashMap<>();
+      deviceMetadataMap = new ConcurrentHashMap<>();
     }
   }
 

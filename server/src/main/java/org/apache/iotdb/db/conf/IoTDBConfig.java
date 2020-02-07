@@ -459,6 +459,11 @@ public class IoTDBConfig {
   private int memtableNumInEachStorageGroup = 10;
 
   /**
+   * the default fill interval in LinearFill and PreviousFill, 10min
+   */
+  private int defaultFillInterval = 600000;
+
+  /**
    * default TTL for storage groups that are not set TTL by statements, in ms
    * Notice: if this property is changed, previous created storage group which are not set TTL will
    * also be affected.
@@ -468,7 +473,6 @@ public class IoTDBConfig {
    * Time range for partitioning data inside each storage group, the unit is second
    */
   private long partitionInterval = 604800;
-
 
   //just for test
   //wait for 60 second by default.
@@ -484,6 +488,14 @@ public class IoTDBConfig {
 
   public void setMemtableNumInEachStorageGroup(int memtableNumInEachStorageGroup) {
     this.memtableNumInEachStorageGroup = memtableNumInEachStorageGroup;
+  }
+
+  public int getDefaultFillInterval() {
+    return defaultFillInterval;
+  }
+
+  public void setDefaultFillInterval(int defaultFillInterval) {
+    this.defaultFillInterval = defaultFillInterval;
   }
 
   public long getPartitionInterval() {

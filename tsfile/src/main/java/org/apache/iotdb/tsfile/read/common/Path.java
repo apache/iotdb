@@ -185,7 +185,7 @@ public class Path implements Serializable {
   }
 
   public boolean equals(String obj) {
-    return obj != null && this.fullPath.equals(obj);
+    return this.fullPath.equals(obj);
   }
 
   @Override

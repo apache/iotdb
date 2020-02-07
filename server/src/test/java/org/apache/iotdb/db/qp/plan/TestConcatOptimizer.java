@@ -20,21 +20,24 @@ package org.apache.iotdb.db.qp.plan;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
 import org.antlr.v4.runtime.RecognitionException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.QueryProcessor;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
-import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -43,76 +46,43 @@ import org.junit.Test;
  */
 public class TestConcatOptimizer {
 
-  private QueryProcessor processor;
+  private Planner processor;
 
   @Before
-  public void before() {
-    MemIntQpExecutor memProcessor = new MemIntQpExecutor();
-    Map<String, List<String>> fakeAllPaths = new HashMap<String, List<String>>() {
-      {
-        put("root.laptop.d1.s1", new ArrayList<String>() {
-          {
-            add("root.laptop.d1.s1");
-          }
-        });
-        put("root.laptop.d1.s2", new ArrayList<String>() {
-          {
-            add("root.laptop.d1.s2");
-          }
-        });
+  public void before() throws MetadataException, PathException {
+    processor = new Planner();
+    MManager.getInstance().init();
+    MManager.getInstance().setStorageGroupToMTree("root.laptop");
+    MManager.getInstance().addPathToMTree("root.laptop.d1.s1", TSDataType.INT64, TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED, null);
+    MManager.getInstance().addPathToMTree("root.laptop.d1.s2", TSDataType.INT64, TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED, null);
+    MManager.getInstance().addPathToMTree("root.laptop.d2.s1", TSDataType.INT64, TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED, null);
+    MManager.getInstance().addPathToMTree("root.laptop.d2.s2", TSDataType.INT64, TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED, null);
+    MManager.getInstance().addPathToMTree("root.laptop.d3.s1", TSDataType.INT64, TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED, null);
+    MManager.getInstance().addPathToMTree("root.laptop.d3.s2", TSDataType.INT64, TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED, null);
 
-        put("root.laptop.d2.s1", new ArrayList<String>() {
-          {
-            add("root.laptop.d2.s1");
-          }
-        });
-        put("root.laptop.d2.s2", new ArrayList<String>() {
-          {
-            add("root.laptop.d2.s2");
-          }
-        });
-        put("root.laptop.d3.s1", new ArrayList<String>() {
-          {
-            add("root.laptop.d3.s1");
-          }
-        });
-        put("root.laptop.d3.s2", new ArrayList<String>() {
-          {
-            add("root.laptop.d3.s2");
-          }
-        });
+  }
 
-        put("root.laptop.*.s1", new ArrayList<String>() {
-          {
-            add("root.laptop.d1.s1");
-            add("root.laptop.d2.s1");
-            add("root.laptop.d3.s1");
-          }
-        });
-        put("root.laptop.*.s2", new ArrayList<String>() {
-          {
-            add("root.laptop.d1.s2");
-            add("root.laptop.d2.s2");
-            add("root.laptop.d3.s2");
-          }
-        });
-      }
-    };
-    memProcessor.setFakeAllPaths(fakeAllPaths);
-    processor = new QueryProcessor(memProcessor);
+  @After
+  public void after() throws IOException {
+    MManager.getInstance().clear();
+    EnvironmentUtils.cleanAllDir();
   }
 
   @Test
-  public void testConcat1()
-      throws QueryProcessException, RecognitionException, MetadataException {
+  public void testConcat1() throws QueryProcessException, RecognitionException {
     String inputSQL = "select s1 from root.laptop.d1";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
     assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).toString());
   }
 
   @Test
-  public void testConcat2()
-      throws QueryProcessException, RecognitionException, MetadataException {
+  public void testConcat2() throws QueryProcessException, RecognitionException {
     String inputSQL = "select s1 from root.laptop.*";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
     assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).toString());
@@ -121,8 +91,7 @@ public class TestConcatOptimizer {
   }
 
   @Test
-  public void testConcat3()
-      throws QueryProcessException, RecognitionException, MetadataException {
+  public void testConcat3() throws QueryProcessException, RecognitionException{
     String inputSQL = "select s1 from root.laptop.d1 where s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
     SingleSeriesExpression seriesExpression = new SingleSeriesExpression(

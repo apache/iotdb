@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.File;
-import java.io.IOException;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -31,15 +27,15 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
+import org.apache.iotdb.db.query.reader.chunk.ChunkDataIterator;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -56,6 +52,11 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+
+import static org.junit.Assert.assertEquals;
 
 public class UnseqTsFileRecoverTest {
 
@@ -170,15 +171,15 @@ public class UnseqTsFileRecoverTest {
       Chunk chunk = chunkLoader.getChunk(chunkMetaData);
       ChunkReader chunkReader = new ChunkReader(chunk, null);
       unSeqMergeReader
-          .addReaderWithPriority(new DiskChunkReader(chunkReader), priorityValue);
+          .addReader(new ChunkDataIterator(chunkReader), priorityValue);
       priorityValue++;
     }
 
     for (int i = 0; i < 10; i++) {
-      TimeValuePair timeValuePair = unSeqMergeReader.current();
+      TimeValuePair timeValuePair = unSeqMergeReader.currentTimeValuePair();
       assertEquals(i, timeValuePair.getTimestamp());
       assertEquals(11, (long) timeValuePair.getValue().getValue());
-      unSeqMergeReader.next();
+      unSeqMergeReader.nextTimeValuePair();
     }
     unSeqMergeReader.close();
     fileReader.close();

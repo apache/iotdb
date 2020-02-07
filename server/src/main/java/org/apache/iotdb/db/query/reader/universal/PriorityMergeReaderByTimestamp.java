@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.reader.universal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 
 /**
  * This class implements {@link IReaderByTimestamp} for data sources with different priorities.
@@ -48,28 +48,5 @@ public class PriorityMergeReaderByTimestamp implements IReaderByTimestamp {
       }
     }
     return value;
-  }
-
-  /**
-   * This is an empty method.
-   * <p>
-   * Two reasons why this is left as an empty method:
-   * <p>
-   * 1) Because of the <code>getValueInTimestamp</code> in this class, the traditional
-   * implementation of hasNext will lead to unregulated results here.
-   * <p>
-   * 2) <code>hasNext</code> of <code>PriorityMergeReaderByTimestamp</code> is not used.
-   * <p>
-   * In contrast, <code>hasNext</code> of <code>DiskChunkReaderByTimestamp</code> is used in
-   * <code>getValueInTimestamp</code> of <code>UnSealedTsFileReaderByTimestamp</code> because disk
-   * chunks are chronologically ordered in an unsealed TsFile.
-   * <p>
-   * <code>hasNext</code> of <code>UnSealedTsFileReaderByTimestamp</code> and
-   * <code>FileSeriesReaderByTimestampAdapter</code> are used in <code>getValueInTimestamp</code>
-   * of <code>SeqResourceReaderByTimestamp</code>, because they can be chronologically ordered too.
-   */
-  @Override
-  public boolean hasNext() throws IOException {
-    throw new IOException("hasNext in PriorityMergeReaderByTimestamp is an empty method.");
   }
 }
