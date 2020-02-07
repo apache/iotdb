@@ -16,41 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.query.reader;
-
-import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+package org.apache.iotdb.db.query.reader.series;
 
 import java.io.IOException;
 
-public class MemChunkLoader implements IChunkLoader {
+public interface IReaderByTimestamp {
 
-  private final ReadOnlyMemChunk chunk;
-
-  public MemChunkLoader(ReadOnlyMemChunk chunk) {
-    this.chunk = chunk;
-  }
-
-
-  @Override
-  public Chunk getChunk(ChunkMetaData chunkMetaData) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void close() throws IOException {
-    //no resources need to close
-  }
-
-  @Override
-  public void clear() {
-    //no cache need clear
-  }
-
-  public ReadOnlyMemChunk getChunk() {
-    return chunk;
-  }
+  /**
+   * Returns the corresponding value under this timestamp. Returns null if no value under this
+   * timestamp.
+   * <p>
+   * Note that calling this method will change the status of this reader irreversibly just like
+   * <code>next</code>. The difference is that <code>next</code> moves one step forward while
+   * <code>getValueInTimestamp</code> advances towards the given timestamp.
+   * <p>
+   * Attention: DO call this method with monotonically increasing timestamps. There is no guarantee
+   * of correctness with any other way of calling. For example, DO NOT call this method twice with
+   * the same timestamp.
+   */
+  Object getValueInTimestamp(long timestamp) throws IOException;
 }

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.reader.universal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 
 /**
  * This class implements {@link IReaderByTimestamp} for data sources with different priorities.
