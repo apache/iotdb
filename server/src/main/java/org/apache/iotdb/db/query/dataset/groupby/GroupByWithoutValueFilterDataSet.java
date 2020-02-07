@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
@@ -35,14 +30,16 @@ import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.*;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -144,7 +141,6 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   private List<AggregateResult> nextIntervalAggregation(Map.Entry<Path,
       List<Integer>> pathToAggrIndexes) throws IOException, QueryProcessException {
     List<AggregateResult> aggregateResultList = new ArrayList<>();
-    List<BatchData> batchDataList = new ArrayList<>();
     List<Boolean> isCalculatedList = new ArrayList<>();
     List<Integer> indexList = pathToAggrIndexes.getValue();
 
@@ -157,7 +153,6 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       aggregateResultList.add(result);
 
       BatchData lastBatch = cachedBatchDataList.get(index);
-      batchDataList.add(lastBatch);
 
       calcBatchData(result, lastBatch);
       if (isEndCalc(result, lastBatch)) {
@@ -233,7 +228,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
               if (batchData.hasCurrent()) {
                 cachedBatchDataList.set(idx, batchData);
               }
-              if (isEndCalc(result, batchDataList.get(i))) {
+              if (isEndCalc(result, null)) {
                 isCalculatedList.set(i, true);
                 remainingToCalculate--;
                 if (remainingToCalculate == 0) {

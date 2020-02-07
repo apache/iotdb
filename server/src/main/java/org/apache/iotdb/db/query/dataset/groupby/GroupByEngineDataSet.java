@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -74,9 +75,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     }
   }
 
-  /**
-   * this method is only used in the test class to get the next time partition.
-   */
+  @TestOnly
   public Pair<Long, Long> nextTimePartition() {
     hasCachedTimeInterval = false;
     return new Pair<>(curStartTime, curEndTime);
