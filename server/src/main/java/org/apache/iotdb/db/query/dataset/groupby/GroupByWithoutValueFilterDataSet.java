@@ -48,7 +48,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   /**
    * Merges same series to one map. For example: Given: paths: s1, s2, s3, s1 and aggregations:
-   * count, sum, count, sum seriesMap: s1 -> 0, 3; s2 -> 2; s3 -> 3
+   * count, sum, count, sum seriesMap: s1 -> 0, 3; s2 -> 1; s3 -> 2
    */
   private Map<Path, List<Integer>> pathToAggrIndexesMap;
 

@@ -266,7 +266,7 @@ public class AggregationExecutor {
 
   /**
    * Merge same series and convert to series map. For example: Given: paths: s1, s2, s3, s1 and
-   * aggregations: count, sum, count, sum. Then: pathToAggrIndexesMap: s1 -> 0, 3; s2 -> 2; s3 -> 3
+   * aggregations: count, sum, count, sum. Then: pathToAggrIndexesMap: s1 -> 0, 3; s2 -> 1; s3 -> 2
    *
    * @param selectedSeries selected series
    * @return path to aggregation indexes map
