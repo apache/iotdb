@@ -57,35 +57,25 @@ public class QueryRouter implements IQueryRouter {
     List<Path> deduplicatedPaths = queryPlan.getDeduplicatedPaths();
     List<TSDataType> deduplicatedDataTypes = queryPlan.getDeduplicatedDataTypes();
 
-    if (expression != null) {
-      try {
-        IExpression optimizedExpression = ExpressionOptimizer.getInstance()
-            .optimize(expression, deduplicatedPaths);
-        RawDataQueryExecutor rawDataQueryExecutor = new RawDataQueryExecutor(deduplicatedPaths, deduplicatedDataTypes,
-            optimizedExpression);
-        if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-          if (queryPlan.isAlign()) {
-            return rawDataQueryExecutor.executeWithoutValueFilter(context);
-          }
-          else {
-            return rawDataQueryExecutor.executeNonAlign(context);
-          }
-        } else {
-          return rawDataQueryExecutor.executeWithValueFilter(context);
-        }
-
-      } catch (QueryFilterOptimizationException e) {
-        throw new StorageEngineException(e.getMessage());
-      }
-    } else {
-      RawDataQueryExecutor rawDataQueryExecutor = new RawDataQueryExecutor(deduplicatedPaths,
-          deduplicatedDataTypes);
-      if (queryPlan.isAlign()) {
-        return rawDataQueryExecutor.executeWithoutValueFilter(context);
-      } else {
-        return rawDataQueryExecutor.executeNonAlign(context);
-      }
+    IExpression optimizedExpression = null;
+    try {
+      optimizedExpression = expression == null ? null : ExpressionOptimizer.getInstance()
+          .optimize(expression, deduplicatedPaths);
+    } catch (QueryFilterOptimizationException e) {
+      throw new StorageEngineException(e.getMessage());
     }
+    RawDataQueryExecutor rawDataQueryExecutor = new RawDataQueryExecutor(deduplicatedPaths,
+        deduplicatedDataTypes, optimizedExpression);
+    if (!queryPlan.isAlign()) {
+      return rawDataQueryExecutor.executeNonAlign(context);
+    }
+
+    if (optimizedExpression != null
+        && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME) {
+      return rawDataQueryExecutor.executeWithValueFilter(context);
+
+    }
+    return rawDataQueryExecutor.executeWithoutValueFilter(context);
   }
 
   @Override

@@ -91,7 +91,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       "meet error while parsing SQL to physical plan: {}";
   public static Vector<SqlArgument> sqlArgumentsList = new Vector<>();
 
-  protected Planner processor;
+  private Planner processor;
   private IPlanExecutor executor;
 
   // Record the username for every rpc connection (session).
