@@ -18,9 +18,20 @@
  */
 package org.apache.iotdb.session;
 
+import java.nio.ByteBuffer;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -28,13 +39,6 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.thrift.TException;
-
-import java.nio.ByteBuffer;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 public class SessionDataSet {
 
@@ -45,6 +49,13 @@ public class SessionDataSet {
   private TSIService.Iface client;
   private int batchSize = 1024;
   private List<String> columnTypeDeduplicatedList;
+  // duplicated column index -> origin index
+  Map<Integer, Integer> duplicateLocation;
+  // column name -> column location
+  Map<String, Integer> columnMap;
+  // column size
+  int columnSize = 0;
+
 
   private int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
   private TSQueryDataSet tsQueryDataSet;
@@ -60,14 +71,21 @@ public class SessionDataSet {
     this.queryId = queryId;
     this.client = client;
     currentBitmap = new byte[columnNameList.size()];
+    columnSize = columnNameList.size();
 
     // deduplicate columnTypeList according to columnNameList
     this.columnTypeDeduplicatedList = new ArrayList<>();
-    Set<String> columnSet = new HashSet<>(); // for deduplication
+    // duplicated column index -> origin index
+    duplicateLocation = new HashMap<>();
+    // column name -> column location
+    columnMap = new HashMap<>();
     for (int i = 0; i < columnNameList.size(); i++) {
       String name = columnNameList.get(i);
-      if (!columnSet.contains(name)) {
-        columnSet.add(name);
+      if (columnMap.containsKey(name)) {
+        duplicateLocation.put(i, columnMap.get(name));
+      }
+      else{
+        columnMap.put(name, i);
         columnTypeDeduplicatedList.add(columnTypeList.get(i));
       }
     }
@@ -111,56 +129,65 @@ public class SessionDataSet {
   }
 
   private void constructOneRow() {
-    rowRecord = new RowRecord(tsQueryDataSet.time.getLong());
-
-    for (int i = 0; i < tsQueryDataSet.bitmapList.size(); i++) {
-      ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(i);
-      // another new 8 row, should move the bitmap buffer position to next byte
-      if (rowsIndex % 8 == 0) {
-        currentBitmap[i] = bitmapBuffer.get();
-      }
+    List<Field> outFields = new ArrayList<>();
+    int loc = 0;
+    for (int i = 0; i < columnSize; i++) {
       Field field;
-      if (!isNull(i, rowsIndex)) {
-        ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(i);
-        TSDataType dataType = TSDataType.valueOf(columnTypeDeduplicatedList.get(i));
-        field = new Field(dataType);
-        switch (dataType) {
-          case BOOLEAN:
-            boolean booleanValue = BytesUtils.byteToBool(valueBuffer.get());
-            field.setBoolV(booleanValue);
-            break;
-          case INT32:
-            int intValue = valueBuffer.getInt();
-            field.setIntV(intValue);
-            break;
-          case INT64:
-            long longValue = valueBuffer.getLong();
-            field.setLongV(longValue);
-            break;
-          case FLOAT:
-            float floatValue = valueBuffer.getFloat();
-            field.setFloatV(floatValue);
-            break;
-          case DOUBLE:
-            double doubleValue = valueBuffer.getDouble();
-            field.setDoubleV(doubleValue);
-            break;
-          case TEXT:
-            int binarySize = valueBuffer.getInt();
-            byte[] binaryValue = new byte[binarySize];
-            valueBuffer.get(binaryValue);
-            field.setBinaryV(new Binary(binaryValue));
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                    String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+
+      if(duplicateLocation.containsKey(i)){
+        field = Field.copy(outFields.get(duplicateLocation.get(i)));
+      } else {
+        ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(loc);
+        // another new 8 row, should move the bitmap buffer position to next byte
+        if (rowsIndex % 8 == 0) {
+          currentBitmap[loc] = bitmapBuffer.get();
         }
+
+        if(!isNull(loc, rowsIndex)){
+          ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(loc);
+          TSDataType dataType = TSDataType.valueOf(columnTypeDeduplicatedList.get(loc));
+          field = new Field(dataType);
+          switch (dataType) {
+            case BOOLEAN:
+              boolean booleanValue = BytesUtils.byteToBool(valueBuffer.get());
+              field.setBoolV(booleanValue);
+              break;
+            case INT32:
+              int intValue = valueBuffer.getInt();
+              field.setIntV(intValue);
+              break;
+            case INT64:
+              long longValue = valueBuffer.getLong();
+              field.setLongV(longValue);
+              break;
+            case FLOAT:
+              float floatValue = valueBuffer.getFloat();
+              field.setFloatV(floatValue);
+              break;
+            case DOUBLE:
+              double doubleValue = valueBuffer.getDouble();
+              field.setDoubleV(doubleValue);
+              break;
+            case TEXT:
+              int binarySize = valueBuffer.getInt();
+              byte[] binaryValue = new byte[binarySize];
+              valueBuffer.get(binaryValue);
+              field.setBinaryV(new Binary(binaryValue));
+              break;
+            default:
+              throw new UnSupportedDataTypeException(
+                  String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+          }
+        }
+        else {
+          field = new Field(null);
+        }
+        loc++;
       }
-      else {
-        field = new Field(null);
-      }
-      rowRecord.addField(field);
+      outFields.add(field);
     }
+
+    rowRecord = new RowRecord(tsQueryDataSet.time.getLong(), outFields);
     rowsIndex++;
   }
 
