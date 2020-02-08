@@ -878,6 +878,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       else {
         shiftLoc++;
       }
+
       loc++;
     }
 

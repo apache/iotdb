@@ -291,7 +291,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     for (int i = 0; i < paths.size(); i++) {
       try {
         List<String> actualPaths = MManager.getInstance().getPaths(paths.get(i).getFullPath());
-
         for (String actualPath : actualPaths) {
           retPaths.add(new Path(actualPath));
           if (afterConcatAggregations != null && !afterConcatAggregations.isEmpty()) {
