@@ -125,36 +125,6 @@ public class DeviceIterateDataSet extends QueryDataSet {
     this.currentColumnMapRelation = new int[deduplicatedMeasurementColumns.size()];
   }
 
-  /**
-   * build out data types with non exist column and constant column
-   */
-  private void BuildOutDataTypes() {
-    int loc = 0;
-    int totalSize = notExistMeasurements.size() + constMeasurements.size()
-        + dataTypes.size();
-    int notExistMeasurementsLoc = 0;
-    int constMeasurementsLoc = 0;
-    int resLoc = 0;
-    List<TSDataType> outDataTypes = new ArrayList<>();
-    while (loc < totalSize) {
-      // don't forget device column, so loc - 1 is for looking up constant and non exist column
-      if (notExistMeasurementsLoc < notExistMeasurements.size()
-          && loc - 1 == positionOfNotExistMeasurements.get(notExistMeasurementsLoc)) {
-        outDataTypes.add(TSDataType.TEXT);
-        notExistMeasurementsLoc++;
-      } else if (constMeasurementsLoc < constMeasurements.size()
-          && loc - 1 == positionOfConstMeasurements.get(constMeasurementsLoc)) {
-        outDataTypes.add(TSDataType.TEXT);
-        constMeasurementsLoc++;
-      } else {
-        outDataTypes.add(dataTypes.get(resLoc));
-        resLoc++;
-      }
-      loc++;
-    }
-    this.dataTypes = outDataTypes;
-  }
-
   protected boolean hasNextWithoutConstraint() throws IOException {
     if (curDataSetInitialized && currentDataSet.hasNext()) {
       return true;
