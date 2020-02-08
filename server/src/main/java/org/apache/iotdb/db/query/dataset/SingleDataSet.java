@@ -30,8 +30,7 @@ public class SingleDataSet extends QueryDataSet {
   private RowRecord record;
   private int i = 0;
 
-  public SingleDataSet(List<Path> paths,
-      List<TSDataType> dataTypes) {
+  public SingleDataSet(List<Path> paths, List<TSDataType> dataTypes) {
     super(paths, dataTypes);
   }
 

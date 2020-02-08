@@ -21,7 +21,6 @@ package org.apache.iotdb.db.exception.path;
 
 public class MTreePathException extends PathException {
 
-
   private static final long serialVersionUID = 5633901351119088504L;
 
   public MTreePathException(String error, String path) {

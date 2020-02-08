@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.query.timegenerator;
 
-import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
-
-import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithValueFilter;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -34,12 +32,9 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 
-public class EngineNodeConstructor extends AbstractNodeConstructor {
+import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
 
-  public EngineNodeConstructor() {
-    // nothing to initialize
-    // TODO: make this a util class
-  }
+public class EngineNodeConstructor extends AbstractNodeConstructor {
 
   /**
    * Construct expression node.
@@ -56,8 +51,11 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
         Filter filter = ((SingleSeriesExpression) expression).getFilter();
         Path path = ((SingleSeriesExpression) expression).getSeriesPath();
         TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
-        return new EngineLeafNode(new SeriesReaderWithValueFilter(path, dataType, filter, context));
-      } catch (IOException | PathException e) {
+        return new EngineLeafNode(
+            new SeriesRawDataPointReader(path, dataType, context,
+                QueryResourceManager.getInstance().getQueryDataSource(path, context, filter),
+                null, filter));
+      } catch (PathException e) {
         throw new StorageEngineException(e.getMessage());
       }
 

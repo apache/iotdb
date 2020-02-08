@@ -18,21 +18,25 @@
  */
 package org.apache.iotdb.db.query.fill;
 
-import java.io.IOException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+
+import java.io.IOException;
 
 public class PreviousFill extends IFill {
 
   private long beforeRange;
+  private BatchData batchData;
 
   public PreviousFill(TSDataType dataType, long queryTime, long beforeRange) {
     super(dataType, queryTime);
     this.beforeRange = beforeRange;
+    batchData = new BatchData();
   }
 
   public PreviousFill(long beforeRange) {
@@ -40,14 +44,18 @@ public class PreviousFill extends IFill {
   }
 
   @Override
-  public IFill copy(Path path) {
+  public IFill copy() {
     return new PreviousFill(dataType, queryTime, beforeRange);
   }
 
   @Override
-  public void constructReaders(Path path, QueryContext context)
-      throws IOException, StorageEngineException {
-    super.constructReaders(path, context, beforeRange);
+  Filter constructFilter() {
+    if (beforeRange == -1) {
+      beforeRange = Long.MAX_VALUE;
+    }
+    // time in [queryTime - beforeRange, queryTime]
+    return FilterFactory.and(TimeFilter.gtEq(queryTime - beforeRange),
+        TimeFilter.ltEq(queryTime));
   }
 
   public long getBeforeRange() {
@@ -58,8 +66,12 @@ public class PreviousFill extends IFill {
   public IPointReader getFillResult() throws IOException {
     TimeValuePair beforePair = null;
     TimeValuePair cachedPair = null;
-    while (allDataReader.hasNext()) {
-      cachedPair = allDataReader.next();
+    while (batchData.hasCurrent() || allDataReader.hasNextBatch()) {
+      if (!batchData.hasCurrent() && allDataReader.hasNextBatch()) {
+        batchData = allDataReader.nextBatch();
+      }
+      cachedPair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
+      batchData.next();
       if (cachedPair.getTimestamp() <= queryTime) {
         beforePair = cachedPair;
       } else {

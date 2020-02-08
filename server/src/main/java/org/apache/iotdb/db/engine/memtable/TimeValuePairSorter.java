@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.memtable;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 public interface TimeValuePairSorter {
 

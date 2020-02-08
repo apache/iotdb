@@ -20,7 +20,7 @@ package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -84,7 +84,7 @@ public class EngineDataSetWithValueFilter extends QueryDataSet {
           rowRecord.addField(new Field(null));
         } else {
           hasField = true;
-          rowRecord.addField(getField(value, dataTypes.get(i)));
+          rowRecord.addField(value, dataTypes.get(i));
         }
       }
       if (hasField) {

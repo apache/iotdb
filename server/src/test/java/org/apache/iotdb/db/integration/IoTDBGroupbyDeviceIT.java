@@ -74,6 +74,7 @@ public class IoTDBGroupbyDeviceIT {
       "insert into root.vehicle.d0(timestamp,s1) values(2,40000)",
       "insert into root.vehicle.d0(timestamp,s1) values(50,50000)",
       "insert into root.vehicle.d0(timestamp,s1) values(1000,55555)",
+      "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
 
       "insert into root.vehicle.d0(timestamp,s2) values(1000,55555)",
       "insert into root.vehicle.d0(timestamp,s2) values(2,2.22)",
@@ -88,15 +89,13 @@ public class IoTDBGroupbyDeviceIT {
       "insert into root.vehicle.d0(timestamp,s3) values(80,'ccccc')",
       "insert into root.vehicle.d0(timestamp,s3) values(101,'ddddd')",
       "insert into root.vehicle.d0(timestamp,s3) values(102,'fffff')",
-
-      "insert into root.vehicle.d1(timestamp,s0) values(1,999)",
-      "insert into root.vehicle.d1(timestamp,s0) values(1000,888)",
-
-      "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
       "insert into root.vehicle.d0(timestamp,s3) values(2000-01-01T08:00:00+08:00, 'good')",
 
       "insert into root.vehicle.d0(timestamp,s4) values(100, false)",
       "insert into root.vehicle.d0(timestamp,s4) values(100, true)",
+
+      "insert into root.vehicle.d1(timestamp,s0) values(1,999)",
+      "insert into root.vehicle.d1(timestamp,s0) values(1000,888)",
 
       "insert into root.other.d1(timestamp,s0) values(2, 3.14)",};
 
@@ -514,7 +513,7 @@ public class IoTDBGroupbyDeviceIT {
   @Test
   public void fillTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "3,root.vehicle.d0,10000,null,3.33,null,null,",
+        "3,root.vehicle.d0,10000,40208,3.33,null,null,",
         "3,root.vehicle.d1,999,null,null,null,null,",
     };
 

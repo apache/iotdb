@@ -34,7 +34,6 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
@@ -93,12 +92,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
  * Used to convert logical operator to physical plan
  */
 public class PhysicalGenerator {
-
-  private IQueryProcessExecutor executor;
-
-  public PhysicalGenerator(IQueryProcessExecutor executor) {
-    this.executor = executor;
-  }
 
   public PhysicalPlan transformToPhysicalPlan(Operator operator)
       throws QueryProcessException {
@@ -229,7 +222,7 @@ public class PhysicalGenerator {
 
     if (queryOperator.isGroupBy()) {
       queryPlan = new GroupByPlan();
-      ((GroupByPlan) queryPlan).setUnit(queryOperator.getUnit());
+      ((GroupByPlan) queryPlan).setInterval(queryOperator.getUnit());
       ((GroupByPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
       ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
       ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
@@ -263,8 +256,11 @@ public class PhysicalGenerator {
       Map<String, TSDataType> dataTypeConsistencyChecker = new HashMap<>();
       List<Path> paths = new ArrayList<>();
 
+
       // cur loc for path
       int loc = 0;
+
+      boolean isNotExistMeasurement = true;
 
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix
         Path suffixPath = suffixPaths.get(i);
@@ -282,13 +278,14 @@ public class PhysicalGenerator {
 
           Set<String> tmpDeviceSet = new HashSet<>();
           try {
-            List<String> actualPaths = executor
-                .getAllMatchedPaths(fullPath.getFullPath());  // remove stars to get actual paths
+
+            List<String> actualPaths = MManager.getInstance().getPaths(fullPath.getFullPath());  // remove stars to get actual paths
 
             if(actualPaths.isEmpty() && originAggregations.isEmpty()){
               // for actual non exist path
               nonExistMeasurement.add(fullPath.getMeasurement());
             }
+
 
             for (String pathStr : actualPaths) {
               Path path = new Path(pathStr);
@@ -394,7 +391,7 @@ public class PhysicalGenerator {
         queryPlan.setDeviceToFilterMap(concatFilterByDivice(prefixPaths, filterOperator));
       }
     } else {
-      queryPlan.setAlign(queryOperator.isAlign());
+      queryPlan.setAlignByTime(queryOperator.isAlign());
       List<Path> paths = queryOperator.getSelectedPaths();
       queryPlan.setPaths(paths);
 
@@ -402,7 +399,7 @@ public class PhysicalGenerator {
       FilterOperator filterOperator = queryOperator.getFilterOperator();
 
       if (filterOperator != null) {
-        IExpression expression = filterOperator.transformToExpression(executor);
+        IExpression expression = filterOperator.transformToExpression();
         queryPlan.setExpression(expression);
       }
     }
@@ -428,7 +425,7 @@ public class PhysicalGenerator {
       FilterOperator newOperator = operator.copy();
       newOperator = concatFilterPath(noStarDevices.get(i), newOperator);
 
-      deviceToFilterMap.put(noStarDevices.get(i), newOperator.transformToExpression(executor));
+      deviceToFilterMap.put(noStarDevices.get(i), newOperator.transformToExpression());
     }
 
     return deviceToFilterMap;
@@ -482,7 +479,7 @@ public class PhysicalGenerator {
     List<TSDataType> dataTypes = new ArrayList<>(paths.size());
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-      TSDataType seriesType = executor.getSeriesType(path);
+      TSDataType seriesType = MManager.getInstance().getSeriesType(path);
       dataTypes.add(seriesType);
       queryPlan.addTypeMapping(path, seriesType);
     }

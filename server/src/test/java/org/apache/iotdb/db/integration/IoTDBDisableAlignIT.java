@@ -32,6 +32,7 @@ import static org.junit.Assert.fail;
 
 public class IoTDBDisableAlignIT {
   
+
   private static IoTDB daemon;
   private static String[] sqls = new String[]{
 
@@ -101,16 +102,17 @@ public class IoTDBDisableAlignIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
+
     daemon = IoTDB.getInstance();
     daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertData();
-
   }
   
   @AfterClass
   public static void tearDown() throws Exception {
+
     daemon.stop();
     EnvironmentUtils.cleanEnv();
   }

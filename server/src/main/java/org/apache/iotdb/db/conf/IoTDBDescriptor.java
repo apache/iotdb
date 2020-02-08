@@ -309,6 +309,11 @@ public class IoTDBDescriptor {
       conf.setMemtableNumInEachStorageGroup(
           Integer.parseInt(properties.getProperty("memtable_num_in_each_storage_group", String.valueOf(conf.getMemtableNumInEachStorageGroup()))));
 
+      // the num of memtables in each storage group
+      conf.setDefaultFillInterval(
+          Integer.parseInt(properties.getProperty("default_fill_interval", String.valueOf(conf.getDefaultFillInterval()))));
+
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
           .setTSFileStorageFs(properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().name()));

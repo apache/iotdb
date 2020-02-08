@@ -40,10 +40,10 @@ import org.apache.iotdb.db.engine.merge.selector.IMergePathSelector;
 import org.apache.iotdb.db.engine.merge.selector.NaivePathSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -136,8 +136,8 @@ class MergeMultiChunkTask {
     unseqReaders = resource.getUnseqReaders(currMergingPaths);
     currTimeValuePairs = new TimeValuePair[currMergingPaths.size()];
     for (int i = 0; i < currMergingPaths.size(); i++) {
-      if (unseqReaders[i].hasNext()) {
-        currTimeValuePairs[i] = unseqReaders[i].current();
+      if (unseqReaders[i].hasNextTimeValuePair()) {
+        currTimeValuePairs[i] = unseqReaders[i].currentTimeValuePair();
       }
     }
 
@@ -391,8 +391,8 @@ class MergeMultiChunkTask {
         && currTimeValuePairs[pathIdx].getTimestamp() < timeLimit) {
       writeTVPair(currTimeValuePairs[pathIdx], chunkWriter);
       ptWritten++;
-      unseqReader.next();
-      currTimeValuePairs[pathIdx] = unseqReader.hasNext() ? unseqReader.current() : null;
+      unseqReader.nextTimeValuePair();
+      currTimeValuePairs[pathIdx] = unseqReader.hasNextTimeValuePair() ? unseqReader.currentTimeValuePair() : null;
     }
     return ptWritten;
   }
@@ -424,8 +424,8 @@ class MergeMultiChunkTask {
         if (currTimeValuePairs[pathIdx].getTimestamp() == time) {
           overwriteSeqPoint = true;
         }
-        unseqReader.next();
-        currTimeValuePairs[pathIdx] = unseqReader.hasNext() ? unseqReader.current() : null;
+        unseqReader.nextTimeValuePair();
+        currTimeValuePairs[pathIdx] = unseqReader.hasNextTimeValuePair() ? unseqReader.currentTimeValuePair() : null;
         cnt++;
       }
       // unseq point.time > sequence point.time, write seq point
