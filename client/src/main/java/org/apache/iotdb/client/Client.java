@@ -95,12 +95,12 @@ public class Client extends AbstractClient {
               + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
       println("For more information, please check the following hint.");
       hf.printHelp(IOTDB_CLI_PREFIX, options, true);
-      handleException(e);
+      handleException();
       return false;
     } catch (NumberFormatException e) {
       println(
           IOTDB_CLI_PREFIX + "> error format of max print row count, it should be number");
-      handleException(e);
+      handleException();
       return false;
     }
     return true;
@@ -126,17 +126,17 @@ public class Client extends AbstractClient {
           processCmd(execute, connection);
           return;
         } catch (SQLException e) {
-          handleException(e);
+          handleException();
         }
       }
 
       receiveCommands(reader);
     } catch (ArgsErrorException e) {
       println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
-      handleException(e);
+      handleException();
     } catch (Exception e) {
       println(IOTDB_CLI_PREFIX + "> exit client with error " + e.getMessage());
-      handleException(e);
+      handleException();
     }
   }
 
@@ -162,7 +162,7 @@ public class Client extends AbstractClient {
       println(String
           .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host,
               port));
-      handleException(e);
+      handleException();
     }
   }
 
@@ -171,8 +171,7 @@ public class Client extends AbstractClient {
       return true;
     }
     String[] cmds = s.trim().split(";");
-    for (int i = 0; i < cmds.length; i++) {
-      String cmd = cmds[i];
+    for (String cmd : cmds) {
       if (cmd != null && !"".equals(cmd.trim())) {
         OperationResult result = handleInputCmd(cmd, connection);
         switch (result) {
