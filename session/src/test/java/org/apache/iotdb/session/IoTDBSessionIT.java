@@ -61,6 +61,22 @@ public class IoTDBSessionIT {
     EnvironmentUtils.cleanEnv();
   }
 
+  @Test
+  public void testGroupByDevice()
+      throws IoTDBSessionException, SQLException, ClassNotFoundException, TException, IoTDBRPCException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    session.setStorageGroup("root.sg1");
+
+    createTimeseries();
+
+    insertRowBatchTest2("root.sg1.d1");
+
+    queryForGroupBy();
+    queryForGroupBy2();
+  }
+
   // it's will output too much to travis, so ignore it
   public void testTime()
       throws IoTDBSessionException, SQLException, ClassNotFoundException, TException, IoTDBRPCException {
@@ -394,6 +410,43 @@ public class IoTDBSessionIT {
       Assert.assertEquals(resultStr.toString(), standard);
     }
   }
+
+  private void queryForGroupBy()
+      throws  SQLException, TException, IoTDBRPCException {
+    SessionDataSet sessionDataSet = session.executeQueryStatement("select '11', s1, '11' from root.sg1.d1 group by device");
+    sessionDataSet.setBatchSize(1024);
+    int count = 0;
+    while (sessionDataSet.hasNext()) {
+      count++;
+      StringBuilder sb = new StringBuilder();
+      List<Field> fields = sessionDataSet.next().getFields();
+      for (Field f : fields) {
+        sb.append(f.getStringValue()).append(",");
+      }
+      Assert.assertEquals("root.sg1.d1,11,0,11,", sb.toString());
+    }
+    Assert.assertEquals(1000, count);
+    sessionDataSet.closeOperationHandle();
+  }
+
+  private void queryForGroupBy2()
+      throws  SQLException, TException, IoTDBRPCException {
+    SessionDataSet sessionDataSet = session.executeQueryStatement("select '11', s1, '11', s5, s1, s5 from root.sg1.d1 group by device");
+    sessionDataSet.setBatchSize(1024);
+    int count = 0;
+    while (sessionDataSet.hasNext()) {
+      count++;
+      StringBuilder sb = new StringBuilder();
+      List<Field> fields = sessionDataSet.next().getFields();
+      for (Field f : fields) {
+        sb.append(f.getStringValue()).append(",");
+      }
+      Assert.assertEquals("root.sg1.d1,11,0,11,null,0,null,", sb.toString());
+    }
+    Assert.assertEquals(1000, count);
+    sessionDataSet.closeOperationHandle();
+  }
+
 
   private void query2() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
