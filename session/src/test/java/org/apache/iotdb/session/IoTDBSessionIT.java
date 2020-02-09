@@ -553,8 +553,7 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void checkPathTest()
-      throws ClassNotFoundException, SQLException, IoTDBSessionException, TException, IoTDBRPCException {
+  public void checkPathTest() throws IoTDBSessionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -696,7 +695,6 @@ public class IoTDBSessionIT {
         long start = System.currentTimeMillis();
         session.insertBatch(rowBatch);
         long val = System.currentTimeMillis() - start;
-        // System.out.println("!!! " + val);
         countTime += val;
         rowBatch.reset();
       }
@@ -709,7 +707,6 @@ public class IoTDBSessionIT {
       rowBatch.reset();
     }
 
-    System.out.println("???" + countTime + " " + countTime / (count / 1000));
   }
 
   private void queryForBatch() throws ClassNotFoundException, SQLException {
@@ -741,7 +738,6 @@ public class IoTDBSessionIT {
   }
 
   public void queryForBatchCheckOrder() throws ClassNotFoundException, SQLException {
-    System.out.println("here");
     Class.forName(Config.JDBC_DRIVER_NAME);
     String standard =
         "Time\n" + "root.sg1.d1.s1\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n" +
@@ -749,7 +745,6 @@ public class IoTDBSessionIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "192.168.130.18:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      System.out.println("here");
       ResultSet resultSet = statement.executeQuery("select s_0 from root.group_0.d_0 limit 10000");
       final ResultSetMetaData metaData = resultSet.getMetaData();
       final int colCount = metaData.getColumnCount();
@@ -757,19 +752,16 @@ public class IoTDBSessionIT {
       for (int i = 0; i < colCount; i++) {
         resultStr.append(metaData.getColumnLabel(i + 1) + "\n");
       }
-      System.out.println("her2");
 
       int count = 0;
       long beforeTime = 0;
       int errorCount = 0;
       while (resultSet.next()) {
         long curTime = resultSet.getLong(1);
-        System.out.println(curTime);
         if (beforeTime < curTime) {
           beforeTime = curTime;
         } else {
           errorCount++;
-          System.out.println("error");
           if (errorCount > 10) {
             System.exit(-1);
           }
@@ -804,9 +796,6 @@ public class IoTDBSessionIT {
       int count = 0;
       while (resultSet.next()) {
         for (int i = 1; i <= colCount; i++) {
-          if (i == 1) {
-            System.out.println(resultSet.getString("Time"));
-          }
           count++;
         }
       }
