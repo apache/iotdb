@@ -181,7 +181,7 @@ private void fillCache(int seriesIndex) throws InterruptedException {
 	
 	  // 这里加锁的原因与生产者任务那边一样，是为了保证对于blockingQueue满不满的判断是正确同步的
 	  synchronized (seriesReaderList.get(seriesIndex)) {
-	    // 只有当阻塞对列不满的时候，我们才需要判断是不是需要提交生产者任务，这里也保证了生产者任务会被提交，当且仅当阻塞队列不满
+	    // 只有当阻塞队列不满的时候，我们才需要判断是不是需要提交生产者任务，这里也保证了生产者任务会被提交，当且仅当阻塞队列不满
 	    if (blockingQueueArray[seriesIndex].remainingCapacity() > 0) {
 	      ManagedSeriesReader reader = seriesReaderList.get(seriesIndex);、
 	      // 如果该时间序列的reader并没有被查询管理器管理(即生产者任务由于队列满了，自行退出)，并且该reader里还有数据，我们需要再次提交该时间序列的生产者任务
