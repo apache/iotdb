@@ -18,6 +18,28 @@
  */
 package org.apache.iotdb.db.service;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -46,7 +68,12 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.*;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.NewEngineDataSetWithoutValueFilter;
@@ -55,7 +82,34 @@ import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteInsertRowInBatchResp;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSInsertInBatchReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSStatusType;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -67,17 +121,6 @@ import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.time.ZoneId;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 
 /**
  * Thrift RPC implementation at server side.
@@ -738,9 +781,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private void getGroupByDeviceQueryHeaders(QueryPlan plan, List<String> respColumns,
                                             List<String> columnTypes) {
     // set columns in TSExecuteStatementResp. Note this is without deduplication.
-    List<String> measurementColumns = plan.getMeasurements();
     respColumns.add(SQLConstant.GROUPBY_DEVICE_COLUMN_NAME);
-    respColumns.addAll(measurementColumns);
 
     // get column types and do deduplication
     columnTypes.add(TSDataType.TEXT.toString()); // the DEVICE column of GROUP_BY_DEVICE result
@@ -749,16 +790,81 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     List<String> deduplicatedMeasurementColumns = new ArrayList<>();
     Set<String> tmpColumnSet = new HashSet<>();
     Map<String, TSDataType> checker = plan.getDataTypeConsistencyChecker();
-    for (String column : measurementColumns) {
-      TSDataType dataType = checker.get(column);
-      columnTypes.add(dataType.toString());
+    // build column header with constant and non exist column and deduplicate
+    int loc = 0;
+    // size of total column
+    int totalSize = plan.getNotExistMeasurements().size() + plan.getConstMeasurements().size()
+        + plan.getMeasurements().size();
+    // not exist column loc
+    int notExistMeasurementsLoc = 0;
+    // constant column loc
+    int constMeasurementsLoc = 0;
+    // normal column loc
+    int resLoc = 0;
+    // after removing duplicate, we must shift column position
+    int shiftLoc = 0;
+    while (loc < totalSize) {
+      boolean isNonExist = false;
+      boolean isConstant = false;
+      TSDataType type = null;
+      String column = null;
+      // not exist
+      if (notExistMeasurementsLoc < plan.getNotExistMeasurements().size()
+          && loc == plan.getPositionOfNotExistMeasurements().get(notExistMeasurementsLoc)) {
+        // for shifting
+        plan.getPositionOfNotExistMeasurements().set(notExistMeasurementsLoc, loc - shiftLoc);
 
+        type = TSDataType.TEXT;
+        column = plan.getNotExistMeasurements().get(notExistMeasurementsLoc);
+        notExistMeasurementsLoc++;
+        isNonExist = true;
+      }
+      // constant
+      else if (constMeasurementsLoc < plan.getConstMeasurements().size()
+          && loc == plan.getPositionOfConstMeasurements().get(constMeasurementsLoc)) {
+        // for shifting
+        plan.getPositionOfConstMeasurements().set(constMeasurementsLoc, loc - shiftLoc);
+
+        type = TSDataType.TEXT;
+        column = plan.getConstMeasurements().get(constMeasurementsLoc);
+        constMeasurementsLoc++;
+        isConstant = true;
+      }
+      // normal series
+      else {
+        type = checker.get(plan.getMeasurements().get(resLoc));
+        column = plan.getMeasurements().get(resLoc);
+        resLoc++;
+      }
+
+      columnTypes.add(type.toString());
+      respColumns.add(column);
+      // deduplicate part
       if (!tmpColumnSet.contains(column)) {
         // Note that this deduplication strategy is consistent with that of client IoTDBQueryResultSet.
         tmpColumnSet.add(column);
-        deduplicatedMeasurementColumns.add(column);
-        deduplicatedColumnsType.add(dataType);
+        if(!isNonExist && ! isConstant) {
+          // only refer to those normal measurements
+          deduplicatedMeasurementColumns.add(column);
+        }
+        deduplicatedColumnsType.add(type);
       }
+      else if(isConstant){
+        shiftLoc++;
+        constMeasurementsLoc--;
+        plan.getConstMeasurements().remove(constMeasurementsLoc);
+        plan.getPositionOfConstMeasurements().remove(constMeasurementsLoc);
+      }
+      else if(isNonExist){
+        shiftLoc++;
+        notExistMeasurementsLoc--;
+        plan.getNotExistMeasurements().remove(notExistMeasurementsLoc);
+        plan.getPositionOfNotExistMeasurements().remove(notExistMeasurementsLoc);
+      }
+      else {
+        shiftLoc++;
+      }
+      loc++;
     }
 
     // save deduplicated measurementColumn names and types in QueryPlan for the next stage to use.

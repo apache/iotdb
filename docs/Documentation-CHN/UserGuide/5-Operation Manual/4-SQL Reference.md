@@ -143,11 +143,22 @@ Note: The path can be prefix path or timeseries path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
-* 显示设备语句
+* 显示所有设备语句
 
 ```
 SHOW DEVICES
 Eg: IoTDB > SHOW DEVICES
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* 显示特定设备语句
+
+```
+SHOW DEVICES <PrefixPath>
+Eg: IoTDB > SHOW DEVICES root
+Eg: IoTDB > SHOW DEVICES root.ln
+Eg: IoTDB > SHOW DEVICES root.*.wf01
+Note: The path can be prefix path or star path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -323,23 +334,94 @@ Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammati
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
 
+* Group by device语句
+```
+GroupbyDeviceClause : GROUP BY DEVICE
+
+规则:  
+1. 大小写不敏感.  
+正例: select * from root.sg1 group by device  
+正例: select * from root.sg1 GROUP BY DEVICE  
+
+2. GroupbyDeviceClause 只能放在末尾.  
+正例: select * from root.sg1 where time > 10 group by device  
+错例: select * from root.sg1 group by device where time > 10  
+
+3. Select子句中的path只能是单层，或者通配符，不允许有path分隔符"."。
+正例: select s0,s1 from root.sg1.* group by device  
+正例: select s0,s1 from root.sg1.d0, root.sg1.d1 group by device  
+正例: select * from root.sg1.* group by device  
+正例: select * from root group by device  
+正例: select s0,s1,* from root.*.* group by device  
+错例: select d0.s1, d0.s2, d1.s0 from root.sg1 group by device  
+错例: select *.s0, *.s1 from root.* group by device  
+错例: select *.*.* from root group by device
+
+4.相同measurement的各设备的数据类型必须都相同，
+
+正例: select s0 from root.sg1.d0,root.sg1.d1 group by device   
+root.sg1.d0.s0 and root.sg1.d1.s0 are both INT32.  
+
+正例: select count(s0) from root.sg1.d0,root.sg1.d1 group by device   
+count(root.sg1.d0.s0) and count(root.sg1.d1.s0) are both INT64.  
+
+错例: select s0 from root.sg1.d0, root.sg2.d3 group by device  
+root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT. 
+
+5. 结果集的展示规则：对于select中给出的列，不论是否有数据（是否被注册），均会被显示。此外，select子句中还支持常数列（例如，'a', '123'等等）。
+例如, "select s0,s1,s2,'abc',s1,s2 from root.sg.d0, root.sg.d1, root.sg.d2 group by device". 假设只有下述三列有数据：
+- root.sg.d0.s0
+- root.sg.d0.s1
+- root.sg.d1.s0
+
+结果集形如:
+
+| Time | Device   | s0 | s1 |  s2  | 'abc' | s1 |  s2  |
+| ---  | ---      | ---| ---| null | 'abc' | ---| null |
+|  1   |root.sg.d0| 20 | 2.5| null | 'abc' | 2.5| null |
+|  2   |root.sg.d0| 23 | 3.1| null | 'abc' | 3.1| null |
+| ...  | ...      | ...| ...| null | 'abc' | ...| null |
+|  1   |root.sg.d1| 12 |null| null | 'abc' |null| null |
+|  2   |root.sg.d1| 19 |null| null | 'abc' |null| null |
+| ...  | ...      | ...| ...| null | 'abc' | ...| null |
+
+注意注意 设备'root.sg.d1'的's0'的值全为null
+
+6. 在From中重复写设备名字或者设备前缀是没有任何作用的。
+例如, "select s0,s1 from root.sg.d0,root.sg.d0,root.sg.d1 group by device" 等于 "select s0,s1 from root.sg.d0,root.sg.d1 group by device".  
+例如. "select s0,s1 from root.sg.*,root.sg.d0 group by device" 等于 "select s0,s1 from root.sg.* group by device".  
+
+7. 在Select子句中重复写列名是生效的。例如, "select s0,s0,s1 from root.sg.* group by device" 不等于 "select s0,s1 from root.sg.* group by device".
+
+8. 更多正例: 
+   - select * from root.vehicle group by device
+   - select s0,s0,s1 from root.vehicle.* group by device
+   - select s0,s1 from root.vehicle.* limit 10 offset 1 group by device
+   - select * from root.vehicle slimit 10 soffset 2 group by device
+   - select * from root.vehicle where time > 10 group by device
+   - select * from root.vehicle where root.vehicle.d0.s0>0 group by device
+   - select count(*) from root.vehicle group by device
+   - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) group by device
+   - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) group by device
+```
+
 * Disable align语句
 ```
 规则:  
 1. 大小写均可.  
-Correct example: select * from root.sg1 disable align  
-Correct example: select * from root.sg1 DISABLE ALIGN  
+正例: select * from root.sg1 disable align  
+正例: select * from root.sg1 DISABLE ALIGN  
 
 2. Disable Align只能用于查询语句句尾.  
-Correct example: select * from root.sg1 where time > 10 disable align 
-Wrong example: select * from root.sg1 disable align where time > 10 
+正例: select * from root.sg1 where time > 10 disable align 
+错例: select * from root.sg1 disable align where time > 10 
 
 3. Disable Align 不能用于聚合查询、Fill语句、Group by或Group by device语句，但可用于Limit语句。
-Correct example: select * from root.sg1 limit 3 offset 2 disable align
-Correct example: select * from root.sg1 slimit 3 soffset 2 disable align
-Wrong example: select count(s0),count(s1) from root.sg1.d1 disable align
-Wrong example: select * from root.vehicle where root.vehicle.d0.s0>0 disable align
-Wrong example: select * from root.vehicle group by device disable align
+正例: select * from root.sg1 limit 3 offset 2 disable align
+正例: select * from root.sg1 slimit 3 soffset 2 disable align
+错例: select count(s0),count(s1) from root.sg1.d1 disable align
+错例: select * from root.vehicle where root.vehicle.d0.s0>0 disable align
+错例: select * from root.vehicle group by device disable align
 
 4. 结果显示若无数据显示为空白.
 

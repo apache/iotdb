@@ -123,6 +123,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeRoleFromUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeWatermarkEmbeddingContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RootOrIdContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectConstElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetColContext;
@@ -996,6 +997,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterSelectStatement(SelectStatementContext ctx) {
     super.enterSelectStatement(ctx);
+    operatorType = SQLConstant.TOK_QUERY;
+    queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
+    initializedOperator = queryOp;
+  }
+
+  @Override
+  public void enterSelectConstElement(SelectConstElementContext ctx) {
+    super.enterSelectConstElement(ctx);
     operatorType = SQLConstant.TOK_QUERY;
     queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
     initializedOperator = queryOp;

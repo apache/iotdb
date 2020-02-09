@@ -152,10 +152,22 @@ Note: The path can be prefix path or timeseries path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
-* Show Devices Statement
+* Show All Devices Statement
+
 ```
-SHOW DEVICES
-Eg: IoTDB > SHOW DEVICES
+SHOW Devices
+Eg: IoTDB > SHOW Devices
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* Show Specific Devices Statement
+
+```
+SHOW DEVICES <PrefixPath>
+Eg: IoTDB > SHOW DEVICES root
+Eg: IoTDB > SHOW DEVICES root.ln
+Eg: IoTDB > SHOW DEVICES root.*.wf01
+Note: The path can be prefix path or star path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -365,26 +377,24 @@ count(root.sg1.d0.s0) and count(root.sg1.d1.s0) are both INT64.
 Wrong example: select s0 from root.sg1.d0, root.sg2.d3 group by device  
 root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT. 
 
-5. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being null.   
-For example, "select s0,s1,s2 from root.sg.d0, root.sg.d1, root.sg.d2 group by device". Suppose that the actual existing timeseries are as follows:  
+5. The display principle of the result table is that all the columns (no matther whther a column has has existing data) will be shown, with nonexistent cells being null. Besides, the select clause support const column (e.g., 'a', '123' etc..).  
+For example, "select s0,s1,s2,'abc',s1,s2 from root.sg.d0, root.sg.d1, root.sg.d2 group by device". Suppose that the actual existing timeseries are as follows:  
 - root.sg.d0.s0
 - root.sg.d0.s1
 - root.sg.d1.s0
 
-Then the header of the result table will be: [Time, Device, s0, s1].  
-And you could expect a table like:  
+Then you could expect a table like:  
 
-| Time | Device   | s0 | s1 |
-| ---  | ---      | ---| ---|
-|  1   |root.sg.d0| 20 | 2.5|
-|  2   |root.sg.d0| 23 | 3.1|
-| ...  | ...      | ...| ...|
-|  1   |root.sg.d1| 12 |null|
-|  2   |root.sg.d1| 19 |null|
-| ...  | ...      | ...| ...|
+| Time | Device   | s0 | s1 |  s2  | 'abc' | s1 |  s2  |
+| ---  | ---      | ---| ---| null | 'abc' | ---| null |
+|  1   |root.sg.d0| 20 | 2.5| null | 'abc' | 2.5| null |
+|  2   |root.sg.d0| 23 | 3.1| null | 'abc' | 3.1| null |
+| ...  | ...      | ...| ...| null | 'abc' | ...| null |
+|  1   |root.sg.d1| 12 |null| null | 'abc' |null| null |
+|  2   |root.sg.d1| 19 |null| null | 'abc' |null| null |
+| ...  | ...      | ...| ...| null | 'abc' | ...| null |
 
 Note that the cells of measurement 's0' and device 'root.sg.d1' are all null.    
-Also note that the column of 's2' and the rows of 'root.sg.d2' are not existent.  
 
 6. The duplicated devices in the prefix paths are neglected.  
 For example, "select s0,s1 from root.sg.d0,root.sg.d0,root.sg.d1 group by device" is equal to "select s0,s1 from root.sg.d0,root.sg.d1 group by device".  

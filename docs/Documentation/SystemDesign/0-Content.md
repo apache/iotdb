@@ -40,3 +40,7 @@
 * 4-MergeManager
 # Chapter 5: DataQuery
 * 1-DataQuery
+# Chapter 6: Tools
+* 1-Sync
+# Chapter 7: Connector
+* 2-Hive-TsFile
