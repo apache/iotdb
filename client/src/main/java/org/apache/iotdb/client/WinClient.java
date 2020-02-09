@@ -100,12 +100,10 @@ public class WinClient extends AbstractClient {
     } catch (ParseException e) {
       println("Require more params input, please check the following hint.");
       hf.printHelp(IOTDB_CLI_PREFIX, options, true);
-      handleException();
       return false;
     } catch (NumberFormatException e) {
       println(
           IOTDB_CLI_PREFIX + "> error format of max print row count, it should be number");
-      handleException();
       return false;
     }
     return true;
@@ -123,10 +121,8 @@ public class WinClient extends AbstractClient {
       receiveCommands(scanner);
     } catch (ArgsErrorException e) {
       println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
-      handleException();
     } catch (Exception e) {
       println(IOTDB_CLI_PREFIX + "> exit client with error " + e.getMessage());
-      handleException();
     }
   }
 
@@ -151,28 +147,6 @@ public class WinClient extends AbstractClient {
       println(String
           .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host,
               port));
-      handleException();
     }
-  }
-
-  private static boolean processCommand(String s, IoTDBConnection connection) {
-    if (s == null) {
-      return true;
-    }
-    String[] cmds = s.trim().split(";");
-    for (String cmd : cmds) {
-      if (cmd != null && !"".equals(cmd.trim())) {
-        OperationResult result = handleInputCmd(cmd, connection);
-        switch (result) {
-          case STOP_OPER:
-            return false;
-          case CONTINUE_OPER:
-            continue;
-          default:
-            break;
-        }
-      }
-    }
-    return true;
   }
 }

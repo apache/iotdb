@@ -428,7 +428,6 @@ public abstract class AbstractClient {
       setTimeFormat(cmd.split("=")[1]);
     } catch (Exception e) {
       println(String.format("time display format error, %s", e.getMessage()));
-      handleException();
       return;
     }
     println("Time display type has set to " + cmd.split("=")[1].trim());
@@ -445,7 +444,6 @@ public abstract class AbstractClient {
       connection.setTimeZone(cmd.split("=")[1].trim());
     } catch (Exception e) {
       println(String.format("Time zone format error: %s", e.getMessage()));
-      handleException();
       return;
     }
     println("Time zone has set to " + values[1].trim());
@@ -462,7 +460,6 @@ public abstract class AbstractClient {
       setFetchSize(cmd.split("=")[1]);
     } catch (Exception e) {
       println(String.format("Fetch size format error, %s", e.getMessage()));
-      handleException();
       return;
     }
     println("Fetch size has set to " + values[1].trim());
@@ -479,7 +476,6 @@ public abstract class AbstractClient {
       setMaxDisplayNumber(cmd.split("=")[1]);
     } catch (Exception e) {
       println(String.format("Max display number format error, %s", e.getMessage()));
-      handleException();
       return;
     }
     println("Max display number has set to " + values[1].trim());
@@ -490,7 +486,6 @@ public abstract class AbstractClient {
       println("Current time zone: " + connection.getTimeZone());
     } catch (Exception e) {
       println("Cannot get time zone from server side because: " + e.getMessage());
-      handleException();
     }
   }
 
@@ -508,10 +503,8 @@ public abstract class AbstractClient {
     } catch (SQLException e) {
       println(String.format("Failed to import from %s because %s",
           cmd.split(" ")[1], e.getMessage()));
-      handleException();
     } catch (TException e) {
       println("Cannot connect to server");
-      handleException();
     }
   }
 
@@ -533,7 +526,6 @@ public abstract class AbstractClient {
       }
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
-      handleException();
     }
     long costTime = System.currentTimeMillis() - startTime;
     println(String.format("It costs %.3fs", costTime / 1000.0));
@@ -625,10 +617,24 @@ public abstract class AbstractClient {
     SCREEN_PRINTER.println(msg);
   }
 
-  static void handleException() {
-    /*
-     * showException is currently fixed to false because the display of exceptions is not elaborate.
-     * We can make it an option in future versions.
-     */
+  static boolean processCommand(String s, IoTDBConnection connection) {
+    if (s == null) {
+      return true;
+    }
+    String[] cmds = s.trim().split(";");
+    for (String cmd : cmds) {
+      if (cmd != null && !"".equals(cmd.trim())) {
+        OperationResult result = handleInputCmd(cmd, connection);
+        switch (result) {
+          case STOP_OPER:
+            return false;
+          case CONTINUE_OPER:
+            continue;
+          default:
+            break;
+        }
+      }
+    }
+    return true;
   }
 }
