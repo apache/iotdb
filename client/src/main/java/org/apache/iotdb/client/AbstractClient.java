@@ -522,13 +522,14 @@ public abstract class AbstractClient {
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
       if (hasResultSet) {
-        ResultSet resultSet = statement.getResultSet();
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        int columnLength = resultSetMetaData.getColumnCount();
-        List<Integer> maxSizeList = new ArrayList<>(columnLength);
-        List<List<String>> lists = cacheResult(resultSet,maxSizeList, columnLength, resultSetMetaData, zoneId);
-        output(lists, maxSizeList);
-        resultSet.close();
+        try (ResultSet resultSet = statement.getResultSet()) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          int columnLength = resultSetMetaData.getColumnCount();
+          List<Integer> maxSizeList = new ArrayList<>(columnLength);
+          List<List<String>> lists = cacheResult(resultSet, maxSizeList, columnLength,
+              resultSetMetaData, zoneId);
+          output(lists, maxSizeList);
+        }
       }
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
