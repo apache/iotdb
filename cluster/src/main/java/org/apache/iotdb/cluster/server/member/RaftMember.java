@@ -25,10 +25,7 @@ import java.io.DataOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -108,7 +105,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   // when the header of the group is removed from the cluster, the members of the group should no
   // longer accept writes, but they still can be read candidates for weak consistency reads and
   // provide snapshots for the new holders
-  private volatile boolean readOnly = false;
+  volatile boolean readOnly = false;
 
   public RaftMember() {
   }
@@ -145,11 +142,12 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     catchUpService.shutdownNow();
     catchUpService = null;
     heartBeatService = null;
+    logger.info("{} stopped", name);
   }
 
   @Override
   public void sendHeartBeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
-    logger.debug("{} received a heartbeat", name);
+    logger.trace("{} received a heartbeat", name);
     synchronized (term) {
       long thisTerm = term.get();
       long leaderTerm = request.getTerm();
@@ -158,8 +156,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       if (leaderTerm < thisTerm) {
         // the leader is invalid
         response.setTerm(thisTerm);
-        if (logger.isDebugEnabled()) {
-          logger.debug("{} received a heartbeat from a stale leader {}", name, request.getLeader());
+        if (logger.isTraceEnabled()) {
+          logger.trace("{} received a heartbeat from a stale leader {}", name, request.getLeader());
         }
       } else {
         processValidHeartbeatReq(request, response);
@@ -184,8 +182,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           setCharacter(NodeCharacter.FOLLOWER);
         }
         setLastHeartBeatReceivedTime(System.currentTimeMillis());
-        if (logger.isDebugEnabled()) {
-          logger.debug("{} received heartbeat from a valid leader {}", name, request.getLeader());
+        if (logger.isTraceEnabled()) {
+          logger.trace("{} received heartbeat from a valid leader {}", name, request.getLeader());
         }
       }
       resultHandler.onComplete(response);
@@ -445,8 +443,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   public void setLeader(Node leader) {
-    logger.info("{} has become a {}", leader, character);
-    this.leader = leader;
+    if (!Objects.equals(leader, this.leader)) {
+      logger.info("{} has become a follower of {}", getName(), leader);
+      this.leader = leader;
+    }
   }
 
   public Node getThisNode() {
@@ -812,5 +812,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     synchronized (logManager) {
       readOnly = true;
     }
+  }
+
+  public void setAllNodes(List<Node> allNodes) {
+    this.allNodes = allNodes;
   }
 }

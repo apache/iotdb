@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
+import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
@@ -38,6 +39,10 @@ public class SerializeLogTest {
   @Test
   public void testPhysicalPlanLog() throws UnknownLogTypeException {
     PhysicalPlanLog log = new PhysicalPlanLog();
+    log.setPreviousLogIndex(1);
+    log.setPreviousLogTerm(1);
+    log.setCurrLogIndex(2);
+    log.setCurrLogTerm(2);
     InsertPlan plan = new InsertPlan();
     plan.setDeviceId("root.d1");
     plan.setMeasurements(new String[]{"s1,s2,s3"});
@@ -59,6 +64,10 @@ public class SerializeLogTest {
   @Test
   public void testAddNodeLog() throws UnknownLogTypeException {
     AddNodeLog log = new AddNodeLog();
+    log.setPreviousLogIndex(1);
+    log.setPreviousLogTerm(1);
+    log.setCurrLogIndex(2);
+    log.setCurrLogTerm(2);
     log.setNewNode(new Node("apache.iotdb.com", 1234, 1, 4321));
     ByteBuffer byteBuffer = log.serialize();
     Log logPrime = LogParser.getINSTANCE().parse(byteBuffer);
@@ -68,10 +77,27 @@ public class SerializeLogTest {
   @Test
   public void testCloseFileLog() throws UnknownLogTypeException {
     CloseFileLog log = new CloseFileLog("root.sg1", true);
+    log.setPreviousLogIndex(1);
+    log.setPreviousLogTerm(1);
+    log.setCurrLogIndex(2);
+    log.setCurrLogTerm(2);
     ByteBuffer byteBuffer = log.serialize();
     CloseFileLog logPrime = (CloseFileLog) LogParser.getINSTANCE().parse(byteBuffer);
     assertTrue(logPrime.isSeq());
     assertEquals("root.sg1", logPrime.getStorageGroupName());
+    assertEquals(log, logPrime);
+  }
+
+  @Test
+  public void testRemoveNodeLog() throws UnknownLogTypeException {
+    RemoveNodeLog log = new RemoveNodeLog();
+    log.setPreviousLogIndex(1);
+    log.setPreviousLogTerm(1);
+    log.setCurrLogIndex(2);
+    log.setCurrLogTerm(2);
+    log.setRemovedNode(TestUtils.getNode(0));
+    ByteBuffer byteBuffer = log.serialize();
+    RemoveNodeLog logPrime = (RemoveNodeLog) LogParser.getINSTANCE().parse(byteBuffer);
     assertEquals(log, logPrime);
   }
 

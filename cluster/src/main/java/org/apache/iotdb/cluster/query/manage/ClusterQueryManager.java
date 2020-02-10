@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.query.manage;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -93,5 +94,15 @@ public class ClusterQueryManager {
 
   public IReaderByTimestamp getReaderByTimestamp(long readerId) {
     return seriesReaderByTimestampMap.get(readerId);
+  }
+
+  public void endAllQueries() throws StorageEngineException {
+    for (Map<Long, RemoteQueryContext> contextMap : queryContextMap.values()) {
+      for (RemoteQueryContext context : contextMap.values()) {
+        QueryResourceManager.getInstance().endQuery(context.getQueryId());
+      }
+    }
+    seriesReaderByTimestampMap.clear();
+    seriesReaderMap.clear();
   }
 }

@@ -113,6 +113,10 @@ struct PullSnapshotRequest {
   1: required list<int> requiredSlots
   // for data group
   2: optional Node header
+  // set to true if the previous holder has been removed from the cluster.
+  // This will make the previous holder read-only so that different new
+  // replicas can pull the same snapshot.
+  3: required bool requireReadOnly
 }
 
 struct PullSnapshotResp {
@@ -277,6 +281,13 @@ service TSMetaService extends RaftService {
   * return -1(RESPONSE_AGREE) or -3(RESPONSE_REJECT) or -9(RESPONSE_CLUSTER_TOO_SMALL)
   **/
   long removeNode(1: Node node)
+
+   /**
+   * When a node is removed from the cluster, if it is not the meta leader, it cannot receive
+   * the commit command by heartbeat since it has been removed, so the leader should tell it
+   * directly that it is no longer in the cluster.
+   **/
+   void exile()
 
   TNodeStatus queryNodeStatus()
 

@@ -64,6 +64,7 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
@@ -144,6 +145,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     super.stop();
     pullSnapshotService.shutdownNow();
     pullSnapshotService = null;
+    try {
+      queryManager.endAllQueries();
+    } catch (StorageEngineException e) {
+      logger.error("Cannot release queries of {}", name, e);
+    }
   }
 
   /**
@@ -452,29 +458,26 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       }
       return;
     }
+    if (request.isRequireReadOnly()) {
+      setReadOnly();
+    }
 
     // this synchronized should work with the one in AppendEntry when a log is going to commit,
     // which may prevent the newly arrived data from being invisible to the new header.
     synchronized (logManager) {
       List<Integer> requiredSlots = request.getRequiredSlots();
       logger.debug("{}: {} slots are requested", name, requiredSlots.size());
-      // check whether this slot is held by the node
-      List<Integer> heldSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
 
       PullSnapshotResp resp = new PullSnapshotResp();
       Map<Integer, ByteBuffer> resultMap = new HashMap<>();
       logManager.takeSnapshot();
 
+      PartitionedSnapshot allSnapshot = (PartitionedSnapshot) logManager.getSnapshot();
       for (int requiredSlot : requiredSlots) {
-        if (!heldSlots.contains(requiredSlot)) {
-          // logger.debug("{}: the required slot {} is not held by the node", name,
-          // requiredSlot);
-          continue;
-        }
-
-        PartitionedSnapshot allSnapshot = (PartitionedSnapshot) logManager.getSnapshot();
         Snapshot snapshot = allSnapshot.getSnapshot(requiredSlot);
-        resultMap.put(requiredSlot, snapshot.serialize());
+        if (snapshot != null) {
+          resultMap.put(requiredSlot, snapshot.serialize());
+        }
       }
       resp.setSnapshotBytes(resultMap);
       logger.debug("{}: Sending {} snapshots to the requester", name, resultMap.size());
@@ -507,15 +510,23 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       for (Entry<Node, List<Integer>> entry : holderSlotsMap.entrySet()) {
         Node node = entry.getKey();
         List<Integer> nodeSlots = entry.getValue();
-        pullFileSnapshot(metaGroupMember.getPartitionTable().getHeaderGroup(node),  nodeSlots);
+        pullFileSnapshot(metaGroupMember.getPartitionTable().getHeaderGroup(node),  nodeSlots, false);
       }
     }
   }
 
-  private void pullFileSnapshot(PartitionGroup prevHolders,  List<Integer> nodeSlots) {
+  /**
+   *
+   * @param prevHolders
+   * @param nodeSlots
+   * @param requireReadOnly set to true if the previous holder has been removed from the cluster.
+   *                       This will make the previous holder read-only so that different new
+   *                        replicas can pull the same snapshot.
+   */
+  private void pullFileSnapshot(PartitionGroup prevHolders,  List<Integer> nodeSlots, boolean requireReadOnly) {
     Future<Map<Integer, FileSnapshot>> snapshotFuture =
         pullSnapshotService.submit(new PullSnapshotTask(prevHolders.getHeader(), nodeSlots, this,
-            prevHolders, FileSnapshot::new));
+            prevHolders, FileSnapshot::new, requireReadOnly));
     for (int slot : nodeSlots) {
       logManager.setSnapshot(new RemoteFileSnapshot(snapshotFuture), slot);
     }
@@ -759,7 +770,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   /**
-   * When a node is removed and it is not the header of the group, the member should take over
+   * When a node is removed and IT IS NOT THE HEADER of the group, the member should take over
    * some slots from the removed group, and add a new node to the group the removed node was in the
    * group.
    */
@@ -768,13 +779,24 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       if (allNodes.contains(removedNode)) {
         // update the group if the deleted node was in it
         allNodes = metaGroupMember.getPartitionTable().getHeaderGroup(getHeader());
+        if (removedNode.equals(leader)) {
+          synchronized (term) {
+            setCharacter(NodeCharacter.ELECTOR);
+            setLastHeartBeatReceivedTime(Long.MIN_VALUE);
+          }
+        }
       }
       List<Integer> slotsToPull = removalResult.getNewSlotOwners().get(getHeader());
       if (slotsToPull != null) {
         // pull the slots that should be taken over
-        pullFileSnapshot(removalResult.getRemovedGroup(), slotsToPull);
+        pullFileSnapshot(removalResult.getRemovedGroup(), slotsToPull, true);
       }
     }
+  }
+
+  public DataMemberReport genReport() {
+    return new DataMemberReport(character, leader, term.get(),
+        logManager.getLastLogTerm(), logManager.getLastLogIndex(), getHeader(), readOnly);
   }
 }
 

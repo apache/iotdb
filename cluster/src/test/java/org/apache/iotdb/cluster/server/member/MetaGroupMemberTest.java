@@ -37,9 +37,8 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.ClientPool;
@@ -48,6 +47,7 @@ import org.apache.iotdb.cluster.common.TestMetaClient;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
@@ -103,6 +103,7 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.apache.thrift.transport.TTransportException;
@@ -117,14 +118,16 @@ public class MetaGroupMemberTest extends MemberTest {
   private DataClusterServer dataClusterServer;
   private AtomicLong dummyResponse;
   private boolean mockDataClusterServer;
+  private Node exiledNode;
 
   @Before
   public void setUp() throws Exception {
     super.setUp();
     dummyResponse = new AtomicLong(Response.RESPONSE_AGREE);
     metaGroupMember = getMetaGroupMember(TestUtils.getNode(0));
+    metaGroupMember.setAllNodes(allNodes);
     // a faked data member to respond requests
-    dataGroupMember = getDataGroupMember(partitionGroup, TestUtils.getNode(0));
+    dataGroupMember = getDataGroupMember(allNodes, TestUtils.getNode(0));
     dataGroupMember.setCharacter(LEADER);
     dataClusterServer = new DataClusterServer(TestUtils.getNode(0),
         new DataGroupMember.Factory(null, metaGroupMember, null, null) {
@@ -139,11 +142,12 @@ public class MetaGroupMemberTest extends MemberTest {
     metaGroupMember.getThisNode().setNodeIdentifier(0);
     mockDataClusterServer = false;
     QueryCoordinator.getINSTANCE().setMetaGroupMember(metaGroupMember);
+    exiledNode = null;
   }
 
   private DataGroupMember getDataGroupMember(PartitionGroup group, Node node) {
     return new DataGroupMember(null, group, node, new TestPartitionedLogManager(null,
-        partitionTable, partitionGroup.getHeader(), TestSnapshot::new),
+        partitionTable, group.getHeader(), TestSnapshot::new),
         metaGroupMember, null) {
       @Override
       public boolean syncLeader() {
@@ -250,8 +254,6 @@ public class MetaGroupMemberTest extends MemberTest {
           @Override
           public AsyncClient getClient(Node node) throws IOException {
             return new TestDataClient(node) {
-              private AtomicLong readerId = new AtomicLong();
-              private Map<Long, IReaderByTimestamp> readerByTimestampMap = new HashMap<>();
 
               @Override
               public void querySingleSeries(SingleSeriesQueryRequest request,
@@ -377,6 +379,19 @@ public class MetaGroupMemberTest extends MemberTest {
             @Override
             public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
               new Thread(() -> resultHandler.onComplete(new TNodeStatus())).start();
+            }
+
+            @Override
+            public void exile(AsyncMethodCallback<Void> resultHandler) {
+             new Thread(() -> exiledNode = node).start();
+            }
+
+            @Override
+            public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
+              new Thread(() -> {
+                metaGroupMember.applyRemoveNode(node);
+                resultHandler.onComplete(Response.RESPONSE_AGREE);
+              }).start();
             }
           };
         } catch (IOException e) {
@@ -919,5 +934,152 @@ public class MetaGroupMemberTest extends MemberTest {
     }
     MetaGroupMember metaGroupMember = getMetaGroupMember(new Node());
     assertEquals(100, metaGroupMember.getThisNode().getNodeIdentifier());
+  }
+
+  @Test
+  public void testRemoveNodeWithoutPartitionTable() throws InterruptedException {
+    metaGroupMember.setPartitionTable(null);
+    AtomicBoolean passed = new AtomicBoolean(false);
+    synchronized (metaGroupMember) {
+      metaGroupMember.removeNode(TestUtils.getNode(0), new AsyncMethodCallback<Long>() {
+        @Override
+        public void onComplete(Long aLong) {
+          synchronized (metaGroupMember) {
+            metaGroupMember.notifyAll();
+          }
+        }
+
+        @Override
+        public void onError(Exception e) {
+          new Thread(() -> {
+            synchronized (metaGroupMember) {
+              passed.set(e instanceof PartitionTableUnavailableException);
+              metaGroupMember.notifyAll();
+            }
+          }).start();
+        }
+      });
+      metaGroupMember.wait(500);
+    }
+
+    assertTrue(passed.get());
+  }
+
+  @Test
+  public void testRemoveThisNode() throws InterruptedException {
+    AtomicReference<Long> resultRef = new AtomicReference<>();
+    metaGroupMember.setLeader(metaGroupMember.getThisNode());
+    metaGroupMember.setCharacter(LEADER);
+    doRemoveNode(resultRef, metaGroupMember.getThisNode());
+    assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
+    assertFalse(metaGroupMember.getAllNodes().contains(metaGroupMember.getThisNode()));
+  }
+
+  @Test
+  public void testRemoveLeader() throws InterruptedException {
+    AtomicReference<Long> resultRef = new AtomicReference<>();
+    metaGroupMember.setLeader(TestUtils.getNode(40));
+    metaGroupMember.setCharacter(FOLLOWER);
+    doRemoveNode(resultRef, TestUtils.getNode(40));
+    assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
+    assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(40)));
+    assertEquals(ELECTOR, metaGroupMember.getCharacter());
+    assertEquals(Long.MIN_VALUE, metaGroupMember.getLastHeartBeatReceivedTime());
+  }
+
+  @Test
+  public void testRemoveNonLeader() throws InterruptedException {
+    AtomicReference<Long> resultRef = new AtomicReference<>();
+    metaGroupMember.setLeader(TestUtils.getNode(40));
+    metaGroupMember.setCharacter(FOLLOWER);
+    doRemoveNode(resultRef, TestUtils.getNode(20));
+    assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
+    assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(20)));
+    assertEquals(0, metaGroupMember.getLastHeartBeatReceivedTime());
+  }
+
+  @Test
+  public void testRemoveNodeAsLeader() throws InterruptedException {
+    AtomicReference<Long> resultRef = new AtomicReference<>();
+    metaGroupMember.setLeader(metaGroupMember.getThisNode());
+    metaGroupMember.setCharacter(LEADER);
+    doRemoveNode(resultRef, TestUtils.getNode(20));
+    assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
+    assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(20)));
+    assertEquals(TestUtils.getNode(20), exiledNode);
+  }
+
+  @Test
+  public void testRemoveNonExistNode() throws InterruptedException {
+    AtomicBoolean passed = new AtomicBoolean(false);
+    metaGroupMember.setCharacter(LEADER);
+    metaGroupMember.setLeader(metaGroupMember.getThisNode());
+    synchronized (metaGroupMember) {
+      metaGroupMember.removeNode(TestUtils.getNode(120), new AsyncMethodCallback<Long>() {
+        @Override
+        public void onComplete(Long aLong) {
+          synchronized (metaGroupMember) {
+            passed.set(aLong.equals(Response.RESPONSE_REJECT));
+            metaGroupMember.notifyAll();
+          }
+        }
+
+        @Override
+        public void onError(Exception e) {
+          new Thread(() -> {
+            synchronized (metaGroupMember) {
+              e.printStackTrace();
+              metaGroupMember.notifyAll();
+            }
+          }).start();
+        }
+      });
+      metaGroupMember.wait(500);
+    }
+
+    assertTrue(passed.get());
+  }
+
+  @Test
+  public void testRemoveTooManyNodes() throws InterruptedException {
+    for (int i = 0; i < 7; i ++) {
+      AtomicReference<Long> resultRef = new AtomicReference<>();
+      metaGroupMember.setCharacter(LEADER);
+      doRemoveNode(resultRef, TestUtils.getNode(90 - i * 10));
+      assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
+      assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(90 - i * 10)));
+    }
+    AtomicReference<Long> resultRef = new AtomicReference<>();
+    metaGroupMember.setCharacter(LEADER);
+    doRemoveNode(resultRef, TestUtils.getNode(20));
+    assertEquals(Response.RESPONSE_CLUSTER_TOO_SMALL, (long) resultRef.get());
+    assertTrue(metaGroupMember.getAllNodes().contains(TestUtils.getNode(20)));
+  }
+
+  private void doRemoveNode(AtomicReference<Long> resultRef, Node nodeToRemove) throws InterruptedException {
+    synchronized (resultRef) {
+      metaGroupMember.removeNode(nodeToRemove, new AsyncMethodCallback<Long>() {
+        @Override
+        public void onComplete(Long o) {
+          new Thread(() -> {
+            synchronized (resultRef) {
+              resultRef.set(o);
+              resultRef.notifyAll();
+            }
+          }).start();
+        }
+
+        @Override
+        public void onError(Exception e) {
+          new Thread(() -> {
+            synchronized (resultRef) {
+              e.printStackTrace();
+              resultRef.notifyAll();
+            }
+          }).start();
+        }
+      });
+      resultRef.wait(500);
+    }
   }
 }

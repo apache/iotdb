@@ -178,6 +178,7 @@ public class HeartBeatThread implements Runnable {
 
       requestVote(localMember.getAllNodes(), electionRequest, nextTerm, quorum,
           electionTerminated, electionValid);
+      electionRequest.unsetLastLogIndex();
 
       try {
         logger.info("{}: Wait for {}ms until election time out", memberName,

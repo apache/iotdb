@@ -119,9 +119,6 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
 
   @Override
   public void onError(Exception exception) {
-    synchronized (groupReceivedCounter) {
-      logger.error("Cannot send the add node request to node {}", receiverNode, exception);
-      groupReceivedCounter.notifyAll();
-    }
+    logger.error("Cannot send the add node request to node {}", receiverNode, exception);
   }
 }

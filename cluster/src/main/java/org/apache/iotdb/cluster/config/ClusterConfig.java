@@ -40,7 +40,7 @@ public class ClusterConfig {
   private int maxConcurrentClientNum = 1024;
 
   @ClusterConsistent
-  private int replicationNum = 2;
+  private int replicationNum = 3;
 
   private int connectionTimeoutInMS = 20 * 1000;
 

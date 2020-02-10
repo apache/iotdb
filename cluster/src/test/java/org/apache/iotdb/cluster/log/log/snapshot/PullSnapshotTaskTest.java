@@ -90,8 +90,9 @@ public class PullSnapshotTaskTest {
       slots.add(i);
       previousHolders.add(TestUtils.getNode(i + 1));
     }
-    PullSnapshotTask<TestSnapshot> task = new PullSnapshotTask<>(TestUtils.getNode(0), slots,
-        newMember, previousHolders, TestSnapshot::new);
+
+    PullSnapshotTask<TestSnapshot> task = new PullSnapshotTask<TestSnapshot>(TestUtils.getNode(0), slots,
+        newMember, previousHolders, TestSnapshot::new, false);
     Map<Integer, TestSnapshot> result = task.call();
     assertEquals(snapshotMap, result);
   }

@@ -35,6 +35,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,6 +43,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -80,6 +84,8 @@ import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.server.ClientServer;
 import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.NodeReport;
+import org.apache.iotdb.cluster.server.NodeReport.MetaMemberReport;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
@@ -128,6 +134,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   private static final Logger logger = LoggerFactory.getLogger(MetaGroupMember.class);
   private static final int DEFAULT_JOIN_RETRY = 10;
+  private static final int REPORT_INTERVAL_SEC = 10;
   public static final int REPLICATION_NUM =
       ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
 
@@ -146,6 +153,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private MetaSingleSnapshotLogManager logManager;
 
   private ClientPool dataClientPool;
+
+  private ScheduledExecutorService reportThread;
 
   @TestOnly
   public MetaGroupMember() {
@@ -220,6 +229,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     queryProcessor = new ClusterQueryParser(this);
     QueryCoordinator.getINSTANCE().setMetaGroupMember(this);
     StorageEngine.getInstance().setFileFlushPolicy(new ClusterFileFlushPolicy(this));
+    reportThread = Executors.newSingleThreadScheduledExecutor(n -> new Thread(n,
+        "NodeReportThread"));
+    reportThread.scheduleAtFixedRate(()-> logger.info(genNodeReport().toString()),
+        REPORT_INTERVAL_SEC, REPORT_INTERVAL_SEC, TimeUnit.SECONDS);
   }
 
   @Override
@@ -229,6 +242,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       getDataClusterServer().stop();
       clientServer.stop();
     }
+    reportThread.shutdownNow();
   }
 
   private void initSubServers() throws TTransportException, StartupException {
@@ -634,9 +648,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     // each node will form a group
     int nodeSize = nodeRing.size();
     int[] groupRemainings = new int[nodeSize];
-    for (int i = 0; i < groupRemainings.length; i++) {
-      groupRemainings[i] = groupQuorum;
-    }
+    Arrays.fill(groupRemainings, groupQuorum);
 
     AtomicLong newLeaderTerm = new AtomicLong(term.get());
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
@@ -1296,12 +1308,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
         switch (result) {
           case OK:
-            logger.info("Join request of {} is accepted", target);
+            logger.info("Removal request of {} is accepted", target);
             logManager.commitLog(removeNodeLog.getCurrLogIndex());
             resultHandler.onComplete(Response.RESPONSE_AGREE);
             return true;
           case TIME_OUT:
-            logger.info("Join request of {} timed out", target);
+            logger.info("Removal request of {} timed out", target);
             resultHandler.onError(new RequestTimeOutException(removeNodeLog));
             logManager.removeLastLog();
             return true;
@@ -1326,11 +1338,57 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         NodeRemovalResult result = partitionTable.removeNode(oldNode);
 
         getDataClusterServer().removeNode(oldNode, result);
-        if (oldNode == leader) {
+        if (oldNode.equals(leader)) {
           setCharacter(NodeCharacter.ELECTOR);
           lastHeartBeatReceivedTime = Long.MIN_VALUE;
         }
+
+        if (oldNode.equals(thisNode)) {
+          // use super.stop() so that the data server will not be closed
+          super.stop();
+          if (clientServer != null) {
+            clientServer.stop();
+          }
+        } else if (thisNode.equals(leader)) {
+          // as the old node is removed, it cannot know this by heartbeat, so it should be
+          // directly kicked out of the cluster
+          MetaClient metaClient = (MetaClient) connectNode(oldNode);
+          try {
+            metaClient.exile(new GenericHandler<>(oldNode, null));
+          } catch (TException e) {
+            logger.warn("Cannot inform {} its removal", oldNode, e);
+          }
+        }
+
+        savePartitionTable();
       }
+    }
+  }
+
+  @Override
+  public void exile(AsyncMethodCallback<Void> resultHandler) {
+    applyRemoveNode(thisNode);
+    resultHandler.onComplete(null);
+  }
+
+  private MetaMemberReport genMemberReport() {
+    return new MetaMemberReport(character, leader, term.get(),
+        logManager.getLastLogTerm(), logManager.getLastLogIndex(), readOnly);
+  }
+
+  private NodeReport genNodeReport() {
+    NodeReport report = new NodeReport(thisNode);
+    report.setMetaMemberReport(genMemberReport());
+    report.setDataMemberReportList(dataClusterServer.genMemberReports());
+    return report;
+  }
+
+  @Override
+  public void setAllNodes(List<Node> allNodes) {
+    super.setAllNodes(allNodes);
+    idNodeMap = new HashMap<>();
+    for (Node node : allNodes) {
+      idNodeMap.put(node.getNodeIdentifier(), node);
     }
   }
 }

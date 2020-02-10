@@ -115,7 +115,7 @@ public class ClusterMain {
             logger.error("Cluster size is too small, cannot remove any node");
             return;
           } else if (response == Response.RESPONSE_REJECT) {
-            logger.error("Node {} is not found in the cluster, please check", node);
+            logger.error("Node {} is not found in the cluster, please check", nodeToRemove);
             return;
           }
         }

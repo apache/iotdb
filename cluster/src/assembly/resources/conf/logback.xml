@@ -159,4 +159,5 @@
     <logger level="debug" name="org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter">
         <appender-ref ref="FILE_DYNAMIC_PARAMETER"/>
     </logger>
+    <logger level="info" name="org.apache.iotdb.cluster.server.heartbeat"/>
 </configuration>

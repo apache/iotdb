@@ -317,7 +317,6 @@ public class SlotPartitionTable implements PartitionTable {
     return previousNodeMap.get(node);
   }
 
-
   @Override
   public List<Integer> getNodeSlots(Node header) {
     return nodeSlotMap.get(header);
@@ -377,7 +376,6 @@ public class SlotPartitionTable implements PartitionTable {
         } else {
           PartitionGroup newGrp = getHeaderGroup(header);
           localGroups.set(i, newGrp);
-          result.setNewGroup(newGrp);
         }
       }
       if (removedGroupIdx != -1) {
@@ -391,6 +389,7 @@ public class SlotPartitionTable implements PartitionTable {
         Node header = nodeRing.get(headerNodeIdx);
         PartitionGroup newGrp = getHeaderGroup(header);
         localGroups.add(newGrp);
+        result.setNewGroup(newGrp);
       }
 
       // the slots movement is only done logically, the new node itself will pull data from the

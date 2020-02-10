@@ -41,6 +41,7 @@ public abstract class Log {
 
   public enum Types {
     // TODO-Cluster#348 support more logs
+    // DO CHECK LogParser when you add a new type of log
     ADD_NODE, PHYSICAL_PLAN, CLOSE_FILE, REMOVE_NODE
   }
 

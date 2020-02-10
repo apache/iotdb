@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.server;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -46,6 +47,7 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncProcessor;
+import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -69,6 +71,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   public void addDataGroupMember(DataGroupMember dataGroupMember) {
+    DataGroupMember removedMember = headerGroupMap.remove(dataGroupMember.getHeader());
+    if (removedMember != null) {
+      removedMember.stop();
+    }
     headerGroupMap.put(dataGroupMember.getHeader(), dataGroupMember);
   }
 
@@ -319,6 +325,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
             List<Integer> nodeSlots = partitionTable.getNodeSlots(dataGroupMember.getHeader());
             dataGroupMember.removeLocalData(nodeSlots);
             entryIterator.remove();
+            dataGroupMember.stop();
           } else {
             // the group should be updated and pull new slots from the removed node
             dataGroupMember.removeNode(node, removalResult);
@@ -327,6 +334,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       }
       PartitionGroup newGroup = removalResult.getNewGroup();
       if (newGroup != null) {
+        logger.info("{} should join a new group {}", thisNode, newGroup);
         try {
           createNewMember(newGroup.getHeader());
         } catch (NotInSameGroupException | TTransportException e) {
@@ -360,5 +368,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     dataGroupMember.pullNodeAdditionSnapshots(slots, thisNode);
   }
 
-
+  public List<DataMemberReport> genMemberReports() {
+    List<DataMemberReport> dataMemberReports = new ArrayList<>();
+    for (DataGroupMember value : headerGroupMap.values()) {
+      dataMemberReports.add(value.genReport());
+    }
+    return dataMemberReports;
+  }
 }

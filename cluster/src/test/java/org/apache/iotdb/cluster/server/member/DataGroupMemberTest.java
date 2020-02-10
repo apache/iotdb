@@ -33,8 +33,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
@@ -49,6 +51,7 @@ import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -100,11 +103,12 @@ import org.junit.Test;
 public class DataGroupMemberTest extends MemberTest {
 
   private DataGroupMember dataGroupMember;
-  private DataGroupMember.Factory factory;
   private Map<Integer, FileSnapshot> snapshotMap;
   private Map<Integer, RemoteFileSnapshot> receivedSnapshots;
+  private Set<Integer> pulledSnapshots;
   private boolean hasInitialSnapshots;
   private boolean enableSyncLeader;
+  private int numSlotsToPull = 2;
 
   @Before
   public void setUp() throws Exception {
@@ -117,9 +121,10 @@ public class DataGroupMemberTest extends MemberTest {
       snapshotMap.put(i, fileSnapshot);
     }
     receivedSnapshots = new HashMap<>();
+    pulledSnapshots = new HashSet<>();
   }
 
-  private PartitionedSnapshotLogManager getLogManager() {
+  private PartitionedSnapshotLogManager getLogManager(PartitionGroup partitionGroup) {
     return new TestPartitionedLogManager(new DataLogApplier(testMetaMember),
         testMetaMember.getPartitionTable(), partitionGroup.getHeader(), FileSnapshot::new) {
       @Override
@@ -141,8 +146,8 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   private DataGroupMember getDataGroupMember(Node node) throws IOException {
-    return new DataGroupMember(new TCompactProtocol.Factory(), new PartitionGroup(partitionGroup)
-        , node, getLogManager(),
+    PartitionGroup nodes = partitionTable.getHeaderGroup(node);
+    return new DataGroupMember(new TCompactProtocol.Factory(), nodes, node, getLogManager(nodes),
         testMetaMember, new TAsyncClientManager()) {
       @Override
       public AsyncClient connectNode(Node node) {
@@ -173,7 +178,16 @@ public class DataGroupMemberTest extends MemberTest {
                 PullSnapshotResp resp = new PullSnapshotResp();
                 Map<Integer, ByteBuffer> snapshotBufferMap = new HashMap<>();
                 for (Integer requiredSlot : request.getRequiredSlots()) {
-                  snapshotBufferMap.put(requiredSlot, snapshotMap.get(requiredSlot).serialize());
+                  FileSnapshot fileSnapshot = snapshotMap.get(requiredSlot);
+                  if (fileSnapshot != null) {
+                    snapshotBufferMap.put(requiredSlot, fileSnapshot.serialize());
+                  }
+                  synchronized (dataGroupMember) {
+                    pulledSnapshots.add(requiredSlot);
+                    if (pulledSnapshots.size() == numSlotsToPull) {
+                      dataGroupMember.notifyAll();
+                    }
+                  }
                 }
                 resp.setSnapshotBytes(snapshotBufferMap);
                 resultHandler.onComplete(resp);
@@ -266,8 +280,8 @@ public class DataGroupMemberTest extends MemberTest {
     assertTrue(lastMember.addNode(newNodeInGroup));
 
     Node newNodeAfterGroup = TestUtils.getNode(101);
-    assertFalse(firstMember.addNode(newNodeInGroup));
-    assertFalse(midMember.addNode(newNodeInGroup));
+    assertFalse(firstMember.addNode(newNodeAfterGroup));
+    assertFalse(midMember.addNode(newNodeAfterGroup));
   }
 
   @Test
@@ -827,4 +841,60 @@ public class DataGroupMemberTest extends MemberTest {
     return resource;
   }
 
+  @Test
+  public void testRemoveLeader() throws TTransportException, InterruptedException {
+    Node nodeToRemove = TestUtils.getNode(10);
+    NodeRemovalResult nodeRemovalResult = testMetaMember.getPartitionTable()
+        .removeNode(nodeToRemove);
+    dataGroupMember.setLeader(nodeToRemove);
+    dataGroupMember.start();
+    numSlotsToPull = 2;
+
+    try {
+      synchronized (dataGroupMember) {
+        dataGroupMember.removeNode(nodeToRemove, nodeRemovalResult);
+        dataGroupMember.wait(500);
+      }
+
+      assertEquals(NodeCharacter.ELECTOR, dataGroupMember.getCharacter());
+      assertEquals(Long.MIN_VALUE, dataGroupMember.getLastHeartBeatReceivedTime());
+      assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));
+      assertFalse(dataGroupMember.getAllNodes().contains(nodeToRemove));
+      List<Integer> newSlots = nodeRemovalResult.getNewSlotOwners().get(TestUtils.getNode(0));
+      assertEquals(newSlots.size(), pulledSnapshots.size());
+      for (Integer newSlot : newSlots) {
+        assertTrue(pulledSnapshots.contains(newSlot));
+      }
+    } finally {
+      dataGroupMember.stop();
+    }
+  }
+
+  @Test
+  public void testRemoveNonLeader() throws TTransportException, InterruptedException {
+    Node nodeToRemove = TestUtils.getNode(10);
+    NodeRemovalResult nodeRemovalResult = testMetaMember.getPartitionTable()
+        .removeNode(nodeToRemove);
+    dataGroupMember.setLeader(TestUtils.getNode(20));
+    dataGroupMember.start();
+    numSlotsToPull = 2;
+
+    try {
+      synchronized (dataGroupMember) {
+        dataGroupMember.removeNode(nodeToRemove, nodeRemovalResult);
+        dataGroupMember.wait(500);
+      }
+
+      assertEquals(0, dataGroupMember.getLastHeartBeatReceivedTime());
+      assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));
+      assertFalse(dataGroupMember.getAllNodes().contains(nodeToRemove));
+      List<Integer> newSlots = nodeRemovalResult.getNewSlotOwners().get(TestUtils.getNode(0));
+      assertEquals(newSlots.size(), pulledSnapshots.size());
+      for (Integer newSlot : newSlots) {
+        assertTrue(pulledSnapshots.contains(newSlot));
+      }
+    } finally {
+      dataGroupMember.stop();
+    }
+  }
 }

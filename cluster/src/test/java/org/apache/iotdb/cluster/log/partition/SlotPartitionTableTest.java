@@ -19,12 +19,16 @@
 package org.apache.iotdb.cluster.log.partition;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.IntStream;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -40,9 +44,13 @@ public class SlotPartitionTableTest {
   @Before
   public void setUp() {
     List<Node> nodes = new ArrayList<>();
-    IntStream.range(0, 20).forEach(i -> nodes.add(new Node("localhost", 30000 + i, i, 40000 + i)));
+    IntStream.range(0, 20).forEach(i -> nodes.add(getNode(i)));
     ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(replica_size);
     table = new SlotPartitionTable(nodes, nodes.get(3));
+  }
+
+  private Node getNode(int i) {
+    return new Node("localhost", 30000 + i, i, 40000 + i);
   }
 
   @After
@@ -104,5 +112,27 @@ public class SlotPartitionTableTest {
 
   @Test
   public void getAllNodeSlots() {
+  }
+
+  @Test
+  public void testRemoveNode() {
+    List<Integer> nodeSlots = table.getNodeSlots(getNode(0));
+    NodeRemovalResult nodeRemovalResult = table.removeNode(getNode(0));
+    assertFalse(table.getAllNodes().contains(getNode(0)));
+    PartitionGroup removedGroup = nodeRemovalResult.getRemovedGroup();
+    for (int i = 0; i < 5; i++) {
+      assertTrue(removedGroup.contains(getNode(i)));
+    }
+    PartitionGroup newGroup = nodeRemovalResult.getNewGroup();
+    for (int i : new int[] {18, 19, 1, 2, 3}) {
+      assertTrue(newGroup.contains(getNode(i)));
+    }
+    // the slots owned by the removed one should be redistributed to other nodes
+    Map<Node, List<Integer>> newSlotOwners = nodeRemovalResult.getNewSlotOwners();
+    for (List<Integer> slots : newSlotOwners.values()) {
+      assertTrue(nodeSlots.containsAll(slots));
+      nodeSlots.removeAll(slots);
+    }
+    assertTrue(nodeSlots.isEmpty());
   }
 }

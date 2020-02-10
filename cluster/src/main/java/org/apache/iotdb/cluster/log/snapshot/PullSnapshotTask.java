@@ -53,17 +53,23 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
   private List<Node> previousHolders;
   // the header of the old members
   private Node header;
+  // set to true if the previous holder has been removed from the cluster.
+  // This will make the previous holder read-only so that different new
+  // replicas can pull the same snapshot.
+  private boolean requireReadOnly;
 
   private PullSnapshotRequest request;
   private SnapshotFactory snapshotFactory;
 
   public PullSnapshotTask(Node header, List<Integer> slots,
-      DataGroupMember newMember, List<Node> previousHolders, SnapshotFactory snapshotFactory) {
+      DataGroupMember newMember, List<Node> previousHolders, SnapshotFactory snapshotFactory,
+      boolean requireReadOnly) {
     this.header = header;
     this.slots = slots;
     this.newMember = newMember;
     this.previousHolders = previousHolders;
     this.snapshotFactory = snapshotFactory;
+    this.requireReadOnly = requireReadOnly;
   }
 
   private boolean pullSnapshot(AtomicReference<Map<Integer, T>> snapshotRef, int nodeIndex)
@@ -103,6 +109,7 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
     request = new PullSnapshotRequest();
     request.setHeader(header);
     request.setRequiredSlots(slots);
+    request.setRequireReadOnly(requireReadOnly);
     AtomicReference<Map<Integer, T>> snapshotRef = new AtomicReference<>();
     boolean finished = false;
     int nodeIndex = -1;
