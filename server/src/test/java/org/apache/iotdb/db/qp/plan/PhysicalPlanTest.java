@@ -23,6 +23,11 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -506,6 +511,41 @@ public class PhysicalPlanTest {
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(-20.0));
+    assertEquals(expect.toString(), queryFilter.toString());
+  }
+
+  @Test
+  public void testInOperator() throws QueryProcessException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 in (25, 30, 40)";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    Set<Float> values = new HashSet<>();
+    values.add(25.0f);
+    values.add(30.0f);
+    values.add(40.0f);
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+        ValueFilter.in(values, false));
+    assertEquals(expect.toString(), queryFilter.toString());
+  }
+
+  @Test
+  public void testNotInOperator() throws QueryProcessException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 not in (25, 30, 40)";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    Set<Float> values = new HashSet<>();
+    values.add(25.0f);
+    values.add(30.0f);
+    values.add(40.0f);
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+        ValueFilter.in(values, true));
+    assertEquals(expect.toString(), queryFilter.toString());
+
+    sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE not(s1 not in (25, 30, 40))";
+    plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    queryFilter = ((QueryPlan) plan).getExpression();
+    expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+        ValueFilter.in(values, false));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 

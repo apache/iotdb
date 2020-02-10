@@ -64,8 +64,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     initGroupBy(context, groupByPlan);
   }
 
-  public GroupByWithValueFilterDataSet(long queryId, GroupByPlan groupByPlan)
-      throws PathException, IOException, StorageEngineException {
+  public GroupByWithValueFilterDataSet(long queryId, GroupByPlan groupByPlan) {
     super(new QueryContext(queryId), groupByPlan);
     this.allDataReaderList = new ArrayList<>();
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();

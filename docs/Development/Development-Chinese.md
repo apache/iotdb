@@ -49,6 +49,27 @@ IoTDB 官网：https://iotdb.apache.org/
 
 * 开发功能前可以发邮件声明一下自己想做的任务。（Hi，I'm working on issue IOTDB-XXX，My plan is ...）
 
+## 贡献文档
+
+IoTDB 所有官网上的内容都在项目根目录的 docs 中：
+
+* docs/Documentation/SystemDesign: 系统设计文档-英文版
+* docs/Documentation-CHN/SystemDesign: 系统设计文档-中文版
+* docs/Documentation/UserGuide: 用户手册-英文版
+* docs/Documentation-CHN/UserGuide: 用户手册-中文版
+* docs/Community: 社区
+* docs/Development: 开发指南
+
+官网上的版本和分支的对应关系：
+
+* In progress -> master
+* major_version.x -> rel/major_version （如 0.9.x -> rel/0.9）
+
+注意事项：
+
+* Markdown 中的图片可上传至 https://github.com/thulab/iotdb/issues/543 获得 url
+* 新增加的系统设计文档和用户手册的 md 文件，需要在英文版对应的根目录下的 0-Content.md 中增加索引
+
 ## 贡献代码
 
 可以到 jira 上领取现有 issue 或者自己创建 issue 再领取，评论说我要做这个 issue 就可以。
