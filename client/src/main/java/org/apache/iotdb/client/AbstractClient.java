@@ -60,6 +60,7 @@ public abstract class AbstractClient {
 
   private static final String EXECUTE_ARGS = "e";
   private static final String EXECUTE_NAME = "execute";
+  private static final String NULL = "null";
 
   static final String ISO8601_ARGS = "disableISO8601";
   static final List<String> AGGREGRATE_TIME_LIST = new ArrayList<>();
@@ -531,12 +532,22 @@ public abstract class AbstractClient {
     println(String.format("It costs %.3fs", costTime / 1000.0));
   }
 
+  /**
+   * cache all results
+   * @param resultSet jdbc resultSet
+   * @param maxSizeList the longest result of every column
+   * @param columnCount the number of column
+   * @param resultSetMetaData jdbc resultSetMetaData
+   * @param zoneId your time zone
+   * @return List<List<String>> result
+   * @throws SQLException throw exception
+   */
   private static List<List<String>> cacheResult(ResultSet resultSet, List<Integer> maxSizeList,
-      int columnLength, ResultSetMetaData resultSetMetaData, ZoneId zoneId)
+      int columnCount, ResultSetMetaData resultSetMetaData, ZoneId zoneId)
       throws SQLException {
     boolean printTimestamp = !((IoTDBQueryResultSet) resultSet).isIgnoreTimeStamp();
-    List<List<String>> lists = new ArrayList<>(columnLength);
-    for(int i = 1; i <= columnLength; i++) {
+    List<List<String>> lists = new ArrayList<>(columnCount);
+    for(int i = 1; i <= columnCount; i++) {
       List<String> list = new ArrayList<>(30);
       list.add(resultSetMetaData.getColumnLabel(i));
       lists.add(list);
@@ -547,12 +558,15 @@ public abstract class AbstractClient {
       if(j > maxPrintRowCount) {
         break;
       }
-      for(int i = 1; i <= columnLength; i++) {
+      for(int i = 1; i <= columnCount; i++) {
         String tmp;
         if(printTimestamp && i == 1) {
           tmp = formatDatetime(resultSet.getLong(TIMESTAMP_STR), zoneId);
         } else {
           tmp = resultSet.getString(i);
+        }
+        if(tmp == null) {
+          tmp = NULL;
         }
         lists.get(i-1).add(tmp);
         if(maxSizeList.get(i-1) < tmp.length()) {
