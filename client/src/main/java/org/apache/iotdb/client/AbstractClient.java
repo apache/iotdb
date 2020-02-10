@@ -84,7 +84,7 @@ public abstract class AbstractClient {
   private static final String IMPORT_CMD = "import";
   private static final String DEFAULT_TIME_FORMAT = "default";
   private static String timeFormat = DEFAULT_TIME_FORMAT;
-  static int maxPrintRowCount = 100000;
+  static int maxPrintRowCount = 1000;
   private static int fetchSize = 10000;
   static int maxTimeLength = ISO_DATETIME_LEN;
   static int maxValueLength = 15;
