@@ -1226,9 +1226,11 @@ public class StorageGroupProcessor {
 
   private boolean updateLatestFlushTimeCallback(TsFileProcessor processor) {
     // update the largest timestamp in the last flushing memtable
-    for (Entry<String, Long> entry : latestTimeForEachDevice.get(processor.getTimeRangeId())
+    for (Entry<String, Long> entry : latestTimeForEachDevice
+        .getOrDefault(processor.getTimeRangeId(), Collections.emptyMap())
         .entrySet()) {
-      latestFlushedTimeForEachDevice.get(processor.getTimeRangeId())
+      latestFlushedTimeForEachDevice
+          .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
           .put(entry.getKey(), entry.getValue());
     }
     return true;
