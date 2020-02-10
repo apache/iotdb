@@ -67,7 +67,7 @@ public class UpgradeUtils {
       if (tsFileSequenceReader.readVersionNumber().equals(TSFileConfig.OLD_VERSION)) {
         return true;
       }
-    } catch (IOException e) {
+    } catch (Exception e) {
       logger.error("meet error when judge whether file needs to be upgraded, the file's path:{}",
           tsFileResource.getFile().getAbsolutePath(), e);
     } finally {
