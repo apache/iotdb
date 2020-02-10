@@ -548,7 +548,7 @@ public abstract class AbstractClient {
     boolean printTimestamp = !((IoTDBQueryResultSet) resultSet).isIgnoreTimeStamp();
     List<List<String>> lists = new ArrayList<>(columnCount);
     for(int i = 1; i <= columnCount; i++) {
-      List<String> list = new ArrayList<>(30);
+      List<String> list = new ArrayList<>(1001);
       list.add(resultSetMetaData.getColumnLabel(i));
       lists.add(list);
       maxSizeList.add(resultSetMetaData.getColumnLabel(i).length());
