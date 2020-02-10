@@ -39,7 +39,6 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -56,6 +55,16 @@ public class DeviceIterateDataSet extends QueryDataSet {
 
   private List<String> deduplicatedMeasurementColumns;
   private Map<String, Set<String>> measurementColumnsGroupByDevice;
+  private Map<String, IExpression> deviceToFilterMap;
+
+  //the measurements that do not exist in any device,
+  // data type is considered as Boolean. The value is considered as null
+  private List<String> notExistMeasurements; // for group by device sql
+  private List<Integer> positionOfNotExistMeasurements; // for group by device sql
+  //the measurements that have quotation mark. e.g., "abc",
+  // '11', the data type is considered as String and the value  is considered is the same with measurement name
+  private List<String> constMeasurements; // for group by device sql
+  private List<Integer> positionOfConstMeasurements; // for group by device sql
 
   // group-by-time parameters
   private long unit;
@@ -72,22 +81,28 @@ public class DeviceIterateDataSet extends QueryDataSet {
   private String currentDevice;
   private QueryDataSet currentDataSet;
   private int[] currentColumnMapRelation;
+  private Map<Path, TSDataType> tsDataTypeMap;
 
   public DeviceIterateDataSet(QueryPlan queryPlan, QueryContext context,
       IEngineQueryRouter queryRouter) {
     super(null, queryPlan.getDataTypes());
 
     // get deduplicated measurement columns (already deduplicated in TSServiceImpl.executeDataQuery)
-    this.deduplicatedMeasurementColumns = queryPlan.getMeasurementColumnList();
-
+    this.deduplicatedMeasurementColumns = queryPlan.getMeasurements();
+    this.tsDataTypeMap = queryPlan.getDataTypeMapping();
     this.queryRouter = queryRouter;
     this.context = context;
-    this.measurementColumnsGroupByDevice = queryPlan.getMeasurementColumnsGroupByDevice();
+    this.measurementColumnsGroupByDevice = queryPlan.getMeasurementsGroupByDevice();
+    this.deviceToFilterMap = queryPlan.getDeviceToFilterMap();
+    this.notExistMeasurements = queryPlan.getNotExistMeasurements();
+    this.constMeasurements = queryPlan.getConstMeasurements();
+    this.positionOfNotExistMeasurements = queryPlan.getPositionOfNotExistMeasurements();
+    this.positionOfConstMeasurements = queryPlan.getPositionOfConstMeasurements();
+    //BuildOutDataTypes();
 
     if (queryPlan instanceof GroupByPlan) {
       this.dataSetType = DataSetType.GROUPBY;
       // assign parameters
-      this.expression = queryPlan.getExpression();
       this.unit = ((GroupByPlan) queryPlan).getUnit();
       this.slidingStep = ((GroupByPlan) queryPlan).getSlidingStep();
       this.startTime = ((GroupByPlan) queryPlan).getStartTime();
@@ -95,8 +110,6 @@ public class DeviceIterateDataSet extends QueryDataSet {
 
     } else if (queryPlan instanceof AggregationPlan) {
       this.dataSetType = DataSetType.AGGREGATE;
-      // assign parameters
-      this.expression = queryPlan.getExpression();
 
     } else if (queryPlan instanceof FillQueryPlan) {
       this.dataSetType = DataSetType.FILL;
@@ -105,8 +118,6 @@ public class DeviceIterateDataSet extends QueryDataSet {
       this.fillType = ((FillQueryPlan) queryPlan).getFillType();
     } else {
       this.dataSetType = DataSetType.QUERY;
-      // assign parameters
-      this.expression = queryPlan.getExpression();
     }
 
     this.curDataSetInitialized = false;
@@ -148,35 +159,62 @@ public class DeviceIterateDataSet extends QueryDataSet {
       }
       // extract paths and aggregations if exist from executeColumns
       List<Path> executePaths = new ArrayList<>();
+      List<TSDataType> tsDataTypes = new ArrayList<>();
       List<String> executeAggregations = new ArrayList<>();
       for (String column : executeColumns) {
         if (dataSetType == DataSetType.GROUPBY || dataSetType == DataSetType.AGGREGATE) {
-          executePaths.add(new Path(currentDevice,
-              column.substring(column.indexOf("(") + 1, column.indexOf(")"))));
+          Path path = new Path(currentDevice,
+              column.substring(column.indexOf("(") + 1, column.indexOf(")")));
+          tsDataTypes.add(tsDataTypeMap.get(path));
+          executePaths.add(path);
           executeAggregations.add(column.substring(0, column.indexOf("(")));
         } else {
-          executePaths.add(new Path(currentDevice, column));
+          Path path = new Path(currentDevice, column);
+          tsDataTypes.add(tsDataTypeMap.get(path));
+          executePaths.add(path);
         }
+      }
+
+      // get filter to execute for the current device
+      if (deviceToFilterMap != null) {
+        this.expression = deviceToFilterMap.get(currentDevice);
       }
 
       try {
         switch (dataSetType) {
           case GROUPBY:
-            currentDataSet = queryRouter
-                .groupBy(executePaths, executeAggregations, expression, unit, slidingStep,
-                        startTime, endTime, context);
+            GroupByPlan groupByPlan = new GroupByPlan();
+            groupByPlan.setEndTime(endTime);
+            groupByPlan.setStartTime(startTime);
+            groupByPlan.setSlidingStep(slidingStep);
+            groupByPlan.setUnit(unit);
+            groupByPlan.setDeduplicatedPaths(executePaths);
+            groupByPlan.setDeduplicatedDataTypes(dataTypes);
+            groupByPlan.setDeduplicatedAggregations(executeAggregations);
+            currentDataSet = queryRouter.groupBy(groupByPlan, context);
             break;
           case AGGREGATE:
-            currentDataSet = queryRouter
-                .aggregate(executePaths, executeAggregations, expression, context);
+            AggregationPlan aggregationPlan = new AggregationPlan();
+            aggregationPlan.setDeduplicatedPaths(executePaths);
+            aggregationPlan.setDeduplicatedAggregations(executeAggregations);
+            aggregationPlan.setDeduplicatedDataTypes(dataTypes);
+            aggregationPlan.setExpression(expression);
+            currentDataSet = queryRouter.aggregate(aggregationPlan, context);
             break;
           case FILL:
-            currentDataSet = queryRouter.fill(executePaths, queryTime, fillType, context);
+            FillQueryPlan fillQueryPlan = new FillQueryPlan();
+            fillQueryPlan.setFillType(fillType);
+            fillQueryPlan.setQueryTime(queryTime);
+            fillQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
+            fillQueryPlan.setDeduplicatedPaths(executePaths);
+            currentDataSet = queryRouter.fill(fillQueryPlan, context);
             break;
           case QUERY:
-            QueryExpression queryExpression = QueryExpression.create()
-                .setSelectSeries(executePaths).setExpression(expression);
-            currentDataSet = queryRouter.query(queryExpression, context);
+            QueryPlan queryPlan = new QueryPlan();
+            queryPlan.setDeduplicatedPaths(executePaths);
+            queryPlan.setDeduplicatedDataTypes(tsDataTypes);
+            queryPlan.setExpression(expression);
+            currentDataSet = queryRouter.query(queryPlan, context);
             break;
           default:
             throw new IOException("unsupported DataSetType");
@@ -210,7 +248,36 @@ public class DeviceIterateDataSet extends QueryDataSet {
         rowRecord.addField(measurementFields.get(mapPos));
       }
     }
-    return rowRecord;
+
+    // build record with constant and non exist measurement
+    RowRecord outRecord = new RowRecord(originRowRecord.getTimestamp());
+    int loc = 0;
+    int totalSize = notExistMeasurements.size() + constMeasurements.size()
+        + rowRecord.getFields().size();
+    int notExistMeasurementsLoc = 0;
+    int constMeasurementsLoc = 0;
+    int resLoc = 0;
+    // don't forget device column, so loc - 1 is for looking up constant and non exist column
+    while (loc < totalSize) {
+      if (notExistMeasurementsLoc < notExistMeasurements.size()
+          && loc - 1 == positionOfNotExistMeasurements.get(notExistMeasurementsLoc)) {
+        outRecord.addField(new Field(null));
+        notExistMeasurementsLoc++;
+      } else if (constMeasurementsLoc < constMeasurements.size()
+          && loc - 1 == positionOfConstMeasurements.get(constMeasurementsLoc)) {
+        Field res = new Field(TSDataType.TEXT);
+        res.setBinaryV(Binary.valueOf(constMeasurements.get(constMeasurementsLoc)));
+        outRecord.addField(res);
+        constMeasurementsLoc++;
+      } else {
+        outRecord.addField(rowRecord.getFields().get(resLoc));
+        resLoc++;
+      }
+
+      loc++;
+    }
+
+    return outRecord;
   }
 
   private enum DataSetType {

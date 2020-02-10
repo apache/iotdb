@@ -18,24 +18,23 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
+
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
-import java.util.Map;
+
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
 
 public interface IQueryProcessExecutor {
 
@@ -55,36 +54,33 @@ public interface IQueryProcessExecutor {
    */
   QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException,
-      QueryFilterOptimizationException, QueryProcessException;
+      QueryFilterOptimizationException, QueryProcessException, MetadataException, SQLException;
 
   /**
    * process aggregate plan of qp layer, construct queryDataSet.
    */
-  QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
-      QueryContext context)
+  QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException, QueryFilterOptimizationException;
 
   /**
    * process group by plan of qp layer, construct queryDataSet.
    */
-  QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
-      long unit, long slidingStep, long startTime, long endTime, QueryContext context)
+  QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException, QueryFilterOptimizationException;
 
   /**
    * process fill plan of qp layer, construct queryDataSet.
    */
-  QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
-      QueryContext context)
+  QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException;
 
   /**
    * execute update command and return whether the operator is successful.
    *
-   * @param path : update series seriesPath
+   * @param path      : update series seriesPath
    * @param startTime start time in update command
-   * @param endTime end time in update command
-   * @param value - in type of string
+   * @param endTime   end time in update command
+   * @param value     - in type of string
    */
   void update(Path path, long startTime, long endTime, String value)
       throws QueryProcessException;
@@ -99,7 +95,7 @@ public interface IQueryProcessExecutor {
   /**
    * execute delete command and return whether the operator is successful.
    *
-   * @param path : delete series seriesPath
+   * @param path       : delete series seriesPath
    * @param deleteTime end time in delete command
    */
   void delete(Path path, long deleteTime) throws QueryProcessException;
@@ -128,6 +124,6 @@ public interface IQueryProcessExecutor {
   /**
    * Get all paths of a full path
    */
-  List<String> getAllPaths(String originPath) throws MetadataException;
+  List<String> getAllMatchedPaths(String originPath) throws MetadataException;
 
 }

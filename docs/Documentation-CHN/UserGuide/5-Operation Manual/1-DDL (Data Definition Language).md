@@ -144,13 +144,19 @@ IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
 ```
 IoTDB> delete timeseries root.ln.wf01.wt01.status
 IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
-IoTDB> delete timeseries root.ln.wf02*
+IoTDB> delete timeseries root.ln.wf02.*
 ```
 
 ### 查看设备
-我们可以通过使用`SHOW DEVICES`语句查看当前所有设备。SQL语句如下所示：
+
+与 `Show Timeseries` 相似，IoTDB 目前也支持两种方式查看设备。
+* `SHOW DEVICES` 语句显示当前所有的设备信息，等价于 `SHOW DEVICES root`。
+* `SHOW DEVICES <PrefixPath>` 语句规定了 `PrefixPath`，返回在给定的前缀路径下的设备信息。
+
+SQL语句如下所示：
 ```
 IoTDB> show devices
+IoTDB> show devices root.ln
 ```
 
 ## TTL
@@ -168,7 +174,7 @@ IoTDB> set ttl to root.ln 3600000
 ### 取消 TTL
 取消TTL的SQL语句如下所示：
 ```
-IoTDB> unset ttl to root.ln 3600000。
+IoTDB> unset ttl to root.ln
 ```
 取消设置TTL后，存储组`root.ln`中所有的数据都会被保存。
 

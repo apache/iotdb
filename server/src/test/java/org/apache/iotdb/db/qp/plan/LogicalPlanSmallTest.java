@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.plan;
 
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -85,6 +86,18 @@ public class LogicalPlanSmallTest {
   @Test
   public void testSOffset() {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 50 slimit 10 soffset 100";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertEquals(50, ((QueryOperator) operator).getRowLimit());
+    Assert.assertEquals(0, ((QueryOperator) operator).getRowOffset());
+    Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
+    Assert.assertEquals(100, ((QueryOperator) operator).getSeriesOffset());
+  }
+
+  @Test
+  public void testSOffsetTimestamp() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and timestamp <= now() limit 50 slimit 10 soffset 100";
     RootOperator operator = (RootOperator) parseDriver
         .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
@@ -198,4 +211,28 @@ public class LogicalPlanSmallTest {
     Assert.assertEquals(path, ((DeleteStorageGroupOperator) operator).getDeletePathList().get(0));
   }
 
+  @Test
+  public void testDisableAlign() {
+    String sqlStr = "select * from root.vehicle disable align";
+    RootOperator operator = (RootOperator) parseDriver
+            .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertFalse(((QueryOperator)operator).isAlign());
+  }
+
+  @Test
+  public void testNotDisableAlign() {
+    String sqlStr = "select * from root.vehicle";
+    RootOperator operator = (RootOperator) parseDriver
+            .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertTrue(((QueryOperator)operator).isAlign());
+  }
+
+  @Test (expected = ParseCancellationException.class)
+  public void testDisableAlignConflictGroupByDevice() {
+    String sqlStr = "select * from root.vehicle disable align group by device";
+    RootOperator operator = (RootOperator) parseDriver
+            .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+  }
 }

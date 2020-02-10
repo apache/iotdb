@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -36,7 +37,7 @@ public class QueryContext {
    * The outer key is the path of a ModificationFile, the inner key in the name of a timeseries and
    * the value is the Modifications of a timeseries in this file.
    */
-  private Map<String, Map<String, List<Modification>>> filePathModCache = new HashMap<>();
+  private Map<String, Map<String, List<Modification>>> filePathModCache = new ConcurrentHashMap<>();
   /**
    * The key is the path of a ModificationFile and the value is all Modifications in this file. We
    * use this field because each call of Modification.getModifications() return a copy of the
@@ -60,30 +61,24 @@ public class QueryContext {
    * them from 'modFile' and put then into the cache.
    */
   public List<Modification> getPathModifications(ModificationFile modFile, String path) {
-
     Map<String, List<Modification>> fileModifications =
-        filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new HashMap<>());
-    List<Modification> pathModifications = fileModifications.get(path);
-
-    if (pathModifications == null) {
+        filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new ConcurrentHashMap<>());
+    return fileModifications.computeIfAbsent(path, k -> {
       List<Modification> allModifications = fileModCache.get(modFile.getFilePath());
       if (allModifications == null) {
         allModifications = (List<Modification>) modFile.getModifications();
         fileModCache.put(modFile.getFilePath(), allModifications);
       }
-      pathModifications = new ArrayList<>();
+      List<Modification> finalPathModifications = new ArrayList<>();
       if (!allModifications.isEmpty()) {
-        List<Modification> finalPathModifications = pathModifications;
         allModifications.forEach(modification -> {
           if (modification.getPathString().equals(path)) {
             finalPathModifications.add(modification);
           }
         });
       }
-      fileModifications.put(path, pathModifications);
-    }
-
-    return pathModifications;
+      return finalPathModifications;
+    });
   }
 
   public long getQueryId() {

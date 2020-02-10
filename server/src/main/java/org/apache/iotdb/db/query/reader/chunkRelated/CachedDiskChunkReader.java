@@ -41,12 +41,12 @@ public class CachedDiskChunkReader implements IPointReader {
 
   @Override
   public boolean hasNext() throws IOException {
-    if (data != null && data.hasNext()) {
+    if (data != null && data.hasCurrent()) {
       return true;
     }
-    while (chunkReader.hasNextBatch()) {
-      data = chunkReader.nextBatch();
-      if (data.hasNext()) {
+    while (chunkReader.hasNextSatisfiedPage()) {
+      data = chunkReader.nextPageData();
+      if (data.hasCurrent()) {
         return true;
       }
     }
@@ -57,12 +57,12 @@ public class CachedDiskChunkReader implements IPointReader {
   public TimeValuePair next() throws IOException {
     TimeValuePairUtils.setCurrentTimeValuePair(data, prev);
     data.next();
-    if (data.hasNext()) {
+    if (data.hasCurrent()) {
       TimeValuePairUtils.setCurrentTimeValuePair(data, current());
     } else {
-      while (chunkReader.hasNextBatch()) {
-        data = chunkReader.nextBatch();
-        if (data.hasNext()) {
+      while (chunkReader.hasNextSatisfiedPage()) {
+        data = chunkReader.nextPageData();
+        if (data.hasCurrent()) {
           TimeValuePairUtils.setCurrentTimeValuePair(data, current());
           break;
         }

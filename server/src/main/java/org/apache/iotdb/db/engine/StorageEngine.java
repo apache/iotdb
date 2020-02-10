@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Map;
@@ -39,8 +38,11 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -48,6 +50,7 @@ import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
@@ -71,7 +74,7 @@ public class StorageEngine implements IService {
 
   private final Logger logger;
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final long TTL_CHECK_INTERVAL = 60 * 1000;
+  private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
 
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
@@ -94,6 +97,7 @@ public class StorageEngine implements IService {
   }
 
   private ScheduledExecutorService ttlCheckThread;
+  private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
 
   private StorageEngine() {
     logger = LoggerFactory.getLogger(StorageEngine.class);
@@ -116,7 +120,7 @@ public class StorageEngine implements IService {
     for (MNode storageGroup : sgNodes) {
       futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
         StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
-            storageGroup.getFullPath());
+            storageGroup.getFullPath(), fileFlushPolicy);
         processor.setDataTTL(storageGroup.getDataTTL());
         processorMap.put(storageGroup.getFullPath(), processor);
         logger.info("Storage Group Processor {} is recovered successfully",
@@ -157,6 +161,7 @@ public class StorageEngine implements IService {
     syncCloseAllProcessor();
     ttlCheckThread.shutdownNow();
     recoveryThreadPool.shutdownNow();
+    this.reset();
     try {
       ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
@@ -182,7 +187,7 @@ public class StorageEngine implements IService {
           if (processor == null) {
             logger.info("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
-            processor = new StorageGroupProcessor(systemDir, storageGroupName);
+            processor = new StorageGroupProcessor(systemDir, storageGroupName, fileFlushPolicy);
             processor.setDataTTL(
                 MManager.getInstance().getNodeByPathWithCheck(storageGroupName).getDataTTL());
             processorMap.put(storageGroupName, processor);
@@ -261,6 +266,34 @@ public class StorageEngine implements IService {
     logger.info("Start closing all storage group processor");
     for (StorageGroupProcessor processor : processorMap.values()) {
       processor.waitForAllCurrentTsFileProcessorsClosed();
+      //TODO do we need to wait for all merging tasks to be finished here?
+      processor.closeAllResources();
+    }
+  }
+
+  public void asyncCloseProcessor(String storageGroupName, boolean isSeq)
+      throws StorageGroupNotSetException {
+    StorageGroupProcessor processor = processorMap.get(storageGroupName);
+    if (processor != null) {
+      processor.writeLock();
+      try {
+        if(isSeq) {
+          // to avoid concurrent modification problem, we need a new array list
+          for (TsFileProcessor tsfileProcessor : new ArrayList<>(processor.getWorkSequenceTsFileProcessors())) {
+            processor.moveOneWorkProcessorToClosingList(true, tsfileProcessor);
+          }
+        }
+        else {
+          // to avoid concurrent modification problem, we need a new array list
+          for (TsFileProcessor tsfileProcessor : new ArrayList<>(processor.getWorkUnsequenceTsFileProcessor())) {
+            processor.moveOneWorkProcessorToClosingList(false, tsfileProcessor);
+          }
+        }
+      } finally {
+        processor.writeUnlock();
+      }
+    } else {
+      throw new StorageGroupNotSetException(storageGroupName);
     }
   }
 
@@ -305,34 +338,6 @@ public class StorageEngine implements IService {
       throws StorageEngineException {
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     return storageGroupProcessor.calTopKMeasurement(sensorId, k);
-  }
-
-  /**
-   * Append one specified tsfile to the storage group. <b>This method is only provided for
-   * transmission module</b>
-   *
-   * @param storageGroupName the seriesPath of storage group
-   * @param appendFile the appended tsfile information
-   */
-  @SuppressWarnings("unused") // reimplement sync module
-  public boolean appendFileToStorageGroupProcessor(String storageGroupName,
-      TsFileResource appendFile,
-      String appendFilePath) throws StorageEngineException {
-    // TODO reimplement sync module
-    return true;
-  }
-
-  /**
-   * get all overlap TsFiles which are conflict with the appendFile.
-   *
-   * @param storageGroupName the seriesPath of storage group
-   * @param appendFile the appended tsfile information
-   */
-  @SuppressWarnings("unused") // reimplement sync module
-  public List<String> getOverlapFiles(String storageGroupName, TsFileResource appendFile,
-      String uuid) throws StorageEngineException {
-    // TODO reimplement sync module
-    return Collections.emptyList();
   }
 
   /**
@@ -409,6 +414,7 @@ public class StorageEngine implements IService {
    */
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
+    syncCloseAllProcessor();
     for (String storageGroup : MManager.getInstance().getAllStorageGroupNames()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
@@ -445,14 +451,29 @@ public class StorageEngine implements IService {
     getProcessor(storageGroupName).loadNewTsFile(newTsFileResource);
   }
 
-  public boolean deleteTsfile(File deletedTsfile) throws StorageEngineException {
+  public boolean deleteTsfileForSync(File deletedTsfile)
+      throws StorageEngineException {
     return getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
+  }
+
+  public boolean deleteTsfile(File deletedTsfile) throws StorageEngineException {
+    return getProcessor(getSgByEngineFile(deletedTsfile)).deleteTsfile(deletedTsfile);
   }
 
   public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
       throws StorageEngineException, IOException {
-    return getProcessor(tsfileToBeMoved.getParentFile().getName())
-        .moveTsfile(tsfileToBeMoved, targetDir);
+    return getProcessor(getSgByEngineFile(tsfileToBeMoved)).moveTsfile(tsfileToBeMoved, targetDir);
+  }
+
+  /**
+   * The internal file means that the file is in the engine, which is different from those external
+   * files which are not loaded.
+   *
+   * @param file internal file
+   * @return sg name
+   */
+  private String getSgByEngineFile(File file) {
+    return file.getParentFile().getParentFile().getName();
   }
 
 }

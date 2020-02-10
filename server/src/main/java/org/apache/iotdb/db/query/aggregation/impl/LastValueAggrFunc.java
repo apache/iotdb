@@ -65,7 +65,7 @@ public class LastValueAggrFunc extends AggregateFunction {
       long bound) throws IOException {
     long time = -1;
     Object lastVal = null;
-    while (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
+    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       time = dataInThisPage.currentTime();
       lastVal = dataInThisPage.currentValue();
       dataInThisPage.next();

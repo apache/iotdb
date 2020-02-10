@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.filter.operator;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
 /**
  * Both the left and right operators of AndExpression must satisfy the condition.
@@ -28,6 +29,9 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 public class AndFilter extends BinaryFilter {
 
   private static final long serialVersionUID = -8212850098906044102L;
+
+  public AndFilter() {
+  }
 
   public AndFilter(Filter left, Filter right) {
     super(left, right);
@@ -61,7 +65,12 @@ public class AndFilter extends BinaryFilter {
   }
 
   @Override
-  public Filter clone() {
-    return new AndFilter(left.clone(), right.clone());
+  public Filter copy() {
+    return new AndFilter(left.copy(), right.copy());
+  }
+
+  @Override
+  public FilterSerializeId getSerializeId() {
+    return FilterSerializeId.AND;
   }
 }

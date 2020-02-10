@@ -43,6 +43,7 @@ public class MemTableFlushTask {
   private static final Logger logger = LoggerFactory.getLogger(MemTableFlushTask.class);
   private static final FlushSubTaskPoolManager subTaskPoolManager = FlushSubTaskPoolManager
       .getInstance();
+  private Future encodingTaskFuture;
   private Future ioTaskFuture;
   private RestorableTsFileIOWriter writer;
 
@@ -61,7 +62,7 @@ public class MemTableFlushTask {
     this.schema = schema;
     this.writer = writer;
     this.storageGroup = storageGroup;
-    subTaskPoolManager.submit(encodingTask);
+    this.encodingTaskFuture = subTaskPoolManager.submit(encodingTask);
     this.ioTaskFuture = subTaskPoolManager.submit(ioTask);
     logger.debug("flush task of Storage group {} memtable {} is created ",
         storageGroup, memTable.getVersion());
@@ -93,6 +94,15 @@ public class MemTableFlushTask {
     logger.debug(
         "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
         storageGroup, memTable.getVersion(), sortTime);
+
+    try {
+      encodingTaskFuture.get();
+    } catch (InterruptedException | ExecutionException e) {
+      // avoid ioTask waiting forever
+      noMoreIOTask = true;
+      ioTaskFuture.cancel(true);
+      throw e;
+    }
 
     ioTaskFuture.get();
 
@@ -140,6 +150,7 @@ public class MemTableFlushTask {
       }
     }
 
+    @SuppressWarnings("squid:S135")
     @Override
     public void run() {
       long memSerializeTime = 0;
@@ -157,10 +168,11 @@ public class MemTableFlushTask {
           }
           try {
             Thread.sleep(10);
-          } catch (InterruptedException e) {
+          } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
             logger.error("Storage group {} memtable {}, encoding task is interrupted.",
                 storageGroup, memTable.getVersion(), e);
-            Thread.currentThread().interrupt();
+            // generally it is because the thread pool is shutdown so the task should be aborted
+            break;
           }
         } else {
           if (task instanceof StartFlushGroupIOTask) {
@@ -184,6 +196,7 @@ public class MemTableFlushTask {
     }
   };
 
+  @SuppressWarnings("squid:S135")
   private Runnable ioTask = () -> {
       long ioTime = 0;
       boolean returnWhenNoTask = false;
@@ -199,10 +212,11 @@ public class MemTableFlushTask {
           }
           try {
             Thread.sleep(10);
-          } catch (InterruptedException e) {
+          } catch (@SuppressWarnings("squid:S2142")  InterruptedException e) {
             logger.error("Storage group {} memtable, io task is interrupted.", storageGroup
                 , memTable.getVersion(), e);
-            Thread.currentThread().interrupt();
+            // generally it is because the thread pool is shutdown so the task should be aborted
+            break;
           }
         } else {
           long starTime = System.currentTimeMillis();

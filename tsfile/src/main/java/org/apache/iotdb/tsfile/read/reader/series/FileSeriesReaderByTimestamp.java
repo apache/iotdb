@@ -69,15 +69,15 @@ public class FileSeriesReaderByTimestamp {
         return null;
       }
 
-      if (chunkReader.hasNextBatch()) {
-        data = chunkReader.nextBatch();
+      if (chunkReader.hasNextSatisfiedPage()) {
+        data = chunkReader.nextPageData();
       } else {
         return null;
       }
     }
 
     while (data != null) {
-      while (data.hasNext()) {
+      while (data.hasCurrent()) {
         if (data.currentTime() < timestamp) {
           data.next();
         } else {
@@ -85,7 +85,7 @@ public class FileSeriesReaderByTimestamp {
         }
       }
 
-      if (data.hasNext()) {
+      if (data.hasCurrent()) {
         if (data.currentTime() == timestamp) {
           Object value = data.currentValue();
           data.next();
@@ -93,8 +93,8 @@ public class FileSeriesReaderByTimestamp {
         }
         return null;
       } else {
-        if (chunkReader.hasNextBatch()) {
-          data = chunkReader.nextBatch();
+        if (chunkReader.hasNextSatisfiedPage()) {
+          data = chunkReader.nextPageData();
         } else if (!constructNextSatisfiedChunkReader()) {
           return null;
         }
@@ -112,20 +112,20 @@ public class FileSeriesReaderByTimestamp {
   public boolean hasNext() throws IOException {
 
     if (chunkReader != null) {
-      if (data != null && data.hasNext()) {
+      if (data != null && data.hasCurrent()) {
         return true;
       }
-      while (chunkReader.hasNextBatch()) {
-        data = chunkReader.nextBatch();
-        if (data != null && data.hasNext()) {
+      while (chunkReader.hasNextSatisfiedPage()) {
+        data = chunkReader.nextPageData();
+        if (data != null && data.hasCurrent()) {
           return true;
         }
       }
     }
     while (constructNextSatisfiedChunkReader()) {
-      while (chunkReader.hasNextBatch()) {
-        data = chunkReader.nextBatch();
-        if (data != null && data.hasNext()) {
+      while (chunkReader.hasNextSatisfiedPage()) {
+        data = chunkReader.nextPageData();
+        if (data != null && data.hasCurrent()) {
           return true;
         }
       }

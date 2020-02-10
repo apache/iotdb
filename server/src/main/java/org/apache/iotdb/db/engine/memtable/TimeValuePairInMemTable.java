@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.memtable;
 import java.util.Objects;
 
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class TimeValuePairInMemTable extends TimeValuePair {
 

@@ -28,11 +28,9 @@ import org.apache.iotdb.db.query.reader.IPointReader;
  */
 public class ExternalSortJob {
 
-  private long queryId;
   private List<ExternalSortJobPart> partList;
 
-  ExternalSortJob(long queryId, List<ExternalSortJobPart> partList) {
-    this.queryId = queryId;
+  ExternalSortJob(List<ExternalSortJobPart> partList) {
     this.partList = partList;
   }
 
@@ -44,7 +42,4 @@ public class ExternalSortJob {
     return readers;
   }
 
-  public long getQueryId() {
-    return queryId;
-  }
 }

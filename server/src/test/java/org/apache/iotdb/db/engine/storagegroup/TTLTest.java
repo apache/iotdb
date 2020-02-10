@@ -25,12 +25,14 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StartupException;
@@ -75,6 +77,7 @@ public class TTLTest {
   @Before
   public void setUp()
       throws MetadataException, IOException, StartupException, PathException, StorageGroupProcessorException {
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
     createSchemas();
   }
@@ -90,7 +93,7 @@ public class TTLTest {
     MManager.getInstance().setStorageGroupToMTree(sg1);
     MManager.getInstance().setStorageGroupToMTree(sg2);
     storageGroupProcessor = new StorageGroupProcessor(IoTDBDescriptor.getInstance().getConfig()
-        .getSystemDir(), sg1);
+        .getSystemDir(), sg1, new DirectFlushPolicy());
     MManager.getInstance().addPathToMTree(g1s1, TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.emptyMap());
     storageGroupProcessor.addMeasurement("s1", TSDataType.INT64, TSEncoding.PLAIN,
@@ -198,9 +201,9 @@ public class TTLTest {
         seqResource, null, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     int cnt = 0;
-    while (reader.hasNext()) {
+    while (reader.hasNextBatch()) {
       BatchData batchData = reader.nextBatch();
-      while (batchData.hasNext()) {
+      while (batchData.hasCurrent()) {
         batchData.next();
         cnt++;
       }
@@ -229,20 +232,60 @@ public class TTLTest {
     // files before ttl
     File seqDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile(), sg1);
     File unseqDir = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(), sg1);
-    File[] seqFiles = seqDir.listFiles(f -> f.getName().endsWith(TsFileConstant.TSFILE_SUFFIX));
-    File[] unseqFiles = unseqDir.listFiles(f -> f.getName().endsWith(TsFileConstant.TSFILE_SUFFIX));
 
-    assertEquals(4, seqFiles.length);
-    assertEquals(4, unseqFiles.length);
+    List<File> seqFiles = new ArrayList<>();
+    for(File directory : seqDir.listFiles()){
+      if(directory.isDirectory()){
+        for(File file : directory.listFiles()){
+          if(file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)){
+            seqFiles.add(file);
+          }
+        }
+      }
+    }
+
+    List<File> unseqFiles = new ArrayList<>();
+    for(File directory : unseqDir.listFiles()){
+      if(directory.isDirectory()){
+        for(File file : directory.listFiles()){
+          if(file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)){
+            unseqFiles.add(file);
+          }
+        }
+      }
+    }
+
+    assertEquals(4, seqFiles.size());
+    assertEquals(4, unseqFiles.size());
 
     storageGroupProcessor.setDataTTL(500);
     storageGroupProcessor.checkFilesTTL();
 
     // files after ttl
-    seqFiles = seqDir.listFiles(f -> f.getName().endsWith(TsFileConstant.TSFILE_SUFFIX));
-    unseqFiles = unseqDir.listFiles(f -> f.getName().endsWith(TsFileConstant.TSFILE_SUFFIX));
-    assertTrue(seqFiles.length <= 2);
-    assertEquals(0, unseqFiles.length);
+    seqFiles = new ArrayList<>();
+    for(File directory : seqDir.listFiles()){
+      if(directory.isDirectory()){
+        for(File file : directory.listFiles()){
+          if(file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)){
+            seqFiles.add(file);
+          }
+        }
+      }
+    }
+
+    unseqFiles = new ArrayList<>();
+    for(File directory : unseqDir.listFiles()){
+      if(directory.isDirectory()){
+        for(File file : directory.listFiles()){
+          if(file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)){
+            unseqFiles.add(file);
+          }
+        }
+      }
+    }
+
+    assertTrue(seqFiles.size() <= 2);
+    assertEquals(0, unseqFiles.size());
   }
 
   @Test
@@ -277,7 +320,7 @@ public class TTLTest {
 
   @Test
   public void testShowTTL()
-      throws IOException, QueryProcessException, QueryFilterOptimizationException, StorageEngineException {
+      throws IOException, QueryProcessException, QueryFilterOptimizationException, StorageEngineException, MetadataException, SQLException {
     MManager.getInstance().setTTL(sg1, ttl);
 
     ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());
@@ -297,11 +340,11 @@ public class TTLTest {
     prepareData();
     storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
 
-    assertEquals(4, storageGroupProcessor.getSequenceFileList().size());
+    assertEquals(4, storageGroupProcessor.getSequenceFileTreeSet().size());
     assertEquals(4, storageGroupProcessor.getUnSequenceFileList().size());
 
     storageGroupProcessor.setDataTTL(0);
-    assertEquals(0, storageGroupProcessor.getSequenceFileList().size());
+    assertEquals(0, storageGroupProcessor.getSequenceFileTreeSet().size());
     assertEquals(0, storageGroupProcessor.getUnSequenceFileList().size());
   }
 }

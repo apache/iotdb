@@ -78,6 +78,7 @@ public class SQLConstant {
   public static final int GREATERTHANOREQUALTO = SqlBaseLexer.OPERATOR_GTE;
   public static final int GREATERTHAN = SqlBaseLexer.OPERATOR_GT;
   public static final int EQUAL_NS = SqlBaseLexer.OPERATOR_NEQ;
+  public static final int IN = SqlBaseLexer.OPERATOR_IN;
 
   public static final int TOK_SELECT = 21;
   public static final int TOK_FROM = 22;
@@ -129,6 +130,13 @@ public class SQLConstant {
   public static final int TOK_REMOVE_FILE = 70;
   public static final int TOK_MOVE_FILE = 71;
   public static final int TOK_VERSION = 72;
+  public static final int TOK_TIMESERIES = 73;
+  public static final int TOK_STORAGE_GROUP = 74;
+  public static final int TOK_CHILD_PATHS = 75;
+  public static final int TOK_DEVICES = 76;
+  public static final int TOK_COUNT_TIMESERIES = 77;
+  public static final int TOK_COUNT_NODE_TIMESERIES = 78;
+  public static final int TOK_COUNT_NODES = 79;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
@@ -158,6 +166,7 @@ public class SQLConstant {
     tokenNames.put(LESSTHAN, "lessthan");
     tokenNames.put(GREATERTHANOREQUALTO, "greaterthan_or_equalto");
     tokenNames.put(GREATERTHAN, "greaterthan");
+    tokenNames.put(IN, "in");
 
     tokenNames.put(TOK_SELECT, "TOK_SELECT");
     tokenNames.put(TOK_FROM, "TOK_FROM");

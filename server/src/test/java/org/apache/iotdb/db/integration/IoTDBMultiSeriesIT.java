@@ -18,8 +18,16 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -29,17 +37,11 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.sql.*;
-
-import static org.junit.Assert.*;
-
 /**
- * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
- * defined as integration test.
+ * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
+ * IoTDB server should be defined as integration test.
  */
 public class IoTDBMultiSeriesIT {
-
-  private static IoTDB daemon;
 
   private static boolean testFlag = Constant.testFlag;
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
@@ -63,9 +65,8 @@ public class IoTDBMultiSeriesIT {
     tsFileConfig.setPageSizeInByte(1024 * 150);
     tsFileConfig.setGroupSizeInByte(1024 * 1000);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1000);
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(100);
 
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertData();
@@ -73,13 +74,13 @@ public class IoTDBMultiSeriesIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     // recovery value
     tsFileConfig.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
     tsFileConfig.setPageSizeInByte(pageSizeInByte);
     tsFileConfig.setGroupSizeInByte(groupSizeInByte);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
 
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -164,7 +165,6 @@ public class IoTDBMultiSeriesIT {
 
       statement.execute("flush");
 
-
       // sequential data, memory data
       for (int time = 200000; time < 201000; time++) {
 
@@ -237,7 +237,8 @@ public class IoTDBMultiSeriesIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString("root.fans.d0.s0")
+              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet
+                  .getString("root.fans.d0.s0")
                   + "," + resultSet.getString("root.fans.d0.s1");
           cnt++;
         }
@@ -297,7 +298,8 @@ public class IoTDBMultiSeriesIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0);
+              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet
+                  .getString(Constant.d0s0);
           // System.out.println("===" + ans);
           cnt++;
         }
@@ -327,7 +329,8 @@ public class IoTDBMultiSeriesIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0);
+              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet
+                  .getString(Constant.d0s0);
           // System.out.println(ans);
           cnt++;
         }
@@ -380,10 +383,17 @@ public class IoTDBMultiSeriesIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("select s10 from root.vehicle.d0");
-      fail("not throw exception when select unknown time series");
+      statement.execute("select s0, s10 from root.vehicle.*");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        assertEquals(23400, cnt);
+      }
     } catch (SQLException e) {
-      assertEquals("Statement format is not right: Path: \"root.vehicle.d0.s10\" doesn't correspond to any known time series", e.getMessage());
+      e.printStackTrace();
+      fail();
     }
   }
 
@@ -394,10 +404,12 @@ public class IoTDBMultiSeriesIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("select s1 from root.vehicle.d0 where s0 < 111 and s10 < 111");
+      statement.execute("select s0 from root.vehicle.d0 where s10 < 111");
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
-      assertEquals("Statement format is not right: Path: \"root.vehicle.d0.s10\" doesn't correspond to any known time series", e.getMessage());
+      assertEquals(
+          "Statement format is not right: Filter has some time series don't correspond to any known time series",
+          e.getMessage());
     }
   }
 
@@ -408,10 +420,14 @@ public class IoTDBMultiSeriesIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("select s1 from root.vehicle.d0 where root.vehicle.d0.s0 < 111 and root.vehicle.d0.s10 < 111");
+      statement.execute(
+          "select s1 from root.vehicle.d0 where root.vehicle.d0.s0 < 111 and root.vehicle.d0.s10 < 111");
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
-      assertEquals("Statement format is not right: Path: [root.vehicle.d0.s10] doesn't correspond to any known time series", e.getMessage());
+      e.printStackTrace();
+      assertEquals(
+          "Statement format is not right: Path: [root.vehicle.d0.s10] doesn't correspond to any known time series",
+          e.getMessage());
     }
   }
 }

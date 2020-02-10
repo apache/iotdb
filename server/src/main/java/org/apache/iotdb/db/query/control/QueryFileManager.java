@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.control;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,17 +68,18 @@ public class QueryFileManager {
   }
 
   private void addUsedFilesForQuery(long queryId, List<TsFileResource> resources) {
-    for (TsFileResource tsFileResource : resources) {
-      // the file may change from open to closed within the few statements, so the initial status
-      // should be recorded to ensure consistency
+    Iterator<TsFileResource> iterator = resources.iterator();
+    while (iterator.hasNext()) {
+      TsFileResource tsFileResource = iterator.next();
       boolean isClosed = tsFileResource.isClosed();
       addFilePathToMap(queryId, tsFileResource, isClosed);
+
       // this file may be deleted just before we lock it
       if (tsFileResource.isDeleted()) {
         Map<Long, Set<TsFileResource>> pathMap = !isClosed ? unsealedFilePathsMap : sealedFilePathsMap;
         pathMap.get(queryId).remove(tsFileResource);
         FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
-        resources.remove(tsFileResource);
+        iterator.remove();
       }
     }
   }

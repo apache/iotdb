@@ -58,7 +58,15 @@ public class IoTDBConstant {
   public static final String COLUMN_ITEM = "                             item";
   public static final String COLUMN_PARAMETER = "                                          parameter";
   public static final String COLUMN_VALUE = "value";
-  public static final String COLUMN_VERSION = "version        ";
+  public static final String COLUMN_VERSION = "        version";
+  public static final String COLUMN_TIMESERIES = "timeseries";
+  public static final String COLUMN_TIMESERIES_DATATYPE = "dataType";
+  public static final String COLUMN_TIMESERIES_ENCODING = "encoding";
+  public static final String COLUMN_TIMESERIES_COMPRESSION = "compression";
+  public static final String COLUMN_CHILD_PATHS = "child paths";
+  public static final String COLUMN_DEVICES = "devices";
+  public static final String COLUMN_COLUMN = "column";
+  public static final String COLUMN_COUNT = "count";
 
   public static final String COLUMN_ROLE = "role";
   public static final String COLUMN_USER = "user";
@@ -72,6 +80,9 @@ public class IoTDBConstant {
   public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
   public static final String TSFILE_NAME_SEPARATOR = "-";
 
-  public static final int MEMTABLE_NUM_IN_EACH_STORAGE_GROUP = 4;
-
+  // system folder name
+  public static final String SYSTEM_FOLDER_NAME = "system";
+  public static final String SCHEMA_FOLDER_NAME = "schema";
+  public static final String SYNC_FOLDER_NAME = "sync";
+  public static final String QUERY_FOLDER_NAME = "query";
 }

@@ -74,6 +74,8 @@ public class MergeOverLapTest extends MergeTest {
               + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
               + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
+      tsFileResource.setClosed(true);
+      tsFileResource.setHistoricalVersions(Collections.singleton((long) i));
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
     }
@@ -83,6 +85,8 @@ public class MergeOverLapTest extends MergeTest {
               + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
               + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
+      tsFileResource.setClosed(true);
+      tsFileResource.setHistoricalVersions(Collections.singleton((long) (i + seqFileNum)));
       unseqResources.add(tsFileResource);
       prepareUnseqFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
@@ -91,6 +95,8 @@ public class MergeOverLapTest extends MergeTest {
             + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
             + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
+    tsFileResource.setClosed(true);
+    tsFileResource.setHistoricalVersions(Collections.singleton((long) (seqFileNum + unseqFileNum)));
     unseqResources.add(tsFileResource);
     prepareUnseqFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
   }
@@ -147,7 +153,7 @@ public class MergeOverLapTest extends MergeTest {
         null, context);
     int cnt = 0;
     try {
-      while (tsFilesReader.hasNext()) {
+      while (tsFilesReader.hasNextBatch()) {
         BatchData batchData = tsFilesReader.nextBatch();
         for (int i = 0; i < batchData.length(); i++) {
           cnt ++;

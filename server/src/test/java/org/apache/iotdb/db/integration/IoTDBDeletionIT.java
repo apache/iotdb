@@ -28,21 +28,17 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
-
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class IoTDBDeletionIT {
-  private static IoTDB daemon;
 
   private static String[] creationSqls = new String[]{
           "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
-
           "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
           "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
           "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -57,18 +53,17 @@ public class IoTDBDeletionIT {
 
   @Before
   public void setUp() throws Exception {
+    Locale.setDefault(Locale.ENGLISH);
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareSeries();
   }
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
-
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -85,29 +80,29 @@ public class IoTDBDeletionIT {
           + " WHERE time <= 350");
       statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 150");
 
-      ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0");
-      int cnt = 0;
-      while (set.next()) {
-        cnt++;
+      try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(250, cnt);
       }
-      assertEquals(250, cnt);
-      set.close();
 
-      set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0");
-      cnt = 0;
-      while (set.next()) {
-        cnt++;
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(100, cnt);
       }
-      assertEquals(100, cnt);
-      set.close();
 
-      set = statement.executeQuery("SELECT s1,s2,s3 FROM root.vehicle.d0");
-      cnt = 0;
-      while (set.next()) {
-        cnt++;
+      try (ResultSet set = statement.executeQuery("SELECT s1,s2,s3 FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(50, cnt);
       }
-      assertEquals(50, cnt);
-      set.close();
 
     }
     cleanData();
@@ -125,22 +120,22 @@ public class IoTDBDeletionIT {
       statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 15000");
 
       // before merge completes
-      ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0");
-      int cnt = 0;
-      while (set.next()) {
-        cnt ++;
+      try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(5000, cnt);
       }
-      assertEquals(5000, cnt);
-      set.close();
 
       // after merge completes
-      set = statement.executeQuery("SELECT * FROM root.vehicle.d0");
-      cnt = 0;
-      while (set.next()) {
-        cnt ++;
+      try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(5000, cnt);
       }
-      assertEquals(5000, cnt);
-      set.close();
       cleanData();
     }
   }
@@ -192,27 +187,27 @@ public class IoTDBDeletionIT {
       // prepare BufferWrite file
       for (int i = 201; i <= 300; i++) {
         statement.execute(
-            String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+            String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
       statement.execute("merge");
       // prepare Unseq-File
       for (int i = 1; i <= 100; i++) {
         statement.execute(
-            String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+            String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
       statement.execute("merge");
       // prepare BufferWrite cache
       for (int i = 301; i <= 400; i++) {
         statement.execute(
-            String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+            String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
       // prepare Overflow cache
       for (int i = 101; i <= 200; i++) {
         statement.execute(
-            String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+            String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
 

@@ -42,8 +42,8 @@
 * 5-Docker Image
 # Chapter 4: Client
 * 1-Command Line Interface (CLI)
-* 2-Programming - JDBC
-* 3-Programming - Session
+* 2-Programming - Native API
+* 3-Programming - JDBC
 * 4-Programming - Other Languages
 * 5-Programming - TsFile API
 # Chapter 5: Operation Manual
@@ -65,8 +65,7 @@
 * 3-Spark TsFile
 * 4-Spark IoTDB
 * 5-Hive TsFile
-# Chapter 8: System Design (Developer)
-* 1-Hierarchy
-* 2-Files
-* 3-Writing Data on HDFS
-* 4-Shared Nothing Cluster
+# Chapter 8: Architecture
+* 1-Files
+* 2-Writing Data on HDFS
+* 3-Shared Nothing Cluster

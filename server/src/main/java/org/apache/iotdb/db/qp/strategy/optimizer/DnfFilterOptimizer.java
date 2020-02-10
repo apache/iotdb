@@ -45,7 +45,7 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
       List<FilterOperator> newChildrenList) throws LogicalOptimizeException {
     for (FilterOperator leftAndChild : leftAndChildren) {
       for (FilterOperator rightAndChild : rightAndChildren) {
-        FilterOperator r = mergeToConjunction(leftAndChild.clone(), rightAndChild.clone());
+        FilterOperator r = mergeToConjunction(leftAndChild.copy(), rightAndChild.copy());
         newChildrenList.add(r);
       }
     }

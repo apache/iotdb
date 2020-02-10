@@ -69,7 +69,7 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp, temperature) values(1,"v1")
 Because `root.ln.wf02.wt02. temperature` does not exist, the system will return the following ERROR information:
 
 ```
-Msg: Current deviceId[root.ln.wf02.wt02] does not contain measurement:temperature
+Msg: The resultDataType or encoding or compression of the last node temperature is conflicting in the storage group root.ln
 ```
 If the data type inserted by the user is inconsistent with the corresponding data type of the timeseries, for example, execute the following command:
 
@@ -511,6 +511,22 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 The result is shown below:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577879-64984680-1ef6-11e9-9d7b-57dd60fab60e.jpg"></center>
+
+#### Other ResultSet Format
+
+In addition, IoTDB supports two another resultset format: 'group by device' and 'disable align'.
+
+The 'group by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
+
+The SQL statement is:
+
+```
+select s1,s2 from root.sg1.* GROUP BY DEVICE
+```
+
+For more syntax description, please read SQL REFERENCE.
+
+The 'disable align' indicaes that there are 3 columns for each time series in the resultset. For more syntax description, please read SQL REFERENCE.
 
 ####  Error Handling
 

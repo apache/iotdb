@@ -40,6 +40,9 @@ struct TSExecuteStatementResp {
 	5: optional bool ignoreTimeStamp
   // Data type list of columns in select statement of SQL
   6: optional list<string> dataTypeList
+  7: optional TSQueryDataSet queryDataSet
+  // for disable align statements, queryDataSet is null and nonAlignQueryDataSet is not null
+  8: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
 }
 
 enum TSProtocolVersion {
@@ -89,6 +92,8 @@ struct TSExecuteStatementReq {
 
   // statementId
   3: required i64 statementId
+
+  4: optional i32 fetchSize
 }
 
 struct TSExecuteInsertRowInBatchResp{
@@ -137,33 +142,28 @@ struct TSFetchResultsReq{
 	2: required string statement
 	3: required i32 fetchSize
 	4: required i64 queryId
+	5: required bool isAlign
 }
 
 struct TSFetchResultsResp{
 	1: required TSStatus status
 	2: required bool hasResultSet
-	3: optional TSQueryDataSet queryDataSet
+  3: required bool isAlign
+	4: optional TSQueryDataSet queryDataSet
+	5: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
 }
 
 struct TSFetchMetadataResp{
 		1: required TSStatus status
 		2: optional string metadataInJson
 		3: optional list<string> columnsList
-		4: optional i32 timeseriesNum
-		5: optional string dataType
-		6: optional list<list<string>> timeseriesList
-		7: optional set<string> storageGroups
-		8: optional set<string> devices
-		9: optional list<string> nodesList
-		10: optional map<string, string> nodeTimeseriesNum
-		11: optional set<string> childPaths
+		4: optional string dataType
 }
 
 struct TSFetchMetadataReq{
     1: required i64 sessionId
 		2: required string type
 		3: optional string columnPath
-		4: optional i32 nodeLevel
 }
 
 struct TSGetTimeZoneResp {
@@ -174,16 +174,6 @@ struct TSGetTimeZoneResp {
 struct TSSetTimeZoneReq {
     1: required i64 sessionId
     2: required string timeZone
-}
-
-// for prepared statement
-struct TSInsertionReq {
-    1: required i64 sessionId
-    2: optional string deviceId
-    3: optional list<string> measurements
-    4: optional list<string> values
-    5: optional i64 timestamp
-    6: optional i64 queryId
 }
 
 // for session
@@ -234,12 +224,19 @@ struct ServerProperties {
 }
 
 struct TSQueryDataSet{
-   // ByteBuffer for time column
-   1: required binary time
-   // ByteBuffer for each column values
-   2: required list<binary> valueList
-   // Bitmap for each column to indicate whether it is a null value
-   3: required list<binary> bitmapList
+    // ByteBuffer for time column
+    1: required binary time
+    // ByteBuffer for each column values
+    2: required list<binary> valueList
+    // Bitmap for each column to indicate whether it is a null value
+    3: required list<binary> bitmapList
+}
+
+struct TSQueryNonAlignDataSet{
+    // ByteBuffer for each time column
+	  1: required list<binary> timeList
+	  // ByteBuffer for each column values
+    2: required list<binary> valueList
 }
 
 
@@ -270,8 +267,6 @@ service TSIService {
 
 	ServerProperties getProperties();
 
-	TSExecuteStatementResp insert(1:TSInsertionReq req);
-
 	TSStatus setStorageGroup(1:i64 sessionId, 2:string storageGroup);
 
 	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
@@ -280,9 +275,9 @@ service TSIService {
 
   TSStatus deleteStorageGroups(1:i64 sessionId, 2:list<string> storageGroup);
 
-  TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
+  TSStatus insert(1:TSInsertReq req);
 
-	TSStatus insertRow(1:TSInsertReq req);
+  TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
 
 	TSExecuteInsertRowInBatchResp insertRowInBatch(1:TSInsertInBatchReq req);
 

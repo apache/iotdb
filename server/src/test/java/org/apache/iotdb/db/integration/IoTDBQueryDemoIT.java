@@ -32,7 +32,6 @@ import static org.junit.Assert.fail;
 
 public class IoTDBQueryDemoIT {
 
-  private static IoTDB daemon;
   private static String[] sqls = new String[]{
       "set storage group to root.ln",
       "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
@@ -107,8 +106,6 @@ public class IoTDBQueryDemoIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     importData();
@@ -116,7 +113,6 @@ public class IoTDBQueryDemoIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -237,7 +233,6 @@ public class IoTDBQueryDemoIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          System.out.println(builder.toString());
           Assert.assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
@@ -255,7 +250,6 @@ public class IoTDBQueryDemoIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        System.out.println(header.toString());
         Assert.assertEquals(
             "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
                 + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
@@ -274,11 +268,141 @@ public class IoTDBQueryDemoIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          System.out.println(builder.toString());
           Assert.assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
         Assert.assertEquals(5, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void InTest() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "1509465780000,false,20.18,v1,false,false,20.18,",
+        "1509465840000,false,21.13,v1,false,false,21.13,",
+        "1509465900000,false,22.72,v1,false,false,22.72,",
+        "1509465960000,false,20.71,v1,false,false,20.71,",
+        "1509466020000,false,21.45,v1,false,false,21.45,",
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      // test 1: fetchSize < limitNumber
+      statement.setFetchSize(4);
+      Assert.assertEquals(4, statement.getFetchSize());
+      boolean hasResultSet = statement.execute("select * from root where time in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals(
+            "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
+                + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
+                + "root.sgcc.wf03.wt01.temperature,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(4));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(5));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(7));
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(5, cnt);
+      }
+
+      retArray = new String[]{
+          "1509465600000,true,25.96,v2,true,true,25.96,",
+          "1509465660000,true,24.36,v2,true,true,24.36,",
+          "1509465720000,false,20.09,v1,false,false,20.09,",
+          "1509466080000,false,22.58,v1,false,false,22.58,",
+          "1509466140000,false,20.98,v1,false,false,20.98,",
+      };
+      hasResultSet = statement.execute("select * from root where time not in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals(
+            "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
+                + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
+                + "root.sgcc.wf03.wt01.temperature,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(4));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(5));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(7));
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(5, cnt);
+      }
+
+      retArray = new String[]{
+          "1509465780000,false,20.18,v1,false,false,20.18,",
+          "1509465960000,false,20.71,v1,false,false,20.71,",
+          "1509466080000,false,22.58,v1,false,false,22.58,",
+      };
+      hasResultSet = statement.execute("select * from root where ln.wf01.wt01.temperature in (20.18, 20.71, 22.58)");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals(
+            "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
+                + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
+                + "root.sgcc.wf03.wt01.temperature,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(4));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(5));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(7));
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(3, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();

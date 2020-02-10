@@ -42,7 +42,7 @@ statement
     | DROP INDEX function=ID ON timeseriesPath #dropIndex //not support yet
     | MERGE #merge //not support yet
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
-    | ALTER USER userName=ID SET PASSWORD password=STRING_LITERAL #alterUser
+    | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
     | DROP USER userName=ID #dropUser
     | CREATE ROLE roleName=ID #createRole
     | DROP ROLE roleName=ID #dropRole
@@ -70,6 +70,12 @@ statement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
+    | SHOW TIMESERIES prefixPath? #showTimeseries
+    | SHOW STORAGE GROUP #showStorageGroup
+    | SHOW CHILD PATHS prefixPath? #showChildPaths
+    | SHOW DEVICES prefixPath? #showDevices
+    | COUNT TIMESERIES prefixPath (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
+    | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION #loadConfigurationStatement
     | LOAD FILE autoCreateSchema? #loadFiles
     | REMOVE FILE #removeFile
@@ -91,14 +97,27 @@ statement
 selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
+    | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
     ;
 
 functionCall
-    : ID LR_BRACKET suffixPath RR_BRACKET
+    : functionName LR_BRACKET suffixPath RR_BRACKET
+    ;
+
+functionName
+    : MIN_TIME
+    | MAX_TIME
+    | MIN_VALUE
+    | MAX_VALUE
+    | COUNT
+    | AVG
+    | FIRST_VALUE
+    | SUM
+    | LAST_VALUE
     ;
 
 attributeClauses
-    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding (COMMA COMPRESSOR OPERATOR_EQ compressor=propertyValue)? (COMMA property)*
+    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)? (COMMA property)*
     ;
 
 setClause
@@ -118,10 +137,14 @@ andExpression
     ;
 
 predicate
-    : (suffixPath | prefixPath) comparisonOperator constant
+    : (TIME | TIMESTAMP | suffixPath | prefixPath) comparisonOperator constant
+    | (TIME | TIMESTAMP | suffixPath | prefixPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
     ;
 
+inClause
+    : OPERATOR_NOT? OPERATOR_IN LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    ;
 
 fromClause
     : FROM prefixPath (COMMA prefixPath)*
@@ -130,13 +153,13 @@ fromClause
 specialClause
     : specialLimit
     | groupByClause specialLimit?
-    | fillClause slimitClause? groupByDeviceClause?
+    | fillClause slimitClause? groupByDeviceClauseOrDisableAlign?
     ;
 
 specialLimit
-    : limitClause slimitClause? groupByDeviceClause?
-    | slimitClause limitClause? groupByDeviceClause?
-    | groupByDeviceClause
+    : limitClause slimitClause? groupByDeviceClauseOrDisableAlign?
+    | slimitClause limitClause? groupByDeviceClauseOrDisableAlign?
+    | groupByDeviceClauseOrDisableAlign
     ;
 
 limitClause
@@ -158,6 +181,15 @@ soffsetClause
 groupByDeviceClause
     :
     GROUP BY DEVICE
+    ;
+
+disableAlign
+    : DISABLE ALIGN
+    ;
+
+groupByDeviceClauseOrDisableAlign
+    : groupByDeviceClause
+    | disableAlign
     ;
 
 fillClause
@@ -204,7 +236,7 @@ comparisonOperator
     ;
 
 insertColumnSpec
-    : LR_BRACKET TIMESTAMP (COMMA nodeNameWithoutStar)* RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)* RR_BRACKET
     ;
 
 insertValuesSpec
@@ -633,6 +665,77 @@ MOVE
     : M O V E
     ;
 
+CHILD
+    : C H I L D
+    ;
+
+PATHS
+    : P A T H S
+    ;
+
+DEVICES
+    : D E V I C E S
+    ;
+
+COUNT
+    : C O U N T
+    ;
+
+NODES
+    : N O D E S
+    ;
+
+LEVEL
+    : L E V E L
+    ;
+
+MIN_TIME
+    : M I N UNDERLINE T I M E
+    ;
+
+MAX_TIME
+    : M A X UNDERLINE T I M E
+    ;
+
+MIN_VALUE
+    : M I N UNDERLINE V A L U E
+    ;
+
+MAX_VALUE
+    : M A X UNDERLINE V A L U E
+    ;
+
+AVG
+    : A V G
+    ;
+
+FIRST_VALUE
+    : F I R S T UNDERLINE V A L U E
+    ;
+
+SUM
+    : S U M
+    ;
+
+LAST_VALUE
+    : L A S T UNDERLINE V A L U E
+    ;
+
+DISABLE
+    : D I S A B L E
+    ;
+
+ALIGN
+    : A L I G N
+    ;
+
+COMPRESSION
+    : C O M P R E S S I O N
+    ;
+
+TIME
+    : T I M E
+    ;
 //============================
 // End of the keywords list
 //============================
@@ -651,6 +754,8 @@ OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 
 OPERATOR_NEQ : '!=' | '<>';
+
+OPERATOR_IN : I N;
 
 OPERATOR_AND
     : A N D
@@ -685,6 +790,8 @@ RS_BRACKET : ']';
 L_BRACKET : '{';
 
 R_BRACKET : '}';
+
+UNDERLINE : '_';
 
 STRING_LITERAL
    : DOUBLE_QUOTE_STRING_LITERAL

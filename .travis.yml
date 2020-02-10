@@ -175,6 +175,7 @@ matrix:
 #        - mvn -B apache-rat:check
 #        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
     - os: linux
+      if: fork = false #only fork=true (i.e., the committer has permission to write the repo)
       name: sonar-analysis
       dist: xenial
       jdk: openjdk8
@@ -187,12 +188,14 @@ matrix:
       script:
         - mvn verify sonar:sonar -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb -DskipTests
     - os: linux
+      if: fork = false #only fork=true (i.e., the committer has permission to write the repo)
       name: code-coverage
       dist: xenial
       jdk: openjdk8
       script:
         # now, grafana has no tests; spark-* tests are written by scala
-        - mvn post-integration-test -Pcode-coverage -Pcoveralls -Dservice_name=travis_ci -pl tsfile,client,jdbc,server,session,hadoop,hive-connector
+        - mvn post-integration-test -Pcode-coverage 
+        - mvn coveralls:report -Dservice_name=travis_ci -pl tsfile,jdbc,server,session,client,hadoop,hive-connector
 
 cache:
   directories:
