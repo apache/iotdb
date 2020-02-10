@@ -102,6 +102,7 @@ import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
@@ -879,9 +880,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   @Override
   public TSStatus executeNonQuery(PhysicalPlan plan) {
-    if (!PartitionUtils.isPlanPartitioned(plan)) {
+    if (PartitionUtils.isLocalPlan(plan)) {// run locally
+      //TODO run locally.
+      return null;
+    } else if (PartitionUtils.isGlobalPlan(plan)) {// forward the plan to all nodes
       return processNonPartitionedPlan(plan);
-    } else {
+    } else { //split the plan and forward them to some ParititonGroups
       try {
         return processPartitionedPlan(plan);
       } catch (UnsupportedPlanException e) {
@@ -909,28 +913,40 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return StatusUtils.PARTITION_TABLE_NOT_READY;
     }
 
-    PartitionGroup partitionGroup = partitionTable.partitionPlan(plan);
+    Map<PhysicalPlan, PartitionGroup> planGroupMap = null;
+    try {
+      planGroupMap = partitionTable.splitAndRoutePlan(plan);
+    } catch (StorageGroupNotSetException e) {
+      logger.debug("Storage group is not found for plan {}", plan);
+    } catch (IllegalPathException e) {
+      logger.error("Rceive an IllegalPath in plan {}", plan, e);
+    }
     // the storage group is not found locally, forward it to the leader
-    if (partitionGroup == null) {
+    if (planGroupMap == null || planGroupMap.isEmpty()) {
       if (character != NodeCharacter.LEADER) {
         logger
-            .debug("{}: Cannot found partition group for {}, forwarding to {}", name, plan, leader);
+            .debug("{}: Cannot found partition groups for {}, forwarding to {}", name, plan, leader);
         return forwardPlan(plan, leader);
       } else {
-        logger.debug("{}: Cannot found storage group for {}", name, plan);
+        logger.debug("{}: Cannot found storage groups for {}", name, plan);
         return StatusUtils.NO_STORAGE_GROUP;
       }
     }
-    logger.debug("{}: The data group of {} is {}", name, plan, partitionGroup);
+    logger.debug("{}: The data group of {} is {}", name, plan, planGroupMap);
 
-    if (partitionGroup.contains(thisNode)) {
-      // the query should be handled by a group the local node is in, handle it with in the group
-      return getDataClusterServer().getDataMember(partitionGroup.getHeader(), null, plan)
-          .executeNonQuery(plan);
-    } else {
-      // forward the query to the group that should handle it
-      return forwardPlan(plan, partitionGroup);
+    TSStatus status = null;
+    for(Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
+      if (entry.getValue().contains(thisNode)) {
+        // the query should be handled by a group the local node is in, handle it with in the group
+         TSStatus subStatus = getDataClusterServer().getDataMember(entry.getValue().getHeader(), null, plan)
+            .executeNonQuery(entry.getKey());
+      } else {
+        // forward the query to the group that should handle it
+        TSStatus subStatus =  forwardPlan(entry.getKey(), entry.getValue());
+      }
     }
+    //TODO merge all sub status together.
+    return status;
   }
 
   /**

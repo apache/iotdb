@@ -91,6 +91,7 @@ public class RemoteTsFileResource extends TsFileResource {
     try {
       dataOutputStream.writeInt(md5.length);
       dataOutputStream.write(md5);
+      //TODO getPath() may return an absolute path
       SerializeUtils.serialize(getFile().getPath(), dataOutputStream);
       Map<String, Long> startTimeMap = getStartTimeMap();
       Map<String, Long> endTimeMap = getEndTimeMap();

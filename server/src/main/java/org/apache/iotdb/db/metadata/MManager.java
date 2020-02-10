@@ -863,7 +863,9 @@ public class MManager {
 
   /**
    * Get devices info with given prefixPath.
-   *
+   * @param prefixPath a prefix of a full path.
+   *              if the wildcard is not at the tail, then each wildcard can only match one level,
+   *              otherwise it can match to the tail.
    * @return A HashSet instance which stores devices names with given prefixPath.
    */
   public List<String> getDevices(String prefixPath) throws MetadataException {
@@ -878,7 +880,10 @@ public class MManager {
 
   /**
    * Get all nodes from the given level
-   *
+   * @param prefixPath can be a prefix of a full path. Can not be a full path. can not have wildcard.
+   *  But, the level of the prefixPath can be smaller than the given level, e.g., prefixPath = root.a
+   *  while the given level is 5
+   * @param nodeLevel the level can not be smaller than the level of the prefixPath
    * @return A List instance which stores all node at given level
    */
   public List<String> getNodesList(String prefixPath, int nodeLevel) throws SQLException {
@@ -946,7 +951,7 @@ public class MManager {
 
   /**
    * Calculate the count of storage-group nodes included in given seriesPath.
-   *
+   * @param path can only be root.something  FIXME I do not know what it is used for...
    * @return The total count of storage-group nodes.
    */
   // future feature
@@ -965,6 +970,9 @@ public class MManager {
    * Get the file name for given seriesPath Notice: This method could be called if and only if the
    * seriesPath includes one node whose {@code isStorageGroup} is true.
    *
+   * @param path a prefix of a fullpath. The prefix should contains the name of a storage group.
+   * DO NOT SUPPORT WILDCARD.
+   *
    * @return A String represented the file name
    */
   public String getStorageGroupNameByPath(String path) throws StorageGroupNotSetException {
@@ -975,6 +983,21 @@ public class MManager {
     } finally {
       lock.readLock().unlock();
     }
+  }
+
+  /**
+   *
+   * @param prefix support wildcard, e.g., "root.*.a".
+   *               The behaviors are the same no matter whether there is a wildcard at the tail of
+   *               the prefix, i.e., "root.*.a.b" has the same meaning with "root.*.a.b.*"
+   * @return All storage groups that begin with the prefix
+   * @throws IllegalPathException
+   */
+  public Collection<String> getStorageGroupNamesByPrefix(String prefix) throws IllegalPathException  {
+    if (!prefix.endsWith("*")) {
+      prefix = prefix + "*";
+    }
+    return determineStorageGroup(prefix).keySet();
   }
 
   /**
@@ -1048,6 +1071,10 @@ public class MManager {
 
   /**
    * return a HashMap contains all the paths separated by storage group name.
+   * @param path a prefix of a path which contains a storage group name.
+   *              if the wildcard is not at the tail, then each wildcard can only match one level,
+   *              otherwise it can match to the tail.
+   * @return (sg name, timeseries) pairs
    */
   Map<String, List<String>> getAllPathGroupByStorageGroup(String path)
       throws MetadataException {
@@ -1062,18 +1089,32 @@ public class MManager {
   }
 
   /**
-   * For a path with wildcard, infer all storage groups it may belong to. If the wildcard is
-   * not at the tail, only one level will be inferred and the wildcard will be removed, otherwise
-   * the inference will go on until the leaf is reached and the wildcard will be kept.
+   * For a path, infer all storage groups it may belong to.
+   * The path can have wildcards.
+   * Consider the path into two parts: (1) the sub path which can not contain a storage group name and
+   * (2) the sub path which is substring that begin after the storage group name.
+   * (1) Suppose the part of the path can not contain a storage group name (e.g.,
+   * "root".contains("root.sg") == false), then:
+   * If the wildcard is not at the tail, then for each wildcard, only one level will be inferred
+   * and the wildcard will be removed.
+   * If the wildcard is at the tail, then the inference will go on until the storage groups are found
+   * and the wildcard will be kept.
+   * (2) Suppose the path of the path is a substring that begin after the storage group name. (e.g.,
+   *  For "root.*.sg1.a.*.b.*" and "root.x.sg1" is a storage group, then this part is "a.*.b.*").
+   *  For this part, keep what it is.
+   *
    * Assuming we have three SGs: root.group1, root.group2, root.area1.group3
    * Eg1:
-   *  for input "root.*", returns "root.group1, root.group1.*", "root.group2, root.group2.*"
-   *  "root.area1.group3, root.area1.group3.*"
+   *  for input "root.*", returns ("root.group1", "root.group1.*"), ("root.group2", "root.group2.*")
+   *  ("root.area1.group3", "root.area1.group3.*")
    * Eg2:
-   *  for input "root.*.s1", returns "root.group1, root.group1.s1", "root.group2, root.group2.s1"
+   *  for input "root.*.s1", returns ("root.group1", "root.group1.s1"), ("root.group2", "root.group2.s1")
+   *
    * Eg3:
-   *  for input "root.area1.*", returns "root.area1.group3, root.area1.group3.*"
-   * @param path
+   *  for input "root.area1.*", returns ("root.area1.group3", "root.area1.group3.*")
+   *
+   *
+   * @param path can be a prefix or a full path.
    * @return StorageGroupName-FullPath pairs
    */
   public Map<String, String> determineStorageGroup(String path) throws IllegalPathException {
@@ -1085,9 +1126,29 @@ public class MManager {
     }
   }
 
+//  /**
+//   * silimar with determineStorageGroup. But this method allow users do not write the wildcard at
+//   * the end of the tail.
+//   * e.g., "root" is the same with "root.*"
+//   * @param path
+//   * @return
+//   * @throws IllegalPathException
+//   */
+//  public Map<String, String> determineStorageGroupMoreRelax(String path) throws IllegalPathException {
+//    lock.readLock().lock();
+//    try {
+//      return mgraph.determineStorageGroup(path);
+//    } finally {
+//      lock.readLock().unlock();
+//    }
+//  }
+
   /**
    * Return all paths for given seriesPath if the seriesPath is abstract. Or return the seriesPath
    * itself.
+   * @param path  can be a prefix or a full path.
+   *              if the wildcard is not at the tail, then each wildcard can only match one level,
+   *              otherwise it can match to the tail.
    */
   public List<String> getPaths(String path) throws MetadataException {
 
@@ -1106,6 +1167,12 @@ public class MManager {
 
   /**
    * function for getting all timeseries paths under the given seriesPath.
+   * @param path can be root, root.*  root.*.*.a etc..
+   *              if the wildcard is not at the tail, then each wildcard can only match one level,
+   *              otherwise it can match to the tail.
+   * @return  for each storage group, return a List which size =5 (name, sg name, data type,
+   * encoding, and compressor).
+   * TODO the structure needs to optimize
    */
   public List<List<String>> getShowTimeseriesPath(String path) throws MetadataException {
     lock.readLock().lock();
@@ -1118,6 +1185,8 @@ public class MManager {
 
   /**
    * function for getting leaf node path in the next level of given seriesPath.
+   * @param path a prefix of a full path which has a storage group name. do not support wildcard.
+   *    can not be a full path.
    */
   List<String> getLeafNodePathInNextLevel(String path) throws MetadataException {
     lock.readLock().lock();
@@ -1130,6 +1199,7 @@ public class MManager {
 
   /**
    * function for getting leaf node path in the next level of given seriesPath.
+   * @param path do not accept wildcard. can not be a full path.
    */
   public Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {
     lock.readLock().lock();
@@ -1462,7 +1532,6 @@ public class MManager {
       lock.writeLock().unlock();
     }
   }
-
 
   public void collectSeries(MNode startingNode, Collection<MeasurementSchema> timeseriesSchemas) {
     Deque<MNode> nodeDeque = new ArrayDeque<>();

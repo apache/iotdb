@@ -30,6 +30,7 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
@@ -222,8 +223,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       operator.setChildren(newFilterList);
       return operator;
     }
-    BasicFunctionOperator basicOperator = (BasicFunctionOperator) operator;
-    Path filterPath = basicOperator.getSinglePath();
+    FunctionOperator functionOperator = (FunctionOperator) operator;
+    Path filterPath = functionOperator.getSinglePath();
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
     if (SQLConstant.isReservedPath(filterPath) || filterPath.startWith(SQLConstant.ROOT)) {
       return operator;
@@ -234,7 +235,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     if (noStarPaths.size() == 1) {
       // Transform "select s1 from root.car.* where s1 > 10" to
       // "select s1 from root.car.* where root.car.*.s1 > 10"
-      basicOperator.setSinglePath(noStarPaths.get(0));
+      functionOperator.setSinglePath(noStarPaths.get(0));
       return operator;
     } else {
       // Transform "select s1 from root.car.d1, root.car.d2 where s1 > 10" to

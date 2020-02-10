@@ -44,7 +44,7 @@ public class Murmur128Hash {
   public static int hash(String value1, long value2, int seed) {
     return (int) hash3_x64_128(
         BytesUtils.concatByteArray(value1.getBytes(), BytesUtils.longToBytes(value2)), 0,
-        value1.length(), seed);
+        value1.length() + 8, seed);
   }
 
   /**************************************

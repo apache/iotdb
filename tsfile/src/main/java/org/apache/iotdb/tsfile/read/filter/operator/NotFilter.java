@@ -68,8 +68,8 @@ public class NotFilter implements Filter, Serializable {
   }
 
   @Override
-  public Filter clone() {
-    return new NotFilter(that.clone());
+  public Filter copy() {
+    return new NotFilter(that.copy());
   }
 
   public Filter getFilter() {
