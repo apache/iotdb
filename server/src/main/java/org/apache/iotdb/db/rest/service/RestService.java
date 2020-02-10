@@ -54,7 +54,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.rest.model.TimeValues;
+import org.apache.iotdb.db.rest.model.TimeValue;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -70,7 +70,7 @@ public class RestService {
   private String username;
 
 
-  private List<TimeValues> querySeries(String s, Pair<String, String> timeRange)
+  private List<TimeValue> querySeries(String s, Pair<String, String> timeRange)
       throws QueryProcessException, StorageGroupException, AuthException, MetadataException, QueryFilterOptimizationException, SQLException, StorageEngineException, IOException {
     String from = timeRange.left;
     String to = timeRange.right;
@@ -107,13 +107,13 @@ public class RestService {
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     QueryDataSet queryDataSet = processor.getExecutor().processQuery(plan, context);
     String[] args;
-    List<TimeValues> list = new ArrayList<>();
+    List<TimeValue> list = new ArrayList<>();
     while(queryDataSet.hasNext()) {
-      TimeValues timeValues = new TimeValues();
+      TimeValue timeValue = new TimeValue();
       args = queryDataSet.next().toString().split("\t");
-      timeValues.setTime(Long.parseLong(args[0]));
-      timeValues.setValue(args[1]);
-      list.add(timeValues);
+      timeValue.setTime(Long.parseLong(args[0]));
+      timeValue.setValue(args[1]);
+      list.add(timeValue);
     }
     return list;
   }
@@ -245,7 +245,7 @@ public class RestService {
       Pair<String, String> timeRange)
       throws JSONException, StorageEngineException, QueryFilterOptimizationException,
       MetadataException, IOException, StorageGroupException, SQLException, QueryProcessException, AuthException {
-    List<TimeValues> timeValues = querySeries(target, timeRange);
+    List<TimeValue> timeValue = querySeries(target, timeRange);
     JSONArray columns = new JSONArray();
     JSONObject column = new JSONObject();
     column.put("text", "Time");
@@ -257,7 +257,7 @@ public class RestService {
     columns.add(column);
     obj.put("columns", columns);
     JSONArray values = new JSONArray();
-    for (TimeValues tv : timeValues) {
+    for (TimeValue tv : timeValue) {
       JSONArray value = new JSONArray();
       value.add(tv.getTime());
       value.add(tv.getValue());
@@ -270,10 +270,10 @@ public class RestService {
       Pair<String, String> timeRange)
       throws JSONException, StorageEngineException, QueryFilterOptimizationException,
       MetadataException, IOException, StorageGroupException, SQLException, QueryProcessException, AuthException {
-    List<TimeValues> timeValues = querySeries(target, timeRange);
-    logger.info("query size: {}", timeValues.size());
+    List<TimeValue> timeValue = querySeries(target, timeRange);
+    logger.info("query size: {}", timeValue.size());
     JSONArray dataPoints = new JSONArray();
-    for (TimeValues tv : timeValues) {
+    for (TimeValue tv : timeValue) {
       long time = tv.getTime();
       String value = tv.getValue();
       JSONArray jsonArray = new JSONArray();

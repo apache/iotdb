@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.rest.model;
 
-public class TimeValues {
+public class TimeValue {
 
   private long time;
   private String value;
 
   @Override
   public String toString() {
-    return "TimeValues{" + "time=" + time + ", values=" + value + '}';
+    return "TimeValue{" + "time=" + time + ", values=" + value + '}';
   }
 
   public long getTime() {
