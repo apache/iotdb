@@ -54,9 +54,9 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.Planner;
@@ -77,8 +77,8 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
+import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -169,7 +169,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   public static TSDataType getSeriesType(String path) throws QueryProcessException {
     switch (path.toLowerCase()) {
-        // authorization queries
+      // authorization queries
       case COLUMN_ROLE:
       case COLUMN_USER:
       case COLUMN_PRIVILEGE:
@@ -203,7 +203,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           throw new QueryProcessException("aggregate does not support " + aggrType + " function.");
       }
     }
-    return MManager.getInstance().getSeriesType(path);
+    TSDataType dataType;
+    try {
+      dataType = MManager.getInstance().getSeriesType(path);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+
+    return dataType;
   }
 
   @Override
@@ -324,7 +331,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  /** release single operation resource */
+  /**
+   * release single operation resource
+   */
   private void releaseQueryResource(long queryId) throws StorageEngineException {
     // remove the corresponding Physical Plan
     queryId2DataSet.remove(queryId);
@@ -590,7 +599,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   /**
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
-   *     AuthorPlan
+   * AuthorPlan
    */
   private TSExecuteStatementResp executeQueryStatement(
       long statementId, PhysicalPlan plan, int fetchSize, String username) {
@@ -724,7 +733,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  /** get ResultSet schema */
+  /**
+   * get ResultSet schema
+   */
   private TSExecuteStatementResp getQueryColumnHeaders(PhysicalPlan physicalPlan, String username)
       throws AuthException, TException, QueryProcessException {
 
@@ -857,25 +868,22 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         // Note that this deduplication strategy is consistent with that of client
         // IoTDBQueryResultSet.
         tmpColumnSet.add(column);
-        if(!isNonExist && ! isConstant) {
+        if (!isNonExist && !isConstant) {
           // only refer to those normal measurements
           deduplicatedMeasurementColumns.add(column);
         }
         deduplicatedColumnsType.add(type);
-      }
-      else if(isConstant){
+      } else if (isConstant) {
         shiftLoc++;
         constMeasurementsLoc--;
         plan.getConstMeasurements().remove(constMeasurementsLoc);
         plan.getPositionOfConstMeasurements().remove(constMeasurementsLoc);
-      }
-      else if(isNonExist){
+      } else if (isNonExist) {
         shiftLoc++;
         notExistMeasurementsLoc--;
         plan.getNotExistMeasurements().remove(notExistMeasurementsLoc);
         plan.getPositionOfNotExistMeasurements().remove(notExistMeasurementsLoc);
-      }
-      else {
+      } else {
         shiftLoc++;
       }
 
@@ -1016,10 +1024,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return result;
   }
 
-  /** create QueryDataSet and buffer it for fetchResults */
+  /**
+   * create QueryDataSet and buffer it for fetchResults
+   */
   private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
-          IOException, MetadataException, SQLException {
+      IOException, MetadataException, SQLException {
 
     QueryContext context = new QueryContext(queryId);
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);

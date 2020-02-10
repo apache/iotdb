@@ -18,24 +18,16 @@
  *
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.metadata;
 
-public class IoTDBException extends Exception {
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  private static final long serialVersionUID = 8480450962311247736L;
-  protected final int errorCode;
+public class IllegalPathException extends MetadataException {
 
-  public IoTDBException(String message, int errorCode) {
-    super(message);
-    this.errorCode = errorCode;
-  }
+  private static final long serialVersionUID = 2693272249167539978L;
 
-  public IoTDBException(Throwable cause, int errorCode) {
-    super(cause);
-    this.errorCode = errorCode;
-  }
-
-  public int getErrorCode() {
-    return errorCode;
+  public IllegalPathException(String path) {
+    super(String.format("%s is not a legal path", path));
+    errorCode = TSStatusCode.PATH_ILLEGAL.getStatusCode();
   }
 }

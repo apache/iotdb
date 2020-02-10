@@ -18,24 +18,13 @@
  *
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.metadata;
 
-public class IoTDBException extends Exception {
+public class PathNotExistException extends MetadataException {
 
-  private static final long serialVersionUID = 8480450962311247736L;
-  protected final int errorCode;
+  private static final long serialVersionUID = 2693272249167539978L;
 
-  public IoTDBException(String message, int errorCode) {
-    super(message);
-    this.errorCode = errorCode;
-  }
-
-  public IoTDBException(Throwable cause, int errorCode) {
-    super(cause);
-    this.errorCode = errorCode;
-  }
-
-  public int getErrorCode() {
-    return errorCode;
+  public PathNotExistException(String path) {
+    super(String.format("Path [%s] does not exist", path));
   }
 }

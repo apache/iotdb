@@ -259,7 +259,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         while ((metadataOperation = br.readLine()) != null) {
           try {
             MManager.getInstance().operation(metadataOperation);
-          } catch (IOException | MetadataException | PathException e) {
+          } catch (IOException | MetadataException e) {
             logger.error("Can not operate metadata operation {} ", metadataOperation, e);
           }
         }

@@ -28,6 +28,12 @@ import org.apache.iotdb.rpc.TSStatusCode;
 public class MetadataException extends IoTDBException {
 
   private static final long serialVersionUID = 3415275599091623570L;
+  protected int errorCode;
+
+  public MetadataException(Throwable cause, int errorCode) {
+    super(cause, TSStatusCode.METADATA_ERROR.getStatusCode());
+    this.errorCode = errorCode;
+  }
 
   public MetadataException(String msg) {
     super(msg, TSStatusCode.METADATA_ERROR.getStatusCode());

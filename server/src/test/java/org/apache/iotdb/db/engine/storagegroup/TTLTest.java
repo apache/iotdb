@@ -103,12 +103,12 @@ public class TTLTest {
   }
 
   @Test
-  public void testSetMetaTTL() throws IOException, PathException, StorageGroupException {
+  public void testSetMetaTTL() throws IOException, MetadataException, StorageGroupException {
     // exception is expected when setting ttl to a non-exist storage group
     boolean caught = false;
     try {
       MManager.getInstance().setTTL(sg1 + ".notExist", ttl);
-    } catch (PathException e) {
+    } catch (MetadataException e) {
       caught = true;
     }
     assertTrue(caught);

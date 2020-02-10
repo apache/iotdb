@@ -17,11 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.path;
+package org.apache.iotdb.db.exception.metadata;
 
-public class PTreePathException extends PathException {
+public class StorageGroupNotSetException extends MetadataException {
 
-  public PTreePathException(String message) {
-    super(message);
+  private static final long serialVersionUID = 3739300272099030533L;
+
+  public StorageGroupNotSetException(String path) {
+    super(String.format("Storage group is not set for current seriesPath: [%s]", path));
   }
 }

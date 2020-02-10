@@ -22,8 +22,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import org.apache.iotdb.db.exception.path.PTreePathException;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.metadata.PTreePathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 
 /**
  * "PTree" is the shorthand for "Property Tree". One {@code PTree} consists several {@code PNode}
@@ -48,7 +48,7 @@ public class PTree implements Serializable {
    *
    * @return The count of new added {@code PNode} TODO: unused
    */
-  int addPath(String path) throws PathException {
+  int addPath(String path) throws MetadataException {
     int addCount = 0;
     if (getRoot() == null) {
       throw new PTreePathException("Root Node is null, Please initialize root first");
@@ -80,7 +80,7 @@ public class PTree implements Serializable {
   /**
    * Remove a seriesPath from current PTree
    */
-  void deletePath(String path) throws PathException {
+  void deletePath(String path) throws MetadataException {
     String[] nodes = MetaUtils.getNodeNames(path, "\\.");
     if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
       throw new PTreePathException("Path not correct. Path:" + path);
@@ -99,7 +99,7 @@ public class PTree implements Serializable {
   /**
    * Link a {@code MNode} to a {@code PNode} in current PTree
    */
-  void linkMNode(String pTreePath, String mTreePath) throws PathException {
+  void linkMNode(String pTreePath, String mTreePath) throws MetadataException {
     List<String> paths = mTree.getAllPathInList(mTreePath);
     String[] nodes = MetaUtils.getNodeNames(pTreePath, "\\.");
     PNode leaf = getLeaf(getRoot(), nodes, 0);
@@ -111,7 +111,7 @@ public class PTree implements Serializable {
   /**
    * Unlink a {@code MNode} from a {@code PNode} in current PTree
    */
-  void unlinkMNode(String pTreePath, String mTreePath) throws PathException {
+  void unlinkMNode(String pTreePath, String mTreePath) throws MetadataException {
     List<String> paths = mTree.getAllPathInList(mTreePath);
     String[] nodes = MetaUtils.getNodeNames(pTreePath, "\\.");
     PNode leaf = getLeaf(getRoot(), nodes, 0);
@@ -120,7 +120,7 @@ public class PTree implements Serializable {
     }
   }
 
-  private PNode getLeaf(PNode node, String[] nodes, int idx) throws PathException {
+  private PNode getLeaf(PNode node, String[] nodes, int idx) throws MetadataException {
     if (idx >= nodes.length) {
       throw new PTreePathException(PTREE_NOT_EXIST);
     }
@@ -142,7 +142,7 @@ public class PTree implements Serializable {
    * to the given seriesPath in PTree
    * @return Paths will be separated by the {@code MNode.dataFileName} in the HashMap
    */
-  HashMap<String, List<String>> getAllLinkedPath(String path) throws PathException {
+  HashMap<String, List<String>> getAllLinkedPath(String path) throws MetadataException {
     String[] nodes = MetaUtils.getNodeNames(path, "\\.");
     PNode leaf = getLeaf(getRoot(), nodes, 0);
     HashMap<String, List<String>> res = new HashMap<>();

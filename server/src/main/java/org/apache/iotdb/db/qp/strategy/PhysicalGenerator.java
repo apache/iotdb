@@ -398,7 +398,11 @@ public class PhysicalGenerator {
         queryPlan.setExpression(expression);
       }
     }
-    generateDataTypes(queryPlan);
+    try {
+      generateDataTypes(queryPlan);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
     deduplicate(queryPlan);
 
     queryPlan.setRowLimit(queryOperator.getRowLimit());
@@ -442,7 +446,7 @@ public class PhysicalGenerator {
         }
       }
       retDevices = new ArrayList<>(deviceSet);
-    } catch (PathException e) {
+    } catch (MetadataException e) {
       throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
     }
     return retDevices;
@@ -469,12 +473,12 @@ public class PhysicalGenerator {
     return basicOperator;
   }
 
-  private void generateDataTypes(QueryPlan queryPlan) throws PathException {
+  private void generateDataTypes(QueryPlan queryPlan) throws MetadataException {
     List<Path> paths = queryPlan.getPaths();
     List<TSDataType> dataTypes = new ArrayList<>(paths.size());
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-      TSDataType seriesType = MManager.getInstance().getSeriesType(path);
+      TSDataType seriesType = MManager.getInstance().getSeriesType(path.toString());
       dataTypes.add(seriesType);
       queryPlan.addTypeMapping(path, seriesType);
     }

@@ -22,13 +22,12 @@ package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class TimeseriesAlreadyExistException extends MetadataException {
-
+public class PathAlreadyExistException extends MetadataException {
 
   private static final long serialVersionUID = -6713847897890531438L;
 
-  public TimeseriesAlreadyExistException(String path) {
-    super(String.format("Timeseries [%s] already exist", path),
-        TSStatusCode.TIMESERIES_ALREADY_EXIST_ERROR.getStatusCode());
+  public PathAlreadyExistException(String path) {
+    super(String.format("Path [%s] already exist", path),
+        TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode());
   }
 }

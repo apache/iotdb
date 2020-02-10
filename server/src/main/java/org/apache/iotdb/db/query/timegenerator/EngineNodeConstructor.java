@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.query.timegenerator;
 
+import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
+
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -31,8 +33,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
-
-import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
 
 public class EngineNodeConstructor extends AbstractNodeConstructor {
 
@@ -55,7 +55,7 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
             new SeriesRawDataPointReader(path, dataType, context,
                 QueryResourceManager.getInstance().getQueryDataSource(path, context, filter),
                 null, filter));
-      } catch (PathException e) {
+      } catch (MetadataException e) {
         throw new StorageEngineException(e.getMessage());
       }
 
