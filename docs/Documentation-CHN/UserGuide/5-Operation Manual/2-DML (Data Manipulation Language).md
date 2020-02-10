@@ -145,6 +145,21 @@ select wf01.wt01.status,wf02.wt02.hardware from root.ln where (time > 2017-11-01
 该SQL语句的执行结果如下：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
 
+#### 其他结果返回形式
+
+IoTDB支持另外两种结果返回形式: 按设备时间对齐 'group by device' 和 时序不对齐 'disable align'.
+
+'group by device' 对齐方式下，设备ID会单独作为一列出现。在select 子句中写了多少列，最终结果就会有该列数+2 （时间列和设备名字列）。SQL形如:
+
+```
+select s1,s2 from root.sg1.* GROUP BY DEVICE
+```
+
+更多语法请参照 SQL REFERENCE.
+
+'disable align' 意味着每条时序就有3列存在。更多语法请参照 SQL REFERENCE.
+
+
 ### 降频聚合查询
 
 本章节主要介绍降频聚合查询的相关示例，
