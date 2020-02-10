@@ -150,7 +150,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    *
    * @return - pair.left: UnaryQueryFilter constructed by its one child; pair.right: Path
    * represented by this child.
-   * @throws QueryProcessException exception in filter transforming
+   * @throws MetadataException exception in filter transforming
    */
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter()
       throws LogicalOperatorException, MetadataException {

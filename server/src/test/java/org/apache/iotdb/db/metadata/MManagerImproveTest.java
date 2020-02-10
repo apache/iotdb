@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MManagerImproveTest {
+
   private static Logger logger = LoggerFactory.getLogger(MManagerImproveTest.class);
 
   private static final int TIMESERIES_NUM = 1000;
@@ -75,7 +76,7 @@ public class MManagerImproveTest {
   }
 
   @Test
-  public void analyseTimeCost() throws PathException, StorageGroupException {
+  public void analyseTimeCost() throws MetadataException, StorageGroupException {
     mManager = MManager.getInstance();
 
     long startTime, endTime;
@@ -133,7 +134,7 @@ public class MManagerImproveTest {
   }
 
   private void doOriginTest(String deviceId, List<String> measurementList)
-      throws PathException, StorageGroupException {
+      throws MetadataException, StorageGroupException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       assertTrue(mManager.pathExist(path));
@@ -146,7 +147,7 @@ public class MManagerImproveTest {
   }
 
   private void doPathLoopOnceTest(String deviceId, List<String> measurementList)
-      throws PathException, StorageGroupException {
+      throws MetadataException, StorageGroupException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       List<Path> paths = new ArrayList<>();
@@ -158,15 +159,11 @@ public class MManagerImproveTest {
   }
 
   private void doDealdeviceIdOnceTest(String deviceId, List<String> measurementList)
-      throws PathException, StorageGroupException {
+      throws MetadataException, StorageGroupException {
     boolean isFileLevelChecked;
     List<Path> tempList = new ArrayList<>();
     tempList.add(new Path(deviceId));
-    try {
-      isFileLevelChecked = mManager.checkFileLevel(tempList);
-    } catch (StorageGroupException e) {
-      isFileLevelChecked = false;
-    }
+    isFileLevelChecked = mManager.checkFileLevel(tempList);
     MNode node = mManager.getNodeByPath(deviceId);
 
     for (String measurement : measurementList) {
@@ -183,7 +180,7 @@ public class MManagerImproveTest {
   }
 
   private void doRemoveListTest(String deviceId, List<String> measurementList)
-      throws PathException, StorageGroupException {
+      throws MetadataException, StorageGroupException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       assertTrue(mManager.pathExist(path));
@@ -194,13 +191,9 @@ public class MManagerImproveTest {
   }
 
   private void doAllImproveTest(String deviceId, List<String> measurementList)
-      throws PathException, StorageGroupException {
+      throws MetadataException, StorageGroupException {
     boolean isFileLevelChecked;
-    try {
-      isFileLevelChecked = mManager.checkFileLevel(deviceId);
-    } catch (StorageGroupException e) {
-      isFileLevelChecked = false;
-    }
+    isFileLevelChecked = mManager.checkFileLevel(deviceId);
     MNode node = mManager.getNodeByPathWithCheck(deviceId);
 
     for (String measurement : measurementList) {
@@ -214,7 +207,7 @@ public class MManagerImproveTest {
   }
 
   private void doCacheTest(String deviceId, List<String> measurementList)
-      throws CacheException, PathException {
+      throws MetadataException {
     MNode node = mManager.getNodeByPathFromCache(deviceId);
     for (String s : measurementList) {
       assertTrue(node.hasChild(s));
@@ -226,7 +219,7 @@ public class MManagerImproveTest {
   }
 
   @Test
-  public void improveTest() throws PathException, StorageGroupException, CacheException {
+  public void improveTest() throws MetadataException, StorageGroupException, CacheException {
     mManager = MManager.getInstance();
 
     long startTime, endTime;
