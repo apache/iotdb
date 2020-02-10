@@ -67,8 +67,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   private int totalChunkNum;
   private TsFileMetaData tsFileMetaData;
   private EndianType endianType = EndianType.BIG_ENDIAN;
-  private Set<String> cachedDevices;
-  private Map<String, TimeseriesMetaData> cachedTimeseriesMetaDataMap;
+  private Map<String, Map<String, TimeseriesMetaData>> cachedTimeseriesMetaDataMap;
   private boolean cacheMetadata;
 
   /**
@@ -257,36 +256,38 @@ public class TsFileSequenceReader implements AutoCloseable {
   
   public Map<String, TimeseriesMetaData> readAllTimeseriesMetaDataInDevice(String device) 
       throws IOException {
-    if (cachedDevices == null) {
-      cachedDevices = new HashSet<>();
+    if (cachedTimeseriesMetaDataMap == null) {
       cachedTimeseriesMetaDataMap = new HashMap<>();
     }
-    if (cachedDevices.contains(device)) {
-      return cachedTimeseriesMetaDataMap;
+    if (cachedTimeseriesMetaDataMap.containsKey(device)) {
+      return cachedTimeseriesMetaDataMap.get(device);
     }
     
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
-    cachedDevices.add(device);
-    long[] tsOffsets = tsFileMetaData.getTsOffsets();
-    if (tsFileMetaData.getDeviceOffsetsMap() == null) {
-      return cachedTimeseriesMetaDataMap;
+    
+    if (tsFileMetaData.getTsOffsets() == null || tsFileMetaData.getDeviceOffsetsMap() == null) {
+      return new HashMap<>();
     }
+    long[] tsOffsets = tsFileMetaData.getTsOffsets();
     int[] deviceOffsets = tsFileMetaData.getDeviceOffsetsMap().get(device);
     if (deviceOffsets == null) {
-      return cachedTimeseriesMetaDataMap;
+      return new HashMap<>();
     }
     int start = deviceOffsets[0];
     int end = deviceOffsets[1];
+    Map<String, TimeseriesMetaData> timeseriesMetaDataMapInOneDevice = 
+        new HashMap<>();
     for (int i = start; i < end; i++) {
       TimeseriesMetaData tsMetaData = TimeseriesMetaData
           .deserializeFrom(readData(tsOffsets[i], (int) (tsOffsets[i + 1] - tsOffsets[i])));
       if (tsMetaData != null) {
-        cachedTimeseriesMetaDataMap.put(tsMetaData.getMeasurementId(), tsMetaData);
+        timeseriesMetaDataMapInOneDevice.put(tsMetaData.getMeasurementId(), tsMetaData);
       }
     }
-    return cachedTimeseriesMetaDataMap;
+    cachedTimeseriesMetaDataMap.put(device, timeseriesMetaDataMapInOneDevice);
+    return timeseriesMetaDataMapInOneDevice;
   }
   
   public List<ChunkMetaData> readChunkMetadataInDevice(String device) throws IOException {

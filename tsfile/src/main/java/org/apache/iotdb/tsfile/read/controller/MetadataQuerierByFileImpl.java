@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -83,19 +84,6 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   public TsFileMetaData getWholeFileMetadata() {
     return fileMetaData;
   }
-
-  // @Override
-  public void loadChunkMetaDatasV2(List<Path> paths) throws IOException {
-    int count = 0;
-    for (Path path : paths) {
-      if (count >= CHUNK_METADATA_CACHE_SIZE) {
-        break;
-      }
-      chunkMetaDataCache.put(path, tsFileReader.getChunkMetadataList(path));
-      count += tsFileReader.getChunkMetadataList(path).size();
-    }
-
-  }
   
   @Override
   public void loadChunkMetaDatas(List<Path> paths) throws IOException {
@@ -125,15 +113,12 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
         continue;
       }
       
-      int[] deviceIndex = fileMetaData.getDeviceOffsetsMap().get(selectedDevice);
-      int start = deviceIndex[0];
-      int end = deviceIndex[1];
-      List<TimeseriesMetaData> timeseriesMetaDataInDevice = tsFileReader
-          .readTimeseriesMetadataInDevice(start, end);
+      Map<String, TimeseriesMetaData> timeseriesMetaDataInDevice = tsFileReader
+          .readAllTimeseriesMetaDataInDevice(selectedDevice);
       List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
-      for (TimeseriesMetaData tsMetaData : timeseriesMetaDataInDevice) {
-        if (selectedMeasurements.contains(tsMetaData.getMeasurementId())) {
-          chunkMetaDataList.addAll(tsFileReader.readChunkMetaDataList(tsMetaData));
+      for (Map.Entry<String, TimeseriesMetaData> entry : timeseriesMetaDataInDevice.entrySet()) {
+        if (selectedMeasurements.contains(entry.getKey())) {
+          chunkMetaDataList.addAll(tsFileReader.readChunkMetaDataList(entry.getValue()));
         }
       }
       // d1
@@ -204,13 +189,10 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       }
       deviceMeasurementsMap.get(path.getDevice()).add(path.getMeasurement());
     }
-    Map<String, int[]> deviceOffsetsMap = fileMetaData.getDeviceOffsetsMap();
     for (Map.Entry<String, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
       String selectedDevice = deviceMeasurements.getKey();
       Set<String> selectedMeasurements = deviceMeasurements.getValue();
-      int[] deviceOffsets = deviceOffsetsMap.get(selectedDevice);
-      List<ChunkMetaData> chunkMetadataList = tsFileReader.readChunkMetadataInDevice(deviceOffsets[0],
-          deviceOffsets[1]);
+      List<ChunkMetaData> chunkMetadataList = tsFileReader.readChunkMetadataInDevice(selectedDevice);
       for (ChunkMetaData chunkMetaData : chunkMetadataList) {
         LocateStatus mode = checkLocateStatus(chunkMetaData, spacePartitionStartPos, spacePartitionEndPos);
         if (mode == LocateStatus.after) {

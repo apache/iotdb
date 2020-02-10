@@ -105,6 +105,15 @@ public class TsFileWriterTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
+    try {
+      for(int i = 2; i < 3; i++) {
+        writer.addTimeseries(new Path("d"+ i + ".s1"),
+            new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
+      }
+    } catch (WriteProcessException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
 
   }
 
