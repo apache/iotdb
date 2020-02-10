@@ -155,53 +155,46 @@ public class MTreeTest {
     MTree root2 = new MTree("root");
     MTree root3 = new MTree("root");
     try {
+      CompressionType compressionType = CompressionType
+          .valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
+
       root.setStorageGroup("root.a.d0");
-      root.addTimeseriesPath("root.a.d0.s0", TSDataType.INT32, TSEncoding.RLE,
-          CompressionType.valueOf
-              (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
-      root.addTimeseriesPath("root.a.d0.s1", TSDataType.INT32, TSEncoding.RLE,
-          CompressionType.valueOf
-              (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
+      root.addTimeseriesPath("root.a.d0.s0", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      root.addTimeseriesPath("root.a.d0.s1", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
 
       root.setStorageGroup("root.a.d1");
-      root.addTimeseriesPath("root.a.d1.s0", TSDataType.INT32, TSEncoding.RLE,
-          CompressionType.valueOf
-              (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
-      root.addTimeseriesPath("root.a.d1.s1", TSDataType.INT32, TSEncoding.RLE,
-          CompressionType.valueOf
-              (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
+      root.addTimeseriesPath("root.a.d1.s0", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      root.addTimeseriesPath("root.a.d1.s1", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
 
       root.setStorageGroup("root.a.b.d0");
-      root.addTimeseriesPath("root.a.b.d0.s0", TSDataType.INT32, TSEncoding.RLE,
-          CompressionType.valueOf
-              (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
+      root.addTimeseriesPath("root.a.b.d0.s0", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
 
       root1.setStorageGroup("root.a.d0");
-      root1.addTimeseriesPath("root.a.d0.s0", TSDataType.INT32, TSEncoding.RLE,
-          CompressionType.valueOf
-              (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
-      root1.addTimeseriesPath("root.a.d0.s1", TSDataType.INT32, TSEncoding.RLE,
-          CompressionType.valueOf
-              (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
+      root1.addTimeseriesPath("root.a.d0.s0", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      root1.addTimeseriesPath("root.a.d0.s1", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
 
       root2.setStorageGroup("root.a.d1");
-      root2.addTimeseriesPath("root.a.d1.s0", TSDataType.INT32, TSEncoding.RLE,
-          CompressionType.valueOf
-              (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
-      root2.addTimeseriesPath("root.a.d1.s1", TSDataType.INT32, TSEncoding.RLE,
-          CompressionType.valueOf
-              (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
+      root2.addTimeseriesPath("root.a.d1.s0", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      root2.addTimeseriesPath("root.a.d1.s1", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
 
       root3.setStorageGroup("root.a.b.d0");
-      root3.addTimeseriesPath("root.a.b.d0.s0", TSDataType.INT32, TSEncoding.RLE,
-          CompressionType.valueOf
-              (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
+      root3.addTimeseriesPath("root.a.b.d0.s0", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
 
-      String[] metadataStrs = new String[3];
-      metadataStrs[0] = root1.toString();
-      metadataStrs[1] = root2.toString();
-      metadataStrs[2] = root3.toString();
-      assertEquals(MTree.combineMetadataInStrings(metadataStrs), root.toString());
+      String[] metadatas = new String[3];
+      metadatas[0] = root1.toString();
+      metadatas[1] = root2.toString();
+      metadatas[2] = root3.toString();
+      assertEquals(MTree.combineMetadataInStrings(metadatas), root.toString());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

@@ -46,10 +46,8 @@ public class PTree implements Serializable {
   /**
    * Add a seriesPath to current PTree
    *
-   * @return The count of new added {@code PNode} TODO: unused
    */
-  int addPath(String path) throws MetadataException {
-    int addCount = 0;
+  void addPath(String path) throws MetadataException {
     if (getRoot() == null) {
       throw new PTreePathException("Root Node is null, Please initialize root first");
     }
@@ -63,7 +61,6 @@ public class PTree implements Serializable {
     for (i = 1; i < nodes.length - 1; i++) {
       if (!cur.hasChild(nodes[i])) {
         cur.addChild(nodes[i], new PNode(nodes[i], cur, false));
-        addCount++;
       }
       cur = cur.getChild(nodes[i]);
     }
@@ -72,9 +69,7 @@ public class PTree implements Serializable {
     } else {
       PNode node = new PNode(nodes[i], cur, true);
       cur.addChild(node.getName(), node);
-      addCount++;
     }
-    return addCount;
   }
 
   /**
