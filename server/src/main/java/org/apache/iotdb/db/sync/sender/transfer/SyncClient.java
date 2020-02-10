@@ -665,7 +665,8 @@ public class SyncClient implements ISyncClient {
 
 
   private File getSchemaPosFile() {
-    return new File(config.getSenderFolderPath(), SyncConstant.SCHEMA_POS_FILE_NAME);
+    return new File(IoTDBDescriptor.getInstance().getConfig().getSyncDir(),
+        config.getSyncReceiverName() + File.separator + SyncConstant.SCHEMA_POS_FILE_NAME);
   }
 
   private File getSchemaLogFile() {
@@ -680,7 +681,7 @@ public class SyncClient implements ISyncClient {
 
   private File getUuidFile() {
     return new File(IoTDBDescriptor.getInstance().getConfig().getSyncDir(),
-        config.getSyncReceiverName() + File.separator + SyncConstant.UUID_FILE_NAME);
+        SyncConstant.UUID_FILE_NAME);
   }
 
   private static class InstanceHolder {
