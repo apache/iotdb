@@ -512,6 +512,22 @@ The result is shown below:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577879-64984680-1ef6-11e9-9d7b-57dd60fab60e.jpg"></center>
 
+#### Other ResultSet Format
+
+In addition, IoTDB supports two another resultset format: 'group by device' and 'disable align'.
+
+The 'group by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
+
+The SQL statement is:
+
+```
+select s1,s2 from root.sg1.* GROUP BY DEVICE
+```
+
+For more syntax description, please read SQL REFERENCE.
+
+The 'disable align' indicaes that there are 3 columns for each time series in the resultset. For more syntax description, please read SQL REFERENCE.
+
 ####  Error Handling
 
 When the parameter N/SN of LIMIT/SLIMIT exceeds the size of the result set, IoTDB will return all the results as expected. For example, the query result of the original SQL statement consists of six rows, and we select the first 100 rows through the LIMIT clause:

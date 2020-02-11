@@ -95,12 +95,10 @@ public class Client extends AbstractClient {
               + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
       println("For more information, please check the following hint.");
       hf.printHelp(IOTDB_CLI_PREFIX, options, true);
-      handleException(e);
       return false;
     } catch (NumberFormatException e) {
       println(
           IOTDB_CLI_PREFIX + "> error format of max print row count, it should be number");
-      handleException(e);
       return false;
     }
     return true;
@@ -123,20 +121,18 @@ public class Client extends AbstractClient {
             .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
           properties = connection.getServerProperties();
           AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
-          processCmd(execute, connection);
+          processCommand(execute, connection);
           return;
         } catch (SQLException e) {
-          handleException(e);
+          println(IOTDB_CLI_PREFIX + "> can't execute sql because" + e.getMessage());
         }
       }
 
       receiveCommands(reader);
     } catch (ArgsErrorException e) {
       println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
-      handleException(e);
     } catch (Exception e) {
       println(IOTDB_CLI_PREFIX + "> exit client with error " + e.getMessage());
-      handleException(e);
     }
   }
 
@@ -153,7 +149,7 @@ public class Client extends AbstractClient {
       println(IOTDB_CLI_PREFIX + "> login successfully");
       while (true) {
         s = reader.readLine(IOTDB_CLI_PREFIX + "> ", null);
-        boolean continues = processCmd(s, connection);
+        boolean continues = processCommand(s, connection);
         if (!continues) {
           break;
         }
@@ -162,29 +158,7 @@ public class Client extends AbstractClient {
       println(String
           .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host,
               port));
-      handleException(e);
     }
   }
 
-  private static boolean processCmd(String s, IoTDBConnection connection) {
-    if (s == null) {
-      return true;
-    }
-    String[] cmds = s.trim().split(";");
-    for (int i = 0; i < cmds.length; i++) {
-      String cmd = cmds[i];
-      if (cmd != null && !"".equals(cmd.trim())) {
-        OperationResult result = handleInputCmd(cmd, connection);
-        switch (result) {
-          case STOP_OPER:
-            return false;
-          case CONTINUE_OPER:
-            continue;
-          default:
-            break;
-        }
-      }
-    }
-    return true;
-  }
 }
