@@ -35,6 +35,7 @@ public class StorageEngineException extends ProcessException {
 
   public StorageEngineException(ProcessException e) {
     super(e.getMessage());
+    initCause(e);
     errorCode = e.getErrorCode();
   }
 }

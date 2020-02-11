@@ -44,6 +44,7 @@ import org.apache.iotdb.cluster.common.TestDataClient;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
@@ -109,9 +110,12 @@ public class DataGroupMemberTest extends MemberTest {
   private boolean hasInitialSnapshots;
   private boolean enableSyncLeader;
   private int numSlotsToPull = 2;
+  private int prevReplicationNum;
 
   @Before
   public void setUp() throws Exception {
+    prevReplicationNum = ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
+    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(3);
     super.setUp();
     dataGroupMember = getDataGroupMember(TestUtils.getNode(0));
     snapshotMap = new HashMap<>();
@@ -122,6 +126,12 @@ public class DataGroupMemberTest extends MemberTest {
     }
     receivedSnapshots = new HashMap<>();
     pulledSnapshots = new HashSet<>();
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    super.tearDown();
+    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(prevReplicationNum);
   }
 
   private PartitionedSnapshotLogManager getLogManager(PartitionGroup partitionGroup) {
@@ -147,6 +157,10 @@ public class DataGroupMemberTest extends MemberTest {
 
   private DataGroupMember getDataGroupMember(Node node) throws IOException {
     PartitionGroup nodes = partitionTable.getHeaderGroup(node);
+    return getDataGroupMember(node, nodes);
+  }
+
+  private DataGroupMember getDataGroupMember(Node node, PartitionGroup nodes) throws IOException {
     return new DataGroupMember(new TCompactProtocol.Factory(), nodes, node, getLogManager(nodes),
         testMetaMember, new TAsyncClientManager()) {
       @Override
@@ -253,11 +267,6 @@ public class DataGroupMemberTest extends MemberTest {
     };
   }
 
-  @After
-  public void tearDown() throws Exception {
-    super.tearDown();
-  }
-
   @Test
   public void testGetHeader() {
     assertEquals(TestUtils.getNode(0), dataGroupMember.getHeader());
@@ -265,9 +274,12 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testAddNode() throws IOException {
-    DataGroupMember firstMember = dataGroupMember;
-    DataGroupMember midMember = getDataGroupMember(TestUtils.getNode(50));
-    DataGroupMember lastMember = getDataGroupMember(TestUtils.getNode(90));
+    PartitionGroup partitionGroup = new PartitionGroup(TestUtils.getNode(0),
+        TestUtils.getNode(50), TestUtils.getNode(90));
+    DataGroupMember firstMember = getDataGroupMember(TestUtils.getNode(0),
+        new PartitionGroup(partitionGroup));
+    DataGroupMember midMember = getDataGroupMember(TestUtils.getNode(50), new PartitionGroup(partitionGroup));
+    DataGroupMember lastMember = getDataGroupMember(TestUtils.getNode(90), new PartitionGroup(partitionGroup));
 
     Node newNodeBeforeGroup = TestUtils.getNode(-5);
     assertFalse(firstMember.addNode(newNodeBeforeGroup));
@@ -418,7 +430,7 @@ public class DataGroupMemberTest extends MemberTest {
     hasInitialSnapshots = true;
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     PullSnapshotRequest request = new PullSnapshotRequest();
-    List<Integer> requiredSlots = Arrays.asList(1, 3, 5, 7, 9, 11);
+    List<Integer> requiredSlots = Arrays.asList(1, 3, 5, 7, 9, 11, 101);
     request.setRequiredSlots(requiredSlots);
     AtomicReference<Map<Integer, FileSnapshot>> reference = new AtomicReference<>();
     PullSnapshotHandler<FileSnapshot> handler = new PullSnapshotHandler<>(reference,
@@ -439,9 +451,9 @@ public class DataGroupMemberTest extends MemberTest {
     dataGroupMember.start();
     try {
       hasInitialSnapshots = false;
-      partitionTable.addNode(TestUtils.getNode(10));
+      partitionTable.addNode(TestUtils.getNode(100));
       List<Integer> requiredSlots = Arrays.asList(19, 39, 59, 79, 99);
-      dataGroupMember.pullNodeAdditionSnapshots(requiredSlots, TestUtils.getNode(10));
+      dataGroupMember.pullNodeAdditionSnapshots(requiredSlots, TestUtils.getNode(100));
       assertEquals(requiredSlots.size(), receivedSnapshots.size());
       for (Integer requiredSlot : requiredSlots) {
         receivedSnapshots.get(requiredSlot).getRemoteSnapshot();

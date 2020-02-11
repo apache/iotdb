@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.partition;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
 /**
@@ -32,6 +33,10 @@ public class PartitionGroup extends ArrayList<Node> {
   private Node thisNode;
 
   public PartitionGroup() {
+  }
+
+  public PartitionGroup(Node... nodes) {
+    this.addAll(Arrays.asList(nodes));
   }
 
   public PartitionGroup(PartitionGroup other) {

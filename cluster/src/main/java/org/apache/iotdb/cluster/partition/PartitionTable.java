@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -54,7 +55,7 @@ import org.slf4j.LoggerFactory;
 public interface PartitionTable {
   // static final is not necessary, it is redundant for an interface
   Logger logger = LoggerFactory.getLogger(SlotPartitionTable.class);
-  long PARTITION_INTERVAL = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+  long PARTITION_INTERVAL = StorageEngine.getTimePartitionInterval();
 
   /**
    * Given the storageGroupName and the timestamp, return the list of nodes on which the storage

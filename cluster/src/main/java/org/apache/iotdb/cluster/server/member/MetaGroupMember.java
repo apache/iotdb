@@ -136,7 +136,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private static final Logger logger = LoggerFactory.getLogger(MetaGroupMember.class);
   private static final int DEFAULT_JOIN_RETRY = 10;
   private static final int REPORT_INTERVAL_SEC = 10;
-  public static final int REPLICATION_NUM =
+  public final int REPLICATION_NUM =
       ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
 
   // blind nodes are nodes that does not know the nodes in the cluster
@@ -885,7 +885,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return null;
     } else if (PartitionUtils.isGlobalPlan(plan)) {// forward the plan to all nodes
       return processNonPartitionedPlan(plan);
-    } else { //split the plan and forward them to some ParititonGroups
+    } else { //split the plan and forward them to some PartitionGroups
       try {
         return processPartitionedPlan(plan);
       } catch (UnsupportedPlanException e) {

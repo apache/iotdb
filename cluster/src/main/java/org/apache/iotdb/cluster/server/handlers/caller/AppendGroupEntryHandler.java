@@ -20,10 +20,10 @@
 package org.apache.iotdb.cluster.server.handlers.caller;
 
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
-import static org.apache.iotdb.cluster.server.member.MetaGroupMember.REPLICATION_NUM;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -52,6 +52,7 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
   // store the flag of leadership lost and the new leader's term
   private AtomicBoolean leaderShipStale;
   private AtomicLong newLeaderTerm;
+  private int replicationNum = ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
 
   public AppendGroupEntryHandler(int[] groupReceivedCounter, int receiverNodeIndex,
       Node receiverNode, AtomicBoolean leaderShipStale, Log log, AtomicLong newLeaderTerm) {
@@ -94,7 +95,7 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
       logger.debug("Node {} has accepted log {}", receiverNode, log);
       // this node is contained in REPLICATION_NUM groups, decrease the counters of these groups
       int startIndex = receiverNodeIndex;
-      for (int i = 0; i < REPLICATION_NUM; i++) {
+      for (int i = 0; i < replicationNum; i++) {
         int nodeIndex = receiverNodeIndex - i;
         if (nodeIndex < 0) {
           nodeIndex += groupReceivedCounter.length;

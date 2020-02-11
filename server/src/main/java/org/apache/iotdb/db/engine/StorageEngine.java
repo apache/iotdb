@@ -92,10 +92,12 @@ public class StorageEngine implements IService {
   private static final ExecutorService recoveryThreadPool = IoTDBThreadPoolFactory
       .newFixedThreadPool(Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
 
-  private static final StorageEngine INSTANCE = new StorageEngine();
+  static class InstanceHolder {
+    private static final StorageEngine INSTANCE = new StorageEngine();
+  }
 
   public static StorageEngine getInstance() {
-    return INSTANCE;
+    return InstanceHolder.INSTANCE;
   }
 
   private ScheduledExecutorService ttlCheckThread;

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static org.apache.iotdb.cluster.server.member.MetaGroupMember.REPLICATION_NUM;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -29,11 +28,29 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.server.Response;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 public class AppendGroupEntryHandlerTest {
+
+  private int REPLICATION_NUM;
+  private int prevReplicationNum;
+
+  @Before
+  public void setUp() {
+    prevReplicationNum = ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
+    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(2);
+    REPLICATION_NUM = ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
+  }
+
+  @After
+  public void tearDown() {
+    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(prevReplicationNum);
+  }
 
   @Test
   public void testAgreement() throws InterruptedException {

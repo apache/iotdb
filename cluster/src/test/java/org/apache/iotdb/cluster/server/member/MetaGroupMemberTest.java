@@ -412,12 +412,6 @@ public class MetaGroupMemberTest extends MemberTest {
     }
   }
 
-  @Override
-  @After
-  public void tearDown() throws Exception {
-    super.tearDown();
-  }
-
   @Test
   public void testClosePartition() throws QueryProcessException, StorageEngineException {
     // the operation is accepted
