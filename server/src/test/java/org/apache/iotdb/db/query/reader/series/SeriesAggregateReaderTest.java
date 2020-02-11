@@ -74,6 +74,7 @@ public class SeriesAggregateReaderTest {
           new QueryContext(), queryDataSource, null, null);
       AggregateResult aggregateResult = AggreResultFactory
           .getAggrResultByName("count", TSDataType.INT32);
+      int loopTime = 0;
       while (seriesReader.hasNextChunk()) {
         if (seriesReader.canUseCurrentChunkStatistics()) {
           Statistics chunkStatistics = seriesReader.currentChunkStatistics();
@@ -81,24 +82,20 @@ public class SeriesAggregateReaderTest {
           seriesReader.skipCurrentChunk();
           continue;
         }
-        int loopTime = 0;
         while (seriesReader.hasNextPage()) {
           if (seriesReader.canUseCurrentPageStatistics()) {
             Statistics pageStatistic = seriesReader.currentPageStatistics();
-            if (loopTime == 0) {
-              assertEquals(260, pageStatistic.getStartTime());
-              assertEquals(279, pageStatistic.getEndTime());
-            } else if (loopTime == 1) {
-              assertEquals(280, pageStatistic.getStartTime());
-              assertEquals(299, pageStatistic.getEndTime());
-            } else {
-              assertEquals(380, pageStatistic.getStartTime());
-              assertEquals(399, pageStatistic.getEndTime());
-            }
-            assertEquals(20, pageStatistic.getCount());
             aggregateResult.updateResultFromStatistics(pageStatistic);
             seriesReader.skipCurrentPage();
             continue;
+          }
+
+          if (loopTime >= 0 && loopTime < 13) {
+            assertEquals((long) loopTime * 20, aggregateResult.getResult());
+          } else if (loopTime >= 13 && loopTime < 17) {
+            assertEquals((long) loopTime * 20 + 40, aggregateResult.getResult());
+          } else if (loopTime >= 17) {
+            assertEquals((long) loopTime * 20 + 60, aggregateResult.getResult());
           }
 
           while (seriesReader.hasNextOverlappedPage()) {
