@@ -34,8 +34,8 @@ import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.crud.AlignByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -43,7 +43,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
@@ -114,7 +113,7 @@ public class DeletionQueryTest {
     dataTypes.add(TSDataType.valueOf(dataType));
     dataTypes.add(TSDataType.valueOf(dataType));
 
-    QueryPlan queryPlan = new QueryPlan();
+    AlignByTimePlan queryPlan = new AlignByTimePlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPaths(pathList);
     QueryDataSet dataSet = router.query(queryPlan, TEST_QUERY_CONTEXT);
@@ -153,7 +152,7 @@ public class DeletionQueryTest {
     dataTypes.add(TSDataType.valueOf(dataType));
     dataTypes.add(TSDataType.valueOf(dataType));
 
-    QueryPlan queryPlan = new QueryPlan();
+    AlignByTimePlan queryPlan = new AlignByTimePlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPaths(pathList);
     QueryDataSet dataSet = router.query(queryPlan, TEST_QUERY_CONTEXT);
@@ -202,7 +201,7 @@ public class DeletionQueryTest {
     dataTypes.add(TSDataType.valueOf(dataType));
     dataTypes.add(TSDataType.valueOf(dataType));
 
-    QueryPlan queryPlan = new QueryPlan();
+    AlignByTimePlan queryPlan = new AlignByTimePlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPaths(pathList);
     QueryDataSet dataSet = router.query(queryPlan, TEST_QUERY_CONTEXT);
@@ -252,7 +251,7 @@ public class DeletionQueryTest {
     dataTypes.add(TSDataType.valueOf(dataType));
     dataTypes.add(TSDataType.valueOf(dataType));
 
-    QueryPlan queryPlan = new QueryPlan();
+    AlignByTimePlan queryPlan = new AlignByTimePlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPaths(pathList);
     QueryDataSet dataSet = router.query(queryPlan, TEST_QUERY_CONTEXT);
@@ -322,7 +321,7 @@ public class DeletionQueryTest {
     dataTypes.add(TSDataType.valueOf(dataType));
     dataTypes.add(TSDataType.valueOf(dataType));
 
-    QueryPlan queryPlan = new QueryPlan();
+    AlignByTimePlan queryPlan = new AlignByTimePlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPaths(pathList);
     QueryDataSet dataSet = router.query(queryPlan, TEST_QUERY_CONTEXT);

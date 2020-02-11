@@ -53,6 +53,8 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
@@ -341,8 +343,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
       IOException {
     QueryDataSet queryDataSet;
-    if (queryPlan.isGroupByDevice()) {
-      queryDataSet = new DeviceIterateDataSet(queryPlan, context, queryRouter);
+    if (queryPlan instanceof AlignByDevicePlan) {
+      queryDataSet = new DeviceIterateDataSet((AlignByDevicePlan) queryPlan, context, queryRouter);
     } else {
       if (queryPlan instanceof GroupByPlan) {
         GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
@@ -354,7 +356,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
         FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
         queryDataSet = fill(fillQueryPlan, context);
       } else {
-        queryDataSet = queryRouter.query(queryPlan, context);
+        queryDataSet = queryRouter.query((AlignByTimePlan) queryPlan, context);
       }
     }
     queryDataSet.setRowLimit(queryPlan.getRowLimit());

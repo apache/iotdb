@@ -64,6 +64,8 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -728,16 +730,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     TSExecuteStatementResp resp = getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS));
 
-    // group by device query
-    QueryPlan plan = (QueryPlan) physicalPlan;
-    if (plan.isGroupByDevice()) {
-      getGroupByDeviceQueryHeaders(plan, respColumns, columnsTypes);
+    // align by device query
+    if (physicalPlan instanceof AlignByDevicePlan) {
+      getAlignByDeviceQueryHeaders((AlignByDevicePlan) physicalPlan, respColumns, columnsTypes);
       // set dataTypeList in TSExecuteStatementResp. Note this is without deduplication.
       resp.setColumns(respColumns);
       resp.setDataTypeList(columnsTypes);
     }
     else {
-      getWideQueryHeaders(plan, respColumns, columnsTypes);
+      getWideQueryHeaders((AlignByTimePlan) physicalPlan, respColumns, columnsTypes);
       resp.setColumns(respColumns);
       resp.setDataTypeList(columnsTypes);
     }
@@ -778,15 +779,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private void getGroupByDeviceQueryHeaders(QueryPlan plan, List<String> respColumns,
+  private void getAlignByDeviceQueryHeaders(AlignByDevicePlan plan, List<String> respColumns,
                                             List<String> columnTypes) {
     // set columns in TSExecuteStatementResp. Note this is without deduplication.
     respColumns.add(SQLConstant.GROUPBY_DEVICE_COLUMN_NAME);
 
     // get column types and do deduplication
-    columnTypes.add(TSDataType.TEXT.toString()); // the DEVICE column of GROUP_BY_DEVICE result
+    columnTypes.add(TSDataType.TEXT.toString()); // the DEVICE column of ALIGN_BY_DEVICE result
     List<TSDataType> deduplicatedColumnsType = new ArrayList<>();
-    deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of GROUP_BY_DEVICE result
+    deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of ALIGN_BY_DEVICE result
     List<String> deduplicatedMeasurementColumns = new ArrayList<>();
     Set<String> tmpColumnSet = new HashSet<>();
     Map<String, TSDataType> checker = plan.getDataTypeConsistencyChecker();
@@ -872,7 +873,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     plan.setMeasurements(deduplicatedMeasurementColumns);
     plan.setDataTypes(deduplicatedColumnsType);
 
-    // set these null since they are never used henceforth in GROUP_BY_DEVICE query processing.
+    // set these null since they are never used henceforth in ALIGN_BY_DEVICE query processing.
     plan.setPaths(null);
     plan.setDataTypeConsistencyChecker(null);
   }

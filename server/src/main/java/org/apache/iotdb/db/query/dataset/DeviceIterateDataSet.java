@@ -27,9 +27,10 @@ import java.util.Set;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -83,39 +84,39 @@ public class DeviceIterateDataSet extends QueryDataSet {
   private int[] currentColumnMapRelation;
   private Map<Path, TSDataType> tsDataTypeMap;
 
-  public DeviceIterateDataSet(QueryPlan queryPlan, QueryContext context,
+  public DeviceIterateDataSet(AlignByDevicePlan alignByDevicePlan, QueryContext context,
       IEngineQueryRouter queryRouter) {
-    super(null, queryPlan.getDataTypes());
+    super(null, alignByDevicePlan.getDataTypes());
 
     // get deduplicated measurement columns (already deduplicated in TSServiceImpl.executeDataQuery)
-    this.deduplicatedMeasurementColumns = queryPlan.getMeasurements();
-    this.tsDataTypeMap = queryPlan.getDataTypeMapping();
+    this.deduplicatedMeasurementColumns = alignByDevicePlan.getMeasurements();
+    this.tsDataTypeMap = alignByDevicePlan.getDataTypeMapping();
     this.queryRouter = queryRouter;
     this.context = context;
-    this.measurementColumnsGroupByDevice = queryPlan.getMeasurementsGroupByDevice();
-    this.deviceToFilterMap = queryPlan.getDeviceToFilterMap();
-    this.notExistMeasurements = queryPlan.getNotExistMeasurements();
-    this.constMeasurements = queryPlan.getConstMeasurements();
-    this.positionOfNotExistMeasurements = queryPlan.getPositionOfNotExistMeasurements();
-    this.positionOfConstMeasurements = queryPlan.getPositionOfConstMeasurements();
+    this.measurementColumnsGroupByDevice = alignByDevicePlan.getDeviceToMeasurementsMap();
+    this.deviceToFilterMap = alignByDevicePlan.getDeviceToFilterMap();
+    this.notExistMeasurements = alignByDevicePlan.getNotExistMeasurements();
+    this.constMeasurements = alignByDevicePlan.getConstMeasurements();
+    this.positionOfNotExistMeasurements = alignByDevicePlan.getPositionOfNotExistMeasurements();
+    this.positionOfConstMeasurements = alignByDevicePlan.getPositionOfConstMeasurements();
     //BuildOutDataTypes();
 
-    if (queryPlan instanceof GroupByPlan) {
+    if (alignByDevicePlan.getGroupByPlan() != null) {
       this.dataSetType = DataSetType.GROUPBY;
       // assign parameters
-      this.unit = ((GroupByPlan) queryPlan).getUnit();
-      this.slidingStep = ((GroupByPlan) queryPlan).getSlidingStep();
-      this.startTime = ((GroupByPlan) queryPlan).getStartTime();
-      this.endTime = ((GroupByPlan) queryPlan).getEndTime();
+      this.unit = alignByDevicePlan.getGroupByPlan().getUnit();
+      this.slidingStep = alignByDevicePlan.getGroupByPlan().getSlidingStep();
+      this.startTime = alignByDevicePlan.getGroupByPlan().getStartTime();
+      this.endTime = alignByDevicePlan.getGroupByPlan().getEndTime();
 
-    } else if (queryPlan instanceof AggregationPlan) {
+    } else if (alignByDevicePlan.getAggregationPlan() != null) {
       this.dataSetType = DataSetType.AGGREGATE;
 
-    } else if (queryPlan instanceof FillQueryPlan) {
+    } else if (alignByDevicePlan.getFillQueryPlan() != null) {
       this.dataSetType = DataSetType.FILL;
       // assign parameters
-      this.queryTime = ((FillQueryPlan) queryPlan).getQueryTime();
-      this.fillType = ((FillQueryPlan) queryPlan).getFillType();
+      this.queryTime = alignByDevicePlan.getFillQueryPlan().getQueryTime();
+      this.fillType = alignByDevicePlan.getFillQueryPlan().getFillType();
     } else {
       this.dataSetType = DataSetType.QUERY;
     }
@@ -210,7 +211,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
             currentDataSet = queryRouter.fill(fillQueryPlan, context);
             break;
           case QUERY:
-            QueryPlan queryPlan = new QueryPlan();
+            AlignByTimePlan queryPlan = new AlignByTimePlan();
             queryPlan.setDeduplicatedPaths(executePaths);
             queryPlan.setDeduplicatedDataTypes(tsDataTypes);
             queryPlan.setExpression(expression);
