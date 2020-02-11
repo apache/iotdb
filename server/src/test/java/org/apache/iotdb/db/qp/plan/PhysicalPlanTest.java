@@ -650,38 +650,15 @@ public class PhysicalPlanTest {
   @Test
   public void testDeduplicatedPath() throws Exception {
     String sqlStr = "select * from root.sg.d1,root.sg.d1,root.sg.d1";
-    AlignByTimePlan plan = (AlignByTimePlan) processor.parseSQLToPhysicalPlan(sqlStr);
-    Assert.assertEquals(1, plan.getDeduplicatedPaths().size());
-    Assert.assertEquals(1, plan.getDeduplicatedDataTypes().size());
-    Assert.assertEquals(new Path("root.sg.d1.*"), plan.getDeduplicatedPaths().get(0));
+    QueryPlan plan = (AlignByTimePlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    Assert.assertEquals(1, ((AlignByTimePlan) plan).getDeduplicatedPaths().size());
+    Assert.assertEquals(1, ((AlignByTimePlan) plan).getDeduplicatedDataTypes().size());
+    Assert.assertEquals(new Path("root.sg.d1.*"), ((AlignByTimePlan) plan).getDeduplicatedPaths().get(0));
 
     sqlStr = "select count(*) from root.sg.d1,root.sg.d1,root.sg.d1";
     plan = (AlignByTimePlan) processor.parseSQLToPhysicalPlan(sqlStr);
-    Assert.assertEquals(1, plan.getDeduplicatedPaths().size());
-    Assert.assertEquals(1, plan.getDeduplicatedDataTypes().size());
-    Assert.assertEquals(new Path("root.sg.d1.*"), plan.getDeduplicatedPaths().get(0));
-
-    //'group by device' is deduplication in DeviceIterateDataSet
-    MManager manager = MManager.getInstance();
-    manager.setStorageGroupToMTree("root.vehicle");
-    manager.addPathToMTree("root.vehicle.d0.s1", "INT64", "PLAIN");
-    manager.addPathToMTree("root.vehicle.d0.s0", "INT64", "PLAIN");
-    manager.addPathToMTree("root.vehicle.d1.s0", "INT64", "PLAIN");
-    manager.addPathToMTree("root.vehicle.d1.s1", "INT64", "PLAIN");
-
-    sqlStr = "select s0,s0,s1 from root.vehicle.d0, root.vehicle.d1 group by device";
-    plan = (AlignByTimePlan) processor.parseSQLToPhysicalPlan(sqlStr);
-    Assert.assertEquals(0, plan.getDeduplicatedPaths().size());
-    Assert.assertEquals(0, plan.getDeduplicatedDataTypes().size());
-    Assert.assertEquals(6, plan.getPaths().size());
-    Assert.assertEquals(6, plan.getDataTypes().size());
-
-    sqlStr = "select COUNT(s0),COUNT(s0),COUNT(s1) from root.vehicle.d0, root.vehicle.d1 group by device";
-    plan = (AlignByTimePlan) processor.parseSQLToPhysicalPlan(sqlStr);
-    Assert.assertEquals(0, plan.getDeduplicatedPaths().size());
-    Assert.assertEquals(0, plan.getDeduplicatedPaths().size());
-    Assert.assertEquals(0, plan.getDeduplicatedDataTypes().size());
-    Assert.assertEquals(6, plan.getPaths().size());
-    Assert.assertEquals(6, plan.getDataTypes().size());
+    Assert.assertEquals(1, ((AlignByTimePlan) plan).getDeduplicatedPaths().size());
+    Assert.assertEquals(1, ((AlignByTimePlan) plan).getDeduplicatedDataTypes().size());
+    Assert.assertEquals(new Path("root.sg.d1.*"), ((AlignByTimePlan) plan).getDeduplicatedPaths().get(0));
   }
 }
