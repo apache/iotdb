@@ -160,18 +160,6 @@ public class EnvironmentUtils {
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 
-  public static void stopDaemon() {
-    if(daemon != null) {
-      daemon.stop();
-    }
-  }
-
-  public static void activeDaemon() {
-    if(daemon != null) {
-      daemon.active();
-    }
-  }
-
   private static void createAllDir() {
     // create sequential files
     for (String path : directoryManager.getAllSequenceFileFolders()) {
