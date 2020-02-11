@@ -69,7 +69,7 @@ import org.slf4j.LoggerFactory;
 public class MManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
-  private static final String DOUBLE_SEPARATOR = "\\.";
+  private static final String PATH_SEPARATOR = "\\.";
   private static final String ROOT_NAME = MetadataConstant.ROOT;
   private static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
 
@@ -365,11 +365,11 @@ public class MManager {
       CompressionType compressor, Map<String, String> props) throws MetadataException, IOException {
     // Add a seriesPath to Metadata Tree
     // path Format: root.node.(node)*
-    String[] nodes = MetaUtils.getNodeNames(path, DOUBLE_SEPARATOR);
+    String[] nodes = MetaUtils.getNodeNames(path, PATH_SEPARATOR);
     if (nodes.length == 0) {
       throw new IllegalPathException(path);
     }
-    mtree.addTimeseriesPath(path, dataType, encoding, compressor, props);
+    mtree.addPath(path, dataType, encoding, compressor, props);
 
     // Get the file name for given seriesPath Notice: This method could be called if and only if the
     // seriesPath includes one node whose {@code isStorageGroup} is true.
@@ -672,7 +672,7 @@ public class MManager {
    * @param path a seriesPath belongs to MTree or PTree
    */
   String deletePathInMGraph(String path) throws MetadataException {
-    String[] nodes = MetaUtils.getNodeNames(path, DOUBLE_SEPARATOR);
+    String[] nodes = MetaUtils.getNodeNames(path, PATH_SEPARATOR);
     if (nodes.length == 0) {
       throw new IllegalPathException(path);
     }
@@ -1027,7 +1027,7 @@ public class MManager {
       // get all linked seriesPath for given seriesPath if given seriesPath belongs to PTree Notice:
       // Regular expression in this method is formed by the amalgamation of seriesPath and the character '*'.
       // return A HashMap whose Keys are separated by the storage file name.
-      String rootName = MetaUtils.getNodeNames(path, DOUBLE_SEPARATOR)[0];
+      String rootName = MetaUtils.getNodeNames(path, PATH_SEPARATOR)[0];
       if (mtree.getRoot().getName().equals(rootName)) {
         return mtree.getAllPath(path);
       }
@@ -1103,7 +1103,7 @@ public class MManager {
   public List<List<String>> getShowTimeseriesPath(String path) throws MetadataException {
     lock.readLock().lock();
     try {
-      String rootName = MetaUtils.getNodeNames(path, DOUBLE_SEPARATOR)[0];
+      String rootName = MetaUtils.getNodeNames(path, PATH_SEPARATOR)[0];
       if (mtree.getRoot().getName().equals(rootName)) {
         return mtree.getShowTimeseriesPath(path);
       }
@@ -1366,7 +1366,7 @@ public class MManager {
    */
   String getStorageGroupNameByAutoLevel(String fullPath, int level)
       throws MetadataException {
-    String[] nodeNames = MetaUtils.getNodeNames(fullPath, DOUBLE_SEPARATOR);
+    String[] nodeNames = MetaUtils.getNodeNames(fullPath, PATH_SEPARATOR);
     StringBuilder storageGroupName = new StringBuilder(nodeNames[0]);
     if (nodeNames.length < level || !storageGroupName.toString().equals(ROOT_NAME)) {
       throw new IllegalPathException(fullPath);

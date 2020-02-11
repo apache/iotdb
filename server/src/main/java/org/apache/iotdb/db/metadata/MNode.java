@@ -36,21 +36,40 @@ public class MNode implements Serializable {
 
   private static final long serialVersionUID = -770028375899514063L;
 
-  // The name of the MNode
+  /**
+   * Name of the MNode
+   */
   private String name;
-  // Whether current node is a leaf in the Metadata Tree
+
+  /**
+   * Whether current node is a leaf in the Metadata Tree
+   */
   private boolean isLeaf;
-  // Whether current node is Storage group in the Metadata Tree
+
+  /**
+   * Whether current node is Storage group in the Metadata Tree
+   */
   private boolean isStorageGroup;
-  // Map for the schema in this storage group
+
+  /**
+   * Map for the schema in this storage group
+   */
   private Map<String, MeasurementSchema> schemaMap;
+
   private Map<String, Integer> numSchemaMap;
-  // Corresponding storage group name for current node
+
+  /**
+   * Corresponding storage group name for current node
+   */
   private String storageGroupName;
-  // Column's Schema for one timeseries represented by current node if current
-  // node is one leaf
+
+  /**
+   * Column's Schema for one timeseries represented by current node if current node is one leaf
+   */
   private MeasurementSchema schema;
+
   private MNode parent;
+
   private Map<String, MNode> children;
 
   private String fullPath;
@@ -85,11 +104,11 @@ public class MNode implements Serializable {
   }
 
   /**
-   * function for setting storage group.
+   * setting storage group.
    */
-  public void setStorageGroup(boolean b) {
-    this.isStorageGroup = b;
-    if (b) {
+  public void setStorageGroup(boolean isStorageGroup) {
+    this.isStorageGroup = isStorageGroup;
+    if (isStorageGroup) {
       schemaMap = new HashMap<>();
       numSchemaMap = new HashMap<>();
     } else {
@@ -115,27 +134,26 @@ public class MNode implements Serializable {
   }
 
   /**
-   * function for checking whether the mnode has child mnode.
+   * check whether the MNode has children
    */
   public boolean hasChildren() {
-    if (!isLeaf) {
-      return true;
-    }
-    return false;
+    return !isLeaf;
   }
 
   /**
-   * function for checking whether mnode's children contain the given key.
+   * check whether the MNode has child with the given key
+   *
+   * @param key key
    */
-  public boolean hasChild(String key) {
-    if (!isLeaf) {
-      return this.children.containsKey(key);
-    }
-    return false;
+  public boolean hasChildWithKey(String key) {
+    return !isLeaf && this.children.containsKey(key);
   }
 
   /**
-   * function for adding the given key to the given child mnode.
+   * add the given key to given child MNode
+   *
+   * @param key key
+   * @param child child MNode
    */
   public void addChild(String key, MNode child) {
     if (!isLeaf) {
@@ -143,12 +161,21 @@ public class MNode implements Serializable {
     }
   }
 
+  /**
+   * delete key from given child MNode
+   *
+   * @param key key
+   */
   public void deleteChild(String key) {
-    children.remove(key);
+    if (!isLeaf) {
+      children.remove(key);
+    }
   }
 
   /**
-   * function for getting the child mnode under the given key.
+   * get the child MNode under the given key.
+   *
+   * @param key key
    */
   public MNode getChild(String key) {
     if (!isLeaf) {
@@ -158,7 +185,7 @@ public class MNode implements Serializable {
   }
 
   /**
-   * function for getting the count of all leaves whose ancestor is current node.
+   * get the count of all leaves whose ancestor is current node
    */
   public int getLeafCount() {
     if (isLeaf) {
@@ -170,6 +197,22 @@ public class MNode implements Serializable {
       }
       return leafCount;
     }
+  }
+
+  /**
+   * get full path
+   */
+  public String getFullPath() {
+    if (fullPath != null) {
+      return fullPath;
+    }
+    StringBuilder builder = new StringBuilder(name);
+    MNode curr = this;
+    while (curr.parent != null) {
+      curr = curr.parent;
+      builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.name);
+    }
+    return fullPath = builder.toString();
   }
 
   public String getStorageGroupName() {
@@ -223,18 +266,5 @@ public class MNode implements Serializable {
 
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
-  }
-
-  public String getFullPath() {
-    if (fullPath != null) {
-      return fullPath;
-    }
-    StringBuilder builder = new StringBuilder(name);
-    MNode curr = this;
-    while (curr.parent != null) {
-      curr = curr.parent;
-      builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.name);
-    }
-    return fullPath = builder.toString();
   }
 }

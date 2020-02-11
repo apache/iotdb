@@ -692,7 +692,7 @@ public class PlanExecutor implements IPlanExecutor {
   private MNode checkPathExists(MNode node, String deviceId, String measurement, String strValue)
       throws MetadataException, QueryProcessException, StorageEngineException {
     // check if timeseries exists
-    if (!node.hasChild(measurement)) {
+    if (!node.hasChildWithKey(measurement)) {
       if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
         throw new QueryProcessException(
             String.format("Current deviceId[%s] does not contain measurement:%s", deviceId,
@@ -719,7 +719,7 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException, StorageEngineException, MetadataException {
     // check if timeseries exists
     String measurement = schema.getMeasurementId();
-    if (!node.hasChild(measurement)) {
+    if (!node.hasChildWithKey(measurement)) {
       if (!autoCreateSchema) {
         throw new QueryProcessException(
             String.format("Path[%s] does not exist", fullPath));
@@ -752,7 +752,7 @@ public class PlanExecutor implements IPlanExecutor {
       for (int i = 0; i < measurementList.length; i++) {
 
         // check if timeseries exists
-        if (!node.hasChild(measurementList[i])) {
+        if (!node.hasChildWithKey(measurementList[i])) {
           if (!conf.isAutoCreateSchemaEnabled()) {
             throw new QueryProcessException(
                 String.format("Current deviceId[%s] does not contain measurement:%s",
