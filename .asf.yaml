@@ -22,9 +22,9 @@ github:
   homepage: https://iotdb.apache.org/
   labels:
     - timeseries
-    - Database
+    - database
     - iot
-    - NoSQL
+    - nosql
     - big-data
     - java
     - tsdb
