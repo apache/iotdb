@@ -42,7 +42,6 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
-import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
@@ -115,19 +114,6 @@ public class PhysicalPlanTest {
             + "permissions: [0, 5]\n" + "nodeName: root.vehicle.d1.s1\n" + "authorType: GRANT_ROLE",
         plan.toString());
   }
-
-  @Test
-  public void testProperty() throws QueryProcessException {
-    String sql = "add label label1021 to property propropro";
-    Planner processor = new Planner();
-    PropertyPlan plan = (PropertyPlan) processor.parseSQLToPhysicalPlan(sql);
-    assertEquals(
-        "propertyPath: propropro.label1021\n" + "metadataPath: null\n"
-            + "propertyType: ADD_PROPERTY_LABEL",
-        plan.toString());
-  }
-
-  // TODO uncomment these code when implement aggregation and fill function
 
   @Test
   public void testAggregation() throws QueryProcessException {
@@ -213,8 +199,10 @@ public class PhysicalPlanTest {
     int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
     FillQueryPlan mergePlan = (FillQueryPlan) plan;
     assertEquals(5000, mergePlan.getQueryTime());
-    assertEquals(defaultFillInterval, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
-    assertEquals(defaultFillInterval, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
+    assertEquals(defaultFillInterval,
+        ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
+    assertEquals(defaultFillInterval,
+        ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
     assertEquals(defaultFillInterval,
         ((PreviousFill) mergePlan.getFillType().get(TSDataType.BOOLEAN)).getBeforeRange());
   }

@@ -69,7 +69,6 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
-import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
@@ -86,7 +85,6 @@ import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
-import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
@@ -200,9 +198,6 @@ public class PlanExecutor implements IPlanExecutor {
         return setStorageGroup((SetStorageGroupPlan) plan);
       case DELETE_STORAGE_GROUP:
         return deleteStorageGroup((DeleteStorageGroupPlan) plan);
-      case PROPERTY:
-        PropertyPlan property = (PropertyPlan) plan;
-        return operateProperty(property);
       case TTL:
         operateTTL((SetTTLPlan) plan);
         return true;
@@ -928,36 +923,6 @@ public class PlanExecutor implements IPlanExecutor {
       deletePlan.setDeleteTime(Long.MAX_VALUE);
       processNonQuery(deletePlan);
     }
-  }
-
-  private boolean operateProperty(PropertyPlan propertyPlan) throws QueryProcessException {
-    PropertyOperator.PropertyType propertyType = propertyPlan.getPropertyType();
-    Path propertyPath = propertyPlan.getPropertyPath();
-    Path metadataPath = propertyPlan.getMetadataPath();
-    try {
-      switch (propertyType) {
-        case ADD_TREE:
-          mManager.addAPTree(propertyPath.getFullPath());
-          break;
-        case ADD_PROPERTY_LABEL:
-          mManager.addPathToPTree(propertyPath.getFullPath());
-          break;
-        case DELETE_PROPERTY_LABEL:
-          mManager.deletePathFromPTree(propertyPath.getFullPath());
-          break;
-        case ADD_PROPERTY_TO_METADATA:
-          mManager.linkMNodeToPTree(propertyPath.getFullPath(), metadataPath.getFullPath());
-          break;
-        case DEL_PROPERTY_FROM_METADATA:
-          mManager.unlinkMNodeFromPTree(propertyPath.getFullPath(), metadataPath.getFullPath());
-          break;
-        default:
-          throw new QueryProcessException("unknown namespace type:" + propertyType);
-      }
-    } catch (PathException | IOException | MetadataException e) {
-      throw new QueryProcessException("meet error in " + propertyType + " . " + e.getMessage());
-    }
-    return true;
   }
 
   private QueryDataSet processAuthorQuery(AuthorPlan plan)

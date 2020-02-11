@@ -113,10 +113,6 @@ public class PlannerTest {
     PhysicalPlan plan4 = processor.parseSQLToPhysicalPlan(insertStatement);
     assertEquals(OperatorType.INSERT, plan4.getOperatorType());
 
-    String propertyStatement = "add label label1021 to property propropro";
-    PhysicalPlan plan5 = processor.parseSQLToPhysicalPlan(propertyStatement);
-    assertEquals(OperatorType.PROPERTY, plan5.getOperatorType());
-
     String deleteStatement = "DELETE FROM root.device0.sensor0,root.device0.sensor1 WHERE time <= 5000";
     PhysicalPlan plan6 = processor.parseSQLToPhysicalPlan(deleteStatement);
     assertEquals(OperatorType.DELETE, plan6.getOperatorType());

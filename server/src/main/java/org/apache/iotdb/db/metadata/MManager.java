@@ -78,7 +78,6 @@ public class MManager {
   // the log file seriesPath
   private String logFilePath;
   private MTree mtree;
-  private HashMap<String, PTree> ptreeMap;
   private BufferedWriter logWriter;
   private boolean writeToLog;
   private String schemaDir;
@@ -168,7 +167,6 @@ public class MManager {
       writeToLog = true;
     } catch (IOException | MetadataException e) {
       mtree = new MTree(ROOT_NAME);
-      ptreeMap = new HashMap<>(); // TODO
       logger.error("Cannot read MGraph from file, using an empty new one", e);
     } finally {
       lock.writeLock().unlock();
@@ -179,7 +177,6 @@ public class MManager {
   private void initFromLog(File logFile) throws IOException, MetadataException {
     // init the metadata from the operation log
     mtree = new MTree(ROOT_NAME);
-    ptreeMap = new HashMap<>();
     if (logFile.exists()) {
       try (FileReader fr = new FileReader(logFile);
           BufferedReader br = new BufferedReader(fr)) {
@@ -198,7 +195,6 @@ public class MManager {
     lock.writeLock().lock();
     try {
       this.mtree = new MTree(ROOT_NAME);
-      this.ptreeMap = new HashMap<>(); // TODO
       this.checkAndGetDataTypeCache.clear();
       this.mNodeCache.clear();
       this.seriesNumberInStorageGroups.clear();
@@ -246,21 +242,6 @@ public class MManager {
           storageGroups.add(new Path(args[l]));
         }
         deleteStorageGroupsFromMTree(storageGroups);
-        break;
-      case MetadataOperationType.ADD_A_PTREE:
-        addAPTree(args[1]);
-        break;
-      case MetadataOperationType.ADD_A_PATH_TO_PTREE:
-        addPathToPTree(args[1]);
-        break;
-      case MetadataOperationType.DELETE_PATH_FROM_PTREE:
-        deletePathFromPTree(args[1]);
-        break;
-      case MetadataOperationType.LINK_MNODE_TO_PTREE:
-        linkMNodeToPTree(args[1], args[2]);
-        break;
-      case MetadataOperationType.UNLINK_MNODE_FROM_PTREE:
-        unlinkMNodeFromPTree(args[1], args[2]);
         break;
       case MetadataOperationType.SET_TTL:
         setTTL(args[1], Long.parseLong(args[2]));
@@ -685,82 +666,6 @@ public class MManager {
       lock.readLock().unlock();
     }
   }
-
-  /**
-   * function for adding a pTree.
-   */
-  public void addAPTree(String ptreeRootName) throws IOException, MetadataException {
-
-    lock.writeLock().lock();
-    try {
-      // Add a PTree to current MGraph.
-      if (MetadataConstant.ROOT.equalsIgnoreCase(ptreeRootName)) {
-        throw new MetadataException("Property Tree's root name should not be 'root'");
-      }
-      PTree ptree = new PTree(ptreeRootName, mtree);
-      ptreeMap.put(ptreeRootName, ptree);
-
-      if (writeToLog) {
-        BufferedWriter writer = getLogWriter();
-        writer.write(MetadataOperationType.ADD_A_PTREE + "," + ptreeRootName);
-        writer.newLine();
-        writer.flush();
-      }
-    } finally {
-      lock.writeLock().unlock();
-    }
-  }
-
-  /**
-   * function for adding a given path to pTree.
-   */
-  public void addPathToPTree(String path)
-      throws MetadataException, IOException {
-
-    lock.writeLock().lock();
-    try {
-      String[] nodes = MetaUtils.getNodeNames(path, DOUBLE_SEPARATOR);
-      if (nodes.length == 0) {
-        throw new IllegalPathException(path);
-      }
-      String rootName = nodes[0];
-      if (ptreeMap.containsKey(rootName)) {
-        PTree ptree = ptreeMap.get(rootName);
-        ptree.addPath(path);
-      } else {
-        throw new RootNotExistException(rootName);
-      }
-
-      if (writeToLog) {
-        BufferedWriter writer = getLogWriter();
-        writer.write(MetadataOperationType.ADD_A_PATH_TO_PTREE + "," + path);
-        writer.newLine();
-        writer.flush();
-      }
-    } finally {
-      lock.writeLock().unlock();
-    }
-  }
-
-  /**
-   * function for deleting a given path from pTree.
-   */
-  public void deletePathFromPTree(String path) throws MetadataException, IOException {
-
-    lock.writeLock().lock();
-    try {
-      deletePathInMGraph(path);
-      if (writeToLog) {
-        BufferedWriter writer = getLogWriter();
-        writer.write(MetadataOperationType.DELETE_PATH_FROM_PTREE + "," + path);
-        writer.newLine();
-        writer.flush();
-      }
-    } finally {
-      lock.writeLock().unlock();
-    }
-  }
-
   /**
    * Delete seriesPath in current MGraph.
    *
@@ -774,61 +679,8 @@ public class MManager {
     String rootName = nodes[0];
     if (mtree.getRoot().getName().equals(rootName)) {
       return mtree.deletePath(path);
-    } else if (ptreeMap.containsKey(rootName)) {
-      PTree ptree = ptreeMap.get(rootName);
-      ptree.deletePath(path);
-      return null;
     } else {
       throw new RootNotExistException(rootName);
-    }
-  }
-
-  /**
-   * Link a {@code MNode} to a {@code PNode} in current PTree.
-   */
-  public void linkMNodeToPTree(String path, String mpath) throws MetadataException, IOException {
-
-    lock.writeLock().lock();
-    try {
-      String ptreeName = MetaUtils.getNodeNames(path, DOUBLE_SEPARATOR)[0];
-      if (!ptreeMap.containsKey(ptreeName)) {
-        throw new RootNotExistException(ptreeName);
-      } else {
-        ptreeMap.get(ptreeName).linkMNode(path, mpath);
-      }
-      if (writeToLog) {
-        BufferedWriter writer = getLogWriter();
-        writer.write(MetadataOperationType.LINK_MNODE_TO_PTREE + "," + path + "," + mpath);
-        writer.newLine();
-        writer.flush();
-      }
-    } finally {
-      lock.writeLock().unlock();
-    }
-  }
-
-  /**
-   * Unlink a {@code MNode} from a {@code PNode} in current PTree.
-   */
-  public void unlinkMNodeFromPTree(String path, String mpath)
-      throws MetadataException, IOException {
-
-    lock.writeLock().lock();
-    try {
-      String ptreeName = MetaUtils.getNodeNames(path, DOUBLE_SEPARATOR)[0];
-      if (!ptreeMap.containsKey(ptreeName)) {
-        throw new RootNotExistException(ptreeName);
-      } else {
-        ptreeMap.get(ptreeName).unlinkMNode(path, mpath);
-      }
-      if (writeToLog) {
-        BufferedWriter writer = getLogWriter();
-        writer.write(MetadataOperationType.UNLINK_MNODE_FROM_PTREE + "," + path + "," + mpath);
-        writer.newLine();
-        writer.flush();
-      }
-    } finally {
-      lock.writeLock().unlock();
     }
   }
 
@@ -1178,9 +1030,6 @@ public class MManager {
       String rootName = MetaUtils.getNodeNames(path, DOUBLE_SEPARATOR)[0];
       if (mtree.getRoot().getName().equals(rootName)) {
         return mtree.getAllPath(path);
-      } else if (ptreeMap.containsKey(rootName)) {
-        PTree ptree = ptreeMap.get(rootName);
-        return ptree.getAllLinkedPath(path);
       }
       throw new RootNotExistException(rootName);
     } catch (MetadataException e) {
@@ -1221,23 +1070,6 @@ public class MManager {
     }
   }
 
-//  /**
-//   * silimar with determineStorageGroup. But this method allow users do not write the wildcard at
-//   * the end of the tail.
-//   * e.g., "root" is the same with "root.*"
-//   * @param path
-//   * @return
-//   * @throws IllegalPathException
-//   */
-//  public Map<String, String> determineStorageGroupMoreRelax(String path) throws IllegalPathException {
-//    lock.readLock().lock();
-//    try {
-//      return mgraph.determineStorageGroup(path);
-//    } finally {
-//      lock.readLock().unlock();
-//    }
-//  }
-
   /**
    * Return all paths for given seriesPath if the seriesPath is abstract. Or return the seriesPath
    * itself.
@@ -1274,9 +1106,6 @@ public class MManager {
       String rootName = MetaUtils.getNodeNames(path, DOUBLE_SEPARATOR)[0];
       if (mtree.getRoot().getName().equals(rootName)) {
         return mtree.getShowTimeseriesPath(path);
-      } else if (ptreeMap.containsKey(rootName)) {
-        throw new MetadataException(
-            "PTree is not involved in the execution of the sql 'show timeseries " + path + "'");
       }
       throw new RootNotExistException(rootName);
     } finally {
