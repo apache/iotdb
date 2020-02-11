@@ -31,6 +31,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
@@ -66,7 +67,10 @@ public class PartitionUtils {
         || (plan instanceof ShowPlan
         && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.FLUSH_TASK_INFO))
         || (plan instanceof ShowPlan
-        && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.VERSION));
+        && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.VERSION))
+        || (plan instanceof ShowPlan
+        && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.TTL))
+        ;
   }
 
   /**
@@ -84,6 +88,7 @@ public class PartitionUtils {
           || plan instanceof DeleteTimeSeriesPlan
           //delete timeseries plan is global because all nodes may have its data
           || plan instanceof AuthorPlan
+          || plan instanceof DeleteStorageGroupPlan
     ;
   }
 

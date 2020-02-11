@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -99,6 +100,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -115,6 +117,7 @@ import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -243,7 +246,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       getDataClusterServer().stop();
       clientServer.stop();
     }
-    reportThread.shutdownNow();
+    if (reportThread != null) {
+      reportThread.shutdownNow();
+    }
   }
 
   private void initSubServers() throws TTransportException, StartupException {
@@ -934,18 +939,33 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     logger.debug("{}: The data group of {} is {}", name, plan, planGroupMap);
 
-    TSStatus status = null;
+    TSStatus status;
+    List<Entry<PhysicalPlan, PartitionGroup>> succeededEntries = new ArrayList<>();
+    List<Integer> errorCodes = new ArrayList<>();
     for(Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
+      TSStatus subStatus;
       if (entry.getValue().contains(thisNode)) {
         // the query should be handled by a group the local node is in, handle it with in the group
-         TSStatus subStatus = getDataClusterServer().getDataMember(entry.getValue().getHeader(), null, plan)
+        subStatus = getDataClusterServer().getDataMember(entry.getValue().getHeader(), null, plan)
             .executeNonQuery(entry.getKey());
       } else {
         // forward the query to the group that should handle it
-        TSStatus subStatus =  forwardPlan(entry.getKey(), entry.getValue());
+        subStatus = forwardPlan(entry.getKey(), entry.getValue());
+      }
+      if (subStatus.getStatusType().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        errorCodes.add(subStatus.getStatusType().getCode());
+      } else {
+        succeededEntries.add(entry);
       }
     }
-    //TODO merge all sub status together.
+    if (errorCodes.isEmpty()) {
+      status = StatusUtils.OK;
+    } else {
+      status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+      status.getStatusType().setMessage("The following errors occurred when executing the query, "
+          + "please retry or contact the DBA: " + errorCodes.toString());
+      //TODO-Cluster: abort the succeeded ones if necessary.
+    }
     return status;
   }
 

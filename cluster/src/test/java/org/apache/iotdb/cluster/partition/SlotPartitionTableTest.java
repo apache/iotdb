@@ -25,10 +25,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -43,13 +41,10 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
-import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
@@ -85,7 +80,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mockito;
 import org.mockito.internal.util.reflection.Whitebox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,7 +98,7 @@ public class SlotPartitionTableTest {
   public void setUp() throws MetadataException {
     MManager.getInstance().init();
     nodes = new ArrayList<>();
-    IntStream.range(0, 20).forEach(i -> nodes.add(new Node("localhost", 30000 + i, i, 40000 + i)));
+    IntStream.range(0, 20).forEach(i -> nodes.add(getNode(i)));
     localNode = nodes.get(3);
     ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(replica_size);
     tables = new SlotPartitionTable[20];
@@ -162,11 +156,14 @@ public class SlotPartitionTableTest {
         manager.clear();
       }
     }
-    for (File file : new File("target/schemas").listFiles()) {
-      try {
-        Files.delete(file.toPath());
-      } catch (IOException e) {
-        logger.error("{} can not be deleted.", file, e);
+    File[] files = new File("target/schemas").listFiles();
+    if (files != null) {
+      for (File file : files) {
+        try {
+          Files.delete(file.toPath());
+        } catch (IOException e) {
+          logger.error("{} can not be deleted.", file, e);
+        }
       }
     }
   }
@@ -262,7 +259,7 @@ public class SlotPartitionTableTest {
     ByteBuffer buffer = localTable.serialize();
     SlotPartitionTable tmpTable = new SlotPartitionTable(new Node());
     tmpTable.deserialize(buffer);
-    assertTrue(localTable.equals(tmpTable));
+    assertEquals(localTable, tmpTable);
   }
 
   @Test
@@ -293,10 +290,6 @@ public class SlotPartitionTableTest {
   }
 
   @Test
-  public void getMManager() {
-    //no meanningful
-  }
-
   public void testPhysicalPlan() {
     PhysicalPlan aggregationPlan = new AggregationPlan();
     assertTrue(PartitionUtils.isLocalPlan(aggregationPlan));
@@ -313,7 +306,7 @@ public class SlotPartitionTableTest {
      localTable.routePlan(updatePlan);
     } catch (UnsupportedPlanException e) {
       //success
-    } catch (StorageGroupNotSetException | IllegalPathException e) {
+    } catch (StorageGroupNotSetException e) {
       fail(e.getMessage());
     }
     try {
@@ -323,8 +316,6 @@ public class SlotPartitionTableTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    PhysicalPlan dataAuthPlan = new DataAuthPlan(OperatorType.AUTHOR, Collections.emptyList());
-    assertTrue(PartitionUtils.isGlobalPlan(dataAuthPlan));
     PhysicalPlan deleteStorageGroup = new DeleteStorageGroupPlan(Collections.emptyList());
     assertTrue(PartitionUtils.isGlobalPlan(deleteStorageGroup));
     PhysicalPlan loadConfigPlan = new LoadConfigurationPlan();
@@ -336,7 +327,7 @@ public class SlotPartitionTableTest {
       localTable.routePlan(propertyPlan);
     } catch (UnsupportedPlanException e) {
       //success
-    } catch (StorageGroupNotSetException | IllegalPathException e) {
+    } catch (StorageGroupNotSetException e) {
       fail(e.getMessage());
     }
     PhysicalPlan setStorageGroupPlan = new SetStorageGroupPlan();
@@ -514,4 +505,29 @@ public class SlotPartitionTableTest {
     }
   }
 
+  private Node getNode(int i) {
+    return new Node("localhost", 30000 + i, i, 40000 + i);
+  }
+
+  @Test
+  public void testRemoveNode() {
+    List<Integer> nodeSlots = localTable.getNodeSlots(getNode(0));
+    NodeRemovalResult nodeRemovalResult = localTable.removeNode(getNode(0));
+    assertFalse(localTable.getAllNodes().contains(getNode(0)));
+    PartitionGroup removedGroup = nodeRemovalResult.getRemovedGroup();
+    for (int i = 0; i < 5; i++) {
+      assertTrue(removedGroup.contains(getNode(i)));
+    }
+    PartitionGroup newGroup = nodeRemovalResult.getNewGroup();
+    for (int i : new int[] {18, 19, 1, 2, 3}) {
+      assertTrue(newGroup.contains(getNode(i)));
+    }
+    // the slots owned by the removed one should be redistributed to other nodes
+    Map<Node, List<Integer>> newSlotOwners = nodeRemovalResult.getNewSlotOwners();
+    for (List<Integer> slots : newSlotOwners.values()) {
+      assertTrue(nodeSlots.containsAll(slots));
+      nodeSlots.removeAll(slots);
+    }
+    assertTrue(nodeSlots.isEmpty());
+  }
 }
