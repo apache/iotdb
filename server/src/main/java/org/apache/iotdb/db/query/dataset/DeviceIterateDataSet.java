@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -41,6 +35,9 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
+
+import java.io.IOException;
+import java.util.*;
 
 
 /**
@@ -131,11 +128,11 @@ public class DeviceIterateDataSet extends QueryDataSet {
     } else {
       curDataSetInitialized = false;
     }
-    for (int i = 0; i < deduplicatedMeasurementColumns.size(); i++) {
-      currentColumnMapRelation[i] = -1;
-    }
 
     while (deviceIterator.hasNext()) {
+      for (int i = 0; i < deduplicatedMeasurementColumns.size(); i++) {
+        currentColumnMapRelation[i] = -1;
+      }
       currentDevice = deviceIterator.next();
       Set<String> measurementColumnsOfGivenDevice = measurementColumnsGroupByDevice
           .get(currentDevice);
