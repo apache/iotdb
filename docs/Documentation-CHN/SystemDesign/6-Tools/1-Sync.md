@@ -95,9 +95,9 @@
 
 ### 目录结构说明
 
-sync-sender文件夹中包含同步工具发送端同步数据期间的临时文件、状态日志等。
+sync-sender文件夹中包含发送端同步数据期间的临时文件、状态日志等。
 
-sync-receiver文件夹中包含同步工具接收端接收数据并加载期间的临时文件、状态日志等。
+sync-receiver文件夹中包含接收端接收数据并加载期间的临时文件、状态日志等。
 
 schema/sync文件夹下保存的是需要持久化的同步信息。
 
@@ -136,7 +136,7 @@ schema/sync文件夹下保存的是需要持久化的同步信息。
     每个发送端有一个唯一的标识，以供接收端区分不同的发送端
 
 * 作为发送端时，每个接收端的schema同步进度`sync_schema_pos`
-    由于schema日志`mlgn.txt`数据是追加的，其中记录了所有元信息的变化过程，因此每次同步完schema后记录下当前位置在下次同步时直接增量同步即可减少重复schema传输。
+    由于schema日志`mlog.txt`数据是追加的，其中记录了所有元信息的变化过程，因此每次同步完schema后记录下当前位置在下次同步时直接增量同步即可减少重复schema传输。
 
 * 作为接收端，接收端中每个设备的所有信息`device_owner.log`
     同步工具的应用中，一个接收端可以同时接收多个发送端的数据，但是不能产生冲突，否则接收端将不能保证数据的正确性。因此需要记录下每个设备是由哪个发送端进行同步的，遵循先到先得原则。
@@ -167,15 +167,15 @@ org.apache.iotdb.db.sync.sender.manage
 
 当接收到文件传输模块的任务结束的通知时，执行以下命令：
 
-* 将last_local_files.txt文件中的文件名列表加载到内存形成set，并逐行解析log.sync对set进行删除和添加
+* 将`last_local_files.txt`文件中的文件名列表加载到内存形成set，并逐行解析`log.sync`对set进行删除和添加
 
-* 将内存中的文件名列表set写入current_local_files.txt文件中
+* 将内存中的文件名列表set写入`current_local_files.txt`文件中
 
-* 删除last_local_files.txt文件
+* 删除`last_local_files.txt`文件
 
-* 将current_local_files.txt重命名为last_local_files.txt
+* 将`current_local_files.txt`重命名为`last_local_files.txt`
 
-* 删除sequence文件夹和sync.log文件
+* 删除sequence文件夹和`sync.log`文件
 
 #### 文件传输模块
 
@@ -216,16 +216,16 @@ org.apache.iotdb.db.sync.sender.recover
 
 同步工具发送端每次启动同步任务时，首先检查发送端文件夹下有没有对应的接收端文件夹，若没有，表示没有和该接收端进行过同步任务，跳过恢复模块；否则，根据该文件夹下的文件执行恢复算法：
 
-1. 若存在current_local_files.txt，跳转到步骤2；若不存在，跳转到步骤3
-2. 若存在last_local_files.txt，则删除current_local_files.txt文件并跳转到步骤
+1. 若存在`current_local_files.txt`，跳转到步骤2；若不存在，跳转到步骤3
+2. 若存在`last_local_files.txt`，则删除`current_local_files.txt`文件并跳转到步骤
 3；若不存在，跳转到步骤7
-3. 若存在sync.log，跳转到步骤4；若不存在，跳转到步骤8
-4. 将last_local_files.txt文件中的文件名列表加载到内存形成set，并逐行解析
-sync.log对set进行删除和添加
-5. 将内存中的文件名列表set写入current_local_files.txt文件中
-6. 删除last_local_files.txt文件
-7. 将current_local_files.txt重命名为last_local_files.txt
-8. 删除sequence文件夹和sync.log文件
+3. 若存在`sync.log`，跳转到步骤4；若不存在，跳转到步骤8
+4. 将`last_local_files.txt`文件中的文件名列表加载到内存形成set，并逐行解析
+`sync.log`对set进行删除和添加
+5. 将内存中的文件名列表set写入`current_local_files.txt`文件中
+6. 删除`last_local_files.txt`文件
+7. 将`current_local_files.txt`重命名为`last_local_files.txt`
+8. 删除sequence文件夹和`sync.log`文件
 9. 算法结束
 
 
@@ -254,13 +254,13 @@ org.apache.iotdb.db.sync.receiver.transfer
 1. 接收到发送端的同步开始指令，检查是否存在sync.log文件，若存在则表示上次同步的数据还未加载完毕，拒绝本次同步任务；否则在sync.log中记录sync.start
 2. 接收到发送端的开始同步删除的文件名列表的指令，在sync.log中记录sync deleted file names start
 3. 依次接收发送端传输的删除文件名
-    3.1. 接收到发送端传输的文件名(示例1.tsfile)
-    3.2. 接收成功，在sync.log中记录1.tsfile，并提交给数据加载模块处理
-4. 接收到发送单的开始同步传输的文件的指令，在sync.log中记录sync deleted file names end和sync tsfile start
+    3.1. 接收到发送端传输的文件名(示例`1581324718762-101-1.tsfile`)
+    3.2. 接收成功，在`sync.log`中记录`1581324718762-101-1.tsfile`，并提交给数据加载模块处理
+4. 接收到发送单的开始同步传输的文件的指令，在`sync.log`中记录`sync deleted file names end`和`sync tsfile start`
 5. 依次接收发送端传输的tsfile文件
-    5.1. 按块接收发送端传输的文件(示例2.tsfile)
-    5.2. 对文件进行校验，若检验失败，删除该文件并通知发送端失败；否则，在sync.log中记录2.tsfile，并提交给数据加载模块处理
-6. 接收到发送端的同步任务结束命令，在sync.log中记录sync tsfile end和sync end
+    5.1. 按块接收发送端传输的文件(示例`1581324718762-101-2.tsfile`)
+    5.2. 对文件进行校验，若检验失败，删除该文件并通知发送端失败；否则，在`sync.log`中记录`1581324718762-101-2.tsfile`，并提交给数据加载模块处理
+6. 接收到发送端的同步任务结束命令，在`sync.log`中记录`sync tsfile end`和`sync end`
 7. 创建sync.end空文件
 
 #### 文件加载模块
