@@ -154,7 +154,7 @@ GlobalTimeExpression 表示全局的时间过滤条件，一个 GlobalTimeExpres
 2. GlobalTimeExpression((time > 100 && time < 200) || (time > 400 && time < 500))表示所有被选择列的时间戳必须满足“大于100且小于200”或“大于400且小于500”
 
 #### 1.2.3 IExpression 表达式
-IExpression 表示一次查询的所有列上的过滤条件总和。一个 IExpression 可以是一个 SingleSeriesExpression 或者一个 GlobalTimeExpression，这种情况下，IExpression 也称为一元表达式，即 UnaryExpression。一个 IExpression 也可以由两个 IExpression 通过逻辑关系“与”、“或”进行连接。通过关系“与”连接得到的表达式又称为“与表达式”，即“AndExpression”。同理，通过关系“或”连接的表达式称为“或表达式”，即“OrExpression”。由两个 IExpression 连接成的表达式又称为二元表达式，即 BinaryExpression。一元表达式、二元表达式都是 IExpression。
+IExpression 为查询过滤条件。一个 IExpression 可以是一个 SingleSeriesExpression 或者一个 GlobalTimeExpression，这种情况下，IExpression 也称为一元表达式，即 UnaryExpression。一个 IExpression 也可以由两个 IExpression 通过逻辑关系“与”、“或”进行连接。通过关系“与”连接得到的表达式又称为“与表达式”，即“AndExpression”。同理，通过关系“或”连接的表达式称为“或表达式”，即“OrExpression”。由两个 IExpression 连接成的表达式又称为二元表达式，即 BinaryExpression。一元表达式、二元表达式都是 IExpression。
 
 下面给出 IExpression 的形式化定义。
 
@@ -197,10 +197,11 @@ IExpression 表示一次查询的所有列上的过滤条件总和。一个 IExp
 #### 1.2.4 可执行表达式
 
 便于理解执行过程，定义可执行表达式的概念。可执行表达式是带有一定限制条件的 IExpression。用户输入的查询条件或构造的 IExpression 将经过特定的优化算法（该算法将在后面章节中介绍）转化为可执行表达式。满足下面任意条件的 IExpression 即为可执行表达式。
-1. IExpression 为单一的 GlobalTimeExpression
-2. IExpression 为单一的 SingleSeriesExpression
-3. IExpression 为 AndExpression，且叶子节点均为 SingleSeriesExpression
-4. IExpression 为 OrExpression，且叶子节点均为 SingleSeriesExpression
+
+* 1. IExpression 为单一的 GlobalTimeExpression
+* 2. IExpression 为单一的 SingleSeriesExpression
+* 3. IExpression 为 AndExpression，且叶子节点均为 SingleSeriesExpression
+* 4. IExpression 为 OrExpression，且叶子节点均为 SingleSeriesExpression
 
 可执行表达式的形式化定义为：
 
@@ -217,7 +218,7 @@ IExpression 表示一次查询的所有列上的过滤条件总和。一个 IExp
 
 是否为可执行表达式：是
 
-**解释**：该 IExpression 为一个 SingleSeriesExpression，满足条件1
+**解释**：该 IExpression 为一个 SingleSeriesExpression，满足条件2
 
 ----------------------------------
 例2：
@@ -226,7 +227,7 @@ IExpression 表示一次查询的所有列上的过滤条件总和。一个 IExp
 
 是否为可执行表达式：是
 
-**解释**：该 IExpression 为一个 GlobalTimeExpression，满足条件2
+**解释**：该 IExpression 为一个 GlobalTimeExpression，满足条件1
 
 -----------------------
 例3：
