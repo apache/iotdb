@@ -104,14 +104,10 @@ public class LinearFill extends IFill {
       return beforePair;
     }
 
-    // if afterRange equals -1, this means that there is no time-bound filling.
-    if (afterRange == -1) {
-      return average(beforePair, afterPair);
-    }
-
-    if (afterPair.getTimestamp() > queryTime + afterRange || afterPair.getTimestamp() < queryTime) {
+    if (afterPair.getTimestamp() < queryTime || (afterRange != -1 && afterPair.getTimestamp() > queryTime + afterRange)) {
       return new TimeValuePair(queryTime, null);
     }
+
     return average(beforePair, afterPair);
   }
 
