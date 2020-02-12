@@ -47,6 +47,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -861,7 +862,8 @@ public class PlanExecutor implements IPlanExecutor {
     TSEncoding encoding = createTimeSeriesPlan.getEncoding();
     Map<String, String> props = createTimeSeriesPlan.getProps();
     try {
-      boolean result = mManager.addPathToMTree(path, dataType, encoding, compressor, props);
+      boolean result = mManager
+          .addPathToMTree(path.toString(), dataType, encoding, compressor, props);
       if (result) {
         storageEngine.addTimeSeries(path, dataType, encoding, compressor, props);
       }
@@ -876,7 +878,8 @@ public class PlanExecutor implements IPlanExecutor {
     List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
     try {
       deleteDataOfTimeSeries(deletePathList);
-      Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList, false);
+      Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList.stream().map(
+          Path::getFullPath).collect(Collectors.toList()), false);
       for (String deleteStorageGroup : emptyStorageGroups) {
         storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
       }
@@ -899,12 +902,13 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan)
       throws QueryProcessException {
-    List<Path> deletePathList = deleteStorageGroupPlan.getPaths();
+    List<String> deletePathList = new ArrayList<>();
     try {
-      mManager.deleteStorageGroupsFromMTree(deletePathList);
-      for (Path storageGroupPath : deletePathList) {
+      for (Path storageGroupPath : deleteStorageGroupPlan.getPaths()) {
         storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
+        deletePathList.add(storageGroupPath.getFullPath());
       }
+      mManager.deleteStorageGroupsFromMTree(deletePathList);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -1153,7 +1157,7 @@ public class PlanExecutor implements IPlanExecutor {
       CompressionType compressionType)
       throws PathException, MetadataException, StorageEngineException {
     boolean result = mManager.addPathToMTree(
-        path, dataType, encoding, compressionType, Collections.emptyMap());
+        path.toString(), dataType, encoding, compressionType, Collections.emptyMap());
     if (result) {
       storageEngine
           .addTimeSeries(path, dataType, encoding, compressionType, Collections.emptyMap());

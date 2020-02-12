@@ -31,7 +31,6 @@ import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -102,18 +101,14 @@ public class MManagerImproveTest {
     path_exist += endTime - startTime;
 
     startTime = System.currentTimeMillis();
-    for (int i = 0; i < 100000; i++) {
-      List<Path> paths = new ArrayList<>();
-      paths.add(new Path(path));
-    }
     endTime = System.currentTimeMillis();
     list_init += endTime - startTime;
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path(path));
+    List<String> paths = new ArrayList<>();
+    paths.add(path);
 
     startTime = System.currentTimeMillis();
     for (int i = 0; i < 100000; i++) {
-      assertTrue(mManager.checkFileLevel(paths));
+      assertTrue(mManager.checkFilesLevel(paths));
     }
     endTime = System.currentTimeMillis();
     check_filelevel += endTime - startTime;
@@ -138,9 +133,9 @@ public class MManagerImproveTest {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       assertTrue(mManager.pathExist(path));
-      List<Path> paths = new ArrayList<>();
-      paths.add(new Path(path));
-      assertTrue(mManager.checkFileLevel(paths));
+      List<String> paths = new ArrayList<>();
+      paths.add(path);
+      assertTrue(mManager.checkFilesLevel(paths));
       TSDataType dataType = mManager.getSeriesType(path);
       assertEquals(TSDataType.TEXT, dataType);
     }
@@ -150,9 +145,9 @@ public class MManagerImproveTest {
       throws MetadataException, StorageGroupException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
-      List<Path> paths = new ArrayList<>();
-      paths.add(new Path(path));
-      assertTrue(mManager.checkFileLevel(paths));
+      List<String> paths = new ArrayList<>();
+      paths.add(path);
+      assertTrue(mManager.checkFilesLevel(paths));
       TSDataType dataType = mManager.getSeriesTypeWithCheck(path);
       assertEquals(TSDataType.TEXT, dataType);
     }
@@ -161,17 +156,17 @@ public class MManagerImproveTest {
   private void doDealdeviceIdOnceTest(String deviceId, List<String> measurementList)
       throws MetadataException, StorageGroupException {
     boolean isFileLevelChecked;
-    List<Path> tempList = new ArrayList<>();
-    tempList.add(new Path(deviceId));
-    isFileLevelChecked = mManager.checkFileLevel(tempList);
+    List<String> tempList = new ArrayList<>();
+    tempList.add(deviceId);
+    isFileLevelChecked = mManager.checkFilesLevel(tempList);
     MNode node = mManager.getNodeByPath(deviceId);
 
     for (String measurement : measurementList) {
       assertTrue(mManager.pathExist(node, measurement));
-      List<Path> paths = new ArrayList<>();
-      paths.add(new Path(measurement));
+      List<String> paths = new ArrayList<>();
+      paths.add(measurement);
       if (!isFileLevelChecked) {
-        isFileLevelChecked = mManager.checkFileLevel(node, paths);
+        isFileLevelChecked = mManager.checkFilesLevel(node, paths);
       }
       assertTrue(isFileLevelChecked);
       TSDataType dataType = mManager.getSeriesType(node, measurement);

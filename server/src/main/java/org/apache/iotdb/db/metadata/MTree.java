@@ -729,15 +729,6 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all devices in current Metadata Tree.
-   *
-   * @return a list contains all distinct device names
-   */
-  List<String> getAllDevices() throws MetadataException {
-    return getDevices(SQLConstant.ROOT);
-  }
-
-  /**
    * Get all devices in current Metadata Tree with prefixPath.
    *
    * @return a list contains all distinct devices names

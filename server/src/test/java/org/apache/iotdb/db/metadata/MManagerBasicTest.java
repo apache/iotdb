@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -80,7 +79,7 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.addPathToMTree(new Path("root.laptop.d1.s0"), TSDataType.valueOf("INT32"),
+      manager.addPathToMTree("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections
               .emptyMap());
     } catch (MetadataException e) {
@@ -92,7 +91,7 @@ public class MManagerBasicTest {
     assertTrue(manager.pathExist("root.laptop.d1.s0"));
     assertFalse(manager.pathExist("root.laptop.d1.s1"));
     try {
-      manager.addPathToMTree(new Path("root.laptop.d1.s1"), TSDataType.valueOf("INT32"),
+      manager.addPathToMTree("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e1) {
       e1.printStackTrace();
@@ -100,7 +99,7 @@ public class MManagerBasicTest {
     }
     assertTrue(manager.pathExist("root.laptop.d1.s1"));
     try {
-      manager.deletePaths(Collections.singletonList(new Path("root.laptop.d1.s1")), false);
+      manager.deletePaths(Collections.singletonList("root.laptop.d1.s1"), false);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -109,7 +108,7 @@ public class MManagerBasicTest {
     // delete storage group or not
     assertFalse(manager.pathExist("root.laptop.d1.s1"));
     try {
-      manager.deletePaths(Collections.singletonList(new Path("root.laptop.d1.s0")), false);
+      manager.deletePaths(Collections.singletonList("root.laptop.d1.s0"), false);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -120,7 +119,7 @@ public class MManagerBasicTest {
     assertTrue(manager.pathExist("root"));
 
     try {
-      manager.addPathToMTree(new Path("root.laptop.d1.s1"), TSDataType.valueOf("INT32"),
+      manager.addPathToMTree("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e1) {
       e1.printStackTrace();
@@ -128,7 +127,7 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.addPathToMTree(new Path("root.laptop.d1.s0"), TSDataType.valueOf("INT32"),
+      manager.addPathToMTree("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e1) {
       e1.printStackTrace();
@@ -139,13 +138,13 @@ public class MManagerBasicTest {
     assertFalse(manager.checkStorageGroupByPath("root.laptop.d2"));
 
     try {
-      manager.deletePaths(Collections.singletonList(new Path("root.laptop.d1.s0")), false);
+      manager.deletePaths(Collections.singletonList("root.laptop.d1.s0"), false);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      manager.deletePaths(Collections.singletonList(new Path("root.laptop.d1.s1")), false);
+      manager.deletePaths(Collections.singletonList("root.laptop.d1.s1"), false);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -163,17 +162,17 @@ public class MManagerBasicTest {
      * check file level
      */
     assertFalse(manager.pathExist("root.laptop.d2.s1"));
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path("root.laptop.d2.s1"));
+    List<String> paths = new ArrayList<>();
+    paths.add("root.laptop.d2.s1");
     try {
-      manager.checkFileLevel(paths);
+      manager.checkFilesLevel(paths);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
     try {
-      manager.addPathToMTree(new Path("root.laptop.d2.s1"), TSDataType.valueOf("INT32"),
+      manager.addPathToMTree("root.laptop.d2.s1", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e1) {
       e1.printStackTrace();
@@ -181,7 +180,7 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.addPathToMTree(new Path("root.laptop.d2.s0"), TSDataType.valueOf("INT32"),
+      manager.addPathToMTree("root.laptop.d2.s0", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e1) {
       e1.printStackTrace();
@@ -189,20 +188,20 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.deletePaths(Collections.singletonList(new Path("root.laptop.d2.s0")), false);
+      manager.deletePaths(Collections.singletonList("root.laptop.d2.s0"), false);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      manager.deletePaths(Collections.singletonList(new Path("root.laptop.d2.s1")), false);
+      manager.deletePaths(Collections.singletonList("root.laptop.d2.s1"), false);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
     try {
-      manager.addPathToMTree(new Path("root.laptop.d1.s0"), TSDataType.valueOf("INT32"),
+      manager.addPathToMTree("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e1) {
       e1.printStackTrace();
@@ -210,7 +209,7 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.addPathToMTree(new Path("root.laptop.d1.s1"), TSDataType.valueOf("INT32"),
+      manager.addPathToMTree("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e1) {
       e1.printStackTrace();
@@ -218,41 +217,41 @@ public class MManagerBasicTest {
     }
 
     paths = new ArrayList<>();
-    paths.add(new Path("root.laptop.d1.s0"));
+    paths.add("root.laptop.d1.s0");
     try {
-      manager.checkFileLevel(paths);
+      manager.checkFilesLevel(paths);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
     try {
-      manager.addPathToMTree(new Path("root.laptop.d1.s2"), TSDataType.valueOf("INT32"),
+      manager.addPathToMTree("root.laptop.d1.s2", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
     paths = new ArrayList<>();
-    paths.add(new Path("root.laptop.d1.s2"));
+    paths.add("root.laptop.d1.s2");
     try {
-      manager.checkFileLevel(paths);
+      manager.checkFilesLevel(paths);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
     try {
-      manager.addPathToMTree(new Path("root.laptop.d1.s3"), TSDataType.valueOf("INT32"),
+      manager.addPathToMTree("root.laptop.d1.s3", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
     paths = new ArrayList<>();
-    paths.add(new Path("root.laptop.d1.s3"));
+    paths.add("root.laptop.d1.s3");
     try {
-      manager.checkFileLevel(paths);
+      manager.checkFilesLevel(paths);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -292,9 +291,9 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroupToMTree("root.laptop.d1");
       manager.setStorageGroupToMTree("root.laptop.d2");
-      manager.addPathToMTree(new Path("root.laptop.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
+      manager.addPathToMTree("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.addPathToMTree(new Path("root.laptop.d2.s1"), TSDataType.INT32, TSEncoding.PLAIN,
+      manager.addPathToMTree("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
 
       List<String> list = new ArrayList<>();
@@ -356,9 +355,9 @@ public class MManagerBasicTest {
         CompressionType.GZIP, null);
     assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
 
-    manager.deletePaths(Collections.singletonList(new Path("root.laptop.d1.s1")), false);
+    manager.deletePaths(Collections.singletonList("root.laptop.d1.s1"), false);
     assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.deletePaths(Collections.singletonList(new Path("root.laptop.d1.s2")), false);
+    manager.deletePaths(Collections.singletonList("root.laptop.d1.s2"), false);
     assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
   }
 
