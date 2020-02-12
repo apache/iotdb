@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
 
@@ -61,9 +60,9 @@ public class PreviousFill extends IFill {
   }
 
   @Override
-  public IPointReader getFillResult() throws IOException {
+  public TimeValuePair getFillResult() throws IOException {
     TimeValuePair beforePair = null;
-    TimeValuePair cachedPair = null;
+    TimeValuePair cachedPair;
     while (batchData.hasCurrent() || allDataReader.hasNextBatch()) {
       if (!batchData.hasCurrent() && allDataReader.hasNextBatch()) {
         batchData = allDataReader.nextBatch();
@@ -82,6 +81,6 @@ public class PreviousFill extends IFill {
     } else {
       beforePair = new TimeValuePair(queryTime, null);
     }
-    return new TimeValuePairPointReader(beforePair);
+    return beforePair;
   }
 }

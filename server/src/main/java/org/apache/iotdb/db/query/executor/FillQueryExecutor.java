@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import javax.activation.UnsupportedDataTypeException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -35,6 +34,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import javax.activation.UnsupportedDataTypeException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -80,8 +80,7 @@ public class FillQueryExecutor {
             break;
           case BOOLEAN:
           case TEXT:
-            fill = new PreviousFill(dataType, queryTime,
-                IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval());
+            fill = new PreviousFill(dataType, queryTime, defaultFillInterval);
             break;
           default:
             throw new UnsupportedDataTypeException("do not support datatype " + dataType);
@@ -93,7 +92,7 @@ public class FillQueryExecutor {
       fill.setQueryTime(queryTime);
       fill.constructReaders(path, context);
 
-      TimeValuePair timeValuePair = fill.getFillResult().nextTimeValuePair();
+      TimeValuePair timeValuePair = fill.getFillResult();
       if (timeValuePair.getValue() == null) {
         record.addField(new Field(null));
       } else {

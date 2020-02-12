@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
@@ -85,7 +84,7 @@ public class LinearFill extends IFill {
   }
 
   @Override
-  public IPointReader getFillResult() throws IOException, UnSupportedFillTypeException {
+  public TimeValuePair getFillResult() throws IOException, UnSupportedFillTypeException {
     TimeValuePair beforePair = null;
     TimeValuePair afterPair = null;
     while (batchData.hasCurrent() || allDataReader.hasNextBatch()) {
@@ -102,18 +101,18 @@ public class LinearFill extends IFill {
     }
 
     if (beforePair == null || beforePair.getTimestamp() == queryTime) {
-      return new TimeValuePairPointReader(beforePair);
+      return beforePair;
     }
 
     // if afterRange equals -1, this means that there is no time-bound filling.
     if (afterRange == -1) {
-      return new TimeValuePairPointReader(average(beforePair, afterPair));
+      return average(beforePair, afterPair);
     }
 
     if (afterPair.getTimestamp() > queryTime + afterRange || afterPair.getTimestamp() < queryTime) {
-      return new TimeValuePairPointReader(new TimeValuePair(queryTime, null));
+      return new TimeValuePair(queryTime, null);
     }
-    return new TimeValuePairPointReader(average(beforePair, afterPair));
+    return average(beforePair, afterPair);
   }
 
   // returns the average of two points
