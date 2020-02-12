@@ -265,9 +265,17 @@ public class StorageGroupProcessor {
       recoverUnseqFiles(unseqTsFiles);
 
       for (TsFileResource resource : seqTsFiles) {
+        //After recover, case the TsFile's length is equal to 0, delete both the TsFileResource and the file itself
+        if (resource.getFile().length() == 0) {
+          deleteTsfile(resource.getFile());
+        }
         allDirectFileVersions.addAll(resource.getHistoricalVersions());
       }
       for (TsFileResource resource : unseqTsFiles) {
+        //After recover, case the TsFile's length is equal to 0, delete both the TsFileResource and the file itself
+        if (resource.getFile().length() == 0) {
+          deleteTsfile(resource.getFile());
+        }
         allDirectFileVersions.addAll(resource.getHistoricalVersions());
       }
 
