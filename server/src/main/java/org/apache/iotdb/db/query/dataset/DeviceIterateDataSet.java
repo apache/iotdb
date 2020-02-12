@@ -33,7 +33,6 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
-import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -55,27 +54,21 @@ public class DeviceIterateDataSet extends QueryDataSet {
   private IExpression expression;
 
   private List<String> deduplicatedMeasurementColumns;
-  private Map<String, Set<String>> measurementColumnsGroupByDevice;
+  private Map<String, Set<String>> deviceToMeasurementsMap;
   private Map<String, IExpression> deviceToFilterMap;
 
-  //the measurements that do not exist in any device,
+  // the measurements that do not exist in any device,
   // data type is considered as Boolean. The value is considered as null
-  private List<String> notExistMeasurements; // for group by device sql
-  private List<Integer> positionOfNotExistMeasurements; // for group by device sql
-  //the measurements that have quotation mark. e.g., "abc",
-  // '11', the data type is considered as String and the value  is considered is the same with measurement name
-  private List<String> constMeasurements; // for group by device sql
-  private List<Integer> positionOfConstMeasurements; // for group by device sql
+  private List<String> notExistMeasurements;
+  private List<Integer> positionOfNotExistMeasurements;
+  // the measurements that have quotation mark. e.g. "abc",
+  // '11', the data type is considered as String and the value is considered is the same with measurement name
+  private List<String> constMeasurements;
+  private List<Integer> positionOfConstMeasurements;
 
-  // group-by-time parameters
-  private long unit;
-  private long slidingStep;
-  private long startTime;
-  private long endTime;
-
-  // fill parameters
-  private long queryTime;
-  private Map<TSDataType, IFill> fillType;
+  private GroupByPlan groupByPlan;
+  private FillQueryPlan fillQueryPlan;
+  private AggregationPlan aggregationPlan;
 
   private boolean curDataSetInitialized;
   private Iterator<String> deviceIterator;
@@ -93,36 +86,32 @@ public class DeviceIterateDataSet extends QueryDataSet {
     this.tsDataTypeMap = alignByDevicePlan.getDataTypeMapping();
     this.queryRouter = queryRouter;
     this.context = context;
-    this.measurementColumnsGroupByDevice = alignByDevicePlan.getDeviceToMeasurementsMap();
+    this.deviceToMeasurementsMap = alignByDevicePlan.getDeviceToMeasurementsMap();
     this.deviceToFilterMap = alignByDevicePlan.getDeviceToFilterMap();
     this.notExistMeasurements = alignByDevicePlan.getNotExistMeasurements();
     this.constMeasurements = alignByDevicePlan.getConstMeasurements();
     this.positionOfNotExistMeasurements = alignByDevicePlan.getPositionOfNotExistMeasurements();
     this.positionOfConstMeasurements = alignByDevicePlan.getPositionOfConstMeasurements();
-    //BuildOutDataTypes();
 
-    if (alignByDevicePlan.getGroupByPlan() != null) {
-      this.dataSetType = DataSetType.GROUPBY;
-      // assign parameters
-      this.unit = alignByDevicePlan.getGroupByPlan().getInterval();
-      this.slidingStep = alignByDevicePlan.getGroupByPlan().getSlidingStep();
-      this.startTime = alignByDevicePlan.getGroupByPlan().getStartTime();
-      this.endTime = alignByDevicePlan.getGroupByPlan().getEndTime();
-
-    } else if (alignByDevicePlan.getAggregationPlan() != null) {
-      this.dataSetType = DataSetType.AGGREGATE;
-
-    } else if (alignByDevicePlan.getFillQueryPlan() != null) {
-      this.dataSetType = DataSetType.FILL;
-      // assign parameters
-      this.queryTime = alignByDevicePlan.getFillQueryPlan().getQueryTime();
-      this.fillType = alignByDevicePlan.getFillQueryPlan().getFillType();
-    } else {
-      this.dataSetType = DataSetType.QUERY;
+    switch (alignByDevicePlan.getOperatorType()){
+      case GROUPBY:
+        this.dataSetType = DataSetType.GROUPBY;
+        this.groupByPlan = alignByDevicePlan.getGroupByPlan();
+        break;
+      case AGGREGATION:
+        this.dataSetType = DataSetType.AGGREGATE;
+        this.aggregationPlan = alignByDevicePlan.getAggregationPlan();
+        break;
+      case FILL:
+        this.dataSetType = DataSetType.FILL;
+        this.fillQueryPlan = alignByDevicePlan.getFillQueryPlan();
+        break;
+      default:
+        this.dataSetType = DataSetType.QUERY;
     }
 
     this.curDataSetInitialized = false;
-    this.deviceIterator = measurementColumnsGroupByDevice.keySet().iterator();
+    this.deviceIterator = deviceToMeasurementsMap.keySet().iterator();
     this.currentColumnMapRelation = new int[deduplicatedMeasurementColumns.size()];
   }
 
@@ -138,7 +127,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
         currentColumnMapRelation[i] = -1;
       }
       currentDevice = deviceIterator.next();
-      Set<String> measurementColumnsOfGivenDevice = measurementColumnsGroupByDevice
+      Set<String> measurementColumnsOfGivenDevice = deviceToMeasurementsMap
           .get(currentDevice);
 
       // get columns to execute for the current device and the column map relation
@@ -184,18 +173,12 @@ public class DeviceIterateDataSet extends QueryDataSet {
       try {
         switch (dataSetType) {
           case GROUPBY:
-            GroupByPlan groupByPlan = new GroupByPlan();
-            groupByPlan.setEndTime(endTime);
-            groupByPlan.setStartTime(startTime);
-            groupByPlan.setSlidingStep(slidingStep);
-            groupByPlan.setInterval(unit);
             groupByPlan.setDeduplicatedPaths(executePaths);
             groupByPlan.setDeduplicatedDataTypes(tsDataTypes);
             groupByPlan.setDeduplicatedAggregations(executeAggregations);
             currentDataSet = queryRouter.groupBy(groupByPlan, context);
             break;
           case AGGREGATE:
-            AggregationPlan aggregationPlan = new AggregationPlan();
             aggregationPlan.setDeduplicatedPaths(executePaths);
             aggregationPlan.setDeduplicatedAggregations(executeAggregations);
             aggregationPlan.setDeduplicatedDataTypes(tsDataTypes);
@@ -203,9 +186,6 @@ public class DeviceIterateDataSet extends QueryDataSet {
             currentDataSet = queryRouter.aggregate(aggregationPlan, context);
             break;
           case FILL:
-            FillQueryPlan fillQueryPlan = new FillQueryPlan();
-            fillQueryPlan.setFillType(fillType);
-            fillQueryPlan.setQueryTime(queryTime);
             fillQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
             fillQueryPlan.setDeduplicatedPaths(executePaths);
             currentDataSet = queryRouter.fill(fillQueryPlan, context);

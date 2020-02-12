@@ -257,7 +257,6 @@ public class PhysicalGenerator {
         alignByDevicePlan.setAggregationPlan((AggregationPlan) queryPlan);
       }
 
-      queryPlan = alignByDevicePlan;
       List<Path> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
       List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
       List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
@@ -276,7 +275,7 @@ public class PhysicalGenerator {
         Set<String> deviceSetOfGivenSuffix = new HashSet<>();
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
         if (suffixPath.startWith("'") || suffixPath.startWith("\"")) {
-          ((AlignByDevicePlan) queryPlan).addConstMeasurement(loc++, suffixPath.getMeasurement());
+          alignByDevicePlan.addConstMeasurement(loc++, suffixPath.getMeasurement());
           continue;
         }
 
@@ -360,7 +359,7 @@ public class PhysicalGenerator {
 
         nonExistMeasurement.removeAll(measurementSetOfGivenSuffix);
         for (String notExistMeasurementString : nonExistMeasurement) {
-          ((AlignByDevicePlan) queryPlan).addNotExistMeasurement(loc++, notExistMeasurementString);
+          alignByDevicePlan.addNotExistMeasurement(loc++, notExistMeasurementString);
         }
         // update measurements
         // Note that in the loop of a suffix path, set is used.
@@ -373,8 +372,8 @@ public class PhysicalGenerator {
       }
 
       if (measurements.isEmpty()
-          && ((AlignByDevicePlan) queryPlan).getConstMeasurements().isEmpty()
-          && ((AlignByDevicePlan) queryPlan).getNotExistMeasurements().isEmpty()) {
+          && alignByDevicePlan.getConstMeasurements().isEmpty()
+          && alignByDevicePlan.getNotExistMeasurements().isEmpty()) {
         throw new QueryProcessException("do not select any existing series");
       }
 
@@ -385,19 +384,20 @@ public class PhysicalGenerator {
         measurements = slimitTrimColumn(measurements, seriesSlimit, seriesOffset);
       }
 
-      // assigns to queryPlan
-      ((AlignByDevicePlan) queryPlan).setMeasurements(measurements);
-      ((AlignByDevicePlan) queryPlan).setMeasurementsGroupByDevice(deviceToMeasurementsMap);
-      ((AlignByDevicePlan) queryPlan).setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
-      queryPlan.setPaths(paths);
+      // assigns to alignByDevicePlan
+      alignByDevicePlan.setMeasurements(measurements);
+      alignByDevicePlan.setMeasurementsGroupByDevice(deviceToMeasurementsMap);
+      alignByDevicePlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
+      alignByDevicePlan.setPaths(paths);
 
       // get device to filter map
       FilterOperator filterOperator = queryOperator.getFilterOperator();
 
       if (filterOperator != null) {
-        ((AlignByDevicePlan) queryPlan)
-            .setDeviceToFilterMap(concatFilterByDivice(prefixPaths, filterOperator));
+        alignByDevicePlan.setDeviceToFilterMap(concatFilterByDevice(prefixPaths, filterOperator));
       }
+
+      queryPlan = alignByDevicePlan;
     } else {
       queryPlan.setAlignByTime(queryOperator.isAlignByTime());
       List<Path> paths = queryOperator.getSelectedPaths();
@@ -423,7 +423,7 @@ public class PhysicalGenerator {
   // e.g. translate "select * from root.ln.d1, root.ln.d2 where s1 < 20 AND s2 > 10" to
   // [root.ln.d1 -> root.ln.d1.s1 < 20 AND root.ln.d1.s2 > 10,
   //  root.ln.d2 -> root.ln.d2.s1 < 20 AND root.ln.d2.s2 > 10)]
-  private Map<String, IExpression> concatFilterByDivice(List<Path> fromPaths,
+  private Map<String, IExpression> concatFilterByDevice(List<Path> fromPaths,
       FilterOperator operator)
       throws QueryProcessException {
     Map<String, IExpression> deviceToFilterMap = new HashMap<>();

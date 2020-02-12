@@ -29,14 +29,24 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 public class AlignByDevicePlan extends QueryPlan {
 
-  private List<String> measurements; // for group by device sql, e.g. temperature
-  private Map<String, Set<String>> deviceToMeasurementsMap; // for group by device sql, e.g. root.ln.d1 -> temperature
-  private Map<String, TSDataType> dataTypeConsistencyChecker; // for group by device sql, e.g. root.ln.d1.temperature -> Float
-  private Map<String, IExpression> deviceToFilterMap; // for group by device sql
+  private List<String> measurements; // e.g. temperature, status, speed
+  private Map<String, Set<String>> deviceToMeasurementsMap; // e.g. root.ln.d1 -> temperature
+  // to check data type consistency for the same name sensor of different devices
+  private Map<String, TSDataType> dataTypeConsistencyChecker;
+  private Map<String, IExpression> deviceToFilterMap;
 
   private GroupByPlan groupByPlan;
   private FillQueryPlan fillQueryPlan;
   private AggregationPlan aggregationPlan;
+
+  // the measurements that do not exist in any device,
+  // data type is considered as Boolean. The value is considered as null
+  private List<String> notExistMeasurements = new ArrayList<>();
+  private List<Integer> positionOfNotExistMeasurements = new ArrayList<>();
+  // the measurements that have quotation mark. e.g. "abc",
+  // '11', the data type is considered as String and the value is considered is the same with measurement name
+  private List<String> constMeasurements = new ArrayList<>();
+  private List<Integer> positionOfConstMeasurements = new ArrayList<>();
 
   public AlignByDevicePlan() {
     super();
@@ -107,16 +117,6 @@ public class AlignByDevicePlan extends QueryPlan {
     this.setOperatorType(Operator.OperatorType.AGGREGATION);
   }
 
-  //the measurements that do not exist in any device,
-  // data type is considered as Boolean. The value is considered as null
-  private List<String> notExistMeasurements = new ArrayList<>();
-  ; // for group by device sql
-  private List<Integer> positionOfNotExistMeasurements = new ArrayList<>(); // for group by device sql
-  //the measurements that have quotation mark. e.g., "abc",
-  // '11', the data type is considered as String and the value  is considered is the same with measurement name
-  private List<String> constMeasurements = new ArrayList<>(); // for group by device sql
-  private List<Integer> positionOfConstMeasurements = new ArrayList<>(); // for group by device sql
-
   //we use the following algorithm to reproduce the order of measurements that user writes.
   //suppose user writes SELECT 'c1',a1,b1,b2,'c2',a2,a3,'c3',b3,a4,a5 FROM ... where for each a_i
   // column there is at least one device having it, and for each b_i column there is no device
@@ -177,5 +177,4 @@ public class AlignByDevicePlan extends QueryPlan {
   public void setPositionOfConstMeasurements(List<Integer> positionOfConstMeasurements) {
     this.positionOfConstMeasurements = positionOfConstMeasurements;
   }
-
 }
