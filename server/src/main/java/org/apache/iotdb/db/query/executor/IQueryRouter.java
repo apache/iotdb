@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -35,7 +35,7 @@ public interface IQueryRouter {
   /**
    * Execute physical plan.
    */
-  QueryDataSet rawDataQuery(QueryPlan queryPlan, QueryContext context) throws StorageEngineException;
+  QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context) throws StorageEngineException;
 
   /**
    * Execute aggregation query.

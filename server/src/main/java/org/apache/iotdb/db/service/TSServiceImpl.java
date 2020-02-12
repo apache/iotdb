@@ -65,6 +65,7 @@ import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -169,7 +170,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   public static TSDataType getSeriesType(String path) throws QueryProcessException {
     switch (path.toLowerCase()) {
-        // authorization queries
+      // authorization queries
       case COLUMN_ROLE:
       case COLUMN_USER:
       case COLUMN_PRIVILEGE:
@@ -324,7 +325,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  /** release single operation resource */
+  /**
+   * release single operation resource
+   */
   private void releaseQueryResource(long queryId) throws StorageEngineException {
     // remove the corresponding Physical Plan
     queryId2DataSet.remove(queryId);
@@ -344,7 +347,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * convert from TSStatusCode to TSStatus, which has message appending with existed status message
    *
-   * @param statusType status type
+   * @param statusType    status type
    * @param appendMessage appending message
    */
   private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
@@ -590,7 +593,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   /**
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
-   *     AuthorPlan
+   *             AuthorPlan
    */
   private TSExecuteStatementResp executeQueryStatement(
       long statementId, PhysicalPlan plan, int fetchSize, String username) {
@@ -724,7 +727,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  /** get ResultSet schema */
+  /**
+   * get ResultSet schema
+   */
   private TSExecuteStatementResp getQueryColumnHeaders(PhysicalPlan physicalPlan, String username)
       throws AuthException, TException, QueryProcessException {
 
@@ -741,10 +746,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     TSExecuteStatementResp resp = getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS));
 
-    // group by device query
+    // align by device query
     QueryPlan plan = (QueryPlan) physicalPlan;
-    if (plan.isGroupByDevice()) {
-      getGroupByDeviceQueryHeaders(plan, respColumns, columnsTypes);
+    if (plan instanceof AlignByDevicePlan) {
+      getAlignByDeviceQueryHeaders((AlignByDevicePlan) plan, respColumns, columnsTypes);
       // set dataTypeList in TSExecuteStatementResp. Note this is without deduplication.
       resp.setColumns(respColumns);
       resp.setDataTypeList(columnsTypes);
@@ -791,15 +796,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private void getGroupByDeviceQueryHeaders(
-      QueryPlan plan, List<String> respColumns, List<String> columnTypes) {
+  private void getAlignByDeviceQueryHeaders(
+      AlignByDevicePlan plan, List<String> respColumns, List<String> columnTypes) {
     // set columns in TSExecuteStatementResp. Note this is without deduplication.
     respColumns.add(SQLConstant.GROUPBY_DEVICE_COLUMN_NAME);
 
     // get column types and do deduplication
-    columnTypes.add(TSDataType.TEXT.toString()); // the DEVICE column of GROUP_BY_DEVICE result
+    columnTypes.add(TSDataType.TEXT.toString()); // the DEVICE column of ALIGN_BY_DEVICE result
     List<TSDataType> deduplicatedColumnsType = new ArrayList<>();
-    deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of GROUP_BY_DEVICE result
+    deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of ALIGN_BY_DEVICE result
     List<String> deduplicatedMeasurementColumns = new ArrayList<>();
     Set<String> tmpColumnSet = new HashSet<>();
     Map<String, TSDataType> checker = plan.getDataTypeConsistencyChecker();
@@ -857,25 +862,22 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         // Note that this deduplication strategy is consistent with that of client
         // IoTDBQueryResultSet.
         tmpColumnSet.add(column);
-        if(!isNonExist && ! isConstant) {
+        if (!isNonExist && !isConstant) {
           // only refer to those normal measurements
           deduplicatedMeasurementColumns.add(column);
         }
         deduplicatedColumnsType.add(type);
-      }
-      else if(isConstant){
+      } else if (isConstant) {
         shiftLoc++;
         constMeasurementsLoc--;
         plan.getConstMeasurements().remove(constMeasurementsLoc);
         plan.getPositionOfConstMeasurements().remove(constMeasurementsLoc);
-      }
-      else if(isNonExist){
+      } else if (isNonExist) {
         shiftLoc++;
         notExistMeasurementsLoc--;
         plan.getNotExistMeasurements().remove(notExistMeasurementsLoc);
         plan.getPositionOfNotExistMeasurements().remove(notExistMeasurementsLoc);
-      }
-      else {
+      } else {
         shiftLoc++;
       }
 
@@ -887,7 +889,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     plan.setMeasurements(deduplicatedMeasurementColumns);
     plan.setDataTypes(deduplicatedColumnsType);
 
-    // set these null since they are never used henceforth in GROUP_BY_DEVICE query processing.
+    // set these null since they are never used henceforth in ALIGN_BY_DEVICE query processing.
     plan.setPaths(null);
     plan.setDataTypeConsistencyChecker(null);
   }
@@ -1016,10 +1018,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return result;
   }
 
-  /** create QueryDataSet and buffer it for fetchResults */
+  /**
+   * create QueryDataSet and buffer it for fetchResults
+   */
   private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
-          IOException, MetadataException, SQLException {
+      IOException, MetadataException, SQLException {
 
     QueryContext context = new QueryContext(queryId);
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);

@@ -60,11 +60,13 @@ import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -242,16 +244,26 @@ public class PhysicalGenerator {
       ((AggregationPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
     } else {
-      queryPlan = new QueryPlan();
+      queryPlan = new RawDataQueryPlan();
     }
     if (queryOperator.isGroupByDevice()) {
-      // below is the core realization of GROUP_BY_DEVICE sql logic
+      // below is the core realization of ALIGN_BY_DEVICE sql logic
+      AlignByDevicePlan alignByDevicePlan = new AlignByDevicePlan();
+      if (queryPlan instanceof GroupByPlan) {
+        alignByDevicePlan.setGroupByPlan((GroupByPlan) queryPlan);
+      } else if (queryPlan instanceof FillQueryPlan) {
+        alignByDevicePlan.setFillQueryPlan((FillQueryPlan) queryPlan);
+      } else if (queryPlan instanceof AggregationPlan) {
+        alignByDevicePlan.setAggregationPlan((AggregationPlan) queryPlan);
+      }
+
+      queryPlan = alignByDevicePlan;
       List<Path> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
       List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
       List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
 
       List<String> measurements = new ArrayList<>();
-      Map<String, Set<String>> measurementsGroupByDevice = new LinkedHashMap<>();
+      Map<String, Set<String>> deviceToMeasurementsMap = new LinkedHashMap<>();
       // to check the same measure in different devices having the same datatype
       Map<String, TSDataType> dataTypeConsistencyChecker = new HashMap<>();
       List<Path> paths = new ArrayList<>();
@@ -263,8 +275,8 @@ public class PhysicalGenerator {
         Path suffixPath = suffixPaths.get(i);
         Set<String> deviceSetOfGivenSuffix = new HashSet<>();
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
-        if(suffixPath.startWith("'") || suffixPath.startWith("\"")){
-          queryPlan.addConstMeasurement(loc++, suffixPath.getMeasurement());
+        if (suffixPath.startWith("'") || suffixPath.startWith("\"")) {
+          ((AlignByDevicePlan) queryPlan).addConstMeasurement(loc++, suffixPath.getMeasurement());
           continue;
         }
 
@@ -275,9 +287,10 @@ public class PhysicalGenerator {
 
           Set<String> tmpDeviceSet = new HashSet<>();
           try {
-            List<String> actualPaths = MManager.getInstance().getPaths(fullPath.getFullPath());  // remove stars to get actual paths
+            List<String> actualPaths = MManager.getInstance()
+                .getPaths(fullPath.getFullPath());  // remove stars to get actual paths
 
-            if(actualPaths.isEmpty() && originAggregations.isEmpty()){
+            if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
               // for actual non exist path
               nonExistMeasurement.add(fullPath.getMeasurement());
             }
@@ -324,14 +337,14 @@ public class PhysicalGenerator {
               }
 
               // update measurementSetOfGivenSuffix
-              if(measurementSetOfGivenSuffix.add(measurementChecked)){
+              if (measurementSetOfGivenSuffix.add(measurementChecked)) {
                 loc++;
               }
-              // update measurementColumnsGroupByDevice
-              if (!measurementsGroupByDevice.containsKey(device)) {
-                measurementsGroupByDevice.put(device, new HashSet<>());
+              // update deviceToMeasurementsMap
+              if (!deviceToMeasurementsMap.containsKey(device)) {
+                deviceToMeasurementsMap.put(device, new HashSet<>());
               }
-              measurementsGroupByDevice.get(device).add(measurementChecked);
+              deviceToMeasurementsMap.get(device).add(measurementChecked);
               // update paths
               paths.add(path);
             }
@@ -346,8 +359,8 @@ public class PhysicalGenerator {
         }
 
         nonExistMeasurement.removeAll(measurementSetOfGivenSuffix);
-        for(String notExistMeasurementString : nonExistMeasurement){
-          queryPlan.addNotExistMeasurement(loc++, notExistMeasurementString);
+        for (String notExistMeasurementString : nonExistMeasurement) {
+          ((AlignByDevicePlan) queryPlan).addNotExistMeasurement(loc++, notExistMeasurementString);
         }
         // update measurements
         // Note that in the loop of a suffix path, set is used.
@@ -360,8 +373,8 @@ public class PhysicalGenerator {
       }
 
       if (measurements.isEmpty()
-          && queryPlan.getConstMeasurements().isEmpty()
-          && queryPlan.getNotExistMeasurements().isEmpty()) {
+          && ((AlignByDevicePlan) queryPlan).getConstMeasurements().isEmpty()
+          && ((AlignByDevicePlan) queryPlan).getNotExistMeasurements().isEmpty()) {
         throw new QueryProcessException("do not select any existing series");
       }
 
@@ -373,17 +386,17 @@ public class PhysicalGenerator {
       }
 
       // assigns to queryPlan
-      queryPlan.setGroupByDevice(true);
-      queryPlan.setMeasurements(measurements);
-      queryPlan.setMeasurementsGroupByDevice(measurementsGroupByDevice);
-      queryPlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
+      ((AlignByDevicePlan) queryPlan).setMeasurements(measurements);
+      ((AlignByDevicePlan) queryPlan).setMeasurementsGroupByDevice(deviceToMeasurementsMap);
+      ((AlignByDevicePlan) queryPlan).setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
       queryPlan.setPaths(paths);
 
       // get device to filter map
       FilterOperator filterOperator = queryOperator.getFilterOperator();
 
       if (filterOperator != null) {
-        queryPlan.setDeviceToFilterMap(concatFilterByDivice(prefixPaths, filterOperator));
+        ((AlignByDevicePlan) queryPlan)
+            .setDeviceToFilterMap(concatFilterByDivice(prefixPaths, filterOperator));
       }
     } else {
       queryPlan.setAlignByTime(queryOperator.isAlign());
@@ -395,7 +408,7 @@ public class PhysicalGenerator {
 
       if (filterOperator != null) {
         IExpression expression = filterOperator.transformToExpression();
-        queryPlan.setExpression(expression);
+        ((RawDataQueryPlan) queryPlan).setExpression(expression);
       }
     }
     generateDataTypes(queryPlan);
@@ -482,8 +495,7 @@ public class PhysicalGenerator {
   }
 
   private void deduplicate(QueryPlan queryPlan) {
-    //The deduplication of a GroupByDevice query is done in the dataset
-    if (queryPlan.isGroupByDevice()) {
+    if (queryPlan instanceof AlignByDevicePlan) {
       return;
     }
     if (queryPlan instanceof AggregationPlan) {
@@ -491,6 +503,7 @@ public class PhysicalGenerator {
       deduplicateAggregation(aggregationPlan);
       return;
     }
+    RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
     List<Path> paths = queryPlan.getPaths();
 
     Set<String> columnSet = new HashSet<>();
@@ -500,8 +513,8 @@ public class PhysicalGenerator {
       String column = path.toString();
       if (!columnSet.contains(column)) {
         TSDataType seriesType = dataTypeMapping.get(path);
-        queryPlan.addDeduplicatedPaths(path);
-        queryPlan.addDeduplicatedDataTypes(seriesType);
+        rawDataQueryPlan.addDeduplicatedPaths(path);
+        rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
         columnSet.add(column);
       }
     }
