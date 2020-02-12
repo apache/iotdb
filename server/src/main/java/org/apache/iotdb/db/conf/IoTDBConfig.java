@@ -296,7 +296,7 @@ public class IoTDBConfig {
   /**
    * Switch of creating schema automatically
    */
-  private boolean enableAutoCreateSchema = true;
+  private boolean enableAutoCreateSchema = false;
 
   /**
    * Storage group level when creating schema automatically is enabled
