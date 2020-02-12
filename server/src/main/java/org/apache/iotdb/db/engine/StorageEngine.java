@@ -50,7 +50,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
@@ -443,7 +442,7 @@ public class StorageEngine implements IService {
   }
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
-      throws TsFileProcessorException, StorageEngineException, StorageGroupException, MetadataException {
+      throws TsFileProcessorException, StorageEngineException, MetadataException {
     Map<String, Long> startTimeMap = newTsFileResource.getStartTimeMap();
     if (startTimeMap == null || startTimeMap.isEmpty()) {
       throw new StorageEngineException("Can not get the corresponding storage group.");

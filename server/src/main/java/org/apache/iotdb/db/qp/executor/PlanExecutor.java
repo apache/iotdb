@@ -64,7 +64,7 @@ import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
@@ -104,7 +104,6 @@ import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
@@ -587,7 +586,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void createSchemaAutomatically(List<ChunkGroupMetaData> chunkGroupMetaDatas,
       Map<String, MeasurementSchema> knownSchemas, int sgLevel)
-      throws CacheException, QueryProcessException, MetadataException, StorageEngineException {
+      throws QueryProcessException, MetadataException, StorageEngineException {
     if (chunkGroupMetaDatas.isEmpty()) {
       return;
     }
@@ -1154,8 +1153,7 @@ public class PlanExecutor implements IPlanExecutor {
    * Add a seriesPath to MTree, register with datatype, encoding and compression
    */
   private void addPathToMTree(Path path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressionType)
-      throws PathException, MetadataException, StorageEngineException {
+      CompressionType compressionType) throws MetadataException, StorageEngineException {
     boolean result = mManager.addPathToMTree(
         path.toString(), dataType, encoding, compressionType, Collections.emptyMap());
     if (result) {
@@ -1168,8 +1166,7 @@ public class PlanExecutor implements IPlanExecutor {
    * Add a seriesPath to MTree, register with datatype, encoding and compression
    */
   private void addPathToMTree(String path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressionType)
-      throws PathException, MetadataException, StorageEngineException {
+      CompressionType compressionType) throws MetadataException, StorageEngineException {
     boolean result = mManager.addPathToMTree(
         path, dataType, encoding, compressionType, Collections.emptyMap());
     if (result) {

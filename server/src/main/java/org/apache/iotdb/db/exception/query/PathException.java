@@ -15,19 +15,24 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-
-package org.apache.iotdb.db.exception.path;
+package org.apache.iotdb.db.exception.query;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class NotStorageGroupException extends PathException {
+public class PathException extends QueryProcessException {
 
-  private static final long serialVersionUID = 2693272249167539978L;
+  private static final long serialVersionUID = 2141197032898163234L;
 
-  public NotStorageGroupException(String path) {
-    super(String.format("[%s] is not a storage group", path),
-        TSStatusCode.NOT_STORAGE_GROUP_ERROR.getStatusCode());
+  public PathException() {
+    super("Timeseries is null", TSStatusCode.PATH_ERROR.getStatusCode());
+  }
+
+  public PathException(String message) {
+    super(message, TSStatusCode.PATH_ERROR.getStatusCode());
+  }
+
+  public PathException(String message, int errorCode) {
+    super(message, errorCode);
   }
 }

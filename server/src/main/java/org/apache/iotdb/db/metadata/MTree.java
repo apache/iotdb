@@ -32,9 +32,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -42,7 +40,6 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -665,34 +662,6 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Calculate the count of storage-level nodes included in given seriesPath.
-   *
-   * @return The total count of storage-level nodes.
-   */
-  int getFileCountForOneType(String path) throws MetadataException {
-    String[] nodes = MetaUtils.getNodeNames(path, PATH_SEPARATOR);
-    if (nodes.length != 2 || !nodes[0].equals(root.getName())
-        || !root.hasChildWithKey(nodes[1])) {
-      throw new MetadataException("Timeseries must be " + root.getName()
-          + ". X (X is one of the nodes of root's children)");
-    }
-    return getFileCountForOneNode(root.getChild(nodes[1]));
-  }
-
-  private int getFileCountForOneNode(MNode node) {
-    if (node.isStorageGroup()) {
-      return 1;
-    }
-    int sum = 0;
-    if (!node.isLeaf()) {
-      for (MNode child : node.getChildren().values()) {
-        sum += getFileCountForOneNode(child);
-      }
-    }
-    return sum;
-  }
-
-  /**
    * Get all device type in current Metadata Tree.
    *
    * @return a list contains all distinct device type
@@ -930,8 +899,13 @@ public class MTree implements Serializable {
           nodeName = node.toString();
         }
         String nodePath = parent + nodeName;
-        List<String> pathList = paths.computeIfAbsent(fileName, key -> new ArrayList<>());
-        pathList.add(nodePath);
+        if (paths.containsKey(fileName)) {
+          paths.get(fileName).add(nodePath);
+        } else {
+          List<String> pathList = new ArrayList<>();
+          pathList.add(nodePath);
+          paths.put(fileName, pathList);
+        }
       }
       return;
     }

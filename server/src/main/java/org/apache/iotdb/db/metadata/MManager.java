@@ -47,7 +47,6 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.RootNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
@@ -358,7 +357,7 @@ public class MManager {
    */
   @TestOnly
   public void addPathToMTree(String path, String dataType, String encoding)
-      throws MetadataException, IOException, StorageGroupException {
+      throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
       TSDataType tsDataType = TSDataType.valueOf(dataType);
@@ -487,9 +486,7 @@ public class MManager {
       }
       try {
         emptiedStorageGroup = deletePathFromMTree(pathStr);
-      } catch (MetadataException | StorageGroupException e) {
-        throw new MetadataException(e);
-      } catch (IOException e) {
+      } catch (MetadataException | IOException e) {
         throw new MetadataException(e.getMessage());
       }
     }
@@ -502,8 +499,7 @@ public class MManager {
    * @return the related storage group name if there is no path in the storage group anymore;
    * otherwise null
    */
-  private String deletePathFromMTree(String path)
-      throws MetadataException, IOException, StorageGroupException {
+  private String deletePathFromMTree(String path) throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
       checkAndGetDataTypeCache.clear();
@@ -574,9 +570,9 @@ public class MManager {
 
   /**
    * function for deleting storage groups of the given path from mTree. the log format is like
-   * "delete_storage_group,sg1,sg2,sg3" TODO: return value unused
+   * "delete_storage_group,sg1,sg2,sg3"
    */
-  public boolean deleteStorageGroupsFromMTree(List<String> deletePathList)
+  public void deleteStorageGroupsFromMTree(List<String> deletePathList)
       throws MetadataException {
     List<String> pathList = new ArrayList<>();
     StringBuilder jointPath = new StringBuilder();
@@ -619,7 +615,6 @@ public class MManager {
     } finally {
       lock.writeLock().unlock();
     }
-    return true;
   }
 
   /**
@@ -642,7 +637,7 @@ public class MManager {
    *
    * @param path a seriesPath belongs to MTree or PTree
    */
-  String deletePathInMGraph(String path) throws MetadataException {
+  private String deletePathInMGraph(String path) throws MetadataException {
     String[] nodes = MetaUtils.getNodeNames(path, PATH_SEPARATOR);
     if (nodes.length == 0) {
       throw new IllegalPathException(path);
@@ -675,8 +670,7 @@ public class MManager {
   /**
    * function for getting series type.
    */
-  public TSDataType getSeriesType(MNode node, String fullPath) throws MetadataException {
-
+  TSDataType getSeriesType(MNode node, String fullPath) throws MetadataException {
     lock.readLock().lock();
     try {
       return getSchemaForOnePath(node, fullPath).getType();
@@ -689,7 +683,6 @@ public class MManager {
    * function for getting series type with check.
    */
   TSDataType getSeriesTypeWithCheck(MNode node, String fullPath) throws MetadataException {
-
     lock.readLock().lock();
     try {
       return getSchemaForOnePathWithCheck(node, fullPath).getType();
@@ -702,7 +695,6 @@ public class MManager {
    * unction for getting series type with check.
    */
   TSDataType getSeriesTypeWithCheck(String fullPath) throws MetadataException {
-
     lock.readLock().lock();
     try {
       return getSchemaForOnePathWithCheck(fullPath).getType();
@@ -716,10 +708,8 @@ public class MManager {
    *
    * @return a HashMap contains all distinct device type separated by device Type
    */
-  // future feature
   @SuppressWarnings("unused")
   public Map<String, List<MeasurementSchema>> getSchemaForAllType() throws MetadataException {
-
     lock.readLock().lock();
     try {
       Map<String, List<MeasurementSchema>> res = new HashMap<>();
@@ -742,7 +732,6 @@ public class MManager {
    * @return A {@code Metadata} instance which stores all metadata info
    */
   public Metadata getMetadata() throws MetadataException {
-
     lock.readLock().lock();
     try {
       Map<String, List<String>> deviceIdMap = new HashMap<>();
@@ -782,7 +771,6 @@ public class MManager {
    * @return A List instance which stores all node at given level
    */
   public List<String> getNodesList(String prefixPath, int nodeLevel) throws SQLException {
-
     lock.readLock().lock();
     try {
       return mtree.getNodesList(prefixPath, nodeLevel);
@@ -810,7 +798,6 @@ public class MManager {
    * function for getting schema map for one file node.
    */
   private Map<String, MeasurementSchema> getStorageGroupSchemaMap(String path) {
-
     lock.readLock().lock();
     try {
       return mtree.getSchemaMapForOneStorageGroup(path);
@@ -823,28 +810,9 @@ public class MManager {
    * function for getting num schema map for one file node.
    */
   private Map<String, Integer> getStorageGroupNumSchemaMap(String path) {
-
     lock.readLock().lock();
     try {
       return mtree.getNumSchemaMapForOneFileNode(path);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Calculate the count of storage-group nodes included in given seriesPath.
-   *
-   * @param path can only be root.something  FIXME I do not know what it is used for...
-   * @return The total count of storage-group nodes.
-   */
-  // future feature
-  @SuppressWarnings("unused")
-  public int getFileCountForOneType(String path) throws MetadataException {
-
-    lock.readLock().lock();
-    try {
-      return mtree.getFileCountForOneType(path);
     } finally {
       lock.readLock().unlock();
     }

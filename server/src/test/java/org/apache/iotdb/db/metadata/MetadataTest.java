@@ -23,7 +23,6 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -80,7 +79,7 @@ public class MetadataTest {
 
       Metadata combineMetadata = Metadata.combineMetadatas(new Metadata[]{metadata1, metadata2});
       assertTrue(metadata.equals(combineMetadata));
-    } catch (IOException | MetadataException | StorageGroupException e) {
+    } catch (IOException | MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
