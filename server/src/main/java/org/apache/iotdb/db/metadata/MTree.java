@@ -936,10 +936,11 @@ public class MTree implements Serializable {
         if (node.getName().contains(TsFileConstant.PATH_SEPARATOR)) {
           nodeName = "\"" + node + "\"";
         } else {
-          nodeName = "" + node;
+          nodeName = node.toString();
         }
         String nodePath = parent + nodeName;
-        putAPath(paths, fileName, nodePath);
+        List<String> pathList = paths.computeIfAbsent(fileName, key -> new ArrayList<>());
+        pathList.add(nodePath);
       }
       return;
     }
@@ -995,74 +996,6 @@ public class MTree implements Serializable {
       for (MNode child : node.getChildren().values()) {
         findPath(child, nodes, idx + 1, parent + node.getName() + ".", res);
       }
-    }
-  }
-
-  Map<String, String> determineStorageGroup(String path) throws IllegalPathException {
-    Map<String, String> paths = new HashMap<>();
-    String[] nodes = MetaUtils.getNodeNames(path, PATH_SEPARATOR);
-    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
-      throw new IllegalPathException(path);
-    }
-
-    Deque<MNode> nodeStack = new ArrayDeque<>();
-    Deque<Integer> depthStack = new ArrayDeque<>();
-    if (root.hasChildren()) {
-      nodeStack.push(root);
-      depthStack.push(0);
-    }
-
-    while (!nodeStack.isEmpty()) {
-      MNode mNode = nodeStack.removeFirst();
-      int depth = depthStack.removeFirst();
-
-      determineStorageGroup(depth + 1, nodes, mNode, paths, nodeStack, depthStack);
-    }
-    return paths;
-  }
-
-  /**
-   * Try determining the storage group using the children of a mNode.
-   */
-  private void determineStorageGroup(int depth, String[] nodes, MNode mNode,
-      Map<String, String> paths, Deque<MNode> nodeStack, Deque<Integer> depthStack) {
-    String currNode = depth >= nodes.length ? nodes[nodes.length - 1] : nodes[depth];
-    for (Entry<String, MNode> entry : mNode.getChildren().entrySet()) {
-      if (!currNode.equals(PATH_WILDCARD) && !currNode.equals(entry.getKey())) {
-        continue;
-      }
-      // this child is desired
-      MNode child = entry.getValue();
-      if (child.isStorageGroup()) {
-        // we have found one storage group, record it
-        String sgName = child.getFullPath();
-        // concat the remaining path with the storage group name
-        StringBuilder pathWithKnownSG = new StringBuilder(sgName);
-        for (int i = depth + 1; i < nodes.length; i++) {
-          pathWithKnownSG.append(IoTDBConstant.PATH_SEPARATOR).append(nodes[i]);
-        }
-        if (depth >= nodes.length - 1 && currNode.equals(PATH_WILDCARD)) {
-          // the we find the sg at the last node and the last node is a wildcard (find "root
-          // .group1", for "root.*"), also append the wildcard (to make "root.group1.*")
-          pathWithKnownSG.append(IoTDBConstant.PATH_SEPARATOR).append(PATH_WILDCARD);
-        }
-        paths.put(sgName, pathWithKnownSG.toString());
-      } else if (child.hasChildren()) {
-        // push it back so we can traver its children later
-        nodeStack.push(child);
-        depthStack.push(depth);
-      }
-    }
-  }
-
-  private void putAPath(HashMap<String, List<String>> paths, String fileName,
-      String nodePath) {
-    if (paths.containsKey(fileName)) {
-      paths.get(fileName).add(nodePath);
-    } else {
-      List<String> pathList = new ArrayList<>();
-      pathList.add(nodePath);
-      paths.put(fileName, pathList);
     }
   }
 
