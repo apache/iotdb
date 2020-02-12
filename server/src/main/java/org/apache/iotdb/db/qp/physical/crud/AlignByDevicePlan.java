@@ -52,10 +52,6 @@ public class AlignByDevicePlan extends QueryPlan {
     super();
   }
 
-  public AlignByDevicePlan(boolean isQuery, Operator.OperatorType operatorType) {
-    super(isQuery, operatorType);
-  }
-
   public void setMeasurements(List<String> measurements) {
     this.measurements = measurements;
   }

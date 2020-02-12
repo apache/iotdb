@@ -20,8 +20,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.qp.logical.Operator;
 
-public class
-GroupByPlan extends AggregationPlan {
+public class GroupByPlan extends AggregationPlan {
 
   // [startTime, endTime)
   private long startTime;

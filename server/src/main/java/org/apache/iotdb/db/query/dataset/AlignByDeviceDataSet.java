@@ -44,9 +44,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 
 /**
- * This QueryDataSet is used for GROUP_BY_DEVICE query result.
+ * This QueryDataSet is used for ALIGN_BY_DEVICE query result.
  */
-public class DeviceIterateDataSet extends QueryDataSet {
+public class AlignByDeviceDataSet extends QueryDataSet {
 
   private DataSetType dataSetType;
   private IQueryRouter queryRouter;
@@ -69,6 +69,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
   private GroupByPlan groupByPlan;
   private FillQueryPlan fillQueryPlan;
   private AggregationPlan aggregationPlan;
+  private RawDataQueryPlan rawDataQueryPlan;
 
   private boolean curDataSetInitialized;
   private Iterator<String> deviceIterator;
@@ -77,7 +78,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
   private int[] currentColumnMapRelation;
   private Map<Path, TSDataType> tsDataTypeMap;
 
-  public DeviceIterateDataSet(AlignByDevicePlan alignByDevicePlan, QueryContext context,
+  public AlignByDeviceDataSet(AlignByDevicePlan alignByDevicePlan, QueryContext context,
       IQueryRouter queryRouter) {
     super(null, alignByDevicePlan.getDataTypes());
 
@@ -108,6 +109,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
         break;
       default:
         this.dataSetType = DataSetType.QUERY;
+        this.rawDataQueryPlan = new RawDataQueryPlan();
     }
 
     this.curDataSetInitialized = false;
@@ -191,11 +193,10 @@ public class DeviceIterateDataSet extends QueryDataSet {
             currentDataSet = queryRouter.fill(fillQueryPlan, context);
             break;
           case QUERY:
-            RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-            queryPlan.setDeduplicatedPaths(executePaths);
-            queryPlan.setDeduplicatedDataTypes(tsDataTypes);
-            queryPlan.setExpression(expression);
-            currentDataSet = queryRouter.rawDataQuery(queryPlan, context);
+            rawDataQueryPlan.setDeduplicatedPaths(executePaths);
+            rawDataQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
+            rawDataQueryPlan.setExpression(expression);
+            currentDataSet = queryRouter.rawDataQuery(rawDataQueryPlan, context);
             break;
           default:
             throw new IOException("unsupported DataSetType");
