@@ -145,11 +145,6 @@ public class PageReader implements IPageReader {
     return pageHeader.getStatistics();
   }
 
-  public void close() {
-    timeBuffer = null;
-    valueBuffer = null;
-  }
-
   public void setDeletedAt(long deletedAt) {
     this.deletedAt = deletedAt;
   }

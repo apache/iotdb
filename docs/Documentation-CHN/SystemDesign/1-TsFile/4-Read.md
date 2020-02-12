@@ -79,7 +79,7 @@ Filter 可以由一个或两个子 Filter 组成。如果 Filter 由单一 Filte
 
     Filter := Basic Filter | AndFilter | OrFilter
     AndFilter := Filter && Filter
-    OrFilter := Filter && Filter
+    OrFilter := Filter || Filter
 
 为了便于表示，下面给出 Basic Filter、AndFilter 和 OrFilter 的符号化表示方法，其中 t 表示数据类型为 INT64 的变量；v表示数据类型为 BOOLEAN、INT32、INT64、FLOAT、DOUBLE 或 BINARY 的变量。
 
@@ -103,7 +103,7 @@ OrFilter| \<Filter> &#124;&#124; \<Filter>| 1. value > 100 &#124;&#124; time >  
 
 ### 1.2 Expression表达式
 
-当给过滤条件赋予一定的时间序列含义时，我们就可以得到表达式。例如，“数值大于10”仅表示过滤条件，无实际的查询意义；然而“序列‘d1.s1’的数值大于10”就一条表达式。特殊地，如果仅对时间戳做限定的过滤条件，由于本身具有“时间戳”这一属性，可以构成表达式，称为 GlobalTimeExpression。以下章节将对表达式进行展开介绍。
+当一个过滤条件作用到一个时间序列上，就成为一个表达式。例如，“数值大于10” 是一个过滤条件；而 “序列 d1.s1 的数值大于10” 就是一条表达式。特殊地，对时间的过滤条件也是一个表达式，称为 GlobalTimeExpression。以下章节将对表达式进行展开介绍。
 
 #### 1.2.1 SingleSeriesExpression表达式
 
@@ -139,7 +139,7 @@ SingleSeriesExpression 的结构如下：
 其符号化表达方式为：SingleSeriesExpression(“d1.s1”, (value > 100 && value < 200) && time > 14152176545)
 
 #### 1.2.2 GlobalTimeExpression 表达式
-GlobalTimeExpression 表示全局的时间过滤条件，一个 GlobalTimeExpression 包含一个 Filter，且该 Filter 中包含的子 Filter 必须全为时间过滤条件。在一次查询中，一个 GlobalTimeExpression 表示所有被选择列的数据点必须满足该表达式中 Filter 所表示的过滤条件。GlobalTimeExpression 的结构如下：
+GlobalTimeExpression 表示全局的时间过滤条件，一个 GlobalTimeExpression 包含一个 Filter，且该 Filter 中包含的子 Filter 必须全为时间过滤条件。在一次查询中，一个 GlobalTimeExpression 表示查询返回数据点必须满足该表达式中 Filter 所表示的过滤条件。GlobalTimeExpression 的结构如下：
 
 
     GlobalTimeExpression
@@ -147,14 +147,14 @@ GlobalTimeExpression 表示全局的时间过滤条件，一个 GlobalTimeExpres
         此处的Filter形式化定义如下：
             Filter := TimeFilter | AndExpression | OrExpression
             AndExpression := Filter && Filter
-            OrExpression := Filter && Filter
+            OrExpression := Filter || Filter
 
 下面给出 GlobalTimeExpression 的一些例子，均采用符号化表示方法。
 1. GlobalTimeExpression(time > 14152176545 && time < 14152176645)表示所有被选择的列的时间戳必须满足“大于14152176545且小于14152176645”
 2. GlobalTimeExpression((time > 100 && time < 200) || (time > 400 && time < 500))表示所有被选择列的时间戳必须满足“大于100且小于200”或“大于400且小于500”
 
 #### 1.2.3 IExpression 表达式
-IExpression 表示一次查询的所有列上的过滤条件总和。一个 IExpression 可以是一个 SingleSeriesExpression 或者一个 GlobalTimeExpression，这种情况下，IExpression 也称为一元表达式，即 UnaryExpression。一个 IExpression 也可以由两个 IExpression 通过逻辑关系“与”、“或”进行连接。通过关系“与”连接得到的表达式又称为“与表达式”，即“AndExpression”。同理，通过关系“或”连接的表达式称为“或表达式”，即“OrExpression”。由两个 IExpression 连接成的表达式又称为二元表达式，即 BinaryExpression。一元表达式、二元表达式都是 IExpression。
+IExpression 为查询过滤条件。一个 IExpression 可以是一个 SingleSeriesExpression 或者一个 GlobalTimeExpression，这种情况下，IExpression 也称为一元表达式，即 UnaryExpression。一个 IExpression 也可以由两个 IExpression 通过逻辑关系“与”、“或”进行连接。通过关系“与”连接得到的表达式又称为“与表达式”，即“AndExpression”。同理，通过关系“或”连接的表达式称为“或表达式”，即“OrExpression”。由两个 IExpression 连接成的表达式又称为二元表达式，即 BinaryExpression。一元表达式、二元表达式都是 IExpression。
 
 下面给出 IExpression 的形式化定义。
 
@@ -197,10 +197,11 @@ IExpression 表示一次查询的所有列上的过滤条件总和。一个 IExp
 #### 1.2.4 可执行表达式
 
 便于理解执行过程，定义可执行表达式的概念。可执行表达式是带有一定限制条件的 IExpression。用户输入的查询条件或构造的 IExpression 将经过特定的优化算法（该算法将在后面章节中介绍）转化为可执行表达式。满足下面任意条件的 IExpression 即为可执行表达式。
-1. IExpression 为单一的 GlobalTimeExpression
-2. IExpression 为单一的 SingleSeriesExpression
-3. IExpression 为 AndExpression，且叶子节点均为 SingleSeriesExpression
-4. IExpression 为 OrExpression，且叶子节点均为 SingleSeriesExpression
+
+* 1. IExpression 为单一的 GlobalTimeExpression
+* 2. IExpression 为单一的 SingleSeriesExpression
+* 3. IExpression 为 AndExpression，且叶子节点均为 SingleSeriesExpression
+* 4. IExpression 为 OrExpression，且叶子节点均为 SingleSeriesExpression
 
 可执行表达式的形式化定义为：
 
@@ -217,7 +218,7 @@ IExpression 表示一次查询的所有列上的过滤条件总和。一个 IExp
 
 是否为可执行表达式：是
 
-**解释**：该 IExpression 为一个 SingleSeriesExpression，满足条件1
+**解释**：该 IExpression 为一个 SingleSeriesExpression，满足条件2
 
 ----------------------------------
 例2：
@@ -226,7 +227,7 @@ IExpression 表示一次查询的所有列上的过滤条件总和。一个 IExp
 
 是否为可执行表达式：是
 
-**解释**：该 IExpression 为一个 GlobalTimeExpression，满足条件2
+**解释**：该 IExpression 为一个 GlobalTimeExpression，满足条件1
 
 -----------------------
 例3：

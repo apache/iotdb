@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
@@ -76,19 +75,16 @@ public class LinearFill extends IFill {
 
   @Override
   Filter constructFilter() {
-    if (beforeRange == -1) {
-      beforeRange = Long.MAX_VALUE;
-    }
-    if (afterRange == -1) {
-      afterRange = Long.MAX_VALUE;
-    }
+    Filter lowerBound = beforeRange == -1 ? TimeFilter.gtEq(Long.MIN_VALUE)
+        : TimeFilter.gtEq(queryTime - beforeRange);
+    Filter upperBound = afterRange == -1 ? TimeFilter.ltEq(Long.MAX_VALUE)
+        : TimeFilter.ltEq(queryTime + afterRange);
     // [queryTIme - beforeRange, queryTime + afterRange]
-    return FilterFactory.and(TimeFilter.gtEq(queryTime - beforeRange),
-        TimeFilter.ltEq(queryTime + afterRange));
+    return FilterFactory.and(lowerBound, upperBound);
   }
 
   @Override
-  public IPointReader getFillResult() throws IOException, UnSupportedFillTypeException {
+  public TimeValuePair getFillResult() throws IOException, UnSupportedFillTypeException {
     TimeValuePair beforePair = null;
     TimeValuePair afterPair = null;
     while (batchData.hasCurrent() || allDataReader.hasNextBatch()) {
@@ -104,19 +100,17 @@ public class LinearFill extends IFill {
       }
     }
 
+    // no before data or has data on the query timestamp
     if (beforePair == null || beforePair.getTimestamp() == queryTime) {
-      return new TimeValuePairPointReader(beforePair);
+      return beforePair;
     }
 
-    // if afterRange equals -1, this means that there is no time-bound filling.
-    if (afterRange == -1) {
-      return new TimeValuePairPointReader(average(beforePair, afterPair));
+    // on after data or after data is out of range
+    if (afterPair.getTimestamp() < queryTime || (afterRange != -1 && afterPair.getTimestamp() > queryTime + afterRange)) {
+      return new TimeValuePair(queryTime, null);
     }
 
-    if (afterPair.getTimestamp() > queryTime + afterRange || afterPair.getTimestamp() < queryTime) {
-      return new TimeValuePairPointReader(new TimeValuePair(queryTime, null));
-    }
-    return new TimeValuePairPointReader(average(beforePair, afterPair));
+    return average(beforePair, afterPair);
   }
 
   // returns the average of two points

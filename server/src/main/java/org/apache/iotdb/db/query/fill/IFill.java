@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
 
@@ -58,7 +57,7 @@ public abstract class IFill {
         timeFilter, null);
   }
 
-  public abstract IPointReader getFillResult() throws IOException, UnSupportedFillTypeException;
+  public abstract TimeValuePair getFillResult() throws IOException, UnSupportedFillTypeException;
 
   public TSDataType getDataType() {
     return this.dataType;
@@ -73,36 +72,4 @@ public abstract class IFill {
   }
 
   abstract Filter constructFilter();
-
-  class TimeValuePairPointReader implements IPointReader {
-
-    private boolean isUsed;
-    private TimeValuePair pair;
-
-    public TimeValuePairPointReader(TimeValuePair pair) {
-      this.pair = pair;
-      this.isUsed = (pair == null);
-    }
-
-    @Override
-    public boolean hasNextTimeValuePair() {
-      return !isUsed;
-    }
-
-    @Override
-    public TimeValuePair nextTimeValuePair() {
-      isUsed = true;
-      return pair;
-    }
-
-    @Override
-    public TimeValuePair currentTimeValuePair() {
-      return pair;
-    }
-
-    @Override
-    public void close() {
-      // no need to close
-    }
-  }
 }

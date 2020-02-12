@@ -138,7 +138,7 @@ public void run() {
   
 在消费者`RawQueryDataSetWithoutValueFilter`的构造函数里首先调用了`init()`方法
 
-#### int()
+#### init()
 
 ```
 private void init() throws InterruptedException {
