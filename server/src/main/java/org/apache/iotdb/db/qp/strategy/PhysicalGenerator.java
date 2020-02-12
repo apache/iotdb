@@ -246,7 +246,7 @@ public class PhysicalGenerator {
     } else {
       queryPlan = new RawDataQueryPlan();
     }
-    if (queryOperator.isGroupByDevice()) {
+    if (queryOperator.isAlignByDevice()) {
       // below is the core realization of ALIGN_BY_DEVICE sql logic
       AlignByDevicePlan alignByDevicePlan = new AlignByDevicePlan();
       if (queryPlan instanceof GroupByPlan) {
@@ -399,7 +399,7 @@ public class PhysicalGenerator {
             .setDeviceToFilterMap(concatFilterByDivice(prefixPaths, filterOperator));
       }
     } else {
-      queryPlan.setAlignByTime(queryOperator.isAlign());
+      queryPlan.setAlignByTime(queryOperator.isAlignByTime());
       List<Path> paths = queryOperator.getSelectedPaths();
       queryPlan.setPaths(paths);
 
