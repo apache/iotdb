@@ -195,7 +195,6 @@ public class StorageEngine implements IService {
       }
       return processor;
     } catch (StorageGroupProcessorException | MetadataException e) {
-      logger.error("Fail to get StorageGroupProcessor {}", storageGroupName, e);
       throw new StorageEngineException(e);
     }
   }

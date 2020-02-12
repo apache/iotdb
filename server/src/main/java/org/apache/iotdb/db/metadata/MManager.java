@@ -155,7 +155,7 @@ public class MManager {
       seriesNumberInStorageGroups = new HashMap<>();
       List<String> storageGroups = mtree.getAllStorageGroupList();
       for (String sg : storageGroups) {
-        MNode node = mtree.getNode(sg);
+        MNode node = mtree.getNodeByPath(sg);
         seriesNumberInStorageGroups.put(sg, node.getLeafCount());
       }
 
@@ -283,7 +283,7 @@ public class MManager {
       CompressionType compressor, Map<String, String> props) throws MetadataException {
     lock.writeLock().lock();
     try {
-      if (pathExist(path)) {
+      if (isPathExist(path)) {
         throw new PathAlreadyExistException(path);
       }
       if (!checkStorageGroupByPath(path)) {
@@ -304,7 +304,7 @@ public class MManager {
       // Thread safety: just one thread can access/modify the schemaMap
       synchronized (schemaMap) {
         // Need to check the path again to avoid duplicated inserting by multi concurrent threads
-        if (pathExist(path)) {
+        if (isPathExist(path)) {
           throw new PathAlreadyExistException(path);
         }
         if (schemaMap.containsKey(lastNode)) {
@@ -385,7 +385,7 @@ public class MManager {
 
     // Get the file name for given seriesPath Notice: This method could be called if and only if the
     // seriesPath includes one node whose {@code isStorageGroup} is true.
-    String storageGroupName = mtree.getStorageGroupNameByPath(path);
+    String storageGroupName = getStorageGroupNameByPath(path);
     int size = seriesNumberInStorageGroups.get(storageGroupName);
     seriesNumberInStorageGroups.put(storageGroupName, size + 1);
     if (size + 1 > maxSeriesNumberAmongStorageGroup) {
@@ -427,7 +427,7 @@ public class MManager {
       pathSet.addAll(newSubPaths);
     }
     for (String p : pathSet) {
-      if (!pathExist(p)) {
+      if (!isPathExist(p)) {
         throw new MetadataException(String.format(
             "Timeseries %s does not exist and cannot be deleted", p));
       }
@@ -680,53 +680,6 @@ public class MManager {
   }
 
   /**
-   * function for getting series type with check.
-   */
-  TSDataType getSeriesTypeWithCheck(MNode node, String fullPath) throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return getSchemaForOnePathWithCheck(node, fullPath).getType();
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * unction for getting series type with check.
-   */
-  TSDataType getSeriesTypeWithCheck(String fullPath) throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return getSchemaForOnePathWithCheck(fullPath).getType();
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Get all device type in current Metadata Tree.
-   *
-   * @return a HashMap contains all distinct device type separated by device Type
-   */
-  @SuppressWarnings("unused")
-  public Map<String, List<MeasurementSchema>> getSchemaForAllType() throws MetadataException {
-    lock.readLock().lock();
-    try {
-      Map<String, List<MeasurementSchema>> res = new HashMap<>();
-      List<String> typeList = mtree.getAllType();
-      for (String type : typeList) {
-        // Get all ColumnSchemas for given delta object type.
-        // param path A seriesPath represented one Delta object
-        // return a list contains all column schema
-        res.put(type, mtree.getSchemaForOneType("root." + type));
-      }
-      return res;
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
    * Get the full Metadata info.
    *
    * @return A {@code Metadata} instance which stores all metadata info
@@ -960,7 +913,7 @@ public class MManager {
   }
 
   /**
-   * function for getting leaf node path in the next level of given seriesPath.
+   * Get leaf node path in the next level of given seriesPath.
    *
    * @param path a prefix of a full path which has a storage group name. do not support wildcard.
    * can not be a full path.
@@ -975,7 +928,7 @@ public class MManager {
   }
 
   /**
-   * function for getting leaf node path in the next level of given seriesPath.
+   * Get leaf node path in the next level of given seriesPath.
    *
    * @param path do not accept wildcard. can not be a full path.
    */
@@ -991,7 +944,7 @@ public class MManager {
   /**
    * Check whether the seriesPath given exists.
    */
-  public boolean pathExist(String path) {
+  public boolean isPathExist(String path) {
     lock.readLock().lock();
     try {
       return mtree.isPathExist(path);
@@ -1003,7 +956,7 @@ public class MManager {
   /**
    * function for checking whether the path exists.
    */
-  boolean pathExist(MNode node, String path) {
+  boolean isPathExist(MNode node, String path) {
     lock.readLock().lock();
     try {
       return mtree.isPathExist(node, path);
@@ -1013,12 +966,24 @@ public class MManager {
   }
 
   /**
-   * function for getting node by path.
+   * get node by path.
    */
   MNode getNodeByPath(String path) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getNode(path);
+      return mtree.getNodeByPath(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * get node by path with check.
+   */
+  public MNode getNodeByPathWithCheck(String path) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getNodeByPathWithStorageGroupCheck(path);
     } finally {
       lock.readLock().unlock();
     }
@@ -1065,32 +1030,7 @@ public class MManager {
   }
 
   /**
-   * function for getting node by path with check.
-   */
-  public MNode getNodeByPathWithCheck(String path) throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return mtree.getNodeByPathWithStorageGroupCheck(path);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Get MeasurementSchema for given seriesPath. Notice: Path must be a complete Path from root to
-   * leaf node.
-   */
-  private MeasurementSchema getSchemaForOnePath(String path) throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return mtree.getSchemaForOnePath(path);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * function for getting schema for one path.
+   * function for getting schema for one path with check.
    */
   private MeasurementSchema getSchemaForOnePath(MNode node, String path) throws MetadataException {
     lock.readLock().lock();
@@ -1104,23 +1044,10 @@ public class MManager {
   /**
    * function for getting schema for one path with check.
    */
-  private MeasurementSchema getSchemaForOnePathWithCheck(MNode node, String path)
-      throws MetadataException {
+  private MeasurementSchema getSchemaForOnePath(String path) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getSchemaForOnePathWithCheck(node, path);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * function for getting schema for one path with check.
-   */
-  private MeasurementSchema getSchemaForOnePathWithCheck(String path) throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return mtree.getSchemaForOnePathWithCheck(path);
+      return mtree.getSchemaForOnePath(path);
     } finally {
       lock.readLock().unlock();
     }
@@ -1157,32 +1084,6 @@ public class MManager {
   }
 
   /**
-   * function for checking file level.
-   */
-  boolean checkFileLevel(String path) throws MetadataException {
-    lock.readLock().lock();
-    try {
-      getStorageGroupNameByPath(path);
-      return true;
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * function for checking file level with check.
-   */
-  boolean checkFileLevelWithCheck(MNode node, String path) throws MetadataException {
-    lock.readLock().lock();
-    try {
-      mtree.getStorageGroupNameByPath(node, path);
-      return true;
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
    * function for getting metadata in string.
    */
   public String getMetadataInString() {
@@ -1201,8 +1102,7 @@ public class MManager {
   /**
    * function for getting storage group name when creating schema automatically is enable
    */
-  String getStorageGroupNameByAutoLevel(String fullPath, int level)
-      throws MetadataException {
+  String getStorageGroupNameByAutoLevel(String fullPath, int level) throws MetadataException {
     String[] nodeNames = MetaUtils.getNodeNames(fullPath, PATH_SEPARATOR);
     StringBuilder storageGroupName = new StringBuilder(nodeNames[0]);
     if (nodeNames.length < level || !storageGroupName.toString().equals(ROOT_NAME)) {
@@ -1230,7 +1130,7 @@ public class MManager {
 
   private PathCheckRet loadPathToCache(String path) throws CacheException {
     try {
-      if (!pathExist(path)) {
+      if (!isPathExist(path)) {
         return new PathCheckRet(false, null);
       }
       List<String> p = new ArrayList<>();

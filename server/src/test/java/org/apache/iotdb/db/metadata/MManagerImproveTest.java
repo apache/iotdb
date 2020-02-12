@@ -69,9 +69,9 @@ public class MManagerImproveTest {
   public void checkSetUp() {
     mManager = MManager.getInstance();
 
-    assertTrue(mManager.pathExist("root.t1.v2.d3.s5"));
-    assertFalse(mManager.pathExist("root.t1.v2.d9.s" + TIMESERIES_NUM));
-    assertFalse(mManager.pathExist("root.t10"));
+    assertTrue(mManager.isPathExist("root.t1.v2.d3.s5"));
+    assertFalse(mManager.isPathExist("root.t1.v2.d9.s" + TIMESERIES_NUM));
+    assertFalse(mManager.isPathExist("root.t10"));
   }
 
   @Test
@@ -95,7 +95,7 @@ public class MManagerImproveTest {
 
     startTime = System.currentTimeMillis();
     for (int i = 0; i < 100000; i++) {
-      assertTrue(mManager.pathExist(path));
+      assertTrue(mManager.isPathExist(path));
     }
     endTime = System.currentTimeMillis();
     path_exist += endTime - startTime;
@@ -132,7 +132,7 @@ public class MManagerImproveTest {
       throws MetadataException, StorageGroupException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
-      assertTrue(mManager.pathExist(path));
+      assertTrue(mManager.isPathExist(path));
       List<String> paths = new ArrayList<>();
       paths.add(path);
       assertTrue(mManager.checkFilesLevel(paths));
@@ -148,7 +148,7 @@ public class MManagerImproveTest {
       List<String> paths = new ArrayList<>();
       paths.add(path);
       assertTrue(mManager.checkFilesLevel(paths));
-      TSDataType dataType = mManager.getSeriesTypeWithCheck(path);
+      TSDataType dataType = mManager.getSeriesType(path);
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
@@ -162,7 +162,7 @@ public class MManagerImproveTest {
     MNode node = mManager.getNodeByPath(deviceId);
 
     for (String measurement : measurementList) {
-      assertTrue(mManager.pathExist(node, measurement));
+      assertTrue(mManager.isPathExist(node, measurement));
       List<String> paths = new ArrayList<>();
       paths.add(measurement);
       if (!isFileLevelChecked) {
@@ -178,8 +178,7 @@ public class MManagerImproveTest {
       throws MetadataException, StorageGroupException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
-      assertTrue(mManager.pathExist(path));
-      assertTrue(mManager.checkFileLevel(path));
+      assertTrue(mManager.isPathExist(path));
       TSDataType dataType = mManager.getSeriesType(path);
       assertEquals(TSDataType.TEXT, dataType);
     }
@@ -187,16 +186,10 @@ public class MManagerImproveTest {
 
   private void doAllImproveTest(String deviceId, List<String> measurementList)
       throws MetadataException, StorageGroupException {
-    boolean isFileLevelChecked;
-    isFileLevelChecked = mManager.checkFileLevel(deviceId);
     MNode node = mManager.getNodeByPathWithCheck(deviceId);
 
     for (String measurement : measurementList) {
-      if (!isFileLevelChecked) {
-        isFileLevelChecked = mManager.checkFileLevelWithCheck(node, measurement);
-      }
-      assertTrue(isFileLevelChecked);
-      TSDataType dataType = mManager.getSeriesTypeWithCheck(node, measurement);
+      TSDataType dataType = mManager.getSeriesType(node, measurement);
       assertEquals(TSDataType.TEXT, dataType);
     }
   }

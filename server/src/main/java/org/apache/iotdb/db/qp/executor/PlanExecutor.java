@@ -506,7 +506,7 @@ public class PlanExecutor implements IPlanExecutor {
             "TimeSeries does not exist and its data cannot be deleted");
       }
       for (String onePath : existingPaths) {
-        if (!mManager.pathExist(onePath)) {
+        if (!mManager.isPathExist(onePath)) {
           throw new QueryProcessException(String
               .format("TimeSeries %s does not exist and its data cannot be deleted", onePath));
         }
@@ -657,7 +657,7 @@ public class PlanExecutor implements IPlanExecutor {
     String deviceId = path.getDevice();
     String measurementId = path.getMeasurement();
     try {
-      if (!mManager.pathExist(path.getFullPath())) {
+      if (!mManager.isPathExist(path.getFullPath())) {
         throw new QueryProcessException(
             String.format("Time series %s does not exist.", path.getFullPath()));
       }
@@ -1128,7 +1128,7 @@ public class PlanExecutor implements IPlanExecutor {
    * register with value
    */
   private void addPathToMTree(String deviceId, String measurementId, Object value)
-      throws PathException, MetadataException, StorageEngineException {
+      throws MetadataException, StorageEngineException {
     TSDataType predictedDataType = TypeInferenceUtils.getPredictedDataType(value);
     Path path = new Path(deviceId, measurementId);
     TSEncoding encoding = getDefaultEncoding(predictedDataType);
@@ -1141,7 +1141,7 @@ public class PlanExecutor implements IPlanExecutor {
    * register with datatype
    */
   private void addPathToMTree(String deviceId, String measurementId, TSDataType dataType)
-      throws PathException, MetadataException, StorageEngineException {
+      throws MetadataException, StorageEngineException {
     Path path = new Path(deviceId, measurementId);
     TSEncoding encoding = getDefaultEncoding(dataType);
     CompressionType compressionType =

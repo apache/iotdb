@@ -85,7 +85,7 @@ public class StatMonitor implements IService {
     if (config.isEnableStatMonitor()) {
       try {
         String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
-        if (!mmanager.pathExist(prefix)) {
+        if (!mmanager.isPathExist(prefix)) {
           mmanager.setStorageGroupToMTree(prefix);
         }
       } catch (MetadataException e) {
@@ -142,7 +142,7 @@ public class StatMonitor implements IService {
     MManager mManager = MManager.getInstance();
     String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
     try {
-      if (!mManager.pathExist(prefix)) {
+      if (!mManager.isPathExist(prefix)) {
         mManager.setStorageGroupToMTree(prefix);
       }
     } catch (Exception e) {
@@ -163,7 +163,7 @@ public class StatMonitor implements IService {
           logger.error("Registering metadata but data type of {} is null", entry.getKey());
         }
 
-        if (!mManager.pathExist(entry.getKey())) {
+        if (!mManager.isPathExist(entry.getKey())) {
           mManager.addPathToMTree(entry.getKey(), TSDataType.valueOf(entry.getValue()),
               TSEncoding.valueOf("RLE"),
               CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),

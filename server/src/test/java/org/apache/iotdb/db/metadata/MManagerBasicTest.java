@@ -59,9 +59,9 @@ public class MManagerBasicTest {
   public void testAddPathAndExist() {
 
     MManager manager = MManager.getInstance();
-    assertTrue(manager.pathExist("root"));
+    assertTrue(manager.isPathExist("root"));
 
-    assertFalse(manager.pathExist("root.laptop"));
+    assertFalse(manager.isPathExist("root.laptop"));
 
     try {
       manager.setStorageGroupToMTree("root.laptop.d1");
@@ -86,10 +86,10 @@ public class MManagerBasicTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertTrue(manager.pathExist("root.laptop"));
-    assertTrue(manager.pathExist("root.laptop.d1"));
-    assertTrue(manager.pathExist("root.laptop.d1.s0"));
-    assertFalse(manager.pathExist("root.laptop.d1.s1"));
+    assertTrue(manager.isPathExist("root.laptop"));
+    assertTrue(manager.isPathExist("root.laptop.d1"));
+    assertTrue(manager.isPathExist("root.laptop.d1.s0"));
+    assertFalse(manager.isPathExist("root.laptop.d1.s1"));
     try {
       manager.addPathToMTree("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
@@ -97,7 +97,7 @@ public class MManagerBasicTest {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
-    assertTrue(manager.pathExist("root.laptop.d1.s1"));
+    assertTrue(manager.isPathExist("root.laptop.d1.s1"));
     try {
       manager.deletePaths(Collections.singletonList("root.laptop.d1.s1"), false);
     } catch (MetadataException e) {
@@ -106,17 +106,17 @@ public class MManagerBasicTest {
     }
     // just delete s0, and don't delete root.laptop.d1??
     // delete storage group or not
-    assertFalse(manager.pathExist("root.laptop.d1.s1"));
+    assertFalse(manager.isPathExist("root.laptop.d1.s1"));
     try {
       manager.deletePaths(Collections.singletonList("root.laptop.d1.s0"), false);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(manager.pathExist("root.laptop.d1.s0"));
-    assertTrue(manager.pathExist("root.laptop.d1"));
-    assertTrue(manager.pathExist("root.laptop"));
-    assertTrue(manager.pathExist("root"));
+    assertFalse(manager.isPathExist("root.laptop.d1.s0"));
+    assertTrue(manager.isPathExist("root.laptop.d1"));
+    assertTrue(manager.isPathExist("root.laptop"));
+    assertTrue(manager.isPathExist("root"));
 
     try {
       manager.addPathToMTree("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
@@ -134,7 +134,7 @@ public class MManagerBasicTest {
       fail(e1.getMessage());
     }
 
-    assertFalse(manager.pathExist("root.laptop.d2"));
+    assertFalse(manager.isPathExist("root.laptop.d2"));
     assertFalse(manager.checkStorageGroupByPath("root.laptop.d2"));
 
     try {
@@ -161,7 +161,7 @@ public class MManagerBasicTest {
     /*
      * check file level
      */
-    assertFalse(manager.pathExist("root.laptop.d2.s1"));
+    assertFalse(manager.isPathExist("root.laptop.d2.s1"));
     List<String> paths = new ArrayList<>();
     paths.add("root.laptop.d2.s1");
     try {
