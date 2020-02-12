@@ -74,7 +74,7 @@ public abstract class IFill {
 
   abstract Filter constructFilter();
 
-  class TimeValuePairPointReader implements IPointReader {
+  static class TimeValuePairPointReader implements IPointReader {
 
     private boolean isUsed;
     private TimeValuePair pair;
