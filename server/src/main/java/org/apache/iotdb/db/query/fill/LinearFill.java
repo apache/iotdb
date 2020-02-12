@@ -76,15 +76,12 @@ public class LinearFill extends IFill {
 
   @Override
   Filter constructFilter() {
-    if (beforeRange == -1) {
-      beforeRange = Long.MAX_VALUE;
-    }
-    if (afterRange == -1) {
-      afterRange = Long.MAX_VALUE;
-    }
+    Filter lowerBound = beforeRange == -1 ? TimeFilter.gtEq(Long.MIN_VALUE)
+        : TimeFilter.gtEq(queryTime - beforeRange);
+    Filter upperBound = beforeRange == -1 ? TimeFilter.ltEq(Long.MAX_VALUE)
+        : TimeFilter.ltEq(queryTime + beforeRange);
     // [queryTIme - beforeRange, queryTime + afterRange]
-    return FilterFactory.and(TimeFilter.gtEq(queryTime - beforeRange),
-        TimeFilter.ltEq(queryTime + afterRange));
+    return FilterFactory.and(lowerBound, upperBound);
   }
 
   @Override

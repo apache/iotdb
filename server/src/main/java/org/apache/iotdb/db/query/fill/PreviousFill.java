@@ -50,12 +50,10 @@ public class PreviousFill extends IFill {
 
   @Override
   Filter constructFilter() {
-    if (beforeRange == -1) {
-      beforeRange = Long.MAX_VALUE;
-    }
+    Filter lowerBound = beforeRange == -1 ? TimeFilter.gtEq(Long.MIN_VALUE)
+        : TimeFilter.gtEq(queryTime - beforeRange);
     // time in [queryTime - beforeRange, queryTime]
-    return FilterFactory.and(TimeFilter.gtEq(queryTime - beforeRange),
-        TimeFilter.ltEq(queryTime));
+    return FilterFactory.and(lowerBound, TimeFilter.ltEq(queryTime));
   }
 
   public long getBeforeRange() {
