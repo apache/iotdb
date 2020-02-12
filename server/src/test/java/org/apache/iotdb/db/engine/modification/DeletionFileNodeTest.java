@@ -78,7 +78,7 @@ public class DeletionFileNodeTest {
       PathException, IOException, StorageEngineException, StartupException, StorageGroupException {
     EnvironmentUtils.envSetUp();
 
-    MManager.getInstance().setStorageGroupToMTree(processorName);
+    MManager.getInstance().setStorageGroup(processorName);
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().addPathToMTree(processorName + "." + measurements[i], dataType,
           encoding);

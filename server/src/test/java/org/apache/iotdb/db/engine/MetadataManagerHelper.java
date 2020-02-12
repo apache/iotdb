@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class MetadataManagerHelper {
 
@@ -35,9 +34,9 @@ public class MetadataManagerHelper {
     mmanager.init();
     mmanager.clear();
     try {
-      mmanager.setStorageGroupToMTree("root.vehicle.d0");
-      mmanager.setStorageGroupToMTree("root.vehicle.d1");
-      mmanager.setStorageGroupToMTree("root.vehicle.d2");
+      mmanager.setStorageGroup("root.vehicle.d0");
+      mmanager.setStorageGroup("root.vehicle.d1");
+      mmanager.setStorageGroup("root.vehicle.d2");
 
       CompressionType compressionType =CompressionType.valueOf(
           TSFileDescriptor.getInstance().getConfig().getCompressor());
@@ -97,7 +96,7 @@ public class MetadataManagerHelper {
     mmanager = MManager.getInstance();
     mmanager.clear();
     try {
-      mmanager.setStorageGroupToMTree("root.vehicle");
+      mmanager.setStorageGroup("root.vehicle");
       CompressionType compressionType =CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
 
       mmanager.addPathToMTree("root.vehicle.d0.s0", TSDataType.valueOf("INT32"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());

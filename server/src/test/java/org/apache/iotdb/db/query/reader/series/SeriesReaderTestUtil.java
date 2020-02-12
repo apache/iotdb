@@ -151,7 +151,7 @@ public class SeriesReaderTestUtil {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds.add(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device" + i);
     }
-    MManager.getInstance().setStorageGroupToMTree(SERIES_READER_TEST_SG);
+    MManager.getInstance().setStorageGroup(SERIES_READER_TEST_SG);
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         MManager.getInstance().addPathToMTree(

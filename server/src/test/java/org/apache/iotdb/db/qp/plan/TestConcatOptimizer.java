@@ -52,7 +52,7 @@ public class TestConcatOptimizer {
   public void before() throws MetadataException, PathException {
     processor = new Planner();
     MManager.getInstance().init();
-    MManager.getInstance().setStorageGroupToMTree("root.laptop");
+    MManager.getInstance().setStorageGroup("root.laptop");
     MManager.getInstance().addPathToMTree("root.laptop.d1.s1", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
     MManager.getInstance().addPathToMTree("root.laptop.d1.s2", TSDataType.INT64, TSEncoding.PLAIN,

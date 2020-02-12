@@ -64,14 +64,14 @@ public class MManagerBasicTest {
     assertFalse(manager.isPathExist("root.laptop"));
 
     try {
-      manager.setStorageGroupToMTree("root.laptop.d1");
+      manager.setStorageGroup("root.laptop.d1");
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
     try {
-      manager.setStorageGroupToMTree("root.laptop");
+      manager.setStorageGroup("root.laptop");
     } catch (MetadataException e) {
       Assert.assertEquals(
           "Path [root.laptop] already exist",
@@ -151,110 +151,12 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.setStorageGroupToMTree("root.laptop.d2");
+      manager.setStorageGroup("root.laptop.d2");
     } catch (MetadataException e) {
       Assert.assertEquals(
           String.format("The seriesPath of %s already exist, it can't be set to the storage group",
               "root.laptop.d2"),
           e.getMessage());
-    }
-    /*
-     * check file level
-     */
-    assertFalse(manager.isPathExist("root.laptop.d2.s1"));
-    List<String> paths = new ArrayList<>();
-    paths.add("root.laptop.d2.s1");
-    try {
-      manager.checkFilesLevel(paths);
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-
-    try {
-      manager.addPathToMTree("root.laptop.d2.s1", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (MetadataException e1) {
-      e1.printStackTrace();
-      fail(e1.getMessage());
-    }
-
-    try {
-      manager.addPathToMTree("root.laptop.d2.s0", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (MetadataException e1) {
-      e1.printStackTrace();
-      fail(e1.getMessage());
-    }
-
-    try {
-      manager.deletePaths(Collections.singletonList("root.laptop.d2.s0"), false);
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-    try {
-      manager.deletePaths(Collections.singletonList("root.laptop.d2.s1"), false);
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-
-    try {
-      manager.addPathToMTree("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (MetadataException e1) {
-      e1.printStackTrace();
-      fail(e1.getMessage());
-    }
-
-    try {
-      manager.addPathToMTree("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (MetadataException e1) {
-      e1.printStackTrace();
-      fail(e1.getMessage());
-    }
-
-    paths = new ArrayList<>();
-    paths.add("root.laptop.d1.s0");
-    try {
-      manager.checkFilesLevel(paths);
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-
-    try {
-      manager.addPathToMTree("root.laptop.d1.s2", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (MetadataException e1) {
-      e1.printStackTrace();
-      fail(e1.getMessage());
-    }
-    paths = new ArrayList<>();
-    paths.add("root.laptop.d1.s2");
-    try {
-      manager.checkFilesLevel(paths);
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-
-    try {
-      manager.addPathToMTree("root.laptop.d1.s3", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (MetadataException e1) {
-      e1.printStackTrace();
-      fail(e1.getMessage());
-    }
-    paths = new ArrayList<>();
-    paths.add("root.laptop.d1.s3");
-    try {
-      manager.checkFilesLevel(paths);
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
     }
   }
 
@@ -264,20 +166,20 @@ public class MManagerBasicTest {
     MManager manager = MManager.getInstance();
 
     try {
-      assertFalse(manager.checkStorageGroupOfMTree("root"));
-      assertFalse(manager.checkStorageGroupOfMTree("root1.laptop.d2"));
+      assertFalse(manager.checkStorageGroup("root"));
+      assertFalse(manager.checkStorageGroup("root1.laptop.d2"));
 
-      manager.setStorageGroupToMTree("root.laptop.d1");
-      assertTrue(manager.checkStorageGroupOfMTree("root.laptop.d1"));
-      assertFalse(manager.checkStorageGroupOfMTree("root.laptop.d2"));
-      assertFalse(manager.checkStorageGroupOfMTree("root.laptop"));
-      assertFalse(manager.checkStorageGroupOfMTree("root.laptop.d1.s1"));
+      manager.setStorageGroup("root.laptop.d1");
+      assertTrue(manager.checkStorageGroup("root.laptop.d1"));
+      assertFalse(manager.checkStorageGroup("root.laptop.d2"));
+      assertFalse(manager.checkStorageGroup("root.laptop"));
+      assertFalse(manager.checkStorageGroup("root.laptop.d1.s1"));
 
-      manager.setStorageGroupToMTree("root.laptop.d2");
-      assertTrue(manager.checkStorageGroupOfMTree("root.laptop.d1"));
-      assertTrue(manager.checkStorageGroupOfMTree("root.laptop.d2"));
-      assertFalse(manager.checkStorageGroupOfMTree("root.laptop.d3"));
-      assertFalse(manager.checkStorageGroupOfMTree("root.laptop"));
+      manager.setStorageGroup("root.laptop.d2");
+      assertTrue(manager.checkStorageGroup("root.laptop.d1"));
+      assertTrue(manager.checkStorageGroup("root.laptop.d2"));
+      assertFalse(manager.checkStorageGroup("root.laptop.d3"));
+      assertFalse(manager.checkStorageGroup("root.laptop"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -289,8 +191,8 @@ public class MManagerBasicTest {
 
     MManager manager = MManager.getInstance();
     try {
-      manager.setStorageGroupToMTree("root.laptop.d1");
-      manager.setStorageGroupToMTree("root.laptop.d2");
+      manager.setStorageGroup("root.laptop.d1");
+      manager.setStorageGroup("root.laptop.d2");
       manager.addPathToMTree("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
       manager.addPathToMTree("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.PLAIN,
@@ -321,14 +223,14 @@ public class MManagerBasicTest {
       assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle.device").isEmpty());
       assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle.device.sensor").isEmpty());
 
-      manager.setStorageGroupToMTree("root.vehicle");
+      manager.setStorageGroup("root.vehicle");
       assertFalse(manager.getAllStorageGroupNamesByPath("root.vehicle").isEmpty());
       assertFalse(manager.getAllStorageGroupNamesByPath("root.vehicle.device").isEmpty());
       assertFalse(manager.getAllStorageGroupNamesByPath("root.vehicle.device.sensor").isEmpty());
       assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle1").isEmpty());
       assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle1.device").isEmpty());
 
-      manager.setStorageGroupToMTree("root.vehicle1.device");
+      manager.setStorageGroup("root.vehicle1.device");
       assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle1.device1").isEmpty());
       assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle1.device2").isEmpty());
       assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle1.device3").isEmpty());
@@ -343,14 +245,14 @@ public class MManagerBasicTest {
   public void testMaximalSeriesNumberAmongStorageGroup() throws MetadataException, PathException {
     MManager manager = MManager.getInstance();
     assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.setStorageGroupToMTree("root.laptop");
+    manager.setStorageGroup("root.laptop");
     assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
     manager.addPathToMTree("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
         CompressionType.GZIP, null);
     manager.addPathToMTree("root.laptop.d1.s2", TSDataType.INT32, TSEncoding.PLAIN,
         CompressionType.GZIP, null);
     assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.setStorageGroupToMTree("root.vehicle");
+    manager.setStorageGroup("root.vehicle");
     manager.addPathToMTree("root.vehicle.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
         CompressionType.GZIP, null);
     assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
@@ -399,7 +301,7 @@ public class MManagerBasicTest {
     MManager manager = MManager.getInstance();
 
     try {
-      manager.setStorageGroupToMTree("root.laptop");
+      manager.setStorageGroup("root.laptop");
       manager.addPathToMTree("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
       manager.addPathToMTree("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.PLAIN,
@@ -409,7 +311,7 @@ public class MManagerBasicTest {
       devices.add("root.laptop.d2");
       // usual condition
       assertEquals(devices, manager.getDevices("root.laptop"));
-      manager.setStorageGroupToMTree("root.vehicle");
+      manager.setStorageGroup("root.vehicle");
       manager.addPathToMTree("root.vehicle.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
       devices.add("root.vehicle.d1");

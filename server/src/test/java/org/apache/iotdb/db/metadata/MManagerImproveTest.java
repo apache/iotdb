@@ -49,7 +49,7 @@ public class MManagerImproveTest {
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     mManager = MManager.getInstance();
-    mManager.setStorageGroupToMTree("root.t1.v2");
+    mManager.setStorageGroup("root.t1.v2");
 
     for (int j = 0; j < DEVICE_NUM; j++) {
       for (int i = 0; i < TIMESERIES_NUM; i++) {
@@ -84,13 +84,6 @@ public class MManagerImproveTest {
 
     String deviceId = "root.t1.v2.d3";
     String measurement = "s5";
-
-    startTime = System.currentTimeMillis();
-    for (int i = 0; i < 100000; i++) {
-      String path = deviceId + "." + measurement;
-    }
-    endTime = System.currentTimeMillis();
-    string_combine += endTime - startTime;
     String path = deviceId + "." + measurement;
 
     startTime = System.currentTimeMillis();
@@ -103,15 +96,6 @@ public class MManagerImproveTest {
     startTime = System.currentTimeMillis();
     endTime = System.currentTimeMillis();
     list_init += endTime - startTime;
-    List<String> paths = new ArrayList<>();
-    paths.add(path);
-
-    startTime = System.currentTimeMillis();
-    for (int i = 0; i < 100000; i++) {
-      assertTrue(mManager.checkFilesLevel(paths));
-    }
-    endTime = System.currentTimeMillis();
-    check_filelevel += endTime - startTime;
 
     startTime = System.currentTimeMillis();
     for (int i = 0; i < 100000; i++) {
@@ -133,9 +117,6 @@ public class MManagerImproveTest {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       assertTrue(mManager.isPathExist(path));
-      List<String> paths = new ArrayList<>();
-      paths.add(path);
-      assertTrue(mManager.checkFilesLevel(paths));
       TSDataType dataType = mManager.getSeriesType(path);
       assertEquals(TSDataType.TEXT, dataType);
     }
@@ -145,9 +126,6 @@ public class MManagerImproveTest {
       throws MetadataException, StorageGroupException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
-      List<String> paths = new ArrayList<>();
-      paths.add(path);
-      assertTrue(mManager.checkFilesLevel(paths));
       TSDataType dataType = mManager.getSeriesType(path);
       assertEquals(TSDataType.TEXT, dataType);
     }
@@ -155,38 +133,17 @@ public class MManagerImproveTest {
 
   private void doDealdeviceIdOnceTest(String deviceId, List<String> measurementList)
       throws MetadataException, StorageGroupException {
-    boolean isFileLevelChecked;
-    List<String> tempList = new ArrayList<>();
-    tempList.add(deviceId);
-    isFileLevelChecked = mManager.checkFilesLevel(tempList);
     MNode node = mManager.getNodeByPath(deviceId);
 
     for (String measurement : measurementList) {
-      assertTrue(mManager.isPathExist(node, measurement));
-      List<String> paths = new ArrayList<>();
-      paths.add(measurement);
-      if (!isFileLevelChecked) {
-        isFileLevelChecked = mManager.checkFilesLevel(node, paths);
-      }
-      assertTrue(isFileLevelChecked);
       TSDataType dataType = mManager.getSeriesType(node, measurement);
-      assertEquals(TSDataType.TEXT, dataType);
-    }
-  }
-
-  private void doRemoveListTest(String deviceId, List<String> measurementList)
-      throws MetadataException, StorageGroupException {
-    for (String measurement : measurementList) {
-      String path = deviceId + "." + measurement;
-      assertTrue(mManager.isPathExist(path));
-      TSDataType dataType = mManager.getSeriesType(path);
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
 
   private void doAllImproveTest(String deviceId, List<String> measurementList)
       throws MetadataException, StorageGroupException {
-    MNode node = mManager.getNodeByPathWithCheck(deviceId);
+    MNode node = mManager.getNodeByPathWithStorageGroupCheck(deviceId);
 
     for (String measurement : measurementList) {
       TSDataType dataType = mManager.getSeriesType(node, measurement);
@@ -240,13 +197,6 @@ public class MManagerImproveTest {
     }
     endTime = System.currentTimeMillis();
     logger.debug("deal deviceId once:\t" + (endTime - startTime));
-
-    startTime = System.currentTimeMillis();
-    for (String deviceId : deviceIdList) {
-      doRemoveListTest(deviceId, measurementList);
-    }
-    endTime = System.currentTimeMillis();
-    logger.debug("remove list:\t" + (endTime - startTime));
 
     startTime = System.currentTimeMillis();
     for (String deviceId : deviceIdList) {

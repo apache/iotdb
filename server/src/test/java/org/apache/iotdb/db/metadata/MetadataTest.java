@@ -45,34 +45,34 @@ public class MetadataTest {
     MManager manager = MManager.getInstance();
 
     try {
-      manager.setStorageGroupToMTree("root.t.d1");
+      manager.setStorageGroup("root.t.d1");
       manager.addPathToMTree("root.t.d1.s0", "INT32", "RLE");
       manager.addPathToMTree("root.t.d1.s1", "DOUBLE", "RLE");
-      manager.setStorageGroupToMTree("root.t.d2");
+      manager.setStorageGroup("root.t.d2");
       manager.addPathToMTree("root.t.d2.s1", "DOUBLE", "RLE");
       Metadata metadata1 = manager.getMetadata();
 
       manager.clear();
 
-      manager.setStorageGroupToMTree("root.t.d3");
+      manager.setStorageGroup("root.t.d3");
       manager.addPathToMTree("root.t.d3.s1", "DOUBLE", "RLE");
       manager.addPathToMTree("root.t.d3.s2", "TEXT", "RLE");
-      manager.setStorageGroupToMTree("root.t1.d1");
+      manager.setStorageGroup("root.t1.d1");
       manager.addPathToMTree("root.t1.d1.s1", "DOUBLE", "RLE");
       manager.addPathToMTree("root.t1.d1.s2", "TEXT", "RLE");
       Metadata metadata2 = manager.getMetadata();
 
       manager.clear();
 
-      manager.setStorageGroupToMTree("root.t.d1");
+      manager.setStorageGroup("root.t.d1");
       manager.addPathToMTree("root.t.d1.s0", "INT32", "RLE");
       manager.addPathToMTree("root.t.d1.s1", "DOUBLE", "RLE");
-      manager.setStorageGroupToMTree("root.t.d2");
+      manager.setStorageGroup("root.t.d2");
       manager.addPathToMTree("root.t.d2.s1", "DOUBLE", "RLE");
-      manager.setStorageGroupToMTree("root.t.d3");
+      manager.setStorageGroup("root.t.d3");
       manager.addPathToMTree("root.t.d3.s1", "DOUBLE", "RLE");
       manager.addPathToMTree("root.t.d3.s2", "TEXT", "RLE");
-      manager.setStorageGroupToMTree("root.t1.d1");
+      manager.setStorageGroup("root.t1.d1");
       manager.addPathToMTree("root.t1.d1.s1", "DOUBLE", "RLE");
       manager.addPathToMTree("root.t1.d1.s2", "TEXT", "RLE");
       Metadata metadata = manager.getMetadata();

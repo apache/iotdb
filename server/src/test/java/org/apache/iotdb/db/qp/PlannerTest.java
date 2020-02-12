@@ -50,8 +50,8 @@ public class PlannerTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    mManager.setStorageGroupToMTree("root.vehicle");
-    mManager.setStorageGroupToMTree("root.vehicle1");
+    mManager.setStorageGroup("root.vehicle");
+    mManager.setStorageGroup("root.vehicle1");
     mManager.addPathToMTree("root.vehicle.device1.sensor1", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());

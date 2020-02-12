@@ -42,9 +42,9 @@ public class MManagerAdvancedTest {
     EnvironmentUtils.envSetUp();
     mmanager = MManager.getInstance();
 
-    mmanager.setStorageGroupToMTree("root.vehicle.d0");
-    mmanager.setStorageGroupToMTree("root.vehicle.d1");
-    mmanager.setStorageGroupToMTree("root.vehicle.d2");
+    mmanager.setStorageGroup("root.vehicle.d0");
+    mmanager.setStorageGroup("root.vehicle.d1");
+    mmanager.setStorageGroup("root.vehicle.d2");
 
     mmanager.addPathToMTree("root.vehicle.d0.s0", "INT32", "RLE");
     mmanager.addPathToMTree("root.vehicle.d0.s1", "INT64", "RLE");
@@ -110,20 +110,4 @@ public class MManagerAdvancedTest {
       // ignore
     }
   }
-
-  @Test
-  public void testGetNextLevelPath()
-      throws MetadataException, IOException, StorageGroupException {
-    mmanager.addPathToMTree("root.vehicle.d2.s0", "DOUBLE", "RLE");
-    mmanager.addPathToMTree("root.vehicle.d2.s1", "BOOLEAN", "PLAIN");
-    mmanager.addPathToMTree("root.vehicle.d2.s2.g0", "TEXT", "PLAIN");
-    mmanager.addPathToMTree("root.vehicle.d2.s3", "TEXT", "PLAIN");
-
-    List<String> paths = mmanager.getLeafNodePathInNextLevel("root.vehicle.d2");
-    Assert.assertEquals(3, paths.size());
-
-    paths = mmanager.getLeafNodePathInNextLevel("root.vehicle.d2.s2");
-    Assert.assertEquals(1, paths.size());
-  }
-
 }

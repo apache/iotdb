@@ -892,7 +892,7 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     Path path = setStorageGroupPlan.getPath();
     try {
-      mManager.setStorageGroupToMTree(path.getFullPath());
+      mManager.setStorageGroup(path.getFullPath());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -907,7 +907,7 @@ public class PlanExecutor implements IPlanExecutor {
         storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
         deletePathList.add(storageGroupPath.getFullPath());
       }
-      mManager.deleteStorageGroupsFromMTree(deletePathList);
+      mManager.deleteStorageGroups(deletePathList);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }

@@ -188,7 +188,7 @@ public class StorageEngine implements IService {
                 storageGroupName, Thread.currentThread().getId());
             processor = new StorageGroupProcessor(systemDir, storageGroupName, fileFlushPolicy);
             processor.setDataTTL(
-                MManager.getInstance().getNodeByPathWithCheck(storageGroupName).getDataTTL());
+                MManager.getInstance().getNodeByPathWithStorageGroupCheck(storageGroupName).getDataTTL());
             processorMap.put(storageGroupName, processor);
           }
         }

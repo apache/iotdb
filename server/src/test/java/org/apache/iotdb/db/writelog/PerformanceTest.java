@@ -126,7 +126,7 @@ public class PerformanceTest {
     tempProcessorStore.createNewFile();
 
     try {
-      MManager.getInstance().setStorageGroupToMTree("root.logTestDevice");
+      MManager.getInstance().setStorageGroup("root.logTestDevice");
     } catch (MetadataException ignored) {
     }
     MManager.getInstance().addPathToMTree("root.logTestDevice.s1",

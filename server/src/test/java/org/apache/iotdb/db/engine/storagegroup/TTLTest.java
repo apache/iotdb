@@ -91,8 +91,8 @@ public class TTLTest {
 
   private void createSchemas()
       throws MetadataException, PathException, StorageGroupProcessorException {
-    MManager.getInstance().setStorageGroupToMTree(sg1);
-    MManager.getInstance().setStorageGroupToMTree(sg2);
+    MManager.getInstance().setStorageGroup(sg1);
+    MManager.getInstance().setStorageGroup(sg2);
     storageGroupProcessor = new StorageGroupProcessor(IoTDBDescriptor.getInstance().getConfig()
         .getSystemDir(), sg1, new DirectFlushPolicy());
     MManager.getInstance().addPathToMTree(g1s1, TSDataType.INT64, TSEncoding.PLAIN,
@@ -114,11 +114,11 @@ public class TTLTest {
 
     // normally set ttl
     MManager.getInstance().setTTL(sg1, ttl);
-    MNode mNode = MManager.getInstance().getNodeByPathWithCheck(sg1);
+    MNode mNode = MManager.getInstance().getNodeByPathWithStorageGroupCheck(sg1);
     assertEquals(ttl, mNode.getDataTTL());
 
     // default ttl
-    mNode = MManager.getInstance().getNodeByPathWithCheck(sg2);
+    mNode = MManager.getInstance().getNodeByPathWithStorageGroupCheck(sg2);
     assertEquals(Long.MAX_VALUE, mNode.getDataTTL());
   }
 

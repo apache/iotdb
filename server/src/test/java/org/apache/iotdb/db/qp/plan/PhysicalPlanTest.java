@@ -69,7 +69,7 @@ public class PhysicalPlanTest {
   @Before
   public void before() throws QueryProcessException, MetadataException {
     MManager.getInstance().init();
-    MManager.getInstance().setStorageGroupToMTree("root.vehicle");
+    MManager.getInstance().setStorageGroup("root.vehicle");
     MManager.getInstance().addPathToMTree("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
     MManager.getInstance().addPathToMTree("root.vehicle.d2.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
@@ -608,7 +608,7 @@ public class PhysicalPlanTest {
 
     //'group by device' is deduplication in DeviceIterateDataSet
     MManager manager = MManager.getInstance();
-    manager.setStorageGroupToMTree("root.vehicle");
+    manager.setStorageGroup("root.vehicle");
     manager.addPathToMTree("root.vehicle.d0.s1", "INT64", "PLAIN");
     manager.addPathToMTree("root.vehicle.d0.s0", "INT64", "PLAIN");
     manager.addPathToMTree("root.vehicle.d1.s0", "INT64", "PLAIN");
