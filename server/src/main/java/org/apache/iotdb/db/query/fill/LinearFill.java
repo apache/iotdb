@@ -79,7 +79,7 @@ public class LinearFill extends IFill {
     Filter lowerBound = beforeRange == -1 ? TimeFilter.gtEq(Long.MIN_VALUE)
         : TimeFilter.gtEq(queryTime - beforeRange);
     Filter upperBound = afterRange == -1 ? TimeFilter.ltEq(Long.MAX_VALUE)
-        : TimeFilter.ltEq(queryTime + beforeRange);
+        : TimeFilter.ltEq(queryTime + afterRange);
     // [queryTIme - beforeRange, queryTime + afterRange]
     return FilterFactory.and(lowerBound, upperBound);
   }
