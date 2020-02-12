@@ -114,7 +114,7 @@ public class StorageEngine implements IService {
      * recover all storage group processors.
      */
 
-    List<MNode> sgNodes = MManager.getInstance().getAllStorageGroups();
+    List<MNode> sgNodes = MManager.getInstance().getAllStorageGroupNodes();
     List<Future> futures = new ArrayList<>();
     for (MNode storageGroup : sgNodes) {
       futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {

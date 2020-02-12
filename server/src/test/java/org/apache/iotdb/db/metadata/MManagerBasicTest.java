@@ -316,7 +316,7 @@ public class MManagerBasicTest {
     MManager manager = MManager.getInstance();
 
     try {
-      assertTrue(manager.getAllPathGroupByStorageGroup("root").keySet().isEmpty());
+      assertTrue(manager.getPaths("root").isEmpty());
       assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle").isEmpty());
       assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle.device").isEmpty());
       assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle.device.sensor").isEmpty());

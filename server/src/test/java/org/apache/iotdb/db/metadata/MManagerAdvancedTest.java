@@ -23,7 +23,6 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -82,10 +81,8 @@ public class MManagerAdvancedTest {
       }
       // test filename by seriesPath
       assertEquals("root.vehicle.d0", mmanager.getStorageGroupNameByPath("root.vehicle.d0.s1"));
-      Map<String, List<String>> map = mmanager
-          .getAllPathGroupByStorageGroup("root.vehicle.d1.*");
-      assertEquals(1, map.keySet().size());
-      assertEquals(6, map.get("root.vehicle.d1").size());
+      List<String> pathList = mmanager.getPaths("root.vehicle.d1.*");
+      assertEquals(6, pathList.size());
       List<String> paths = mmanager.getPaths("root.vehicle.d0");
       assertEquals(6, paths.size());
       paths = mmanager.getPaths("root.vehicle.d2");
@@ -102,16 +99,6 @@ public class MManagerAdvancedTest {
     mmanager.addPathToMTree("root.vehicle.d2.s1", "BOOLEAN", "PLAIN");
     mmanager.addPathToMTree("root.vehicle.d2.s2.g0", "TEXT", "PLAIN");
     mmanager.addPathToMTree("root.vehicle.d2.s3", "TEXT", "PLAIN");
-
-    Assert.assertEquals(TSDataType.INT32,
-        mmanager.checkPathStorageGroupAndGetDataType("root.vehicle.d0.s0").getDataType());
-    Assert.assertEquals(TSDataType.INT64,
-        mmanager.checkPathStorageGroupAndGetDataType("root.vehicle.d0.s1").getDataType());
-
-    Assert.assertFalse(
-        mmanager.checkPathStorageGroupAndGetDataType("root.vehicle.d0.s100").isSuccessfully());
-    Assert.assertNull(
-        mmanager.checkPathStorageGroupAndGetDataType("root.vehicle.d0.s100").getDataType());
 
     MNode node = mmanager.getNodeByPath("root.vehicle.d0");
     Assert.assertEquals(TSDataType.INT32, node.getChild("s0").getSchema().getType());

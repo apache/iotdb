@@ -406,7 +406,7 @@ public class PlanExecutor implements IPlanExecutor {
         , Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
     List<String> selectedSgs = showTTLPlan.getStorageGroups();
 
-    List<MNode> storageGroups = MManager.getInstance().getAllStorageGroups();
+    List<MNode> storageGroups = MManager.getInstance().getAllStorageGroupNodes();
     int timestamp = 0;
     for (MNode mNode : storageGroups) {
       String sgName = mNode.getFullPath();
