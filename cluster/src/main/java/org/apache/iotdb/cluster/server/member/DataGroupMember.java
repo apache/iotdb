@@ -545,7 +545,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       }
     }
 
-    return forwardPlan(plan, leader);
+    return forwardPlan(plan, leader, getHeader());
   }
 
   @Override

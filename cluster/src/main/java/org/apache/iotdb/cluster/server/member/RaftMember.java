@@ -600,16 +600,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return name;
   }
 
-  TSStatus forwardPlan(PhysicalPlan plan, PartitionGroup group) {
-    for (Node node : group) {
-      TSStatus status = forwardPlan(plan, node);
-      if (status != StatusUtils.TIME_OUT) {
-        return status;
-      }
-    }
-    return StatusUtils.TIME_OUT;
-  }
-
   /**
    *
    * @return the header of the data raft group or null if this is in a meta group.
@@ -618,7 +608,15 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return null;
   }
 
-  TSStatus forwardPlan(PhysicalPlan plan, Node node) {
+  /**
+   * Forward a plan to a node using the default client.
+   * @param plan
+   * @param node
+   * @param header must be set for data group communication, set to null for meta group
+   *               communication
+   * @return
+   */
+  TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
     if (node == thisNode || node == null) {
       logger.debug("{}: plan {} has no where to be forwarded", name, plan);
       return StatusUtils.NO_LEADER;
@@ -628,30 +626,34 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     AsyncClient client = connectNode(node);
     if (client != null) {
-      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-      try {
-        plan.serializeTo(dataOutputStream);
-        AtomicReference<TSStatus> status = new AtomicReference<>();
-        ExecutNonQueryReq req = new ExecutNonQueryReq();
-        req.setPlanBytes(byteArrayOutputStream.toByteArray());
-        if (getHeader() != null) {
-          req.setHeader(getHeader());
-        }
-        synchronized (status) {
-          client.executeNonQueryPlan(req, new ForwardPlanHandler(status, plan, node));
-          status.wait(RaftServer.connectionTimeoutInMS);
-        }
-        return status.get() == null ? StatusUtils.TIME_OUT : status.get();
-      } catch (IOException | TException e) {
-        TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
-        status.getStatusType().setMessage(e.getMessage());
-        return status;
-      } catch (InterruptedException e) {
-        return StatusUtils.TIME_OUT;
-      }
+     return forwardPlan(plan, client, node, header);
     }
     return StatusUtils.TIME_OUT;
+  }
+
+  TSStatus forwardPlan(PhysicalPlan plan, AsyncClient client, Node receiver, Node header) {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      plan.serializeTo(dataOutputStream);
+      AtomicReference<TSStatus> status = new AtomicReference<>();
+      ExecutNonQueryReq req = new ExecutNonQueryReq();
+      req.setPlanBytes(byteArrayOutputStream.toByteArray());
+      if (header != null) {
+        req.setHeader(header);
+      }
+      synchronized (status) {
+        client.executeNonQueryPlan(req, new ForwardPlanHandler(status, plan, receiver));
+        status.wait(RaftServer.connectionTimeoutInMS);
+      }
+      return status.get() == null ? StatusUtils.TIME_OUT : status.get();
+    } catch (IOException | TException e) {
+      TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
+      status.getStatusType().setMessage(e.getMessage());
+      return status;
+    } catch (InterruptedException e) {
+      return StatusUtils.TIME_OUT;
+    }
   }
 
   TSStatus processPlanLocally(PhysicalPlan plan) {

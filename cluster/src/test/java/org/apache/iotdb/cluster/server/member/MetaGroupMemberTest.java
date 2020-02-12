@@ -166,11 +166,10 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
-      TSStatus forwardPlan(PhysicalPlan plan, Node node) {
+      TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
         return executeNonQuery(plan);
       }
 
-      @Override
       TSStatus forwardPlan(PhysicalPlan plan, PartitionGroup group) {
         return executeNonQuery(plan);
       }

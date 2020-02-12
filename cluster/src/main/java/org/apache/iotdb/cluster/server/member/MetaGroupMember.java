@@ -100,7 +100,6 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -908,7 +907,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         return status;
       }
     }
-    return forwardPlan(plan, leader);
+    return forwardPlan(plan, leader, null);
   }
 
   private TSStatus processPartitionedPlan(PhysicalPlan plan) throws UnsupportedPlanException {
@@ -931,7 +930,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       if (character != NodeCharacter.LEADER) {
         logger
             .debug("{}: Cannot found partition groups for {}, forwarding to {}", name, plan, leader);
-        return forwardPlan(plan, leader);
+        return forwardPlan(plan, leader, null);
       } else {
         logger.debug("{}: Cannot found storage groups for {}", name, plan);
         return StatusUtils.NO_STORAGE_GROUP;
@@ -941,7 +940,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     TSStatus status;
     List<Entry<PhysicalPlan, PartitionGroup>> succeededEntries = new ArrayList<>();
-    List<Integer> errorCodes = new ArrayList<>();
+    List<String> errorCodePartitionGroups = new ArrayList<>();
     for(Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       TSStatus subStatus;
       if (entry.getValue().contains(thisNode)) {
@@ -953,21 +952,43 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         subStatus = forwardPlan(entry.getKey(), entry.getValue());
       }
       if (subStatus.getStatusType().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        errorCodes.add(subStatus.getStatusType().getCode());
+        errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
+            subStatus.getStatusType().getCode(), entry.getValue().getHeader(),
+            subStatus.getStatusType().getMessage()));
       } else {
         succeededEntries.add(entry);
       }
     }
-    if (errorCodes.isEmpty()) {
+    if (errorCodePartitionGroups.isEmpty()) {
       status = StatusUtils.OK;
     } else {
       status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
       status.getStatusType().setMessage("The following errors occurred when executing the query, "
-          + "please retry or contact the DBA: " + errorCodes.toString());
+          + "please retry or contact the DBA: " + errorCodePartitionGroups.toString());
       //TODO-Cluster: abort the succeeded ones if necessary.
     }
     return status;
   }
+
+  TSStatus forwardPlan(PhysicalPlan plan, PartitionGroup group) {
+    // if a plan is partitioned to any group, it must be processed by its data server instead of
+    // meta server
+    for (Node node : group) {
+      TSStatus status;
+      try {
+        status = forwardPlan(plan, getDataClientPool().getClient(node), node, group.getHeader());
+      } catch (IOException e) {
+        status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+        status.getStatusType().setMessage(e.getMessage());
+      }
+      if (status != StatusUtils.TIME_OUT) {
+        return status;
+      }
+    }
+    return StatusUtils.TIME_OUT;
+  }
+
+
 
   /**
    * Pull the all timeseries schemas of a given prefixPath from a remote node.

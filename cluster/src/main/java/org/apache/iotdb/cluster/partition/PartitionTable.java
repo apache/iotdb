@@ -211,6 +211,8 @@ public interface PartitionTable {
       return splitAndRoutePlan((ShowDevicesPlan) plan);
     } else if (plan instanceof CreateTimeSeriesPlan) {
       return splitAndRoutePlan((CreateTimeSeriesPlan) plan);
+    } else if (plan instanceof InsertPlan) {
+      return splitAndRoutePlan((InsertPlan) plan);
     }
     //the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalPlan(plan)) {
@@ -222,6 +224,12 @@ public interface PartitionTable {
       logger.error("{} cannot be split. Please call routePlan", plan);
     }
     throw new UnsupportedPlanException(plan);
+  }
+
+  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertPlan plan)
+      throws StorageGroupNotSetException {
+    PartitionGroup partitionGroup = partitionByPathTime(plan.getDeviceId(), plan.getTime());
+    return Collections.singletonMap(plan, partitionGroup);
   }
 
   default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CreateTimeSeriesPlan plan)
