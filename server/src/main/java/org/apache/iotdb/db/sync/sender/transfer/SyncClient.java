@@ -87,6 +87,8 @@ public class SyncClient implements ISyncClient {
 
   private static final int BATCH_LINE = 1000;
 
+  private static final int TIMEOUT_MS = 1000;
+
   /**
    * When transferring schema information, it is a better choice to transfer only new schema
    * information, avoiding duplicate data transmission. The schema log is self-increasing, so the
@@ -269,7 +271,7 @@ public class SyncClient implements ISyncClient {
 
   @Override
   public void establishConnection(String serverIp, int serverPort) throws SyncConnectionException {
-    transport = new TSocket(serverIp, serverPort);
+    transport = new TSocket(serverIp, serverPort, TIMEOUT_MS);
     TProtocol protocol = new TBinaryProtocol(transport);
     serviceClient = new SyncService.Client(protocol);
     try {
@@ -663,7 +665,8 @@ public class SyncClient implements ISyncClient {
 
 
   private File getSchemaPosFile() {
-    return new File(config.getSenderFolderPath(), SyncConstant.SCHEMA_POS_FILE_NAME);
+    return new File(IoTDBDescriptor.getInstance().getConfig().getSyncDir(),
+        config.getSyncReceiverName() + File.separator + SyncConstant.SCHEMA_POS_FILE_NAME);
   }
 
   private File getSchemaLogFile() {
@@ -673,7 +676,7 @@ public class SyncClient implements ISyncClient {
 
   private File getLockFile() {
     return new File(IoTDBDescriptor.getInstance().getConfig().getSyncDir(),
-        SyncConstant.LOCK_FILE_NAME);
+        config.getSyncReceiverName() + File.separator + SyncConstant.LOCK_FILE_NAME);
   }
 
   private File getUuidFile() {
