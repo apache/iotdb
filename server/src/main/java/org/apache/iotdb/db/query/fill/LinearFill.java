@@ -100,10 +100,12 @@ public class LinearFill extends IFill {
       }
     }
 
+    // no before data or has data on the query timestamp
     if (beforePair == null || beforePair.getTimestamp() == queryTime) {
       return beforePair;
     }
 
+    // on after data or after data is out of range
     if (afterPair.getTimestamp() < queryTime || (afterRange != -1 && afterPair.getTimestamp() > queryTime + afterRange)) {
       return new TimeValuePair(queryTime, null);
     }
