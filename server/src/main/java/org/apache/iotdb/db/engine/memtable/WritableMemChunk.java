@@ -281,7 +281,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public String toString() {
     int size = getSortedTimeValuePairList().size();
-    StringBuilder out = new StringBuilder("MemChunk Size: " + size);
+    StringBuilder out = new StringBuilder("MemChunk Size: " + size + System.lineSeparator());
     if (size != 0) {
       out.append("Data type:").append(dataType).append(System.lineSeparator());
       out.append("First value:").append(getSortedTimeValuePairList().get(0))
