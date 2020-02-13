@@ -18,28 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
-import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -94,17 +72,37 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
 
 /**
  * For sequence data, a StorageGroupProcessor has some TsFileProcessors, in which there is only one
- * TsFileProcessor in the working status. <br/> <p> There are two situations to set the working
- * TsFileProcessor to closing status:<br/> <p> (1) when inserting data into the TsFileProcessor, and
- * the TsFileProcessor shouldFlush() (or shouldClose())<br/> <p> (2) someone calls
- * waitForAllCurrentTsFileProcessorsClosed(). (up to now, only flush command from cli will call this
- * method)<br/> <p> UnSequence data has the similar process as above. <p> When a sequence
- * TsFileProcessor is submitted to be flushed, the updateLatestFlushTimeCallback() method will be
- * called as a callback.<br/> <p> When a TsFileProcessor is closed, the
- * closeUnsealedTsFileProcessor() method will be called as a callback.
+ * TsFileProcessor in the working status. <br/>
+ * <p>
+ * There are two situations to set the working TsFileProcessor to closing status:<br/>
+ * <p>
+ * (1) when inserting data into the TsFileProcessor, and the TsFileProcessor shouldFlush() (or
+ * shouldClose())<br/>
+ * <p>
+ * (2) someone calls waitForAllCurrentTsFileProcessorsClosed(). (up to now, only flush command from
+ * cli will call this method)<br/>
+ * <p>
+ * UnSequence data has the similar process as above.
+ * <p>
+ * When a sequence TsFileProcessor is submitted to be flushed, the updateLatestFlushTimeCallback()
+ * method will be called as a callback.<br/>
+ * <p>
+ * When a TsFileProcessor is closed, the closeUnsealedTsFileProcessor() method will be called as a
+ * callback.
  */
 public class StorageGroupProcessor {
 
@@ -446,8 +444,7 @@ public class StorageGroupProcessor {
   }
 
   private Schema constructSchema(String storageGroupName) {
-    List<MeasurementSchema> columnSchemaList = MManager.getInstance()
-        .getStorageGroupSchema(storageGroupName);
+    List<MeasurementSchema> columnSchemaList = MManager.getInstance().getStorageGroupSchema(storageGroupName);
 
     Schema newSchema = new Schema();
     for (MeasurementSchema measurementSchema : columnSchemaList) {
@@ -1455,10 +1452,13 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * Load a new tsfile to storage group processor. Tne file may have overlap with other files. <p>
-   * or unsequence list. <p> Secondly, execute the loading process by the type. <p> Finally, update
-   * the latestTimeForEachDevice and latestFlushedTimeForEachDevice.
-   *
+   * Load a new tsfile to storage group processor. Tne file may have overlap with other files.
+   * <p>
+   * or unsequence list.
+   * <p>
+   * Secondly, execute the loading process by the type.
+   * <p>
+   * Finally, update the latestTimeForEachDevice and latestFlushedTimeForEachDevice.
    * @param newTsFileResource tsfile resource
    * @UsedBy sync module.
    */
@@ -1484,10 +1484,14 @@ public class StorageGroupProcessor {
 
   /**
    * Load a new tsfile to storage group processor. Tne file may have overlap with other files. <p>
-   * that there has no file which is overlapping with the new file. <p> Firstly, determine the
-   * loading type of the file, whether it needs to be loaded in sequence list or unsequence list.
-   * <p> Secondly, execute the loading process by the type. <p> Finally, update the
-   * latestTimeForEachDevice and latestFlushedTimeForEachDevice.
+   * that there has no file which is overlapping with the new file.
+   * <p>
+   * Firstly, determine the loading type of the file, whether it needs to be loaded in sequence list
+   * or unsequence list.
+   * <p>
+   * Secondly, execute the loading process by the type.
+   * <p>
+   * Finally, update the latestTimeForEachDevice and latestFlushedTimeForEachDevice.
    *
    * @param newTsFileResource tsfile resource
    * @UsedBy load external tsfile module
@@ -1576,21 +1580,26 @@ public class StorageGroupProcessor {
 
   /**
    * Get an appropriate filename to ensure the order between files. The tsfile is named after
-   * ({systemTime}-{versionNum}-{mergeNum}.tsfile). <p> The sorting rules for tsfile names @see
-   * {@link this#compareFileName}, we can restore the list based on the file name and ensure the
-   * correctness of the order, so there are three cases. <p> 1. The tsfile is to be inserted in the
-   * first place of the list. If the timestamp in the file name is less than the timestamp in the
-   * file name of the first tsfile  in the list, then the file name is legal and the file name is
-   * returned directly. Otherwise, its timestamp can be set to half of the timestamp value in the
-   * file name of the first tsfile in the list , and the version number is the version number in the
-   * file name of the first tsfile in the list. <p> 2. The tsfile is to be inserted in the last
-   * place of the list. If the timestamp in the file name is lager than the timestamp in the file
-   * name of the last tsfile  in the list, then the file name is legal and the file name is returned
-   * directly. Otherwise, the file name is generated by the system according to the naming rules and
-   * returned. <p> 3. This file is inserted between two files. If the timestamp in the name of the
-   * file satisfies the timestamp between the timestamps in the name of the two files, then it is a
-   * legal name and returns directly; otherwise, the time stamp is the mean of the timestamps of the
-   * two files, the version number is the version number in the tsfile with a larger timestamp.
+   * ({systemTime}-{versionNum}-{mergeNum}.tsfile).
+   * <p>
+   * The sorting rules for tsfile names @see {@link this#compareFileName}, we can restore the list
+   * based on the file name and ensure the correctness of the order, so there are three cases.
+   * <p>
+   * 1. The tsfile is to be inserted in the first place of the list. If the timestamp in the file
+   * name is less than the timestamp in the file name of the first tsfile  in the list, then the
+   * file name is legal and the file name is returned directly. Otherwise, its timestamp can be set
+   * to half of the timestamp value in the file name of the first tsfile in the list , and the
+   * version number is the version number in the file name of the first tsfile in the list.
+   * <p>
+   * 2. The tsfile is to be inserted in the last place of the list. If the timestamp in the file
+   * name is lager than the timestamp in the file name of the last tsfile  in the list, then the
+   * file name is legal and the file name is returned directly. Otherwise, the file name is
+   * generated by the system according to the naming rules and returned.
+   * <p>
+   * 3. This file is inserted between two files. If the timestamp in the name of the file satisfies
+   * the timestamp between the timestamps in the name of the two files, then it is a legal name and
+   * returns directly; otherwise, the time stamp is the mean of the timestamps of the two files, the
+   * version number is the version number in the tsfile with a larger timestamp.
    *
    * @param tsfileName origin tsfile name
    * @return appropriate filename
@@ -1721,8 +1730,11 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * Delete tsfile if it exists. <p> Firstly, remove the TsFileResource from
-   * sequenceFileList/unSequenceFileList. <p> Secondly, delete the tsfile and .resource file.
+   * Delete tsfile if it exists.
+   * <p>
+   * Firstly, remove the TsFileResource from sequenceFileList/unSequenceFileList.
+   * <p>
+   * Secondly, delete the tsfile and .resource file.
    *
    * @param tsfieToBeDeleted tsfile to be deleted
    * @return whether the file to be deleted exists.
@@ -1776,9 +1788,11 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * Move tsfile to the target directory if it exists. <p> Firstly, remove the TsFileResource from
-   * sequenceFileList/unSequenceFileList. <p> Secondly, move the tsfile and .resource file to the
-   * target directory.
+   * Move tsfile to the target directory if it exists.
+   * <p>
+   * Firstly, remove the TsFileResource from sequenceFileList/unSequenceFileList.
+   * <p>
+   * Secondly, move the tsfile and .resource file to the target directory.
    *
    * @param fileToBeMoved tsfile to be moved
    * @return whether the file to be moved exists.
