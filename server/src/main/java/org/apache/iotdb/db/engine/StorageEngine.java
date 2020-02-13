@@ -176,7 +176,7 @@ public class StorageEngine implements IService {
   public StorageGroupProcessor getProcessor(String path) throws StorageEngineException {
     String storageGroupName = "";
     try {
-      storageGroupName = MManager.getInstance().getStorageGroupNameByPath(path);
+      storageGroupName = MManager.getInstance().getStorageGroupName(path);
       StorageGroupProcessor processor;
       processor = processorMap.get(storageGroupName);
       if (processor == null) {
@@ -447,7 +447,7 @@ public class StorageEngine implements IService {
       throw new StorageEngineException("Can not get the corresponding storage group.");
     }
     String device = startTimeMap.keySet().iterator().next();
-    String storageGroupName = MManager.getInstance().getStorageGroupNameByPath(device);
+    String storageGroupName = MManager.getInstance().getStorageGroupName(device);
     getProcessor(storageGroupName).loadNewTsFile(newTsFileResource);
   }
 

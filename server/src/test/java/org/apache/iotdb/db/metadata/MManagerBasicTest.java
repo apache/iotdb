@@ -135,7 +135,7 @@ public class MManagerBasicTest {
     }
 
     assertFalse(manager.isPathExist("root.laptop.d2"));
-    assertFalse(manager.checkStorageGroupByPath("root.laptop.d2"));
+    assertFalse(manager.checkStorageGroup("root.laptop.d2"));
 
     try {
       manager.deletePaths(Collections.singletonList("root.laptop.d1.s0"), false);
@@ -166,20 +166,20 @@ public class MManagerBasicTest {
     MManager manager = MManager.getInstance();
 
     try {
-      assertFalse(manager.checkStorageGroup("root"));
-      assertFalse(manager.checkStorageGroup("root1.laptop.d2"));
+      assertFalse(manager.isStorageGroup("root"));
+      assertFalse(manager.isStorageGroup("root1.laptop.d2"));
 
       manager.setStorageGroup("root.laptop.d1");
-      assertTrue(manager.checkStorageGroup("root.laptop.d1"));
-      assertFalse(manager.checkStorageGroup("root.laptop.d2"));
-      assertFalse(manager.checkStorageGroup("root.laptop"));
-      assertFalse(manager.checkStorageGroup("root.laptop.d1.s1"));
+      assertTrue(manager.isStorageGroup("root.laptop.d1"));
+      assertFalse(manager.isStorageGroup("root.laptop.d2"));
+      assertFalse(manager.isStorageGroup("root.laptop"));
+      assertFalse(manager.isStorageGroup("root.laptop.d1.s1"));
 
       manager.setStorageGroup("root.laptop.d2");
-      assertTrue(manager.checkStorageGroup("root.laptop.d1"));
-      assertTrue(manager.checkStorageGroup("root.laptop.d2"));
-      assertFalse(manager.checkStorageGroup("root.laptop.d3"));
-      assertFalse(manager.checkStorageGroup("root.laptop"));
+      assertTrue(manager.isStorageGroup("root.laptop.d1"));
+      assertTrue(manager.isStorageGroup("root.laptop.d2"));
+      assertFalse(manager.isStorageGroup("root.laptop.d3"));
+      assertFalse(manager.isStorageGroup("root.laptop"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

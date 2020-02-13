@@ -103,7 +103,7 @@ public class SyncFileManager implements ISyncFileManager {
         continue;
       }
       try {
-        if (!MManager.getInstance().getStorageGroupNameByPath(sgFolder.getName())
+        if (!MManager.getInstance().getStorageGroupName(sgFolder.getName())
             .equals(sgFolder.getName())) {
           // the folder is not a sg folder
           continue;

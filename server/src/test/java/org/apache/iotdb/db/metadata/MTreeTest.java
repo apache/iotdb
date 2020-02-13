@@ -209,10 +209,10 @@ public class MTreeTest {
       root.setStorageGroup("root.laptop.d1");
       assertTrue(root.isPathExist("root.laptop.d1"));
       assertTrue(root.checkStorageGroupByPath("root.laptop.d1"));
-      assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1"));
+      assertEquals("root.laptop.d1", root.getStorageGroupName("root.laptop.d1"));
       assertFalse(root.isPathExist("root.laptop.d1.s1"));
       assertTrue(root.checkStorageGroupByPath("root.laptop.d1.s1"));
-      assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1.s1"));
+      assertEquals("root.laptop.d1", root.getStorageGroupName("root.laptop.d1.s1"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -236,19 +236,19 @@ public class MTreeTest {
     assertFalse(root.isPathExist("root.laptop.d2.s1"));
 
     try {
-      assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1.s0"));
+      assertEquals("root.laptop.d1", root.getStorageGroupName("root.laptop.d1.s0"));
       root.addPath("root.laptop.d1.s0", TSDataType.INT32, TSEncoding.RLE,
           CompressionType.valueOf
               (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
-      assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1.s1"));
+      assertEquals("root.laptop.d1", root.getStorageGroupName("root.laptop.d1.s1"));
       root.addPath("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.RLE,
           CompressionType.valueOf
               (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
-      assertEquals("root.laptop.d2", root.getStorageGroupNameByPath("root.laptop.d2.s0"));
+      assertEquals("root.laptop.d2", root.getStorageGroupName("root.laptop.d2.s0"));
       root.addPath("root.laptop.d2.s0", TSDataType.INT32, TSEncoding.RLE,
           CompressionType.valueOf
               (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
-      assertEquals("root.laptop.d2", root.getStorageGroupNameByPath("root.laptop.d2.s1"));
+      assertEquals("root.laptop.d2", root.getStorageGroupName("root.laptop.d2.s1"));
       root.addPath("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.RLE,
           CompressionType.valueOf
               (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
@@ -315,12 +315,12 @@ public class MTreeTest {
       List<String> list = new ArrayList<>();
 
       list.add("root.laptop.d1");
-      assertEquals(list, root.getAllStorageGroupByPath("root.laptop.d1.s1"));
-      assertEquals(list, root.getAllStorageGroupByPath("root.laptop.d1"));
+      assertEquals(list, root.getStorageGroupByPath("root.laptop.d1.s1"));
+      assertEquals(list, root.getStorageGroupByPath("root.laptop.d1"));
 
       list.add("root.laptop.d2");
-      assertEquals(list, root.getAllStorageGroupByPath("root.laptop"));
-      assertEquals(list, root.getAllStorageGroupByPath("root"));
+      assertEquals(list, root.getStorageGroupByPath("root.laptop"));
+      assertEquals(list, root.getStorageGroupByPath("root"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -332,23 +332,23 @@ public class MTreeTest {
     // set storage group first
     MTree root = new MTree("root");
     try {
-      assertTrue(root.getAllStorageGroupByPath("root").isEmpty());
-      assertTrue(root.getAllStorageGroupByPath("root.vehicle").isEmpty());
-      assertTrue(root.getAllStorageGroupByPath("root.vehicle.device").isEmpty());
-      assertTrue(root.getAllStorageGroupByPath("root.vehicle.device.sensor").isEmpty());
+      assertTrue(root.getStorageGroupByPath("root").isEmpty());
+      assertTrue(root.getStorageGroupByPath("root.vehicle").isEmpty());
+      assertTrue(root.getStorageGroupByPath("root.vehicle.device").isEmpty());
+      assertTrue(root.getStorageGroupByPath("root.vehicle.device.sensor").isEmpty());
 
       root.setStorageGroup("root.vehicle");
-      assertFalse(root.getAllStorageGroupByPath("root.vehicle").isEmpty());
-      assertFalse(root.getAllStorageGroupByPath("root.vehicle.device").isEmpty());
-      assertFalse(root.getAllStorageGroupByPath("root.vehicle.device.sensor").isEmpty());
-      assertTrue(root.getAllStorageGroupByPath("root.vehicle1").isEmpty());
-      assertTrue(root.getAllStorageGroupByPath("root.vehicle1.device").isEmpty());
+      assertFalse(root.getStorageGroupByPath("root.vehicle").isEmpty());
+      assertFalse(root.getStorageGroupByPath("root.vehicle.device").isEmpty());
+      assertFalse(root.getStorageGroupByPath("root.vehicle.device.sensor").isEmpty());
+      assertTrue(root.getStorageGroupByPath("root.vehicle1").isEmpty());
+      assertTrue(root.getStorageGroupByPath("root.vehicle1.device").isEmpty());
 
       root.setStorageGroup("root.vehicle1.device");
-      assertTrue(root.getAllStorageGroupByPath("root.vehicle1.device1").isEmpty());
-      assertTrue(root.getAllStorageGroupByPath("root.vehicle1.device2").isEmpty());
-      assertTrue(root.getAllStorageGroupByPath("root.vehicle1.device3").isEmpty());
-      assertFalse(root.getAllStorageGroupByPath("root.vehicle1.device").isEmpty());
+      assertTrue(root.getStorageGroupByPath("root.vehicle1.device1").isEmpty());
+      assertTrue(root.getStorageGroupByPath("root.vehicle1.device2").isEmpty());
+      assertTrue(root.getStorageGroupByPath("root.vehicle1.device3").isEmpty());
+      assertFalse(root.getStorageGroupByPath("root.vehicle1.device").isEmpty());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

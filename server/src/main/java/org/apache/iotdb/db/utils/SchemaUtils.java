@@ -37,7 +37,7 @@ public class SchemaUtils {
    */
   public static Schema constructSchema(String processorName) {
     List<MeasurementSchema> columnSchemaList;
-    columnSchemaList = MManager.getInstance().getSchemaForStorageGroup(processorName);
+    columnSchemaList = MManager.getInstance().getStorageGroupSchema(processorName);
     return getSchemaFromColumnSchema(columnSchemaList);
   }
 

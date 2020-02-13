@@ -18,20 +18,22 @@
  */
 package org.apache.iotdb.db.metadata;
 
-public class MetaUtils {
+class MetaUtils {
 
-  public static String[] getNodeNames(String path, String separator) {
+  private static final String PATH_SEPARATOR = "\\.";
+
+  static String[] getNodeNames(String path) {
     String[] nodeNames;
     if (path.contains("\"") || path.contains("\'")) {
       path = path.trim().replace("\'", "\"");
       String measurement = path.split("\"")[1];
-      String[] deviceNodeName = path.split("\"")[0].split(separator);
+      String[] deviceNodeName = path.split("\"")[0].split(PATH_SEPARATOR);
       int nodeNumber = deviceNodeName.length + 1;
       nodeNames = new String[nodeNumber];
       System.arraycopy(deviceNodeName, 0, nodeNames, 0, nodeNumber - 1);
       nodeNames[nodeNumber - 1] = measurement;
     } else {
-      nodeNames = path.split(separator);
+      nodeNames = path.split(PATH_SEPARATOR);
     }
     return nodeNames;
   }
