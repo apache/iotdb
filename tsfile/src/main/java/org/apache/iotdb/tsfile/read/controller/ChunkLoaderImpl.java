@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
  */
 public class ChunkLoaderImpl implements IChunkLoader {
 
-  private static final int DEFAULT_CHUNK_CACHE_SIZE = 100000;
+  private static final int DEFAULT_CHUNK_CACHE_SIZE = 10;
   private TsFileSequenceReader reader;
   private LRUCache<ChunkMetaData, Chunk> chunkCache;
 
