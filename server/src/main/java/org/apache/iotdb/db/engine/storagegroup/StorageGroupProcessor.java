@@ -1234,18 +1234,9 @@ public class StorageGroupProcessor {
 
   private boolean updateLatestFlushTimeCallback(TsFileProcessor processor) {
     // update the largest timestamp in the last flushing memtable
-    Map<String, Long> curPartitionDeviceLatestTime = latestTimeForEachDevice
-        .get(processor.getTimeRangeId());
-    
-    if(curPartitionDeviceLatestTime == null){
-      logger.warn("Partition: " + processor.getTimeRangeId() +
-          " does't have latest time for each device record.");
-      return false;
-    }
-
-    for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
-      latestFlushedTimeForEachDevice
-          .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
+    for (Entry<String, Long> entry : latestTimeForEachDevice.get(processor.getTimeRangeId())
+        .entrySet()) {
+      latestFlushedTimeForEachDevice.get(processor.getTimeRangeId())
           .put(entry.getKey(), entry.getValue());
     }
     return true;
