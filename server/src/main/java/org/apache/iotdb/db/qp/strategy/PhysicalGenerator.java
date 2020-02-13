@@ -282,8 +282,6 @@ public class PhysicalGenerator {
         Set<String> nonExistMeasurement = new HashSet<>();
         for (Path prefixPath : prefixPaths) { // per prefix
           Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
-          // for constant path
-
           Set<String> tmpDeviceSet = new HashSet<>();
           try {
             List<String> actualPaths = MManager.getInstance()
