@@ -392,7 +392,9 @@ public class TsFileProcessor {
    * flushManager again.
    */
   private void addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
-    updateLatestFlushTimeCallback.call(this);
+    if(!updateLatestFlushTimeCallback.call(this)){
+      logger.error("Memetable info: " + tobeFlushed.getMemTableMap());
+    }
     flushingMemTables.addLast(tobeFlushed);
     long cur = versionController.nextVersion();
     tobeFlushed.setVersion(cur);

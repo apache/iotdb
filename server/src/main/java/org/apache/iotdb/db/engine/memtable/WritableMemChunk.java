@@ -277,4 +277,9 @@ public class WritableMemChunk implements IWritableMemChunk {
   public void delete(long upperBound) {
     list.delete(upperBound);
   }
+
+  @Override
+  public String toString() {
+    return getSortedTimeValuePairList().toString();
+  }
 }
