@@ -40,7 +40,7 @@ public class ReadOnlyTsFile implements AutoCloseable {
   public ReadOnlyTsFile(TsFileSequenceReader fileReader) throws IOException {
     this.fileReader = fileReader;
     this.metadataQuerier = new MetadataQuerierByFileImpl(fileReader);
-    this.chunkLoader = new ChunkLoaderImpl(fileReader,1000);
+    this.chunkLoader = new ChunkLoaderImpl(fileReader);
     tsFileExecutor = new TsFileExecutor(metadataQuerier, chunkLoader);
   }
 

@@ -45,11 +45,6 @@ public class MemChunkLoader implements IChunkLoader {
     //no resources need to close
   }
 
-  @Override
-  public void clear() {
-    //no cache need clear
-  }
-
   public ReadOnlyMemChunk getChunk() {
     return chunk;
   }

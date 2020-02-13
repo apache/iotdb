@@ -33,9 +33,4 @@ public interface IChunkLoader {
    * close the file reader.
    */
   void close() throws IOException;
-
-  /**
-   * clear Chunk cache if used.
-   */
-  void clear();
 }
