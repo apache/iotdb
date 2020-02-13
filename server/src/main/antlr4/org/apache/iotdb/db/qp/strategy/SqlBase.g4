@@ -98,6 +98,7 @@ selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
     | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
+    | lastFunctionCall (COMMA lastFunctionCall)* #lastElement
     ;
 
 functionCall
@@ -114,6 +115,10 @@ functionName
     | FIRST_VALUE
     | SUM
     | LAST_VALUE
+    ;
+
+lastFunctionCall
+    : LAST LR_BRACKET suffixPath RR_BRACKET
     ;
 
 attributeClauses
@@ -719,6 +724,10 @@ SUM
 
 LAST_VALUE
     : L A S T UNDERLINE V A L U E
+    ;
+
+LAST
+    : L A S T
     ;
 
 DISABLE

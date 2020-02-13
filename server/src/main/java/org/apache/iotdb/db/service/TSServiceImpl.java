@@ -196,6 +196,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         case SQLConstant.FIRST_VALUE:
         case SQLConstant.MIN_VALUE:
         case SQLConstant.MAX_VALUE:
+        //case SQLConstant.LAST:
           return getSeriesType(innerPath);
         case SQLConstant.AVG:
         case SQLConstant.SUM:
@@ -771,6 +772,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     switch (plan.getOperatorType()) {
       case QUERY:
       case FILL:
+      case LAST:
         for (Path p : paths) {
           respColumns.add(p.getFullPath());
         }
