@@ -127,19 +127,7 @@ public class IoTDBDeleteStorageGroupIT {
       assertTrue(expectedList.containsAll(result));
     }
   }
-
-  @Test
-  public void testCreateTimeseriesInDeletedStorageGroup() throws Exception {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager.
-            getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement();) {
-      statement.execute("SET STORAGE GROUP TO root.ln3.wf01.wt01");
-      statement.execute("DELETE STORAGE GROUP root.ln3.wf01.wt01");
-      statement.execute("CREATE TIMESERIES root.ln3.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
-    }
-  }
-
+  
   @Test(expected = IoTDBSQLException.class)
   public void deleteNonExistStorageGroup() throws Exception {
     Class.forName(Config.JDBC_DRIVER_NAME);
