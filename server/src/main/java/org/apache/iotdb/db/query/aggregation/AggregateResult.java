@@ -78,7 +78,7 @@ public abstract class AggregateResult {
       throws IOException;
 
   /**
-   * <p> This method is calculate the aggregation using the common timestamps of cross series
+   * <p> This method calculates the aggregation using common timestamps of the cross series
    * filter. </p>
    *
    * @throws IOException TsFile data read error

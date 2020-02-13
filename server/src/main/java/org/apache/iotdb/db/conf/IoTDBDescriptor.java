@@ -309,7 +309,7 @@ public class IoTDBDescriptor {
       conf.setMemtableNumInEachStorageGroup(
           Integer.parseInt(properties.getProperty("memtable_num_in_each_storage_group", String.valueOf(conf.getMemtableNumInEachStorageGroup()))));
 
-      // the num of memtables in each storage group
+      // the default fill interval in LinearFill and PreviousFill
       conf.setDefaultFillInterval(
           Integer.parseInt(properties.getProperty("default_fill_interval", String.valueOf(conf.getDefaultFillInterval()))));
 
