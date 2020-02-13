@@ -727,7 +727,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterDisableAlign(SqlBaseParser.DisableAlignContext ctx) {
     super.enterDisableAlign(ctx);
-    queryOp.setAlign(false);
+    queryOp.setAlignByTime(false);
   }
 
   @Override
@@ -810,7 +810,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterGroupByDeviceClause(GroupByDeviceClauseContext ctx) {
     super.enterGroupByDeviceClause(ctx);
-    queryOp.setGroupByDevice(true);
+    queryOp.setAlignByDevice(true);
   }
 
   /**

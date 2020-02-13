@@ -28,7 +28,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -97,7 +97,7 @@ public class TestConcatOptimizer {
     SingleSeriesExpression seriesExpression = new SingleSeriesExpression(
         new Path("root.laptop.d1.s1"),
         ValueFilter.lt(10));
-    assertEquals(seriesExpression.toString(), ((QueryPlan) plan).getExpression().toString());
+    assertEquals(seriesExpression.toString(), ((RawDataQueryPlan) plan).getExpression().toString());
   }
 
 }
