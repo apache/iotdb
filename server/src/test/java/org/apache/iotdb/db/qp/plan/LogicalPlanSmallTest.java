@@ -197,7 +197,7 @@ public class LogicalPlanSmallTest {
     RootOperator operator = (RootOperator) parseDriver
             .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
-    Assert.assertFalse(((QueryOperator)operator).isAlign());
+    Assert.assertFalse(((QueryOperator)operator).isAlignByTime());
   }
 
   @Test
@@ -206,7 +206,7 @@ public class LogicalPlanSmallTest {
     RootOperator operator = (RootOperator) parseDriver
             .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
-    Assert.assertTrue(((QueryOperator)operator).isAlign());
+    Assert.assertTrue(((QueryOperator)operator).isAlignByTime());
   }
 
   @Test (expected = ParseCancellationException.class)

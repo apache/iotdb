@@ -77,7 +77,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     boolean isGroupByDevice = false;
     if (operator instanceof QueryOperator) {
-      if (!((QueryOperator) operator).isGroupByDevice()) {
+      if (!((QueryOperator) operator).isAlignByDevice()) {
         concatSelect(prefixPaths, select); // concat and remove star
 
         if (((QueryOperator) operator).hasSlimit()) {

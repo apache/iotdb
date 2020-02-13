@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -58,11 +59,13 @@ import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -230,21 +233,30 @@ public class PhysicalGenerator {
       long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
       ((FillQueryPlan) queryPlan).setQueryTime(time);
       ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
-    } else if (queryOperator.hasAggregation()) { // ordinary query
+    } else if (queryOperator.hasAggregation()) {
       queryPlan = new AggregationPlan();
       ((AggregationPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
     } else {
-      queryPlan = new QueryPlan();
+      queryPlan = new RawDataQueryPlan();
     }
-    if (queryOperator.isGroupByDevice()) {
-      // below is the core realization of GROUP_BY_DEVICE sql logic
+    if (queryOperator.isAlignByDevice()) {
+      // below is the core realization of ALIGN_BY_DEVICE sql logic
+      AlignByDevicePlan alignByDevicePlan = new AlignByDevicePlan();
+      if (queryPlan instanceof GroupByPlan) {
+        alignByDevicePlan.setGroupByPlan((GroupByPlan) queryPlan);
+      } else if (queryPlan instanceof FillQueryPlan) {
+        alignByDevicePlan.setFillQueryPlan((FillQueryPlan) queryPlan);
+      } else if (queryPlan instanceof AggregationPlan) {
+        alignByDevicePlan.setAggregationPlan((AggregationPlan) queryPlan);
+      }
+
       List<Path> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
       List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
       List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
 
       List<String> measurements = new ArrayList<>();
-      Map<String, Set<String>> measurementsGroupByDevice = new LinkedHashMap<>();
+      Map<String, Set<String>> deviceToMeasurementsMap = new LinkedHashMap<>();
       // to check the same measure in different devices having the same datatype
       Map<String, TSDataType> dataTypeConsistencyChecker = new HashMap<>();
       List<Path> paths = new ArrayList<>();
@@ -257,15 +269,13 @@ public class PhysicalGenerator {
         Set<String> deviceSetOfGivenSuffix = new HashSet<>();
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
         if (suffixPath.startWith("'") || suffixPath.startWith("\"")) {
-          queryPlan.addConstMeasurement(loc++, suffixPath.getMeasurement());
+          alignByDevicePlan.addConstMeasurement(loc++, suffixPath.getMeasurement());
           continue;
         }
 
         Set<String> nonExistMeasurement = new HashSet<>();
         for (Path prefixPath : prefixPaths) { // per prefix
           Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
-          // for constant path
-
           Set<String> tmpDeviceSet = new HashSet<>();
           try {
             List<String> actualPaths = MManager.getInstance()
@@ -321,11 +331,11 @@ public class PhysicalGenerator {
               if (measurementSetOfGivenSuffix.add(measurementChecked)) {
                 loc++;
               }
-              // update measurementColumnsGroupByDevice
-              if (!measurementsGroupByDevice.containsKey(device)) {
-                measurementsGroupByDevice.put(device, new HashSet<>());
+              // update deviceToMeasurementsMap
+              if (!deviceToMeasurementsMap.containsKey(device)) {
+                deviceToMeasurementsMap.put(device, new HashSet<>());
               }
-              measurementsGroupByDevice.get(device).add(measurementChecked);
+              deviceToMeasurementsMap.get(device).add(measurementChecked);
               // update paths
               paths.add(path);
             }
@@ -341,7 +351,7 @@ public class PhysicalGenerator {
 
         nonExistMeasurement.removeAll(measurementSetOfGivenSuffix);
         for (String notExistMeasurementString : nonExistMeasurement) {
-          queryPlan.addNotExistMeasurement(loc++, notExistMeasurementString);
+          alignByDevicePlan.addNotExistMeasurement(loc++, notExistMeasurementString);
         }
         // update measurements
         // Note that in the loop of a suffix path, set is used.
@@ -354,8 +364,8 @@ public class PhysicalGenerator {
       }
 
       if (measurements.isEmpty()
-          && queryPlan.getConstMeasurements().isEmpty()
-          && queryPlan.getNotExistMeasurements().isEmpty()) {
+          && alignByDevicePlan.getConstMeasurements().isEmpty()
+          && alignByDevicePlan.getNotExistMeasurements().isEmpty()) {
         throw new QueryProcessException("do not select any existing series");
       }
 
@@ -366,21 +376,22 @@ public class PhysicalGenerator {
         measurements = slimitTrimColumn(measurements, seriesSlimit, seriesOffset);
       }
 
-      // assigns to queryPlan
-      queryPlan.setGroupByDevice(true);
-      queryPlan.setMeasurements(measurements);
-      queryPlan.setMeasurementsGroupByDevice(measurementsGroupByDevice);
-      queryPlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
-      queryPlan.setPaths(paths);
+      // assigns to alignByDevicePlan
+      alignByDevicePlan.setMeasurements(measurements);
+      alignByDevicePlan.setMeasurementsGroupByDevice(deviceToMeasurementsMap);
+      alignByDevicePlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
+      alignByDevicePlan.setPaths(paths);
 
       // get device to filter map
       FilterOperator filterOperator = queryOperator.getFilterOperator();
 
       if (filterOperator != null) {
-        queryPlan.setDeviceToFilterMap(concatFilterByDivice(prefixPaths, filterOperator));
+        alignByDevicePlan.setDeviceToFilterMap(concatFilterByDevice(prefixPaths, filterOperator));
       }
+
+      queryPlan = alignByDevicePlan;
     } else {
-      queryPlan.setAlignByTime(queryOperator.isAlign());
+      queryPlan.setAlignByTime(queryOperator.isAlignByTime());
       List<Path> paths = queryOperator.getSelectedPaths();
       queryPlan.setPaths(paths);
 
@@ -389,14 +400,10 @@ public class PhysicalGenerator {
 
       if (filterOperator != null) {
         IExpression expression = filterOperator.transformToExpression();
-        queryPlan.setExpression(expression);
+        ((RawDataQueryPlan) queryPlan).setExpression(expression);
       }
     }
-    try {
-      generateDataTypes(queryPlan);
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
+    generateDataTypes(queryPlan);
     deduplicate(queryPlan);
 
     queryPlan.setRowLimit(queryOperator.getRowLimit());
@@ -408,7 +415,7 @@ public class PhysicalGenerator {
   // e.g. translate "select * from root.ln.d1, root.ln.d2 where s1 < 20 AND s2 > 10" to
   // [root.ln.d1 -> root.ln.d1.s1 < 20 AND root.ln.d1.s2 > 10,
   //  root.ln.d2 -> root.ln.d2.s1 < 20 AND root.ln.d2.s2 > 10)]
-  private Map<String, IExpression> concatFilterByDivice(List<Path> fromPaths,
+  private Map<String, IExpression> concatFilterByDevice(List<Path> fromPaths,
       FilterOperator operator)
       throws QueryProcessException {
     Map<String, IExpression> deviceToFilterMap = new HashMap<>();
@@ -480,8 +487,7 @@ public class PhysicalGenerator {
   }
 
   private void deduplicate(QueryPlan queryPlan) {
-    //The deduplication of a GroupByDevice query is done in the dataset
-    if (queryPlan.isGroupByDevice()) {
+    if (queryPlan instanceof AlignByDevicePlan) {
       return;
     }
     if (queryPlan instanceof AggregationPlan) {
@@ -489,6 +495,7 @@ public class PhysicalGenerator {
       deduplicateAggregation(aggregationPlan);
       return;
     }
+    RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
     List<Path> paths = queryPlan.getPaths();
 
     Set<String> columnSet = new HashSet<>();
@@ -498,8 +505,8 @@ public class PhysicalGenerator {
       String column = path.toString();
       if (!columnSet.contains(column)) {
         TSDataType seriesType = dataTypeMapping.get(path);
-        queryPlan.addDeduplicatedPaths(path);
-        queryPlan.addDeduplicatedDataTypes(seriesType);
+        rawDataQueryPlan.addDeduplicatedPaths(path);
+        rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
         columnSet.add(column);
       }
     }

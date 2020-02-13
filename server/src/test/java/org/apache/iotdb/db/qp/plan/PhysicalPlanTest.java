@@ -37,6 +37,7 @@ import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
@@ -199,10 +200,8 @@ public class PhysicalPlanTest {
     int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
     FillQueryPlan mergePlan = (FillQueryPlan) plan;
     assertEquals(5000, mergePlan.getQueryTime());
-    assertEquals(defaultFillInterval,
-        ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
-    assertEquals(defaultFillInterval,
-        ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
+    assertEquals(defaultFillInterval, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
+    assertEquals(defaultFillInterval, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
     assertEquals(defaultFillInterval,
         ((PreviousFill) mergePlan.getFillType().get(TSDataType.BOOLEAN)).getBeforeRange());
   }
@@ -231,7 +230,7 @@ public class PhysicalPlanTest {
   public void testQuery1() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 5000";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new GlobalTimeExpression(TimeFilter.gt(5000L));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -240,7 +239,7 @@ public class PhysicalPlanTest {
   public void testQuery2() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new GlobalTimeExpression(
         FilterFactory.and(TimeFilter.gt(50L), TimeFilter.ltEq(100L)));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -251,7 +250,7 @@ public class PhysicalPlanTest {
   public void testQuery3() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100 or s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new GlobalTimeExpression(
         FilterFactory.and(TimeFilter.gt(50L), TimeFilter.ltEq(100L)));
     expect = BinaryExpression.or(expect,
@@ -263,7 +262,7 @@ public class PhysicalPlanTest {
   public void testQuery4() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100 and s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
 
     IExpression expect = BinaryExpression.and(
         new SingleSeriesExpression(new Path("root.vehicle.d1.s1"), ValueFilter.lt(10.0)),
@@ -279,7 +278,7 @@ public class PhysicalPlanTest {
   public void testQuery5() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20 or s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         FilterFactory.or(ValueFilter.gt(20.0), ValueFilter.lt(10.0)));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -290,7 +289,7 @@ public class PhysicalPlanTest {
   public void testQuery6() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 20 or time < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new GlobalTimeExpression(
         FilterFactory.or(TimeFilter.gt(20L), TimeFilter.lt(10L)));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -301,7 +300,7 @@ public class PhysicalPlanTest {
   public void testQuery7() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 2019-10-16 10:59:00+08:00 - 1d5h or time < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new GlobalTimeExpression(
         FilterFactory.or(TimeFilter.gt(1571090340000L), TimeFilter.lt(10L)));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -322,7 +321,7 @@ public class PhysicalPlanTest {
   public void testQueryFloat1() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20.5e3";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(20.5e3));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -332,7 +331,7 @@ public class PhysicalPlanTest {
   public void testQueryFloat2() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20.5E-3";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(20.5e-3));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -342,7 +341,7 @@ public class PhysicalPlanTest {
   public void testQueryFloat3() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.5";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(2.5));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -352,7 +351,7 @@ public class PhysicalPlanTest {
   public void testQueryFloat4() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.5";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(2.5));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -362,7 +361,7 @@ public class PhysicalPlanTest {
   public void testQueryFloat5() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -2.5";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(-2.5));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -372,7 +371,7 @@ public class PhysicalPlanTest {
   public void testQueryFloat6() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -2.5E-1";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(-2.5e-1));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -382,7 +381,7 @@ public class PhysicalPlanTest {
   public void testQueryFloat7() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.5E2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(2.5e+2));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -392,7 +391,7 @@ public class PhysicalPlanTest {
   public void testQueryFloat8() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > .2e2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(0.2e+2));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -402,7 +401,7 @@ public class PhysicalPlanTest {
   public void testQueryFloat9() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > .2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(0.2));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -412,7 +411,7 @@ public class PhysicalPlanTest {
   public void testQueryFloat10() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(2.0));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -422,7 +421,7 @@ public class PhysicalPlanTest {
   public void testQueryFloat11() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(2.0));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -432,7 +431,7 @@ public class PhysicalPlanTest {
   public void testQueryFloat12() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -2.";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(-2.0));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -442,7 +441,7 @@ public class PhysicalPlanTest {
   public void testQueryFloat13() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -.2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(-0.2));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -452,7 +451,7 @@ public class PhysicalPlanTest {
   public void testQueryFloat14() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -.2e2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(-20.0));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -462,7 +461,7 @@ public class PhysicalPlanTest {
   public void testInOperator() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 in (25, 30, 40)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     Set<Float> values = new HashSet<>();
     values.add(25.0f);
     values.add(30.0f);
@@ -476,7 +475,7 @@ public class PhysicalPlanTest {
   public void testNotInOperator() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 not in (25, 30, 40)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     Set<Float> values = new HashSet<>();
     values.add(25.0f);
     values.add(30.0f);
@@ -487,7 +486,7 @@ public class PhysicalPlanTest {
 
     sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE not(s1 not in (25, 30, 40))";
     plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    queryFilter = ((QueryPlan) plan).getExpression();
+    queryFilter = ((RawDataQueryPlan) plan).getExpression();
     expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.in(values, false));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -595,38 +594,15 @@ public class PhysicalPlanTest {
   @Test
   public void testDeduplicatedPath() throws Exception {
     String sqlStr = "select * from root.vehicle.d1,root.vehicle.d1,root.vehicle.d1";
-    QueryPlan plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    RawDataQueryPlan plan = (RawDataQueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
     Assert.assertEquals(1, plan.getDeduplicatedPaths().size());
     Assert.assertEquals(1, plan.getDeduplicatedDataTypes().size());
     Assert.assertEquals(new Path("root.vehicle.d1.s1"), plan.getDeduplicatedPaths().get(0));
 
     sqlStr = "select count(*) from root.vehicle.d1,root.vehicle.d1,root.vehicle.d1";
-    plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    plan = (RawDataQueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
     Assert.assertEquals(1, plan.getDeduplicatedPaths().size());
     Assert.assertEquals(1, plan.getDeduplicatedDataTypes().size());
     Assert.assertEquals(new Path("root.vehicle.d1.s1"), plan.getDeduplicatedPaths().get(0));
-
-    //'group by device' is deduplication in DeviceIterateDataSet
-    MManager manager = MManager.getInstance();
-    manager.setStorageGroup("root.vehicle");
-    manager.addPathToMTree("root.vehicle.d0.s1", "INT64", "PLAIN");
-    manager.addPathToMTree("root.vehicle.d0.s0", "INT64", "PLAIN");
-    manager.addPathToMTree("root.vehicle.d1.s0", "INT64", "PLAIN");
-    manager.addPathToMTree("root.vehicle.d1.s1", "INT64", "PLAIN");
-
-    sqlStr = "select s0,s0,s1 from root.vehicle.d0, root.vehicle.d1 group by device";
-    plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
-    Assert.assertEquals(0, plan.getDeduplicatedPaths().size());
-    Assert.assertEquals(0, plan.getDeduplicatedDataTypes().size());
-    Assert.assertEquals(6, plan.getPaths().size());
-    Assert.assertEquals(6, plan.getDataTypes().size());
-
-    sqlStr = "select COUNT(s0),COUNT(s0),COUNT(s1) from root.vehicle.d0, root.vehicle.d1 group by device";
-    plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
-    Assert.assertEquals(0, plan.getDeduplicatedPaths().size());
-    Assert.assertEquals(0, plan.getDeduplicatedPaths().size());
-    Assert.assertEquals(0, plan.getDeduplicatedDataTypes().size());
-    Assert.assertEquals(6, plan.getPaths().size());
-    Assert.assertEquals(6, plan.getDataTypes().size());
   }
 }
