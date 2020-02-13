@@ -505,7 +505,6 @@ public class TsFileProcessor {
     tsFileResource.serialize();
     writer.endFile(schema);
     tsFileResource.cleanCloseFlag();
-    tsFileResource.close();
 
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore
