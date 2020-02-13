@@ -24,7 +24,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -537,7 +536,7 @@ public class MManager {
   public void setStorageGroup(String path) throws MetadataException {
     lock.writeLock().lock();
     try {
-      if (mtree.checkStorageGroup(path)) {
+      if (mtree.isStorageGroup(path)) {
         return;
       }
 
@@ -622,7 +621,7 @@ public class MManager {
   boolean isStorageGroup(String path) {
     lock.readLock().lock();
     try {
-      return mtree.checkStorageGroup(path);
+      return mtree.isStorageGroup(path);
     } finally {
       lock.readLock().unlock();
     }
@@ -700,7 +699,7 @@ public class MManager {
    * @param nodeLevel the level can not be smaller than the level of the prefixPath
    * @return A List instance which stores all node at given level
    */
-  public List<String> getNodesList(String prefixPath, int nodeLevel) throws SQLException {
+  public List<String> getNodesList(String prefixPath, int nodeLevel) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getNodesList(prefixPath, nodeLevel);
@@ -956,7 +955,6 @@ public class MManager {
           String storageGroupName = getStorageGroupNameByAutoLevel(path, sgLevel);
           setStorageGroup(storageGroupName);
         }
-        // Add device to MTree. This is available IF and ONLY IF creating schema automatically is enabled
         node = mtree.addDevice(path);
       }
     }

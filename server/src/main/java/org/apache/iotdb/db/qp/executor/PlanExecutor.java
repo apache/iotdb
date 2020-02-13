@@ -314,7 +314,7 @@ public class PlanExecutor implements IPlanExecutor {
     return MManager.getInstance().getPaths(path);
   }
 
-  private List<String> getNodesList(String schemaPattern, int level) throws SQLException {
+  private List<String> getNodesList(String schemaPattern, int level) throws MetadataException {
     return MManager.getInstance().getNodesList(schemaPattern, level);
   }
 

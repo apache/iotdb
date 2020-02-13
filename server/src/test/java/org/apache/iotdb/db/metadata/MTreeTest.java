@@ -281,19 +281,19 @@ public class MTreeTest {
     // set storage group first
     MTree root = new MTree("root");
     try {
-      assertFalse(root.checkStorageGroup("root"));
-      assertFalse(root.checkStorageGroup("root1.laptop.d2"));
+      assertFalse(root.isStorageGroup("root"));
+      assertFalse(root.isStorageGroup("root1.laptop.d2"));
 
       root.setStorageGroup("root.laptop.d1");
-      assertTrue(root.checkStorageGroup("root.laptop.d1"));
-      assertFalse(root.checkStorageGroup("root.laptop.d2"));
-      assertFalse(root.checkStorageGroup("root.laptop"));
-      assertFalse(root.checkStorageGroup("root.laptop.d1.s1"));
+      assertTrue(root.isStorageGroup("root.laptop.d1"));
+      assertFalse(root.isStorageGroup("root.laptop.d2"));
+      assertFalse(root.isStorageGroup("root.laptop"));
+      assertFalse(root.isStorageGroup("root.laptop.d1.s1"));
 
       root.setStorageGroup("root.laptop.d2");
-      assertTrue(root.checkStorageGroup("root.laptop.d1"));
-      assertTrue(root.checkStorageGroup("root.laptop.d2"));
-      assertFalse(root.checkStorageGroup("root.laptop.d3"));
+      assertTrue(root.isStorageGroup("root.laptop.d1"));
+      assertTrue(root.isStorageGroup("root.laptop.d2"));
+      assertFalse(root.isStorageGroup("root.laptop.d3"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

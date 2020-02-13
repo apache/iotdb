@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+
 class MetaUtils {
 
   private static final String PATH_SEPARATOR = "\\.";
@@ -37,4 +39,9 @@ class MetaUtils {
     }
     return nodeNames;
   }
+
+  static String getNodeRegByIdx(int idx, String[] nodes) {
+    return idx >= nodes.length ? PATH_WILDCARD : nodes[idx];
+  }
+
 }

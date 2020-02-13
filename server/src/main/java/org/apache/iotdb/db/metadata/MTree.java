@@ -25,7 +25,6 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import java.io.Serializable;
-import java.sql.SQLException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -94,7 +93,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Add device
+   * Add device to MTree. This is available IF and ONLY IF creating schema automatically is enabled
    *
    * @param deviceId device id
    */
@@ -262,7 +261,7 @@ public class MTree implements Serializable {
    * @param path path
    * @apiNote :for cluster
    */
-  boolean checkStorageGroup(String path) {
+  boolean isStorageGroup(String path) {
     String[] nodeNames = MetaUtils.getNodeNames(path);
     MNode cur = root;
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
@@ -435,15 +434,15 @@ public class MTree implements Serializable {
       paths.add(node.getStorageGroupName());
       return;
     }
-    String nodeReg = getNodeRegByIdx(idx, nodes);
+    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       if (node.hasChildWithKey(nodeReg)) {
-        findStorageGroup(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + ".",
-            paths);
+        findStorageGroup(node.getChild(nodeReg), nodes, idx + 1,
+            parent + node.getName() + PATH_SEPARATOR, paths);
       }
     } else {
       for (MNode child : node.getChildren().values()) {
-        findStorageGroup(child, nodes, idx + 1, parent + node.getName() + ".", paths);
+        findStorageGroup(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, paths);
       }
     }
   }
@@ -601,14 +600,15 @@ public class MTree implements Serializable {
       }
       return;
     }
-    String nodeReg = getNodeRegByIdx(idx, nodes);
+    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       if (node.hasChildWithKey(nodeReg)) {
-        findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + ".", res);
+        findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
+            res);
       }
     } else {
       for (MNode child : node.getChildren().values()) {
-        findPath(child, nodes, idx + 1, parent + node.getName() + ".", res);
+        findPath(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, res);
       }
     }
   }
@@ -648,7 +648,7 @@ public class MTree implements Serializable {
   Map<String, List<String>> getDeviceIdMap() throws MetadataException {
     Map<String, List<String>> deviceIdMap = new HashMap<>();
     for (String type : root.getChildren().keySet()) {
-      String path = root.getName() + "." + type;
+      String path = root.getName() + PATH_SEPARATOR + type;
       getNodeByPath(path);
       HashMap<String, Integer> deviceMap = new HashMap<>();
       MNode typeNode = root.getChild(type);
@@ -664,7 +664,7 @@ public class MTree implements Serializable {
       deviceMap.put(path, 1);
     } else {
       for (String child : node.getChildren().keySet()) {
-        String newPath = path + "." + node.getName();
+        String newPath = path + PATH_SEPARATOR + node.getName();
         putDeviceToMap(newPath, node.getChildren().get(child), deviceMap);
       }
     }
@@ -695,7 +695,7 @@ public class MTree implements Serializable {
    * @param res store all matched device names
    */
   private void findDevices(MNode node, String[] nodes, int idx, String parent, List<String> res) {
-    String nodeReg = getNodeRegByIdx(idx, nodes);
+    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       if (node.hasChildWithKey(nodeReg)) {
         if (node.getChild(nodeReg).isLeaf()) {
@@ -712,14 +712,10 @@ public class MTree implements Serializable {
           res.add(parent + node.getName());
           deviceAdded = true;
         } else if (!child.isLeaf()) {
-          findDevices(child, nodes, idx + 1, parent + node.getName() + ".", res);
+          findDevices(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, res);
         }
       }
     }
-  }
-
-  private String getNodeRegByIdx(int idx, String[] nodes) {
-    return idx >= nodes.length ? PATH_WILDCARD : nodes[idx];
   }
 
   /**
@@ -727,24 +723,21 @@ public class MTree implements Serializable {
    *
    * @return a list contains all nodes at the given level
    */
-  List<String> getNodesList(String schemaPattern, int nodeLevel) throws SQLException {
+  List<String> getNodesList(String path, int nodeLevel) throws MetadataException {
+    String[] nodes = MetaUtils.getNodeNames(path);
+    if (!nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(path);
+    }
     List<String> res = new ArrayList<>();
-    String[] nodes = MetaUtils.getNodeNames(schemaPattern);
-    MNode node;
-    if ((node = root) != null) {
-      if (nodes[0].equals("root")) {
-        for (int i = 1; i < nodes.length; i++) {
-          if (node.getChild(nodes[i]) != null) {
-            node = node.getChild(nodes[i]);
-          } else {
-            throw new SQLException(nodes[i - 1] + " does not have the child node " + nodes[i]);
-          }
-        }
-        findNodes(node, schemaPattern, res, nodeLevel - (nodes.length - 1));
+    MNode node = root;
+    for (int i = 1; i < nodes.length; i++) {
+      if (node.getChild(nodes[i]) != null) {
+        node = node.getChild(nodes[i]);
       } else {
-        throw new SQLException("Incorrect root node " + nodes[0] + " selected");
+        throw new MetadataException(nodes[i - 1] + " does not have the child node " + nodes[i]);
       }
     }
+    findNodes(node, path, res, nodeLevel - (nodes.length - 1));
     return res;
   }
 
@@ -758,13 +751,13 @@ public class MTree implements Serializable {
     }
     if (node.hasChildren()) {
       for (MNode child : node.getChildren().values()) {
-        findNodes(child, path + "." + child.toString(), res, targetLevel - 1);
+        findNodes(child, path + PATH_SEPARATOR + child.toString(), res, targetLevel - 1);
       }
     }
   }
 
   /**
-   * Get all ColumnSchemas for the storage group seriesPath.
+   * Get all ColumnSchemas for the storage group path.
    *
    * @return ArrayList<ColumnSchema> The list of the schema
    */
@@ -781,7 +774,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get schema map for one storage group
+   * Get schema map for the storage group
    */
   Map<String, MeasurementSchema> getStorageGroupSchemaMap(String path) {
     String[] nodes = MetaUtils.getNodeNames(path);
@@ -793,7 +786,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get num schema map for one file node.
+   * Get num schema map for the storage group
    */
   Map<String, Integer> getStorageGroupNumSchemaMap(String path) {
     String[] nodes = MetaUtils.getNodeNames(path);
@@ -806,6 +799,7 @@ public class MTree implements Serializable {
 
   /**
    * Recursively put leaf to leaf map
+   *
    * @param node node
    * @param leafMap leaf map
    */
