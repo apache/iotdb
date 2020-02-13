@@ -200,8 +200,10 @@ public class PhysicalPlanTest {
     int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
     FillQueryPlan mergePlan = (FillQueryPlan) plan;
     assertEquals(5000, mergePlan.getQueryTime());
-    assertEquals(defaultFillInterval, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
-    assertEquals(defaultFillInterval, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
+    assertEquals(defaultFillInterval,
+        ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
+    assertEquals(defaultFillInterval,
+        ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
     assertEquals(defaultFillInterval,
         ((PreviousFill) mergePlan.getFillType().get(TSDataType.BOOLEAN)).getBeforeRange());
   }

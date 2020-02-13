@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -403,7 +402,11 @@ public class PhysicalGenerator {
         ((RawDataQueryPlan) queryPlan).setExpression(expression);
       }
     }
-    generateDataTypes(queryPlan);
+    try {
+      generateDataTypes(queryPlan);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
     deduplicate(queryPlan);
 
     queryPlan.setRowLimit(queryOperator.getRowLimit());
