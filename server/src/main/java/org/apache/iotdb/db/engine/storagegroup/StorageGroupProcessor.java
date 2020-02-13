@@ -1228,10 +1228,11 @@ public class StorageGroupProcessor {
     // update the largest timestamp in the last flushing memtable
     Map<String, Long> curPartitionDeviceLatestTime = latestTimeForEachDevice
         .get(processor.getTimeRangeId());
-    
-    if(curPartitionDeviceLatestTime == null){
-      logger.warn("Partition: " + processor.getTimeRangeId() +
-          " does't have latest time for each device record.");
+
+    if (curPartitionDeviceLatestTime == null) {
+      logger.error("Partition: " + processor.getTimeRangeId() +
+          " does't have latest time for each device record. Flushing tsfile is: "
+          + processor.getTsFileResource().getFile());
       return false;
     }
 
