@@ -328,13 +328,6 @@ public class MManager {
     }
   }
 
-  /**
-   * Add one timeseries to metadata tree. TEST ONLY
-   *
-   * @param path the timeseries path
-   * @param dataType the dateType {@code DataType} of the timeseries
-   * @param encoding the encoding function {@code Encoding} of the timeseries
-   */
   @TestOnly
   public void addPathToMTree(String path, String dataType, String encoding)
       throws MetadataException, IOException {
@@ -416,17 +409,16 @@ public class MManager {
   }
 
   /**
-   * delete given paths from metadata tree
+   * Delete given paths from MTree
    *
-   * @param deletePathList list of paths to be deleted
+   * @param paths list of paths to be deleted
    * @return a set contains StorageGroups that contain no more timeseries after this deletion and
    * files of such StorageGroups should be deleted to reclaim disk space.
    */
-  public Set<String> deletePaths(List<String> deletePathList, boolean isUndo)
+  public Set<String> deletePaths(List<String> paths, boolean isUndo)
       throws MetadataException {
-    if (deletePathList != null && !deletePathList.isEmpty()) {
-      List<String> fullPath = collectPaths(deletePathList);
-
+    if (paths != null && !paths.isEmpty()) {
+      List<String> fullPath = collectPaths(paths);
       Set<String> emptyStorageGroups = new HashSet<>();
       for (String p : fullPath) {
         if (!isUndo) {
@@ -446,17 +438,20 @@ public class MManager {
     return Collections.emptySet();
   }
 
+  /**
+   * Delete given path from MTree
+   *
+   * @param path path to be deleted
+   * @return storage group name if there is no path in the storage group anymore; otherwise null¬
+   */
   private String deletePath(String path) throws MetadataException {
-    String storageGroupName;
-    storageGroupName = getStorageGroupName(path);
-
+    String storageGroupName = getStorageGroupName(path);
     String emptiedStorageGroup;
     // the two maps are stored in the storage group node
     Map<String, MeasurementSchema> schemaMap = getStorageGroupSchemaMap(storageGroupName);
     Map<String, Integer> numSchemaMap = getStorageGroupNumSchemaMap(storageGroupName);
     // Thread safety: just one thread can access/modify the schemaMap
     synchronized (schemaMap) {
-      // TODO: don't delete the storage group seriesPath recursively
       String measurementId = new Path(path).getMeasurement();
       if (numSchemaMap.get(measurementId) == 1) {
         numSchemaMap.remove(measurementId);
@@ -474,16 +469,25 @@ public class MManager {
   }
 
   /**
-   * function for deleting a given path from mTree.
+   * Delete a given path from MTree.
    *
-   * @return the related storage group name if there is no path in the storage group anymore;
-   * otherwise null
+   * @return storage group name if there is no path in the storage group anymore; otherwise null
    */
   private String deletePathFromMTree(String path) throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
       mNodeCache.clear();
-      String storageGroupName = deletePathInMTree(path);
+      String storageGroupName;
+      String[] nodes = MetaUtils.getNodeNames(path);
+      if (nodes.length == 0) {
+        throw new IllegalPathException(path);
+      }
+      String rootName = nodes[0];
+      if (mtree.getRoot().getName().equals(rootName)) {
+        storageGroupName = mtree.deletePath(path);
+      } else {
+        throw new RootNotExistException(rootName);
+      }
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
         writer.write(MetadataOperationType.DELETE_PATH_FROM_MTREE + "," + path);
@@ -511,27 +515,9 @@ public class MManager {
   }
 
   /**
-   * Delete seriesPath in current MTree.
+   * Set storage group of the given path to MTree.
    *
-   * @param path a seriesPath belongs to MTree
-   */
-  private String deletePathInMTree(String path) throws MetadataException {
-    String[] nodes = MetaUtils.getNodeNames(path);
-    if (nodes.length == 0) {
-      throw new IllegalPathException(path);
-    }
-    String rootName = nodes[0];
-    if (mtree.getRoot().getName().equals(rootName)) {
-      return mtree.deletePath(path);
-    } else {
-      throw new RootNotExistException(rootName);
-    }
-  }
-
-  /**
-   * function for setting storage group of the given path to mTree.
-   *
-   * @param path Format: root.node.(node)*
+   * @param path root.node.(node)*
    */
   public void setStorageGroup(String path) throws MetadataException {
     lock.writeLock().lock();
@@ -554,7 +540,6 @@ public class MManager {
       throw new MetadataException(e.getMessage());
     } catch (ConfigAdjusterException e) {
       try {
-        // path Format: root.node
         mtree.deleteStorageGroup(path);
         throw new MetadataException(e);
       } catch (MetadataException ex) {
@@ -566,13 +551,14 @@ public class MManager {
   }
 
   /**
-   * function for deleting storage groups of the given path from mTree. the log format is like
-   * "delete_storage_group,sg1,sg2,sg3"
+   * Delete storage groups of given paths from MTree. Log format: "delete_storage_group,sg1,sg2,sg3"
+   *
+   * @param paths list of paths to be deleted. Format: root.node
    */
-  public void deleteStorageGroups(List<String> deletePathList) throws MetadataException {
+  public void deleteStorageGroups(List<String> paths) throws MetadataException {
     List<String> pathList = new ArrayList<>();
     StringBuilder jointPath = new StringBuilder();
-    for (String storagePath : deletePathList) {
+    for (String storagePath : paths) {
       pathList.add(storagePath);
       jointPath.append(",").append(storagePath);
     }
@@ -588,8 +574,6 @@ public class MManager {
         try {
           mNodeCache.clear();
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
-
-          // path Format: root.node
           mtree.deleteStorageGroup(delStorageGroup);
           IoTDBConfigDynamicAdapter.getInstance()
               .addOrDeleteTimeSeries(seriesNumberInStorageGroups.remove(delStorageGroup) * (-1));
@@ -613,7 +597,7 @@ public class MManager {
   }
 
   /**
-   * Check if the given path is storage group of mTree or not.
+   * Check if the given path is storage group or not.
    *
    * @param path Format: root.node.(node)*
    * @apiNote :for cluster
@@ -627,11 +611,10 @@ public class MManager {
     }
   }
 
-
   /**
    * Get series type for given seriesPath.
    *
-   * @return TSDataType
+   * @param fullPath path
    */
   public TSDataType getSeriesType(String fullPath) throws MetadataException {
     lock.readLock().lock();
@@ -640,21 +623,6 @@ public class MManager {
         return TSDataType.INT64;
       }
       return mtree.getSchema(fullPath).getType();
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * function for getting series type.
-   */
-  TSDataType getSeriesType(MNode node, String fullPath) throws MetadataException {
-    lock.readLock().lock();
-    try {
-      if (fullPath.equals(SQLConstant.RESERVED_TIME)) {
-        return TSDataType.INT64;
-      }
-      return mtree.getSchema(node, fullPath).getType();
     } finally {
       lock.readLock().unlock();
     }
@@ -747,8 +715,8 @@ public class MManager {
   }
 
   /**
-   * Get the storage group name for given path. Notice: This method could be called if and only
-   * if the seriesPath includes one node whose {@code isStorageGroup} is true.
+   * Get the storage group name for given path. Notice: This method could be called if and only if
+   * the seriesPath includes one node whose {@code isStorageGroup} is true.
    *
    * @param path a prefix of a fullpath. The prefix should contains the name of a storage group. DO
    * NOT SUPPORT WILDCARD.

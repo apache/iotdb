@@ -131,26 +131,6 @@ public class MManagerImproveTest {
     }
   }
 
-  private void doDealdeviceIdOnceTest(String deviceId, List<String> measurementList)
-      throws MetadataException, StorageGroupException {
-    MNode node = mManager.getNodeByPath(deviceId);
-
-    for (String measurement : measurementList) {
-      TSDataType dataType = mManager.getSeriesType(node, measurement);
-      assertEquals(TSDataType.TEXT, dataType);
-    }
-  }
-
-  private void doAllImproveTest(String deviceId, List<String> measurementList)
-      throws MetadataException, StorageGroupException {
-    MNode node = mManager.getNodeByPathWithStorageGroupCheck(deviceId);
-
-    for (String measurement : measurementList) {
-      TSDataType dataType = mManager.getSeriesType(node, measurement);
-      assertEquals(TSDataType.TEXT, dataType);
-    }
-  }
-
   private void doCacheTest(String deviceId, List<String> measurementList)
       throws MetadataException {
     MNode node = mManager.getNodeByPathFromCache(deviceId);
@@ -190,20 +170,6 @@ public class MManagerImproveTest {
     }
     endTime = System.currentTimeMillis();
     logger.debug("seriesPath loop once:\t" + (endTime - startTime));
-
-    startTime = System.currentTimeMillis();
-    for (String deviceId : deviceIdList) {
-      doDealdeviceIdOnceTest(deviceId, measurementList);
-    }
-    endTime = System.currentTimeMillis();
-    logger.debug("deal deviceId once:\t" + (endTime - startTime));
-
-    startTime = System.currentTimeMillis();
-    for (String deviceId : deviceIdList) {
-      doAllImproveTest(deviceId, measurementList);
-    }
-    endTime = System.currentTimeMillis();
-    logger.debug("improve all:\t" + (endTime - startTime));
 
     startTime = System.currentTimeMillis();
     for (String deviceId : deviceIdList) {

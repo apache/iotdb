@@ -332,7 +332,7 @@ public class MTree implements Serializable {
     return getSchema(dummyNode, path);
   }
 
-  MeasurementSchema getSchema(MNode node, String path) throws MetadataException {
+  private MeasurementSchema getSchema(MNode node, String path) throws MetadataException {
     String[] nodes = MetaUtils.getNodeNames(path);
     MNode cur;
     if (node.equals(dummyNode)) {
@@ -388,7 +388,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * find and return a seriesPath specified by the path
+   * Get node by the path
    *
    * @return last node in given seriesPath
    */

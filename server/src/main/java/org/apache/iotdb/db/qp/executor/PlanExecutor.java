@@ -290,8 +290,7 @@ public class PlanExecutor implements IPlanExecutor {
     return singleDataSet;
   }
 
-  private QueryDataSet processCountNodeTimeSeries(CountPlan countPlan)
-      throws SQLException, MetadataException {
+  private QueryDataSet processCountNodeTimeSeries(CountPlan countPlan) throws MetadataException {
     List<String> nodes = getNodesList(countPlan.getPath().toString(), countPlan.getLevel());
     ListDataSet listDataSet = new ListDataSet(
         Arrays.asList(new Path(COLUMN_COLUMN), new Path(COLUMN_COUNT)),

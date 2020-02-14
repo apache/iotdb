@@ -24,6 +24,10 @@ class MetaUtils {
 
   private static final String PATH_SEPARATOR = "\\.";
 
+  private MetaUtils() {
+
+  }
+
   static String[] getNodeNames(String path) {
     String[] nodeNames;
     if (path.contains("\"") || path.contains("\'")) {
