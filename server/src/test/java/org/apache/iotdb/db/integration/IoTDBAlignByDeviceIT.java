@@ -33,7 +33,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class IoTDBGroupbyDeviceIT {
+public class IoTDBAlignByDeviceIT {
 
   private static String[] sqls = new String[]{
 
