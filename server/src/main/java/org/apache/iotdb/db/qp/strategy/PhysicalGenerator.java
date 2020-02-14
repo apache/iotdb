@@ -258,6 +258,8 @@ public class PhysicalGenerator {
       }
 
       List<Path> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
+      // remove stars in fromPaths and get deviceId with deduplication
+      List<String> devices = this.removeStarsInDeviceWithUnique(prefixPaths);
       List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
       List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
 
@@ -272,28 +274,22 @@ public class PhysicalGenerator {
 
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix in SELECT
         Path suffixPath = suffixPaths.get(i);
-
-        // to deduplicate redundant device for a given suffix path
-        // e.g. select s0 from root.vehicle.d0, root.vehicle.d0 group by device
-        // need to ignore the second "root.vehicle.d0" for suffix "s0"
-        Set<String> deviceSetOfGivenSuffix = new HashSet<>();
+        Set<String> nonExistMeasurement = new HashSet<>();
 
         // to record measurements in the loop of a suffix path
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
 
-        Set<String> nonExistMeasurement = new HashSet<>();
         // if const measurement
         if (suffixPath.startWith("'") || suffixPath.startWith("\"")) {
           alignByDevicePlan.addConstMeasurement(loc++, suffixPath.getMeasurement());
           continue;
         }
 
-        for (Path prefixPath : prefixPaths) { // per prefix in FROM
-          Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
-          Set<String> deviceSetOfSamePrefix = new HashSet<>();
+        for (String device : devices) { // per device in FROM after deduplication
+          Path fullPath = Path.addPrefixPath(suffixPath, device);
           try {
             List<String> actualPaths = MManager.getInstance()
-                .getPaths(fullPath.getFullPath());  // remove stars to get actual paths
+                .getPaths(fullPath.getFullPath());  // remove stars in SELECT to get actual paths
 
             // for actual non exist path
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
@@ -302,12 +298,6 @@ public class PhysicalGenerator {
 
             for (String pathStr : actualPaths) {
               Path path = new Path(pathStr);
-              String device = path.getDevice();
-              deviceSetOfSamePrefix.add(device);
-
-              if (deviceSetOfGivenSuffix.contains(device)) {
-                continue;
-              }
 
               // check datatype consistency
               // a example of inconsistency: select s0 from root.sg1.d1, root.sg2.d3 group by device,
@@ -345,8 +335,6 @@ public class PhysicalGenerator {
               // update paths
               paths.add(path);
             }
-            // update deviceSetOfGivenSuffix
-            deviceSetOfGivenSuffix.addAll(deviceSetOfSamePrefix);
 
           } catch (MetadataException e) {
             throw new LogicalOptimizeException(
@@ -392,7 +380,7 @@ public class PhysicalGenerator {
       // get deviceToFilterMap
       FilterOperator filterOperator = queryOperator.getFilterOperator();
       if (filterOperator != null) {
-        alignByDevicePlan.setDeviceToFilterMap(concatFilterByDevice(prefixPaths, filterOperator));
+        alignByDevicePlan.setDeviceToFilterMap(concatFilterByDevice(devices, filterOperator));
       }
 
       queryPlan = alignByDevicePlan;
@@ -421,17 +409,15 @@ public class PhysicalGenerator {
   // e.g. translate "select * from root.ln.d1, root.ln.d2 where s1 < 20 AND s2 > 10" to
   // [root.ln.d1 -> root.ln.d1.s1 < 20 AND root.ln.d1.s2 > 10,
   //  root.ln.d2 -> root.ln.d2.s1 < 20 AND root.ln.d2.s2 > 10)]
-  private Map<String, IExpression> concatFilterByDevice(List<Path> fromPaths,
+  private Map<String, IExpression> concatFilterByDevice(List<String> devices,
       FilterOperator operator)
       throws QueryProcessException {
     Map<String, IExpression> deviceToFilterMap = new HashMap<>();
-    // remove stars in fromPaths and get deviceId with deduplication
-    List<String> noStarDevices = removeStarsInDeviceWithUnique(fromPaths);
-    for (int i = 0; i < noStarDevices.size(); i++) {
+    for (int i = 0; i < devices.size(); i++) {
       FilterOperator newOperator = operator.copy();
-      newOperator = concatFilterPath(noStarDevices.get(i), newOperator);
+      newOperator = concatFilterPath(devices.get(i), newOperator);
 
-      deviceToFilterMap.put(noStarDevices.get(i), newOperator.transformToExpression());
+      deviceToFilterMap.put(devices.get(i), newOperator.transformToExpression());
     }
 
     return deviceToFilterMap;
