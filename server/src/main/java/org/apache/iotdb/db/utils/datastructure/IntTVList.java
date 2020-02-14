@@ -173,6 +173,12 @@ public class IntTVList extends TVList {
   }
 
   @Override
+  public TimeValuePair getTimeValuePair(int index) {
+    return new TimeValuePair(getTime(index),
+        TsPrimitiveType.getByType(TSDataType.INT32, getInt(index)));
+  }
+
+  @Override
   protected TimeValuePair getTimeValuePair(int index, long time, Integer floatPrecision,
       TSEncoding encoding) {
     return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT32, getInt(index)));

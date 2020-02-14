@@ -174,6 +174,12 @@ public class DoubleTVList extends TVList {
   }
 
   @Override
+  public TimeValuePair getTimeValuePair(int index) {
+    return new TimeValuePair(getTime(index),
+        TsPrimitiveType.getByType(TSDataType.DOUBLE, getDouble(index)));
+  }
+
+  @Override
   protected TimeValuePair getTimeValuePair(int index, long time, Integer floatPrecision,
       TSEncoding encoding) {
     double value = getDouble(index);
