@@ -392,7 +392,9 @@ public class TsFileProcessor {
    * flushManager again.
    */
   private void addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
-    updateLatestFlushTimeCallback.call(this);
+    if(!updateLatestFlushTimeCallback.call(this)){
+      logger.error("Memetable info: " + tobeFlushed.getMemTableMap());
+    }
     flushingMemTables.addLast(tobeFlushed);
     long cur = versionController.nextVersion();
     tobeFlushed.setVersion(cur);
@@ -470,10 +472,12 @@ public class TsFileProcessor {
         writer.mark();
         try {
           double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
-          logger.debug("totalMemTableSize: {}, writer.getPos(): {}", totalMemTableSize,
+          logger.debug("totalMemTableSize: {}, the file size: {}", totalMemTableSize,
               writer.getPos());
           if (compressionRatio == 0) {
-            logger.error("compressionRatio = 0, please check the log.");
+            logger.error(
+                "The compression ratio of tsfile {} is 0, totalMemTableSize: {}, the file size: {}, please check the log.",
+                writer.getFile().getAbsolutePath(), totalMemTableSize, writer.getPos());
           }
           CompressionRatio.getInstance().updateRatio(compressionRatio);
         } catch (IOException e) {
@@ -505,7 +509,6 @@ public class TsFileProcessor {
     tsFileResource.serialize();
     writer.endFile(schema);
     tsFileResource.cleanCloseFlag();
-    tsFileResource.close();
 
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore
