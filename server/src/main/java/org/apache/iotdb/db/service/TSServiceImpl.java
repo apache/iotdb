@@ -204,7 +204,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           throw new QueryProcessException("aggregate does not support " + aggrType + " function.");
       }
     }
-    return MManager.getInstance().getSeriesType(path);
+    TSDataType dataType;
+    try {
+      dataType = MManager.getInstance().getSeriesType(path);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+
+    return dataType;
   }
 
   @Override
@@ -347,7 +354,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * convert from TSStatusCode to TSStatus, which has message appending with existed status message
    *
-   * @param statusType    status type
+   * @param statusType status type
    * @param appendMessage appending message
    */
   private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
@@ -593,7 +600,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   /**
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
-   *             AuthorPlan
+   * AuthorPlan
    */
   private TSExecuteStatementResp executeQueryStatement(
       long statementId, PhysicalPlan plan, int fetchSize, String username) {

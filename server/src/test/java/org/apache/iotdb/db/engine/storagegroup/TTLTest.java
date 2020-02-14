@@ -326,13 +326,12 @@ public class TTLTest {
     PlanExecutor executor = new PlanExecutor();
     QueryDataSet queryDataSet = executor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     RowRecord rowRecord = queryDataSet.next();
-//    FIXME
-//    assertEquals(sg1, rowRecord.getFields().get(0).getStringValue());
-//    assertEquals("null", rowRecord.getFields().get(1).getStringValue());
+    assertEquals(sg1, rowRecord.getFields().get(0).getStringValue());
+    assertEquals(ttl, rowRecord.getFields().get(1).getLongV());
 
-//    rowRecord = queryDataSet.next();
-//    assertEquals(sg1, rowRecord.getFields().get(0).getStringValue());
-//    assertEquals(ttl, rowRecord.getFields().get(1).getLongV());
+    rowRecord = queryDataSet.next();
+    assertEquals(sg2, rowRecord.getFields().get(0).getStringValue());
+    assertEquals("null", rowRecord.getFields().get(1).getStringValue());
   }
 
   @Test

@@ -106,7 +106,6 @@ import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
@@ -277,7 +276,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private QueryDataSet processCountNodes(CountPlan countPlan) throws SQLException {
+  private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {
     List<String> nodes = getNodesList(countPlan.getPath().toString(), countPlan.getLevel());
     int num = nodes.size();
     SingleDataSet singleDataSet = new SingleDataSet(
@@ -589,7 +588,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void createSchemaAutomatically(List<ChunkGroupMetaData> chunkGroupMetaDatas,
       Map<String, MeasurementSchema> knownSchemas, int sgLevel)
-      throws CacheException, QueryProcessException, MetadataException, StorageEngineException {
+      throws QueryProcessException, MetadataException, StorageEngineException {
     if (chunkGroupMetaDatas.isEmpty()) {
       return;
     }
@@ -1131,7 +1130,7 @@ public class PlanExecutor implements IPlanExecutor {
    * register with value
    */
   private void addPathToMTree(String deviceId, String measurementId, Object value)
-      throws PathException, MetadataException, StorageEngineException {
+      throws MetadataException, StorageEngineException {
     TSDataType predictedDataType = TypeInferenceUtils.getPredictedDataType(value);
     Path path = new Path(deviceId, measurementId);
     TSEncoding encoding = getDefaultEncoding(predictedDataType);
@@ -1144,7 +1143,7 @@ public class PlanExecutor implements IPlanExecutor {
    * register with datatype
    */
   private void addPathToMTree(String deviceId, String measurementId, TSDataType dataType)
-      throws PathException, MetadataException, StorageEngineException {
+      throws MetadataException, StorageEngineException {
     Path path = new Path(deviceId, measurementId);
     TSEncoding encoding = getDefaultEncoding(dataType);
     CompressionType compressionType =
@@ -1156,8 +1155,7 @@ public class PlanExecutor implements IPlanExecutor {
    * Add a seriesPath to MTree, register with datatype, encoding and compression
    */
   private void addPathToMTree(Path path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressionType)
-      throws PathException, MetadataException, StorageEngineException {
+      CompressionType compressionType) throws MetadataException, StorageEngineException {
     boolean result = mManager.addPathToMTree(
         path.getFullPath(), dataType, encoding, compressionType, Collections.emptyMap());
     if (result) {
@@ -1170,8 +1168,7 @@ public class PlanExecutor implements IPlanExecutor {
    * Add a seriesPath to MTree, register with datatype, encoding and compression
    */
   private void addPathToMTree(String path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressionType)
-      throws PathException, MetadataException, StorageEngineException {
+      CompressionType compressionType) throws MetadataException, StorageEngineException {
     boolean result = mManager.addPathToMTree(
         path, dataType, encoding, compressionType, Collections.emptyMap());
     if (result) {
