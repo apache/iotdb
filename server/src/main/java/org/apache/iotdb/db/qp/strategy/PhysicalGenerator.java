@@ -290,7 +290,7 @@ public class PhysicalGenerator {
 
         for (Path prefixPath : prefixPaths) { // per prefix in FROM
           Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
-          Set<String> tmpDeviceSet = new HashSet<>();
+          Set<String> deviceSetOfSamePrefix = new HashSet<>();
           try {
             List<String> actualPaths = MManager.getInstance()
                 .getPaths(fullPath.getFullPath());  // remove stars to get actual paths
@@ -303,7 +303,7 @@ public class PhysicalGenerator {
             for (String pathStr : actualPaths) {
               Path path = new Path(pathStr);
               String device = path.getDevice();
-              tmpDeviceSet.add(device);
+              deviceSetOfSamePrefix.add(device);
 
               if (deviceSetOfGivenSuffix.contains(device)) {
                 continue;
@@ -346,7 +346,7 @@ public class PhysicalGenerator {
               paths.add(path);
             }
             // update deviceSetOfGivenSuffix
-            deviceSetOfGivenSuffix.addAll(tmpDeviceSet);
+            deviceSetOfGivenSuffix.addAll(deviceSetOfSamePrefix);
 
           } catch (MetadataException e) {
             throw new LogicalOptimizeException(
