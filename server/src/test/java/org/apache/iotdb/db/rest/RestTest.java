@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.rest;
 
+import com.alibaba.fastjson.JSONObject;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
@@ -37,10 +38,10 @@ import org.junit.Test;
 
 public class RestTest {
   private static final String REST_URI
-      = "http://localhost:8181/rest/query";
+      = "http://localhost:8181/query";
 
   private static final String LOGIN
-      = "http://localhost:8181/rest/login";
+      = "http://localhost:8181/login";
 
   private static String[] creationSqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",
@@ -155,13 +156,15 @@ public class RestTest {
 
     String json2 = "{username : \"root\", password : \"root\"}";
     client.target(LOGIN)
-        .request(MediaType.TEXT_PLAIN)
-        .post(Entity.entity(json2, MediaType.TEXT_PLAIN));
+        .request(MediaType.APPLICATION_JSON)
+        .post(Entity.entity(JSONObject.parse(json2), MediaType.APPLICATION_JSON));
     Response response = client.target(REST_URI)
-        .request(MediaType.TEXT_PLAIN)
-        .post(Entity.entity(json1, MediaType.TEXT_PLAIN));
+        .request(MediaType.APPLICATION_JSON)
+        .post(Entity.entity(JSONObject.parse(json1), MediaType.APPLICATION_JSON));
     String result = response.readEntity(String.class);
     Assert.assertEquals("[{\"datapoints\":[[1,\"1.1\"],[2,\"2.2\"],[3,\"3.3\"],[4,\"4.4\"],[5,\"5.5\"]],\"target\":\"root.ln.wf01.wt01.temperature\"}]"
         , result);
   }
+
+  
 }
