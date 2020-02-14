@@ -270,32 +270,32 @@ public class PhysicalGenerator {
       // cur loc for path
       int loc = 0;
 
-      for (int i = 0; i < suffixPaths.size(); i++) { // per suffix
+      for (int i = 0; i < suffixPaths.size(); i++) { // per suffix in SELECT
         Path suffixPath = suffixPaths.get(i);
-        Set<String> deviceSetOfGivenSuffix = new HashSet<>();
+        Set<String> deviceSetOfGivenSuffix = new HashSet<>(); // to deduplicate
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
+        Set<String> nonExistMeasurement = new HashSet<>();
+        // if const measurement
         if (suffixPath.startWith("'") || suffixPath.startWith("\"")) {
           alignByDevicePlan.addConstMeasurement(loc++, suffixPath.getMeasurement());
           continue;
         }
 
-        Set<String> nonExistMeasurement = new HashSet<>();
-        for (Path prefixPath : prefixPaths) { // per prefix
+        for (Path prefixPath : prefixPaths) { // per prefix in FROM
           Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
           Set<String> tmpDeviceSet = new HashSet<>();
           try {
             List<String> actualPaths = MManager.getInstance()
                 .getPaths(fullPath.getFullPath());  // remove stars to get actual paths
 
+            // for actual non exist path
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
-              // for actual non exist path
               nonExistMeasurement.add(fullPath.getMeasurement());
             }
 
             for (String pathStr : actualPaths) {
               Path path = new Path(pathStr);
               String device = path.getDevice();
-              // update tmpDeviceSet for a full path
               tmpDeviceSet.add(device);
 
               // ignore the duplicate prefix device for a given suffix path
@@ -306,21 +306,18 @@ public class PhysicalGenerator {
                 continue;
               }
 
-              // get pathForDataType and measurementColumn
-              String measurement = path.getMeasurement();
-              String pathForDataType;
-              String measurementChecked;
               // check datatype consistency
-              if (originAggregations != null && !originAggregations.isEmpty()) {
-                pathForDataType = originAggregations.get(i) + "(" + path.getFullPath() + ")";
-                measurementChecked = originAggregations.get(i) + "(" + measurement + ")";
-              } else {
-                pathForDataType = path.getFullPath();
-                measurementChecked = measurement;
-              }
-              // check the consistency of data types
               // a example of inconsistency: select s0 from root.sg1.d1, root.sg2.d3 group by device,
               // while root.sg1.d1.s0 is INT32 and root.sg2.d3.s0 is FLOAT.
+              String pathForDataType;
+              String measurementChecked;
+              if (originAggregations != null && !originAggregations.isEmpty()) {
+                pathForDataType = originAggregations.get(i) + "(" + path.getFullPath() + ")";
+                measurementChecked = originAggregations.get(i) + "(" + path.getMeasurement() + ")";
+              } else {
+                pathForDataType = path.getFullPath();
+                measurementChecked = path.getMeasurement();
+              }
               TSDataType dataType = TSServiceImpl.getSeriesType(pathForDataType);
               if (dataTypeConsistencyChecker.containsKey(measurementChecked)) {
                 if (!dataType.equals(dataTypeConsistencyChecker.get(measurementChecked))) {
@@ -347,15 +344,14 @@ public class PhysicalGenerator {
             }
             // update deviceSetOfGivenSuffix
             deviceSetOfGivenSuffix.addAll(tmpDeviceSet);
-
           } catch (MetadataException e) {
             throw new LogicalOptimizeException(
                 String.format("Error when getting all paths of a full path: %s",
                     fullPath.getFullPath()) + e.getMessage());
           }
         }
-
         nonExistMeasurement.removeAll(measurementSetOfGivenSuffix);
+        // update notExistMeasurement
         for (String notExistMeasurementString : nonExistMeasurement) {
           alignByDevicePlan.addNotExistMeasurement(loc++, notExistMeasurementString);
         }
@@ -384,13 +380,12 @@ public class PhysicalGenerator {
 
       // assigns to alignByDevicePlan
       alignByDevicePlan.setMeasurements(measurements);
-      alignByDevicePlan.setMeasurementsGroupByDevice(deviceToMeasurementsMap);
+      alignByDevicePlan.setDeviceToMeasurementsMap(deviceToMeasurementsMap);
       alignByDevicePlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
       alignByDevicePlan.setPaths(paths);
 
-      // get device to filter map
+      // get deviceToFilterMap
       FilterOperator filterOperator = queryOperator.getFilterOperator();
-
       if (filterOperator != null) {
         alignByDevicePlan.setDeviceToFilterMap(concatFilterByDevice(prefixPaths, filterOperator));
       }

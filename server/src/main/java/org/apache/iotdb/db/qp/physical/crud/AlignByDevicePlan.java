@@ -60,7 +60,7 @@ public class AlignByDevicePlan extends QueryPlan {
     return measurements;
   }
 
-  public void setMeasurementsGroupByDevice(
+  public void setDeviceToMeasurementsMap(
       Map<String, Set<String>> deviceToMeasurementsMap) {
     this.deviceToMeasurementsMap = deviceToMeasurementsMap;
   }
