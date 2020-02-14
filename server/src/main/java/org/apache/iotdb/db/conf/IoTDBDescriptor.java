@@ -18,20 +18,17 @@
  */
 package org.apache.iotdb.db.conf;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.time.ZoneId;
-import java.util.Properties;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.net.URL;
+import java.time.ZoneId;
+import java.util.Properties;
 
 public class IoTDBDescriptor {
 
@@ -527,8 +524,10 @@ public class IoTDBDescriptor {
       try {
         conf.setAllocateMemoryForFileMetaDataCache(
             maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-        conf.setAllocateMemoryForChumkMetaDataCache(
+        conf.setAllocateMemoryForChunkMetaDataCache(
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+        conf.setAllocateMemoryForChunkCache(
+            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
       } catch (Exception e) {
         throw new RuntimeException(
             "Each subsection of configuration item filemeta_chunkmeta_free_memory_proportion should be an integer, which is "

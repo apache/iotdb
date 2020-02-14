@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -38,7 +39,6 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
@@ -366,7 +366,7 @@ public class SeriesReader {
       if (data.getChunkLoader() == null) {
         TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
             .get(resource, resource.isClosed());
-        data.setChunkLoader(new ChunkLoaderImpl(tsFileSequenceReader));
+        data.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
       }
     }
     List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();

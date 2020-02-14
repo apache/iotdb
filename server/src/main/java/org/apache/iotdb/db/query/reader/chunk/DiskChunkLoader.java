@@ -16,51 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.controller;
 
-import org.apache.iotdb.tsfile.common.cache.LRUCache;
+package org.apache.iotdb.db.query.reader.chunk;
+
+import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
 import java.io.IOException;
 
-/**
- * Read one Chunk and cache it into a LRUCache.
- */
-public class ChunkLoaderImpl implements IChunkLoader {
+public class DiskChunkLoader implements IChunkLoader {
 
-  private static final int DEFAULT_CHUNK_CACHE_SIZE = 1000;
-  private TsFileSequenceReader reader;
-  private LRUCache<ChunkMetaData, Chunk> chunkCache;
+  private final TsFileSequenceReader reader;
 
-  public ChunkLoaderImpl(TsFileSequenceReader fileSequenceReader) {
-    this(fileSequenceReader, DEFAULT_CHUNK_CACHE_SIZE);
-  }
-
-  /**
-   * constructor of ChunkLoaderImpl.
-   *
-   * @param fileSequenceReader file sequence reader
-   * @param cacheSize cache size
-   */
-  public ChunkLoaderImpl(TsFileSequenceReader fileSequenceReader, int cacheSize) {
-
-    this.reader = fileSequenceReader;
-
-    chunkCache = new LRUCache<ChunkMetaData, Chunk>(cacheSize) {
-
-      @Override
-      public Chunk loadObjectByKey(ChunkMetaData metaData) throws IOException {
-        return reader.readMemChunk(metaData);
-      }
-    };
+  public DiskChunkLoader(TsFileSequenceReader reader) {
+    this.reader = reader;
   }
 
   @Override
   public Chunk getChunk(ChunkMetaData chunkMetaData) throws IOException {
-    Chunk chunk = chunkCache.get(chunkMetaData);
-    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
+    return ChunkCache.getInstance().get(chunkMetaData, reader);
   }
 
   @Override
@@ -70,6 +47,6 @@ public class ChunkLoaderImpl implements IChunkLoader {
 
   @Override
   public void clear() {
-    chunkCache.clear();
+    // no cache need clear
   }
 }
