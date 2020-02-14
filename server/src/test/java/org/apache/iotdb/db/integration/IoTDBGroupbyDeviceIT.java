@@ -156,7 +156,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select * from root.vehicle group by device");
+          "select * from root.vehicle align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -215,7 +215,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s0,s0,s1 from root.vehicle.d0, root.vehicle.d1 group by device");
+          "select s0,s0,s1 from root.vehicle.d0, root.vehicle.d1 align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -268,7 +268,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s0,s0,s1 from root.vehicle.* limit 10 offset 1 group by device");
+          "select s0,s0,s1 from root.vehicle.* limit 10 offset 1 align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -325,7 +325,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s0,s0,s1 from root.vehicle.* slimit 2 soffset 1 group by device");
+          "select s0,s0,s1 from root.vehicle.* slimit 2 soffset 1 align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -375,7 +375,7 @@ public class IoTDBGroupbyDeviceIT {
         Statement statement = connection.createStatement()) {
       // single device
       boolean hasResultSet = statement.execute(
-          "select * from root.vehicle.d0 where s0 > 0 AND s1 < 200 group by device");
+          "select * from root.vehicle.d0 where s0 > 0 AND s1 < 200 align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -423,7 +423,7 @@ public class IoTDBGroupbyDeviceIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
           "select count(s0),count(s1),count(s2),count(s3),count(s4) "
-              + "from root.vehicle.d1,root.vehicle.d0 group by device");
+              + "from root.vehicle.d1,root.vehicle.d0 align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -474,7 +474,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select count(*) from root.vehicle GROUP BY ([2,50],20ms) group by device");
+          "select count(*) from root.vehicle GROUP BY ([2,50),20ms) align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -522,7 +522,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) group by device");
+          "select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -564,7 +564,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select d0.s1, d0.s2, d1.s0 from root.vehicle group by device");
+          "select d0.s1, d0.s2, d1.s0 from root.vehicle align by device");
       fail("No exception thrown.");
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains(
@@ -580,7 +580,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s0 from root.*.* group by device");
+          "select s0 from root.*.* align by device");
       fail("No exception thrown.");
     } catch (Exception e) {
       // root.vehicle.d0.s0 INT32
@@ -612,7 +612,7 @@ public class IoTDBGroupbyDeviceIT {
       // count(root.vehicle.d1.s0) INT64
       // count(root.other.d1.s0) INT64
       boolean hasResultSet = statement.execute(
-          "select count(s0) from root.*.* group by device");
+          "select count(s0) from root.*.* align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -660,7 +660,7 @@ public class IoTDBGroupbyDeviceIT {
       // duplicated devices
       boolean hasResultSet = statement.execute(
           "select s0,s0,s1,* from root.vehicle.*, root.vehicle.d0, root.vehicle.d1"
-              + " where time < 20 group by device");
+              + " where time < 20 align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -728,7 +728,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select *, \"11\" from root.vehicle group by device");
+          "select *, \"11\" from root.vehicle align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -794,7 +794,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s0, s1, s2, s3, s4, s5 from root.vehicle.*  group by device");
+          "select s0, s1, s2, s3, s4, s5 from root.vehicle.*  align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -859,7 +859,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s0, s1,\"11\", s2, \"22\", s3, s4 from root.vehicle.d0 group by device");
+          "select s0, s1,\"11\", s2, \"22\", s3, s4 from root.vehicle.d0 align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -928,7 +928,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s0, s1,\"11\", s2, \"22\", s5, s3, s4 from root.vehicle.* group by device");
+          "select s0, s1,\"11\", s2, \"22\", s5, s3, s4 from root.vehicle.* align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -999,7 +999,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s0, s3,\"11\", s2, \"22\", s5, s3, s4 from root.vehicle.* group by device");
+          "select s0, s3,\"11\", s2, \"22\", s5, s3, s4 from root.vehicle.* align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1070,7 +1070,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s0, s5, \"11\", s2, \"22\", s5, s3, s4 from root.vehicle.* group by device");
+          "select s0, s5, \"11\", s2, \"22\", s5, s3, s4 from root.vehicle.* align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1142,7 +1142,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s0, s5, s5, \"11\", s2, \"22\", s5, s3, s4 from root.vehicle.* group by device");
+          "select s0, s5, s5, \"11\", s2, \"22\", s5, s3, s4 from root.vehicle.* align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1216,7 +1216,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s0, s0, s5, \"11\", s2, \"22\", s5, s3, s4 from root.vehicle.* group by device");
+          "select s0, s0, s5, \"11\", s2, \"22\", s5, s3, s4 from root.vehicle.* align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1289,7 +1289,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s0, s0, s5, \"11\", s2, \"11\", \"22\", s5, s3, s4 from root.vehicle.* group by device");
+          "select s0, s0, s5, \"11\", s2, \"11\", \"22\", s5, s3, s4 from root.vehicle.* align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1364,7 +1364,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s5, s0, s5, \"11\", s2, \"11\", \"22\", s5, s3, s0 from root.vehicle.* group by device");
+          "select s5, s0, s5, \"11\", s2, \"11\", \"22\", s5, s3, s0 from root.vehicle.* align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1439,7 +1439,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s5, s0, s5, \"11\", s2, \"11\", \"22\", s5, s3, s0 from root.vehicle.d1, root.vehicle.d0  group by device");
+          "select s5, s0, s5, \"11\", s2, \"11\", \"22\", s5, s3, s0 from root.vehicle.d1, root.vehicle.d0  align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {

@@ -173,7 +173,7 @@ public class IOTDBGroupByIT {
       boolean hasResultSet = statement.execute(
           "select count(temperature), sum(temperature), avg(temperature) from "
               + "root.ln.wf01.wt01 where time > 3 "
-              + "GROUP BY ([5, 160], 20ms)");
+              + "GROUP BY ([5, 160), 20ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -193,7 +193,7 @@ public class IOTDBGroupByIT {
       hasResultSet = statement.execute(
           "select count(temperature), sum(temperature), avg(temperature) from "
               + "root.ln.wf01.wt01 where temperature > 3 "
-              + "GROUP BY ([50, 160], 10ms)");
+              + "GROUP BY ([50, 160), 10ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -212,7 +212,7 @@ public class IOTDBGroupByIT {
       hasResultSet = statement.execute(
           "select count(temperature), sum(temperature), avg(temperature) from "
               + "root.ln.wf01.wt01 where temperature > 3 "
-              + "GROUP BY ([25, 314], 20ms)");
+              + "GROUP BY ([25, 314), 20ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -276,7 +276,7 @@ public class IOTDBGroupByIT {
       boolean hasResultSet = statement.execute(
           "select max_value(temperature), min_value(temperature), max_time(temperature), "
               + "min_time(temperature) from root.ln.wf01.wt01 where time > 3 "
-              + "GROUP BY ([2,30], 2ms)");
+              + "GROUP BY ([2,30), 2ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -297,7 +297,7 @@ public class IOTDBGroupByIT {
       hasResultSet = statement.execute(
           "select max_value(temperature), min_value(temperature), max_time(temperature), "
               + "min_time(temperature) from root.ln.wf01.wt01 where temperature > 3 "
-              + "GROUP BY ([2,300], 20ms)");
+              + "GROUP BY ([2,300), 20ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -352,7 +352,7 @@ public class IOTDBGroupByIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
           "select last_value(temperature), first_value(temperature) from root.ln.wf01.wt01 where time > 3 "
-              + "GROUP BY ([2,30], 4ms)");
+              + "GROUP BY ([2,30), 4ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -371,7 +371,7 @@ public class IOTDBGroupByIT {
       hasResultSet = statement.execute(
           "select first_value(temperature), last_value(temperature) from root.ln.wf01.wt01 "
               + "where temperature > 3 "
-              + "GROUP BY ([2,300], 20ms)");
+              + "GROUP BY ([2,300), 20ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -409,7 +409,7 @@ public class IOTDBGroupByIT {
       boolean hasResultSet = statement.execute(
           "select min_value(temperature), count(temperature), max_time(temperature), "
               + "min_time(temperature) from root.ln.wf01.wt01 where time > 3 GROUP BY "
-              + "([0, 680], 340ms)");
+              + "([0, 680), 340ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -430,7 +430,7 @@ public class IOTDBGroupByIT {
       hasResultSet = statement.execute(
           "select min_value(temperature), count (temperature), max_time(temperature), "
               + "min_time(temperature) from root.ln.wf01.wt01 where temperature > 3 GROUP BY "
-              + "([0, 680], 340ms)");
+              + "([0, 680), 340ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -484,7 +484,7 @@ public class IOTDBGroupByIT {
       boolean hasResultSet = statement.execute(
           "select count(temperature), sum(temperature), avg(temperature) from "
               + "root.ln.wf01.wt01 where temperature > 3 "
-              + "GROUP BY ([0, 600], 5ms, 30ms)");
+              + "GROUP BY ([0, 600), 5ms, 30ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
