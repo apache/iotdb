@@ -263,17 +263,24 @@ public class PhysicalGenerator {
 
       List<String> measurements = new ArrayList<>();
       Map<String, Set<String>> deviceToMeasurementsMap = new LinkedHashMap<>();
-      // to check the same measure in different devices having the same datatype
+      // to check the same measurement of different devices having the same datatype
       Map<String, TSDataType> dataTypeConsistencyChecker = new HashMap<>();
       List<Path> paths = new ArrayList<>();
 
-      // cur loc for path
+      // current location for measurements in SELECT
       int loc = 0;
 
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix in SELECT
         Path suffixPath = suffixPaths.get(i);
-        Set<String> deviceSetOfGivenSuffix = new HashSet<>(); // to deduplicate
+
+        // to deduplicate redundant device for a given suffix path
+        // e.g. select s0 from root.vehicle.d0, root.vehicle.d0 group by device
+        // need to ignore the second "root.vehicle.d0" for suffix "s0"
+        Set<String> deviceSetOfGivenSuffix = new HashSet<>();
+
+        // to record measurements in the loop of a suffix path
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
+
         Set<String> nonExistMeasurement = new HashSet<>();
         // if const measurement
         if (suffixPath.startWith("'") || suffixPath.startWith("\"")) {
@@ -298,10 +305,6 @@ public class PhysicalGenerator {
               String device = path.getDevice();
               tmpDeviceSet.add(device);
 
-              // ignore the duplicate prefix device for a given suffix path
-              // e.g. select s0 from root.vehicle.d0, root.vehicle.d0 group by device,
-              // for the given suffix path "s0", the second prefix device "root.vehicle.d0" is
-              // duplicated and should be neglected.
               if (deviceSetOfGivenSuffix.contains(device)) {
                 continue;
               }
@@ -323,14 +326,14 @@ public class PhysicalGenerator {
                 if (!dataType.equals(dataTypeConsistencyChecker.get(measurementChecked))) {
                   throw new QueryProcessException(
                       "The data types of the same measurement column should be the same across "
-                          + "devices in GROUP_BY_DEVICE sql. For more details please refer to the "
+                          + "devices in ALIGN_BY_DEVICE sql. For more details please refer to the "
                           + "SQL document.");
                 }
               } else {
                 dataTypeConsistencyChecker.put(measurementChecked, dataType);
               }
 
-              // update measurementSetOfGivenSuffix
+              // update measurementSetOfGivenSuffix and measurement location
               if (measurementSetOfGivenSuffix.add(measurementChecked)) {
                 loc++;
               }
@@ -344,12 +347,14 @@ public class PhysicalGenerator {
             }
             // update deviceSetOfGivenSuffix
             deviceSetOfGivenSuffix.addAll(tmpDeviceSet);
+
           } catch (MetadataException e) {
             throw new LogicalOptimizeException(
                 String.format("Error when getting all paths of a full path: %s",
                     fullPath.getFullPath()) + e.getMessage());
           }
         }
+
         nonExistMeasurement.removeAll(measurementSetOfGivenSuffix);
         // update notExistMeasurement
         for (String notExistMeasurementString : nonExistMeasurement) {
