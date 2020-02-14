@@ -78,46 +78,6 @@ public class MTree implements Serializable {
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path);
     }
-    MNode cur = getParent(nodeNames);
-    String storageGroupName = cur.getStorageGroupName();
-
-    MNode leaf = new MNode(nodeNames[nodeNames.length - 1], cur, dataType, encoding, compressor);
-    if (props != null && !props.isEmpty()) {
-      leaf.getSchema().setProps(props);
-    }
-    leaf.setStorageGroupName(storageGroupName);
-    if (cur.isLeaf()) {
-      throw new PathAlreadyExistException(cur.getFullPath());
-    }
-    cur.addChild(nodeNames[nodeNames.length - 1], leaf);
-  }
-
-  /**
-   * Add device to MTree. This is available IF and ONLY IF creating schema automatically is enabled
-   *
-   * @param deviceId device id
-   */
-  MNode addDevice(String deviceId) throws MetadataException {
-    String[] nodeNames = MetaUtils.getNodeNames(deviceId);
-    if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
-      throw new IllegalPathException(deviceId);
-    }
-    MNode cur = root;
-    for (int i = 1; i < nodeNames.length; i++) {
-      if (!cur.hasChildWithKey(nodeNames[i])) {
-        cur.addChild(nodeNames[i], new MNode(nodeNames[i], cur, false));
-      }
-      cur = cur.getChild(nodeNames[i]);
-    }
-    return cur;
-  }
-
-  /**
-   * Get nodes parent
-   *
-   * @param nodeNames node names
-   */
-  private MNode getParent(String[] nodeNames) throws MetadataException {
     MNode cur = root;
     String storageGroupName = null;
     int i = 1;
@@ -140,6 +100,29 @@ public class MTree implements Serializable {
       i++;
     }
     cur.setStorageGroupName(storageGroupName);
+    MNode leaf = new MNode(nodeNames[nodeNames.length - 1], cur, dataType, encoding, compressor);
+    leaf.getSchema().setProps(props);
+    leaf.setStorageGroupName(cur.getStorageGroupName());
+    cur.addChild(nodeNames[nodeNames.length - 1], leaf);
+  }
+
+  /**
+   * Add path to MTree. This is available IF and ONLY IF creating schema automatically is enabled
+   *
+   * @param path device id
+   */
+  MNode addPath(String path) throws MetadataException {
+    String[] nodeNames = MetaUtils.getNodeNames(path);
+    if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
+      throw new IllegalPathException(path);
+    }
+    MNode cur = root;
+    for (int i = 1; i < nodeNames.length; i++) {
+      if (!cur.hasChildWithKey(nodeNames[i])) {
+        cur.addChild(nodeNames[i], new MNode(nodeNames[i], cur, false));
+      }
+      cur = cur.getChild(nodeNames[i]);
+    }
     return cur;
   }
 
@@ -408,9 +391,9 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all the storage group seriesPaths for one seriesPath.
+   * Get all storage groups for path. path could be only a prefix
    *
-   * @return List storage group seriesPath list
+   * @return storage group list
    * @apiNote :for cluster
    */
   List<String> getStorageGroupByPath(String path) throws MetadataException {
@@ -783,18 +766,6 @@ public class MTree implements Serializable {
       cur = cur.getChild(nodes[i]);
     }
     return cur.getSchemaMap();
-  }
-
-  /**
-   * Get num schema map for the storage group
-   */
-  Map<String, Integer> getStorageGroupNumSchemaMap(String path) {
-    String[] nodes = MetaUtils.getNodeNames(path);
-    MNode cur = root;
-    for (int i = 1; i < nodes.length; i++) {
-      cur = cur.getChild(nodes[i]);
-    }
-    return cur.getNumSchemaMap();
   }
 
   /**

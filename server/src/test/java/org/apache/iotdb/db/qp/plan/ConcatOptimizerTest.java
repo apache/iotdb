@@ -44,7 +44,7 @@ import org.junit.Test;
 /**
  * test the correctness of {@linkplain ConcatPathOptimizer ConcatPathOptimizer}
  */
-public class TestConcatOptimizer {
+public class ConcatOptimizerTest {
 
   private Planner processor;
 
@@ -65,7 +65,6 @@ public class TestConcatOptimizer {
         CompressionType.UNCOMPRESSED, null);
     MManager.getInstance().addPathToMTree("root.laptop.d3.s2", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-
   }
 
   @After
@@ -91,7 +90,7 @@ public class TestConcatOptimizer {
   }
 
   @Test
-  public void testConcat3() throws QueryProcessException, RecognitionException{
+  public void testConcat3() throws QueryProcessException, RecognitionException {
     String inputSQL = "select s1 from root.laptop.d1 where s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
     SingleSeriesExpression seriesExpression = new SingleSeriesExpression(
@@ -99,5 +98,4 @@ public class TestConcatOptimizer {
         ValueFilter.lt(10));
     assertEquals(seriesExpression.toString(), ((RawDataQueryPlan) plan).getExpression().toString());
   }
-
 }

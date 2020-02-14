@@ -56,8 +56,6 @@ public class MNode implements Serializable {
    */
   private Map<String, MeasurementSchema> schemaMap;
 
-  private Map<String, Integer> numSchemaMap;
-
   /**
    * Corresponding storage group name for current node
    */
@@ -110,19 +108,13 @@ public class MNode implements Serializable {
     this.isStorageGroup = isStorageGroup;
     if (isStorageGroup) {
       schemaMap = new HashMap<>();
-      numSchemaMap = new HashMap<>();
     } else {
-      numSchemaMap = null;
       schemaMap = null;
     }
   }
 
   public Map<String, MeasurementSchema> getSchemaMap() {
     return schemaMap;
-  }
-
-  public Map<String, Integer> getNumSchemaMap() {
-    return numSchemaMap;
   }
 
   public boolean isLeaf() {

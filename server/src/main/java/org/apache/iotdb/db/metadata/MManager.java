@@ -280,7 +280,6 @@ public class MManager {
       String storageGroupName = getStorageGroupName(path);
       // the two map is stored in the storage group node
       Map<String, MeasurementSchema> schemaMap = getStorageGroupSchemaMap(storageGroupName);
-      Map<String, Integer> numSchemaMap = getStorageGroupNumSchemaMap(storageGroupName);
       String lastNode = new Path(path).getMeasurement();
       boolean isNewMeasurement = true;
       // Thread safety: just one thread can access/modify the schemaMap
@@ -304,7 +303,6 @@ public class MManager {
           } catch (IOException e) {
             throw new MetadataException(e.getMessage());
           }
-          numSchemaMap.put(lastNode, numSchemaMap.get(lastNode) + 1);
         } else {
           try {
             addPathToMTreeInternal(path, dataType, encoding, compressor, props);
@@ -312,7 +310,6 @@ public class MManager {
             throw new MetadataException(e.getMessage());
           }
           schemaMap.put(lastNode, mtree.getSchema(path));
-          numSchemaMap.put(lastNode, 1);
         }
         try {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
@@ -449,16 +446,9 @@ public class MManager {
     String emptiedStorageGroup;
     // the two maps are stored in the storage group node
     Map<String, MeasurementSchema> schemaMap = getStorageGroupSchemaMap(storageGroupName);
-    Map<String, Integer> numSchemaMap = getStorageGroupNumSchemaMap(storageGroupName);
     // Thread safety: just one thread can access/modify the schemaMap
     synchronized (schemaMap) {
       String measurementId = new Path(path).getMeasurement();
-      if (numSchemaMap.get(measurementId) == 1) {
-        numSchemaMap.remove(measurementId);
-        schemaMap.remove(measurementId);
-      } else {
-        numSchemaMap.put(measurementId, numSchemaMap.get(measurementId) - 1);
-      }
       try {
         emptiedStorageGroup = deletePathFromMTree(path);
       } catch (MetadataException | IOException e) {
@@ -703,18 +693,6 @@ public class MManager {
   }
 
   /**
-   * Get num schema map for storage group
-   */
-  private Map<String, Integer> getStorageGroupNumSchemaMap(String path) {
-    lock.readLock().lock();
-    try {
-      return mtree.getStorageGroupNumSchemaMap(path);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
    * Get the storage group name for given path. Notice: This method could be called if and only if
    * the seriesPath includes one node whose {@code isStorageGroup} is true.
    *
@@ -786,8 +764,7 @@ public class MManager {
   }
 
   /**
-   * Return all paths for given seriesPath if the seriesPath is abstract. Or return the seriesPath
-   * itself.
+   * Return all paths for given path if the path is abstract. Or return the path itself.
    *
    * @param path can be a prefix or a full path. if the wildcard is not at the tail, then each
    * wildcard can only match one level, otherwise it can match to the tail.
@@ -923,7 +900,7 @@ public class MManager {
           String storageGroupName = getStorageGroupNameByAutoLevel(path, sgLevel);
           setStorageGroup(storageGroupName);
         }
-        node = mtree.addDevice(path);
+        node = mtree.addPath(path);
       }
     }
     return node;
