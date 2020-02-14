@@ -47,14 +47,14 @@ public class ClientPoolTest {
 
   @Test
   public void testDataClient() throws IOException {
-    testClientFactory = new DataClient.Factory(new TAsyncClientManager(), new TBinaryProtocol.Factory());
+    testClientFactory = new DataClient.Factory(new TBinaryProtocol.Factory());
     getClient();
     putClient();
   }
 
   @Test
   public void testMetaClient() throws IOException {
-    testClientFactory = new MetaClient.Factory(new TAsyncClientManager(), new TBinaryProtocol.Factory());
+    testClientFactory = new MetaClient.Factory(new TBinaryProtocol.Factory());
     getClient();
     putClient();
   }

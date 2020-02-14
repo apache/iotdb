@@ -120,10 +120,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
-      PartitionedSnapshotLogManager logManager, MetaGroupMember metaGroupMember,
-      TAsyncClientManager clientManager) {
+      PartitionedSnapshotLogManager logManager, MetaGroupMember metaGroupMember) {
     super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
-        new ClientPool(new DataClient.Factory(clientManager, factory)));
+        new ClientPool(new DataClient.Factory(factory)));
     this.thisNode = thisNode;
     this.logManager = logManager;
     super.logManager = logManager;
@@ -166,21 +165,18 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   public static class Factory {
     private TProtocolFactory protocolFactory;
     private MetaGroupMember metaGroupMember;
-    private TAsyncClientManager clientManager;
     private LogApplier applier;
 
-    Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember, LogApplier applier
-        ,TAsyncClientManager clientManager) {
+    Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember, LogApplier applier) {
       this.protocolFactory = protocolFactory;
       this.metaGroupMember = metaGroupMember;
       this.applier = applier;
-      this.clientManager = clientManager;
     }
 
     public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode) {
       return new DataGroupMember(protocolFactory, partitionGroup, thisNode,
           new FilePartitionedSnapshotLogManager(applier, metaGroupMember.getPartitionTable(),
-              partitionGroup.getHeader()), metaGroupMember, clientManager);
+              partitionGroup.getHeader()), metaGroupMember);
     }
   }
 

@@ -179,7 +179,7 @@ public class PartitionUtils {
       GroupByFilter groupByFilter = ((GroupByFilter) filter);
       return new Intervals(groupByFilter.getStartTime(), groupByFilter.getEndTime() + 1);
     }
-    logger.warn("Unrecognized filter class: {}", filter.getClass());
+    // value filter
     return Intervals.ALL_INTERVAL;
   }
 

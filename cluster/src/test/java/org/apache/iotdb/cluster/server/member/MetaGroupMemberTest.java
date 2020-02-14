@@ -103,12 +103,10 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class MetaGroupMemberTest extends MemberTest {
@@ -130,7 +128,7 @@ public class MetaGroupMemberTest extends MemberTest {
     dataGroupMember = getDataGroupMember(allNodes, TestUtils.getNode(0));
     dataGroupMember.setCharacter(LEADER);
     dataClusterServer = new DataClusterServer(TestUtils.getNode(0),
-        new DataGroupMember.Factory(null, metaGroupMember, null, null) {
+        new DataGroupMember.Factory(null, metaGroupMember, null) {
           @Override
           public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode) {
             return getDataGroupMember(partitionGroup, thisNode);
@@ -148,7 +146,7 @@ public class MetaGroupMemberTest extends MemberTest {
   private DataGroupMember getDataGroupMember(PartitionGroup group, Node node) {
     return new DataGroupMember(null, group, node, new TestPartitionedLogManager(null,
         partitionTable, group.getHeader(), TestSnapshot::new),
-        metaGroupMember, null) {
+        metaGroupMember) {
       @Override
       public boolean syncLeader() {
         return true;

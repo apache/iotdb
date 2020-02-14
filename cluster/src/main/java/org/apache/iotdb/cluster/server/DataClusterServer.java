@@ -120,7 +120,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       if (partitionGroup.contains(thisNode)) {
         // the two nodes are in the same group, create a new data member
         member = dataMemberFactory.create(partitionGroup, thisNode);
-        headerGroupMap.put(header, member);
+        DataGroupMember prevMember = headerGroupMap.put(header, member);
+        if (prevMember != null) {
+          prevMember.stop();
+        }
         logger.info("Created a member for header {}", header);
         member.start();
       } else {

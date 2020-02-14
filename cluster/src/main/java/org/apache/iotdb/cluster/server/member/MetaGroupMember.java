@@ -171,13 +171,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   public MetaGroupMember(TProtocolFactory factory, Node thisNode)
       throws IOException {
-    super("Meta", new ClientPool(new MetaClient.Factory(new TAsyncClientManager(), factory)));
+    super("Meta", new ClientPool(new MetaClient.Factory(factory)));
     allNodes = new ArrayList<>();
     LogApplier dataLogApplier = new DataLogApplier(this);
-    dataMemberFactory = new Factory(factory, this, dataLogApplier,
-        new TAsyncClientManager());
+    dataMemberFactory = new Factory(factory, this, dataLogApplier);
     dataClientPool =
-        new ClientPool(new DataClient.Factory(new TAsyncClientManager(), factory));
+        new ClientPool(new DataClient.Factory(factory));
     initLogManager();
     setThisNode(thisNode);
     loadIdentifier();
@@ -1167,7 +1166,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         throw new StorageEngineException(e);
       }
     }
-
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: Sending query of {} to {} groups", name, path, partitionGroups.size());
+    }
     ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
     for (PartitionGroup partitionGroup : partitionGroups) {
       mergeReader.addReaderWithPriority(getSeriesReader(partitionGroup, path, filter, context,

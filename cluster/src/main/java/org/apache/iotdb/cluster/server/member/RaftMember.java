@@ -122,7 +122,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
 
     heartBeatService =
-        Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, name + "-HeartBeatThread"));
+        Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
+            name + "-HeartBeatThread@" + System.currentTimeMillis()));
     catchUpService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
   }
 

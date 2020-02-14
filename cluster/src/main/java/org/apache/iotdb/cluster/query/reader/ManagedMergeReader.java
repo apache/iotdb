@@ -48,7 +48,7 @@ public class ManagedMergeReader extends PriorityMergeReader implements ManagedSe
       return true;
     }
     constructBatch();
-    return batchData == null;
+    return batchData != null;
   }
 
   private void constructBatch() throws IOException {
@@ -62,8 +62,8 @@ public class ManagedMergeReader extends PriorityMergeReader implements ManagedSe
   }
 
   @Override
-  public BatchData nextBatch() {
-    if (!hasNext()) {
+  public BatchData nextBatch() throws IOException {
+    if (!hasNextBatch()) {
       throw new NoSuchElementException();
     }
     BatchData ret = batchData;

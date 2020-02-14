@@ -94,7 +94,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
@@ -155,14 +154,14 @@ public class DataGroupMemberTest extends MemberTest {
     };
   }
 
-  private DataGroupMember getDataGroupMember(Node node) throws IOException {
+  private DataGroupMember getDataGroupMember(Node node) {
     PartitionGroup nodes = partitionTable.getHeaderGroup(node);
     return getDataGroupMember(node, nodes);
   }
 
-  private DataGroupMember getDataGroupMember(Node node, PartitionGroup nodes) throws IOException {
+  private DataGroupMember getDataGroupMember(Node node, PartitionGroup nodes) {
     return new DataGroupMember(new TCompactProtocol.Factory(), nodes, node, getLogManager(nodes),
-        testMetaMember, new TAsyncClientManager()) {
+        testMetaMember) {
       @Override
       public AsyncClient connectNode(Node node) {
         try {
@@ -273,7 +272,7 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testAddNode() throws IOException {
+  public void testAddNode() {
     PartitionGroup partitionGroup = new PartitionGroup(TestUtils.getNode(0),
         TestUtils.getNode(50), TestUtils.getNode(90));
     DataGroupMember firstMember = getDataGroupMember(TestUtils.getNode(0),
