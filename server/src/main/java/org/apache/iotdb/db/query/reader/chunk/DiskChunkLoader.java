@@ -44,9 +44,4 @@ public class DiskChunkLoader implements IChunkLoader {
   public void close() throws IOException {
     reader.close();
   }
-
-  @Override
-  public void clear() {
-    // no cache need clear
-  }
 }

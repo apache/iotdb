@@ -67,9 +67,4 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
   public void close() throws IOException {
     reader.close();
   }
-
-  @Override
-  public void clear() {
-    chunkCache.clear();
-  }
 }

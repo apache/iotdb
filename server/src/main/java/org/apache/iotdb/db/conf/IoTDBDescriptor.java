@@ -513,7 +513,7 @@ public class IoTDBDescriptor {
     }
 
     String queryMemoryAllocateProportion = properties
-        .getProperty("filemeta_chunkmeta_free_memory_proportion");
+        .getProperty("filemeta_chunkmeta_chunk_free_memory_proportion");
     if (queryMemoryAllocateProportion != null) {
       String[] proportions = queryMemoryAllocateProportion.split(":");
       int proportionSum = 0;
