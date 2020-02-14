@@ -472,11 +472,13 @@ public class TsFileProcessor {
         writer.mark();
         try {
           double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
-          logger.debug("totalMemTableSize: {}, the file size: {}", totalMemTableSize,
+          logger.debug(
+              "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
+              writer.getFile().getAbsolutePath(), compressionRatio, totalMemTableSize,
               writer.getPos());
           if (compressionRatio == 0) {
             logger.error(
-                "The compression ratio of tsfile {} is 0, totalMemTableSize: {}, the file size: {}, please check the log.",
+                "The compression ratio of tsfile {} is 0, totalMemTableSize: {}, the file size: {}",
                 writer.getFile().getAbsolutePath(), totalMemTableSize, writer.getPos());
           }
           CompressionRatio.getInstance().updateRatio(compressionRatio);
