@@ -103,6 +103,7 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.apache.thrift.transport.TTransportException;
@@ -289,6 +290,20 @@ public class MetaGroupMemberTest extends MemberTest {
                   try {
                     resultHandler.onComplete(MManager.getInstance().getPaths(path));
                   } catch (MetadataException e) {
+                    resultHandler.onError(e);
+                  }
+                }).start();
+              }
+
+              @Override
+              public void executeNonQueryPlan(ExecutNonQueryReq request,
+                  AsyncMethodCallback<TSStatus> resultHandler) {
+                new Thread(() -> {
+                  try {
+                    PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
+                    queryProcessExecutor.processNonQuery(plan);
+                    resultHandler.onComplete(StatusUtils.OK);
+                  } catch (IOException | QueryProcessException e) {
                     resultHandler.onError(e);
                   }
                 }).start();

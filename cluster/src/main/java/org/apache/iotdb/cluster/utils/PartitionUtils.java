@@ -22,7 +22,10 @@ package org.apache.iotdb.cluster.utils;
 import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
 
 import java.util.ArrayList;
+import java.util.Set;
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
@@ -124,46 +127,49 @@ public class PartitionUtils {
     return newPlan;
   }
 
-  public static TimeIntervals extractTimeInterval(Filter filter) {
+  public static Intervals extractTimeInterval(Filter filter) {
+    if (filter == null) {
+      return Intervals.ALL_INTERVAL;
+    }
     // and, or, not, value, time, group by
     // eq, neq, gt, gteq, lt, lteq, in
     if (filter instanceof AndFilter) {
       AndFilter andFilter = ((AndFilter) filter);
-      TimeIntervals leftIntervals = extractTimeInterval(andFilter.getLeft());
-      TimeIntervals rightIntervals = extractTimeInterval(andFilter.getRight());
+      Intervals leftIntervals = extractTimeInterval(andFilter.getLeft());
+      Intervals rightIntervals = extractTimeInterval(andFilter.getRight());
       return leftIntervals.intersection(rightIntervals);
     } else if (filter instanceof OrFilter) {
       OrFilter orFilter = ((OrFilter) filter);
-      TimeIntervals leftIntervals = extractTimeInterval(orFilter.getLeft());
-      TimeIntervals rightIntervals = extractTimeInterval(orFilter.getRight());
+      Intervals leftIntervals = extractTimeInterval(orFilter.getLeft());
+      Intervals rightIntervals = extractTimeInterval(orFilter.getRight());
       return leftIntervals.union(rightIntervals);
     } else if (filter instanceof NotFilter) {
       NotFilter notFilter = ((NotFilter) filter);
       return extractTimeInterval(notFilter.getFilter()).not();
     } else if (filter instanceof TimeGt) {
       TimeGt timeGt = ((TimeGt) filter);
-      return new TimeIntervals(((long) timeGt.getValue()) + 1, Long.MAX_VALUE);
+      return new Intervals(((long) timeGt.getValue()) + 1, Long.MAX_VALUE);
     } else if (filter instanceof TimeGtEq) {
       TimeGtEq timeGtEq = ((TimeGtEq) filter);
-      return new TimeIntervals(((long) timeGtEq.getValue()), Long.MAX_VALUE);
+      return new Intervals(((long) timeGtEq.getValue()), Long.MAX_VALUE);
     } else if (filter instanceof TimeEq) {
       TimeEq timeEq = ((TimeEq) filter);
-      return new TimeIntervals(((long) timeEq.getValue()), ((long) timeEq.getValue()));
+      return new Intervals(((long) timeEq.getValue()), ((long) timeEq.getValue()));
     } else if (filter instanceof TimeNotEq) {
       TimeNotEq timeNotEq = ((TimeNotEq) filter);
-      TimeIntervals intervals = new TimeIntervals();
+      Intervals intervals = new Intervals();
       intervals.addInterval(Long.MIN_VALUE, (long) timeNotEq.getValue() - 1);
       intervals.addInterval((long) timeNotEq.getValue() + 1, Long.MAX_VALUE);
       return intervals;
     } else if (filter instanceof TimeLt) {
       TimeLt timeLt = ((TimeLt) filter);
-      return new TimeIntervals(Long.MIN_VALUE, (long) timeLt.getValue() - 1);
+      return new Intervals(Long.MIN_VALUE, (long) timeLt.getValue() - 1);
     } else if (filter instanceof TimeLtEq) {
       TimeLtEq timeLtEq = ((TimeLtEq) filter);
-      return new TimeIntervals(Long.MIN_VALUE, (long) timeLtEq.getValue());
+      return new Intervals(Long.MIN_VALUE, (long) timeLtEq.getValue());
     } else if (filter instanceof TimeIn) {
       TimeIn timeIn = ((TimeIn) filter);
-      TimeIntervals intervals = new TimeIntervals();
+      Intervals intervals = new Intervals();
       for (Object value : timeIn.getValues()) {
         long time = ((long) value);
         intervals.addInterval(time, time);
@@ -171,22 +177,22 @@ public class PartitionUtils {
       return intervals;
     } else if (filter instanceof GroupByFilter) {
       GroupByFilter groupByFilter = ((GroupByFilter) filter);
-      return new TimeIntervals(groupByFilter.getStartTime(), groupByFilter.getEndTime() + 1);
+      return new Intervals(groupByFilter.getStartTime(), groupByFilter.getEndTime() + 1);
     }
     logger.warn("Unrecognized filter class: {}", filter.getClass());
-    return TimeIntervals.ALL_INTERVAL;
+    return Intervals.ALL_INTERVAL;
   }
 
-  public static class TimeIntervals extends ArrayList<Long> {
+  public static class Intervals extends ArrayList<Long> {
 
-    public static final TimeIntervals ALL_INTERVAL = new TimeIntervals(Long.MIN_VALUE,
+    public static final Intervals ALL_INTERVAL = new Intervals(Long.MIN_VALUE,
         Long.MAX_VALUE);
 
-    public TimeIntervals() {
+    public Intervals() {
       super();
     }
 
-    public TimeIntervals(long lowerBound, long upperBound) {
+    public Intervals(long lowerBound, long upperBound) {
       super();
       addInterval(lowerBound, upperBound);
     }
@@ -208,8 +214,8 @@ public class PartitionUtils {
       add(upperBound);
     }
 
-    public TimeIntervals intersection(TimeIntervals that) {
-      TimeIntervals result = new TimeIntervals();
+    public Intervals intersection(Intervals that) {
+      Intervals result = new Intervals();
       int thisSize = this.getIntervalSize();
       int thatSize = that.getIntervalSize();
       for (int i = 0; i < thisSize; i++) {
@@ -235,8 +241,8 @@ public class PartitionUtils {
      * @param that
      * @return
      */
-    public TimeIntervals union(TimeIntervals that) {
-      TimeIntervals result = new TimeIntervals();
+    public Intervals union(Intervals that) {
+      Intervals result = new Intervals();
       if (this.isEmpty()) {
         return that;
       } else if (that.isEmpty()) {
@@ -287,7 +293,7 @@ public class PartitionUtils {
         }
       }
       // merge the remaining intervals
-      TimeIntervals remainingIntervals = thisIndex < thisSize ? this : that;
+      Intervals remainingIntervals = thisIndex < thisSize ? this : that;
       int remainingIndex = thisIndex < thisSize ? thisIndex : thatIndex;
       for (int i = remainingIndex; i < remainingIntervals.getIntervalSize(); i++) {
         long lb = remainingIntervals.getLowerBound(i);
@@ -308,11 +314,11 @@ public class PartitionUtils {
       return result;
     }
 
-    public TimeIntervals not() {
+    public Intervals not() {
       if (isEmpty()) {
         return ALL_INTERVAL;
       }
-      TimeIntervals result = new TimeIntervals();
+      Intervals result = new Intervals();
       long firstLB = getLowerBound(0);
       if (firstLB != Long.MIN_VALUE) {
         result.addInterval(Long.MIN_VALUE, firstLB - 1);
@@ -332,6 +338,25 @@ public class PartitionUtils {
         result.addInterval(lastUB + 1, Long.MAX_VALUE);
       }
       return result;
+    }
+  }
+
+  /**
+   * Calculate the headers of the groups that possibly store the data of a timeseries over the
+   * given time range.
+   * @param storageGroupName
+   * @param timeLowerBound
+   * @param timeUpperBound
+   * @param partitionTable
+   * @param result
+   */
+  public static void getIntervalHeaders(String storageGroupName, long timeLowerBound, long timeUpperBound,
+      PartitionTable partitionTable, Set<Node> result) {
+    long partitionInterval = StorageEngine.getTimePartitionInterval();
+    long currPartitionStart = timeLowerBound / partitionInterval * partitionInterval;
+    while (currPartitionStart <= timeUpperBound) {
+      result.add(partitionTable.routeToHeader(storageGroupName, currPartitionStart));
+      currPartitionStart += partitionInterval;
     }
   }
 }

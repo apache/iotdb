@@ -650,12 +650,18 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
             request.isPushdownUnseq());
       }
 
-      long readerId = queryManager.registerReader(batchReader);
-      queryContext.registerLocalReader(readerId);
-
-      logger.debug("{}: Build a reader of {} for {}, readerId: {}", name, path,
-          request.getRequester(), readerId);
-      resultHandler.onComplete(readerId);
+      if (batchReader.hasNextBatch()) {
+        long readerId = queryManager.registerReader(batchReader);
+        queryContext.registerLocalReader(readerId);
+        logger.debug("{}: Build a reader of {} for {}#{}, readerId: {}", name, path,
+            request.getRequester(), request.getQueryId(), readerId);
+        resultHandler.onComplete(readerId);
+      } else {
+        logger.debug("{}: There is no data {} for {}#{}", name, path,
+            request.getRequester(), request.getQueryId());
+        resultHandler.onComplete(-1L);
+        batchReader.close();
+      }
     } catch (IOException | StorageEngineException e) {
       resultHandler.onError(e);
     }

@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.server.member;
 
 import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
 
+import com.sun.prism.PixelFormat.DataType;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -78,6 +79,8 @@ import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
+import org.apache.iotdb.cluster.query.reader.EmptyReader;
+import org.apache.iotdb.cluster.query.reader.ManagedMergeReader;
 import org.apache.iotdb.cluster.query.reader.RemoteSeriesReaderByTimestamp;
 import org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader;
 import org.apache.iotdb.cluster.rpc.thrift.*;
@@ -98,6 +101,7 @@ import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.MetaHeartBeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
+import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -114,6 +118,8 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
+import org.apache.iotdb.db.query.reader.universal.CachedPriorityMergeReader;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -1133,14 +1139,47 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       throws IOException, StorageEngineException {
     // make sure the partition table is new
     syncLeader();
-    PartitionGroup partitionGroup;
-    try {
-      // TODO-Cluster#350: use time in partitioning
-      partitionGroup = partitionTable.partitionByPathTime(path.getFullPath(), 0);
-    } catch (StorageGroupNotSetException e) {
-      throw new StorageEngineException(e);
+    Intervals intervals = PartitionUtils.extractTimeInterval(filter);
+    long firstLB = intervals.getLowerBound(0);
+    long lastUB = intervals.getUpperBound(intervals.getIntervalSize() - 1);
+    List<PartitionGroup> partitionGroups = new ArrayList<>();
+    if (firstLB == Long.MIN_VALUE || lastUB == Long.MAX_VALUE) {
+      // as there is no TimeLowerBound or TimeUpperBound, the query should be broadcast to every
+      // group
+      // TODO-Cluster: cache the AllGroups in PartitionTable?
+      for (Node node : partitionTable.getAllNodes()) {
+        partitionGroups.add(partitionTable.getHeaderGroup(node));
+      }
+    } else {
+      // compute the related data groups of all intervals
+      // TODO-Cluster: change to a broadcast when the computation is too expensive
+      try {
+        String storageGroupName = MManager.getInstance().getStorageGroupNameByPath(path.getFullPath());
+        Set<Node> groupHeaders = new HashSet<>();
+        for (int i = 0; i < intervals.getIntervalSize(); i++) {
+          PartitionUtils.getIntervalHeaders(storageGroupName, intervals.getLowerBound(i),
+              intervals.getUpperBound(i), partitionTable, groupHeaders);
+        }
+        for (Node groupHeader : groupHeaders) {
+          partitionGroups.add(partitionTable.getHeaderGroup(groupHeader));
+        }
+      } catch (StorageGroupNotSetException e) {
+        throw new StorageEngineException(e);
+      }
     }
 
+    ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
+    for (PartitionGroup partitionGroup : partitionGroups) {
+      mergeReader.addReaderWithPriority(getSeriesReader(partitionGroup, path, filter, context,
+          dataType, withValueFilter, pushDownUnseq), 0);
+    }
+    return mergeReader;
+  }
+
+  // get SeriesReader from a PartitionGroup
+  private ManagedSeriesReader getSeriesReader(PartitionGroup partitionGroup, Path path,
+      Filter filter, QueryContext context, TSDataType dataType, boolean withValueFilter,
+      boolean pushDownUnseq) throws IOException, StorageEngineException {
     if (partitionGroup.contains(thisNode)) {
       // the target storage group contains this node, perform a local query
       DataGroupMember dataGroupMember = getDataClusterServer().getDataMember(partitionGroup.getHeader(),
@@ -1189,9 +1228,16 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         }
         Long readerId = result.get();
         if (readerId != null) {
-          ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
-          logger.debug("{}: get a readerId {} for {} from {}", name, readerId, path, node);
-          return new RemoteSimpleSeriesReader(readerId, node, partitionGroup.getHeader(), this);
+          if (readerId != -1) {
+            ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
+            logger.debug("{}: get a readerId {} for {} from {}", name, readerId, path, node);
+            return new RemoteSimpleSeriesReader(readerId, node, partitionGroup.getHeader(), this);
+          } else {
+            // there is no satisfying data on the remote node, create an empty reader to reduce
+            // further communication
+            logger.debug("{}: no data for {} from {}", name, path, node);
+            return new EmptyReader();
+          }
         }
       } catch (TException | InterruptedException e) {
         logger.error("{}: Cannot query {} from {}", name, path, node, e);
