@@ -588,16 +588,16 @@ public class IoTDBGroupbyDeviceIT {
       // root.other.d1.s0 FLOAT
       Assert.assertTrue(e.getMessage().contains(
           "The data types of the same measurement column should be the same across devices in "
-              + "GROUP_BY_DEVICE sql."));
+              + "ALIGN_BY_DEVICE sql."));
     }
   }
 
   @Test
   public void unusualCaseTest1() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "root.other.d1,1,",
         "root.vehicle.d0,11,",
-        "root.vehicle.d1,2,"
+        "root.vehicle.d1,2,",
+        "root.other.d1,1,"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
