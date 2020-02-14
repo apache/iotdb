@@ -477,6 +477,11 @@ public abstract class TVList {
     sorted = sorted && inputSorted && (size == 0 || inPutMinTime >= getTime(size - 1));
   }
 
+  /**
+   * for log
+   */
+  public abstract TimeValuePair getTimeValuePair(int index);
+
   protected abstract TimeValuePair getTimeValuePair(int index, long time,
       Integer floatPrecision, TSEncoding encoding);
 
