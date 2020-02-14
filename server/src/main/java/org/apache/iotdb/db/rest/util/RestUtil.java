@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.rest.util;
 
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.ErrorHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.servlet.ServletContainer;
@@ -27,11 +29,22 @@ public class RestUtil {
     ServletContextHandler ctx =
         new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
 
-    ctx.setContextPath("/rest");
+    ctx.setContextPath("/");
     ServletHolder serHol = ctx.addServlet(ServletContainer.class, "/*");
     serHol.setInitParameter("jersey.config.server.provider.packages",
         "org.apache.iotdb.db.rest.controller");
     serHol.setInitOrder(1);
     return ctx;
   }
+
+  public static Server getJettyServer(ServletContextHandler handler, int port) {
+    Server server = new Server(port);
+    ErrorHandler errorHandler = new ErrorHandler();
+    errorHandler.setShowStacks(true);
+    errorHandler.setServer(server);
+    server.addBean(errorHandler);
+    server.setHandler(handler);
+    return server;
+  }
+
 }

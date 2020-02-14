@@ -44,9 +44,9 @@ public class IoTDBConfig {
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
   /**
-   * Port which the metrics service listens to.
+   * Port which the rest service listens to.
    */
-  private int metricsPort = 8181;
+  private int RestPort = 8181;
   private String rpcAddress = "0.0.0.0";
 
   /**
@@ -594,12 +594,12 @@ public class IoTDBConfig {
     this.dataDirs = dataDirs;
   }
 
-  public int getMetricsPort() {
-    return metricsPort;
+  public int getRestPort() {
+    return RestPort;
   }
 
-  public void setMetricsPort(int metricsPort) {
-    this.metricsPort = metricsPort;
+  public void setRestPort(int restPort) {
+    this.RestPort = restPort;
   }
 
   public String getRpcAddress() {

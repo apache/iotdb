@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -31,10 +30,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.metrics.server.JettyUtil;
-import org.apache.iotdb.db.metrics.server.MetricsSystem;
-import org.apache.iotdb.db.metrics.server.ServerArgument;
-import org.apache.iotdb.db.metrics.ui.MetricsWebUI;
 import org.apache.iotdb.db.rest.util.RestUtil;
 import org.eclipse.jetty.server.Server;
 import org.slf4j.Logger;
@@ -61,7 +56,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
   @Override
   public int getMetricsPort() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return config.getMetricsPort();
+    return config.getRestPort();
   }
 
   @Override
@@ -86,24 +81,19 @@ public class MetricsService implements MetricsServiceMBean, IService {
     logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     executorService = Executors.newSingleThreadExecutor();
     int port = getMetricsPort();
-    MetricsSystem metricsSystem = new MetricsSystem(new ServerArgument(port));
-    MetricsWebUI metricsWebUI = new MetricsWebUI(metricsSystem.getMetricRegistry());
-    metricsWebUI.getHandler().addServlet(metricsSystem.getServletHolder(), "/json");
-    metricsWebUI.initialize();
-    server = JettyUtil.getJettyServer(Arrays.asList(metricsWebUI.getHandler(), RestUtil.getRestContextHandler()), 8181);
-    metricsSystem.start();
+    server = RestUtil.getJettyServer(RestUtil.getRestContextHandler(), port);
     try {
       executorService.execute(new MetricsServiceThread(server));
       logger.info("{}: start {} successfully, listening on ip {} port {}",
           IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
           IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-          IoTDBDescriptor.getInstance().getConfig().getMetricsPort());
+          IoTDBDescriptor.getInstance().getConfig().getRestPort());
     } catch (NullPointerException e) {
       //issue IOTDB-415, we need to stop the service.
       logger.error("{}: start {} failed, listening on ip {} port {}",
           IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
           IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-          IoTDBDescriptor.getInstance().getConfig().getMetricsPort());
+          IoTDBDescriptor.getInstance().getConfig().getRestPort());
       stopService();
     }
   }
