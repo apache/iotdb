@@ -18,22 +18,24 @@
  */
 package org.apache.iotdb.db.rest.util;
 
+import org.apache.iotdb.db.rest.filter.CORSFilter;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ErrorHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 
 public class RestUtil {
   public static ServletContextHandler getRestContextHandler() {
     ServletContextHandler ctx =
         new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
-
+    ResourceConfig resourceConfig = new ResourceConfig();
+    resourceConfig.register(CORSFilter.class);
     ctx.setContextPath("/");
-    ServletHolder serHol = ctx.addServlet(ServletContainer.class, "/*");
-    serHol.setInitParameter("jersey.config.server.provider.packages",
-        "org.apache.iotdb.db.rest.controller");
-    serHol.setInitOrder(1);
+    resourceConfig.packages("org.apache.iotdb.db.rest.controller");
+    ServletHolder servletHolder = new ServletHolder(new ServletContainer(resourceConfig));
+    ctx.addServlet(servletHolder, "/*");
     return ctx;
   }
 
