@@ -33,6 +33,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
   private SeriesReader seriesReader;
   private BatchData batchData;
+  private long currentTime = Long.MIN_VALUE;
 
   public SeriesReaderByTimestamp(Path seriesPath, TSDataType dataType, QueryContext context,
       QueryDataSource dataSource) {
@@ -41,14 +42,23 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   }
 
   @Override
-  public Object getValueInTimestamp(long timestamp) throws IOException {
-    seriesReader.setTimeFilter(timestamp);
-    if ((batchData == null || batchData.getTimeByIndex(batchData.length() - 1) < timestamp)
-        && !hasNext(timestamp)) {
-      return null;
-    }
+  public Object[] getValuesInTimestamps(long[] timestamps) throws IOException {
+    Object[] result = new Object[timestamps.length];
 
-    return batchData.getValueInTimestamp(timestamp);
+    for (int i = 0; i < timestamps.length; i++) {
+      if (timestamps[i] < currentTime) {
+        throw new IOException("time must be increasing when use ReaderByTimestamp");
+      }
+      currentTime = timestamps[i];
+      seriesReader.setTimeFilter(currentTime);
+      if ((batchData == null || batchData.getMaxTimestamp() < currentTime)
+          && !hasNext(currentTime)) {
+        result[i] = null;
+        continue;
+      }
+      result[i] = batchData.getValueInTimestamp(currentTime);
+    }
+    return result;
   }
 
   private boolean hasNext(long timestamp) throws IOException {
