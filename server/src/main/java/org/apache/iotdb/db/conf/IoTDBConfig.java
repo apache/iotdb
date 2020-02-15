@@ -469,6 +469,9 @@ public class IoTDBConfig {
    */
   private long partitionInterval = 604800;
 
+  // default step of sliding window in proportion
+  private float defaultStep = 0.8f;
+
 
   //just for test
   //wait for 60 second by default.
@@ -1327,5 +1330,13 @@ public class IoTDBConfig {
 
   public void setThriftServerAwaitTimeForStopService(int thriftServerAwaitTimeForStopService) {
     this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
+  }
+
+  public float getDefaultStep() {
+    return defaultStep;
+  }
+
+  public void setDefaultStep(float defaultStep) {
+    this.defaultStep = defaultStep;
   }
 }

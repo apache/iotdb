@@ -37,6 +37,7 @@ import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -53,6 +54,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTablePool;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -88,6 +90,7 @@ public class TsFileProcessor {
    */
   private volatile boolean shouldClose;
   private IMemTable workMemTable;
+  private IMemTable flushMemTable;
   private VersionController versionController;
   /**
    * this callback is called after the corresponding TsFile is called endFile().
@@ -373,11 +376,11 @@ public class TsFileProcessor {
   public void asyncFlush() {
     flushQueryLock.writeLock().lock();
     try {
-      if (workMemTable == null) {
+      if (flushMemTable == null) {
         return;
       }
 
-      addAMemtableIntoFlushingList(workMemTable);
+      addAMemtableIntoFlushingList(flushMemTable);
 
     } catch (IOException e) {
       logger.error("WAL notify start flush failed", e);
@@ -551,6 +554,42 @@ public class TsFileProcessor {
       throw new TsFileProcessorException(e);
     }
   }
+
+  public void adjustMemTable() throws QueryProcessException {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    flushMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
+    for (String deviceId : workMemTable.getMemTableMap().keySet()) {
+      for (String measurementId : workMemTable.getMemTableMap().get(deviceId).keySet()) {
+        IWritableMemChunk series = workMemTable.getMemTableMap().get(deviceId).get(measurementId);
+        String[] measurements = new String[] {measurementId};
+        TSDataType[] dataTypes = new TSDataType[] {series.getType()};
+        BatchInsertPlan batchInsertPlan = new BatchInsertPlan(deviceId, measurements, dataTypes);
+        TVList tvList = series.getSortedTVList();
+        long[] times = tvList.getPartialSortedTimes(config.getDefaultStep());
+        Object[] columns = new Object[1];
+        switch (series.getType()) {
+          case TEXT:
+            columns[0] = tvList.getPartialSortedBinaries(config.getDefaultStep());
+          case FLOAT:
+            columns[0] = tvList.getPartialSortedFloats(config.getDefaultStep());
+          case INT32:
+            columns[0] = tvList.getPartialSortedInts(config.getDefaultStep());
+          case INT64:
+            columns[0] = tvList.getPartialSortedLongs(config.getDefaultStep());
+          case DOUBLE:
+            columns[0] = tvList.getPartialSortedDoubles(config.getDefaultStep());
+          case BOOLEAN:
+            columns[0] = tvList.getPartialSortedBooleans(config.getDefaultStep());
+        }
+        batchInsertPlan.setTimes(times);
+        batchInsertPlan.setColumns(columns);
+        batchInsertPlan.setRowCount((int)(tvList.size() * config.getDefaultStep()));
+        flushMemTable.insertBatch(batchInsertPlan, 0, batchInsertPlan.getRowCount());
+      }
+    }
+  }
+
+
 
   public int getFlushingMemTableSize() {
     return flushingMemTables.size();

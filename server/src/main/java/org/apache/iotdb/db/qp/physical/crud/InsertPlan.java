@@ -39,6 +39,7 @@ public class InsertPlan extends PhysicalPlan {
   private String[] values;
   private long time;
 
+
   public InsertPlan() {
     super(false, OperatorType.INSERT);
   }

@@ -68,6 +68,17 @@ public abstract class TVList {
     return timestamps.get(arrayIndex)[elementIndex];
   }
 
+  public long[] getPartialSortedTimes(float ratio) {
+    int count = (int)(ratio * size);
+    long[] partialSortedTimes = new long[count];
+    for (int i = 0; i < count; i++) {
+      int arrayIndex = i / ARRAY_SIZE;
+      int elementIndex = i % ARRAY_SIZE;
+      partialSortedTimes[i] = sortedTimestamps[arrayIndex][elementIndex];
+    }
+    return partialSortedTimes;
+  }
+
   public void putLong(long time, long value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
@@ -161,6 +172,30 @@ public abstract class TVList {
   }
 
   public boolean getBoolean(int index) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public long[] getPartialSortedLongs(float ratio) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public int[] getPartialSortedInts(float ratio) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public float[] getPartialSortedFloats(float ratio) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public double[] getPartialSortedDoubles(float ratio) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public Binary[] getPartialSortedBinaries(float ratio) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public boolean[] getPartialSortedBooleans(float ratio) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

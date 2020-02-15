@@ -62,6 +62,18 @@ public class BooleanTVList extends TVList {
     return values.get(arrayIndex)[elementIndex];
   }
 
+  @Override
+  public boolean[] getPartialSortedBooleans(float ratio) {
+    int count = (int)(ratio * size);
+    boolean[] partialSortedValues = new boolean[count];
+    for (int i = 0; i < count; i++) {
+      int arrayIndex = i / ARRAY_SIZE;
+      int elementIndex = i % ARRAY_SIZE;
+      partialSortedValues[i] = sortedValues[arrayIndex][elementIndex];
+    }
+    return partialSortedValues;
+  }
+
   protected void set(int index, long timestamp, boolean value) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);

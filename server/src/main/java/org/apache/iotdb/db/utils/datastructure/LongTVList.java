@@ -62,6 +62,18 @@ public class LongTVList extends TVList {
     return values.get(arrayIndex)[elementIndex];
   }
 
+  @Override
+  public long[] getPartialSortedLongs(float ratio) {
+    int count = (int)(ratio * size);
+    long[] partialSortedValues = new long[count];
+    for (int i = 0; i < count; i++) {
+      int arrayIndex = i / ARRAY_SIZE;
+      int elementIndex = i % ARRAY_SIZE;
+      partialSortedValues[i] = sortedValues[arrayIndex][elementIndex];
+    }
+    return partialSortedValues;
+  }
+
   protected void set(int index, long timestamp, long value) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);

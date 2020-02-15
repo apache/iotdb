@@ -61,6 +61,13 @@ public class BatchInsertPlan extends PhysicalPlan {
     setMeasurements(measurements);
   }
 
+  public BatchInsertPlan(String deviceId, String[] measurements, TSDataType[] dataTypes) {
+    super(false, OperatorType.BATCHINSERT);
+    this.deviceId = deviceId;
+    this.measurements = measurements;
+    this.dataTypes = dataTypes;
+  }
+
   public BatchInsertPlan(String deviceId, String[] measurements, List<Integer> dataTypes) {
     super(false, OperatorType.BATCHINSERT);
     this.deviceId = deviceId;

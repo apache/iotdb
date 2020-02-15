@@ -309,6 +309,9 @@ public class IoTDBDescriptor {
       conf.setMemtableNumInEachStorageGroup(
           Integer.parseInt(properties.getProperty("memtable_num_in_each_storage_group", String.valueOf(conf.getMemtableNumInEachStorageGroup()))));
 
+      conf.setDefaultStep(
+          Float.parseFloat(properties.getProperty("default_step_of_sliding_window", String.valueOf(conf.getDefaultStep()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
           .setTSFileStorageFs(properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().name()));
