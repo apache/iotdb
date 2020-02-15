@@ -76,7 +76,6 @@ public class Path implements Serializable {
    * extract device and measurement info from complete path string
    *
    * @param pathSc complete path string
-   * @return str[0] is the device string, and str[1] is the measurement string
    */
   private void init(String pathSc) {
     pathSc = pathSc.trim();

@@ -258,82 +258,72 @@ public class PhysicalGenerator {
       }
 
       List<Path> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
+      // remove stars in fromPaths and get deviceId with deduplication
+      List<String> devices = this.removeStarsInDeviceWithUnique(prefixPaths);
       List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
       List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
 
       List<String> measurements = new ArrayList<>();
       Map<String, Set<String>> deviceToMeasurementsMap = new LinkedHashMap<>();
-      // to check the same measure in different devices having the same datatype
+      // to check the same measurement of different devices having the same datatype
       Map<String, TSDataType> dataTypeConsistencyChecker = new HashMap<>();
       List<Path> paths = new ArrayList<>();
 
-      // cur loc for path
+      // current location for measurements in SELECT
       int loc = 0;
 
-      for (int i = 0; i < suffixPaths.size(); i++) { // per suffix
+      for (int i = 0; i < suffixPaths.size(); i++) { // per suffix in SELECT
         Path suffixPath = suffixPaths.get(i);
-        Set<String> deviceSetOfGivenSuffix = new HashSet<>();
+        Set<String> nonExistMeasurement = new HashSet<>();
+
+        // to record measurements in the loop of a suffix path
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
+
+        // if const measurement
         if (suffixPath.startWith("'") || suffixPath.startWith("\"")) {
           alignByDevicePlan.addConstMeasurement(loc++, suffixPath.getMeasurement());
           continue;
         }
 
-        Set<String> nonExistMeasurement = new HashSet<>();
-        for (Path prefixPath : prefixPaths) { // per prefix
-          Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
-          Set<String> tmpDeviceSet = new HashSet<>();
+        for (String device : devices) { // per device in FROM after deduplication
+          Path fullPath = Path.addPrefixPath(suffixPath, device);
           try {
             List<String> actualPaths = MManager.getInstance()
-                .getPaths(fullPath.getFullPath());  // remove stars to get actual paths
+                .getPaths(fullPath.getFullPath());  // remove stars in SELECT to get actual paths
 
+            // for actual non exist path
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
-              // for actual non exist path
               nonExistMeasurement.add(fullPath.getMeasurement());
             }
 
             for (String pathStr : actualPaths) {
               Path path = new Path(pathStr);
-              String device = path.getDevice();
-              // update tmpDeviceSet for a full path
-              tmpDeviceSet.add(device);
 
-              // ignore the duplicate prefix device for a given suffix path
-              // e.g. select s0 from root.vehicle.d0, root.vehicle.d0 group by device,
-              // for the given suffix path "s0", the second prefix device "root.vehicle.d0" is
-              // duplicated and should be neglected.
-              if (deviceSetOfGivenSuffix.contains(device)) {
-                continue;
-              }
-
-              // get pathForDataType and measurementColumn
-              String measurement = path.getMeasurement();
-              String pathForDataType;
-              String measurementChecked;
               // check datatype consistency
-              if (originAggregations != null && !originAggregations.isEmpty()) {
-                pathForDataType = originAggregations.get(i) + "(" + path.getFullPath() + ")";
-                measurementChecked = originAggregations.get(i) + "(" + measurement + ")";
-              } else {
-                pathForDataType = path.getFullPath();
-                measurementChecked = measurement;
-              }
-              // check the consistency of data types
               // a example of inconsistency: select s0 from root.sg1.d1, root.sg2.d3 group by device,
               // while root.sg1.d1.s0 is INT32 and root.sg2.d3.s0 is FLOAT.
+              String pathForDataType;
+              String measurementChecked;
+              if (originAggregations != null && !originAggregations.isEmpty()) {
+                pathForDataType = originAggregations.get(i) + "(" + path.getFullPath() + ")";
+                measurementChecked = originAggregations.get(i) + "(" + path.getMeasurement() + ")";
+              } else {
+                pathForDataType = path.getFullPath();
+                measurementChecked = path.getMeasurement();
+              }
               TSDataType dataType = TSServiceImpl.getSeriesType(pathForDataType);
               if (dataTypeConsistencyChecker.containsKey(measurementChecked)) {
                 if (!dataType.equals(dataTypeConsistencyChecker.get(measurementChecked))) {
                   throw new QueryProcessException(
                       "The data types of the same measurement column should be the same across "
-                          + "devices in GROUP_BY_DEVICE sql. For more details please refer to the "
+                          + "devices in ALIGN_BY_DEVICE sql. For more details please refer to the "
                           + "SQL document.");
                 }
               } else {
                 dataTypeConsistencyChecker.put(measurementChecked, dataType);
               }
 
-              // update measurementSetOfGivenSuffix
+              // update measurementSetOfGivenSuffix and measurement location
               if (measurementSetOfGivenSuffix.add(measurementChecked)) {
                 loc++;
               }
@@ -345,8 +335,6 @@ public class PhysicalGenerator {
               // update paths
               paths.add(path);
             }
-            // update deviceSetOfGivenSuffix
-            deviceSetOfGivenSuffix.addAll(tmpDeviceSet);
 
           } catch (MetadataException e) {
             throw new LogicalOptimizeException(
@@ -356,6 +344,7 @@ public class PhysicalGenerator {
         }
 
         nonExistMeasurement.removeAll(measurementSetOfGivenSuffix);
+        // update notExistMeasurement
         for (String notExistMeasurementString : nonExistMeasurement) {
           alignByDevicePlan.addNotExistMeasurement(loc++, notExistMeasurementString);
         }
@@ -384,15 +373,14 @@ public class PhysicalGenerator {
 
       // assigns to alignByDevicePlan
       alignByDevicePlan.setMeasurements(measurements);
-      alignByDevicePlan.setMeasurementsGroupByDevice(deviceToMeasurementsMap);
+      alignByDevicePlan.setDeviceToMeasurementsMap(deviceToMeasurementsMap);
       alignByDevicePlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
       alignByDevicePlan.setPaths(paths);
 
-      // get device to filter map
+      // get deviceToFilterMap
       FilterOperator filterOperator = queryOperator.getFilterOperator();
-
       if (filterOperator != null) {
-        alignByDevicePlan.setDeviceToFilterMap(concatFilterByDevice(prefixPaths, filterOperator));
+        alignByDevicePlan.setDeviceToFilterMap(concatFilterByDevice(devices, filterOperator));
       }
 
       queryPlan = alignByDevicePlan;
@@ -421,17 +409,15 @@ public class PhysicalGenerator {
   // e.g. translate "select * from root.ln.d1, root.ln.d2 where s1 < 20 AND s2 > 10" to
   // [root.ln.d1 -> root.ln.d1.s1 < 20 AND root.ln.d1.s2 > 10,
   //  root.ln.d2 -> root.ln.d2.s1 < 20 AND root.ln.d2.s2 > 10)]
-  private Map<String, IExpression> concatFilterByDevice(List<Path> fromPaths,
+  private Map<String, IExpression> concatFilterByDevice(List<String> devices,
       FilterOperator operator)
       throws QueryProcessException {
     Map<String, IExpression> deviceToFilterMap = new HashMap<>();
-    // remove stars in fromPaths and get deviceId with deduplication
-    List<String> noStarDevices = removeStarsInDeviceWithUnique(fromPaths);
-    for (int i = 0; i < noStarDevices.size(); i++) {
+    for (String device : devices) {
       FilterOperator newOperator = operator.copy();
-      newOperator = concatFilterPath(noStarDevices.get(i), newOperator);
+      newOperator = concatFilterPath(device, newOperator);
 
-      deviceToFilterMap.put(noStarDevices.get(i), newOperator.transformToExpression());
+      deviceToFilterMap.put(device, newOperator.transformToExpression());
     }
 
     return deviceToFilterMap;
@@ -446,11 +432,7 @@ public class PhysicalGenerator {
         List<String> tempDS;
         tempDS = MManager.getInstance().getDevices(path.getFullPath());
 
-        for (String subDevice : tempDS) {
-          if (!deviceSet.contains(subDevice)) {
-            deviceSet.add(subDevice);
-          }
-        }
+        deviceSet.addAll(tempDS);
       }
       retDevices = new ArrayList<>(deviceSet);
     } catch (PathException e) {
@@ -474,7 +456,7 @@ public class PhysicalGenerator {
       return operator;
     }
 
-    Path concatPath = filterPath.addPrefixPath(filterPath, prefix);
+    Path concatPath = Path.addPrefixPath(filterPath, prefix);
     basicOperator.setSinglePath(concatPath);
 
     return basicOperator;
@@ -483,8 +465,7 @@ public class PhysicalGenerator {
   private void generateDataTypes(QueryPlan queryPlan) throws PathException {
     List<Path> paths = queryPlan.getPaths();
     List<TSDataType> dataTypes = new ArrayList<>(paths.size());
-    for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
+    for (Path path : paths) {
       TSDataType seriesType = MManager.getInstance().getSeriesType(path);
       dataTypes.add(seriesType);
       queryPlan.addTypeMapping(path, seriesType);
@@ -506,8 +487,7 @@ public class PhysicalGenerator {
 
     Set<String> columnSet = new HashSet<>();
     Map<Path, TSDataType> dataTypeMapping = queryPlan.getDataTypeMapping();
-    for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
+    for (Path path : paths) {
       String column = path.toString();
       if (!columnSet.contains(column)) {
         TSDataType seriesType = dataTypeMapping.get(path);

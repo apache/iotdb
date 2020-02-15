@@ -82,7 +82,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       IQueryRouter queryRouter) {
     super(null, alignByDevicePlan.getDataTypes());
 
-    // get deduplicated measurement columns (already deduplicated in TSServiceImpl.executeDataQuery)
+    // get deduplicated measurement columns (already deduplicated in TSServiceImpl.getAlignByDeviceQueryHeaders)
     this.deduplicatedMeasurementColumns = alignByDevicePlan.getMeasurements();
     this.tsDataTypeMap = alignByDevicePlan.getDataTypeMapping();
     this.queryRouter = queryRouter;
