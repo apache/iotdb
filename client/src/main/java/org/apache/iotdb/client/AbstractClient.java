@@ -518,7 +518,7 @@ public abstract class AbstractClient {
     long startTime = System.currentTimeMillis();
     ResultSet resultSet;
     ZoneId zoneId;
-    try (Statement statement = connection.createStatement();) {
+    try (Statement statement = connection.createStatement()) {
       zoneId = ZoneId.of(connection.getTimeZone());
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
@@ -581,9 +581,9 @@ public abstract class AbstractClient {
       maxSizeList.add(resultSetMetaData.getColumnLabel(i).length());
     }
     int j = 0;
-    if(curserBeforeFirst){
+    if(cursorBeforeFirst){
       resultSet.next();
-      curserBeforeFirst = false;
+      cursorBeforeFirst = false;
     }
     while (j < maxPrintRowCount && !isReachEnd) {
       for(int i = 1; i <= columnCount; i++) {
@@ -627,7 +627,7 @@ public abstract class AbstractClient {
 
   private static void resetArgs() {
     lineCount = 0;
-    curserBeforeFirst = true;
+    cursorBeforeFirst = true;
     isReachEnd = false;
   }
 
