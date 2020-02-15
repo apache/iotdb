@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import java.util.Collections;
+import java.util.Map;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -88,5 +90,10 @@ public class LeafMNode extends MNode {
   @Override
   public int getLeafCount() {
     return 1;
+  }
+
+  @Override
+  public Map<String, MNode> getChildren() {
+    return Collections.emptyMap();
   }
 }

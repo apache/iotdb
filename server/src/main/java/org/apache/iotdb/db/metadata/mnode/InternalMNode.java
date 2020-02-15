@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -98,5 +99,10 @@ public class InternalMNode extends MNode {
       leafCount += child.getLeafCount();
     }
     return leafCount;
+  }
+
+  @Override
+  public Map<String, MNode> getChildren() {
+    return children;
   }
 }

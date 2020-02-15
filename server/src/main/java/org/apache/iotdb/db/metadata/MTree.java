@@ -94,6 +94,7 @@ public class MTree implements Serializable {
         if (cur.isNodeType(MNodeType.LEAF_MNODE)) {
           throw new PathAlreadyExistException(cur.getFullPath());
         }
+        cur.addChild(nodeName, new InternalMNode(nodeName, cur));
       }
       cur.setStorageGroupName(storageGroupName);
       cur = cur.getChild(nodeName);

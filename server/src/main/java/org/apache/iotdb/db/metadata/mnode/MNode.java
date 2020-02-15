@@ -177,9 +177,7 @@ public abstract class MNode implements Serializable {
     return parent;
   }
 
-  public Map<String, MNode> getChildren() {
-    return children;
-  }
+  abstract public Map<String, MNode> getChildren();
 
   public String getName() {
     return name;
