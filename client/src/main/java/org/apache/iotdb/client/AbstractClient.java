@@ -110,7 +110,7 @@ public abstract class AbstractClient {
   static ServerProperties properties = null;
 
   private static final PrintStream SCREEN_PRINTER = new PrintStream(System.out);
-  private static boolean curserBeforeFirst = true;
+  private static boolean cursorBeforeFirst = true;
 
   static void init() {
     keywordSet.add("-" + HOST_ARGS);
