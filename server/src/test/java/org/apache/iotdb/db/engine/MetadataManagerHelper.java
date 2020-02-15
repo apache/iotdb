@@ -41,49 +41,49 @@ public class MetadataManagerHelper {
       CompressionType compressionType =CompressionType.valueOf(
           TSFileDescriptor.getInstance().getConfig().getCompressor());
 
-      mmanager.addPathToMTree("root.vehicle.d0.s0", TSDataType.valueOf("INT32"),
+      mmanager.addPath("root.vehicle.d0.s0", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType,
           Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d0.s1", TSDataType.valueOf("INT64"),
+      mmanager.addPath("root.vehicle.d0.s1", TSDataType.valueOf("INT64"),
           TSEncoding.valueOf("RLE"), compressionType,
           Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d0.s2", TSDataType.valueOf("FLOAT"),
+      mmanager.addPath("root.vehicle.d0.s2", TSDataType.valueOf("FLOAT"),
           TSEncoding.valueOf("RLE"), compressionType,
           Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d0.s3", TSDataType.valueOf("DOUBLE"),
+      mmanager.addPath("root.vehicle.d0.s3", TSDataType.valueOf("DOUBLE"),
           TSEncoding.valueOf("RLE"), compressionType,
           Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d0.s4", TSDataType.valueOf("BOOLEAN"),
+      mmanager.addPath("root.vehicle.d0.s4", TSDataType.valueOf("BOOLEAN"),
           TSEncoding.valueOf("PLAIN"), compressionType,
           Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d0.s5", TSDataType.valueOf("TEXT"),
+      mmanager.addPath("root.vehicle.d0.s5", TSDataType.valueOf("TEXT"),
           TSEncoding.valueOf("PLAIN"), compressionType,
           Collections.emptyMap());
 
-      mmanager.addPathToMTree("root.vehicle.d1.s0", TSDataType.valueOf("INT32"),
+      mmanager.addPath("root.vehicle.d1.s0", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d1.s1", TSDataType.valueOf("INT64"),
+      mmanager.addPath("root.vehicle.d1.s1", TSDataType.valueOf("INT64"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d1.s2", TSDataType.valueOf("FLOAT"),
+      mmanager.addPath("root.vehicle.d1.s2", TSDataType.valueOf("FLOAT"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d1.s3", TSDataType.valueOf("DOUBLE"),
+      mmanager.addPath("root.vehicle.d1.s3", TSDataType.valueOf("DOUBLE"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d1.s4", TSDataType.valueOf("BOOLEAN"),
+      mmanager.addPath("root.vehicle.d1.s4", TSDataType.valueOf("BOOLEAN"),
           TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d1.s5", TSDataType.valueOf("TEXT"),
+      mmanager.addPath("root.vehicle.d1.s5", TSDataType.valueOf("TEXT"),
           TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
 
-      mmanager.addPathToMTree("root.vehicle.d2.s0", TSDataType.valueOf("INT32"),
+      mmanager.addPath("root.vehicle.d2.s0", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d2.s1", TSDataType.valueOf("INT64"),
+      mmanager.addPath("root.vehicle.d2.s1", TSDataType.valueOf("INT64"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d2.s2", TSDataType.valueOf("FLOAT"),
+      mmanager.addPath("root.vehicle.d2.s2", TSDataType.valueOf("FLOAT"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d2.s3", TSDataType.valueOf("DOUBLE"),
+      mmanager.addPath("root.vehicle.d2.s3", TSDataType.valueOf("DOUBLE"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d2.s4", TSDataType.valueOf("BOOLEAN"),
+      mmanager.addPath("root.vehicle.d2.s4", TSDataType.valueOf("BOOLEAN"),
           TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d2.s5", TSDataType.valueOf("TEXT"),
+      mmanager.addPath("root.vehicle.d2.s5", TSDataType.valueOf("TEXT"),
           TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
 
     } catch (Exception e) {
@@ -99,26 +99,26 @@ public class MetadataManagerHelper {
       mmanager.setStorageGroup("root.vehicle");
       CompressionType compressionType =CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
 
-      mmanager.addPathToMTree("root.vehicle.d0.s0", TSDataType.valueOf("INT32"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d0.s1", TSDataType.valueOf("INT64"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d0.s2", TSDataType.valueOf("FLOAT"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d0.s3", TSDataType.valueOf("DOUBLE"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d0.s4", TSDataType.valueOf("BOOLEAN"), TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d0.s5", TSDataType.valueOf("TEXT"), TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d0.s0", TSDataType.valueOf("INT32"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d0.s1", TSDataType.valueOf("INT64"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d0.s2", TSDataType.valueOf("FLOAT"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d0.s3", TSDataType.valueOf("DOUBLE"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d0.s4", TSDataType.valueOf("BOOLEAN"), TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d0.s5", TSDataType.valueOf("TEXT"), TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
 
-      mmanager.addPathToMTree("root.vehicle.d1.s0", TSDataType.valueOf("INT32"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d1.s1", TSDataType.valueOf("INT64"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d1.s2", TSDataType.valueOf("FLOAT"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d1.s3", TSDataType.valueOf("DOUBLE"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d1.s4", TSDataType.valueOf("BOOLEAN"), TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d1.s5", TSDataType.valueOf("TEXT"), TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d1.s0", TSDataType.valueOf("INT32"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d1.s1", TSDataType.valueOf("INT64"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d1.s2", TSDataType.valueOf("FLOAT"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d1.s3", TSDataType.valueOf("DOUBLE"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d1.s4", TSDataType.valueOf("BOOLEAN"), TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d1.s5", TSDataType.valueOf("TEXT"), TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
 
-      mmanager.addPathToMTree("root.vehicle.d2.s0", TSDataType.valueOf("INT32"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d2.s1", TSDataType.valueOf("INT64"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d2.s2", TSDataType.valueOf("FLOAT"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d2.s3", TSDataType.valueOf("DOUBLE"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d2.s4", TSDataType.valueOf("BOOLEAN"), TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
-      mmanager.addPathToMTree("root.vehicle.d2.s5", TSDataType.valueOf("TEXT"), TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d2.s0", TSDataType.valueOf("INT32"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d2.s1", TSDataType.valueOf("INT64"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d2.s2", TSDataType.valueOf("FLOAT"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d2.s3", TSDataType.valueOf("DOUBLE"), TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d2.s4", TSDataType.valueOf("BOOLEAN"), TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
+      mmanager.addPath("root.vehicle.d2.s5", TSDataType.valueOf("TEXT"), TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
 
     } catch (Exception e) {
 

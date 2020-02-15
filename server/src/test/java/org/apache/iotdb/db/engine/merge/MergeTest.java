@@ -107,7 +107,7 @@ abstract class MergeTest {
     MManager.getInstance().setStorageGroup(MERGE_TEST_SG);
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        MManager.getInstance().addPathToMTree(
+        MManager.getInstance().addPath(
             device + PATH_SEPARATOR + measurementSchema.getMeasurementId(), measurementSchema
                 .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
             Collections.emptyMap());

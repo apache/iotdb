@@ -47,19 +47,19 @@ public class MManagerAdvancedTest {
     mmanager.setStorageGroup("root.vehicle.d1");
     mmanager.setStorageGroup("root.vehicle.d2");
 
-    mmanager.addPathToMTree("root.vehicle.d0.s0", "INT32", "RLE");
-    mmanager.addPathToMTree("root.vehicle.d0.s1", "INT64", "RLE");
-    mmanager.addPathToMTree("root.vehicle.d0.s2", "FLOAT", "RLE");
-    mmanager.addPathToMTree("root.vehicle.d0.s3", "DOUBLE", "RLE");
-    mmanager.addPathToMTree("root.vehicle.d0.s4", "BOOLEAN", "PLAIN");
-    mmanager.addPathToMTree("root.vehicle.d0.s5", "TEXT", "PLAIN");
+    mmanager.addPath("root.vehicle.d0.s0", "INT32", "RLE");
+    mmanager.addPath("root.vehicle.d0.s1", "INT64", "RLE");
+    mmanager.addPath("root.vehicle.d0.s2", "FLOAT", "RLE");
+    mmanager.addPath("root.vehicle.d0.s3", "DOUBLE", "RLE");
+    mmanager.addPath("root.vehicle.d0.s4", "BOOLEAN", "PLAIN");
+    mmanager.addPath("root.vehicle.d0.s5", "TEXT", "PLAIN");
 
-    mmanager.addPathToMTree("root.vehicle.d1.s0", "INT32", "RLE");
-    mmanager.addPathToMTree("root.vehicle.d1.s1", "INT64", "RLE");
-    mmanager.addPathToMTree("root.vehicle.d1.s2", "FLOAT", "RLE");
-    mmanager.addPathToMTree("root.vehicle.d1.s3", "DOUBLE", "RLE");
-    mmanager.addPathToMTree("root.vehicle.d1.s4", "BOOLEAN", "PLAIN");
-    mmanager.addPathToMTree("root.vehicle.d1.s5", "TEXT", "PLAIN");
+    mmanager.addPath("root.vehicle.d1.s0", "INT32", "RLE");
+    mmanager.addPath("root.vehicle.d1.s1", "INT64", "RLE");
+    mmanager.addPath("root.vehicle.d1.s2", "FLOAT", "RLE");
+    mmanager.addPath("root.vehicle.d1.s3", "DOUBLE", "RLE");
+    mmanager.addPath("root.vehicle.d1.s4", "BOOLEAN", "PLAIN");
+    mmanager.addPath("root.vehicle.d1.s5", "TEXT", "PLAIN");
 
   }
 
@@ -96,10 +96,10 @@ public class MManagerAdvancedTest {
 
   @Test
   public void testCache() throws MetadataException, IOException, StorageGroupException {
-    mmanager.addPathToMTree("root.vehicle.d2.s0", "DOUBLE", "RLE");
-    mmanager.addPathToMTree("root.vehicle.d2.s1", "BOOLEAN", "PLAIN");
-    mmanager.addPathToMTree("root.vehicle.d2.s2.g0", "TEXT", "PLAIN");
-    mmanager.addPathToMTree("root.vehicle.d2.s3", "TEXT", "PLAIN");
+    mmanager.addPath("root.vehicle.d2.s0", "DOUBLE", "RLE");
+    mmanager.addPath("root.vehicle.d2.s1", "BOOLEAN", "PLAIN");
+    mmanager.addPath("root.vehicle.d2.s2.g0", "TEXT", "PLAIN");
+    mmanager.addPath("root.vehicle.d2.s3", "TEXT", "PLAIN");
 
     MNode node = mmanager.getNodeByPath("root.vehicle.d0");
     Assert.assertEquals(TSDataType.INT32, node.getChild("s0").getSchema().getType());

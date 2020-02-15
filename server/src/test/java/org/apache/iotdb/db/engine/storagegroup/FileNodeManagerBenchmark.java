@@ -70,7 +70,7 @@ public class FileNodeManagerBenchmark {
     manager.setStorageGroup(prefix);
     for (String device : devices) {
       for (String measurement : measurements) {
-        manager.addPathToMTree(device + "." + measurement, TSDataType.INT64.toString(),
+        manager.addPath(device + "." + measurement, TSDataType.INT64.toString(),
             TSEncoding.PLAIN.toString());
       }
     }

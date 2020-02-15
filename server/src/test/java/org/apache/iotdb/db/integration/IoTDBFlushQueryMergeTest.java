@@ -26,7 +26,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Locale;
-
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -91,10 +90,10 @@ public class IoTDBFlushQueryMergeTest {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select * from root");
+      boolean hasResultSet = statement.execute("SELECT * FROM root");
       Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()){
+      try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -122,14 +121,14 @@ public class IoTDBFlushQueryMergeTest {
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 10; j < 20; j++) {
-          statement.execute(String.format(insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
+          statement.execute(String.format(insertTemplate, i, j, j, j * 0.1, String.valueOf(j)));
         }
       }
       statement.execute("FLUSH");
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 0; j < 10; j++) {
-          statement.execute(String.format(insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
+          statement.execute(String.format(insertTemplate, i, j, j, j * 0.1, String.valueOf(j)));
         }
       }
       statement.execute("FLUSH root.group1");
@@ -137,17 +136,17 @@ public class IoTDBFlushQueryMergeTest {
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 0; j < 30; j++) {
-          statement.execute(String.format(insertTemplate, i, j, j, j*0.1, String.valueOf(j)));
+          statement.execute(String.format(insertTemplate, i, j, j, j * 0.1, String.valueOf(j)));
         }
       }
-      statement.execute("FLUSH root.group1 true");
-      statement.execute("FLUSH root.group2,root.group3 false");
+      statement.execute("FLUSH root.group1 TRUE");
+      statement.execute("FLUSH root.group2,root.group3 FALSE");
 
-      ResultSet resultSet = statement.executeQuery("SELECT * from root.group1,root.group2,root"
+      ResultSet resultSet = statement.executeQuery("SELECT * FROM root.group1,root.group2,root"
           + ".group3");
       int i = 0;
       while (resultSet.next()) {
-        i ++;
+        i++;
       }
       assertEquals(30, i);
 

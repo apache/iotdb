@@ -196,7 +196,7 @@ public class MManager {
   }
 
   public void operation(String cmd) throws IOException, MetadataException {
-    //see addPathToMTree() to get the detailed format of the cmd
+    //see addPath() to get the detailed format of the cmd
     String[] args = cmd.trim().split(",");
     switch (args[0]) {
       case MetadataOperationType.ADD_PATH_TO_MTREE:
@@ -210,7 +210,7 @@ public class MManager {
           }
         }
 
-        addPathToMTree(args[1], TSDataType.deserialize(Short.parseShort(args[2])),
+        addPath(args[1], TSDataType.deserialize(Short.parseShort(args[2])),
             TSEncoding.deserialize(Short.parseShort(args[3])),
             CompressionType.deserialize(Short.parseShort(args[4])),
             props);
@@ -263,7 +263,7 @@ public class MManager {
    * measurement should be registered to the StorageEngine too)
    */
   @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
-  public boolean addPathToMTree(String path, TSDataType dataType, TSEncoding encoding,
+  public boolean addPath(String path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) throws MetadataException {
     lock.writeLock().lock();
     try {
@@ -327,8 +327,21 @@ public class MManager {
     }
   }
 
+  public void addPath(String path, String dataType) throws MetadataException, IOException {
+    lock.writeLock().lock();
+    try {
+      TSDataType tsDataType = TSDataType.valueOf(dataType);
+      TSEncoding tsEncoding = mtree.getDefaultEncoding(tsDataType);
+      CompressionType type = CompressionType
+          .valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
+      addPathToMTreeInternal(path, tsDataType, tsEncoding, type, Collections.emptyMap());
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
   @TestOnly
-  public void addPathToMTree(String path, String dataType, String encoding)
+  public void addPath(String path, String dataType, String encoding)
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
@@ -838,6 +851,26 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.isPathExist(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  public void isPathExist(MNode node, String fullPath, MeasurementSchema schema)
+      throws MetadataException {
+    lock.readLock().lock();
+    try {
+      mtree.isPathExist(node, fullPath, schema);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  public MNode isPathExist(MNode node, String deviceId, String measurement, String value)
+      throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.isPathExist(node, deviceId, measurement, value);
     } finally {
       lock.readLock().unlock();
     }

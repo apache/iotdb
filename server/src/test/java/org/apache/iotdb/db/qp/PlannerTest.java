@@ -52,40 +52,40 @@ public class PlannerTest {
     EnvironmentUtils.envSetUp();
     mManager.setStorageGroup("root.vehicle");
     mManager.setStorageGroup("root.vehicle1");
-    mManager.addPathToMTree("root.vehicle.device1.sensor1", TSDataType.valueOf("INT32"),
+    mManager.addPath("root.vehicle.device1.sensor1", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle.device1.sensor2", TSDataType.valueOf("INT32"),
+    mManager.addPath("root.vehicle.device1.sensor2", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle.device1.sensor3", TSDataType.valueOf("INT32"),
+    mManager.addPath("root.vehicle.device1.sensor3", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle.device2.sensor1", TSDataType.valueOf("INT32"),
+    mManager.addPath("root.vehicle.device2.sensor1", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle.device2.sensor2", TSDataType.valueOf("INT32"),
+    mManager.addPath("root.vehicle.device2.sensor2", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle.device2.sensor3", TSDataType.valueOf("INT32"),
+    mManager.addPath("root.vehicle.device2.sensor3", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle1.device1.sensor1", TSDataType.valueOf("INT32"),
+    mManager.addPath("root.vehicle1.device1.sensor1", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle1.device1.sensor2", TSDataType.valueOf("INT32"),
+    mManager.addPath("root.vehicle1.device1.sensor2", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle1.device1.sensor3", TSDataType.valueOf("INT32"),
+    mManager.addPath("root.vehicle1.device1.sensor3", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle1.device2.sensor1", TSDataType.valueOf("INT32"),
+    mManager.addPath("root.vehicle1.device2.sensor1", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle1.device2.sensor2", TSDataType.valueOf("INT32"),
+    mManager.addPath("root.vehicle1.device2.sensor2", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle1.device2.sensor3", TSDataType.valueOf("INT32"),
+    mManager.addPath("root.vehicle1.device2.sensor3", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
   }

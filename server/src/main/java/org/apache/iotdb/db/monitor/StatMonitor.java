@@ -164,7 +164,7 @@ public class StatMonitor implements IService {
         }
 
         if (!mManager.isPathExist(entry.getKey())) {
-          mManager.addPathToMTree(entry.getKey(), TSDataType.valueOf(entry.getValue()),
+          mManager.addPath(entry.getKey(), TSDataType.valueOf(entry.getValue()),
               TSEncoding.valueOf("RLE"),
               CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
               Collections.emptyMap());

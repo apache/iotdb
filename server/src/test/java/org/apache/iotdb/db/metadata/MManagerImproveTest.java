@@ -56,7 +56,7 @@ public class MManagerImproveTest {
     for (int j = 0; j < DEVICE_NUM; j++) {
       for (int i = 0; i < TIMESERIES_NUM; i++) {
         String p = "root.t1.v2.d" + j + ".s" + i;
-        mManager.addPathToMTree(p, "TEXT", "RLE");
+        mManager.addPath(p, "TEXT", "RLE");
       }
     }
 

@@ -27,12 +27,14 @@ import com.alibaba.fastjson.serializer.SerializerFeature;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -44,10 +46,14 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -138,6 +144,66 @@ public class MTree implements Serializable {
    */
   boolean isPathExist(String path) {
     return isPathExist(dummyNode, path);
+  }
+
+  void isPathExist(MNode node, String fullPath, MeasurementSchema schema) throws MetadataException {
+    String measurement = schema.getMeasurementId();
+    if (!node.hasChildWithKey(measurement)) {
+      try {
+        addPath(fullPath, schema.getType(), schema.getEncodingType(),
+            schema.getCompressor(), Collections.emptyMap());
+      } catch (MetadataException e) {
+        if (!e.getMessage().contains("already exist")) {
+          throw e;
+        }
+      }
+    }
+  }
+
+  MNode isPathExist(MNode node, String deviceId, String measurement, String value)
+      throws MetadataException {
+    if (!node.hasChildWithKey(measurement)) {
+      if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+        throw new MetadataException(
+            String.format("Current deviceId[%s] does not contain measurement:%s", deviceId,
+                measurement));
+      }
+      try {
+        TSDataType dataType = TypeInferenceUtils.getPredictedDataType(value);
+        addPath(new Path(deviceId, measurement).toString(), dataType,
+            getDefaultEncoding(dataType), CompressionType.valueOf(TSFileDescriptor.
+                getInstance().getConfig().getCompressor()), Collections.emptyMap());
+      } catch (MetadataException e) {
+        if (!e.getMessage().contains("already exist")) {
+          throw e;
+        }
+      }
+    }
+    return node.getChild(measurement);
+  }
+
+  /**
+   * Get default encoding by dataType
+   */
+  TSEncoding getDefaultEncoding(TSDataType dataType) {
+    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    switch (dataType) {
+      case BOOLEAN:
+        return conf.getDefaultBooleanEncoding();
+      case INT32:
+        return conf.getDefaultInt32Encoding();
+      case INT64:
+        return conf.getDefaultInt64Encoding();
+      case FLOAT:
+        return conf.getDefaultFloatEncoding();
+      case DOUBLE:
+        return conf.getDefaultDoubleEncoding();
+      case TEXT:
+        return conf.getDefaultTextEncoding();
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", dataType.toString()));
+    }
   }
 
   /**

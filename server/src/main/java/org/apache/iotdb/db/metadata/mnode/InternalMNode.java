@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 /**
