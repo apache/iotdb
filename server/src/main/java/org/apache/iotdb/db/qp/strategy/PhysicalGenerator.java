@@ -413,11 +413,11 @@ public class PhysicalGenerator {
       FilterOperator operator)
       throws QueryProcessException {
     Map<String, IExpression> deviceToFilterMap = new HashMap<>();
-    for (int i = 0; i < devices.size(); i++) {
+    for (String device : devices) {
       FilterOperator newOperator = operator.copy();
-      newOperator = concatFilterPath(devices.get(i), newOperator);
+      newOperator = concatFilterPath(device, newOperator);
 
-      deviceToFilterMap.put(devices.get(i), newOperator.transformToExpression());
+      deviceToFilterMap.put(device, newOperator.transformToExpression());
     }
 
     return deviceToFilterMap;
@@ -432,11 +432,7 @@ public class PhysicalGenerator {
         List<String> tempDS;
         tempDS = MManager.getInstance().getDevices(path.getFullPath());
 
-        for (String subDevice : tempDS) {
-          if (!deviceSet.contains(subDevice)) {
-            deviceSet.add(subDevice);
-          }
-        }
+        deviceSet.addAll(tempDS);
       }
       retDevices = new ArrayList<>(deviceSet);
     } catch (PathException e) {
@@ -469,8 +465,7 @@ public class PhysicalGenerator {
   private void generateDataTypes(QueryPlan queryPlan) throws PathException {
     List<Path> paths = queryPlan.getPaths();
     List<TSDataType> dataTypes = new ArrayList<>(paths.size());
-    for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
+    for (Path path : paths) {
       TSDataType seriesType = MManager.getInstance().getSeriesType(path);
       dataTypes.add(seriesType);
       queryPlan.addTypeMapping(path, seriesType);
@@ -492,8 +487,7 @@ public class PhysicalGenerator {
 
     Set<String> columnSet = new HashSet<>();
     Map<Path, TSDataType> dataTypeMapping = queryPlan.getDataTypeMapping();
-    for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
+    for (Path path : paths) {
       String column = path.toString();
       if (!columnSet.contains(column)) {
         TSDataType seriesType = dataTypeMapping.get(path);
