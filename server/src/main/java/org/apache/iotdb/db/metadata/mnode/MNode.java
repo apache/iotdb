@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -41,8 +42,6 @@ public abstract class MNode implements Serializable {
    */
   private String name;
 
-  MNodeType nodeType;
-
   /**
    * Map for the schema in this storage group
    */
@@ -53,16 +52,18 @@ public abstract class MNode implements Serializable {
    */
   private String storageGroupName;
 
+  private MNode parent;
+
+  private String fullPath;
+
   /**
    * Column's Schema for one timeseries represented by current node if current node is one leaf
    */
   MeasurementSchema schema;
 
-  private MNode parent;
-
   Map<String, MNode> children;
 
-  private String fullPath;
+  MNodeType nodeType;
 
   /**
    * when the data in a storage group is older than dataTTL, it is considered invalid and will be
@@ -114,7 +115,7 @@ public abstract class MNode implements Serializable {
    * @param key key
    * @param child child MNode
    */
-  abstract public void addChild(String key, MNode child);
+  abstract public void addChild(String key, MNode child) throws PathAlreadyExistException;
 
   /**
    * delete key from given child MNode
@@ -176,16 +177,8 @@ public abstract class MNode implements Serializable {
     return parent;
   }
 
-  public void setParent(MNode parent) {
-    this.parent = parent;
-  }
-
   public Map<String, MNode> getChildren() {
     return children;
-  }
-
-  public void setChildren(Map<String, MNode> children) {
-    this.children = children;
   }
 
   public String getName() {

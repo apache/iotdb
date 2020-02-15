@@ -327,6 +327,13 @@ public class MManager {
     }
   }
 
+  public boolean addPath(String path, TSDataType dataType, TSEncoding encoding)
+      throws MetadataException {
+    CompressionType compressionType =
+        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
+    return addPath(path, dataType, encoding, compressionType, Collections.emptyMap());
+  }
+
   @TestOnly
   public void addPath(String path, String dataType, String encoding)
       throws MetadataException, IOException {

@@ -67,7 +67,6 @@ import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -105,7 +104,6 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
@@ -595,16 +593,13 @@ public class PlanExecutor implements IPlanExecutor {
       String device = chunkGroupMetaData.getDeviceID();
       MNode node = mManager.getNodeByPathFromCache(device, true, sgLevel);
       for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-        String fullPath =
-            device + IoTDBConstant.PATH_SEPARATOR + chunkMetaData.getMeasurementUid();
-        MeasurementSchema schema = knownSchemas.get(chunkMetaData.getMeasurementUid());
+        String measurement = chunkMetaData.getMeasurementUid();
+        String fullPath = device + IoTDBConstant.PATH_SEPARATOR + measurement;
+        MeasurementSchema schema = knownSchemas.get(measurement);
         if (schema == null) {
           throw new MetadataException(String
-              .format("Can not get the schema of measurement [%s]",
-                  chunkMetaData.getMeasurementUid()));
+              .format("Can not get the schema of measurement [%s]", measurement));
         }
-
-        String measurement = schema.getMeasurementId();
         if (!node.hasChildWithKey(measurement)) {
           try {
             boolean result = mManager.addPath(fullPath, schema.getType(), schema.getEncodingType(),
@@ -620,8 +615,7 @@ public class PlanExecutor implements IPlanExecutor {
             }
           }
         }
-        MNode measurementNode = node.getChild(measurement);
-        if (!measurementNode.isNodeType(MNodeType.LEAF_MNODE)) {
+        if (node.getChild(measurement).hasChildren()) {
           throw new QueryProcessException(
               String.format("Current Path is not leaf node. %s", fullPath));
         }
@@ -711,14 +705,10 @@ public class PlanExecutor implements IPlanExecutor {
           try {
             TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValues[i]);
             Path path = new Path(deviceId, measurement);
-            TSEncoding encoding = getDefaultEncoding(dataType);
-            CompressionType compressionType =
-                CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
-            boolean result = mManager.addPath(
-                path.toString(), dataType, encoding, compressionType, Collections.emptyMap());
+            boolean result = mManager
+                .addPath(path.toString(), dataType, getDefaultEncoding(dataType));
             if (result) {
-              storageEngine.addTimeSeries(path,
-                  dataType, encoding, compressionType, Collections.emptyMap());
+              storageEngine.addTimeSeries(path, dataType, getDefaultEncoding(dataType));
             }
           } catch (MetadataException e) {
             if (!e.getMessage().contains("already exist")) {
@@ -727,7 +717,7 @@ public class PlanExecutor implements IPlanExecutor {
           }
         }
         MNode measurementNode = node.getChild(measurement);
-        if (!measurementNode.isNodeType(MNodeType.LEAF_MNODE)) {
+        if (measurementNode.hasChildren()) {
           throw new QueryProcessException(
               String.format("Current Path is not leaf node. %s.%s", deviceId, measurement));
         }
@@ -783,19 +773,16 @@ public class PlanExecutor implements IPlanExecutor {
                     deviceId, measurementList[i]));
           }
           Path path = new Path(deviceId, measurementList[i]);
-          TSEncoding encoding = getDefaultEncoding(dataTypes[i]);
-          CompressionType compressionType =
-              CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
-          boolean result = mManager.addPath(
-              path.getFullPath(), dataTypes[i], encoding, compressionType, Collections.emptyMap());
+          TSDataType dataType = dataTypes[i];
+          boolean result = mManager
+              .addPath(path.getFullPath(), dataType, getDefaultEncoding(dataType));
           if (result) {
             storageEngine
-                .addTimeSeries(path, dataTypes[i], encoding, compressionType,
-                    Collections.emptyMap());
+                .addTimeSeries(path, dataType, getDefaultEncoding(dataType));
           }
         }
         MNode measurementNode = node.getChild(measurementList[i]);
-        if (!measurementNode.isNodeType(MNodeType.LEAF_MNODE)) {
+        if (measurementNode.hasChildren()) {
           throw new QueryProcessException(
               String.format("Current Path is not leaf node. %s.%s", deviceId, measurementList[i]));
         }

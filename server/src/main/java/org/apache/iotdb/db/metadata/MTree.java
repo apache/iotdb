@@ -36,7 +36,6 @@ import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -91,9 +90,6 @@ public class MTree implements Serializable {
         storageGroupName = cur.getStorageGroupName();
       }
       if (!cur.hasChildWithKey(nodeName)) {
-        if (cur.isNodeType(MNodeType.LEAF_MNODE)) {
-          throw new PathAlreadyExistException(cur.getFullPath());
-        }
         cur.addChild(nodeName, new InternalMNode(nodeName, cur));
       }
       cur.setStorageGroupName(storageGroupName);
@@ -195,12 +191,7 @@ public class MTree implements Serializable {
       cur = cur.getChild(nodeNames[i]);
       i++;
     }
-    MNode temp = cur.getChild(nodeNames[i]);
-    if (temp == null) {
-      cur.addChild(nodeNames[i], new InternalMNode(nodeNames[i], cur));
-    } else {
-      throw new PathAlreadyExistException(temp.getFullPath());
-    }
+    cur.addChild(nodeNames[i], new InternalMNode(nodeNames[i], cur));
     cur = cur.getChild(nodeNames[i]);
     cur.setDataTTL(IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
     cur.setStorageGroup(true);
@@ -808,7 +799,7 @@ public class MTree implements Serializable {
 
   private JSONObject mNodeToJSON(MNode node) {
     JSONObject jsonObject = new JSONObject();
-    if (!node.isNodeType(MNodeType.LEAF_MNODE) && node.getChildren().size() > 0) {
+    if (node.getChildren().size() > 0) {
       for (MNode child : node.getChildren().values()) {
         jsonObject.put(child.getName(), mNodeToJSON(child));
       }

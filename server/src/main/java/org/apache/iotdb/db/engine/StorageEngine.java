@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +62,7 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -188,7 +190,8 @@ public class StorageEngine implements IService {
                 storageGroupName, Thread.currentThread().getId());
             processor = new StorageGroupProcessor(systemDir, storageGroupName, fileFlushPolicy);
             processor.setDataTTL(
-                MManager.getInstance().getNodeByPathWithStorageGroupCheck(storageGroupName).getDataTTL());
+                MManager.getInstance().getNodeByPathWithStorageGroupCheck(storageGroupName)
+                    .getDataTTL());
             processorMap.put(storageGroupName, processor);
           }
         }
@@ -406,6 +409,16 @@ public class StorageEngine implements IService {
     StorageGroupProcessor storageGroupProcessor = getProcessor(path.getDevice());
     storageGroupProcessor
         .addMeasurement(path.getMeasurement(), dataType, encoding, compressor, props);
+  }
+
+  public void addTimeSeries(Path path, TSDataType dataType, TSEncoding encoding)
+      throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor = getProcessor(path.getDevice());
+    CompressionType compressor =
+        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
+    storageGroupProcessor
+        .addMeasurement(path.getMeasurement(), dataType, encoding, compressor,
+            Collections.emptyMap());
   }
 
 
