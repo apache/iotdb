@@ -395,7 +395,9 @@ public class TsFileProcessor {
    * flushManager again.
    */
   private void addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
-    updateLatestFlushTimeCallback.call(this);
+    if(!updateLatestFlushTimeCallback.call(this)){
+      logger.error("Memetable info: " + tobeFlushed.getMemTableMap());
+    }
     flushingMemTables.addLast(tobeFlushed);
     long cur = versionController.nextVersion();
     tobeFlushed.setVersion(cur);
@@ -508,7 +510,6 @@ public class TsFileProcessor {
     tsFileResource.serialize();
     writer.endFile(schema);
     tsFileResource.cleanCloseFlag();
-    tsFileResource.close();
 
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore

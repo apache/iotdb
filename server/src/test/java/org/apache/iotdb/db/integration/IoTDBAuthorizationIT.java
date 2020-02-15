@@ -127,6 +127,7 @@ public class IoTDBAuthorizationIT {
       userStmt.execute("GRANT USER tempuser PRIVILEGES 'CREATE_TIMESERIES' ON root.b.b");
 
       adminStmt.execute("REVOKE USER tempuser PRIVILEGES 'ALL' ON root");
+      adminStmt.execute("REVOKE USER tempuser PRIVILEGES 'CREATE_TIMESERIES' ON root.b.b");
 
       caught = false;
       try {
