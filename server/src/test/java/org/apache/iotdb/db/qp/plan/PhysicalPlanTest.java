@@ -146,7 +146,7 @@ public class PhysicalPlanTest {
   public void testGroupBy1() throws QueryProcessException {
     String sqlStr =
         "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
-            + "group by([8,737], 3ms)";
+            + "group by([8,737), 3ms)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     if (!plan.isQuery()) {
       fail();
@@ -162,7 +162,7 @@ public class PhysicalPlanTest {
   public void testGroupBy2() throws QueryProcessException {
     String sqlStr =
         "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
-            + "group by([123,2017-6-2T12:00:12+07:00], 111ms)";
+            + "group by([123,2017-6-2T12:00:12+07:00), 111ms)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     if (!plan.isQuery()) {
       fail();
@@ -175,7 +175,7 @@ public class PhysicalPlanTest {
   public void testGroupBy3() throws QueryProcessException {
     String sqlStr =
         "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
-            + "group by([2017-6-2T12:00:12+07:00,2017-6-12T12:00:12+07:00], 3h, 24h)";
+            + "group by([2017-6-2T12:00:12+07:00,2017-6-12T12:00:12+07:00), 3h, 24h)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     if (!plan.isQuery()) {
       fail();

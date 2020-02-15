@@ -129,7 +129,7 @@ public class PlannerTest {
     PhysicalPlan plan8 = processor.parseSQLToPhysicalPlan(aggregationStatement);
     assertEquals(OperatorType.AGGREGATION, plan8.getOperatorType());
 
-    String groupbyStatement = "select sum(*) from root.vehicle where root.vehicle.device1.sensor1 > 50 group by ([100,1100], 20ms)";
+    String groupbyStatement = "select sum(*) from root.vehicle where root.vehicle.device1.sensor1 > 50 group by ([100,1100), 20ms)";
     PhysicalPlan plan9 = processor.parseSQLToPhysicalPlan(groupbyStatement);
     assertEquals(OperatorType.GROUPBY, plan9.getOperatorType());
 
