@@ -37,11 +37,20 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class RestTest {
+
+  private Client client = ClientBuilder.newClient();
+
   private static final String REST_URI
       = "http://localhost:8181/query";
 
   private static final String LOGIN
       = "http://localhost:8181/login";
+
+  private static final String METRICS1
+      = "http://localhost:8181/sql_arguments";
+
+  private static final String METRICS2
+      = "http://localhost:8181/server_information";
 
   private static String[] creationSqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",
@@ -135,6 +144,8 @@ public class RestTest {
             .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
       }
 
+      statement.execute("select * from root");
+
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -142,7 +153,6 @@ public class RestTest {
 
   @Test
   public void testQuery() {
-    Client client = ClientBuilder.newClient();
     String json1 = "{\n"
         + "  \"range\": {\n"
         + "    \"from\": \"0\",\n"
@@ -166,5 +176,13 @@ public class RestTest {
         , result);
   }
 
-  
+  @Test
+  public void testMetrics() {
+    Response response1 = client.target(METRICS1).request(MediaType.APPLICATION_JSON).get();
+    String result1 = response1.readEntity(String.class);
+    System.out.println(result1);
+    Response response2 = client.target(METRICS2).request(MediaType.APPLICATION_JSON).get();
+    String result2 = response2.readEntity(String.class);
+    System.out.println(result2);
+  }
 }
