@@ -28,6 +28,8 @@ import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -137,7 +139,7 @@ public class MManagerImproveTest {
     for (String s : measurementList) {
       assertTrue(node.hasChildWithKey(s));
       MNode measurementNode = node.getChild(s);
-      assertTrue(measurementNode.isLeaf());
+      assertTrue(measurementNode.getNodeType().equals(MNodeType.LEAF_MNODE));
       TSDataType dataType = measurementNode.getSchema().getType();
       assertEquals(TSDataType.TEXT, dataType);
     }

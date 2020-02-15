@@ -38,7 +38,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -67,7 +66,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.MNode;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -148,7 +148,7 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException, QueryFilterOptimizationException,
-      QueryProcessException, MetadataException, SQLException {
+      QueryProcessException, MetadataException {
     if (queryPlan instanceof QueryPlan) {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
@@ -247,7 +247,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowQuery(ShowPlan showPlan)
-      throws QueryProcessException, MetadataException, SQLException {
+      throws QueryProcessException, MetadataException {
     switch (showPlan.getShowContentType()) {
       case TTL:
         return processShowTTLQuery((ShowTTLPlan) showPlan);
@@ -690,6 +690,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
+  // TODO should be in MManager
   private MNode checkPathExists(MNode node, String deviceId, String measurement, String strValue)
       throws MetadataException, QueryProcessException, StorageEngineException {
     // check if timeseries exists
@@ -708,7 +709,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
     }
     MNode measurementNode = node.getChild(measurement);
-    if (!measurementNode.isLeaf()) {
+    if (!measurementNode.getNodeType().equals(MNodeType.LEAF_MNODE)) {
       throw new QueryProcessException(
           String.format("Current Path is not leaf node. %s.%s", deviceId, measurement));
     }
@@ -716,7 +717,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void checkPathExists(MNode node, String fullPath, MeasurementSchema schema,
-      boolean autoCreateSchema)
+      boolean autoCreateSchema) // always true
       throws QueryProcessException, StorageEngineException, MetadataException {
     // check if timeseries exists
     String measurement = schema.getMeasurementId();
@@ -735,7 +736,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
     }
     MNode measurementNode = node.getChild(measurement);
-    if (!measurementNode.isLeaf()) {
+    if (!measurementNode.getNodeType().equals(MNodeType.LEAF_MNODE)) {
       throw new QueryProcessException(
           String.format("Current Path is not leaf node. %s", fullPath));
     }
@@ -762,7 +763,7 @@ public class PlanExecutor implements IPlanExecutor {
           addPathToMTree(deviceId, measurementList[i], dataTypes[i]);
         }
         MNode measurementNode = node.getChild(measurementList[i]);
-        if (!measurementNode.isLeaf()) {
+        if (!measurementNode.getNodeType().equals(MNodeType.LEAF_MNODE)) {
           throw new QueryProcessException(
               String.format("Current Path is not leaf node. %s.%s", deviceId, measurementList[i]));
         }

@@ -25,7 +25,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -43,7 +42,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.MNode;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -319,7 +318,7 @@ public class TTLTest {
   @Test
   public void testShowTTL()
       throws IOException, QueryProcessException, QueryFilterOptimizationException,
-      StorageEngineException, MetadataException, SQLException {
+      StorageEngineException, MetadataException {
     MManager.getInstance().setTTL(sg1, ttl);
 
     ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());

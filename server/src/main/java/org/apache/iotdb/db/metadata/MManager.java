@@ -46,6 +46,8 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.RootNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
@@ -448,7 +450,6 @@ public class MManager {
     Map<String, MeasurementSchema> schemaMap = getStorageGroupSchemaMap(storageGroupName);
     // Thread safety: just one thread can access/modify the schemaMap
     synchronized (schemaMap) {
-      String measurementId = new Path(path).getMeasurement();
       try {
         emptiedStorageGroup = deletePathFromMTree(path);
       } catch (MetadataException | IOException e) {
@@ -967,7 +968,7 @@ public class MManager {
     lock.writeLock().lock();
     try {
       MNode sgNode = getNodeByPath(storageGroup);
-      if (!sgNode.isStorageGroup()) {
+      if (!sgNode.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE)) {
         throw new StorageGroupNotSetException(storageGroup);
       }
       sgNode.setDataTTL(dataTTL);

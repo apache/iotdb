@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.db.metadata.mnode;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -29,48 +29,40 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
- * This class is the implementation of Metadata Node where "MNode" is the shorthand of "Metadata
- * Node". One MNode instance represents one node in the Metadata Tree
+ * This class is the implementation of Metadata Node. One MNode instance represents one node in the
+ * Metadata Tree
  */
-public class MNode implements Serializable {
+public abstract class MNode implements Serializable {
 
   private static final long serialVersionUID = -770028375899514063L;
 
   /**
    * Name of the MNode
    */
-  private String name;
+  String name;
 
-  /**
-   * Whether current node is a leaf in the Metadata Tree
-   */
-  private boolean isLeaf;
-
-  /**
-   * Whether current node is Storage group in the Metadata Tree
-   */
-  private boolean isStorageGroup;
+  MNodeType nodeType;
 
   /**
    * Map for the schema in this storage group
    */
-  private Map<String, MeasurementSchema> schemaMap;
+  Map<String, MeasurementSchema> schemaMap;
 
   /**
    * Corresponding storage group name for current node
    */
-  private String storageGroupName;
+  String storageGroupName;
 
   /**
    * Column's Schema for one timeseries represented by current node if current node is one leaf
    */
-  private MeasurementSchema schema;
+  MeasurementSchema schema;
 
-  private MNode parent;
+  MNode parent;
 
-  private Map<String, MNode> children;
+  Map<String, MNode> children;
 
-  private String fullPath;
+  String fullPath;
 
   /**
    * when the data in a storage group is older than dataTTL, it is considered invalid and will be
@@ -81,31 +73,18 @@ public class MNode implements Serializable {
   /**
    * Constructor of MNode.
    */
-  public MNode(String name, MNode parent, boolean isLeaf) {
+  public MNode(String name, MNode parent) {
     this.setName(name);
     this.parent = parent;
-    this.isLeaf = isLeaf;
-    this.isStorageGroup = false;
-    if (!isLeaf) {
-      children = new LinkedHashMap<>();
-    }
   }
 
-  public MNode(String name, MNode parent, TSDataType dataType, TSEncoding encoding,
-      CompressionType type) {
-    this(name, parent, true);
-    this.schema = new MeasurementSchema(name, dataType, encoding, type);
-  }
-
-  public boolean isStorageGroup() {
-    return isStorageGroup;
-  }
+  abstract public MNodeType getNodeType();
 
   /**
    * setting storage group.
    */
   public void setStorageGroup(boolean isStorageGroup) {
-    this.isStorageGroup = isStorageGroup;
+    this.nodeType = MNodeType.STORAGE_GROUP_MNODE;
     if (isStorageGroup) {
       schemaMap = new HashMap<>();
     } else {
@@ -117,29 +96,17 @@ public class MNode implements Serializable {
     return schemaMap;
   }
 
-  public boolean isLeaf() {
-    return isLeaf;
-  }
-
-  public void setLeaf(boolean isLeaf) {
-    this.isLeaf = isLeaf;
-  }
-
   /**
    * check whether the MNode has children
    */
-  public boolean hasChildren() {
-    return !isLeaf;
-  }
+  abstract public boolean hasChildren();
 
   /**
    * check whether the MNode has child with the given key
    *
    * @param key key
    */
-  public boolean hasChildWithKey(String key) {
-    return !isLeaf && this.children.containsKey(key);
-  }
+  abstract public boolean hasChildWithKey(String key);
 
   /**
    * add the given key to given child MNode
@@ -147,49 +114,26 @@ public class MNode implements Serializable {
    * @param key key
    * @param child child MNode
    */
-  public void addChild(String key, MNode child) {
-    if (!isLeaf) {
-      this.children.put(key, child);
-    }
-  }
+  abstract public void addChild(String key, MNode child);
 
   /**
    * delete key from given child MNode
    *
    * @param key key
    */
-  public void deleteChild(String key) {
-    if (!isLeaf) {
-      children.remove(key);
-    }
-  }
+  abstract public void deleteChild(String key);
 
   /**
    * get the child MNode under the given key.
    *
    * @param key key
    */
-  public MNode getChild(String key) {
-    if (!isLeaf) {
-      return children.get(key);
-    }
-    return null;
-  }
+  abstract public MNode getChild(String key);
 
   /**
    * get the count of all leaves whose ancestor is current node
    */
-  public int getLeafCount() {
-    if (isLeaf) {
-      return 1;
-    } else {
-      int leafCount = 0;
-      for (MNode child : this.children.values()) {
-        leafCount += child.getLeafCount();
-      }
-      return leafCount;
-    }
-  }
+  abstract public int getLeafCount();
 
   /**
    * get full path
