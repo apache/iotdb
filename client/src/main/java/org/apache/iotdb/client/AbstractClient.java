@@ -30,6 +30,9 @@ import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.tool.ImportCsv;
 import org.apache.thrift.TException;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -90,8 +93,9 @@ public abstract class AbstractClient {
   static int maxTimeLength = ISO_DATETIME_LEN;
   static int maxValueLength = 15;
   static String TIMESTAMP_PRECISION = "ms";
+  static int lineCount = 0;
 
-  private static boolean isReachMaxLine = false;
+  private static boolean isReachEnd = false;
 
   static String formatTime = "%" + maxTimeLength + "s|";
   static String host = "127.0.0.1";
@@ -106,6 +110,7 @@ public abstract class AbstractClient {
   static ServerProperties properties = null;
 
   private static final PrintStream SCREEN_PRINTER = new PrintStream(System.out);
+  private static boolean cursorBeforeFirst = true;
 
   static void init() {
     keywordSet.add("-" + HOST_ARGS);
@@ -511,25 +516,45 @@ public abstract class AbstractClient {
 
   private static void executeQuery(IoTDBConnection connection, String cmd) {
     long startTime = System.currentTimeMillis();
+    ResultSet resultSet;
+    ZoneId zoneId;
     try (Statement statement = connection.createStatement()) {
-      ZoneId zoneId = ZoneId.of(connection.getTimeZone());
+      zoneId = ZoneId.of(connection.getTimeZone());
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
       if (hasResultSet) {
-        try (ResultSet resultSet = statement.getResultSet()) {
-          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-          int columnLength = resultSetMetaData.getColumnCount();
-          List<Integer> maxSizeList = new ArrayList<>(columnLength);
-          List<List<String>> lists = cacheResult(resultSet, maxSizeList, columnLength,
-              resultSetMetaData, zoneId);
-          output(lists, maxSizeList);
+        resultSet = statement.getResultSet();
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        int columnLength = resultSetMetaData.getColumnCount();
+        List<Integer> maxSizeList = new ArrayList<>(columnLength);
+        List<List<String>> lists = cacheResult(resultSet, maxSizeList, columnLength,
+                resultSetMetaData, zoneId);
+        output(lists, maxSizeList);
+        long costTime = System.currentTimeMillis() - startTime;
+        println(String.format("It costs %.3fs", costTime / 1000.0));
+        while(!isReachEnd){
+          println(String.format("Reach the max_display_num = %s. Press ENTER to show more, input 'q' to quit.", maxPrintRowCount));
+          BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+          try{
+            if(br.readLine().equals("")){
+              maxSizeList = new ArrayList<>(columnLength);
+              lists = cacheResult(resultSet, maxSizeList, columnLength,
+                      resultSetMetaData, zoneId);
+              output(lists, maxSizeList);
+            }
+            else {
+              break;
+            }
+          }
+          catch(IOException e){
+            e.printStackTrace();
+          }
         }
+        resetArgs();
       }
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
     }
-    long costTime = System.currentTimeMillis() - startTime;
-    println(String.format("It costs %.3fs", costTime / 1000.0));
   }
 
   /**
@@ -543,8 +568,10 @@ public abstract class AbstractClient {
    * @throws SQLException throw exception
    */
   private static List<List<String>> cacheResult(ResultSet resultSet, List<Integer> maxSizeList,
-      int columnCount, ResultSetMetaData resultSetMetaData, ZoneId zoneId)
-      throws SQLException {
+                                                int columnCount, ResultSetMetaData resultSetMetaData,
+                                                ZoneId zoneId)
+          throws SQLException {
+
     boolean printTimestamp = !((IoTDBQueryResultSet) resultSet).isIgnoreTimeStamp();
     List<List<String>> lists = new ArrayList<>(columnCount);
     for(int i = 1; i <= columnCount; i++) {
@@ -554,10 +581,11 @@ public abstract class AbstractClient {
       maxSizeList.add(resultSetMetaData.getColumnLabel(i).length());
     }
     int j = 0;
-    while (resultSet.next()) {
-      if(j > maxPrintRowCount) {
-        break;
-      }
+    if(cursorBeforeFirst){
+      resultSet.next();
+      cursorBeforeFirst = false;
+    }
+    while (j < maxPrintRowCount && !isReachEnd) {
       for(int i = 1; i <= columnCount; i++) {
         String tmp;
         if(printTimestamp && i == 1) {
@@ -574,8 +602,8 @@ public abstract class AbstractClient {
         }
       }
       j++;
+      isReachEnd = !resultSet.next();
     }
-    isReachMaxLine = resultSet.next();
     return lists;
   }
 
@@ -587,11 +615,20 @@ public abstract class AbstractClient {
       printRow(lists, i, maxSizeList);
     }
     printBlockLine(maxSizeList);
-    if(!isReachMaxLine) {
-      printCount(lists.get(0).size()-1);
-    } else {
-      println(String.format("Reach maxPrintRowCount = %s lines", maxPrintRowCount));
+    if(isReachEnd) {
+      lineCount += lists.get(0).size()-1;
+      printCount(lineCount);
     }
+    else {
+      lineCount += maxPrintRowCount;
+    }
+
+  }
+
+  private static void resetArgs() {
+    lineCount = 0;
+    cursorBeforeFirst = true;
+    isReachEnd = false;
   }
 
   private static void printBlockLine(List<Integer> maxSizeList) {
