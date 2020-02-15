@@ -32,19 +32,16 @@ import java.util.ArrayList;
 /**
  * <code>BatchData</code> is a self-defined data structure which is optimized for different type of
  * values. This class can be viewed as a collection which is more efficient than ArrayList.
- *
+ * <p>
  * This class records a time list and a value list, which could be replaced by TVList in the future
- *
- * When you use BatchData in query process, it does not contain duplicated timestamps. The batch data
- * may be empty.
- *
+ * <p>
+ * When you use BatchData in query process, it does not contain duplicated timestamps. The batch
+ * data may be empty.
+ * <p>
  * If you get a batch data, you can iterate the data as the following codes:
- *
- * while (batchData.hasCurrent()) {
- *   long time = batchData.currentTime();
- *   Object value = batchData.currentValue();
- *   batchData.next();
- * }
+ * <p>
+ * while (batchData.hasCurrent()) { long time = batchData.currentTime(); Object value =
+ * batchData.currentValue(); batchData.next(); }
  */
 public class BatchData implements Serializable {
 
@@ -96,11 +93,9 @@ public class BatchData implements Serializable {
   public boolean hasCurrent() {
     if (readCurListIndex < writeCurListIndex) {
       return readCurArrayIndex < capacity;
-    }
-    else if (readCurListIndex == writeCurListIndex) {
+    } else if (readCurListIndex == writeCurListIndex) {
       return readCurArrayIndex < writeCurArrayIndex;
-    }
-    else {
+    } else {
       return false;
     }
   }
@@ -386,7 +381,6 @@ public class BatchData implements Serializable {
   }
 
 
-
   public boolean getBoolean() {
     return this.booleanRet.get(readCurListIndex)[readCurArrayIndex];
   }
@@ -517,13 +511,17 @@ public class BatchData implements Serializable {
     return null;
   }
 
+  public long getMaxTimestamp() {
+    return getTimeByIndex(length() - 1);
+  }
+
   public BatchDataIterator getBatchDataIterator() {
     return new BatchDataIterator(this);
   }
 
   /**
-   * This method is used to reset batch data when more than one group by aggregation functions
-   * visit the same batch data
+   * This method is used to reset batch data when more than one group by aggregation functions visit
+   * the same batch data
    */
   public void resetBatchData() {
     this.readCurArrayIndex = 0;
