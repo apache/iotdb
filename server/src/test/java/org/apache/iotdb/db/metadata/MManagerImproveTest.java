@@ -139,7 +139,7 @@ public class MManagerImproveTest {
     for (String s : measurementList) {
       assertTrue(node.hasChildWithKey(s));
       MNode measurementNode = node.getChild(s);
-      assertTrue(measurementNode.getNodeType().equals(MNodeType.LEAF_MNODE));
+      assertTrue(measurementNode.isNodeType(MNodeType.LEAF_MNODE));
       TSDataType dataType = measurementNode.getSchema().getType();
       assertEquals(TSDataType.TEXT, dataType);
     }

@@ -27,14 +27,12 @@ import com.alibaba.fastjson.serializer.SerializerFeature;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -46,14 +44,10 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
-import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -93,11 +87,11 @@ public class MTree implements Serializable {
     int i = 1;
     while (i < nodeNames.length - 1) {
       String nodeName = nodeNames[i];
-      if (cur.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE)) {
+      if (cur.isNodeType(MNodeType.STORAGE_GROUP_MNODE)) {
         storageGroupName = cur.getStorageGroupName();
       }
       if (!cur.hasChildWithKey(nodeName)) {
-        if (cur.getNodeType().equals(MNodeType.LEAF_MNODE)) {
+        if (cur.isNodeType(MNodeType.LEAF_MNODE)) {
           throw new PathAlreadyExistException(cur.getFullPath());
         }
         cur.addChild(nodeName, new InternalMNode(nodeName, cur));
@@ -144,66 +138,6 @@ public class MTree implements Serializable {
    */
   boolean isPathExist(String path) {
     return isPathExist(dummyNode, path);
-  }
-
-  void isPathExist(MNode node, String fullPath, MeasurementSchema schema) throws MetadataException {
-    String measurement = schema.getMeasurementId();
-    if (!node.hasChildWithKey(measurement)) {
-      try {
-        addPath(fullPath, schema.getType(), schema.getEncodingType(),
-            schema.getCompressor(), Collections.emptyMap());
-      } catch (MetadataException e) {
-        if (!e.getMessage().contains("already exist")) {
-          throw e;
-        }
-      }
-    }
-  }
-
-  MNode isPathExist(MNode node, String deviceId, String measurement, String value)
-      throws MetadataException {
-    if (!node.hasChildWithKey(measurement)) {
-      if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
-        throw new MetadataException(
-            String.format("Current deviceId[%s] does not contain measurement:%s", deviceId,
-                measurement));
-      }
-      try {
-        TSDataType dataType = TypeInferenceUtils.getPredictedDataType(value);
-        addPath(new Path(deviceId, measurement).toString(), dataType,
-            getDefaultEncoding(dataType), CompressionType.valueOf(TSFileDescriptor.
-                getInstance().getConfig().getCompressor()), Collections.emptyMap());
-      } catch (MetadataException e) {
-        if (!e.getMessage().contains("already exist")) {
-          throw e;
-        }
-      }
-    }
-    return node.getChild(measurement);
-  }
-
-  /**
-   * Get default encoding by dataType
-   */
-  TSEncoding getDefaultEncoding(TSDataType dataType) {
-    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-    switch (dataType) {
-      case BOOLEAN:
-        return conf.getDefaultBooleanEncoding();
-      case INT32:
-        return conf.getDefaultInt32Encoding();
-      case INT64:
-        return conf.getDefaultInt64Encoding();
-      case FLOAT:
-        return conf.getDefaultFloatEncoding();
-      case DOUBLE:
-        return conf.getDefaultDoubleEncoding();
-      case TEXT:
-        return conf.getDefaultTextEncoding();
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType.toString()));
-    }
   }
 
   /**
@@ -254,7 +188,7 @@ public class MTree implements Serializable {
       MNode temp = cur.getChild(nodeNames[i]);
       if (temp == null) {
         cur.addChild(nodeNames[i], new InternalMNode(nodeNames[i], cur));
-      } else if (temp.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE)) {
+      } else if (temp.isNodeType(MNodeType.STORAGE_GROUP_MNODE)) {
         // before set storage group, check whether the exists or not
         throw new StorageGroupAlreadySetException(temp.getFullPath());
       }
@@ -297,7 +231,7 @@ public class MTree implements Serializable {
    */
   void deleteStorageGroup(String path) throws MetadataException {
     MNode cur = getNodeByPath(path);
-    if (!cur.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE)) {
+    if (!cur.isNodeType(MNodeType.STORAGE_GROUP_MNODE)) {
       throw new StorageGroupNotSetException(path);
     }
     cur.getParent().deleteChild(cur.getName());
@@ -324,14 +258,14 @@ public class MTree implements Serializable {
     int i = 1;
     while (i < nodeNames.length - 1) {
       MNode temp = cur.getChild(nodeNames[i]);
-      if (temp == null || temp.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE)) {
+      if (temp == null || temp.isNodeType(MNodeType.STORAGE_GROUP_MNODE)) {
         return false;
       }
       cur = cur.getChild(nodeNames[i]);
       i++;
     }
     MNode temp = cur.getChild(nodeNames[i]);
-    return temp != null && temp.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE);
+    return temp != null && temp.isNodeType(MNodeType.STORAGE_GROUP_MNODE);
   }
 
   /**
@@ -355,14 +289,14 @@ public class MTree implements Serializable {
 
     // if the storage group node is deleted, the storageGroupName should be return
     String storageGroupName = null;
-    if (cur.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE)) {
+    if (cur.isNodeType(MNodeType.STORAGE_GROUP_MNODE)) {
       storageGroupName = cur.getStorageGroupName();
     }
     cur.getParent().deleteChild(cur.getName());
     cur = cur.getParent();
     while (cur != null && !MetadataConstant.ROOT.equals(cur.getName())
         && cur.getChildren().size() == 0) {
-      if (cur.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE)) {
+      if (cur.isNodeType(MNodeType.STORAGE_GROUP_MNODE)) {
         storageGroupName = cur.getStorageGroupName();
         return storageGroupName;
       }
@@ -404,7 +338,7 @@ public class MTree implements Serializable {
       }
       cur = cur.getChild(nodes[i]);
     }
-    if (!cur.getNodeType().equals(MNodeType.LEAF_MNODE)) {
+    if (!cur.isNodeType(MNodeType.LEAF_MNODE)) {
       throw new PathNotExistException(path);
     }
     return cur.getSchema();
@@ -430,7 +364,7 @@ public class MTree implements Serializable {
       }
       cur = cur.getChild(nodes[i]);
 
-      if (cur.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE)) {
+      if (cur.isNodeType(MNodeType.STORAGE_GROUP_MNODE)) {
         storageGroupChecked = true;
       }
     }
@@ -484,7 +418,7 @@ public class MTree implements Serializable {
    */
   private void findStorageGroup(MNode node, String[] nodes, int idx, String parent,
       List<String> paths) {
-    if (node.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE)) {
+    if (node.isNodeType(MNodeType.STORAGE_GROUP_MNODE)) {
       paths.add(node.getStorageGroupName());
       return;
     }
@@ -515,7 +449,7 @@ public class MTree implements Serializable {
   }
 
   private void findStorageGroup(MNode node, String path, List<String> res) {
-    if (node.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE)) {
+    if (node.isNodeType(MNodeType.STORAGE_GROUP_MNODE)) {
       res.add(path);
       return;
     }
@@ -533,7 +467,7 @@ public class MTree implements Serializable {
     nodeStack.add(root);
     while (!nodeStack.isEmpty()) {
       MNode current = nodeStack.pop();
-      if (current.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE)) {
+      if (current.isNodeType(MNodeType.STORAGE_GROUP_MNODE)) {
         ret.add(current);
       } else if (current.hasChildren()) {
         nodeStack.addAll(current.getChildren().values());
@@ -560,13 +494,13 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       if (cur == null) {
         throw new StorageGroupNotSetException(path);
-      } else if (cur.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE)) {
+      } else if (cur.isNodeType(MNodeType.STORAGE_GROUP_MNODE)) {
         return cur.getStorageGroupName();
       } else {
         cur = cur.getChild(nodes[i]);
       }
     }
-    if (cur.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE)) {
+    if (cur.isNodeType(MNodeType.STORAGE_GROUP_MNODE)) {
       return cur.getStorageGroupName();
     }
     throw new StorageGroupNotSetException(path);
@@ -584,7 +518,7 @@ public class MTree implements Serializable {
     for (int i = 1; i <= nodes.length; i++) {
       if (cur == null) {
         return false;
-      } else if (cur.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE)) {
+      } else if (cur.isNodeType(MNodeType.STORAGE_GROUP_MNODE)) {
         return true;
       } else {
         cur = cur.getChild(nodes[i]);
@@ -634,7 +568,7 @@ public class MTree implements Serializable {
    */
   private void findPath(MNode node, String[] nodes, int idx, String parent,
       List<List<String>> res) {
-    if (node.getNodeType().equals(MNodeType.LEAF_MNODE)) {
+    if (node.isNodeType(MNodeType.LEAF_MNODE)) {
       if (nodes.length <= idx) {
         String nodeName;
         if (node.getName().contains(TsFileConstant.PATH_SEPARATOR)) {
@@ -714,7 +648,7 @@ public class MTree implements Serializable {
   }
 
   private void putDeviceToMap(String path, MNode node, HashMap<String, Integer> deviceMap) {
-    if (node.getNodeType().equals(MNodeType.LEAF_MNODE)) {
+    if (node.isNodeType(MNodeType.LEAF_MNODE)) {
       deviceMap.put(path, 1);
     } else {
       for (String child : node.getChildren().keySet()) {
@@ -752,7 +686,7 @@ public class MTree implements Serializable {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       if (node.hasChildWithKey(nodeReg)) {
-        if (node.getChild(nodeReg).getNodeType().equals(MNodeType.LEAF_MNODE)) {
+        if (node.getChild(nodeReg).isNodeType(MNodeType.LEAF_MNODE)) {
           res.add(parent + node.getName());
         } else {
           findDevices(node.getChild(nodeReg), nodes, idx + 1,
@@ -762,10 +696,10 @@ public class MTree implements Serializable {
     } else {
       boolean deviceAdded = false;
       for (MNode child : node.getChildren().values()) {
-        if (child.getNodeType().equals(MNodeType.LEAF_MNODE) && !deviceAdded) {
+        if (child.isNodeType(MNodeType.LEAF_MNODE) && !deviceAdded) {
           res.add(parent + node.getName());
           deviceAdded = true;
-        } else if (!child.getNodeType().equals(MNodeType.LEAF_MNODE)) {
+        } else if (!child.isNodeType(MNodeType.LEAF_MNODE)) {
           findDevices(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, res);
         }
       }
@@ -846,7 +780,7 @@ public class MTree implements Serializable {
    * @param leafMap leaf map
    */
   private void putLeafToLeafMap(MNode node, Map<String, MeasurementSchema> leafMap) {
-    if (node.getNodeType().equals(MNodeType.LEAF_MNODE)) {
+    if (node.isNodeType(MNodeType.LEAF_MNODE)) {
       if (!leafMap.containsKey(node.getName())) {
         leafMap.put(node.getName(), node.getSchema());
       }
@@ -874,11 +808,11 @@ public class MTree implements Serializable {
 
   private JSONObject mNodeToJSON(MNode node) {
     JSONObject jsonObject = new JSONObject();
-    if (!node.getNodeType().equals(MNodeType.LEAF_MNODE) && node.getChildren().size() > 0) {
+    if (!node.isNodeType(MNodeType.LEAF_MNODE) && node.getChildren().size() > 0) {
       for (MNode child : node.getChildren().values()) {
         jsonObject.put(child.getName(), mNodeToJSON(child));
       }
-    } else if (node.getNodeType().equals(MNodeType.LEAF_MNODE)) {
+    } else if (node.isNodeType(MNodeType.LEAF_MNODE)) {
       jsonObject.put("DataType", node.getSchema().getType());
       jsonObject.put("Encoding", node.getSchema().getEncodingType());
       jsonObject.put("Compressor", node.getSchema().getCompressor());

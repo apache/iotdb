@@ -327,19 +327,6 @@ public class MManager {
     }
   }
 
-  public void addPath(String path, String dataType) throws MetadataException, IOException {
-    lock.writeLock().lock();
-    try {
-      TSDataType tsDataType = TSDataType.valueOf(dataType);
-      TSEncoding tsEncoding = mtree.getDefaultEncoding(tsDataType);
-      CompressionType type = CompressionType
-          .valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
-      addPathToMTreeInternal(path, tsDataType, tsEncoding, type, Collections.emptyMap());
-    } finally {
-      lock.writeLock().unlock();
-    }
-  }
-
   @TestOnly
   public void addPath(String path, String dataType, String encoding)
       throws MetadataException, IOException {
@@ -856,26 +843,6 @@ public class MManager {
     }
   }
 
-  public void isPathExist(MNode node, String fullPath, MeasurementSchema schema)
-      throws MetadataException {
-    lock.readLock().lock();
-    try {
-      mtree.isPathExist(node, fullPath, schema);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  public MNode isPathExist(MNode node, String deviceId, String measurement, String value)
-      throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return mtree.isPathExist(node, deviceId, measurement, value);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
   /**
    * Get node by path
    *
@@ -1001,7 +968,7 @@ public class MManager {
     lock.writeLock().lock();
     try {
       MNode sgNode = getNodeByPath(storageGroup);
-      if (!sgNode.getNodeType().equals(MNodeType.STORAGE_GROUP_MNODE)) {
+      if (!sgNode.isNodeType(MNodeType.STORAGE_GROUP_MNODE)) {
         throw new StorageGroupNotSetException(storageGroup);
       }
       sgNode.setDataTTL(dataTTL);

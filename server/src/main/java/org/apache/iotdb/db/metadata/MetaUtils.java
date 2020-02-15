@@ -47,5 +47,4 @@ class MetaUtils {
   static String getNodeRegByIdx(int idx, String[] nodes) {
     return idx >= nodes.length ? PATH_WILDCARD : nodes[idx];
   }
-
 }

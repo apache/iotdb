@@ -35,8 +35,8 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public MNodeType getNodeType() {
-    return this.nodeType;
+  public boolean isNodeType(MNodeType nodeType) {
+    return this.nodeType.equals(nodeType);
   }
 
   /**

@@ -42,8 +42,8 @@ public class LeafMNode extends MNode {
   }
 
   @Override
-  public MNodeType getNodeType() {
-    return MNodeType.LEAF_MNODE;
+  public boolean isNodeType(MNodeType nodeType) {
+    return nodeType.equals(MNodeType.LEAF_MNODE);
   }
 
   /**

@@ -39,30 +39,30 @@ public abstract class MNode implements Serializable {
   /**
    * Name of the MNode
    */
-  String name;
+  private String name;
 
   MNodeType nodeType;
 
   /**
    * Map for the schema in this storage group
    */
-  Map<String, MeasurementSchema> schemaMap;
+  private Map<String, MeasurementSchema> schemaMap;
 
   /**
    * Corresponding storage group name for current node
    */
-  String storageGroupName;
+  private String storageGroupName;
 
   /**
    * Column's Schema for one timeseries represented by current node if current node is one leaf
    */
   MeasurementSchema schema;
 
-  MNode parent;
+  private MNode parent;
 
   Map<String, MNode> children;
 
-  String fullPath;
+  private String fullPath;
 
   /**
    * when the data in a storage group is older than dataTTL, it is considered invalid and will be
@@ -78,7 +78,7 @@ public abstract class MNode implements Serializable {
     this.parent = parent;
   }
 
-  abstract public MNodeType getNodeType();
+  abstract public boolean isNodeType(MNodeType nodeType);
 
   /**
    * setting storage group.
