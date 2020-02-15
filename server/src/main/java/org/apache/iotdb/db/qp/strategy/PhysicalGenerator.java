@@ -460,7 +460,7 @@ public class PhysicalGenerator {
       return operator;
     }
 
-    Path concatPath = filterPath.addPrefixPath(filterPath, prefix);
+    Path concatPath = Path.addPrefixPath(filterPath, prefix);
     basicOperator.setSinglePath(concatPath);
 
     return basicOperator;
