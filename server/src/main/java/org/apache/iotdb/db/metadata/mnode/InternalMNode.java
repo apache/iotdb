@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import java.util.LinkedHashMap;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -65,7 +64,7 @@ public class InternalMNode extends MNode {
    * @param child child MNode
    */
   @Override
-  public void addChild(String key, MNode child) throws PathAlreadyExistException {
+  public void addChild(String key, MNode child) {
     this.children.put(key, child);
   }
 

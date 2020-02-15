@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -66,13 +65,11 @@ public class LeafMNode extends MNode {
   }
 
   @Override
-  public void addChild(String key, MNode child) throws PathAlreadyExistException{
-    throw new PathAlreadyExistException(child.getFullPath());
+  public void addChild(String key, MNode child) {
   }
 
   @Override
   public void deleteChild(String key) {
-
   }
 
   /**

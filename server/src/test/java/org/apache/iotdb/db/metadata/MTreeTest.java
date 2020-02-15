@@ -67,8 +67,7 @@ public class MTreeTest {
               (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
     } catch (MetadataException e) {
       Assert.assertEquals(
-          String.format("Path [%s] already exist",
-              "root.laptop.d1.s1", "s1"), e.getMessage());
+          String.format("Path [%s] already exist", "root.laptop.d1.s1", "s1"), e.getMessage());
     }
   }
 

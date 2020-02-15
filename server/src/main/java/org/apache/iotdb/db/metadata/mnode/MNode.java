@@ -115,7 +115,7 @@ public abstract class MNode implements Serializable {
    * @param key key
    * @param child child MNode
    */
-  abstract public void addChild(String key, MNode child) throws PathAlreadyExistException;
+  abstract public void addChild(String key, MNode child);
 
   /**
    * delete key from given child MNode
