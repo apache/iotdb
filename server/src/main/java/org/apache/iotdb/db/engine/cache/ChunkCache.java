@@ -29,7 +29,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -50,8 +49,6 @@ public class ChunkCache {
   private AtomicLong cacheRequestNum = new AtomicLong();
 
   private final ReadWriteLock lock = new ReentrantReadWriteLock();
-  private final Lock readLock = lock.readLock();
-  private final Lock writeLock = lock.writeLock();
 
 
   private ChunkCache() {
@@ -76,7 +73,7 @@ public class ChunkCache {
     cacheRequestNum.incrementAndGet();
 
     try {
-      readLock.lock();
+      lock.readLock().lock();
       if (lruCache.containsKey(chunkMetaData)) {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
@@ -84,23 +81,23 @@ public class ChunkCache {
         return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
       }
     } finally {
-      readLock.unlock();
+      lock.readLock().unlock();
     }
 
-    writeLock.lock();
+    lock.writeLock().lock();
     if (lruCache.containsKey(chunkMetaData)) {
-      readLock.lock();
-      writeLock.unlock();
+      lock.readLock().lock();
+      lock.writeLock().unlock();
       cacheHitNum.incrementAndGet();
       printCacheLog(true);
       Chunk chunk = lruCache.get(chunkMetaData);
-      readLock.unlock();
+      lock.readLock().unlock();
       return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
     }
     printCacheLog(false);
     Chunk chunk = reader.readMemChunk(chunkMetaData);
     lruCache.put(chunkMetaData, chunk);
-    writeLock.unlock();
+    lock.writeLock().unlock();
     return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
 
   }
@@ -128,19 +125,19 @@ public class ChunkCache {
    * clear LRUCache.
    */
   public void clear() {
-    writeLock.lock();
+    lock.writeLock().lock();
     if (lruCache != null) {
       lruCache.clear();
     }
-    writeLock.unlock();
+    lock.writeLock().unlock();
   }
 
   public void remove(ChunkMetaData chunkMetaData) {
-    writeLock.lock();
+    lock.writeLock().lock();
     if (chunkMetaData != null) {
       lruCache.remove(chunkMetaData);
     }
-    writeLock.unlock();
+    lock.writeLock().unlock();
   }
 
   /**
