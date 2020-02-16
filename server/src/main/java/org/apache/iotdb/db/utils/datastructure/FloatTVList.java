@@ -69,7 +69,7 @@ public class FloatTVList extends TVList {
     for (int i = 0; i < count; i++) {
       int arrayIndex = i / ARRAY_SIZE;
       int elementIndex = i % ARRAY_SIZE;
-      partialSortedValues[i] = sortedValues[arrayIndex][elementIndex];
+      partialSortedValues[i] = values.get(arrayIndex)[elementIndex];
     }
     return partialSortedValues;
   }

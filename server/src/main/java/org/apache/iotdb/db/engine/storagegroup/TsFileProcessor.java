@@ -305,9 +305,18 @@ public class TsFileProcessor {
       // To ensure there must be a flush thread serving this processor after the field `shouldClose`
       // is set true, we need to generate a NotifyFlushMemTable as a signal task and submit it to
       // the FlushManager.
-      IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
+      IMemTable tmpWorkMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
+      IMemTable tmpFlushMemTable = flushMemTable == null ? new NotifyFlushMemTable() : flushMemTable;
       if (logger.isDebugEnabled()) {
-        if (tmpMemTable.isSignalMemTable()) {
+        if (tmpWorkMemTable.isSignalMemTable()) {
+          logger.debug(
+              "storage group {} add a signal memtable into flushing memtable list when async close",
+              storageGroupName);
+        } else {
+          logger
+              .debug("storage group {} async flush a memtable when async close", storageGroupName);
+        }
+        if (tmpFlushMemTable.isSignalMemTable()) {
           logger.debug(
               "storage group {} add a signal memtable into flushing memtable list when async close",
               storageGroupName);
@@ -317,7 +326,8 @@ public class TsFileProcessor {
         }
       }
       try {
-        addAMemtableIntoFlushingList(tmpMemTable);
+        addAMemtableIntoFlushingList(tmpWorkMemTable);
+        addAMemtableIntoFlushingList(tmpFlushMemTable);
       } catch (IOException e) {
         logger.error("async close failed, because", e);
       }
@@ -333,7 +343,11 @@ public class TsFileProcessor {
     IMemTable tmpMemTable;
     flushQueryLock.writeLock().lock();
     try {
-      tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
+      if (flushMemTable == null) {
+        tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
+      } else {
+        tmpMemTable = flushMemTable;
+      }
       if (tmpMemTable.isSignalMemTable()) {
         logger.debug("add a signal memtable into flushing memtable list when sync flush");
       }
@@ -411,7 +425,11 @@ public class TsFileProcessor {
     if (!tobeFlushed.isSignalMemTable()) {
       totalMemTableSize += tobeFlushed.memSize();
     }
-    workMemTable = null;
+    if (flushMemTable == null) {
+      workMemTable = null;
+    } else {
+      flushMemTable = null;
+    }
     FlushManager.getInstance().registerTsFileProcessor(this);
   }
 
@@ -580,24 +598,28 @@ public class TsFileProcessor {
         switch (series.getType()) {
           case TEXT:
             columns[0] = tvList.getPartialSortedBinaries(config.getDefaultStep());
+            break;
           case FLOAT:
             columns[0] = tvList.getPartialSortedFloats(config.getDefaultStep());
+            break;
           case INT32:
             columns[0] = tvList.getPartialSortedInts(config.getDefaultStep());
+            break;
           case INT64:
             columns[0] = tvList.getPartialSortedLongs(config.getDefaultStep());
+            break;
           case DOUBLE:
             columns[0] = tvList.getPartialSortedDoubles(config.getDefaultStep());
+            break;
           case BOOLEAN:
             columns[0] = tvList.getPartialSortedBooleans(config.getDefaultStep());
+            break;
         }
         batchInsertPlan.setTimes(times);
         batchInsertPlan.setColumns(columns);
         batchInsertPlan.setRowCount(rowCount);
         flushMemTable.insertBatch(batchInsertPlan, 0, batchInsertPlan.getRowCount());
-        for (int i = 0; i < rowCount; i++) {
-          workMemTable.delete(deviceId, measurementId, tvList.getTime(i));
-        }
+        workMemTable.delete(deviceId, measurementId, tvList.getTime(rowCount - 1));
       }
     }
   }
@@ -608,6 +630,10 @@ public class TsFileProcessor {
 
   public long getWorkMemTableMemory() {
     return workMemTable.memSize();
+  }
+
+  public long getFlushMemTableMemory() {
+    return flushMemTable.memSize();
   }
 
   RestorableTsFileIOWriter getWriter() {

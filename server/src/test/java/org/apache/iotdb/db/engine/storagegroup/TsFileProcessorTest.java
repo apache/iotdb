@@ -274,4 +274,27 @@ public class TsFileProcessorTest {
     assertTrue(processor.getTsFileResource().isClosed());
 
   }
+
+  @Test
+  public void testAdjustMemTable() throws IOException, QueryProcessException {
+    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
+        SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
+    },
+        (tsFileProcessor) -> true, true);
+
+    Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
+        .query(deviceId, measurementId, dataType, props, context);
+    ReadOnlyMemChunk left = pair.left;
+    List<ChunkMetaData> right = pair.right;
+    assertTrue(left.isEmpty());
+    assertEquals(0, right.size());
+
+    for (int i = 1; i <= 100; i++) {
+      TSRecord record = new TSRecord(i, deviceId);
+      record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
+      processor.insert(new InsertPlan(record));
+    }
+
+    processor.adjustMemTable();
+  }
 }

@@ -74,7 +74,7 @@ public abstract class TVList {
     for (int i = 0; i < count; i++) {
       int arrayIndex = i / ARRAY_SIZE;
       int elementIndex = i % ARRAY_SIZE;
-      partialSortedTimes[i] = sortedTimestamps[arrayIndex][elementIndex];
+      partialSortedTimes[i] = timestamps.get(arrayIndex)[elementIndex];
     }
     return partialSortedTimes;
   }
