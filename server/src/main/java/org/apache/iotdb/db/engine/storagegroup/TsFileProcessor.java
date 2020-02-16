@@ -377,10 +377,14 @@ public class TsFileProcessor {
     flushQueryLock.writeLock().lock();
     try {
       if (flushMemTable == null) {
-        return;
+        if (workMemTable == null) {
+          return;
+        } else {
+          addAMemtableIntoFlushingList(workMemTable);
+        }
+      } else {
+        addAMemtableIntoFlushingList(flushMemTable);
       }
-
-      addAMemtableIntoFlushingList(flushMemTable);
 
     } catch (IOException e) {
       logger.error("WAL notify start flush failed", e);
@@ -566,6 +570,7 @@ public class TsFileProcessor {
         TSDataType[] dataTypes = new TSDataType[] {series.getType()};
         BatchInsertPlan batchInsertPlan = new BatchInsertPlan(deviceId, measurements, dataTypes);
         TVList tvList = series.getSortedTVList();
+        int rowCount = (int)(tvList.size() * config.getDefaultStep());
         long[] times = tvList.getPartialSortedTimes(config.getDefaultStep());
         Object[] columns = new Object[1];
         switch (series.getType()) {
@@ -584,13 +589,14 @@ public class TsFileProcessor {
         }
         batchInsertPlan.setTimes(times);
         batchInsertPlan.setColumns(columns);
-        batchInsertPlan.setRowCount((int)(tvList.size() * config.getDefaultStep()));
+        batchInsertPlan.setRowCount(rowCount);
         flushMemTable.insertBatch(batchInsertPlan, 0, batchInsertPlan.getRowCount());
+        for (int i = 0; i < rowCount; i++) {
+          workMemTable.delete(deviceId, measurementId, tvList.getTime(i));
+        }
       }
     }
   }
-
-
 
   public int getFlushingMemTableSize() {
     return flushingMemTables.size();
