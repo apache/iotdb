@@ -282,7 +282,16 @@ public class TsFileProcessor {
     synchronized (flushingMemTables) {
       try {
         asyncClose();
-        flushingMemTables.wait();
+        long startTime = System.currentTimeMillis();
+        while (!flushingMemTables.isEmpty()) {
+          flushingMemTables.wait(60_000);
+          if (System.currentTimeMillis() - startTime > 60_000) {
+            logger.warn("{} has spent {}s for waiting flushing one memtable; {} left.",
+                this.tsFileResource.getFile().getAbsolutePath(),
+                (System.currentTimeMillis() - startTime)/1000,flushingMemTables.size());
+          }
+
+        }
       } catch (InterruptedException e) {
         logger.error("wait close interrupted", e);
         Thread.currentThread().interrupt();
