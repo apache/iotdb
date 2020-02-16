@@ -309,6 +309,7 @@ public class IoTDBDescriptor {
       conf.setMemtableNumInEachStorageGroup(
           Integer.parseInt(properties.getProperty("memtable_num_in_each_storage_group", String.valueOf(conf.getMemtableNumInEachStorageGroup()))));
 
+      // the step of sliding window
       conf.setDefaultStep(
           Float.parseFloat(properties.getProperty("default_step_of_sliding_window", String.valueOf(conf.getDefaultStep()))));
 

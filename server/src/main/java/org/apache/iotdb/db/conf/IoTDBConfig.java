@@ -472,7 +472,6 @@ public class IoTDBConfig {
   // default step of sliding window in proportion
   private float defaultStep = 0.8f;
 
-
   //just for test
   //wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;

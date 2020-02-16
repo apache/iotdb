@@ -46,7 +46,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
-import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
@@ -623,7 +622,7 @@ public class StorageGroupProcessor {
           .put(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
     }
 
-    // check memtable size and may async try to flush the work memtable
+    // check memtable size and may async try to flush the filled memtable
     if (tsFileProcessor.shouldFlush()) {
       tsFileProcessor.adjustMemTable();
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
