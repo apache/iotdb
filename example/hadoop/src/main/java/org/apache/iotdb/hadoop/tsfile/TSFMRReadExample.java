@@ -100,8 +100,6 @@ public class TSFMRReadExample {
 
   public static class TSMapper extends Mapper<NullWritable, MapWritable, Text, DoubleWritable> {
 
-    private static final IntWritable one = new IntWritable(1);
-
     @Override
     protected void map(NullWritable key, MapWritable value,
         Mapper<NullWritable, MapWritable, Text, DoubleWritable>.Context context)
