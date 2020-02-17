@@ -63,6 +63,7 @@ public class AndNode implements Node {
     while (leftTimeColumn.hasMoreData() && rightTimeColumn.hasMoreData()) {
       long leftValue = leftTimeColumn.currentTime();
       long rightValue = rightTimeColumn.currentTime();
+
       if (leftValue == rightValue) {
         this.hasCachedValue = true;
         this.cachedValue.add(leftValue);
@@ -74,7 +75,7 @@ public class AndNode implements Node {
         leftTimeColumn.next();
       }
 
-      if (leftValue > stopBatchTime && rightValue > stopBatchTime) {
+      if (leftValue == stopBatchTime || rightValue == stopBatchTime) {
         if (hasCachedValue) {
           break;
         }
