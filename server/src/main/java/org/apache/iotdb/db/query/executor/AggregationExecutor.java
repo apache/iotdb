@@ -120,7 +120,7 @@ public class AggregationExecutor {
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(seriesPath, context, timeFilter);
     // update filter by TTL
-    timeFilter = queryDataSource.updateTimeFilterUsingTTL(timeFilter);
+    timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
     IAggregateReader seriesReader = new SeriesAggregateReader(pathToAggrIndexes.getKey(),
         tsDataType, context, queryDataSource, timeFilter, null);

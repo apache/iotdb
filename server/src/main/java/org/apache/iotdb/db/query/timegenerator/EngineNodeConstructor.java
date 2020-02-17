@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.timegenerator;
 
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -51,14 +52,17 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
         Filter filter = ((SingleSeriesExpression) expression).getFilter();
         Path path = ((SingleSeriesExpression) expression).getSeriesPath();
         TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
+
+        QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+            .getQueryDataSource(path, context, null);
+        // update filter by TTL
+        filter = queryDataSource.updateFilterUsingTTL(filter);
+
         return new EngineLeafNode(
-            new SeriesRawDataPointReader(path, dataType, context,
-                QueryResourceManager.getInstance().getQueryDataSource(path, context, filter),
-                null, filter));
+            new SeriesRawDataPointReader(path, dataType, context, queryDataSource, null, filter));
       } catch (PathException e) {
         throw new StorageEngineException(e.getMessage());
       }
-
     } else {
       return constructNotSeriesNode(expression, context);
     }
