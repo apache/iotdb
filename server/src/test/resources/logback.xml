@@ -35,6 +35,8 @@
     </appender>
     <!--<logger name="org.apache.iotdb.db.utils.OpenFileNumUtil" level="debug" />-->
     <!--<logger name="org.apache.iotdb.db.utils.OpenFileNumUtilTest" level="debug" />-->
+    <!-- do not print "Can't get the cpu ratio,because this OS:mac os x is not support in test"-->
+    <logger name="org.apache.iotdb.db.metrics.server.ServerArgument" level="ERROR" />
     <root level="WARN">
         <appender-ref ref="stdout"/>
     </root>
