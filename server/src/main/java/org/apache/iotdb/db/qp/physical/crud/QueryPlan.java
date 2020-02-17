@@ -26,7 +26,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-public class QueryPlan extends PhysicalPlan {
+public abstract class QueryPlan extends PhysicalPlan {
 
   private List<Path> paths = null;
   private List<TSDataType> dataTypes = null;

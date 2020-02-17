@@ -35,7 +35,7 @@ public class MinTimeAggrResult extends AggregateResult {
 
   @Override
   public Long getResult() {
-    return hasResult() ? getLongRet() : null;
+    return hasResult() ? getLongValue() : null;
   }
 
   @Override
@@ -58,7 +58,7 @@ public class MinTimeAggrResult extends AggregateResult {
       return;
     }
     if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
-      setLongRet(dataInThisPage.currentTime());
+      setLongValue(dataInThisPage.currentTime());
     }
   }
 
@@ -71,7 +71,7 @@ public class MinTimeAggrResult extends AggregateResult {
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
-        setLongRet(timestamps[i]);
+        setLongValue(timestamps[i]);
         return;
       }
     }
