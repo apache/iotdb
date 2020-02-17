@@ -114,6 +114,7 @@ public class AndNode implements Node {
     }
   }
 
+  //no more data in cache and has more data in child
   private boolean hasMoreData(TimeColumn timeSeries, Node child) throws IOException {
     return (timeSeries == null || !timeSeries.hasMoreData()) && child.hasNextTimeColumn();
   }
