@@ -19,7 +19,7 @@
 package org.apache.iotdb.tsfile.read.common;
 
 
-public class TimeSeries {
+public class TimeColumn {
 
   private long[] times;
 
@@ -28,12 +28,12 @@ public class TimeSeries {
   private int cur;
 
 
-  public TimeSeries(int initSize) {
+  public TimeColumn(int initSize) {
     times = new long[initSize];
   }
 
 
-  public TimeSeries(long[] times) {
+  public TimeColumn(long[] times) {
     this.times = times;
   }
 

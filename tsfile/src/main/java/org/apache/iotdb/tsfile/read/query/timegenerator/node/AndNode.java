@@ -19,19 +19,19 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.read.common.TimeSeries;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 
 public class AndNode implements Node {
 
   private Node leftChild;
   private Node rightChild;
 
-  private TimeSeries cachedValue;
+  private TimeColumn cachedValue;
   private boolean hasCachedValue;
 
 
-  private TimeSeries leftPageData;
-  private TimeSeries rightPageData;
+  private TimeColumn leftTimeColumn;
+  private TimeColumn rightTimeColumn;
 
   /**
    * Constructor of AndNode.
@@ -46,11 +46,11 @@ public class AndNode implements Node {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNextTimeColumn() throws IOException {
     if (hasCachedValue) {
       return true;
     }
-    cachedValue = new TimeSeries(1000);
+    cachedValue = new TimeColumn(1000);
     //fill data
     fillLeftData();
     fillRightData();
@@ -60,18 +60,18 @@ public class AndNode implements Node {
      */
     long stopBatchTime = getStopBatchTime();
 
-    while (leftPageData.hasMoreData() && rightPageData.hasMoreData()) {
-      long leftValue = leftPageData.currentTime();
-      long rightValue = rightPageData.currentTime();
+    while (leftTimeColumn.hasMoreData() && rightTimeColumn.hasMoreData()) {
+      long leftValue = leftTimeColumn.currentTime();
+      long rightValue = rightTimeColumn.currentTime();
       if (leftValue == rightValue) {
         this.hasCachedValue = true;
         this.cachedValue.add(leftValue);
-        leftPageData.next();
-        rightPageData.next();
+        leftTimeColumn.next();
+        rightTimeColumn.next();
       } else if (leftValue > rightValue) {
-        rightPageData.next();
+        rightTimeColumn.next();
       } else { // leftValue < rightValue
-        leftPageData.next();
+        leftTimeColumn.next();
       }
 
       if (leftValue > stopBatchTime && rightValue > stopBatchTime) {
@@ -93,37 +93,37 @@ public class AndNode implements Node {
   private long getStopBatchTime() {
     long rMax = Long.MAX_VALUE;
     long lMax = Long.MAX_VALUE;
-    if (leftPageData.hasMoreData()) {
-      lMax = leftPageData.getLastTime();
+    if (leftTimeColumn.hasMoreData()) {
+      lMax = leftTimeColumn.getLastTime();
     }
-    if (rightPageData.hasMoreData()) {
-      rMax = rightPageData.getLastTime();
+    if (rightTimeColumn.hasMoreData()) {
+      rMax = rightTimeColumn.getLastTime();
     }
     return rMax > lMax ? lMax : rMax;
   }
 
   private void fillRightData() throws IOException {
-    if (hasMoreData(rightPageData, rightChild)) {
-      rightPageData = rightChild.next();
+    if (hasMoreData(rightTimeColumn, rightChild)) {
+      rightTimeColumn = rightChild.nextTimeColumn();
     }
   }
 
   private void fillLeftData() throws IOException {
-    if (hasMoreData(leftPageData, leftChild)) {
-      leftPageData = leftChild.next();
+    if (hasMoreData(leftTimeColumn, leftChild)) {
+      leftTimeColumn = leftChild.nextTimeColumn();
     }
   }
 
-  private boolean hasMoreData(TimeSeries timeSeries, Node child) throws IOException {
-    return (timeSeries == null || !timeSeries.hasMoreData()) && child.hasNext();
+  private boolean hasMoreData(TimeColumn timeSeries, Node child) throws IOException {
+    return (timeSeries == null || !timeSeries.hasMoreData()) && child.hasNextTimeColumn();
   }
 
   /**
    * If there is no value in current Node, -1 will be returned if {@code next()} is invoked.
    */
   @Override
-  public TimeSeries next() throws IOException {
-    if (hasNext()) {
+  public TimeColumn nextTimeColumn() throws IOException {
+    if (hasNextTimeColumn()) {
       hasCachedValue = false;
       return cachedValue;
     }

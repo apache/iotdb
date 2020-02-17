@@ -25,7 +25,7 @@ import java.util.List;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.TimeSeries;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -46,7 +46,7 @@ public class TimeGeneratorImpl implements TimeGenerator {
   private Node operatorNode;
 
   private boolean hasCache;
-  private TimeSeries cacheTimes;
+  private TimeColumn cacheTimes;
 
   private HashMap<Path, List<LeafNode>> leafCache;
 
@@ -75,8 +75,8 @@ public class TimeGeneratorImpl implements TimeGenerator {
     if (cacheTimes != null && cacheTimes.hasMoreData()) {
       return true;
     }
-    while (operatorNode.hasNext()) {
-      cacheTimes = operatorNode.next();
+    while (operatorNode.hasNextTimeColumn()) {
+      cacheTimes = operatorNode.nextTimeColumn();
       if (!cacheTimes.hasMoreData()) {
         continue;
       }

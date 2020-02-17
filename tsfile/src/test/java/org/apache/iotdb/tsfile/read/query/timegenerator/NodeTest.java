@@ -21,7 +21,7 @@ package org.apache.iotdb.tsfile.read.query.timegenerator;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.TimeSeries;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
@@ -40,8 +40,8 @@ public class NodeTest {
     long[] timestamps = new long[]{1, 2, 3, 4, 5, 6, 7};
     AbstractFileSeriesReader seriesReader = new FakedFileSeriesReader(timestamps);
     Node leafNode = new LeafNode(seriesReader);
-    while (leafNode.hasNext()) {
-      Assert.assertEquals(timestamps[index++], leafNode.next().currentTime());
+    while (leafNode.hasNextTimeColumn()) {
+      Assert.assertEquals(timestamps[index++], leafNode.nextTimeColumn().currentTime());
     }
   }
 
@@ -63,8 +63,8 @@ public class NodeTest {
     int index = 0;
     Node orNode = new OrNode(new LeafNode(new FakedFileSeriesReader(left)),
         new LeafNode(new FakedFileSeriesReader(right)));
-    while (orNode.hasNext()) {
-      TimeSeries timeSeries = orNode.next();
+    while (orNode.hasNextTimeColumn()) {
+      TimeColumn timeSeries = orNode.nextTimeColumn();
       while (timeSeries.hasMoreData()) {
         long value = timeSeries.currentTime();
         timeSeries.next();
@@ -87,8 +87,8 @@ public class NodeTest {
     int index = 0;
     Node andNode = new AndNode(new LeafNode(new FakedFileSeriesReader(left)),
         new LeafNode(new FakedFileSeriesReader(right)));
-    while (andNode.hasNext()) {
-      TimeSeries timeSeries = andNode.next();
+    while (andNode.hasNextTimeColumn()) {
+      TimeColumn timeSeries = andNode.nextTimeColumn();
       while (timeSeries.hasMoreData()) {
         long value = timeSeries.currentTime();
         timeSeries.next();

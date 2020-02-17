@@ -22,7 +22,7 @@ import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.TimeSeries;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
@@ -36,7 +36,8 @@ public class EngineTimeGenerator implements TimeGenerator {
   private IExpression expression;
   private Node operatorNode;
 
-  private TimeSeries cacheTimes;
+  private TimeColumn cacheTimes;
+  private boolean hasCache;
 
   /**
    * Constructor of EngineTimeGenerator.
@@ -54,17 +55,30 @@ public class EngineTimeGenerator implements TimeGenerator {
 
   @Override
   public boolean hasNext() throws IOException {
-    return (cacheTimes != null && cacheTimes.hasMoreData()) || operatorNode.hasNext();
+    if (hasCache) {
+      return true;
+    }
+    if (cacheTimes != null && cacheTimes.hasMoreData()) {
+      cacheTimes.next();
+      return true;
+    }
+    while (operatorNode.hasNextTimeColumn()) {
+      cacheTimes = operatorNode.nextTimeColumn();
+      if (cacheTimes != null && cacheTimes.hasMoreData()) {
+        hasCache = true;
+        break;
+      }
+    }
+    return hasCache;
   }
 
   @Override
   public long next() throws IOException {
-    if (cacheTimes == null || !cacheTimes.hasMoreData()) {
-      cacheTimes = operatorNode.next();
+    if (hasCache || hasNext()) {
+      hasCache = false;
+      return cacheTimes.currentTime();
     }
-    long currentTime = cacheTimes.currentTime();
-    cacheTimes.next();
-    return currentTime;
+    throw new IOException("no more data");
   }
 
   @Override

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.timegenerator;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.read.common.TimeSeries;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.NodeType;
@@ -34,12 +34,12 @@ public class EngineLeafNode implements Node {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNextTimeColumn() throws IOException {
     return reader.hasNextBatch();
   }
 
   @Override
-  public TimeSeries next() throws IOException {
+  public TimeColumn nextTimeColumn() throws IOException {
     return reader.nextBatch().getTimeSeries();
   }
 
