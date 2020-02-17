@@ -22,6 +22,9 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
+import javax.management.remote.JMXConnector;
+import javax.management.remote.JMXConnectorFactory;
+import javax.management.remote.JMXServiceURL;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -84,6 +87,18 @@ public class EnvironmentUtils {
       } catch (TTransportException e) {
       }
     }
+    //try jmx connection
+    try {
+    JMXServiceURL url =
+        new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
+    JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
+      logger.error("stop JMX failed. 31999 can be connected now.");
+    jmxConnector.close();
+    } catch (IOException e) {
+      //do nothing
+    }
+
+
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
