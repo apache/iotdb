@@ -582,7 +582,6 @@ public class IoTDBAggregationIT {
               + "," + resultSet.getString(count(d0s0)) + "," + resultSet.getString(avg(d0s2))
               + "," + resultSet.getString(avg(d0s1)) + "," + resultSet.getString(count(d0s2))
               + "," + resultSet.getString(sum(d0s0));
-          System.out.println(ans);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }

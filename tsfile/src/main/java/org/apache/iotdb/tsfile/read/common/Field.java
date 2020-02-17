@@ -40,9 +40,9 @@ public class Field {
     this.dataType = dataType;
   }
 
-  public static Field copy(Field field){
+  public static Field copy(Field field) {
     Field out = new Field(field.dataType);
-    if(out.dataType != null) {
+    if (out.dataType != null) {
       switch (out.dataType) {
         case DOUBLE:
           out.setDoubleV(field.getDoubleV());
@@ -63,7 +63,7 @@ public class Field {
           out.setBinaryV(field.getBinaryV());
           break;
         default:
-          throw new UnSupportedDataTypeException("UnSupported: " + out.dataType);
+          throw new UnSupportedDataTypeException(out.dataType.toString());
       }
     }
 
@@ -145,7 +145,7 @@ public class Field {
       case TEXT:
         return binaryV.toString();
       default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+        throw new UnSupportedDataTypeException(dataType.toString());
     }
   }
 
@@ -172,7 +172,7 @@ public class Field {
       case TEXT:
         return getBinaryV();
       default:
-        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
+        throw new UnSupportedDataTypeException(dataType.toString());
     }
   }
 
@@ -201,7 +201,7 @@ public class Field {
         field.setBinaryV((Binary) value);
         break;
       default:
-        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
+        throw new UnSupportedDataTypeException(dataType.toString());
     }
     return field;
   }
