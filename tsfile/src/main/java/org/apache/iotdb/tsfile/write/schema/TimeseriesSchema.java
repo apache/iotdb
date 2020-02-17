@@ -23,7 +23,6 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
@@ -34,10 +33,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
- * This class describes a measurement's information registered in
- * {@linkplain Schema FilSchema}, including measurement id, data type, encoding
- * and compressor type. For each TSEncoding, MeasurementSchema maintains
- * respective TSEncodingBuilder; For TSDataType, only ENUM has
+ * This class describes a measurement's information registered in {@linkplain Schema FilSchema},
+ * including measurement id, data type, encoding and compressor type. For each TSEncoding,
+ * MeasurementSchema maintains respective TSEncodingBuilder; For TSDataType, only ENUM has
  * TSDataTypeConverter up to now.
  */
 public class TimeseriesSchema implements Comparable<TimeseriesSchema>, Serializable {
@@ -61,10 +59,11 @@ public class TimeseriesSchema implements Comparable<TimeseriesSchema>, Serializa
    * Constructor of MeasurementSchema.
    *
    * <p>
-   * props - information in encoding method. For RLE, Encoder.MAX_POINT_NUMBER For
-   * PLAIN, Encoder.maxStringLength
+   * props - information in encoding method. For RLE, Encoder.MAX_POINT_NUMBER For PLAIN,
+   * Encoder.maxStringLength
    */
-  public TimeseriesSchema(String measurementId, TSDataType type, TSEncoding encoding, CompressionType compressionType,
+  public TimeseriesSchema(String measurementId, TSDataType type, TSEncoding encoding,
+      CompressionType compressionType,
       Map<String, String> props) {
     this.measurementId = measurementId;
     this.type = type;
@@ -77,10 +76,12 @@ public class TimeseriesSchema implements Comparable<TimeseriesSchema>, Serializa
     this.measurementId = measurementId;
     this.type = type;
     this.encoding = encoding;
-    this.compressionType = CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
+    this.compressionType = CompressionType
+        .valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
   }
 
-  public TimeseriesSchema(String measurementId, TSDataType type, TSEncoding encoding, CompressionType compressionType) {
+  public TimeseriesSchema(String measurementId, TSDataType type, TSEncoding encoding,
+      CompressionType compressionType) {
     this.measurementId = measurementId;
     this.type = type;
     this.encoding = encoding;
@@ -118,6 +119,10 @@ public class TimeseriesSchema implements Comparable<TimeseriesSchema>, Serializa
     return props;
   }
 
+  public void setProps(Map<String, String> props) {
+    this.props = props;
+  }
+
   public TSEncoding getEncodingType() {
     return encoding;
   }
@@ -126,24 +131,21 @@ public class TimeseriesSchema implements Comparable<TimeseriesSchema>, Serializa
     return type;
   }
 
-  public void setProps(Map<String, String> props) {
-    this.props = props;
-  }
-
   /**
-   * 
    * /** function for getting time encoder. TODO can I be optimized?
    */
   public Encoder getTimeEncoder() {
-    TSEncoding timeSeriesEncoder = TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
-    TSDataType timeType = TSDataType.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
+    TSEncoding timeSeriesEncoder = TSEncoding
+        .valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
+    TSDataType timeType = TSDataType
+        .valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
     return TSEncodingBuilder.getConverter(timeSeriesEncoder).getEncoder(timeType);
   }
 
   /**
-   * get Encoder of value from encodingConverter by measurementID and data type.
-   * TODO can I be optimized?
-   * 
+   * get Encoder of value from encodingConverter by measurementID and data type. TODO can I be
+   * optimized?
+   *
    * @return Encoder for value
    */
   public Encoder getValueEncoder() {
@@ -164,7 +166,8 @@ public class TimeseriesSchema implements Comparable<TimeseriesSchema>, Serializa
   @Override
   public String toString() {
     StringContainer sc = new StringContainer("");
-    sc.addTail("[", measurementId, ",", type.toString(), ",", encoding.toString(), ",", props.toString(), ",",
+    sc.addTail("[", measurementId, ",", type.toString(), ",", encoding.toString(), ",",
+        props.toString(), ",",
         compressionType.toString());
     sc.addTail("]");
     return sc.toString();

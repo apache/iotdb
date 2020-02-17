@@ -22,10 +22,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
@@ -40,20 +36,20 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * TsFileWriter is the entrance for writing processing. It receives a record and
- * send it to responding chunk group write. It checks memory size for all
- * writing processing along its strategy and flush data stored in memory to
- * OutputStream. At the end of writing, user should call {@code
- * close()} method to flush the last data outside and close the normal
- * outputStream and error outputStream.
+ * TsFileWriter is the entrance for writing processing. It receives a record and send it to
+ * responding chunk group write. It checks memory size for all writing processing along its strategy
+ * and flush data stored in memory to OutputStream. At the end of writing, user should call {@code
+ * close()} method to flush the last data outside and close the normal outputStream and error
+ * outputStream.
  */
 public class TsFileWriter implements AutoCloseable {
 
-  private static final Logger LOG = LoggerFactory.getLogger(TsFileWriter.class);
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
-
+  private static final Logger LOG = LoggerFactory.getLogger(TsFileWriter.class);
   /**
    * schema of this TsFile.
    **/
@@ -130,9 +126,11 @@ public class TsFileWriter implements AutoCloseable {
    * @param schema     the schema of this TsFile
    * @param conf       the configuration of this TsFile
    */
-  protected TsFileWriter(TsFileIOWriter fileWriter, Schema schema, TSFileConfig conf) throws IOException {
+  protected TsFileWriter(TsFileIOWriter fileWriter, Schema schema, TSFileConfig conf)
+      throws IOException {
     if (!fileWriter.canWrite()) {
-      throw new IOException("the given file Writer does not support writing any more. Maybe it is an complete TsFile");
+      throw new IOException(
+          "the given file Writer does not support writing any more. Maybe it is an complete TsFile");
     }
     this.fileWriter = fileWriter;
     this.schema = schema;
@@ -140,17 +138,20 @@ public class TsFileWriter implements AutoCloseable {
     this.chunkGroupSizeThreshold = conf.getGroupSizeInByte();
     config.setTSFileStorageFs(conf.getTSFileStorageFs().name());
     if (this.pageSize >= chunkGroupSizeThreshold) {
-      LOG.warn("TsFile's page size {} is greater than chunk group size {}, please enlarge the chunk group"
-          + " size or decrease page size. ", pageSize, chunkGroupSizeThreshold);
+      LOG.warn(
+          "TsFile's page size {} is greater than chunk group size {}, please enlarge the chunk group"
+              + " size or decrease page size. ", pageSize, chunkGroupSizeThreshold);
     }
   }
 
   // TODO: device Template
-  public void addDeviceTemplates(Map<String, TimeseriesSchema> template) throws WriteProcessException {
+  public void addDeviceTemplates(Map<String, TimeseriesSchema> template)
+      throws WriteProcessException {
 
   }
 
-  public void addTimeseries(Path path, TimeseriesSchema timeseriesSchema) throws WriteProcessException {
+  public void addTimeseries(Path path, TimeseriesSchema timeseriesSchema)
+      throws WriteProcessException {
     if (schema.containsTimeseries(path)) {
       throw new WriteProcessException("given timeseries has exists! " + path.toString());
     }
@@ -188,7 +189,7 @@ public class TsFileWriter implements AutoCloseable {
     return true;
 
   }
-  
+
   /**
    * Confirm whether the row batch is legal.
    *
@@ -211,7 +212,8 @@ public class TsFileWriter implements AutoCloseable {
     for (TimeseriesSchema timeseries : rowBatch.timeseries) {
       String measurementId = timeseries.getMeasurementId();
       if (schemaDescriptorMap.containsKey(new Path(deviceId, measurementId))) {
-        groupWriter.tryToAddSeriesWriter(schemaDescriptorMap.get(new Path(deviceId, measurementId)), pageSize);
+        groupWriter.tryToAddSeriesWriter(schemaDescriptorMap.get(new Path(deviceId, measurementId)),
+            pageSize);
       } else {
         throw new NoMeasurementException("input measurement is invalid: " + measurementId);
       }
@@ -222,8 +224,7 @@ public class TsFileWriter implements AutoCloseable {
    * write a record in type of T.
    *
    * @param record - record responding a data line
-   * @return true -size of tsfile or metadata reaches the threshold. false -
-   *         otherwise
+   * @return true -size of tsfile or metadata reaches the threshold. false - otherwise
    * @throws IOException           exception in IO
    * @throws WriteProcessException exception in write process
    */
@@ -235,12 +236,12 @@ public class TsFileWriter implements AutoCloseable {
     ++recordCount;
     return checkMemorySizeAndMayFlushChunks();
   }
-  
+
   /**
    * write a row batch
    *
    * @param rowBatch - multiple time series of one device that share a time column
-   * @throws IOException exception in IO
+   * @throws IOException           exception in IO
    * @throws WriteProcessException exception in write process
    */
   public boolean write(RowBatch rowBatch) throws IOException, WriteProcessException {
@@ -253,8 +254,7 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   /**
-   * calculate total memory size occupied by all ChunkGroupWriter instances
-   * currently.
+   * calculate total memory size occupied by all ChunkGroupWriter instances currently.
    *
    * @return total memory size used
    */
@@ -267,11 +267,10 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   /**
-   * check occupied memory size, if it exceeds the chunkGroupSize threshold, flush
-   * them to given OutputStream.
+   * check occupied memory size, if it exceeds the chunkGroupSize threshold, flush them to given
+   * OutputStream.
    *
-   * @return true - size of tsfile or metadata reaches the threshold. false -
-   *         otherwise
+   * @return true - size of tsfile or metadata reaches the threshold. false - otherwise
    * @throws IOException exception in IO
    */
   private boolean checkMemorySizeAndMayFlushChunks() throws IOException {
@@ -291,12 +290,11 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   /**
-   * flush the data in all series writers of all chunk group writers and their
-   * page writers to outputStream.
+   * flush the data in all series writers of all chunk group writers and their page writers to
+   * outputStream.
    *
-   * @return true - size of tsfile or metadata reaches the threshold. false -
-   *         otherwise. But this function just return false, the Override of IoTDB
-   *         may return true.
+   * @return true - size of tsfile or metadata reaches the threshold. false - otherwise. But this
+   * function just return false, the Override of IoTDB may return true.
    * @throws IOException exception in IO
    */
   private boolean flushAllChunks() throws IOException {
@@ -309,7 +307,9 @@ public class TsFileWriter implements AutoCloseable {
         long dataSize = groupWriter.flushToFileWriter(fileWriter);
         if (fileWriter.getPos() - pos != dataSize) {
           throw new IOException(
-              String.format("Flushed data size is inconsistent with computation! Estimated: %d, Actual: %d", dataSize,
+              String.format(
+                  "Flushed data size is inconsistent with computation! Estimated: %d, Actual: %d",
+                  dataSize,
                   fileWriter.getPos() - pos));
         }
         fileWriter.endChunkGroup(0);
@@ -325,8 +325,8 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   /**
-   * calling this method to write the last data remaining in memory and close the
-   * normal and error OutputStream.
+   * calling this method to write the last data remaining in memory and close the normal and error
+   * OutputStream.
    *
    * @throws IOException exception in IO
    */
@@ -339,7 +339,7 @@ public class TsFileWriter implements AutoCloseable {
 
   /**
    * this function is only for Test.
-   * 
+   *
    * @return TsFileIOWriter
    */
   public TsFileIOWriter getIOWriter() {
@@ -348,7 +348,7 @@ public class TsFileWriter implements AutoCloseable {
 
   /**
    * this function is only for Test
-   * 
+   *
    * @throws IOException exception in IO
    */
   public void flushForTest() throws IOException {

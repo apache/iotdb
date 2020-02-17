@@ -24,14 +24,12 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TimeseriesMetaData {
 
   private long startOffsetOfChunkMetaDataList;
   private int chunkMetaDataListDataSize;
-  private int numOfChunkMetaDatas;
 
   private String measurementId;
   private List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
@@ -39,18 +37,17 @@ public class TimeseriesMetaData {
   public TimeseriesMetaData() {
 
   }
+
   public TimeseriesMetaData(String measurementId, List<ChunkMetaData> chunkMetaDataList) {
     this.measurementId = measurementId;
     this.chunkMetaDataList = chunkMetaDataList;
-    this.numOfChunkMetaDatas = chunkMetaDataList.size();
   }
-  
+
   public static TimeseriesMetaData deserializeFrom(ByteBuffer buffer) {
     TimeseriesMetaData timeseriesMetaData = new TimeseriesMetaData();
     timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readString(buffer));
     timeseriesMetaData.setOffsetOfChunkMetaDataList(ReadWriteIOUtils.readLong(buffer));
     timeseriesMetaData.setDataSizeOfChunkMetaDataList(ReadWriteIOUtils.readInt(buffer));
-    timeseriesMetaData.setNumOfChunkMetaDatas(ReadWriteIOUtils.readInt(buffer));
     return timeseriesMetaData;
   }
 
@@ -66,7 +63,6 @@ public class TimeseriesMetaData {
     byteLen += ReadWriteIOUtils.write(measurementId, outputStream);
     byteLen += ReadWriteIOUtils.write(startOffsetOfChunkMetaDataList, outputStream);
     byteLen += ReadWriteIOUtils.write(chunkMetaDataListDataSize, outputStream);
-    byteLen += ReadWriteIOUtils.write(numOfChunkMetaDatas, outputStream);
     return byteLen;
   }
 
@@ -74,44 +70,36 @@ public class TimeseriesMetaData {
     chunkMetaDataList.add(chunkMetaData);
   }
 
+  public List<ChunkMetaData> getChunkMetaDataList() {
+    return chunkMetaDataList;
+  }
+
   public void setChunkMetaDataList(List<ChunkMetaData> chunkMetaDataList) {
     this.chunkMetaDataList = chunkMetaDataList;
   }
 
-  public List<ChunkMetaData> getChunkMetaDataList() {
-    return chunkMetaDataList;
+  public long getOffsetOfChunkMetaDataList() {
+    return startOffsetOfChunkMetaDataList;
   }
 
   public void setOffsetOfChunkMetaDataList(long position) {
     this.startOffsetOfChunkMetaDataList = position;
   }
-  
-  public long getOffsetOfChunkMetaDataList() {
-    return startOffsetOfChunkMetaDataList;
+
+  public String getMeasurementId() {
+    return measurementId;
   }
 
   public void setMeasurementId(String measurementId) {
     this.measurementId = measurementId;
   }
 
-  public String getMeasurementId() {
-    return measurementId;
-  }
-  
-  public void setDataSizeOfChunkMetaDataList(int size) {
-    this.chunkMetaDataListDataSize = size;
-  }
-  
   public int getDataSizeOfChunkMetaDataList() {
     return chunkMetaDataListDataSize;
   }
-  
-  public int getNumOfChunkMetaDatas() {
-    return numOfChunkMetaDatas;
-  }
-  
-  public void setNumOfChunkMetaDatas(int numOfChunkMetaDatas) {
-    this.numOfChunkMetaDatas = numOfChunkMetaDatas;
+
+  public void setDataSizeOfChunkMetaDataList(int size) {
+    this.chunkMetaDataListDataSize = size;
   }
 
 }

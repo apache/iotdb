@@ -23,12 +23,9 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Scanner;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -37,17 +34,19 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FileGenerator {
 
   private static final Logger LOG = LoggerFactory.getLogger(FileGenerator.class);
+  public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH
+      .concat("perTestOutputData.tsfile");
+  public static Schema schema;
   private static int ROW_COUNT = 1000;
   private static TsFileWriter innerWriter;
   private static String inputDataFile;
-  public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
   private static String errorOutputDataFile;
-  public static Schema schema;
 
   public static void generateFile(int rowCount, int maxNumberOfPointsInPage) throws IOException {
     ROW_COUNT = rowCount;
@@ -135,7 +134,9 @@ public class FileGenerator {
       fw.write(d2 + "\r\n");
     }
     // write error
-    String d = "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3," + (ROW_COUNT * 10 + 3);
+    String d =
+        "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3," + (ROW_COUNT * 10
+            + 3);
     fw.write(d + "\r\n");
     d = "d2," + (startTime + ROW_COUNT + 1) + ",2,s-1," + (ROW_COUNT * 10 + 2);
     fw.write(d + "\r\n");
@@ -172,17 +173,22 @@ public class FileGenerator {
         new TimeseriesSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(new Path("d1.s3"),
         new TimeseriesSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1.s4"), new TimeseriesSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path("d1.s5"), new TimeseriesSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path("d1.s6"), new TimeseriesSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
-    schema.registerTimeseries(new Path("d1.s7"), new TimeseriesSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d1.s4"),
+        new TimeseriesSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d1.s5"),
+        new TimeseriesSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d1.s6"),
+        new TimeseriesSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d1.s7"),
+        new TimeseriesSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
     schema.registerTimeseries(new Path("d2.s1"),
         new TimeseriesSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(new Path("d2.s2"),
         new TimeseriesSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(new Path("d2.s3"),
         new TimeseriesSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d2.s4"), new TimeseriesSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d2.s4"),
+        new TimeseriesSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
   }
 
   private static void writeToTsFile(Schema schema) throws IOException, WriteProcessException {

@@ -308,7 +308,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
     int currentBlockIndex = 0;
     long splitSize = 0;
     List<String> hosts = new ArrayList<>();
-    for (Map.Entry<String, List<TimeseriesMetaData>> entry : fileReader.getSortedTimeseriesMetaDataMap()) {
+    for (Map.Entry<String, List<TimeseriesMetaData>> entry : fileReader.getSortedTimeseriesMetaDataMap().entrySet()) {
       String deviceId = entry.getKey();
       List<TimeseriesMetaData> timeseriesMetaDataList = entry.getValue();
       logger.info("");
@@ -334,11 +334,11 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
           splitSize += getTotalByteSizeOfChunkMetaDataList(timeseriesMetaData);
         }
       }
-      TSFInputSplit tsfInputSplit = makeSplit(path, timeseriesMetaDataList, splitSize, hosts);
-      logger.info("The tsfile inputSplit information is {}", tsfInputSplit);
-      splits.add(tsfInputSplit);
-      return splits;
     }
+    TSFInputSplit tsfInputSplit = makeSplit(path, timeseriesMetaDataList, splitSize, hosts);
+    logger.info("The tsfile inputSplit information is {}", tsfInputSplit);
+    splits.add(tsfInputSplit);
+    return splits;
   }
   
   private static long getTotalByteSizeOfChunkMetaDataList(TimeseriesMetaData timeseriesMetaData) {

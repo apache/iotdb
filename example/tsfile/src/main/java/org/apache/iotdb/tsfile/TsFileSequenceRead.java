@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public class TsFileSequenceRead {
 
@@ -102,11 +103,11 @@ public class TsFileSequenceRead {
       }
     }
     System.out.println("[Metadata]");
-    Map<String, int[]> deviceOffsetsMap = metaData.getDeviceOffsetsMap();
-    for (Map.Entry<String, int[]>  entry: deviceOffsetsMap.entrySet()) {
+    Map<String, Pair<Long, Integer>> deviceOffsetsMap = metaData.getDeviceMetaDataMap();
+    for (Map.Entry<String, Pair<Long, Integer>>  entry: deviceOffsetsMap.entrySet()) {
       String deviceId = entry.getKey();
       List<ChunkMetaData> chunkMetadataList = 
-          reader.readChunkMetadataInDevice(entry.getValue()[0], entry.getValue()[1]);
+          reader.readChunkMetadataInDevice(deviceId);
       System.out.println(String
           .format("\t[Device]Device %s, Number of Chunk %d", deviceId, chunkMetadataList.size()));
       for (ChunkMetaData chunkMetadata : chunkMetadataList) {

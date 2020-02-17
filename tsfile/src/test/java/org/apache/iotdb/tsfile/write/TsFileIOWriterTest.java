@@ -20,27 +20,25 @@ package org.apache.iotdb.tsfile.write;
 
 import java.io.File;
 import java.io.IOException;
-
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.NotCompatibleException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.metadata.TimeSeriesMetadataTest;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.file.metadata.TimeSeriesMetadataTest;
-import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 public class TsFileIOWriterTest {
 
@@ -62,7 +60,8 @@ public class TsFileIOWriterTest {
 
     // chunk group 1
     writer.startChunkGroup(deviceId);
-    writer.startFlushChunk(timeseriesSchema, timeseriesSchema.getCompressionType(), timeseriesSchema.getType(),
+    writer.startFlushChunk(timeseriesSchema, timeseriesSchema.getCompressionType(),
+        timeseriesSchema.getType(),
         timeseriesSchema.getEncodingType(), statistics, 0, 0);
     writer.endCurrentChunk();
     writer.endChunkGroup(0);
@@ -89,7 +88,8 @@ public class TsFileIOWriterTest {
     Assert.assertEquals(TSFileConfig.MAGIC_STRING, reader.readTailMagic());
 
     // chunk header
-    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length);
+    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+        .getBytes().length);
     Assert.assertEquals(MetaMarker.CHUNK_HEADER, reader.readMarker());
     ChunkHeader header = reader.readChunkHeader();
     Assert.assertEquals(TimeSeriesMetadataTest.measurementUID, header.getMeasurementID());
@@ -104,6 +104,6 @@ public class TsFileIOWriterTest {
 
     // FileMetaData
     TsFileMetaData metaData = reader.readFileMetadata();
-    Assert.assertEquals(2, metaData.getTsOffsets().length);
+    Assert.assertEquals(1, metaData.getDeviceMetaDataMap().size());
   }
 }

@@ -18,27 +18,31 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
 
 public class TestHelper {
 
   public static TsFileMetaData createSimpleFileMetaData() {
-    TsFileMetaData metaData = new TsFileMetaData(generateTsOffsetsArray());
+    TsFileMetaData metaData = new TsFileMetaData();
+    metaData.setDeviceMetaDataMap(generateDeviceMetaDataMap());
     return metaData;
   }
 
-  private static long[] generateTsOffsetsArray() {
-    long[] tsOffsets = new long[5];
+  private static Map<String, Pair<Long, Integer>> generateDeviceMetaDataMap() {
+    Map<String, Pair<Long, Integer>> deviceMetaDataMap = new HashMap<>();
     for (int i = 0; i < 5; i++) {
-      tsOffsets[i] = i * 10;
+      deviceMetaDataMap.put("d" + i, new Pair<Long, Integer>((long) i * 5, 5));
     }
-    return tsOffsets;
+    return deviceMetaDataMap;
   }
 
   public static TimeseriesSchema createSimpleTimeseriesSchema(String measurementuid) {
@@ -48,6 +52,7 @@ public class TestHelper {
   public static PageHeader createTestPageHeader() {
     Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);
-    return new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE, PageHeaderTest.COMPRESSED_SIZE, statistics);
+    return new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE, PageHeaderTest.COMPRESSED_SIZE,
+        statistics);
   }
 }

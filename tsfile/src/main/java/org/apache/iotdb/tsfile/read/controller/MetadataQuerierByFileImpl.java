@@ -25,10 +25,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -84,7 +82,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   public TsFileMetaData getWholeFileMetadata() {
     return fileMetaData;
   }
-  
+
   @Override
   public void loadChunkMetaDatas(List<Path> paths) throws IOException {
     // group measurements by device
@@ -95,12 +93,12 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       }
       deviceMeasurementsMap.get(path.getDevice()).add(path.getMeasurement());
     }
-    
+
     Map<Path, List<ChunkMetaData>> tempChunkMetaDatas = new HashMap<>();
-    
+
     int count = 0;
     boolean enough = false;
-    
+
     for (Map.Entry<String, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
       if (enough) {
         break;
@@ -108,11 +106,11 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       String selectedDevice = deviceMeasurements.getKey();
       // s1, s2, s3
       Set<String> selectedMeasurements = deviceMeasurements.getValue();
-      if (fileMetaData.getDeviceOffsetsMap() == null 
-          || !fileMetaData.getDeviceOffsetsMap().containsKey(selectedDevice)) {
+      if (fileMetaData.getDeviceMetaDataMap() == null
+          || !fileMetaData.getDeviceMetaDataMap().containsKey(selectedDevice)) {
         continue;
       }
-      
+
       Map<String, TimeseriesMetaData> timeseriesMetaDataInDevice = tsFileReader
           .readAllTimeseriesMetaDataInDevice(selectedDevice);
       List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
@@ -146,7 +144,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
         }
       }
     }
-    
+
     for (Map.Entry<Path, List<ChunkMetaData>> entry : tempChunkMetaDatas.entrySet()) {
       chunkMetaDataCache.put(entry.getKey(), entry.getValue());
     }
@@ -154,7 +152,8 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
   @Override
   public TSDataType getDataType(Path path) throws NoMeasurementException, IOException {
-    if (tsFileReader.getChunkMetadataList(path) == null || tsFileReader.getChunkMetadataList(path).isEmpty()) {
+    if (tsFileReader.getChunkMetadataList(path) == null || tsFileReader.getChunkMetadataList(path)
+        .isEmpty()) {
       // throw new NoMeasurementException(String.format("%s not found.", path));
       return null;
     }
@@ -165,14 +164,14 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   private List<ChunkMetaData> loadChunkMetadata(Path path) throws IOException {
     return tsFileReader.getChunkMetadataList(path);
   }
-  
-  
+
 
   @Override
   public List<TimeRange> convertSpace2TimePartition(List<Path> paths, long spacePartitionStartPos,
       long spacePartitionEndPos) throws IOException {
     if (spacePartitionStartPos > spacePartitionEndPos) {
-      throw new IllegalArgumentException("'spacePartitionStartPos' should not be larger than 'spacePartitionEndPos'.");
+      throw new IllegalArgumentException(
+          "'spacePartitionStartPos' should not be larger than 'spacePartitionEndPos'.");
     }
 
     // (1) get timeRangesInCandidates and timeRangesBeforeCandidates by iterating
@@ -192,15 +191,18 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
     for (Map.Entry<String, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
       String selectedDevice = deviceMeasurements.getKey();
       Set<String> selectedMeasurements = deviceMeasurements.getValue();
-      List<ChunkMetaData> chunkMetadataList = tsFileReader.readChunkMetadataInDevice(selectedDevice);
+      List<ChunkMetaData> chunkMetadataList = tsFileReader
+          .readChunkMetadataInDevice(selectedDevice);
       for (ChunkMetaData chunkMetaData : chunkMetadataList) {
-        LocateStatus mode = checkLocateStatus(chunkMetaData, spacePartitionStartPos, spacePartitionEndPos);
+        LocateStatus mode = checkLocateStatus(chunkMetaData, spacePartitionStartPos,
+            spacePartitionEndPos);
         if (mode == LocateStatus.after) {
           continue;
         }
         String currentMeasurement = chunkMetaData.getMeasurementUid();
         if (selectedMeasurements.contains(currentMeasurement)) {
-          TimeRange timeRange = new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime());
+          TimeRange timeRange = new TimeRange(chunkMetaData.getStartTime(),
+              chunkMetaData.getEndTime());
           if (mode == LocateStatus.in) {
             timeRangesInCandidates.add(timeRange);
           } else {
@@ -210,15 +212,17 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       }
 
     }
-    
+
     // (2) sort and merge the timeRangesInCandidates
-    ArrayList<TimeRange> timeRangesIn = new ArrayList<>(TimeRange.sortAndMerge(timeRangesInCandidates));
+    ArrayList<TimeRange> timeRangesIn = new ArrayList<>(
+        TimeRange.sortAndMerge(timeRangesInCandidates));
     if (timeRangesIn.isEmpty()) {
       return Collections.emptyList(); // return an empty list
     }
 
     // (3) sort and merge the timeRangesBeforeCandidates
-    ArrayList<TimeRange> timeRangesBefore = new ArrayList<>(TimeRange.sortAndMerge(timeRangesBeforeCandidates));
+    ArrayList<TimeRange> timeRangesBefore = new ArrayList<>(
+        TimeRange.sortAndMerge(timeRangesBeforeCandidates));
 
     // (4) calculate the remaining time ranges
     List<TimeRange> resTimeRanges = new ArrayList<>();
@@ -229,25 +233,25 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
     return resTimeRanges;
   }
-  
+
 
   /**
-   * Check the location of a given chunkGroupMetaData with respect to a space
-   * partition constraint.
+   * Check the location of a given chunkGroupMetaData with respect to a space partition constraint.
    *
-   * @param chunkMetaData     the given chunkMetaData
+   * @param chunkMetaData          the given chunkMetaData
    * @param spacePartitionStartPos the start position of the space partition
    * @param spacePartitionEndPos   the end position of the space partition
    * @return LocateStatus
    */
-  
 
-  private LocateStatus checkLocateStatus(ChunkMetaData chunkMetaData, 
+
+  private LocateStatus checkLocateStatus(ChunkMetaData chunkMetaData,
       long spacePartitionStartPos, long spacePartitionEndPos) {
     long startOffsetOfChunk = chunkMetaData.getOffsetOfChunkHeader();
-    long endOffsetOfChunk = chunkMetaData.getOffsetOfChunkHeader()+ 30;
+    long endOffsetOfChunk = chunkMetaData.getOffsetOfChunkHeader() + 30;
     long middleOffsetOfChunk = (startOffsetOfChunk + endOffsetOfChunk) / 2;
-    if (spacePartitionStartPos <= middleOffsetOfChunk && middleOffsetOfChunk < spacePartitionEndPos) {
+    if (spacePartitionStartPos <= middleOffsetOfChunk
+        && middleOffsetOfChunk < spacePartitionEndPos) {
       return LocateStatus.in;
     } else if (middleOffsetOfChunk < spacePartitionStartPos) {
       return LocateStatus.before;
@@ -256,24 +260,23 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
     }
   }
 
-  /**
-   * The location of a chunkGroupMetaData with respect to a space partition
-   * constraint.
-   *
-   * in - the middle point of the chunkGroupMetaData is located in the current
-   * space partition. before - the middle point of the chunkGroupMetaData is
-   * located before the current space partition. after - the middle point of the
-   * chunkGroupMetaData is located after the current space partition.
-   */
-  
-  private enum LocateStatus {
-    in, before, after
-  }
-
-
   @Override
   public void clear() {
     chunkMetaDataCache.clear();
+  }
+
+
+  /**
+   * The location of a chunkGroupMetaData with respect to a space partition constraint.
+   * <p>
+   * in - the middle point of the chunkGroupMetaData is located in the current space partition.
+   * before - the middle point of the chunkGroupMetaData is located before the current space
+   * partition. after - the middle point of the chunkGroupMetaData is located after the current
+   * space partition.
+   */
+
+  private enum LocateStatus {
+    in, before, after
   }
 
 }

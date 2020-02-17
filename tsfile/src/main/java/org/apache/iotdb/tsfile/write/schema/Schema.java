@@ -19,24 +19,24 @@
 package org.apache.iotdb.tsfile.write.schema;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 
 /**
- * Schema stores the schema of the measurements and devices that exist in this
- * file. All devices written to the same TsFile shall have the same schema.
- * Schema takes the JSON schema file as a parameter and registers measurements
- * in such JSON. Schema also records all existing device IDs in this file.
+ * Schema stores the schema of the measurements and devices that exist in this file. All devices
+ * written to the same TsFile shall have the same schema. Schema takes the JSON schema file as a
+ * parameter and registers measurements in such JSON. Schema also records all existing device IDs in
+ * this file.
  */
 public class Schema {
 
   /**
-   * Path (device + measurement) -> TimeseriesSchema By default, use the
-   * LinkedHashMap to store the order of insertion
+   * Path (device + measurement) -> TimeseriesSchema By default, use the LinkedHashMap to store the
+   * order of insertion
    */
   private Map<Path, TimeseriesSchema> timeseriesSchemaMap;
 
@@ -57,22 +57,24 @@ public class Schema {
   public Schema() {
     this.timeseriesSchemaMap = new LinkedHashMap<>();
   }
-  
+
   public Schema(Map<Path, TimeseriesSchema> knownSchema) {
     this.timeseriesSchemaMap = knownSchema;
   }
 
   /**
    * Create a row batch to write aligned data
+   *
    * @param deviceId the name of the device specified to be written in
    */
   public RowBatch createRowBatch(String deviceId) {
     return new RowBatch(deviceId, new ArrayList<>(timeseriesSchemaMap.values()));
   }
-  
+
   /**
    * Create a row batch to write aligned data
-   * @param deviceId the name of the device specified to be written in
+   *
+   * @param deviceId     the name of the device specified to be written in
    * @param maxBatchSize max size of rows in batch
    */
   public RowBatch createRowBatch(String deviceId, int maxBatchSize) {
@@ -87,6 +89,12 @@ public class Schema {
     this.deviceTemplates.put(templateName, template);
   }
 
+  public void extendTemplate(String templateName, TimeseriesSchema descriptor) {
+    Map<String, TimeseriesSchema> template = this.deviceTemplates
+        .getOrDefault(templateName, new HashMap<>());
+    template.put(descriptor.getMeasurementId(), descriptor);
+  }
+
   public void regiesterDevice(String deviceId, String templateName) {
     this.devices.put(deviceId, templateName);
   }
@@ -94,7 +102,7 @@ public class Schema {
   public TimeseriesSchema getSeriesSchema(Path path) {
     return timeseriesSchemaMap.get(path);
   }
-  
+
   public TSDataType getTimeseriesDataType(Path path) {
     if (!timeseriesSchemaMap.containsKey(path)) {
       return null;

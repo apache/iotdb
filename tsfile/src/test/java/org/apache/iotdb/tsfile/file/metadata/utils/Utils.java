@@ -25,13 +25,12 @@ import static org.junit.Assert.fail;
 
 import java.util.List;
 import java.util.Map;
-
-import org.junit.Assert;
-
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.junit.Assert;
 
 public class Utils {
 
@@ -52,7 +51,8 @@ public class Utils {
     }
   }
 
-  public static void isMapStringEqual(Map<String, String> mapA, Map<String, String> mapB, String name) {
+  public static void isMapStringEqual(Map<String, String> mapA, Map<String, String> mapB,
+      String name) {
     if ((mapA == null) ^ (mapB == null)) {
       System.out.println("error");
       fail(String.format("one of %s is null", name));
@@ -67,7 +67,8 @@ public class Utils {
     }
   }
 
-  public static void isTwoTsDigestEqual(Statistics statisticsA, Statistics statisticsB, String name) {
+  public static void isTwoTsDigestEqual(Statistics statisticsA, Statistics statisticsB,
+      String name) {
     if ((statisticsA == null) ^ (statisticsB == null)) {
       System.out.println("error");
       fail(String.format("one of %s is null", name));
@@ -80,9 +81,8 @@ public class Utils {
   /**
    * when one of A and B is Null, A != B, so test case fails.
    *
-   * @return false - A and B both are NULL, so we do not need to check whether
-   *         their members are equal true - A and B both are not NULL, so we need
-   *         to check their members
+   * @return false - A and B both are NULL, so we do not need to check whether their members are
+   * equal true - A and B both are not NULL, so we need to check their members
    */
   public static boolean isTwoObjectsNotNULL(Object objectA, Object objectB, String name) {
     if ((objectA == null) && (objectB == null)) {
@@ -104,7 +104,8 @@ public class Utils {
     assertTrue(str1.toString().equals(str2.toString()));
   }
 
-  public static void isTimeSeriesChunkMetadataEqual(ChunkMetaData metadata1, ChunkMetaData metadata2) {
+  public static void isTimeSeriesChunkMetadataEqual(ChunkMetaData metadata1,
+      ChunkMetaData metadata2) {
     if (Utils.isTwoObjectsNotNULL(metadata1, metadata2, "ChunkMetaData")) {
       assertTrue(metadata1.getOffsetOfChunkHeader() == metadata2.getOffsetOfChunkHeader());
       assertTrue(metadata1.getNumOfPoints() == metadata2.getNumOfPoints());
@@ -118,15 +119,14 @@ public class Utils {
 
   public static void isFileMetaDataEqual(TsFileMetaData metadata1, TsFileMetaData metadata2) {
     if (Utils.isTwoObjectsNotNULL(metadata1, metadata2, "File MetaData")) {
-      if (Utils.isTwoObjectsNotNULL(metadata1.getTsOffsets(), metadata2.getTsOffsets(), "Delta object metadata list")) {
+      if (Utils
+          .isTwoObjectsNotNULL(metadata1.getDeviceMetaDataMap(), metadata2.getDeviceMetaDataMap(),
+              "Delta object metadata list")) {
 
-        long[] tsOffsets1 = metadata1.getTsOffsets();
-        long[] tsOffsets2 = metadata2.getTsOffsets();
-        assertEquals(tsOffsets1.length, tsOffsets2.length);
+        Map<String, Pair<Long, Integer>> deviceMetaDataMap1 = metadata1.getDeviceMetaDataMap();
+        Map<String, Pair<Long, Integer>> deviceMetaDataMap2 = metadata2.getDeviceMetaDataMap();
+        assertEquals(deviceMetaDataMap1.size(), deviceMetaDataMap2.size());
 
-        for (int i = 0; i < tsOffsets1.length; i++) {
-          assertEquals(tsOffsets1[i], tsOffsets2[i]);
-        }
       }
     }
   }
@@ -138,7 +138,8 @@ public class Utils {
       assertTrue(header1.getNumOfValues() == header2.getNumOfValues());
       assertTrue(header1.getEndTime() == header2.getEndTime());
       assertTrue(header1.getStartTime() == header2.getStartTime());
-      if (Utils.isTwoObjectsNotNULL(header1.getStatistics(), header2.getStatistics(), "statistics")) {
+      if (Utils
+          .isTwoObjectsNotNULL(header1.getStatistics(), header2.getStatistics(), "statistics")) {
         Utils.isStatisticsEqual(header1.getStatistics(), header2.getStatistics());
       }
     }

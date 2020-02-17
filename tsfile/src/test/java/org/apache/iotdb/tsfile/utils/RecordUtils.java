@@ -18,13 +18,9 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
@@ -34,6 +30,8 @@ import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * RecordUtils is a utility class for parsing data in form of CSV string.
@@ -43,8 +41,7 @@ public class RecordUtils {
   private static final Logger LOG = LoggerFactory.getLogger(RecordUtils.class);
 
   /**
-   * support input format:
-   * {@code <deviceId>,<timestamp>,[<measurementId>,<value>,]}.CSV line is
+   * support input format: {@code <deviceId>,<timestamp>,[<measurementId>,<value>,]}.CSV line is
    * separated by ","
    *
    * @param str    - input string
@@ -84,28 +81,28 @@ public class RecordUtils {
       if (!"".equals(value)) {
         try {
           switch (type) {
-          case INT32:
-            ret.addTuple(new IntDataPoint(measurementId, Integer.valueOf(value)));
-            break;
-          case INT64:
-            ret.addTuple(new LongDataPoint(measurementId, Long.valueOf(value)));
-            break;
-          case FLOAT:
-            ret.addTuple(new FloatDataPoint(measurementId, Float.valueOf(value)));
-            break;
-          case DOUBLE:
-            ret.addTuple(new DoubleDataPoint(measurementId, Double.valueOf(value)));
-            break;
-          case BOOLEAN:
-            ret.addTuple(new BooleanDataPoint(measurementId, Boolean.valueOf(value)));
-            break;
-          case TEXT:
-            ret.addTuple(new StringDataPoint(measurementId, Binary.valueOf(items[i + 1])));
-            break;
-          default:
+            case INT32:
+              ret.addTuple(new IntDataPoint(measurementId, Integer.valueOf(value)));
+              break;
+            case INT64:
+              ret.addTuple(new LongDataPoint(measurementId, Long.valueOf(value)));
+              break;
+            case FLOAT:
+              ret.addTuple(new FloatDataPoint(measurementId, Float.valueOf(value)));
+              break;
+            case DOUBLE:
+              ret.addTuple(new DoubleDataPoint(measurementId, Double.valueOf(value)));
+              break;
+            case BOOLEAN:
+              ret.addTuple(new BooleanDataPoint(measurementId, Boolean.valueOf(value)));
+              break;
+            case TEXT:
+              ret.addTuple(new StringDataPoint(measurementId, Binary.valueOf(items[i + 1])));
+              break;
+            default:
 
-            LOG.warn("unsupported data type:{}", type);
-            break;
+              LOG.warn("unsupported data type:{}", type);
+              break;
           }
         } catch (NumberFormatException e) {
           LOG.warn("parsing measurement meets error, omit it", e.getMessage());

@@ -47,7 +47,7 @@ public class FileLoaderUtils {
 
   public static void updateTsFileResource(TsFileMetaData metaData, TsFileSequenceReader reader,
       TsFileResource tsFileResource) throws IOException {
-    for (String device : metaData.getDeviceOffsetsMap().keySet()) {
+    for (String device : metaData.getDeviceMetaDataMap().keySet()) {
       List<ChunkMetaData> chunkMetadataListInOneDevice = reader
           .readChunkMetadataInDevice(device);
       for (ChunkMetaData chunkMetaData : chunkMetadataListInOneDevice) {
