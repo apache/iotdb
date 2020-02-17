@@ -157,6 +157,11 @@ public class SeriesReader {
     firstChunkMetaData = null;
   }
 
+  /**
+   * This method should be called after hasNxtChunk
+   * @return
+   * @throws IOException
+   */
   public boolean hasNextPage() throws IOException {
     if (!overlappedPageReaders.isEmpty()) {
       return true;
@@ -186,10 +191,17 @@ public class SeriesReader {
   }
 
 
+  /**
+   * This method should only be used when the method isPageOverlapped() return true.
+   * @return
+   * @throws IOException
+   */
   protected BatchData nextPage() throws IOException {
-    BatchData pageData = Objects
-        .requireNonNull(overlappedPageReaders.poll().data, "No Batch data")
-        .getAllSatisfiedPageData();
+    if (overlappedPageReaders.isEmpty()) {
+      throw new IOException("overlappedPageReaders is empty, hasNextPage and isPageOverlapped methods should be called first");
+    }
+
+    BatchData pageData = overlappedPageReaders.poll().data.getAllSatisfiedPageData();
     // only need to consider valueFilter because timeFilter has been set into the page reader
     if (valueFilter == null) {
       return pageData;
@@ -204,9 +216,14 @@ public class SeriesReader {
     return batchData;
   }
 
+  /**
+   * This method should be called after calling hasNextPage.
+   * @return
+   * @throws IOException
+   */
   protected boolean isPageOverlapped() throws IOException {
     if (overlappedPageReaders.isEmpty()) {
-      throw new IOException("overlappedPageReaders is empty, hasNextPage should be called first");
+      throw new IOException("overlappedPageReaders is empty, hasNextPage method should be called first");
     }
 
     Statistics pageStatistics = overlappedPageReaders.peek().data.getStatistics();
@@ -228,6 +245,11 @@ public class SeriesReader {
     overlappedPageReaders.poll();
   }
 
+  /**
+   * This method should be called after hasNextChunk and hasNextPage methods.
+   * @return
+   * @throws IOException
+   */
   public boolean hasNextOverlappedPage() throws IOException {
 
     if (hasCachedNextBatch) {
