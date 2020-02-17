@@ -260,6 +260,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   @Override
   public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
+    logger.debug("{}: received a snapshot");
     PartitionedSnapshot snapshot = new PartitionedSnapshot<>(FileSnapshot::new);
     try {
       snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
@@ -302,8 +303,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     String separatorString = File.separator.equals("\\") ? "\\\\" : "/";
     String[] pathSegments = resource.getFile().getAbsolutePath().split(separatorString);
     int segSize = pathSegments.length;
-    // {storageGroupName}/{fileName}
-    String storageGroupName = pathSegments[segSize - 2];
+    // {storageGroupName}/{partitionNum}/{fileName}
+    String storageGroupName = pathSegments[segSize - 3];
     return StorageEngine.getInstance().isFileAlreadyExist(resource, storageGroupName);
   }
 
@@ -343,11 +344,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   private void loadRemoteResource(RemoteTsFileResource resource) {
-    // remote/{nodeIdentifier}/{storageGroupName}/{fileName}
+    // remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/{fileName}
     String separatorString = File.separator.equals("\\") ? "\\\\" : "/";
     String[] pathSegments = resource.getFile().getAbsolutePath().split(separatorString);
     int segSize = pathSegments.length;
-    String storageGroupName = pathSegments[segSize - 2];
+    String storageGroupName = pathSegments[segSize - 3];
     File remoteModFile =
         new File(resource.getFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
     try {
@@ -372,9 +373,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     String separatorString = File.separator.equals("\\") ? "\\\\" : "/";
     String[] pathSegments = resource.getFile().getAbsolutePath().split(separatorString);
     int segSize = pathSegments.length;
-    // remote/{nodeIdentifier}/{storageGroupName}/{fileName}
+    // remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/{fileName}
     String tempFileName =
-        node.getNodeIdentifier() + File.separator + pathSegments[segSize - 2] + File.separator + pathSegments[segSize - 1];
+        node.getNodeIdentifier() + File.separator + pathSegments[segSize - 3] +
+            File.separator + pathSegments[segSize - 2] + File.separator + pathSegments[segSize - 1];
     File tempFile = new File(REMOTE_FILE_TEMP_DIR, tempFileName);
     tempFile.getParentFile().mkdirs();
     File tempModFile = new File(REMOTE_FILE_TEMP_DIR, tempFileName + ModificationFile.FILE_SUFFIX);
@@ -524,7 +526,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         pullSnapshotService.submit(new PullSnapshotTask(prevHolders.getHeader(), nodeSlots, this,
             prevHolders, FileSnapshot::new, requireReadOnly));
     for (int slot : nodeSlots) {
-      logManager.setSnapshot(new RemoteFileSnapshot(snapshotFuture), slot);
+      logManager.setSnapshot(new RemoteFileSnapshot(snapshotFuture, slot), slot);
     }
   }
 
@@ -585,6 +587,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     resultHandler.onComplete(resp);
   }
 
+  //TODO-Cluster: the reader should not read data outside of the group, because it may be out-dated
   ManagedSeriesReader getSeriesReaderWithoutValueFilter(Path path, TSDataType dataType, Filter timeFilter,
       QueryContext context, boolean pushdownUnseq)
       throws IOException, StorageEngineException {

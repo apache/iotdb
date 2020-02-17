@@ -66,6 +66,9 @@ public class HeartBeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
 
       if (localLastLogIdx > lastLogIdx ||
           lastLogIdx == localLastLogIdx && localLastLogTerm > lastLogTerm) {
+        logger.debug("{}: catching up node {}, index-term: {}-{}/{}-{}", memberName, follower,
+            lastLogIdx, lastLogTerm,
+            localLastLogIdx, localLastLogTerm);
         localMember.catchUp(follower, lastLogIdx);
       }
     } else {

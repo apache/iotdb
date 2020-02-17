@@ -526,7 +526,7 @@ public class StorageEngine implements IService {
   public boolean isFileAlreadyExist(TsFileResource tsFileResource, String storageGroup) {
     // TODO-Cluster#350: integrate with time partitioning
     StorageGroupProcessor processor = processorMap.get(storageGroup);
-    return processor.isFileAlreadyExist(tsFileResource);
+    return processor != null && processor.isFileAlreadyExist(tsFileResource);
   }
 
   public static long getTimePartitionInterval() {

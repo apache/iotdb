@@ -62,6 +62,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -676,6 +677,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
             try {
               logManager.commitLog(log);
             } catch (QueryProcessException e) {
+              if (e.getCause() instanceof PathAlreadyExistException) {
+                // ignore duplicated creation
+                return StatusUtils.OK;
+              }
               logger.info("{}: The log {} is not successfully applied, reverting", name, log, e);
               logManager.removeLastLog();
               TSStatus status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();

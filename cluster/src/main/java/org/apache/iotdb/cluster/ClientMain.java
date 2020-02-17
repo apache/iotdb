@@ -78,8 +78,12 @@ public class ClientMain {
       throws TException, SQLException, IoTDBRPCException {
     long statementId = client.requestStatementId(sessionId);
     executeQuery(client, sessionId,"SELECT * FROM root", statementId);
-    executeQuery(client, sessionId, "SELECT * FROM root WHERE time <= 432000000", statementId);
-    executeQuery(client, sessionId, "SELECT * FROM root.*.* WHERE s1 <= 0.5", statementId);
+    executeQuery(client, sessionId, "SELECT * FROM root WHERE time <= 691200000", statementId);
+    executeQuery(client, sessionId, "SELECT * FROM root.*.* WHERE s1 <= 0.7", statementId);
+    executeQuery(client, sessionId, "SELECT s1 FROM root.beijing.d1", statementId);
+    executeQuery(client, sessionId, "SELECT s1 FROM root.shanghai.d1", statementId);
+    executeQuery(client, sessionId, "SELECT s1 FROM root.guangzhou.d1", statementId);
+    executeQuery(client, sessionId, "SELECT s1 FROM root.shenzhen.d1", statementId);
 
     TSCloseOperationReq tsCloseOperationReq = new TSCloseOperationReq(sessionId);
     tsCloseOperationReq.setStatementId(statementId);

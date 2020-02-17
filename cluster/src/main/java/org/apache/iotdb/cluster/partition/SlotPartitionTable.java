@@ -343,6 +343,7 @@ public class SlotPartitionTable implements PartitionTable {
 
     nodeRing.addAll(nodeSlotMap.keySet());
     nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
+    logger.info("All known nodes: {}", nodeRing);
 
     localGroups = getPartitionGroups(thisNode);
   }

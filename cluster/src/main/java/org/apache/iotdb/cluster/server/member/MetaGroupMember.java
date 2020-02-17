@@ -392,6 +392,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         for (Node n : allNodes) {
           idNodeMap.put(n.getNodeIdentifier(), n);
         }
+        syncLeader();
 
         initSubServers();
         buildDataGroups();
@@ -1170,7 +1171,16 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       logger.debug("{}: Sending query of {} to {} groups", name, path, partitionGroups.size());
     }
     ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
+    // only create one local reader
+    boolean localReaderCreated = false;
     for (PartitionGroup partitionGroup : partitionGroups) {
+      if (partitionGroup.contains(thisNode)) {
+        if (localReaderCreated) {
+          continue;
+        } else {
+          localReaderCreated = true;
+        }
+      }
       mergeReader.addReaderWithPriority(getSeriesReader(partitionGroup, path, filter, context,
           dataType, withValueFilter, pushDownUnseq), 0);
     }
@@ -1186,6 +1196,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       DataGroupMember dataGroupMember = getDataClusterServer().getDataMember(partitionGroup.getHeader(),
           null, String.format("Query: %s, time filter: %s, queryId: %d", path, filter,
               context.getQueryId()));
+      logger.debug("{}: creating a local reader for {}#{}", name, path.getFullPath(), context.getQueryId());
       if (withValueFilter) {
         return dataGroupMember.getSeriesReaderWithValueFilter(path, dataType, filter, context);
       } else {
