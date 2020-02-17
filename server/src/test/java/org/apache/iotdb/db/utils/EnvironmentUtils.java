@@ -80,6 +80,7 @@ public class EnvironmentUtils {
       try {
         transport.open();
         logger.error("stop daemon failed. 6667 can be connected now.");
+        transport.close();
       } catch (TTransportException e) {
       }
     }
