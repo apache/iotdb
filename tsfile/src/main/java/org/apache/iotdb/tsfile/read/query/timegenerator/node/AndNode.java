@@ -54,7 +54,10 @@ public class AndNode implements Node {
     //fill data
     fillLeftData();
     fillRightData();
-
+    /*
+     *  [1,2,3,4,5]   <-   that was stopBatchTime mean
+     *  [1,2,3,4,5,6]
+     */
     long stopBatchTime = getStopBatchTime();
 
     while (leftPageData.hasMoreData() && rightPageData.hasMoreData()) {
@@ -76,6 +79,10 @@ public class AndNode implements Node {
           break;
         }
       }
+      /*
+       *  [1,2,3,4,5]   <-   reFill data and cal stopBatchTime
+       *             [6,7,8,9,10,11]
+       */
       fillLeftData();
       fillRightData();
       stopBatchTime = getStopBatchTime();
