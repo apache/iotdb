@@ -521,34 +521,36 @@ public abstract class AbstractClient {
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
       if (hasResultSet) {
-        ResultSet resultSet = statement.getResultSet();
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        int columnLength = resultSetMetaData.getColumnCount();
-        List<Integer> maxSizeList = new ArrayList<>(columnLength);
-        List<List<String>> lists = cacheResult(resultSet, maxSizeList, columnLength,
-            resultSetMetaData, zoneId);
-        output(lists, maxSizeList);
-        long costTime = System.currentTimeMillis() - startTime;
-        println(String.format("It costs %.3fs", costTime / 1000.0));
-        while (!isReachEnd) {
-          println(String.format(
-              "Reach the max_display_num = %s. Press ENTER to show more, input 'q' to quit.",
-              maxPrintRowCount));
-          BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-          try {
-            if (br.readLine().equals("")) {
-              maxSizeList = new ArrayList<>(columnLength);
-              lists = cacheResult(resultSet, maxSizeList, columnLength,
-                  resultSetMetaData, zoneId);
-              output(lists, maxSizeList);
-            } else {
-              break;
+        // print the result
+        try (ResultSet resultSet = statement.getResultSet()) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          int columnLength = resultSetMetaData.getColumnCount();
+          List<Integer> maxSizeList = new ArrayList<>(columnLength);
+          List<List<String>> lists = cacheResult(resultSet, maxSizeList, columnLength,
+              resultSetMetaData, zoneId);
+          output(lists, maxSizeList);
+          long costTime = System.currentTimeMillis() - startTime;
+          println(String.format("It costs %.3fs", costTime / 1000.0));
+          while (!isReachEnd) {
+            println(String.format(
+                "Reach the max_display_num = %s. Press ENTER to show more, input 'q' to quit.",
+                maxPrintRowCount));
+            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+            try {
+              if (br.readLine().equals("")) {
+                maxSizeList = new ArrayList<>(columnLength);
+                lists = cacheResult(resultSet, maxSizeList, columnLength,
+                    resultSetMetaData, zoneId);
+                output(lists, maxSizeList);
+              } else {
+                break;
+              }
+            } catch (IOException e) {
+              e.printStackTrace();
             }
-          } catch (IOException e) {
-            e.printStackTrace();
           }
+          resetArgs();
         }
-        resetArgs();
       }
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
