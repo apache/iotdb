@@ -696,7 +696,11 @@ public class StorageGroupProcessor {
         if (tsFileProcessorTreeMap.size()
             >= IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() / 2) {
           Map.Entry<Long, TsFileProcessor> processorEntry = tsFileProcessorTreeMap.firstEntry();
-
+          logger.info(
+              "will close a TsFile because too many memtables ({} > {}) in the storage group {},",
+              tsFileProcessorTreeMap.size(),
+              IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() / 2,
+              storageGroupName);
           moveOneWorkProcessorToClosingList(sequence, processorEntry.getValue());
         }
 
@@ -806,6 +810,7 @@ public class StorageGroupProcessor {
    * delete the storageGroup's own folder in folder data/system/storage_groups
    */
   public void deleteFolder(String systemDir) {
+    logger.info("{} will close all files for deleting data folder {}", storageGroupName, systemDir);
     waitForAllCurrentTsFileProcessorsClosed();
     writeLock();
     try {
@@ -838,6 +843,7 @@ public class StorageGroupProcessor {
   }
 
   public void syncDeleteDataFiles() {
+    logger.info("{} will close all files for deleting data files", storageGroupName);
     waitForAllCurrentTsFileProcessorsClosed();
     //normally, mergingModification is just need to be closed by after a merge task is finished.
     //we close it here just for IT test.
@@ -951,9 +957,14 @@ public class StorageGroupProcessor {
     synchronized (closeStorageGroupCondition) {
       try {
         putAllWorkingTsFileProcessorIntoClosingList();
+        long startTime = System.currentTimeMillis();
         while (!closingSequenceTsFileProcessor.isEmpty() || !closingUnSequenceTsFileProcessor
             .isEmpty()) {
-          closeStorageGroupCondition.wait();
+          closeStorageGroupCondition.wait(60_000);
+          if (System.currentTimeMillis() - startTime > 60_000) {
+            logger.warn("{} has spent {}s to wait for closing all TsFiles.", this.storageGroupName,
+                (System.currentTimeMillis() - startTime)/1000);
+          }
         }
       } catch (InterruptedException e) {
         logger.error("CloseFileNodeCondition error occurs while waiting for closing the storage "
@@ -1311,6 +1322,8 @@ public class StorageGroupProcessor {
         }
         return;
       }
+      logger.info("{} will close all files for starting a merge (fullmerge = {})", storageGroupName,
+          fullMerge);
       waitForAllCurrentTsFileProcessorsClosed();
       if (unSequenceFileList.isEmpty() || sequenceFileTreeSet.isEmpty()) {
         logger.info("{} no files to be merged", storageGroupName);
