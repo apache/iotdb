@@ -216,7 +216,7 @@ public class MManager {
             props);
         break;
       case MetadataOperationType.DELETE_PATH_FROM_MTREE:
-        deletePaths(Collections.singletonList(args[1]), false);
+        deletePath(args[1], false);
         break;
       case MetadataOperationType.SET_STORAGE_GROUP_TO_MTREE:
         setStorageGroup(args[1]);
@@ -317,7 +317,7 @@ public class MManager {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
         } catch (ConfigAdjusterException e) {
           // Undo create time series
-          deletePaths(Collections.singletonList(path), true);
+          deletePath(path, true);
           throw new MetadataException(e);
         }
         return isNewMeasurement;
@@ -384,86 +384,62 @@ public class MManager {
     }
   }
 
-  private List<String> collectPaths(List<String> paths) throws MetadataException {
-    Set<String> pathSet = new HashSet<>();
+  private List<String> collectPath(String p) throws MetadataException {
     // Attention: Monitor storage group seriesPath is not allowed to be deleted
-    for (String p : paths) {
-      List<String> subPaths = getPaths(p);
-      if (subPaths.isEmpty()) {
-        throw new MetadataException(
-            String.format("There are no timeseries in the prefix of %s seriesPath", p));
-      }
-      List<String> newSubPaths = new ArrayList<>();
-      for (String eachSubPath : subPaths) {
-        String storageGroupName;
-        storageGroupName = getStorageGroupName(eachSubPath);
+    List<String> subPaths = getPaths(p);
+    if (subPaths.isEmpty()) {
+      throw new PathNotExistException(p);
+    }
+    List<String> newSubPaths = new ArrayList<>();
+    for (String subPath : subPaths) {
+      String storageGroupName;
+      storageGroupName = getStorageGroupName(subPath);
 
-        if (MonitorConstants.STAT_STORAGE_GROUP_PREFIX.equals(storageGroupName)) {
-          continue;
-        }
-        newSubPaths.add(eachSubPath);
+      if (MonitorConstants.STAT_STORAGE_GROUP_PREFIX.equals(storageGroupName)) {
+        continue;
       }
-      pathSet.addAll(newSubPaths);
-    }
-    for (String p : pathSet) {
-      if (!isPathExist(p)) {
-        throw new MetadataException(String.format(
-            "Timeseries %s does not exist and cannot be deleted", p));
+      if (!isPathExist(subPath)) {
+        throw new PathNotExistException(subPath);
       }
+      newSubPaths.add(subPath);
     }
-    return new ArrayList<>(pathSet);
+    return new ArrayList<>(newSubPaths);
   }
 
   /**
    * Delete given paths from MTree
    *
-   * @param paths list of paths to be deleted
+   * @param path path to be deleted
    * @return a set contains StorageGroups that contain no more timeseries after this deletion and
    * files of such StorageGroups should be deleted to reclaim disk space.
    */
-  public Set<String> deletePaths(List<String> paths, boolean isUndo)
-      throws MetadataException {
-    if (paths != null && !paths.isEmpty()) {
-      List<String> fullPath = collectPaths(paths);
-      Set<String> emptyStorageGroups = new HashSet<>();
-      for (String p : fullPath) {
-        if (!isUndo) {
-          try {
-            IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(-1);
-          } catch (ConfigAdjusterException e) {
-            throw new MetadataException(e);
-          }
-        }
-        String emptiedStorageGroup = deletePath(p);
-        if (emptiedStorageGroup != null) {
-          emptyStorageGroups.add(emptiedStorageGroup);
+  public Set<String> deletePath(String path, boolean isUndo) throws MetadataException {
+    Set<String> emptyStorageGroups = new HashSet<>();
+    for (String p : collectPath(path)) {
+      if (!isUndo) {
+        try {
+          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(-1);
+        } catch (ConfigAdjusterException e) {
+          throw new MetadataException(e);
         }
       }
-      return emptyStorageGroups;
-    }
-    return Collections.emptySet();
-  }
-
-  /**
-   * Delete given path from MTree
-   *
-   * @param path path to be deleted
-   * @return storage group name if there is no path in the storage group anymore; otherwise null¬
-   */
-  private String deletePath(String path) throws MetadataException {
-    String storageGroupName = getStorageGroupName(path);
-    String emptiedStorageGroup;
-    // the two maps are stored in the storage group node
-    Map<String, MeasurementSchema> schemaMap = getStorageGroupSchemaMap(storageGroupName);
-    // Thread safety: just one thread can access/modify the schemaMap
-    synchronized (schemaMap) {
-      try {
-        emptiedStorageGroup = deletePathFromMTree(path);
-      } catch (MetadataException | IOException e) {
-        throw new MetadataException(e.getMessage());
+      String storageGroupName = getStorageGroupName(p);
+      String emptyStorageGroup;
+      // the two maps are stored in the storage group node
+      Map<String, MeasurementSchema> schemaMap = getStorageGroupSchemaMap(storageGroupName);
+      // Thread safety: just one thread can access/modify the schemaMap
+      synchronized (schemaMap) {
+        try {
+          emptyStorageGroup = deletePathFromMTree(p);
+        } catch (IOException e) {
+          throw new MetadataException(e.getMessage());
+        }
+      }
+      if (emptyStorageGroup != null) {
+        emptyStorageGroups.add(emptyStorageGroup);
       }
     }
-    return emptiedStorageGroup;
+    return emptyStorageGroups;
   }
 
   /**
@@ -481,7 +457,7 @@ public class MManager {
         throw new IllegalPathException(path);
       }
       String rootName = nodes[0];
-      if (mtree.getRoot().getName().equals(rootName)) {
+      if (mtree.getRoot().equals(rootName)) {
         storageGroupName = mtree.deletePath(path);
       } else {
         throw new RootNotExistException(rootName);
@@ -537,12 +513,8 @@ public class MManager {
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     } catch (ConfigAdjusterException e) {
-      try {
-        mtree.deleteStorageGroup(path);
-        throw new MetadataException(e);
-      } catch (MetadataException ex) {
-        throw new MetadataException(ex);
-      }
+      mtree.deleteStorageGroup(path);
+      throw new MetadataException(e);
     } finally {
       lock.writeLock().unlock();
     }
@@ -772,7 +744,8 @@ public class MManager {
   }
 
   /**
-   * Return all paths for given path if the path is abstract. Or return the path itself.
+   * Return all paths for given path if the path is abstract. Or return the path itself. Regular
+   * expression in this method is formed by the amalgamation of seriesPath and the character '*'.
    *
    * @param path can be a prefix or a full path. if the wildcard is not at the tail, then each
    * wildcard can only match one level, otherwise it can match to the tail.
@@ -780,18 +753,9 @@ public class MManager {
   public List<String> getPaths(String path) throws MetadataException {
     lock.readLock().lock();
     try {
-      // Get all paths for given seriesPath regular expression if given seriesPath belongs to MTree, or
-      // get all linked seriesPath for given seriesPath if given seriesPath belongs to PTree Notice:
-      // Regular expression in this method is formed by the amalgamation of seriesPath and the character '*'.
-      // return A HashMap whose Keys are separated by the storage storage group name.
       String rootName = MetaUtils.getNodeNames(path)[0];
-      if (mtree.getRoot().getName().equals(rootName)) {
-        List<String> res = new ArrayList<>();
-        Map<String, List<String>> pathsGroupBySG = mtree.getAllPath(path);
-        for (List<String> ps : pathsGroupBySG.values()) {
-          res.addAll(ps);
-        }
-        return res;
+      if (mtree.getRoot().equals(rootName)) {
+        return mtree.getAllPath(path);
       }
       throw new RootNotExistException(rootName);
     } catch (MetadataException e) {
@@ -813,7 +777,7 @@ public class MManager {
     lock.readLock().lock();
     try {
       String rootName = MetaUtils.getNodeNames(path)[0];
-      if (mtree.getRoot().getName().equals(rootName)) {
+      if (mtree.getRoot().equals(rootName)) {
         return mtree.getShowTimeseriesPath(path);
       }
       throw new RootNotExistException(rootName);

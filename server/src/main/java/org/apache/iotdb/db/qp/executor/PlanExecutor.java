@@ -46,7 +46,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -898,8 +897,10 @@ public class PlanExecutor implements IPlanExecutor {
     List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
     try {
       deleteDataOfTimeSeries(deletePathList);
-      Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList.stream().map(
-          Path::getFullPath).collect(Collectors.toList()), false);
+      Set<String> emptyStorageGroups = new HashSet<>();
+      for (Path path : deletePathList) {
+        emptyStorageGroups.addAll(mManager.deletePath(path.toString(), false));
+      }
       for (String deleteStorageGroup : emptyStorageGroups) {
         storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
       }

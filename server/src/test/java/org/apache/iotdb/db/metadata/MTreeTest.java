@@ -130,16 +130,13 @@ public class MTreeTest {
     }
 
     try {
-      Map<String, List<String>> result = root.getAllPath("root.a.*.s0");
+      List<String> result = root.getAllPath("root.a.*.s0");
       assertEquals(2, result.size());
-      assertTrue(result.containsKey("root.a.d1"));
-      assertEquals("root.a.d1.s0", result.get("root.a.d1").get(0));
-      assertTrue(result.containsKey("root.a.d0"));
-      assertEquals("root.a.d0.s0", result.get("root.a.d0").get(0));
+      assertEquals("root.a.d0.s0", result.get(0));
+      assertEquals("root.a.d1.s0", result.get(1));
 
       result = root.getAllPath("root.a.*.*.s0");
-      assertTrue(result.containsKey("root.a.b.d0"));
-      assertEquals("root.a.b.d0.s0", result.get("root.a.b.d0").get(0));
+      assertEquals("root.a.b.d0.s0", result.get(0));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

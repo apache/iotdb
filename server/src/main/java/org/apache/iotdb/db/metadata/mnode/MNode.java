@@ -20,13 +20,8 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -82,15 +77,11 @@ public abstract class MNode implements Serializable {
   abstract public boolean isNodeType(MNodeType nodeType);
 
   /**
-   * setting storage group.
+   * Set storage group
    */
-  public void setStorageGroup(boolean isStorageGroup) {
-    this.nodeType = MNodeType.STORAGE_GROUP_MNODE;
-    if (isStorageGroup) {
-      schemaMap = new HashMap<>();
-    } else {
-      schemaMap = null;
-    }
+  public void setStorageGroup() {
+    nodeType = MNodeType.STORAGE_GROUP_MNODE;
+    schemaMap = new HashMap<>();
   }
 
   public Map<String, MeasurementSchema> getSchemaMap() {
@@ -167,10 +158,6 @@ public abstract class MNode implements Serializable {
 
   public MeasurementSchema getSchema() {
     return schema;
-  }
-
-  public void setSchema(MeasurementSchema schema) {
-    this.schema = schema;
   }
 
   public MNode getParent() {

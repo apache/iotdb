@@ -595,9 +595,9 @@ public class IoTDBGroupbyDeviceIT {
   @Test
   public void unusualCaseTest1() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "root.other.d1,1,",
         "root.vehicle.d0,11,",
-        "root.vehicle.d1,2,"
+        "root.vehicle.d1,2,",
+        "root.other.d1,1,"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);

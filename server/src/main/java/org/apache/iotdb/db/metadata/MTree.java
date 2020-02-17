@@ -68,7 +68,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Add timeseries path
+   * Add path
    *
    * @param path timeseries path
    * @param dataType data type
@@ -177,7 +177,7 @@ public class MTree implements Serializable {
    *
    * @param path path
    */
-  public void setStorageGroup(String path) throws MetadataException {
+  void setStorageGroup(String path) throws MetadataException {
     String[] nodeNames = MetaUtils.getNodeNames(path);
     MNode cur = root;
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
@@ -203,7 +203,7 @@ public class MTree implements Serializable {
     }
     cur = cur.getChild(nodeNames[i]);
     cur.setDataTTL(IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
-    cur.setStorageGroup(true);
+    cur.setStorageGroup();
 
     setStorageGroup(path, cur);
   }
@@ -528,30 +528,21 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all paths for given seriesPath regular expression. Regular expression in this method is
-   * formed by the amalgamation of seriesPath and the character '*'.
+   * Get all paths under the given path
    *
-   * @return A HashMap whose Keys are separated by the storage group name.
+   * @param path RE in this method is formed by the amalgamation of path and character '*'.
    */
-
-  Map<String, List<String>> getAllPath(String pathReg) throws MetadataException {
-    List<List<String>> res = getShowTimeseriesPath(pathReg);
-    Map<String, List<String>> paths = new HashMap<>();
-    for (List<String> path : res) {
-      String storageGroupName = path.get(1);
-      if (paths.containsKey(storageGroupName)) {
-        paths.get(storageGroupName).add(path.get(0));
-      } else {
-        List<String> pathList = new ArrayList<>();
-        pathList.add(path.get(0));
-        paths.put(storageGroupName, pathList);
-      }
+  List<String> getAllPath(String path) throws MetadataException {
+    List<List<String>> res = getShowTimeseriesPath(path);
+    List<String> paths = new ArrayList<>();
+    for (List<String> p : res) {
+      paths.add(p.get(0));
     }
     return paths;
   }
 
   /**
-   * Get all timeseries paths under the given path
+   * Get all paths under the given path
    */
   List<List<String>> getShowTimeseriesPath(String path) throws MetadataException {
     List<List<String>> res = new ArrayList<>();
@@ -822,8 +813,8 @@ public class MTree implements Serializable {
     return jsonObject;
   }
 
-  public MNode getRoot() {
-    return root;
+  String getRoot() {
+    return root.getName();
   }
 
   /**
