@@ -204,7 +204,11 @@ public class SeriesReader {
     return batchData;
   }
 
-  protected boolean isPageOverlapped() {
+  protected boolean isPageOverlapped() throws IOException {
+    if (overlappedPageReaders.isEmpty()) {
+      throw new IOException("overlappedPageReaders is empty, hasNextPage should be called first");
+    }
+
     Statistics pageStatistics = overlappedPageReaders.peek().data.getStatistics();
     return mergeReader.hasNextTimeValuePair()
         || (!seqChunkMetadatas.isEmpty()

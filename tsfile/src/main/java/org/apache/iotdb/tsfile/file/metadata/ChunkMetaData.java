@@ -58,12 +58,6 @@ public class ChunkMetaData {
   private long deletedAt = Long.MIN_VALUE;
 
   /**
-   * Priority of chunk metadata, used in unsequence resource merge reader to identify the priority
-   * of reader
-   */
-  private int priority;
-
-  /**
    * ChunkLoader of metadata, used to create ChunkReaderWrap
    */
   private IChunkLoader chunkLoader;
@@ -177,14 +171,6 @@ public class ChunkMetaData {
 
   public void setDeletedAt(long deletedAt) {
     this.deletedAt = deletedAt;
-  }
-
-  public int getPriority() {
-    return priority;
-  }
-
-  public void setPriority(int priority) {
-    this.priority = priority;
   }
 
   public IChunkLoader getChunkLoader() {
