@@ -347,38 +347,38 @@ GroupbyDeviceClause : GROUP BY DEVICE
 
 Rules:  
 1. Both uppercase and lowercase are ok.  
-Correct example: select * from root.sg1 group by device  
-Correct example: select * from root.sg1 GROUP BY DEVICE  
+Correct example: select * from root.sg1 align by device  
+Correct example: select * from root.sg1 ALIGN BY DEVICE  
 
 2. GroupbyDeviceClause can only be used at the end of a query statement.  
-Correct example: select * from root.sg1 where time > 10 group by device  
-Wrong example: select * from root.sg1 group by device where time > 10  
+Correct example: select * from root.sg1 where time > 10 align by device  
+Wrong example: select * from root.sg1 align by device where time > 10  
 
 3. The paths of the SELECT clause can only be single level. In other words, the paths of the SELECT clause can only be measurements or STAR, without DOT.
-Correct example: select s0,s1 from root.sg1.* group by device  
-Correct example: select s0,s1 from root.sg1.d0, root.sg1.d1 group by device  
-Correct example: select * from root.sg1.* group by device  
-Correct example: select * from root group by device  
-Correct example: select s0,s1,* from root.*.* group by device  
-Wrong example: select d0.s1, d0.s2, d1.s0 from root.sg1 group by device  
-Wrong example: select *.s0, *.s1 from root.* group by device  
-Wrong example: select *.*.* from root group by device
+Correct example: select s0,s1 from root.sg1.* align by device  
+Correct example: select s0,s1 from root.sg1.d0, root.sg1.d1 align by device  
+Correct example: select * from root.sg1.* align by device  
+Correct example: select * from root align by device  
+Correct example: select s0,s1,* from root.*.* align by device  
+Wrong example: select d0.s1, d0.s2, d1.s0 from root.sg1 align by device  
+Wrong example: select *.s0, *.s1 from root.* align by device  
+Wrong example: select *.*.* from root align by device
 
 4. The data types of the same measurement column should be the same across devices. 
 Note that when it comes to aggregated paths, the data type of the measurement column will reflect 
 the aggregation function rather than the original timeseries.
 
-Correct example: select s0 from root.sg1.d0,root.sg1.d1 group by device   
+Correct example: select s0 from root.sg1.d0,root.sg1.d1 align by device   
 root.sg1.d0.s0 and root.sg1.d1.s0 are both INT32.  
 
-Correct example: select count(s0) from root.sg1.d0,root.sg1.d1 group by device   
+Correct example: select count(s0) from root.sg1.d0,root.sg1.d1 align by device   
 count(root.sg1.d0.s0) and count(root.sg1.d1.s0) are both INT64.  
 
-Wrong example: select s0 from root.sg1.d0, root.sg2.d3 group by device  
+Wrong example: select s0 from root.sg1.d0, root.sg2.d3 align by device  
 root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT. 
 
 5. The display principle of the result table is that all the columns (no matther whther a column has has existing data) will be shown, with nonexistent cells being null. Besides, the select clause support const column (e.g., 'a', '123' etc..).  
-For example, "select s0,s1,s2,'abc',s1,s2 from root.sg.d0, root.sg.d1, root.sg.d2 group by device". Suppose that the actual existing timeseries are as follows:  
+For example, "select s0,s1,s2,'abc',s1,s2 from root.sg.d0, root.sg.d1, root.sg.d2 align by device". Suppose that the actual existing timeseries are as follows:  
 - root.sg.d0.s0
 - root.sg.d0.s1
 - root.sg.d1.s0
@@ -397,22 +397,22 @@ Then you could expect a table like:
 Note that the cells of measurement 's0' and device 'root.sg.d1' are all null.    
 
 6. The duplicated devices in the prefix paths are neglected.  
-For example, "select s0,s1 from root.sg.d0,root.sg.d0,root.sg.d1 group by device" is equal to "select s0,s1 from root.sg.d0,root.sg.d1 group by device".  
-For example. "select s0,s1 from root.sg.*,root.sg.d0 group by device" is equal to "select s0,s1 from root.sg.* group by device".  
+For example, "select s0,s1 from root.sg.d0,root.sg.d0,root.sg.d1 align by device" is equal to "select s0,s1 from root.sg.d0,root.sg.d1 align by device".  
+For example. "select s0,s1 from root.sg.*,root.sg.d0 align by device" is equal to "select s0,s1 from root.sg.* align by device".  
 
 7. The duplicated measurements in the suffix paths are not neglected.  
-For example, "select s0,s0,s1 from root.sg.* group by device" is not equal to "select s0,s1 from root.sg.* group by device".
+For example, "select s0,s0,s1 from root.sg.* align by device" is not equal to "select s0,s1 from root.sg.* align by device".
 
 8. More correct examples: 
-   - select * from root.vehicle group by device
-   - select s0,s0,s1 from root.vehicle.* group by device
-   - select s0,s1 from root.vehicle.* limit 10 offset 1 group by device
-   - select * from root.vehicle slimit 10 soffset 2 group by device
-   - select * from root.vehicle where time > 10 group by device
-   - select * from root.vehicle where root.vehicle.d0.s0>0 group by device
-   - select count(*) from root.vehicle group by device
-   - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) group by device
-   - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) group by device
+   - select * from root.vehicle align by device
+   - select s0,s0,s1 from root.vehicle.* align by device
+   - select s0,s1 from root.vehicle.* limit 10 offset 1 align by device
+   - select * from root.vehicle slimit 10 soffset 2 align by device
+   - select * from root.vehicle where time > 10 align by device
+   - select * from root.vehicle where root.vehicle.d0.s0>0 align by device
+   - select count(*) from root.vehicle align by device
+   - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) align by device
+   - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) align by device
 ```
 * Disable Align Statement
 ```
@@ -432,7 +432,7 @@ Correct example: select * from root.sg1 limit 3 offset 2 disable align
 Correct example: select * from root.sg1 slimit 3 soffset 2 disable align
 Wrong example: select count(s0),count(s1) from root.sg1.d1 disable align
 Wrong example: select * from root.vehicle where root.vehicle.d0.s0>0 disable align
-Wrong example: select * from root.vehicle group by device disable align
+Wrong example: select * from root.vehicle align by device disable align
 
 4. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being empty.
 

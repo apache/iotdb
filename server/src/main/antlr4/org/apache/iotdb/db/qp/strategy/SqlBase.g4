@@ -179,8 +179,8 @@ soffsetClause
     ;
 
 alignByDeviceClause
-    :
-    ALIGN BY DEVICE
+    : ALIGN BY DEVICE
+    | GROUP BY DEVICE
     ;
 
 disableAlign

@@ -33,12 +33,12 @@ public abstract class AggregateResult {
 
   protected TSDataType dataType;
 
-  private boolean booleanRet;
-  private int intRet;
-  private long longRet;
-  private float floatRet;
-  private double doubleRet;
-  private Binary binaryRet;
+  private boolean booleanValue;
+  private int intValue;
+  private long longValue;
+  private float floatValue;
+  private double doubleValue;
+  private Binary binaryValue;
 
   private boolean hasResult;
 
@@ -101,17 +101,17 @@ public abstract class AggregateResult {
   protected Object getValue() {
     switch (dataType) {
       case BOOLEAN:
-        return booleanRet;
+        return booleanValue;
       case DOUBLE:
-        return doubleRet;
+        return doubleValue;
       case TEXT:
-        return binaryRet;
+        return binaryValue;
       case FLOAT:
-        return floatRet;
+        return floatValue;
       case INT32:
-        return intRet;
+        return intValue;
       case INT64:
-        return longRet;
+        return longValue;
       default:
         throw new UnSupportedDataTypeException(String.valueOf(dataType));
     }
@@ -126,22 +126,22 @@ public abstract class AggregateResult {
     hasResult = true;
     switch (dataType) {
       case BOOLEAN:
-        booleanRet = (Boolean) v;
+        booleanValue = (Boolean) v;
         break;
       case DOUBLE:
-        doubleRet = (Double) v;
+        doubleValue = (Double) v;
         break;
       case TEXT:
-        binaryRet = (Binary) v;
+        binaryValue = (Binary) v;
         break;
       case FLOAT:
-        floatRet = (Float) v;
+        floatValue = (Float) v;
         break;
       case INT32:
-        intRet = (Integer) v;
+        intValue = (Integer) v;
         break;
       case INT64:
-        longRet = (Long) v;
+        longValue = (Long) v;
         break;
       default:
         throw new UnSupportedDataTypeException(String.valueOf(dataType));
@@ -152,58 +152,58 @@ public abstract class AggregateResult {
     return dataType;
   }
 
-  protected boolean getBooleanRet() {
-    return booleanRet;
+  protected boolean getBooleanValue() {
+    return booleanValue;
   }
 
-  protected void setBooleanRet(boolean booleanRet) {
+  protected void setBooleanValue(boolean booleanValue) {
     this.hasResult = true;
-    this.booleanRet = booleanRet;
+    this.booleanValue = booleanValue;
   }
 
-  protected int getIntRet() {
-    return intRet;
+  protected int getIntValue() {
+    return intValue;
   }
 
-  protected void setIntRet(int intRet) {
+  protected void setIntValue(int intValue) {
     this.hasResult = true;
-    this.intRet = intRet;
+    this.intValue = intValue;
   }
 
-  protected long getLongRet() {
-    return longRet;
+  protected long getLongValue() {
+    return longValue;
   }
 
-  protected void setLongRet(long longRet) {
+  protected void setLongValue(long longValue) {
     this.hasResult = true;
-    this.longRet = longRet;
+    this.longValue = longValue;
   }
 
-  protected float getFloatRet() {
-    return floatRet;
+  protected float getFloatValue() {
+    return floatValue;
   }
 
-  protected void setFloatRet(float floatRet) {
+  protected void setFloatValue(float floatValue) {
     this.hasResult = true;
-    this.floatRet = floatRet;
+    this.floatValue = floatValue;
   }
 
-  protected double getDoubleRet() {
-    return doubleRet;
+  protected double getDoubleValue() {
+    return doubleValue;
   }
 
-  protected void setDoubleRet(double doubleRet) {
+  protected void setDoubleValue(double doubleValue) {
     this.hasResult = true;
-    this.doubleRet = doubleRet;
+    this.doubleValue = doubleValue;
   }
 
-  protected Binary getBinaryRet() {
-    return binaryRet;
+  protected Binary getBinaryValue() {
+    return binaryValue;
   }
 
-  protected void setBinaryRet(Binary binaryRet) {
+  protected void setBinaryValue(Binary binaryValue) {
     this.hasResult = true;
-    this.binaryRet = binaryRet;
+    this.binaryValue = binaryValue;
   }
 
   protected boolean hasResult() {

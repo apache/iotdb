@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
@@ -54,7 +55,6 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    */
   private Map<Path, IAggregateReader> aggregateReaders;
   private List<BatchData> cachedBatchDataList;
-  private Filter timeFilter;
   private GroupByPlan groupByPlan;
 
   /**
@@ -66,7 +66,6 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
     this.pathToAggrIndexesMap = new HashMap<>();
     this.aggregateReaders = new HashMap<>();
-    this.timeFilter = null;
     this.cachedBatchDataList = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       cachedBatchDataList.add(null);
@@ -82,6 +81,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     IExpression expression = groupByPlan.getExpression();
     this.groupByPlan = groupByPlan;
 
+    Filter timeFilter = null;
     // init reader
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
@@ -93,9 +93,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           .computeIfAbsent(path, key -> new ArrayList<>());
       indexList.add(i);
       if (!aggregateReaders.containsKey(path)) {
+
+        QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+            .getQueryDataSource(path, context, timeFilter);
+        // update filter by TTL
+        timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
+
         IAggregateReader seriesReader = new SeriesAggregateReader(path, dataTypes.get(i), context,
-            QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
-            timeFilter, null);
+            queryDataSource, timeFilter, null);
         aggregateReaders.put(path, seriesReader);
       }
     }

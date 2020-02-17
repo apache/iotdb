@@ -210,8 +210,8 @@ public class LogicalPlanSmallTest {
   }
 
   @Test (expected = ParseCancellationException.class)
-  public void testDisableAlignConflictGroupByDevice() {
-    String sqlStr = "select * from root.vehicle disable align group by device";
+  public void testDisableAlignConflictAlignByDevice() {
+    String sqlStr = "select * from root.vehicle disable align align by device";
     RootOperator operator = (RootOperator) parseDriver
             .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
   }

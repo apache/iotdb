@@ -188,12 +188,17 @@ public class IoTDBConfig {
   /**
    * Memory allocated for fileMetaData cache in read process
    */
-  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 3 / 19;
+  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 3 / 39;
 
   /**
    * Memory allocated for chunkMetaData cache in read process
    */
-  private long allocateMemoryForChumkMetaDataCache = allocateMemoryForRead * 6 / 19;
+  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead * 6 / 39;
+
+  /**
+   * Memory allocated for chunk cache in read process
+   */
+  private long allocateMemoryForChunkCache = allocateMemoryForRead * 10 / 39;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
@@ -1047,12 +1052,20 @@ public class IoTDBConfig {
     this.allocateMemoryForFileMetaDataCache = allocateMemoryForFileMetaDataCache;
   }
 
-  public long getAllocateMemoryForChumkMetaDataCache() {
-    return allocateMemoryForChumkMetaDataCache;
+  public long getAllocateMemoryForChunkMetaDataCache() {
+    return allocateMemoryForChunkMetaDataCache;
   }
 
-  public void setAllocateMemoryForChumkMetaDataCache(long allocateMemoryForChumkMetaDataCache) {
-    this.allocateMemoryForChumkMetaDataCache = allocateMemoryForChumkMetaDataCache;
+  public void setAllocateMemoryForChunkMetaDataCache(long allocateMemoryForChunkMetaDataCache) {
+    this.allocateMemoryForChunkMetaDataCache = allocateMemoryForChunkMetaDataCache;
+  }
+
+  public long getAllocateMemoryForChunkCache() {
+    return allocateMemoryForChunkCache;
+  }
+
+  public void setAllocateMemoryForChunkCache(long allocateMemoryForChunkCache) {
+    this.allocateMemoryForChunkCache = allocateMemoryForChunkCache;
   }
 
   public boolean isEnableWatermark() {

@@ -25,13 +25,10 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.UnClosedTsFileReader;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
-import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -73,8 +70,6 @@ public class FileReaderManager implements IService {
    */
   private Map<TsFileResource, AtomicInteger> unclosedReferenceMap;
 
-  private final Map<TsFileSequenceReader, IChunkLoader> chunkLoaderMap;
-
   private ScheduledExecutorService executorService;
 
   private FileReaderManager() {
@@ -82,7 +77,6 @@ public class FileReaderManager implements IService {
     unclosedFileReaderMap = new ConcurrentHashMap<>();
     closedReferenceMap = new ConcurrentHashMap<>();
     unclosedReferenceMap = new ConcurrentHashMap<>();
-    chunkLoaderMap = new HashMap<>();
     executorService = IoTDBThreadPoolFactory.newScheduledThreadPool(1,
         "open-files-manager");
 
@@ -126,9 +120,6 @@ public class FileReaderManager implements IService {
 
       if (refAtom != null && refAtom.get() == 0) {
         try {
-          synchronized (chunkLoaderMap) {
-            chunkLoaderMap.remove(reader);
-          }
           reader.close();
         } catch (IOException e) {
           logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
@@ -170,12 +161,6 @@ public class FileReaderManager implements IService {
     return readerMap.get(tsFile);
   }
 
-
-  public IChunkLoader get(TsFileSequenceReader reader) {
-    synchronized (chunkLoaderMap) {
-      return chunkLoaderMap.computeIfAbsent(reader, ChunkLoaderImpl::new);
-    }
-  }
 
   /**
    * Increase the reference count of the reader specified by filePath. Only when the reference count

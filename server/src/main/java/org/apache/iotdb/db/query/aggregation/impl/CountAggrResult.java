@@ -31,27 +31,27 @@ public class CountAggrResult extends AggregateResult {
   public CountAggrResult() {
     super(TSDataType.INT64);
     reset();
-    setLongRet(0);
+    setLongValue(0);
   }
 
   @Override
   public Long getResult() {
-    return getLongRet();
+    return getLongValue();
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    long preValue = getLongRet();
+    long preValue = getLongValue();
     preValue += statistics.getCount();
-    setLongRet(preValue);
+    setLongValue(preValue);
   }
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage) {
     int cnt = dataInThisPage.length();
-    long preValue = getLongRet();
+    long preValue = getLongValue();
     preValue += cnt;
-    setLongRet(preValue);
+    setLongValue(preValue);
   }
 
   @Override
@@ -60,8 +60,8 @@ public class CountAggrResult extends AggregateResult {
       if (dataInThisPage.currentTime() >= bound) {
         break;
       }
-      long preValue = getLongRet();
-      setLongRet(++preValue);
+      long preValue = getLongValue();
+      setLongValue(++preValue);
       dataInThisPage.next();
     }
   }
@@ -77,9 +77,9 @@ public class CountAggrResult extends AggregateResult {
       }
     }
 
-    long preValue = getLongRet();
+    long preValue = getLongValue();
     preValue += cnt;
-    setLongRet(preValue);
+    setLongValue(preValue);
   }
 
   @Override

@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -114,10 +115,15 @@ public class AggregationExecutor {
     List<Boolean> isCalculatedList = new ArrayList<>();
     Path seriesPath = pathToAggrIndexes.getKey();
     TSDataType tsDataType = dataTypes.get(pathToAggrIndexes.getValue().get(0));
+
     // construct series reader without value filter
-    IAggregateReader seriesReader = new SeriesAggregateReader(
-        pathToAggrIndexes.getKey(), tsDataType, context, QueryResourceManager.getInstance()
-        .getQueryDataSource(seriesPath, context, timeFilter), timeFilter, null);
+    QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+        .getQueryDataSource(seriesPath, context, timeFilter);
+    // update filter by TTL
+    timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
+
+    IAggregateReader seriesReader = new SeriesAggregateReader(pathToAggrIndexes.getKey(),
+        tsDataType, context, queryDataSource, timeFilter, null);
 
     for (int i : pathToAggrIndexes.getValue()) {
       // construct AggregateResult

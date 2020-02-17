@@ -156,10 +156,10 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       for (String column : executeColumns) {
         if (dataSetType == DataSetType.GROUPBY || dataSetType == DataSetType.AGGREGATE) {
           Path path = new Path(currentDevice,
-              column.substring(column.indexOf("(") + 1, column.indexOf(")")));
+              column.substring(column.indexOf('(') + 1, column.indexOf(')')));
           tsDataTypes.add(tsDataTypeMap.get(path));
           executePaths.add(path);
-          executeAggregations.add(column.substring(0, column.indexOf("(")));
+          executeAggregations.add(column.substring(0, column.indexOf('(')));
         } else {
           Path path = new Path(currentDevice, column);
           tsDataTypes.add(tsDataTypeMap.get(path));

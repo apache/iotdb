@@ -420,8 +420,8 @@ public class IoTDBAggregationIT {
   @Test
   public void avgSumTest() {
     String[] retArray = new String[]{
-        "0,1.4508E7,7250.374812593703",
-        "0,626750.0,1250.998003992016"
+        "0,1.4508E7,7250.374812593702",
+        "0,626750.0,1250.9980039920158"
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -515,8 +515,11 @@ public class IoTDBAggregationIT {
   @Test
   public void mergeAggrOnOneSeriesTest() {
     String[] retArray = new String[]{
-        "0,1.4508E7,7250.374812593703,7250.374812593703,1.4508E7",
-        "0,626750.0,1250.998003992016,1250.998003992016,626750.0"
+        "0,1.4508E7,7250.374812593702,7250.374812593702,1.4508E7",
+        "0,626750.0,1250.9980039920158,1250.9980039920158,626750.0",
+        "0,1.4508E7,2001,7250.374812593702,7250.374812593702",
+        "0,1.4508E7,2001,7250.374812593702,7250.374812593702,2001,1.4508E7"
+
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -552,9 +555,40 @@ public class IoTDBAggregationIT {
         }
         Assert.assertEquals(2, cnt);
       }
+
+      hasResultSet = statement.execute("SELECT sum(s0), count(s0), avg(s2), avg(s0)" +
+          "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0))
+              + "," + resultSet.getString(count(d0s0)) + "," + resultSet.getString(avg(d0s2))
+              + "," + resultSet.getString(avg(d0s0));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(3, cnt);
+      }
+
+      hasResultSet = statement
+          .execute("SELECT sum(s2), count(s0), avg(s2), avg(s1), count(s2),sum(s0)" +
+              "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s2))
+              + "," + resultSet.getString(count(d0s0)) + "," + resultSet.getString(avg(d0s2))
+              + "," + resultSet.getString(avg(d0s1)) + "," + resultSet.getString(count(d0s2))
+              + "," + resultSet.getString(sum(d0s0));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(4, cnt);
+      }
     } catch (Exception e) {
       e.printStackTrace();
-
       fail(e.getMessage());
     }
   }
