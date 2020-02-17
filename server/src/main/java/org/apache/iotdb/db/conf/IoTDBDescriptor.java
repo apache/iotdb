@@ -521,7 +521,7 @@ public class IoTDBDescriptor {
     }
 
     String queryMemoryAllocateProportion = properties
-        .getProperty("filemeta_chunkmeta_free_memory_proportion");
+        .getProperty("filemeta_chunkmeta_chunk_free_memory_proportion");
     if (queryMemoryAllocateProportion != null) {
       String[] proportions = queryMemoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -532,8 +532,10 @@ public class IoTDBDescriptor {
       try {
         conf.setAllocateMemoryForFileMetaDataCache(
             maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-        conf.setAllocateMemoryForChumkMetaDataCache(
+        conf.setAllocateMemoryForChunkMetaDataCache(
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+        conf.setAllocateMemoryForChunkCache(
+            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
       } catch (Exception e) {
         throw new RuntimeException(
             "Each subsection of configuration item filemeta_chunkmeta_free_memory_proportion should be an integer, which is "

@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -37,6 +30,10 @@ import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * This class is used to cache <code>List<ChunkMetaData></code> of tsfile in IoTDB. The caching
  * strategy is LRU.
@@ -45,7 +42,7 @@ public class DeviceMetaDataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(DeviceMetaDataCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final long MEMORY_THRESHOLD_IN_B = config.getAllocateMemoryForChumkMetaDataCache();
+  private static final long MEMORY_THRESHOLD_IN_B = config.getAllocateMemoryForChunkMetaDataCache();
   private static StorageEngine storageEngine = StorageEngine.getInstance();
   private static boolean cacheEnable = config.isMetaDataCacheEnable();
   /**

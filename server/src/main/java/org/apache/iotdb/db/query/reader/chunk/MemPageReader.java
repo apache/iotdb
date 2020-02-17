@@ -35,7 +35,7 @@ public class MemPageReader implements IPageReader {
   }
 
   @Override
-  public BatchData getAllSatisfiedPageData() throws IOException {
+  public BatchData getAllSatisfiedPageData() {
     return batchData;
   }
 

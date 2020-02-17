@@ -97,7 +97,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         QueryDataSource queryDataSource = QueryResourceManager.getInstance()
             .getQueryDataSource(path, context, timeFilter);
         // update filter by TTL
-        timeFilter = queryDataSource.updateTimeFilterUsingTTL(timeFilter);
+        timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
         IAggregateReader seriesReader = new SeriesAggregateReader(path, dataTypes.get(i), context,
             queryDataSource, timeFilter, null);

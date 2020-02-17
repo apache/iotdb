@@ -91,7 +91,7 @@ public class RawDataQueryExecutor {
 
       QueryDataSource queryDataSource = QueryResourceManager.getInstance()
           .getQueryDataSource(path, context, timeFilter);
-      timeFilter = queryDataSource.updateTimeFilterUsingTTL(timeFilter);
+      timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
       ManagedSeriesReader reader = new SeriesRawDataBatchReader(path, dataType, context,
           queryDataSource, timeFilter, null);
