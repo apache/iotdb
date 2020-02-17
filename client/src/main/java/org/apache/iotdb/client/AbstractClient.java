@@ -612,16 +612,13 @@ public abstract class AbstractClient {
   }
 
   private static void output(List<List<String>> lists, List<Integer> maxSizeList) {
-    int size = lists.get(0).size();
-    if(size > 1){
-      printBlockLine(maxSizeList);
-      printRow(lists, 0, maxSizeList);
-      printBlockLine(maxSizeList);
-      for (int i = 1; i < size; i++) {
-        printRow(lists, i, maxSizeList);
-      }
-      printBlockLine(maxSizeList);
+    printBlockLine(maxSizeList);
+    printRow(lists, 0, maxSizeList);
+    printBlockLine(maxSizeList);
+    for (int i = 1; i < lists.get(0).size(); i++) {
+      printRow(lists, i, maxSizeList);
     }
+    printBlockLine(maxSizeList);
     if (isReachEnd) {
       lineCount += lists.get(0).size() - 1;
       printCount(lineCount);
