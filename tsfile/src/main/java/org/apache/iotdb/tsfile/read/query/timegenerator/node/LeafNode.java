@@ -43,7 +43,7 @@ public class LeafNode implements Node {
     if (reader.hasNextBatch()) {
       hasCached = true;
       cacheData = reader.nextBatch();
-      cachedTimeSeries = cacheData.getTimeSeries();
+      cachedTimeSeries = cacheData.getTimeColumn();
     }
     return hasCached;
   }

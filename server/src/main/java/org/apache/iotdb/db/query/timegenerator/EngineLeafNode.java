@@ -40,7 +40,7 @@ public class EngineLeafNode implements Node {
 
   @Override
   public TimeColumn nextTimeColumn() throws IOException {
-    return reader.nextBatch().getTimeSeries();
+    return reader.nextBatch().getTimeColumn();
   }
 
   @Override

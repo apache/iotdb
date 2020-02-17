@@ -26,7 +26,7 @@ public class AndNode implements Node {
   private Node leftChild;
   private Node rightChild;
 
-  private TimeColumn cachedValue;
+  private TimeColumn cachedTimeColumn;
   private boolean hasCachedValue;
 
 
@@ -50,7 +50,7 @@ public class AndNode implements Node {
     if (hasCachedValue) {
       return true;
     }
-    cachedValue = new TimeColumn(1000);
+    cachedTimeColumn = new TimeColumn(1000);
     //fill data
     fillLeftData();
     fillRightData();
@@ -66,7 +66,7 @@ public class AndNode implements Node {
 
       if (leftValue == rightValue) {
         this.hasCachedValue = true;
-        this.cachedValue.add(leftValue);
+        this.cachedTimeColumn.add(leftValue);
         leftTimeColumn.next();
         rightTimeColumn.next();
       } else if (leftValue > rightValue) {
@@ -127,7 +127,7 @@ public class AndNode implements Node {
   public TimeColumn nextTimeColumn() throws IOException {
     if (hasNextTimeColumn()) {
       hasCachedValue = false;
-      return cachedValue;
+      return cachedTimeColumn;
     }
     return null;
   }
