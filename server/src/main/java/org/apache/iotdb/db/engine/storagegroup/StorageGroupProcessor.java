@@ -396,6 +396,7 @@ public class StorageGroupProcessor {
         workUnsequenceTsFileProcessors
             .put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
+        tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
       }
     }
@@ -422,6 +423,7 @@ public class StorageGroupProcessor {
             this::closeUnsealedTsFileProcessor,
             this::unsequenceFlushCallback, false, writer);
         tsFileResource.setProcessor(tsFileProcessor);
+        tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
       }
     }
