@@ -44,9 +44,9 @@ public class AvgAggrResult extends AggregateResult {
   @Override
   public Double getResult() {
     if (cnt > 0) {
-      setDoubleRet(sum / cnt);
+      setDoubleValue(sum / cnt);
     }
-    return hasResult() ? getDoubleRet() : null;
+    return hasResult() ? getDoubleValue() : null;
   }
 
   @Override

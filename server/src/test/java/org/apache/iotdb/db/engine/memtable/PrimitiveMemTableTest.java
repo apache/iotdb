@@ -166,27 +166,27 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < size; i++) {
       switch (dataType) {
         case BOOLEAN:
-          ret[i] = new TimeValuePairInMemTable(rand.nextLong(),
+          ret[i] = new TimeValuePair(rand.nextLong(),
               TsPrimitiveType.getByType(dataType, true));
           break;
         case INT32:
-          ret[i] = new TimeValuePairInMemTable(rand.nextLong(),
+          ret[i] = new TimeValuePair(rand.nextLong(),
               TsPrimitiveType.getByType(dataType, rand.nextInt()));
           break;
         case INT64:
-          ret[i] = new TimeValuePairInMemTable(rand.nextLong(),
+          ret[i] = new TimeValuePair(rand.nextLong(),
               TsPrimitiveType.getByType(dataType, rand.nextLong()));
           break;
         case FLOAT:
-          ret[i] = new TimeValuePairInMemTable(rand.nextLong(),
+          ret[i] = new TimeValuePair(rand.nextLong(),
               TsPrimitiveType.getByType(dataType, rand.nextFloat()));
           break;
         case DOUBLE:
-          ret[i] = new TimeValuePairInMemTable(rand.nextLong(),
+          ret[i] = new TimeValuePair(rand.nextLong(),
               TsPrimitiveType.getByType(dataType, rand.nextDouble()));
           break;
         case TEXT:
-          ret[i] = new TimeValuePairInMemTable(rand.nextLong(),
+          ret[i] = new TimeValuePair(rand.nextLong(),
               TsPrimitiveType.getByType(dataType, new Binary("a" + rand.nextDouble())));
           break;
         default:

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.executor;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -88,9 +89,12 @@ public class RawDataQueryExecutor {
       Path path = deduplicatedPaths.get(i);
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+          .getQueryDataSource(path, context, timeFilter);
+      timeFilter = queryDataSource.updateTimeFilterUsingTTL(timeFilter);
+
       ManagedSeriesReader reader = new SeriesRawDataBatchReader(path, dataType, context,
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
-          timeFilter, null);
+          queryDataSource, timeFilter, null);
       readersOfSelectedSeries.add(reader);
     }
     return readersOfSelectedSeries;
