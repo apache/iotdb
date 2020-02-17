@@ -29,7 +29,7 @@ import java.io.IOException;
 
 public class DiskChunkLoader implements IChunkLoader {
 
-  private final TsFileSequenceReader reader;
+  private TsFileSequenceReader reader;
 
   public DiskChunkLoader(TsFileSequenceReader reader) {
     this.reader = reader;
