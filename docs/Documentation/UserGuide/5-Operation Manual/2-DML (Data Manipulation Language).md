@@ -514,9 +514,9 @@ The result is shown below:
 
 #### Other ResultSet Format
 
-In addition, IoTDB supports two another resultset format: 'group by device' and 'disable align'.
+In addition, IoTDB supports two another resultset format: 'align by device' and 'disable align'.
 
-The 'group by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
+The 'align by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
 
 The SQL statement is:
 

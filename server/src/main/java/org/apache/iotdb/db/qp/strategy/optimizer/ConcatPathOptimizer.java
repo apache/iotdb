@@ -75,7 +75,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     checkAggrOfSelectOperator(select);
 
-    boolean isGroupByDevice = false;
+    boolean isAlignByDevice = false;
     if (operator instanceof QueryOperator) {
       if (!((QueryOperator) operator).isAlignByDevice()) {
         concatSelect(prefixPaths, select); // concat and remove star
@@ -86,7 +86,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           slimitTrim(select, seriesLimit, seriesOffset);
         }
       } else {
-        isGroupByDevice = true;
+        isAlignByDevice = true;
         for (Path path : initialSuffixPaths) {
           String device = path.getDevice();
           if (!device.isEmpty()) {
@@ -106,7 +106,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     if (filter == null) {
       return operator;
     }
-    if(!isGroupByDevice){
+    if(!isAlignByDevice){
       sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter));
     }
     // GROUP_BY_DEVICE leaves the concatFilter to PhysicalGenerator to optimize filter without prefix first
