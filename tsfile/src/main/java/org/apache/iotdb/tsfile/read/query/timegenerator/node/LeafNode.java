@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
+import java.sql.Time;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.TimeSeries;
 import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
@@ -28,6 +29,8 @@ public class LeafNode implements Node {
   private AbstractFileSeriesReader reader;
 
   private BatchData cacheData;
+  private TimeSeries cachedTimeSeries;
+  private boolean hasCached;
 
   public LeafNode(AbstractFileSeriesReader reader) {
     this.reader = reader;
@@ -35,13 +38,24 @@ public class LeafNode implements Node {
 
   @Override
   public boolean hasNext() throws IOException {
-    return reader.hasNextBatch();
+    if (hasCached) {
+      return true;
+    }
+    if (reader.hasNextBatch()) {
+      hasCached = true;
+      cacheData = reader.nextBatch();
+      cachedTimeSeries = cacheData.getTimeSeries();
+    }
+    return hasCached;
   }
 
   @Override
   public TimeSeries next() throws IOException {
-    cacheData = reader.nextBatch();
-    return cacheData.getTimeSeries();
+    if (hasNext()) {
+      hasCached = false;
+      return cachedTimeSeries;
+    }
+    return null;
   }
 
   /**

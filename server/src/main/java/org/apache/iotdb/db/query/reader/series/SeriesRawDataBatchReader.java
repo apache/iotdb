@@ -82,6 +82,9 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
         }
         if (seriesReader.hasNextOverlappedPage()) {
           batchData = seriesReader.nextOverlappedPage();
+          if (!batchData.hasCurrent()) {
+            continue;
+          }
           hasCachedBatchData = true;
           return true;
         }

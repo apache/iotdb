@@ -70,9 +70,7 @@ public class OrNode implements Node {
       return rightTimes;
     }
 
-    long lMax = leftTimes.getLastTime();
-    long rMax = rightTimes.getLastTime();
-    long stopBatchTime = rMax > lMax ? lMax : rMax;
+    long stopBatchTime = getStopBatchTime();
 
     while (hasLeftValue() && hasRightValue()) {
       long leftValue = leftTimes.currentTime();
@@ -111,6 +109,18 @@ public class OrNode implements Node {
     }
     hasCachedValue = false;
     return cachedValue;
+  }
+
+  private long getStopBatchTime() {
+    long rMax = Long.MAX_VALUE;
+    long lMax = Long.MAX_VALUE;
+    if (leftTimes.hasMoreData()) {
+      lMax = leftTimes.getLastTime();
+    }
+    if (rightTimes.hasMoreData()) {
+      rMax = rightTimes.getLastTime();
+    }
+    return rMax > lMax ? lMax : rMax;
   }
 
   private boolean hasLeftValue() {

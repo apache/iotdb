@@ -91,8 +91,14 @@ public class AndNode implements Node {
   }
 
   private long getStopBatchTime() {
-    long rMax = leftPageData.getLastTime();
-    long lMax = rightPageData.getLastTime();
+    long rMax = Long.MAX_VALUE;
+    long lMax = Long.MAX_VALUE;
+    if (leftPageData.hasMoreData()) {
+      lMax = leftPageData.getLastTime();
+    }
+    if (rightPageData.hasMoreData()) {
+      rMax = rightPageData.getLastTime();
+    }
     return rMax > lMax ? lMax : rMax;
   }
 

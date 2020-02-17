@@ -38,21 +38,31 @@ public class PageReader implements IPageReader {
 
   private TSDataType dataType;
 
-  /** decoder for value column */
+  /**
+   * decoder for value column
+   */
   private Decoder valueDecoder;
 
-  /** decoder for time column */
+  /**
+   * decoder for time column
+   */
   private Decoder timeDecoder;
 
-  /** time column in memory */
+  /**
+   * time column in memory
+   */
   private ByteBuffer timeBuffer;
 
-  /** value column in memory */
+  /**
+   * value column in memory
+   */
   private ByteBuffer valueBuffer;
 
   private Filter filter;
 
-  /** Data whose timestamp <= deletedAt should be considered deleted(not be returned). */
+  /**
+   * Data whose timestamp <= deletedAt should be considered deleted(not be returned).
+   */
   private long deletedAt = Long.MIN_VALUE;
 
   public PageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder,
@@ -61,7 +71,7 @@ public class PageReader implements IPageReader {
   }
 
   public PageReader(PageHeader pageHeader, ByteBuffer pageData, TSDataType dataType,
-                    Decoder valueDecoder, Decoder timeDecoder, Filter filter) {
+      Decoder valueDecoder, Decoder timeDecoder, Filter filter) {
     this.dataType = dataType;
     this.valueDecoder = valueDecoder;
     this.timeDecoder = timeDecoder;
@@ -95,7 +105,6 @@ public class PageReader implements IPageReader {
 
     while (timeDecoder.hasNext(timeBuffer)) {
       long timestamp = timeDecoder.readLong(timeBuffer);
-
       switch (dataType) {
         case BOOLEAN:
           boolean aBoolean = valueDecoder.readBoolean(valueBuffer);

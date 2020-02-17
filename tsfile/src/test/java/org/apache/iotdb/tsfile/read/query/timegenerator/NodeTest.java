@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.query.timegenerator;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.TimeSeries;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
@@ -40,7 +41,7 @@ public class NodeTest {
     AbstractFileSeriesReader seriesReader = new FakedFileSeriesReader(timestamps);
     Node leafNode = new LeafNode(seriesReader);
     while (leafNode.hasNext()) {
-      Assert.assertEquals(timestamps[index++], leafNode.next());
+      Assert.assertEquals(timestamps[index++], leafNode.next().currentTime());
     }
   }
 
@@ -63,8 +64,12 @@ public class NodeTest {
     Node orNode = new OrNode(new LeafNode(new FakedFileSeriesReader(left)),
         new LeafNode(new FakedFileSeriesReader(right)));
     while (orNode.hasNext()) {
-      long value = orNode.next().currentTime();
-      Assert.assertEquals(ret[index++], value);
+      TimeSeries timeSeries = orNode.next();
+      while (timeSeries.hasMoreData()) {
+        long value = timeSeries.currentTime();
+        timeSeries.next();
+        Assert.assertEquals(ret[index++], value);
+      }
     }
     Assert.assertEquals(ret.length, index);
   }
@@ -83,8 +88,12 @@ public class NodeTest {
     Node andNode = new AndNode(new LeafNode(new FakedFileSeriesReader(left)),
         new LeafNode(new FakedFileSeriesReader(right)));
     while (andNode.hasNext()) {
-      long value = andNode.next().currentTime();
-      Assert.assertEquals(ret[index++], value);
+      TimeSeries timeSeries = andNode.next();
+      while (timeSeries.hasMoreData()) {
+        long value = timeSeries.currentTime();
+        timeSeries.next();
+        Assert.assertEquals(ret[index++], value);
+      }
     }
     Assert.assertEquals(ret.length, index);
   }

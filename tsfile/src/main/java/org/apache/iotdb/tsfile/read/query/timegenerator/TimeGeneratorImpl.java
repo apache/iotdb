@@ -45,6 +45,7 @@ public class TimeGeneratorImpl implements TimeGenerator {
   private IMetadataQuerier metadataQuerier;
   private Node operatorNode;
 
+  private boolean hasCache;
   private TimeSeries cacheTimes;
 
   private HashMap<Path, List<LeafNode>> leafCache;
@@ -68,17 +69,32 @@ public class TimeGeneratorImpl implements TimeGenerator {
 
   @Override
   public boolean hasNext() throws IOException {
-    return (cacheTimes != null && cacheTimes.hasMoreData()) || operatorNode.hasNext();
+    if (hasCache) {
+      return true;
+    }
+    if (cacheTimes != null && cacheTimes.hasMoreData()) {
+      return true;
+    }
+    while (operatorNode.hasNext()) {
+      cacheTimes = operatorNode.next();
+      if (!cacheTimes.hasMoreData()) {
+        continue;
+      }
+      hasCache = true;
+      break;
+    }
+    return hasCache;
   }
 
   @Override
   public long next() throws IOException {
-    if (cacheTimes == null || !cacheTimes.hasMoreData()) {
-      cacheTimes = operatorNode.next();
+    if (hasCache) {
+      long currentTime = cacheTimes.currentTime();
+      cacheTimes.next();
+      hasCache = cacheTimes.hasMoreData();
+      return currentTime;
     }
-    long currentTime = cacheTimes.currentTime();
-    cacheTimes.next();
-    return currentTime;
+    throw new IOException("no more data");
   }
 
   @Override
