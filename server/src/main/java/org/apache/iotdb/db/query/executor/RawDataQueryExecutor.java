@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
+import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -119,7 +119,7 @@ public class RawDataQueryExecutor {
           QueryResourceManager.getInstance().getQueryDataSource(path, context, null));
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
-    return new EngineDataSetWithValueFilter(deduplicatedPaths, deduplicatedDataTypes,
+    return new RawQueryDataSetWithValueFilter(deduplicatedPaths, deduplicatedDataTypes,
         timestampGenerator, readersOfSelectedSeries);
   }
 
