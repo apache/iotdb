@@ -54,11 +54,6 @@ public class AndNode implements Node {
     //fill data
     fillLeftData();
     fillRightData();
-    /*
-     *  [1,2,3,4,5]   <-   that was stopBatchTime mean
-     *  [1,2,3,4,5,6]
-     */
-    long stopBatchTime = getStopBatchTime();
 
     while (leftTimeColumn.hasMoreData() && rightTimeColumn.hasMoreData()) {
       long leftValue = leftTimeColumn.currentTime();
@@ -73,33 +68,10 @@ public class AndNode implements Node {
       } else { // leftValue < rightValue
         leftTimeColumn.next();
       }
-
-      if (leftValue > stopBatchTime && rightValue > stopBatchTime) {
-        if (hasCachedValue) {
-          break;
-        }
-      }
-      /*
-       *  [1,2,3,4,5]   <-   reFill data and cal stopBatchTime
-       *             [6,7,8,9,10,11]
-       */
       fillLeftData();
       fillRightData();
-      stopBatchTime = getStopBatchTime();
     }
     return hasCachedValue;
-  }
-
-  private long getStopBatchTime() {
-    long rMax = Long.MAX_VALUE;
-    long lMax = Long.MAX_VALUE;
-    if (leftTimeColumn.hasMoreData()) {
-      lMax = leftTimeColumn.getLastTime();
-    }
-    if (rightTimeColumn.hasMoreData()) {
-      rMax = rightTimeColumn.getLastTime();
-    }
-    return rMax > lMax ? lMax : rMax;
   }
 
   private void fillRightData() throws IOException {
