@@ -26,6 +26,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -40,6 +41,9 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,9 +75,15 @@ public class EnvironmentUtils {
       daemon.stop();
       daemon = null;
     }
-
+    TTransport transport = new TSocket("127.0.0.1", 6667, 100);
+    if (!transport.isOpen()) {
+      try {
+        transport.open();
+        logger.error("stop daemon failed. 6667 can be connected now.");
+      } catch (TTransportException e) {
+      }
+    }
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
-
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
@@ -140,6 +150,7 @@ public class EnvironmentUtils {
    * disable memory control</br> this function should be called before all code in the setup
    */
   public static void envSetUp() throws StartupException {
+    System.setProperty(IoTDBConstant.REMOTE_JMX_PORT_NAME, "31999");
     IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(0);
     if (daemon == null) {
       daemon = new IoTDB();
@@ -158,6 +169,18 @@ public class EnvironmentUtils {
     config.setEnableStatMonitor(false);
     TEST_QUERY_JOB_ID  = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+  }
+
+  public static void stopDaemon() {
+    if(daemon != null) {
+      daemon.stop();
+    }
+  }
+
+  public static void activeDaemon() {
+    if(daemon != null) {
+      daemon.active();
+    }
   }
 
   private static void createAllDir() {
