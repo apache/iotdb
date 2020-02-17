@@ -66,7 +66,7 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void testGroupByDevice()
+  public void testAlignByDevice()
       throws IoTDBSessionException, SQLException, ClassNotFoundException, TException, IoTDBRPCException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
@@ -77,8 +77,8 @@ public class IoTDBSessionIT {
 
     insertRowBatchTest2("root.sg1.d1");
 
-    queryForGroupBy();
-    queryForGroupBy2();
+    queryForAlignByDevice();
+    queryForAlignByDevice2();
   }
 
   // it's will output too much to travis, so ignore it
@@ -415,7 +415,7 @@ public class IoTDBSessionIT {
     }
   }
 
-  private void queryForGroupBy()
+  private void queryForAlignByDevice()
       throws  SQLException, TException, IoTDBRPCException {
     SessionDataSet sessionDataSet = session.executeQueryStatement("select '11', s1, '11' from root.sg1.d1 align by device");
     sessionDataSet.setBatchSize(1024);
@@ -433,7 +433,7 @@ public class IoTDBSessionIT {
     sessionDataSet.closeOperationHandle();
   }
 
-  private void queryForGroupBy2()
+  private void queryForAlignByDevice2()
       throws  SQLException, TException, IoTDBRPCException {
     SessionDataSet sessionDataSet = session.executeQueryStatement("select '11', s1, '11', s5, s1, s5 from root.sg1.d1 align by device");
     sessionDataSet.setBatchSize(1024);

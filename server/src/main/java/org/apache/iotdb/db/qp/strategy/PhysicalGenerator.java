@@ -300,7 +300,7 @@ public class PhysicalGenerator {
               Path path = new Path(pathStr);
 
               // check datatype consistency
-              // a example of inconsistency: select s0 from root.sg1.d1, root.sg2.d3 group by device,
+              // a example of inconsistency: select s0 from root.sg1.d1, root.sg2.d3 align by device,
               // while root.sg1.d1.s0 is INT32 and root.sg2.d3.s0 is FLOAT.
               String pathForDataType;
               String measurementChecked;

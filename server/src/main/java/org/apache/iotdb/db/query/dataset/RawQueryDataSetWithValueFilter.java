@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public class EngineDataSetWithValueFilter extends QueryDataSet {
+public class RawQueryDataSetWithValueFilter extends QueryDataSet {
 
   private EngineTimeGenerator timeGenerator;
   private List<IReaderByTimestamp> seriesReaderByTimestampList;
@@ -43,7 +43,7 @@ public class EngineDataSetWithValueFilter extends QueryDataSet {
    * @param timeGenerator EngineTimeGenerator object
    * @param readers readers in List(IReaderByTimeStamp) structure
    */
-  public EngineDataSetWithValueFilter(List<Path> paths, List<TSDataType> dataTypes,
+  public RawQueryDataSetWithValueFilter(List<Path> paths, List<TSDataType> dataTypes,
       EngineTimeGenerator timeGenerator, List<IReaderByTimestamp> readers) {
     super(paths, dataTypes);
     this.timeGenerator = timeGenerator;
