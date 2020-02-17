@@ -70,10 +70,10 @@ Note: The maven dependencies of io.netty in IoTDB are in conflicts with those de
 please refer to [https://iotdb.apache.org/#/Download](https://iotdb.apache.org/#/Download)
 
 ###2. Install RocketMQ
-pleasr refer to [http://rocketmq.apache.org/docs/quick-start/](http://rocketmq.apache.org/docs/quick-start/)
+please refer to [http://rocketmq.apache.org/docs/quick-start/](http://rocketmq.apache.org/docs/quick-start/)
 
 ###3. Startup IoTDB
-please refer to [https://iotdb.apache.org/#/Documents](https://iotdb.apache.org/#/Documents)
+please refer to [https://iotdb.apache.org/#/Documents/progress/chap1/sec1](https://iotdb.apache.org/#/Documents/progress/chap1/sec1)
 
 ###4. Startup RocketMQ
 please refer to [http://rocketmq.apache.org/docs/quick-start/](http://rocketmq.apache.org/docs/quick-start/)
