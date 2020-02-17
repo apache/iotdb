@@ -55,7 +55,7 @@ public class ChunkCache {
     lruCache = new LRULinkedHashMap<ChunkMetaData, Chunk>(MEMORY_THRESHOLD_IN_CHUNK_CACHE, true) {
       @Override
       protected long calEntrySize(ChunkMetaData key, Chunk value) {
-        return RamUsageEstimator.sizeOf(key) + RamUsageEstimator.sizeOf(value);
+        return RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
       }
     };
   }
