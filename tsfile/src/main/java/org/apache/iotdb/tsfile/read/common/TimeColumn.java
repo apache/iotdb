@@ -50,7 +50,7 @@ public class TimeColumn {
     return times;
   }
 
-  public boolean hasMoreData() {
+  public boolean hasCurrent() {
     return size > 0 && cur < size;
   }
 
@@ -64,5 +64,9 @@ public class TimeColumn {
 
   public long getLastTime() {
     return times[size - 1];
+  }
+
+  public int size() {
+    return size;
   }
 }

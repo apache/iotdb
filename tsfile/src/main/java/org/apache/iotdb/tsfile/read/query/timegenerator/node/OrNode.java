@@ -19,17 +19,21 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.TimeColumn;
 
 public class OrNode implements Node {
 
+  private final int fetchSize = TSFileDescriptor.getInstance().getConfig()
+      .getFetchSizeOfTimeGenerator();
+
   private Node leftChild;
   private Node rightChild;
 
-  private TimeColumn leftTimes;
-  private TimeColumn rightTimes;
+  private TimeColumn leftTimeColumn;
+  private TimeColumn rightTimeColumn;
 
-  private TimeColumn cachedValue;
+  private TimeColumn cachedTimeColumn;
   private boolean hasCachedValue;
 
 
@@ -45,90 +49,76 @@ public class OrNode implements Node {
     }
 
     return leftChild.hasNextTimeColumn() || rightChild.hasNextTimeColumn()
-        || leftTimes.hasMoreData() || rightTimes.hasMoreData();
+        || leftTimeColumn.hasCurrent() || rightTimeColumn.hasCurrent();
   }
 
   @Override
   public TimeColumn nextTimeColumn() throws IOException {
     if (hasCachedValue) {
       hasCachedValue = false;
-      return cachedValue;
+      return cachedTimeColumn;
     }
     hasCachedValue = false;
-    cachedValue = new TimeColumn(1000);
+    cachedTimeColumn = new TimeColumn(1000);
 
     if (!hasLeftValue() && leftChild.hasNextTimeColumn()) {
-      leftTimes = leftChild.nextTimeColumn();
+      leftTimeColumn = leftChild.nextTimeColumn();
     }
     if (!hasRightValue() && rightChild.hasNextTimeColumn()) {
-      rightTimes = rightChild.nextTimeColumn();
+      rightTimeColumn = rightChild.nextTimeColumn();
     }
 
     if (hasLeftValue() && !hasRightValue()) {
-      return leftTimes;
+      return leftTimeColumn;
     } else if (!hasLeftValue() && hasRightValue()) {
-      return rightTimes;
+      return rightTimeColumn;
     }
 
-    long stopBatchTime = getStopBatchTime();
-
     while (hasLeftValue() && hasRightValue()) {
-      long leftValue = leftTimes.currentTime();
-      long rightValue = rightTimes.currentTime();
+      long leftValue = leftTimeColumn.currentTime();
+      long rightValue = rightTimeColumn.currentTime();
 
       if (leftValue < rightValue) {
         hasCachedValue = true;
-        cachedValue.add(leftValue);
-        leftTimes.next();
-        if (!leftTimes.hasMoreData() && leftChild.hasNextTimeColumn()) {
-          leftTimes = leftChild.nextTimeColumn();
+        cachedTimeColumn.add(leftValue);
+        leftTimeColumn.next();
+        if (!leftTimeColumn.hasCurrent() && leftChild.hasNextTimeColumn()) {
+          leftTimeColumn = leftChild.nextTimeColumn();
         }
       } else if (leftValue > rightValue) {
         hasCachedValue = true;
-        cachedValue.add(rightValue);
-        rightTimes.next();
-        if (!rightTimes.hasMoreData() && rightChild.hasNextTimeColumn()) {
-          rightTimes = rightChild.nextTimeColumn();
+        cachedTimeColumn.add(rightValue);
+        rightTimeColumn.next();
+        if (!rightTimeColumn.hasCurrent() && rightChild.hasNextTimeColumn()) {
+          rightTimeColumn = rightChild.nextTimeColumn();
         }
       } else {
         hasCachedValue = true;
-        cachedValue.add(leftValue);
-        leftTimes.next();
-        rightTimes.next();
-        if (!leftTimes.hasMoreData() && leftChild.hasNextTimeColumn()) {
-          leftTimes = leftChild.nextTimeColumn();
+        cachedTimeColumn.add(leftValue);
+        leftTimeColumn.next();
+        rightTimeColumn.next();
+        if (!leftTimeColumn.hasCurrent() && leftChild.hasNextTimeColumn()) {
+          leftTimeColumn = leftChild.nextTimeColumn();
         }
-        if (!rightTimes.hasMoreData() && rightChild.hasNextTimeColumn()) {
-          rightTimes = rightChild.nextTimeColumn();
+        if (!rightTimeColumn.hasCurrent() && rightChild.hasNextTimeColumn()) {
+          rightTimeColumn = rightChild.nextTimeColumn();
         }
       }
 
-      if (leftValue > stopBatchTime && rightValue > stopBatchTime) {
+      if (cachedTimeColumn.size() >= fetchSize) {
         break;
       }
     }
     hasCachedValue = false;
-    return cachedValue;
-  }
-
-  private long getStopBatchTime() {
-    long rMax = Long.MAX_VALUE;
-    long lMax = Long.MAX_VALUE;
-    if (leftTimes.hasMoreData()) {
-      lMax = leftTimes.getLastTime();
-    }
-    if (rightTimes.hasMoreData()) {
-      rMax = rightTimes.getLastTime();
-    }
-    return rMax > lMax ? lMax : rMax;
+    return cachedTimeColumn;
   }
 
   private boolean hasLeftValue() {
-    return leftTimes != null && leftTimes.hasMoreData();
+    return leftTimeColumn != null && leftTimeColumn.hasCurrent();
   }
 
   private boolean hasRightValue() {
-    return rightTimes != null && rightTimes.hasMoreData();
+    return rightTimeColumn != null && rightTimeColumn.hasCurrent();
   }
 
 

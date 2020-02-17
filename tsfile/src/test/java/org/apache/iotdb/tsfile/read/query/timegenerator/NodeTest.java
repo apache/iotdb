@@ -65,7 +65,7 @@ public class NodeTest {
         new LeafNode(new FakedFileSeriesReader(right)));
     while (orNode.hasNextTimeColumn()) {
       TimeColumn timeSeries = orNode.nextTimeColumn();
-      while (timeSeries.hasMoreData()) {
+      while (timeSeries.hasCurrent()) {
         long value = timeSeries.currentTime();
         timeSeries.next();
         Assert.assertEquals(ret[index++], value);
@@ -89,7 +89,7 @@ public class NodeTest {
         new LeafNode(new FakedFileSeriesReader(right)));
     while (andNode.hasNextTimeColumn()) {
       TimeColumn timeSeries = andNode.nextTimeColumn();
-      while (timeSeries.hasMoreData()) {
+      while (timeSeries.hasCurrent()) {
         long value = timeSeries.currentTime();
         timeSeries.next();
         Assert.assertEquals(ret[index++], value);

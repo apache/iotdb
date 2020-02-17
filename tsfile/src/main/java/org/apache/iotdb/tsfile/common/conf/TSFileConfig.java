@@ -191,6 +191,10 @@ public class TSFileConfig {
    * The acceptable error rate of bloom filter
    */
   private double bloomFilterErrorRate = 0.05;
+  /**
+   * The TimeColumn size for TimeGenerator generated each time
+   */
+  private int fetchSizeOfTimeGenerator = 1000;
 
   public TSFileConfig() {
 
@@ -443,6 +447,14 @@ public class TSFileConfig {
 
   public void setDfsClientFailoverProxyProvider(String dfsClientFailoverProxyProvider) {
     this.dfsClientFailoverProxyProvider = dfsClientFailoverProxyProvider;
+  }
+
+  public int getFetchSizeOfTimeGenerator() {
+    return fetchSizeOfTimeGenerator;
+  }
+
+  public void setFetchSizeOfTimeGenerator(int fetchSizeOfTimeGenerator) {
+    this.fetchSizeOfTimeGenerator = fetchSizeOfTimeGenerator;
   }
 
 }

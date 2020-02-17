@@ -72,12 +72,10 @@ public class TimeGeneratorImpl implements TimeGenerator {
     if (hasCache) {
       return true;
     }
-    if (cacheTimes != null && cacheTimes.hasMoreData()) {
-      return true;
-    }
+
     while (operatorNode.hasNextTimeColumn()) {
       cacheTimes = operatorNode.nextTimeColumn();
-      if (!cacheTimes.hasMoreData()) {
+      if (!cacheTimes.hasCurrent()) {
         continue;
       }
       hasCache = true;
@@ -88,10 +86,10 @@ public class TimeGeneratorImpl implements TimeGenerator {
 
   @Override
   public long next() throws IOException {
-    if (hasCache) {
+    if (hasCache || hasNext()) {
       long currentTime = cacheTimes.currentTime();
       cacheTimes.next();
-      hasCache = cacheTimes.hasMoreData();
+      hasCache = cacheTimes.hasCurrent();
       return currentTime;
     }
     throw new IOException("no more data");

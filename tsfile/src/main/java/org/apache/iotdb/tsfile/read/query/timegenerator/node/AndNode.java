@@ -19,9 +19,13 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.TimeColumn;
 
 public class AndNode implements Node {
+
+  private final int fetchSize = TSFileDescriptor.getInstance().getConfig()
+      .getFetchSizeOfTimeGenerator();
 
   private Node leftChild;
   private Node rightChild;
@@ -29,9 +33,9 @@ public class AndNode implements Node {
   private TimeColumn cachedTimeColumn;
   private boolean hasCachedValue;
 
-
   private TimeColumn leftTimeColumn;
   private TimeColumn rightTimeColumn;
+
 
   /**
    * Constructor of AndNode.
@@ -54,13 +58,8 @@ public class AndNode implements Node {
     //fill data
     fillLeftData();
     fillRightData();
-    /*
-     *  [1,2,3,4,5]   <-   that was stopBatchTime mean
-     *  [1,2,3,4,5,6]
-     */
-    long stopBatchTime = getStopBatchTime();
 
-    while (leftTimeColumn.hasMoreData() && rightTimeColumn.hasMoreData()) {
+    while (leftTimeColumn.hasCurrent() && rightTimeColumn.hasCurrent()) {
       long leftValue = leftTimeColumn.currentTime();
       long rightValue = rightTimeColumn.currentTime();
 
@@ -75,32 +74,15 @@ public class AndNode implements Node {
         leftTimeColumn.next();
       }
 
-      if (leftValue == stopBatchTime || rightValue == stopBatchTime) {
+      if (cachedTimeColumn.size() >= fetchSize) {
         if (hasCachedValue) {
           break;
         }
       }
-      /*
-       *  [1,2,3,4,5]   <-   reFill data and cal stopBatchTime
-       *             [6,7,8,9,10,11]
-       */
       fillLeftData();
       fillRightData();
-      stopBatchTime = getStopBatchTime();
     }
     return hasCachedValue;
-  }
-
-  private long getStopBatchTime() {
-    long rMax = Long.MAX_VALUE;
-    long lMax = Long.MAX_VALUE;
-    if (leftTimeColumn.hasMoreData()) {
-      lMax = leftTimeColumn.getLastTime();
-    }
-    if (rightTimeColumn.hasMoreData()) {
-      rMax = rightTimeColumn.getLastTime();
-    }
-    return rMax > lMax ? lMax : rMax;
   }
 
   private void fillRightData() throws IOException {
@@ -117,7 +99,7 @@ public class AndNode implements Node {
 
   //no more data in cache and has more data in child
   private boolean hasMoreData(TimeColumn timeSeries, Node child) throws IOException {
-    return (timeSeries == null || !timeSeries.hasMoreData()) && child.hasNextTimeColumn();
+    return (timeSeries == null || !timeSeries.hasCurrent()) && child.hasNextTimeColumn();
   }
 
   /**

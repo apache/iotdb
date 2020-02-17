@@ -58,13 +58,10 @@ public class EngineTimeGenerator implements TimeGenerator {
     if (hasCache) {
       return true;
     }
-    if (cacheTimes != null && cacheTimes.hasMoreData()) {
-      hasCache = true;
-      return true;
-    }
+
     while (operatorNode.hasNextTimeColumn()) {
       cacheTimes = operatorNode.nextTimeColumn();
-      if (cacheTimes != null && cacheTimes.hasMoreData()) {
+      if (cacheTimes != null && cacheTimes.hasCurrent()) {
         hasCache = true;
         break;
       }
@@ -75,9 +72,9 @@ public class EngineTimeGenerator implements TimeGenerator {
   @Override
   public long next() throws IOException {
     if (hasCache || hasNext()) {
-      hasCache = false;
       long currentTime = cacheTimes.currentTime();
       cacheTimes.next();
+      hasCache = cacheTimes.hasCurrent();
       return currentTime;
     }
     throw new IOException("no more data");
