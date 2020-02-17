@@ -149,7 +149,7 @@ public class UnseqTsFileRecoverTest {
   public void test() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, schema,
         versionController, resource, true, false);
-    ActiveTimeSeriesCounter.getInstance().init(logNodePrefix);
+    ActiveTimeSeriesCounter.getInstance().init(resource.getFile().getParentFile().getParentFile().getName());
     performer.recover();
 
     assertEquals(1, (long) resource.getStartTimeMap().get("device99"));

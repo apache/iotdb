@@ -143,7 +143,7 @@ public class SeqTsFileRecoverTest {
   public void testNonLastRecovery() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, schema,
         versionController, resource, true, false);
-    ActiveTimeSeriesCounter.getInstance().init(logNodePrefix);
+    ActiveTimeSeriesCounter.getInstance().init(resource.getFile().getParentFile().getParentFile().getName());
     RestorableTsFileIOWriter writer = performer.recover();
     assertFalse(writer.canWrite());
 
@@ -192,7 +192,7 @@ public class SeqTsFileRecoverTest {
   public void testLastRecovery() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, schema,
         versionController, resource, true, true);
-    ActiveTimeSeriesCounter.getInstance().init(logNodePrefix);
+    ActiveTimeSeriesCounter.getInstance().init(resource.getFile().getParentFile().getParentFile().getName());
     RestorableTsFileIOWriter writer = performer.recover();
     assertTrue(writer.canWrite());
     writer.endFile(schema);
