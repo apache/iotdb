@@ -22,6 +22,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+
+import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -52,7 +54,6 @@ public class BatchInsertPlan extends PhysicalPlan {
   private List<Path> paths;
   private int start;
   private int end;
-  private RowRecord lastRowRecord = null;
 
   public BatchInsertPlan() {
     super(false, OperatorType.BATCHINSERT);
@@ -291,10 +292,7 @@ public class BatchInsertPlan extends PhysicalPlan {
     return maxTime;
   }
 
-  public RowRecord getLastRowRecord() {
-    if (lastRowRecord != null) {
-      return lastRowRecord;
-    }
+  public void updateMNodeLastValues(MNode node) {
     long maxTime = Long.MIN_VALUE;
     int maxIndex = 0;
     for (int i = 0; i < times.length; i++) {
@@ -303,12 +301,12 @@ public class BatchInsertPlan extends PhysicalPlan {
         maxIndex = i;
       }
     }
-    lastRowRecord = new RowRecord(maxTime);
-    for (int i = 0; i < dataTypes.length; i++) {
-      Object[] column = (Object[]) columns[i];
-      lastRowRecord.addField(column[maxIndex], dataTypes[i]);
+    for (int i = 0; i < measurements.length; i++) {
+      if (node.hasChild(measurements[i])) {
+        Object[] column = (Object[]) columns[i];
+        node.getChild(measurements[i]).updateCachedLast(maxTime, column[maxIndex], dataTypes[i]);
+      }
     }
-    return lastRowRecord;
   }
 
   public long[] getTimes() {

@@ -67,29 +67,13 @@ public class LastQueryExecutor {
     public QueryDataSet execute(QueryContext context)
             throws StorageEngineException, IOException, QueryProcessException {
 
-        MNode node = null;
-        try {
-            node = MManager.getInstance().getNodeByPathFromCache(selectedSeries.get(0).toString()).getParent();
-        } catch (PathException e) {
-            throw new QueryProcessException(e);
-        } catch (CacheException e) {
-            throw new QueryProcessException(e.getMessage());
-        }
-        if (node.getCachedLastRecord() != null) {
-            SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
-            dataSet.setRecord(node.getCachedLastRecord());
-            return dataSet;
-        }
-
-        List<TimeValuePair> lastPairList = new ArrayList<>();
+        List<LastQueryResult> lastQueryResultList = new ArrayList<>();
         for (int i = 0; i < selectedSeries.size(); i++) {
-            TimeValuePair pair = calculatLastPairForOneSeries(selectedSeries.get(i), dataTypes.get(i), context);
-            lastPairList.add(pair);
+            LastQueryResult lastQueryResult = calculateLastPairForOneSeries(selectedSeries.get(i), dataTypes.get(i), context);
+            lastQueryResultList.add(lastQueryResult);
         }
 
-        RowRecord resultRecord = constructLastRowRecord(lastPairList);
-        node.setCachedLastRecord(resultRecord);
-
+        RowRecord resultRecord = constructLastRowRecord(lastQueryResultList);
         SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
         dataSet.setRecord(resultRecord);
         return dataSet;
@@ -101,10 +85,23 @@ public class LastQueryExecutor {
      * @param context query context
      * @return AggregateResult list
      */
-    private TimeValuePair calculatLastPairForOneSeries(
+    private LastQueryResult calculateLastPairForOneSeries(
             Path seriesPath, TSDataType tsDataType,
             QueryContext context)
             throws IOException, QueryProcessException, StorageEngineException {
+        LastQueryResult queryResult = new LastQueryResult();
+        MNode node = null;
+        try {
+            node = MManager.getInstance().getNodeByPathFromCache(seriesPath.toString());
+        } catch (PathException e) {
+            throw new QueryProcessException(e);
+        } catch (CacheException e) {
+            throw new QueryProcessException(e.getMessage());
+        }
+        if (node.getCachedLast() != null) {
+            queryResult.setPairResult(node.getCachedLast());
+            return queryResult;
+        }
 
         // construct series reader without value filter
         Filter timeFilter = null;
@@ -113,8 +110,6 @@ public class LastQueryExecutor {
                 .getQueryDataSource(seriesPath, context, timeFilter), timeFilter, null);
 
         long maxTime = Long.MIN_VALUE;
-        Object value = null;
-
         while (seriesReader.hasNextChunk()) {
             while (seriesReader.hasNextPage()) {
                 // cal by page data
@@ -127,37 +122,80 @@ public class LastQueryExecutor {
                     long time = nextOverlappedPageData.getTimeByIndex(maxIndex);
                     if (time > maxTime) {
                         maxTime = time;
-                        value = nextOverlappedPageData.getValueInTimestamp(time);
+                        queryResult.setPairResult(maxTime, nextOverlappedPageData.getValueInTimestamp(time), tsDataType);
                     }
                     nextOverlappedPageData.resetBatchData();
                 }
             }
         }
-        return new TimeValuePair(maxTime, TsPrimitiveType.getByType(tsDataType, value));
+        if (queryResult.hasResult())
+            node.setCachedLast(queryResult.getPairResult());
+        return queryResult;
     }
 
     /**
      * using last result data list construct QueryDataSet.
      *
-     * @param lastPairResultList last result list
+     * @param lastQueryResultList last result list
      */
-    private RowRecord constructLastRowRecord(List<TimeValuePair> lastPairResultList) {
+    private RowRecord constructLastRowRecord(List<LastQueryResult> lastQueryResultList) {
         long maxTime = Long.MIN_VALUE;
-        for (TimeValuePair lastPair : lastPairResultList) {
-            if (lastPair.getTimestamp() > maxTime)
+        for (LastQueryResult lastPair : lastQueryResultList) {
+            if (lastPair.hasResult() && lastPair.getTimestamp() > maxTime)
                 maxTime = lastPair.getTimestamp();
         }
 
         RowRecord resultRecord = new RowRecord(maxTime);
-        for (int i = 0; i < lastPairResultList.size(); i++) {
+        for (int i = 0; i < lastQueryResultList.size(); i++) {
             TSDataType dataType = dataTypes.get(i);
-            TimeValuePair lastPair = lastPairResultList.get(i);
-            if (lastPair.getTimestamp() == maxTime)
-                resultRecord.addField(lastPair.getValue().getValue(), dataType);
+            LastQueryResult lastPair = lastQueryResultList.get(i);
+            if (lastPair.hasResult() && lastPair.getTimestamp() == maxTime)
+                resultRecord.addField(lastPair.getValue(), dataType);
             else
                 resultRecord.addField(null, dataType);
         }
 
         return resultRecord;
+    }
+
+    class LastQueryResult {
+        private TimeValuePair pairResult;
+
+        public LastQueryResult() {
+            pairResult = null;
+        }
+
+        public void setPairResult(TimeValuePair timeValuePair) {
+            pairResult = timeValuePair;
+        }
+
+        public void setPairResult(long time, Object value, TSDataType dataType) {
+            if (pairResult == null) {
+                pairResult = new TimeValuePair(time, TsPrimitiveType.getByType(dataType, value));
+            } else {
+                pairResult.setTimestamp(time);
+                pairResult.setValue(TsPrimitiveType.getByType(dataType, value));
+            }
+        }
+
+        public TimeValuePair getPairResult() {
+            return pairResult;
+        }
+
+        public boolean hasResult() {
+            return pairResult != null;
+        }
+
+        public long getTimestamp() {
+            if (pairResult == null)
+                return 0;
+            return pairResult.getTimestamp();
+        }
+
+        public Object getValue() {
+            if (pairResult == null)
+                return null;
+            return pairResult.getValue().getValue();
+        }
     }
 }

@@ -674,7 +674,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
       insertPlan.setDataTypes(dataTypes);
       storageEngine.insert(insertPlan);
-      node.updateCachedLastRecord(insertPlan.getRowRecord());
+      insertPlan.updateMNodeLastValues(node);
     } catch (PathException | StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } catch (CacheException e) {
@@ -768,7 +768,7 @@ public class PlanExecutor implements IPlanExecutor {
         }
       }
       Integer[] results = storageEngine.insertBatch(batchInsertPlan);
-      node.updateCachedLastRecord(batchInsertPlan.getLastRowRecord());
+      batchInsertPlan.updateMNodeLastValues(node);
       return results;
     } catch (PathException | StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);

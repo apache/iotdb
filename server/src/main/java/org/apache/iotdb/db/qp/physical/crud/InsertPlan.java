@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Objects;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -190,11 +191,12 @@ public class InsertPlan extends PhysicalPlan {
     return "deviceId: " + deviceId + ", time: " + time;
   }
 
-  public RowRecord getRowRecord() throws QueryProcessException {
-    RowRecord record = new RowRecord(time);
-    for (int i = 0; i < values.length; i++) {
-      record.addField(CommonUtils.parseValue(dataTypes[i], values[i]), dataTypes[i]);
+  public void updateMNodeLastValues(MNode node) throws QueryProcessException {
+    for (int i = 0; i < measurements.length; i++) {
+      if (node.hasChild(measurements[i])) {
+        Object value = CommonUtils.parseValue(dataTypes[i], values[i]);
+        node.getChild(measurements[i]).updateCachedLast(time, value, dataTypes[i]);
+      }
     }
-    return record;
   }
 }

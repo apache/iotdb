@@ -28,7 +28,9 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -57,7 +59,7 @@ public class MNode implements Serializable {
   private Map<String, MNode> children;
 
   private String fullPath;
-  private RowRecord cachedLastRecord = null;
+  private TimeValuePair cachedLastValuePair = null;
 
   /**
    * when the data in a storage group is older than dataTTL, it is considered invalid and will
@@ -243,20 +245,23 @@ public class MNode implements Serializable {
     return fullPath = builder.toString();
   }
 
-  public RowRecord getCachedLastRecord() {
-    return cachedLastRecord;
+  public TimeValuePair getCachedLast() {
+    return cachedLastValuePair;
   }
 
-  public void setCachedLastRecord(RowRecord record) {
-    cachedLastRecord = record;
+  public void setCachedLast(TimeValuePair timeValuePair) {
+    cachedLastValuePair = timeValuePair;
   }
 
-  public void updateCachedLastRecord(RowRecord record) {
-    if (cachedLastRecord != null) {
-      if (record.getTimestamp() > cachedLastRecord.getTimestamp())
-        cachedLastRecord = record;
+  public void updateCachedLast(long time, Object value, TSDataType dataType) {
+    TsPrimitiveType primitiveTypeValue =  TsPrimitiveType.getByType(dataType, value);
+    if (cachedLastValuePair != null) {
+      if (time > cachedLastValuePair.getTimestamp()) {
+        cachedLastValuePair.setTimestamp(time);
+        cachedLastValuePair.setValue(primitiveTypeValue);
+      }
     } else {
-      cachedLastRecord = record;
+      cachedLastValuePair = new TimeValuePair(time, primitiveTypeValue);
     }
   }
 }
