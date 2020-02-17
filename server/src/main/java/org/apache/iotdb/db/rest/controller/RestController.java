@@ -76,8 +76,8 @@ public class RestController {
 
   /**
    *
-   * @param request this request will be in json format.
-   * @return json in String
+   * @param request this request will be in metrics_json format.
+   * @return metrics_json in String
    */
   @Path("/query")
   @POST
@@ -90,7 +90,7 @@ public class RestController {
       assert jsonObject != null;
       JSONObject range = (JSONObject) jsonObject.get("range");
       Pair<String, String> timeRange = new Pair<>((String) range.get("from"), (String) range.get("to"));
-      JSONArray array = (JSONArray) jsonObject.get("targets"); // json array is []
+      JSONArray array = (JSONArray) jsonObject.get("targets"); // metrics_json array is []
       JSONArray result = new JSONArray();
       for (int i = 0; i < array.size(); i++) {
         JSONObject object = (JSONObject) array.get(i); // {}
@@ -118,13 +118,20 @@ public class RestController {
   }
 
   /**
-   * get server information
+   * get metrics in json format
    */
+  @Path("/metrics_information")
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getMetricsInformation() throws JsonProcessingException {
+    return metricsSystem.metrics_json();
+  }
+
   @Path("/server_information")
   @GET
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getServerInformation() throws JsonProcessingException {
-    return metricsSystem.json();
+  public JSONObject getServerInformation() {
+    return metricsSystem.server_json();
   }
 
   /**
@@ -134,6 +141,6 @@ public class RestController {
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getSqlArguments() {
-    return metricsSystem.json_sql();
+    return metricsSystem.sql_json();
   }
 }

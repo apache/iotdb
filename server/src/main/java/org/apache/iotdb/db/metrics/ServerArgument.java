@@ -50,7 +50,7 @@ public class ServerArgument {
   private long usedPhysicalMemory;
   private int cpuRatio;
 
-  public ServerArgument(int port) {
+  ServerArgument(int port) {
     this.port = port;
     this.host = inferHostname();
     this.cores = totalCores();

@@ -34,6 +34,16 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 
 public class MetricsSystem {
 
+  private static final String HOST = "host";
+  private static final String PORT = "port";
+  private static final String CORES = "cores";
+  private static final String CPU_RATIO = "cpu_ratio";
+  private static final String TOTAL_MEMORY = "total_memory";
+  private static final String MAX_MEMORY = "max_memory";
+  private static final String FREE_MEMORY = "free_memory";
+  private static final String TOTAL_PHYSICAL_MEMORY = "totalPhysical_memory";
+  private static final String FREE_PHYSICAL_MEMORY = "freePhysical_memory";
+  private static final String USED_PHYSICAL_MEMORY = "usedPhysical_memory";
   /**
    * om is used for writing metricRegistry
    */
@@ -52,45 +62,61 @@ public class MetricsSystem {
   private int start = 0;
 
   private SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss:SSS");
+  ServerArgument serverArgument = new ServerArgument(IoTDBDescriptor.getInstance().getConfig().getRestPort());
 
   public MetricsSystem() {
-    ServerArgument serverArgument = new ServerArgument(IoTDBDescriptor.getInstance().getConfig().getRestPort());
     String sourceName = "iot-metrics";
-    metricRegistry.register(MetricRegistry.name(sourceName, "host"),
+    metricRegistry.register(MetricRegistry.name(sourceName, HOST),
         (Gauge<String>) serverArgument::getHost);
-    metricRegistry.register(MetricRegistry.name(sourceName, "port"),
+    
+    metricRegistry.register(MetricRegistry.name(sourceName, PORT),
         (Gauge<Integer>) serverArgument::getPort);
-
-    metricRegistry.register(MetricRegistry.name(sourceName, "cores"),
+    
+    metricRegistry.register(MetricRegistry.name(sourceName, CORES),
         (Gauge<Integer>) serverArgument::getCores);
-
-    metricRegistry.register(MetricRegistry.name(sourceName, "cpu_ratio"),
+    
+    metricRegistry.register(MetricRegistry.name(sourceName, CPU_RATIO),
         (Gauge<Integer>) serverArgument::getCpuRatio);
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "total_memory"),
+    metricRegistry.register(MetricRegistry.name(sourceName, TOTAL_MEMORY),
         (Gauge<Long>) serverArgument::getTotalMemory);
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "max_memory"),
+    metricRegistry.register(MetricRegistry.name(sourceName, MAX_MEMORY),
         (Gauge<Long>) serverArgument::getMaxMemory);
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "free_memory"),
+    metricRegistry.register(MetricRegistry.name(sourceName, FREE_MEMORY),
         (Gauge<Long>) serverArgument::getFreeMemory);
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "totalPhysical_memory"),
+    metricRegistry.register(MetricRegistry.name(sourceName, TOTAL_PHYSICAL_MEMORY),
         (Gauge<Long>) serverArgument::getTotalPhysicalMemory);
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "freePhysical_memory"),
+    metricRegistry.register(MetricRegistry.name(sourceName, FREE_PHYSICAL_MEMORY),
         (Gauge<Long>) serverArgument::getFreePhysicalMemory);
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "usedPhysical_memory"),
+    metricRegistry.register(MetricRegistry.name(sourceName, USED_PHYSICAL_MEMORY),
         (Gauge<Long>) serverArgument::getUsedPhysicalMemory);
   }
 
-  public JSONObject json() throws JsonProcessingException {
+  public JSONObject metrics_json() throws JsonProcessingException {
     return (JSONObject) JSONObject.parse(om.writeValueAsString(metricRegistry));
   }
 
-  public JSONObject json_sql() {
+  public JSONObject server_json() {
+    JSONObject jsonObject = new JSONObject();
+    jsonObject.put(HOST, serverArgument.getHost());
+    jsonObject.put(PORT, serverArgument.getPort());
+    jsonObject.put(CORES, serverArgument.getCores());
+    jsonObject.put(CPU_RATIO, serverArgument.getCpuRatio());
+    jsonObject.put(TOTAL_MEMORY, serverArgument.getTotalMemory());
+    jsonObject.put(MAX_MEMORY, serverArgument.getMaxMemory());
+    jsonObject.put(FREE_MEMORY, serverArgument.getFreeMemory());
+    jsonObject.put(TOTAL_PHYSICAL_MEMORY, serverArgument.getTotalPhysicalMemory());
+    jsonObject.put(FREE_PHYSICAL_MEMORY, serverArgument.getFreePhysicalMemory());
+    jsonObject.put(USED_PHYSICAL_MEMORY, serverArgument.getUsedPhysicalMemory());
+    return jsonObject;
+  }
+
+  public JSONObject sql_json() {
     JSONObject sql = new JSONObject();
     for(int i = start; i < sqlArgumentsList.size(); i++) {
       start++;
