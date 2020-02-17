@@ -129,7 +129,12 @@ public abstract class AbstractClient {
   }
 
   private static void printCount(int cnt) {
-    println("Total line number = " + cnt);
+    if(cnt == 0){
+      println("Empty set.");
+    }
+    else {
+      println("Total line number = " + cnt);
+    }
   }
 
   static Options createOptions() {
@@ -581,7 +586,7 @@ public abstract class AbstractClient {
     }
     int j = 0;
     if (cursorBeforeFirst) {
-      resultSet.next();
+      isReachEnd = !resultSet.next();
       cursorBeforeFirst = false;
     }
     while (j < maxPrintRowCount && !isReachEnd) {
@@ -607,13 +612,16 @@ public abstract class AbstractClient {
   }
 
   private static void output(List<List<String>> lists, List<Integer> maxSizeList) {
-    printBlockLine(maxSizeList);
-    printRow(lists, 0, maxSizeList);
-    printBlockLine(maxSizeList);
-    for (int i = 1; i < lists.get(0).size(); i++) {
-      printRow(lists, i, maxSizeList);
+    int size = lists.get(0).size();
+    if(size > 1){
+      printBlockLine(maxSizeList);
+      printRow(lists, 0, maxSizeList);
+      printBlockLine(maxSizeList);
+      for (int i = 1; i < size; i++) {
+        printRow(lists, i, maxSizeList);
+      }
+      printBlockLine(maxSizeList);
     }
-    printBlockLine(maxSizeList);
     if (isReachEnd) {
       lineCount += lists.get(0).size() - 1;
       printCount(lineCount);
