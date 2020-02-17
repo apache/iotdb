@@ -22,10 +22,13 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import com.sun.rowset.internal.Row;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -54,6 +57,7 @@ public class MNode implements Serializable {
   private Map<String, MNode> children;
 
   private String fullPath;
+  private RowRecord cachedLastRecord = null;
 
   /**
    * when the data in a storage group is older than dataTTL, it is considered invalid and will
@@ -237,5 +241,22 @@ public class MNode implements Serializable {
       builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.name);
     }
     return fullPath = builder.toString();
+  }
+
+  public RowRecord getCachedLastRecord() {
+    return cachedLastRecord;
+  }
+
+  public void setCachedLastRecord(RowRecord record) {
+    cachedLastRecord = record;
+  }
+
+  public void updateCachedLastRecord(RowRecord record) {
+    if (cachedLastRecord != null) {
+      if (record.getTimestamp() > cachedLastRecord.getTimestamp())
+        cachedLastRecord = record;
+    } else {
+      cachedLastRecord = record;
+    }
   }
 }

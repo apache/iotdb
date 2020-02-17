@@ -55,8 +55,8 @@ public class LastQueryExecutor {
     private List<TSDataType> dataTypes;
 
     public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
-        this.selectedSeries = lastQueryPlan.getDeduplicatedPaths();
-        this.dataTypes = lastQueryPlan.getDeduplicatedDataTypes();
+        this.selectedSeries = lastQueryPlan.getPaths();
+        this.dataTypes = lastQueryPlan.getDataTypes();
     }
 
     /**
@@ -67,13 +67,32 @@ public class LastQueryExecutor {
     public QueryDataSet execute(QueryContext context)
             throws StorageEngineException, IOException, QueryProcessException {
 
+        MNode node = null;
+        try {
+            node = MManager.getInstance().getNodeByPathFromCache(selectedSeries.get(0).toString()).getParent();
+        } catch (PathException e) {
+            throw new QueryProcessException(e);
+        } catch (CacheException e) {
+            throw new QueryProcessException(e.getMessage());
+        }
+        if (node.getCachedLastRecord() != null) {
+            SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
+            dataSet.setRecord(node.getCachedLastRecord());
+            return dataSet;
+        }
+
         List<TimeValuePair> lastPairList = new ArrayList<>();
         for (int i = 0; i < selectedSeries.size(); i++) {
             TimeValuePair pair = calculatLastPairForOneSeries(selectedSeries.get(i), dataTypes.get(i), context);
             lastPairList.add(pair);
         }
 
-        return constructDataSet(lastPairList);
+        RowRecord resultRecord = constructLastRowRecord(lastPairList);
+        node.setCachedLastRecord(resultRecord);
+
+        SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
+        dataSet.setRecord(resultRecord);
+        return dataSet;
     }
 
     /**
@@ -86,19 +105,7 @@ public class LastQueryExecutor {
             Path seriesPath, TSDataType tsDataType,
             QueryContext context)
             throws IOException, QueryProcessException, StorageEngineException {
-        MNode node = null;
-        try {
-            node = MManager.getInstance().getNodeByPathFromCache(seriesPath.toString());
-        } catch (PathException e) {
-            throw new QueryProcessException(e);
-        } catch (CacheException e) {
-            throw new QueryProcessException(e.getMessage());
-        }
-/*
-        // return cached last TimeValuePair in MNode
-        if (node.hasCachedLastPair())
-            return node.getCachedLastPair();
- */
+
         // construct series reader without value filter
         Filter timeFilter = null;
         IAggregateReader seriesReader = new SeriesAggregateReader(
@@ -134,7 +141,7 @@ public class LastQueryExecutor {
      *
      * @param lastPairResultList last result list
      */
-    private QueryDataSet constructDataSet(List<TimeValuePair> lastPairResultList) {
+    private RowRecord constructLastRowRecord(List<TimeValuePair> lastPairResultList) {
         long maxTime = Long.MIN_VALUE;
         for (TimeValuePair lastPair : lastPairResultList) {
             if (lastPair.getTimestamp() > maxTime)
@@ -151,8 +158,6 @@ public class LastQueryExecutor {
                 resultRecord.addField(null, dataType);
         }
 
-        SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
-        dataSet.setRecord(resultRecord);
-        return dataSet;
+        return resultRecord;
     }
 }

@@ -68,6 +68,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
+import org.apache.iotdb.db.metadata.MTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
@@ -673,6 +674,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
       insertPlan.setDataTypes(dataTypes);
       storageEngine.insert(insertPlan);
+      node.updateCachedLastRecord(insertPlan.getRowRecord());
     } catch (PathException | StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } catch (CacheException e) {
@@ -765,8 +767,9 @@ public class PlanExecutor implements IPlanExecutor {
                   measurementNode.getSchema().getType()));
         }
       }
-      return storageEngine.insertBatch(batchInsertPlan);
-
+      Integer[] results = storageEngine.insertBatch(batchInsertPlan);
+      node.updateCachedLastRecord(batchInsertPlan.getLastRowRecord());
+      return results;
     } catch (PathException | StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } catch (CacheException e) {

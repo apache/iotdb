@@ -27,7 +27,9 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
@@ -50,6 +52,7 @@ public class BatchInsertPlan extends PhysicalPlan {
   private List<Path> paths;
   private int start;
   private int end;
+  private RowRecord lastRowRecord = null;
 
   public BatchInsertPlan() {
     super(false, OperatorType.BATCHINSERT);
@@ -286,6 +289,26 @@ public class BatchInsertPlan extends PhysicalPlan {
       }
     }
     return maxTime;
+  }
+
+  public RowRecord getLastRowRecord() {
+    if (lastRowRecord != null) {
+      return lastRowRecord;
+    }
+    long maxTime = Long.MIN_VALUE;
+    int maxIndex = 0;
+    for (int i = 0; i < times.length; i++) {
+      if (times[i] > maxTime) {
+        maxTime = times[i];
+        maxIndex = i;
+      }
+    }
+    lastRowRecord = new RowRecord(maxTime);
+    for (int i = 0; i < dataTypes.length; i++) {
+      Object[] column = (Object[]) columns[i];
+      lastRowRecord.addField(column[maxIndex], dataTypes[i]);
+    }
+    return lastRowRecord;
   }
 
   public long[] getTimes() {
