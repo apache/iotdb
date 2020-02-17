@@ -111,12 +111,12 @@ public class IOTDBGroupByInnerIntervalIT {
   @Test
   public void countSumAvgInnerIntervalTest() {
     String[] retArray1 = new String[]{
-            "1,3,6.6,2.1999999999999997",
+            "1,3,6.6,2.2",
             "6,3,23.1,7.7",
-            "11,3,36.599999999999994,12.199999999999998",
+            "11,3,36.599999999999994,12.2",
             "16,2,35.400000000000006,17.700000000000003",
             "21,2,45.5,22.75",
-            "26,3,90.9,30.3"
+            "26,3,90.9,30.299999999999997"
     };
 
     try (Connection connection = DriverManager.
@@ -153,10 +153,10 @@ public class IOTDBGroupByInnerIntervalIT {
     String[] retArray1 = new String[]{
             "1,1,3.3,3.3",
             "6,3,23.1,7.7",
-            "11,3,36.599999999999994,12.199999999999998",
+            "11,3,36.599999999999994,12.2",
             "16,2,35.400000000000006,17.700000000000003",
             "21,2,45.5,22.75",
-            "26,3,90.9,30.3"
+            "26,3,90.9,30.299999999999997"
     };
 
     try (Connection connection = DriverManager.
@@ -193,10 +193,10 @@ public class IOTDBGroupByInnerIntervalIT {
     String[] retArray1 = new String[]{
             "1,0,0.0,null",
             "6,3,23.1,7.7",
-            "11,3,36.599999999999994,12.199999999999998",
+            "11,3,36.599999999999994,12.2",
             "16,2,35.400000000000006,17.700000000000003",
             "21,2,45.5,22.75",
-            "26,3,90.9,30.3"
+            "26,3,90.9,30.299999999999997"
     };
 
     try (Connection connection = DriverManager.

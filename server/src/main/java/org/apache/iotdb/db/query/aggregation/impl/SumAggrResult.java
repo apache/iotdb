@@ -19,28 +19,89 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
+import java.io.IOException;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class SumAggrResult extends AvgAggrResult {
+public class SumAggrResult extends AggregateResult {
 
-  private static final String SUM_AGGR_NAME = "SUM";
+  private TSDataType seriesDataType;
 
   public SumAggrResult(TSDataType seriesDataType) {
-    super(seriesDataType);
+    super(TSDataType.DOUBLE);
+    this.seriesDataType = seriesDataType;
     reset();
-
+    setDoubleValue(0.0);
   }
 
   @Override
   public Double getResult() {
-    return sum;
+    return getDoubleValue();
   }
 
-  /**
-   * Return type name of aggregation
-   */
   @Override
-  public String getAggrTypeName() {
-    return SUM_AGGR_NAME;
+  public void updateResultFromStatistics(Statistics statistics) {
+    double preValue = getDoubleValue();
+    preValue += statistics.getSumValue();
+    setDoubleValue(preValue);
+  }
+
+  @Override
+  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
+  }
+
+  @Override
+  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+    while (dataInThisPage.hasCurrent()) {
+      if (dataInThisPage.currentTime() >= bound) {
+        break;
+      }
+      updateSum(seriesDataType, dataInThisPage.currentValue());
+      dataInThisPage.next();
+    }
+  }
+
+  @Override
+  public void updateResultUsingTimestamps(long[] timestamps, int length,
+      IReaderByTimestamp dataReader) throws IOException {
+    for (int i = 0; i < length; i++) {
+      Object value = dataReader.getValueInTimestamp(timestamps[i]);
+      if (value != null) {
+        updateSum(seriesDataType, value);
+      }
+    }
+  }
+
+  private void updateSum(TSDataType type, Object sumVal) throws IOException {
+    double preValue = getDoubleValue();
+    switch (type) {
+      case INT32:
+        preValue += (int) sumVal;
+        break;
+      case INT64:
+        preValue += (long) sumVal;
+        break;
+      case FLOAT:
+        preValue += (float) sumVal;
+        break;
+      case DOUBLE:
+        preValue += (double) sumVal;
+        break;
+      case TEXT:
+      case BOOLEAN:
+      default:
+        throw new IOException(
+            String.format("Unsupported data type in aggregation SUM : %s", type));
+    }
+    setDoubleValue(preValue);
+  }
+
+  @Override
+  public boolean isCalculatedAggregationResult() {
+    return false;
   }
 }
