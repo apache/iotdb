@@ -63,7 +63,7 @@ public class NodeTest {
     Node orNode = new OrNode(new LeafNode(new FakedFileSeriesReader(left)),
         new LeafNode(new FakedFileSeriesReader(right)));
     while (orNode.hasNext()) {
-      long value = orNode.next();
+      long value = orNode.next().currentTime();
       Assert.assertEquals(ret[index++], value);
     }
     Assert.assertEquals(ret.length, index);
@@ -83,7 +83,7 @@ public class NodeTest {
     Node andNode = new AndNode(new LeafNode(new FakedFileSeriesReader(left)),
         new LeafNode(new FakedFileSeriesReader(right)));
     while (andNode.hasNext()) {
-      long value = andNode.next();
+      long value = andNode.next().currentTime();
       Assert.assertEquals(ret[index++], value);
     }
     Assert.assertEquals(ret.length, index);

@@ -19,79 +19,108 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
+import org.apache.iotdb.tsfile.read.common.TimeSeries;
 
 public class OrNode implements Node {
 
   private Node leftChild;
   private Node rightChild;
 
-  private boolean hasCachedLeftValue;
-  private long cachedLeftValue;
-  private boolean hasCachedRightValue;
-  private long cachedRightValue;
+  private TimeSeries leftTimes;
+  private TimeSeries rightTimes;
+
+  private TimeSeries cachedValue;
+  private boolean hasCachedValue;
+
 
   public OrNode(Node leftChild, Node rightChild) {
     this.leftChild = leftChild;
     this.rightChild = rightChild;
-    this.hasCachedLeftValue = false;
-    this.hasCachedRightValue = false;
   }
 
   @Override
   public boolean hasNext() throws IOException {
-    if (hasCachedLeftValue || hasCachedRightValue) {
+    if (hasCachedValue) {
       return true;
     }
-    return leftChild.hasNext() || rightChild.hasNext();
-  }
 
-  private boolean hasLeftValue() throws IOException {
-    return hasCachedLeftValue || leftChild.hasNext();
-  }
-
-  private long getLeftValue() throws IOException {
-    if (hasCachedLeftValue) {
-      hasCachedLeftValue = false;
-      return cachedLeftValue;
-    }
-    return leftChild.next();
-  }
-
-  private boolean hasRightValue() throws IOException {
-    return hasCachedRightValue || rightChild.hasNext();
-  }
-
-  private long getRightValue() throws IOException {
-    if (hasCachedRightValue) {
-      hasCachedRightValue = false;
-      return cachedRightValue;
-    }
-    return rightChild.next();
+    return leftChild.hasNext() || rightChild.hasNext()
+        || leftTimes.hasMoreData() || rightTimes.hasMoreData();
   }
 
   @Override
-  public long next() throws IOException {
+  public TimeSeries next() throws IOException {
+    if (hasCachedValue) {
+      hasCachedValue = false;
+      return cachedValue;
+    }
+    hasCachedValue = false;
+    cachedValue = new TimeSeries(1000);
+
+    if (!hasLeftValue() && leftChild.hasNext()) {
+      leftTimes = leftChild.next();
+    }
+    if (!hasRightValue() && rightChild.hasNext()) {
+      rightTimes = rightChild.next();
+    }
+
     if (hasLeftValue() && !hasRightValue()) {
-      return getLeftValue();
+      return leftTimes;
     } else if (!hasLeftValue() && hasRightValue()) {
-      return getRightValue();
-    } else if (hasLeftValue() && hasRightValue()) {
-      long leftValue = getLeftValue();
-      long rightValue = getRightValue();
+      return rightTimes;
+    }
+
+    long lMax = leftTimes.getLastTime();
+    long rMax = rightTimes.getLastTime();
+    long stopBatchTime = rMax > lMax ? lMax : rMax;
+
+    while (hasLeftValue() && hasRightValue()) {
+      long leftValue = leftTimes.currentTime();
+      long rightValue = rightTimes.currentTime();
+
       if (leftValue < rightValue) {
-        hasCachedRightValue = true;
-        cachedRightValue = rightValue;
-        return leftValue;
+        hasCachedValue = true;
+        cachedValue.add(leftValue);
+        leftTimes.next();
+        if (!leftTimes.hasMoreData() && leftChild.hasNext()) {
+          leftTimes = leftChild.next();
+        }
       } else if (leftValue > rightValue) {
-        hasCachedLeftValue = true;
-        cachedLeftValue = leftValue;
-        return rightValue;
+        hasCachedValue = true;
+        cachedValue.add(rightValue);
+        rightTimes.next();
+        if (!rightTimes.hasMoreData() && rightChild.hasNext()) {
+          rightTimes = rightChild.next();
+        }
       } else {
-        return leftValue;
+        hasCachedValue = true;
+        cachedValue.add(leftValue);
+        leftTimes.next();
+        rightTimes.next();
+        if (!leftTimes.hasMoreData() && leftChild.hasNext()) {
+          leftTimes = leftChild.next();
+        }
+        if (!rightTimes.hasMoreData() && rightChild.hasNext()) {
+          rightTimes = rightChild.next();
+        }
+      }
+
+      if (leftValue > stopBatchTime && rightValue > stopBatchTime) {
+        break;
       }
     }
-    return -1;
+    hasCachedValue = false;
+    return cachedValue;
   }
+
+  private boolean hasLeftValue() {
+    return leftTimes != null && leftTimes.hasMoreData();
+  }
+
+  private boolean hasRightValue() {
+    return rightTimes != null && rightTimes.hasMoreData();
+  }
+
 
   @Override
   public NodeType getType() {

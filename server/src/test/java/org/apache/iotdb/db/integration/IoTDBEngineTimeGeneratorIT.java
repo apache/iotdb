@@ -249,7 +249,7 @@ public class IoTDBEngineTimeGeneratorIT {
       long time = timeGenerator.next();
       assertTrue(satisfyTimeFilter2(time));
       cnt++;
-      // System.out.println("cnt =" + cnt + "; time = " + time);
+       System.out.println("cnt =" + cnt + "; time = " + time);
     }
     assertEquals(count2, cnt);
   }

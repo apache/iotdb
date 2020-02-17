@@ -25,6 +25,7 @@ import java.util.List;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeSeries;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -44,13 +45,15 @@ public class TimeGeneratorImpl implements TimeGenerator {
   private IMetadataQuerier metadataQuerier;
   private Node operatorNode;
 
+  private TimeSeries cacheTimes;
+
   private HashMap<Path, List<LeafNode>> leafCache;
 
   /**
    * construct function for TimeGeneratorImpl.
    *
-   * @param iexpression -construct param
-   * @param chunkLoader -construct param
+   * @param iexpression     -construct param
+   * @param chunkLoader     -construct param
    * @param metadataQuerier -construct param
    */
   public TimeGeneratorImpl(IExpression iexpression, IChunkLoader chunkLoader,
@@ -65,12 +68,17 @@ public class TimeGeneratorImpl implements TimeGenerator {
 
   @Override
   public boolean hasNext() throws IOException {
-    return operatorNode.hasNext();
+    return (cacheTimes != null && cacheTimes.hasMoreData()) || operatorNode.hasNext();
   }
 
   @Override
   public long next() throws IOException {
-    return operatorNode.next();
+    if (cacheTimes == null || !cacheTimes.hasMoreData()) {
+      cacheTimes = operatorNode.next();
+    }
+    long currentTime = cacheTimes.currentTime();
+    cacheTimes.next();
+    return currentTime;
   }
 
   @Override

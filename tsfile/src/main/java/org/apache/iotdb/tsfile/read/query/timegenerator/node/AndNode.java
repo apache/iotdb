@@ -19,19 +19,24 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
+import org.apache.iotdb.tsfile.read.common.TimeSeries;
 
 public class AndNode implements Node {
 
   private Node leftChild;
   private Node rightChild;
 
-  private long cachedValue;
+  private TimeSeries cachedValue;
   private boolean hasCachedValue;
+
+
+  private TimeSeries leftPageData;
+  private TimeSeries rightPageData;
 
   /**
    * Constructor of AndNode.
    *
-   * @param leftChild left child
+   * @param leftChild  left child
    * @param rightChild right child
    */
   public AndNode(Node leftChild, Node rightChild) {
@@ -45,42 +50,71 @@ public class AndNode implements Node {
     if (hasCachedValue) {
       return true;
     }
-    if (leftChild.hasNext() && rightChild.hasNext()) {
-      long leftValue = leftChild.next();
-      long rightValue = rightChild.next();
-      while (true) {
-        if (leftValue == rightValue) {
-          this.hasCachedValue = true;
-          this.cachedValue = leftValue;
-          return true;
-        } else if (leftValue > rightValue) {
-          if (rightChild.hasNext()) {
-            rightValue = rightChild.next();
-          } else {
-            return false;
-          }
-        } else { // leftValue < rightValue
-          if (leftChild.hasNext()) {
-            leftValue = leftChild.next();
-          } else {
-            return false;
-          }
+    cachedValue = new TimeSeries(1000);
+    //fill data
+    fillLeftData();
+    fillRightData();
+
+    long stopBatchTime = getStopBatchTime();
+
+    while (leftPageData.hasMoreData() && rightPageData.hasMoreData()) {
+      long leftValue = leftPageData.currentTime();
+      long rightValue = rightPageData.currentTime();
+      if (leftValue == rightValue) {
+        this.hasCachedValue = true;
+        this.cachedValue.add(leftValue);
+        leftPageData.next();
+        rightPageData.next();
+      } else if (leftValue > rightValue) {
+        rightPageData.next();
+      } else { // leftValue < rightValue
+        leftPageData.next();
+      }
+
+      if (leftValue > stopBatchTime && rightValue > stopBatchTime) {
+        if (hasCachedValue) {
+          break;
         }
       }
+      fillLeftData();
+      fillRightData();
+      stopBatchTime = getStopBatchTime();
     }
-    return false;
+    return hasCachedValue;
+  }
+
+  private long getStopBatchTime() {
+    long rMax = leftPageData.getLastTime();
+    long lMax = rightPageData.getLastTime();
+    return rMax > lMax ? lMax : rMax;
+  }
+
+  private void fillRightData() throws IOException {
+    if (hasMoreData(rightPageData, rightChild)) {
+      rightPageData = rightChild.next();
+    }
+  }
+
+  private void fillLeftData() throws IOException {
+    if (hasMoreData(leftPageData, leftChild)) {
+      leftPageData = leftChild.next();
+    }
+  }
+
+  private boolean hasMoreData(TimeSeries timeSeries, Node child) throws IOException {
+    return (timeSeries == null || !timeSeries.hasMoreData()) && child.hasNext();
   }
 
   /**
    * If there is no value in current Node, -1 will be returned if {@code next()} is invoked.
    */
   @Override
-  public long next() throws IOException {
+  public TimeSeries next() throws IOException {
     if (hasNext()) {
       hasCachedValue = false;
       return cachedValue;
     }
-    return -1;
+    return null;
   }
 
   @Override

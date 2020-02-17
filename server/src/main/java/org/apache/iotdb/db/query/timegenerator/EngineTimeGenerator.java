@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeSeries;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
@@ -34,6 +35,8 @@ public class EngineTimeGenerator implements TimeGenerator {
 
   private IExpression expression;
   private Node operatorNode;
+
+  private TimeSeries cacheTimes;
 
   /**
    * Constructor of EngineTimeGenerator.
@@ -51,12 +54,17 @@ public class EngineTimeGenerator implements TimeGenerator {
 
   @Override
   public boolean hasNext() throws IOException {
-    return operatorNode.hasNext();
+    return (cacheTimes != null && cacheTimes.hasMoreData()) || operatorNode.hasNext();
   }
 
   @Override
   public long next() throws IOException {
-    return operatorNode.next();
+    if (cacheTimes == null || !cacheTimes.hasMoreData()) {
+      cacheTimes = operatorNode.next();
+    }
+    long currentTime = cacheTimes.currentTime();
+    cacheTimes.next();
+    return currentTime;
   }
 
   @Override

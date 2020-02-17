@@ -20,15 +20,14 @@ package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.TimeSeries;
 import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 
 public class LeafNode implements Node {
 
   private AbstractFileSeriesReader reader;
 
-  private BatchData data = null;
-
-  private boolean gotData = false;
+  private BatchData cacheData;
 
   public LeafNode(AbstractFileSeriesReader reader) {
     this.reader = reader;
@@ -36,28 +35,13 @@ public class LeafNode implements Node {
 
   @Override
   public boolean hasNext() throws IOException {
-
-    if (gotData) {
-      data.next();
-      gotData = false;
-    }
-
-    if (data == null || !data.hasCurrent()) {
-      if (reader.hasNextBatch()) {
-        data = reader.nextBatch();
-      } else {
-        return false;
-      }
-    }
-
-    return data.hasCurrent();
+    return reader.hasNextBatch();
   }
 
   @Override
-  public long next() {
-    long time = data.currentTime();
-    gotData = true;
-    return time;
+  public TimeSeries next() throws IOException {
+    cacheData = reader.nextBatch();
+    return cacheData.getTimeSeries();
   }
 
   /**
@@ -77,10 +61,7 @@ public class LeafNode implements Node {
    * Function for getting the value at the given time.
    */
   public Object currentValue(long time) {
-    if (data.currentTime() == time) {
-      return data.currentValue();
-    }
-    return null;
+    return cacheData.getValueInTimestamp(time);
   }
 
   @Override

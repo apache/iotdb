@@ -515,6 +515,14 @@ public class BatchData implements Serializable {
     return getTimeByIndex(length() - 1);
   }
 
+  public TimeSeries getTimeSeries() {
+    TimeSeries timeSeries = new TimeSeries(length());
+    for (int i = 0; i < length(); i++) {
+      timeSeries.add(getTimeByIndex(i));
+    }
+    return timeSeries;
+  }
+
   public BatchDataIterator getBatchDataIterator() {
     return new BatchDataIterator(this);
   }
