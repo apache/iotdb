@@ -265,9 +265,17 @@ public class StorageGroupProcessor {
       recoverUnseqFiles(unseqTsFiles);
 
       for (TsFileResource resource : seqTsFiles) {
+        //After recover, case the TsFile's length is equal to 0, delete both the TsFileResource and the file itself
+        if (resource.getFile().length() == 0) {
+          deleteTsfile(resource.getFile());
+        }
         allDirectFileVersions.addAll(resource.getHistoricalVersions());
       }
       for (TsFileResource resource : unseqTsFiles) {
+        //After recover, case the TsFile's length is equal to 0, delete both the TsFileResource and the file itself
+        if (resource.getFile().length() == 0) {
+          deleteTsfile(resource.getFile());
+        }
         allDirectFileVersions.addAll(resource.getHistoricalVersions());
       }
 
@@ -398,6 +406,7 @@ public class StorageGroupProcessor {
         workUnsequenceTsFileProcessors
             .put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
+        tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
       }
     }
@@ -424,6 +433,7 @@ public class StorageGroupProcessor {
             this::closeUnsealedTsFileProcessor,
             this::unsequenceFlushCallback, false, writer);
         tsFileResource.setProcessor(tsFileProcessor);
+        tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
       }
     }
@@ -1226,9 +1236,19 @@ public class StorageGroupProcessor {
 
   private boolean updateLatestFlushTimeCallback(TsFileProcessor processor) {
     // update the largest timestamp in the last flushing memtable
-    for (Entry<String, Long> entry : latestTimeForEachDevice.get(processor.getTimeRangeId())
-        .entrySet()) {
-      latestFlushedTimeForEachDevice.get(processor.getTimeRangeId())
+    Map<String, Long> curPartitionDeviceLatestTime = latestTimeForEachDevice
+        .get(processor.getTimeRangeId());
+
+    if (curPartitionDeviceLatestTime == null) {
+      logger.error("Partition: " + processor.getTimeRangeId() +
+          " does't have latest time for each device record. Flushing tsfile is: "
+          + processor.getTsFileResource().getFile());
+      return false;
+    }
+
+    for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
+      latestFlushedTimeForEachDevice
+          .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
           .put(entry.getKey(), entry.getValue());
     }
     return true;

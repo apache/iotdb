@@ -18,6 +18,14 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
@@ -29,18 +37,57 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.logical.crud.*;
-import org.apache.iotdb.db.qp.logical.sys.*;
+import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
+import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.db.qp.logical.sys.CountOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
+import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
+import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
+import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
-import org.apache.iotdb.db.qp.physical.sys.*;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
+import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-
-import java.util.*;
 
 /**
  * Used to convert logical operator to physical plan
@@ -216,17 +263,33 @@ public class PhysicalGenerator {
       Map<String, TSDataType> dataTypeConsistencyChecker = new HashMap<>();
       List<Path> paths = new ArrayList<>();
 
+      // cur loc for path
+      int loc = 0;
+
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix
         Path suffixPath = suffixPaths.get(i);
         Set<String> deviceSetOfGivenSuffix = new HashSet<>();
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
+        if(suffixPath.startWith("'") || suffixPath.startWith("\"")){
+          queryPlan.addConstMeasurement(loc++, suffixPath.getMeasurement());
+          continue;
+        }
 
+        Set<String> nonExistMeasurement = new HashSet<>();
         for (Path prefixPath : prefixPaths) { // per prefix
           Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
+          // for constant path
+
           Set<String> tmpDeviceSet = new HashSet<>();
           try {
             List<String> actualPaths = executor
                 .getAllMatchedPaths(fullPath.getFullPath());  // remove stars to get actual paths
+
+            if(actualPaths.isEmpty() && originAggregations.isEmpty()){
+              // for actual non exist path
+              nonExistMeasurement.add(fullPath.getMeasurement());
+            }
+
             for (String pathStr : actualPaths) {
               Path path = new Path(pathStr);
               String device = path.getDevice();
@@ -269,7 +332,9 @@ public class PhysicalGenerator {
               }
 
               // update measurementSetOfGivenSuffix
-              measurementSetOfGivenSuffix.add(measurementChecked);
+              if(measurementSetOfGivenSuffix.add(measurementChecked)){
+                loc++;
+              }
               // update measurementColumnsGroupByDevice
               if (!measurementsGroupByDevice.containsKey(device)) {
                 measurementsGroupByDevice.put(device, new HashSet<>());
@@ -287,6 +352,11 @@ public class PhysicalGenerator {
                     fullPath.getFullPath()) + e.getMessage());
           }
         }
+
+        nonExistMeasurement.removeAll(measurementSetOfGivenSuffix);
+        for(String notExistMeasurementString : nonExistMeasurement){
+          queryPlan.addNotExistMeasurement(loc++, notExistMeasurementString);
+        }
         // update measurements
         // Note that in the loop of a suffix path, set is used.
         // And across the loops of suffix paths, list is used.
@@ -297,7 +367,9 @@ public class PhysicalGenerator {
         measurements.addAll(measurementSetOfGivenSuffix);
       }
 
-      if (measurements.isEmpty()) {
+      if (measurements.isEmpty()
+          && queryPlan.getConstMeasurements().isEmpty()
+          && queryPlan.getNotExistMeasurements().isEmpty()) {
         throw new QueryProcessException("do not select any existing series");
       }
 
@@ -353,7 +425,7 @@ public class PhysicalGenerator {
     // remove stars in fromPaths and get deviceId with deduplication
     List<String> noStarDevices = removeStarsInDeviceWithUnique(fromPaths);
     for (int i = 0; i < noStarDevices.size(); i++) {
-      FilterOperator newOperator = operator.clone();
+      FilterOperator newOperator = operator.copy();
       newOperator = concatFilterPath(noStarDevices.get(i), newOperator);
 
       deviceToFilterMap.put(noStarDevices.get(i), newOperator.transformToExpression(executor));
@@ -399,7 +471,7 @@ public class PhysicalGenerator {
       return operator;
     }
 
-    Path concatPath = filterPath.addPrefixPath(filterPath, prefix);
+    Path concatPath = Path.addPrefixPath(filterPath, prefix);
     basicOperator.setSinglePath(concatPath);
 
     return basicOperator;

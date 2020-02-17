@@ -44,7 +44,7 @@ public class SingleSeriesExpression implements IUnaryExpression, Serializable {
 
   @Override
   public IExpression clone() {
-    return new SingleSeriesExpression(seriesPath.clone(), filter.clone());
+    return new SingleSeriesExpression(seriesPath.clone(), filter.copy());
   }
 
   @Override

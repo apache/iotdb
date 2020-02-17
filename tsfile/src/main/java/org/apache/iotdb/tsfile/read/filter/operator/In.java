@@ -20,72 +20,78 @@ package org.apache.iotdb.tsfile.read.filter.operator;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.Objects;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
- * NotFilter necessary. Use InvertExpressionVisitor
+ * in clause.
+ *
+ * @param <T> comparable data type
  */
-public class NotFilter implements Filter, Serializable {
+public class In<T extends Comparable<T>> implements Filter {
 
-  private static final long serialVersionUID = 584860326604020881L;
-  private Filter that;
+  private static final long serialVersionUID = 8572705136773595399L;
 
-  public NotFilter() {
+  private Set<T> values;
+
+  private boolean not;
+
+  private FilterType filterType;
+
+  public In() {
   }
 
-  public NotFilter(Filter that) {
-    this.that = that;
+  public In(Set<T> values, FilterType filterType, boolean not) {
+    this.values = values;
+    this.filterType = filterType;
+    this.not = not;
   }
 
   @Override
   public boolean satisfy(Statistics statistics) {
-    return !that.satisfy(statistics);
+    return true;
   }
 
   @Override
   public boolean satisfy(long time, Object value) {
-    return !that.satisfy(time, value);
+    Object v = filterType == FilterType.TIME_FILTER ? time : value;
+    return this.values.contains(v) != not;
   }
 
-  /**
-   * Notice that, if the not filter only contains value filter, this method may return false, this
-   * may cause misunderstanding.
-   */
   @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
-    return !that.satisfyStartEndTime(startTime, endTime);
+    return true;
   }
 
   @Override
   public boolean containStartEndTime(long startTime, long endTime) {
-    return !that.satisfyStartEndTime(startTime, endTime);
+    return true;
   }
 
   @Override
   public Filter copy() {
-    return new NotFilter(that.copy());
-  }
-
-  public Filter getFilter() {
-    return this.that;
-  }
-
-  @Override
-  public String toString() {
-    return "NotFilter: " + that;
+    return new In(new HashSet(values), filterType, not);
   }
 
   @Override
   public void serialize(DataOutputStream outputStream) {
     try {
       outputStream.write(getSerializeId().ordinal());
-      that.serialize(outputStream);
+      outputStream.write(filterType.ordinal());
+      ReadWriteIOUtils.write(not, outputStream);
+      outputStream.write(values.size());
+      for (T value : values) {
+        ReadWriteIOUtils.writeObject(value, outputStream);
+      }
     } catch (IOException ignored) {
       // ignored
     }
@@ -93,25 +99,23 @@ public class NotFilter implements Filter, Serializable {
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-    that = FilterFactory.deserialize(buffer);
+    filterType = FilterType.values()[buffer.get()];
+    not = ReadWriteIOUtils.readBool(buffer);
+    values = new HashSet<>();
+    for (int i = 0; i < buffer.get(); i++) {
+      values.add((T) ReadWriteIOUtils.readObject(buffer));
+    }
+  }
+
+  @Override
+  public String toString() {
+    List<T> valueList = new ArrayList<>(values);
+    Collections.sort(valueList);
+    return filterType + " < " + "reverse: " + not + ", " + valueList;
   }
 
   @Override
   public FilterSerializeId getSerializeId() {
-    return FilterSerializeId.NOT;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (!(obj instanceof NotFilter)) {
-      return false;
-    }
-    NotFilter other = ((NotFilter) obj);
-    return this.that.equals(other.that);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(that);
+    return FilterSerializeId.IN;
   }
 }

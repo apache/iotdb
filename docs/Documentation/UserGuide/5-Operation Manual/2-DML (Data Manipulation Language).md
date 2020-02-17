@@ -24,7 +24,7 @@
 ## INSERT
 ### Insert Real-time Data
 
-IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](/#/Documents/progress/chap5/sec4) in [Client/Shell tools](/#/Tools/Client), or using [Java JDBC](/#/Documents/progress/chap4/sec2) to perform single or batch execution of [INSERT SQL statement](/#/Documents/progress/chap5/sec4).
+IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](/#/Documents/progress/chap5/sec4) in [Client/Shell tools](/#/Documents/progress/chap4/sec1), or using [Java JDBC](/#/Documents/progress/chap4/sec2) to perform single or batch execution of [INSERT SQL statement](/#/Documents/progress/chap5/sec4).
 
 This section mainly introduces the use of [INSERT SQL statement](/#/Documents/progress/chap5/sec4) for real-time data import in the scenario. See Section 5.4 for a detailed syntax of [INSERT SQL statement](/#/Documents/progress/chap5/sec4).
 
@@ -271,7 +271,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 ```
 which means:
 
-Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp of 2017-11-01T16:37:50.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
+Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
 
 On the [sample data](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt), the execution result of this statement is shown below:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577616-67df0280-1ef5-11e9-9dff-2eb8342074eb.jpg"></center>
@@ -305,7 +305,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 ```
 which means:
 
-Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 21.927326, the next timestamp 2017-11-01T16:39:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 25.311783 to perform linear fitting calculation: 21.927326 + (25.311783-21.927326)/60s * 50s = 24.747707
+Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 21.927326, the next timestamp 2017-11-01T16:38:00.000 (and the timestamp is in the [2017-11-01T16:37:50.000, 2017-11-01T16:38:50.000] time range) and its value 25.311783 to perform linear fitting calculation: 21.927326 + (25.311783-21.927326)/60s * 50s = 24.747707
 
 On the [sample data](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt), the execution result of this statement is shown below:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577727-d4f29800-1ef5-11e9-8ff3-3bb519da3993.jpg"></center>
@@ -511,6 +511,22 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 The result is shown below:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577879-64984680-1ef6-11e9-9d7b-57dd60fab60e.jpg"></center>
+
+#### Other ResultSet Format
+
+In addition, IoTDB supports two another resultset format: 'group by device' and 'disable align'.
+
+The 'group by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
+
+The SQL statement is:
+
+```
+select s1,s2 from root.sg1.* GROUP BY DEVICE
+```
+
+For more syntax description, please read SQL REFERENCE.
+
+The 'disable align' indicaes that there are 3 columns for each time series in the resultset. For more syntax description, please read SQL REFERENCE.
 
 ####  Error Handling
 
