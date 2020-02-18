@@ -22,6 +22,9 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketAddress;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
@@ -97,8 +100,15 @@ public class EnvironmentUtils {
     } catch (IOException e) {
       //do nothing
     }
-
-
+    //try MetricService
+    try {
+      Socket socket = new Socket();
+      socket.connect(new InetSocketAddress("127.0.0.1", 8181));
+      logger.error("stop MetricService failed. 8181 can be connected now.");
+      socket.close();
+    } catch (Exception e) {
+      //do nothing
+    }
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
