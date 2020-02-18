@@ -58,12 +58,16 @@ public class UpgradeUtils {
    */
   public static boolean isNeedUpgrade(TsFileResource tsFileResource) {
     tsFileResource.getWriteQueryLock().readLock().lock();
+    //case the TsFile's length is equal to 0, the TsFile does not need to be upgraded
+    if (tsFileResource.getFile().length() == 0) {
+      return false;
+    }
     try (TsFileSequenceReader tsFileSequenceReader = new TsFileSequenceReader(
         tsFileResource.getFile().getAbsolutePath())) {
       if (tsFileSequenceReader.readVersionNumber().equals(TSFileConfig.OLD_VERSION)) {
         return true;
       }
-    } catch (IOException e) {
+    } catch (Exception e) {
       logger.error("meet error when judge whether file needs to be upgraded, the file's path:{}",
           tsFileResource.getFile().getAbsolutePath(), e);
     } finally {

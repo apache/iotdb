@@ -32,9 +32,6 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Yuan Tian
- */
 public class TsFileDeserializerTest {
 
   private TsFileDeserializer tsFileDeserializer;

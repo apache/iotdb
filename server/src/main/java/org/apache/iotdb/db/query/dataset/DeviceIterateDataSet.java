@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -42,6 +36,9 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.io.IOException;
+import java.util.*;
+
 
 /**
  * This QueryDataSet is used for GROUP_BY_DEVICE query result.
@@ -56,6 +53,15 @@ public class DeviceIterateDataSet extends QueryDataSet {
   private List<String> deduplicatedMeasurementColumns;
   private Map<String, Set<String>> measurementColumnsGroupByDevice;
   private Map<String, IExpression> deviceToFilterMap;
+
+  //the measurements that do not exist in any device,
+  // data type is considered as Boolean. The value is considered as null
+  private List<String> notExistMeasurements; // for group by device sql
+  private List<Integer> positionOfNotExistMeasurements; // for group by device sql
+  //the measurements that have quotation mark. e.g., "abc",
+  // '11', the data type is considered as String and the value  is considered is the same with measurement name
+  private List<String> constMeasurements; // for group by device sql
+  private List<Integer> positionOfConstMeasurements; // for group by device sql
 
   // group-by-time parameters
   private long unit;
@@ -85,6 +91,11 @@ public class DeviceIterateDataSet extends QueryDataSet {
     this.context = context;
     this.measurementColumnsGroupByDevice = queryPlan.getMeasurementsGroupByDevice();
     this.deviceToFilterMap = queryPlan.getDeviceToFilterMap();
+    this.notExistMeasurements = queryPlan.getNotExistMeasurements();
+    this.constMeasurements = queryPlan.getConstMeasurements();
+    this.positionOfNotExistMeasurements = queryPlan.getPositionOfNotExistMeasurements();
+    this.positionOfConstMeasurements = queryPlan.getPositionOfConstMeasurements();
+    //BuildOutDataTypes();
 
     if (queryPlan instanceof GroupByPlan) {
       this.dataSetType = DataSetType.GROUPBY;
@@ -117,11 +128,11 @@ public class DeviceIterateDataSet extends QueryDataSet {
     } else {
       curDataSetInitialized = false;
     }
-    for (int i = 0; i < deduplicatedMeasurementColumns.size(); i++) {
-      currentColumnMapRelation[i] = -1;
-    }
 
     while (deviceIterator.hasNext()) {
+      for (int i = 0; i < deduplicatedMeasurementColumns.size(); i++) {
+        currentColumnMapRelation[i] = -1;
+      }
       currentDevice = deviceIterator.next();
       Set<String> measurementColumnsOfGivenDevice = measurementColumnsGroupByDevice
           .get(currentDevice);
@@ -162,7 +173,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
       }
 
       // get filter to execute for the current device
-      if(deviceToFilterMap != null){
+      if (deviceToFilterMap != null) {
         this.expression = deviceToFilterMap.get(currentDevice);
       }
 
@@ -234,7 +245,36 @@ public class DeviceIterateDataSet extends QueryDataSet {
         rowRecord.addField(measurementFields.get(mapPos));
       }
     }
-    return rowRecord;
+
+    // build record with constant and non exist measurement
+    RowRecord outRecord = new RowRecord(originRowRecord.getTimestamp());
+    int loc = 0;
+    int totalSize = notExistMeasurements.size() + constMeasurements.size()
+        + rowRecord.getFields().size();
+    int notExistMeasurementsLoc = 0;
+    int constMeasurementsLoc = 0;
+    int resLoc = 0;
+    // don't forget device column, so loc - 1 is for looking up constant and non exist column
+    while (loc < totalSize) {
+      if (notExistMeasurementsLoc < notExistMeasurements.size()
+          && loc - 1 == positionOfNotExistMeasurements.get(notExistMeasurementsLoc)) {
+        outRecord.addField(new Field(null));
+        notExistMeasurementsLoc++;
+      } else if (constMeasurementsLoc < constMeasurements.size()
+          && loc - 1 == positionOfConstMeasurements.get(constMeasurementsLoc)) {
+        Field res = new Field(TSDataType.TEXT);
+        res.setBinaryV(Binary.valueOf(constMeasurements.get(constMeasurementsLoc)));
+        outRecord.addField(res);
+        constMeasurementsLoc++;
+      } else {
+        outRecord.addField(rowRecord.getFields().get(resLoc));
+        resLoc++;
+      }
+
+      loc++;
+    }
+
+    return outRecord;
   }
 
   private enum DataSetType {

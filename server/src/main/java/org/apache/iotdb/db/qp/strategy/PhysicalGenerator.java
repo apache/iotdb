@@ -265,17 +265,33 @@ public class PhysicalGenerator {
       Map<String, TSDataType> dataTypeConsistencyChecker = new HashMap<>();
       List<Path> paths = new ArrayList<>();
 
+      // cur loc for path
+      int loc = 0;
+
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix
         Path suffixPath = suffixPaths.get(i);
         Set<String> deviceSetOfGivenSuffix = new HashSet<>();
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
+        if(suffixPath.startWith("'") || suffixPath.startWith("\"")){
+          queryPlan.addConstMeasurement(loc++, suffixPath.getMeasurement());
+          continue;
+        }
 
+        Set<String> nonExistMeasurement = new HashSet<>();
         for (Path prefixPath : prefixPaths) { // per prefix
           Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
+          // for constant path
+
           Set<String> tmpDeviceSet = new HashSet<>();
           try {
             List<String> actualPaths = executor
                 .getAllMatchedPaths(fullPath.getFullPath());  // remove stars to get actual paths
+
+            if(actualPaths.isEmpty() && originAggregations.isEmpty()){
+              // for actual non exist path
+              nonExistMeasurement.add(fullPath.getMeasurement());
+            }
+
             for (String pathStr : actualPaths) {
               Path path = new Path(pathStr);
               String device = path.getDevice();
@@ -318,7 +334,9 @@ public class PhysicalGenerator {
               }
 
               // update measurementSetOfGivenSuffix
-              measurementSetOfGivenSuffix.add(measurementChecked);
+              if(measurementSetOfGivenSuffix.add(measurementChecked)){
+                loc++;
+              }
               // update measurementColumnsGroupByDevice
               if (!measurementsGroupByDevice.containsKey(device)) {
                 measurementsGroupByDevice.put(device, new HashSet<>());
@@ -336,6 +354,11 @@ public class PhysicalGenerator {
                     fullPath.getFullPath()) + e.getMessage());
           }
         }
+
+        nonExistMeasurement.removeAll(measurementSetOfGivenSuffix);
+        for(String notExistMeasurementString : nonExistMeasurement){
+          queryPlan.addNotExistMeasurement(loc++, notExistMeasurementString);
+        }
         // update measurements
         // Note that in the loop of a suffix path, set is used.
         // And across the loops of suffix paths, list is used.
@@ -346,7 +369,9 @@ public class PhysicalGenerator {
         measurements.addAll(measurementSetOfGivenSuffix);
       }
 
-      if (measurements.isEmpty()) {
+      if (measurements.isEmpty()
+          && queryPlan.getConstMeasurements().isEmpty()
+          && queryPlan.getNotExistMeasurements().isEmpty()) {
         throw new QueryProcessException("do not select any existing series");
       }
 
@@ -452,7 +477,7 @@ public class PhysicalGenerator {
       return operator;
     }
 
-    Path concatPath = filterPath.addPrefixPath(filterPath, prefix);
+    Path concatPath = Path.addPrefixPath(filterPath, prefix);
     basicOperator.setSinglePath(concatPath);
 
     return basicOperator;

@@ -40,6 +40,36 @@ public class Field {
     this.dataType = dataType;
   }
 
+  public static Field copy(Field field){
+    Field out = new Field(field.dataType);
+    if(out.dataType != null) {
+      switch (out.dataType) {
+        case DOUBLE:
+          out.setDoubleV(field.getDoubleV());
+          break;
+        case FLOAT:
+          out.setFloatV(field.getFloatV());
+          break;
+        case INT64:
+          out.setLongV(field.getLongV());
+          break;
+        case INT32:
+          out.setIntV(field.getIntV());
+          break;
+        case BOOLEAN:
+          out.setBoolV(field.getBoolV());
+          break;
+        case TEXT:
+          out.setBinaryV(field.getBinaryV());
+          break;
+        default:
+          throw new UnSupportedDataTypeException("UnSupported: " + out.dataType);
+      }
+    }
+
+    return out;
+  }
+
   public TSDataType getDataType() {
     return dataType;
   }
