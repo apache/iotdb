@@ -93,6 +93,7 @@ public class TsFileIOWriter {
    */
   public TsFileIOWriter(File file) throws IOException {
     this.out = new DefaultTsFileOutput(file);
+    this.file = file;
     startFile();
   }
 
