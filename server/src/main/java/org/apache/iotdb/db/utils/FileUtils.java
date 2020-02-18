@@ -42,7 +42,7 @@ public class FileUtils {
       Files.delete(folder.toPath());
     } catch (NoSuchFileException | DirectoryNotEmptyException e) {
       logger.warn("{}: {}", e.getMessage(), Arrays.toString(folder.list()), e);
-    } catch (IOException | SecurityException e) {
+    } catch (Exception e) {
       logger.warn("{}: {}", e.getMessage(), folder.getName(), e);
     }
   }
