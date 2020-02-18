@@ -37,12 +37,6 @@ public class FileUtils {
       for (File file : folder.listFiles()) {
         deleteDirectory(file);
       }
-      while (folder.listFiles().length > 0) {
-        logger.warn("after deletion, folder {} still has files, continue to delete them.", folder.getAbsolutePath());
-        for (File file : folder.listFiles()) {
-          deleteDirectory(file);
-        }
-      }
     }
     try {
       Files.delete(folder.toPath());

@@ -252,6 +252,7 @@ public class TsFileIOWriter {
     out.write(magicStringBytes);
 
     // close file
+    logger.error("{} is closed.", file.getName());
     out.close();
     canWrite = false;
     logger.info("output stream is closed");
