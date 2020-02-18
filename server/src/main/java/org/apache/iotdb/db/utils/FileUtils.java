@@ -37,11 +37,19 @@ public class FileUtils {
       for (File file : folder.listFiles()) {
         deleteDirectory(file);
       }
+      while (folder.listFiles().length > 0) {
+        logger.warn("after deletion, folder {} still has files, continue to delete them.", folder.getAbsolutePath());
+        for (File file : folder.listFiles()) {
+          deleteDirectory(file);
+        }
+      }
     }
     try {
       Files.delete(folder.toPath());
     } catch (NoSuchFileException | DirectoryNotEmptyException e) {
-      logger.warn(Arrays.toString(folder.list()), e);
+      logger.warn("{}: {}", e.getMessage(), Arrays.toString(folder.list()), e);
+    } catch (IOException | SecurityException e) {
+      logger.warn("{}: {}", e.getMessage(), folder.getName(), e);
     }
   }
 }
