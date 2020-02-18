@@ -98,8 +98,7 @@ public class AggregateEngineExecutor {
       function.init();
       aggregateFunctions.add(function);
 
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSource(selectedSeries.get(i), context);
+      QueryDataSource queryDataSource = getDataSource(selectedSeries.get(i), context);
       // add additional time filter if TTL is set
       timeFilter = queryDataSource.updateTimeFilter(timeFilter);
 
@@ -129,6 +128,11 @@ public class AggregateEngineExecutor {
       aggreResultDataList.add(aggreResultData);
     }
     return constructDataSet(aggreResultDataList);
+  }
+
+  protected QueryDataSource getDataSource(Path path, QueryContext context)
+      throws StorageEngineException {
+    return QueryResourceManager.getInstance().getQueryDataSource(path, context);
   }
 
   /**
