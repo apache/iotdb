@@ -21,12 +21,18 @@ package org.apache.iotdb.tsfile.read.common;
 
 public class TimeColumn {
 
+  private static final int DEFAULT_INIT_SIZE = 1000;
+
+
   private long[] times;
 
   private int size;
 
   private int cur;
 
+  public TimeColumn() {
+    this(DEFAULT_INIT_SIZE);
+  }
 
   public TimeColumn(int initSize) {
     times = new long[initSize];

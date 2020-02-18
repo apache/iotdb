@@ -54,10 +54,10 @@ public class AndNode implements Node {
     if (hasCachedValue) {
       return true;
     }
-    cachedTimeColumn = new TimeColumn(1000);
+    cachedTimeColumn = new TimeColumn(fetchSize);
     //fill data
-    fillLeftData();
-    fillRightData();
+    fillLeftCache();
+    fillRightCache();
 
     while (leftTimeColumn.hasCurrent() && rightTimeColumn.hasCurrent()) {
       long leftValue = leftTimeColumn.currentTime();
@@ -75,30 +75,28 @@ public class AndNode implements Node {
       }
 
       if (cachedTimeColumn.size() >= fetchSize) {
-        if (hasCachedValue) {
-          break;
-        }
+        break;
       }
-      fillLeftData();
-      fillRightData();
+      fillLeftCache();
+      fillRightCache();
     }
     return hasCachedValue;
   }
 
-  private void fillRightData() throws IOException {
-    if (hasMoreData(rightTimeColumn, rightChild)) {
+  private void fillRightCache() throws IOException {
+    if (couldFillCache(rightTimeColumn, rightChild)) {
       rightTimeColumn = rightChild.nextTimeColumn();
     }
   }
 
-  private void fillLeftData() throws IOException {
-    if (hasMoreData(leftTimeColumn, leftChild)) {
+  private void fillLeftCache() throws IOException {
+    if (couldFillCache(leftTimeColumn, leftChild)) {
       leftTimeColumn = leftChild.nextTimeColumn();
     }
   }
 
   //no more data in cache and has more data in child
-  private boolean hasMoreData(TimeColumn timeSeries, Node child) throws IOException {
+  private boolean couldFillCache(TimeColumn timeSeries, Node child) throws IOException {
     return (timeSeries == null || !timeSeries.hasCurrent()) && child.hasNextTimeColumn();
   }
 
