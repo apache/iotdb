@@ -83,15 +83,13 @@ public class IoTDBRecoverIT {
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     daemon = IoTDB.getInstance();
-    daemon.active();
-    EnvironmentUtils.envSetUp();
+    EnvironmentUtils.envSetUp(daemon);
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
   }
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -164,7 +162,7 @@ public class IoTDBRecoverIT {
       e.printStackTrace();
     }
     daemon.active();
-    EnvironmentUtils.envSetUp();
+    //EnvironmentUtils.envSetUp();
 
     // count test
     retArray = new String[]{
@@ -219,7 +217,7 @@ public class IoTDBRecoverIT {
       e.printStackTrace();
     }
     daemon.active();
-    EnvironmentUtils.envSetUp();
+    //EnvironmentUtils.envSetUp();
 
     // maxminValueTest
 
