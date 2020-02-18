@@ -31,8 +31,7 @@ import java.sql.*;
 import static org.junit.Assert.fail;
 
 public class IoTDBDisableAlignIT {
-  
-  private static IoTDB daemon;
+
   private static String[] sqls = new String[]{
 
       "SET STORAGE GROUP TO root.vehicle",
@@ -101,8 +100,6 @@ public class IoTDBDisableAlignIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertData();
@@ -111,7 +108,6 @@ public class IoTDBDisableAlignIT {
   
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
   

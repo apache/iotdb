@@ -90,6 +90,16 @@ public class EnvironmentUtils {
       } catch (TTransportException e) {
       }
     }
+    //try sync service
+    transport = new TSocket("127.0.0.1", 5555, 100);
+    if (!transport.isOpen()) {
+      try {
+        transport.open();
+        logger.error("stop Sync daemon failed. 5555 can be connected now.");
+        transport.close();
+      } catch (TTransportException e) {
+      }
+    }
     //try jmx connection
     try {
     JMXServiceURL url =
