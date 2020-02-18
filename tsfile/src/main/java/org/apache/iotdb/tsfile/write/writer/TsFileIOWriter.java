@@ -94,6 +94,7 @@ public class TsFileIOWriter {
   public TsFileIOWriter(File file) throws IOException {
     this.out = new DefaultTsFileOutput(file);
     this.file = file;
+    logger.error("{} is opened.", file.getName());
     startFile();
   }
 
@@ -253,8 +254,8 @@ public class TsFileIOWriter {
     out.write(magicStringBytes);
 
     // close file
-    logger.error("{} is closed.", file.getName());
     out.close();
+    logger.error("{} is closed.", file.getName());
     canWrite = false;
     logger.info("output stream is closed");
   }
