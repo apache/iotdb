@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -104,7 +106,27 @@ public class LastQueryExecutor {
 
     long maxTime = Long.MIN_VALUE;
     while (seriesReader.hasNextChunk()) {
+      // cal by chunk statistics
+      if (seriesReader.canUseCurrentChunkStatistics()) {
+        Statistics chunkStatistics = seriesReader.currentChunkStatistics();
+        if (chunkStatistics.getEndTime() > maxTime) {
+          maxTime = chunkStatistics.getEndTime();
+          queryResult.setPairResult(maxTime, chunkStatistics.getLastValue(), tsDataType);
+        }
+        seriesReader.skipCurrentChunk();
+        continue;
+      }
       while (seriesReader.hasNextPage()) {
+        //cal by page statistics
+        if (seriesReader.canUseCurrentPageStatistics()) {
+          Statistics pageStatistic = seriesReader.currentPageStatistics();
+          if (pageStatistic.getEndTime() > maxTime) {
+            maxTime = pageStatistic.getEndTime();
+            queryResult.setPairResult(maxTime, pageStatistic.getLastValue(), tsDataType);
+          }
+          seriesReader.skipCurrentPage();
+          continue;
+        }
         // cal by page data
         while (seriesReader.hasNextOverlappedPage()) {
           BatchData nextOverlappedPageData = seriesReader.nextOverlappedPage();
