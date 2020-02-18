@@ -129,7 +129,12 @@ public abstract class AbstractClient {
   }
 
   private static void printCount(int cnt) {
-    println("Total line number = " + cnt);
+    if(cnt == 0){
+      println("Empty set.");
+    }
+    else {
+      println("Total line number = " + cnt);
+    }
   }
 
   static Options createOptions() {
@@ -581,7 +586,7 @@ public abstract class AbstractClient {
     }
     int j = 0;
     if (cursorBeforeFirst) {
-      resultSet.next();
+      isReachEnd = !resultSet.next();
       cursorBeforeFirst = false;
     }
     while (j < maxPrintRowCount && !isReachEnd) {
