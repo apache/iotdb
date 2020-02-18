@@ -191,6 +191,10 @@ public class TSFileConfig {
    * The acceptable error rate of bloom filter
    */
   private double bloomFilterErrorRate = 0.05;
+  /**
+   * The amount of data iterate each time
+   */
+  private int batchSize = 1000;
 
   public TSFileConfig() {
 
@@ -445,4 +449,11 @@ public class TSFileConfig {
     this.dfsClientFailoverProxyProvider = dfsClientFailoverProxyProvider;
   }
 
+  public int getBatchSize() {
+    return batchSize;
+  }
+
+  public void setBatchSize(int batchSize) {
+    this.batchSize = batchSize;
+  }
 }

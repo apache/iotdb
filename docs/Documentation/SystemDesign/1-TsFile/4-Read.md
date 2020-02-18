@@ -465,8 +465,8 @@ org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp
 
 **Implementation**: This component provides an interface, getValueInTimestamp(long timestamp), which receives increasing timestamp value,  and outputs the data points on the time series whose timestamp is identical. If there's no such data point, the result is null.
 
-#### 2.2.3 TimeGeneratorImpl
-org.apache.iotdb.tsfile.read.query.timegenerator.TimeGeneratorImpl
+#### 2.2.3 TsFileTimeGenerator
+org.apache.iotdb.tsfile.read.query.timegenerator.TsFileTimeGenerator
 
 **Functions**: According to the filter condition, TimeGeneratorImpl generates the satisfying timestamp. It first transforms the filter conditions to be a binary tree, and recursively generate the satisfying timestamp. This component is used in executing join query.
 

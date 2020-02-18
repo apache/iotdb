@@ -40,7 +40,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
+import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -205,7 +205,7 @@ public class AggregationExecutor {
   public QueryDataSet executeWithValueFilter(QueryContext context)
       throws StorageEngineException, PathException, IOException {
 
-    EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
+    ServerTimeGenerator timestampGenerator = new ServerTimeGenerator(expression, context);
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       Path path = selectedSeries.get(i);
@@ -229,7 +229,7 @@ public class AggregationExecutor {
    * calculate aggregation result with value filter.
    */
   private void aggregateWithValueFilter(List<AggregateResult> aggregateResults,
-      EngineTimeGenerator timestampGenerator, List<IReaderByTimestamp> readersOfSelectedSeries)
+      ServerTimeGenerator timestampGenerator, List<IReaderByTimestamp> readersOfSelectedSeries)
       throws IOException {
 
     while (timestampGenerator.hasNext()) {
