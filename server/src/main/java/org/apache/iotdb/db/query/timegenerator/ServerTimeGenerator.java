@@ -16,55 +16,65 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.timegenerator;
 
 import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
 
+import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
+import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
+import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public class EngineNodeConstructor extends AbstractNodeConstructor {
+/**
+ * A timestamp generator for query with filter. e.g. For query clause "select s1, s2 form root where
+ * s3 < 0 and time > 100", this class can iterate back to every timestamp of the query.
+ */
+public class ServerTimeGenerator extends TimeGenerator {
+
+  private QueryContext context;
 
   /**
-   * Construct expression node.
-   *
-   * @param expression expression
-   * @return Node object
-   * @throws StorageEngineException StorageEngineException
+   * Constructor of EngineTimeGenerator.
    */
-  @Override
-  public Node construct(IExpression expression, QueryContext context)
+  public ServerTimeGenerator(IExpression expression, QueryContext context)
       throws StorageEngineException {
-    if (expression.getType() == SERIES) {
-      try {
-        Filter filter = ((SingleSeriesExpression) expression).getFilter();
-        Path path = ((SingleSeriesExpression) expression).getSeriesPath();
-        TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
-
-        QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-            .getQueryDataSource(path, context, null);
-        // update filter by TTL
-        filter = queryDataSource.updateFilterUsingTTL(filter);
-
-        return new EngineLeafNode(
-            new SeriesRawDataPointReader(path, dataType, context, queryDataSource, null, filter));
-      } catch (MetadataException e) {
-        throw new StorageEngineException(e.getMessage());
-      }
-    } else {
-      return constructNotSeriesNode(expression, context);
+    this.context = context;
+    try {
+      super.constructNode(expression);
+    } catch (IOException e) {
+      throw new StorageEngineException(e.getMessage());
     }
+  }
+
+
+  @Override
+  protected IBatchReader generateNewBatchReader(SingleSeriesExpression expression)
+      throws IOException {
+    Filter filter = expression.getFilter();
+    Path path = expression.getSeriesPath();
+    TSDataType dataType;
+    QueryDataSource queryDataSource;
+    try {
+      dataType = MManager.getInstance().getSeriesType(path.getFullPath());
+      queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, null);
+      // update filter by TTL
+      filter = queryDataSource.updateFilterUsingTTL(filter);
+    } catch (Exception e) {
+      throw new IOException(e);
+    }
+
+    return new SeriesRawDataBatchReader(path, dataType, context, queryDataSource, null, filter);
   }
 }

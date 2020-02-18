@@ -30,7 +30,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
+import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -185,7 +185,7 @@ public class IoTDBEngineTimeGeneratorIT {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(pd0s0,
         FilterFactory.and(valueGtEq, timeGt));
-    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(singleSeriesExpression,
+    ServerTimeGenerator timeGenerator = new ServerTimeGenerator(singleSeriesExpression,
         TEST_QUERY_CONTEXT);
 
     int cnt = 0;
@@ -209,7 +209,7 @@ public class IoTDBEngineTimeGeneratorIT {
     ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(5);
 
     IExpression singleSeriesExpression = new SingleSeriesExpression(pd1s0, valueGtEq);
-    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(singleSeriesExpression,
+    ServerTimeGenerator timeGenerator = new ServerTimeGenerator(singleSeriesExpression,
         TEST_QUERY_CONTEXT);
 
     int cnt = 0;
@@ -242,14 +242,14 @@ public class IoTDBEngineTimeGeneratorIT {
     IExpression andExpression = BinaryExpression
         .and(singleSeriesExpression1, singleSeriesExpression2);
 
-    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(andExpression,
+    ServerTimeGenerator timeGenerator = new ServerTimeGenerator(andExpression,
         TEST_QUERY_CONTEXT);
     int cnt = 0;
     while (timeGenerator.hasNext()) {
       long time = timeGenerator.next();
       assertTrue(satisfyTimeFilter2(time));
       cnt++;
-      // System.out.println("cnt =" + cnt + "; time = " + time);
+//       System.out.println("cnt =" + cnt + "; time = " + time);
     }
     assertEquals(count2, cnt);
   }

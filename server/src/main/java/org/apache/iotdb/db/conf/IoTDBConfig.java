@@ -155,7 +155,7 @@ public class IoTDBConfig {
   private int maxMemtableNumber = 20;
 
   /**
-   * The amount of data that is read every time.
+   * The amount of data iterate each time in server
    */
   private int batchSize = 100000;
 
