@@ -186,20 +186,10 @@ public class EnvironmentUtils {
    * disable memory control</br> this function should be called before all code in the setup
    */
   public static void envSetUp() throws StartupException {
-    envSetUp(daemon);
-  }
-
-  /**
-   * disable memory control</br> this function should be called before all code in the setup
-   * <br> the caller should not call daemon.active(). This method will call the active() method.
-   */
-  public static void envSetUp(IoTDB daemon) throws StartupException {
     System.setProperty(IoTDBConstant.REMOTE_JMX_PORT_NAME, "31999");
     IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(0);
     if (daemon == null) {
-      EnvironmentUtils.daemon = new IoTDB();
-    } else {
-      EnvironmentUtils.daemon = daemon;
+      daemon = new IoTDB();
     }
     try {
       EnvironmentUtils.daemon.active();
