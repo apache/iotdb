@@ -29,7 +29,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggreResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
+import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
@@ -78,7 +78,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    */
   private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
       throws StorageEngineException {
-    this.timestampGenerator = new EngineTimeGenerator(groupByPlan.getExpression(), context);
+    this.timestampGenerator = new ServerTimeGenerator(groupByPlan.getExpression(), context);
     this.allDataReaderList = new ArrayList<>();
     this.groupByPlan = groupByPlan;
     for (int i = 0; i < paths.size(); i++) {

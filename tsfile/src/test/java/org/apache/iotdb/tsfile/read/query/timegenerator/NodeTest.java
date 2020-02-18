@@ -124,11 +124,6 @@ public class NodeTest {
     }
 
     @Override
-    public BatchData currentBatch() {
-      return data;
-    }
-
-    @Override
     protected void initChunkReader(ChunkMetaData chunkMetaData) throws IOException {
 
     }

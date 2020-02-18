@@ -75,7 +75,7 @@ public class TimeGeneratorTest {
             new SingleSeriesExpression(new Path("d1.s4"), filter2)),
         new SingleSeriesExpression(new Path("d1.s1"), filter3));
 
-    TimeGeneratorImpl timestampGenerator = new TimeGeneratorImpl(IExpression, chunkLoader,
+    TsFileTimeGenerator timestampGenerator = new TsFileTimeGenerator(IExpression, chunkLoader,
         metadataQuerierByFile);
     while (timestampGenerator.hasNext()) {
       // System.out.println(timestampGenerator.next());

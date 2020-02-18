@@ -192,7 +192,7 @@ public class TSFileConfig {
    */
   private double bloomFilterErrorRate = 0.05;
   /**
-   * The amount of data iterate each time in server
+   * The amount of data iterate each time
    */
   private int batchSize = 1000;
 

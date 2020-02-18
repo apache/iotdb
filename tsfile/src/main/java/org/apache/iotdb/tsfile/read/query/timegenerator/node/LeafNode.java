@@ -21,17 +21,18 @@ package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 import java.io.IOException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.TimeColumn;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 
 public class LeafNode implements Node {
 
-  private AbstractFileSeriesReader reader;
+  private IBatchReader reader;
 
   private BatchData cacheData;
   private TimeColumn cachedTimeSeries;
   private boolean hasCached;
 
-  public LeafNode(AbstractFileSeriesReader reader) {
+  public LeafNode(IBatchReader reader) {
     this.reader = reader;
   }
 
@@ -64,10 +65,10 @@ public class LeafNode implements Node {
    * @return True if the current time equals the given time. False if not.
    */
   public boolean currentTimeIs(long time) {
-    if (!reader.currentBatch().hasCurrent()) {
+    if (!cacheData.hasCurrent()) {
       return false;
     }
-    return reader.currentBatch().currentTime() == time;
+    return cacheData.currentTime() == time;
   }
 
   /**

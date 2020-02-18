@@ -24,8 +24,7 @@ import org.apache.iotdb.tsfile.read.common.TimeColumn;
 
 public class OrNode implements Node {
 
-  private final int fetchSize = TSFileDescriptor.getInstance().getConfig()
-      .getBatchSize();
+  private final int fetchSize = TSFileDescriptor.getInstance().getConfig().getBatchSize();
 
   private Node leftChild;
   private Node rightChild;
@@ -48,19 +47,6 @@ public class OrNode implements Node {
       return true;
     }
 
-    return leftChild.hasNextTimeColumn() || rightChild.hasNextTimeColumn()
-        || leftTimeColumn.hasCurrent() || rightTimeColumn.hasCurrent();
-  }
-
-  @Override
-  public TimeColumn nextTimeColumn() throws IOException {
-    if (hasCachedValue) {
-      hasCachedValue = false;
-      return cachedTimeColumn;
-    }
-    hasCachedValue = false;
-    cachedTimeColumn = new TimeColumn(fetchSize);
-
     if (!hasLeftValue() && leftChild.hasNextTimeColumn()) {
       leftTimeColumn = leftChild.nextTimeColumn();
     }
@@ -69,10 +55,16 @@ public class OrNode implements Node {
     }
 
     if (hasLeftValue() && !hasRightValue()) {
-      return leftTimeColumn;
+      cachedTimeColumn = leftTimeColumn;
+      hasCachedValue = true;
+      return true;
     } else if (!hasLeftValue() && hasRightValue()) {
-      return rightTimeColumn;
+      cachedTimeColumn = rightTimeColumn;
+      hasCachedValue = true;
+      return true;
     }
+
+    cachedTimeColumn = new TimeColumn(fetchSize);
 
     while (hasLeftValue() && hasRightValue()) {
       long leftValue = leftTimeColumn.currentTime();
@@ -109,8 +101,16 @@ public class OrNode implements Node {
         break;
       }
     }
-    hasCachedValue = false;
-    return cachedTimeColumn;
+    return hasCachedValue;
+  }
+
+  @Override
+  public TimeColumn nextTimeColumn() throws IOException {
+    if (hasCachedValue || hasNextTimeColumn()) {
+      hasCachedValue = false;
+      return cachedTimeColumn;
+    }
+    throw new IOException("no more data");
   }
 
   private boolean hasLeftValue() {

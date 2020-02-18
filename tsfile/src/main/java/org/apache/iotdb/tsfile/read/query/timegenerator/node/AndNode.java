@@ -24,8 +24,7 @@ import org.apache.iotdb.tsfile.read.common.TimeColumn;
 
 public class AndNode implements Node {
 
-  private final int fetchSize = TSFileDescriptor.getInstance().getConfig()
-      .getBatchSize();
+  private final int fetchSize = TSFileDescriptor.getInstance().getConfig().getBatchSize();
 
   private Node leftChild;
   private Node rightChild;
@@ -105,11 +104,11 @@ public class AndNode implements Node {
    */
   @Override
   public TimeColumn nextTimeColumn() throws IOException {
-    if (hasNextTimeColumn()) {
+    if (hasCachedValue || hasNextTimeColumn()) {
       hasCachedValue = false;
       return cachedTimeColumn;
     }
-    return null;
+    throw new IOException("no more data");
   }
 
   @Override
