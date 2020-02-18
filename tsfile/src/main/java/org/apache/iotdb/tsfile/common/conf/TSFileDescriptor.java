@@ -28,7 +28,6 @@ import java.net.URL;
 import java.util.Properties;
 import java.util.Set;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.utils.Loader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -130,9 +129,8 @@ public class TSFileDescriptor {
       conf.setTimeEncoder(properties.getProperty("time_encoder", conf.getTimeEncoder()));
       conf.setValueEncoder(properties.getProperty("value_encoder", conf.getValueEncoder()));
       conf.setCompressor(properties.getProperty("compressor", conf.getCompressor()));
-      conf.setFetchSizeOfTimeGenerator(Integer.parseInt(
-          properties.getProperty("fetch_size_time_generator",
-              Integer.toString(conf.getFetchSizeOfTimeGenerator()))));
+      conf.setBatchSize(Integer.parseInt(properties.getProperty("batch_size",
+          Integer.toString(conf.getBatchSize()))));
     } catch (IOException e) {
       logger.warn("Cannot load config file, use default configuration", e);
     } catch (Exception e) {

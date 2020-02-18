@@ -356,7 +356,7 @@ public class IoTDBDescriptor {
           properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
       TSFileDescriptor.getInstance().getConfig().setKerberosPrincipal(
           properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
-      TSFileDescriptor.getInstance().getConfig().setFetchSizeOfTimeGenerator(conf.getBatchSize());
+      TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
       // set tsfile-format config
       loadTsFileProps(properties);
 

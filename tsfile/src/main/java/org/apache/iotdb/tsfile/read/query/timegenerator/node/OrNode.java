@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.read.common.TimeColumn;
 public class OrNode implements Node {
 
   private final int fetchSize = TSFileDescriptor.getInstance().getConfig()
-      .getFetchSizeOfTimeGenerator();
+      .getBatchSize();
 
   private Node leftChild;
   private Node rightChild;

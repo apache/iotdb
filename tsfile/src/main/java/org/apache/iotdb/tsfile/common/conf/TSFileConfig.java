@@ -192,9 +192,9 @@ public class TSFileConfig {
    */
   private double bloomFilterErrorRate = 0.05;
   /**
-   * The TimeColumn size for TimeGenerator generated each time
+   * The amount of data iterate each time in server
    */
-  private int fetchSizeOfTimeGenerator = 1000;
+  private int batchSize = 1000;
 
   public TSFileConfig() {
 
@@ -449,12 +449,11 @@ public class TSFileConfig {
     this.dfsClientFailoverProxyProvider = dfsClientFailoverProxyProvider;
   }
 
-  public int getFetchSizeOfTimeGenerator() {
-    return fetchSizeOfTimeGenerator;
+  public int getBatchSize() {
+    return batchSize;
   }
 
-  public void setFetchSizeOfTimeGenerator(int fetchSizeOfTimeGenerator) {
-    this.fetchSizeOfTimeGenerator = fetchSizeOfTimeGenerator;
+  public void setBatchSize(int batchSize) {
+    this.batchSize = batchSize;
   }
-
 }
