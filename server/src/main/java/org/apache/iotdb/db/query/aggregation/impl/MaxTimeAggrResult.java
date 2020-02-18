@@ -35,7 +35,7 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   @Override
   public Long getResult() {
-    return hasResult() ? getLongRet() : null;
+    return hasResult() ? getLongValue() : null;
   }
 
   @Override
@@ -86,8 +86,8 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   private void updateMaxTimeResult(long value) {
-    if (!hasResult() || value >= getLongRet()) {
-      setLongRet(value);
+    if (!hasResult() || value >= getLongValue()) {
+      setLongValue(value);
     }
   }
 }

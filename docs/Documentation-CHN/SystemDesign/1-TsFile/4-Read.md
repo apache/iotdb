@@ -154,7 +154,7 @@ GlobalTimeExpression 表示全局的时间过滤条件，一个 GlobalTimeExpres
 2. GlobalTimeExpression((time > 100 && time < 200) || (time > 400 && time < 500))表示所有被选择列的时间戳必须满足“大于100且小于200”或“大于400且小于500”
 
 #### 1.2.3 IExpression 表达式
-IExpression 为查询过滤条件。一个 IExpression 可以是一个 SingleSeriesExpression 或者一个 GlobalTimeExpression，这种情况下，IExpression 也称为一元表达式，即 UnaryExpression。一个 IExpression 也可以由两个 IExpression 通过逻辑关系“与”、“或”进行连接。通过关系“与”连接得到的表达式又称为“与表达式”，即“AndExpression”。同理，通过关系“或”连接的表达式称为“或表达式”，即“OrExpression”。由两个 IExpression 连接成的表达式又称为二元表达式，即 BinaryExpression。一元表达式、二元表达式都是 IExpression。
+IExpression 为查询过滤条件。一个 IExpression 可以是一个 SingleSeriesExpression 或者一个 GlobalTimeExpression，这种情况下，IExpression 也称为一元表达式，即 UnaryExpression。一个 IExpression 也可以由两个 IExpression 通过逻辑关系“与”、“或”进行连接得到 “AndExpression” 或 “OrExpression” 二元表达式，即 BinaryExpression。
 
 下面给出 IExpression 的形式化定义。
 
@@ -283,7 +283,7 @@ IExpression 为查询过滤条件。一个 IExpression 可以是一个 SingleSer
     AndExpression := <IExpression> AND <IExpression>
     OrExpression := <IExpression> OR <IExpression>
 
-令运算复左右两侧的表达式分别称为 LeftIExpression 和 RightIExpression，即
+令左右两侧的表达式分别为 LeftIExpression 和 RightIExpression，即
 
     AndExpression := <LeftIExpression> AND <RightIExpression>
     OrExpression := <LeftIExpression> OR <RightIExpression>
@@ -296,7 +296,23 @@ IExpression 为查询过滤条件。一个 IExpression 可以是一个 SingleSer
     输出：转换后的 IExpression，即可执行表达式
 
 在介绍优化算法的具体步骤之前，我们首先介绍表达式、过滤条件合并基本的方法。这些方法将在 optimize() 方法中使用。
-* combineTwoGlobalTimeExpression 方法将两个 GlobalTimeExpression 合并为一个 GlobalTimeExpression。
+
+* MergeFilter: 合并两个 Filter。该方法接受三个参数，分别为：
+
+        Filter1：第一个待合并的 Filter
+        Filter2：第二个待合并的 Filter
+        Relation：两个待合并 Filter 之间的关系（ relation 的取值为 AND 或 OR）
+
+    则，该方法执行的策略为
+
+        if relation == AND:
+            return AndFilter(Filter1, Filter2)
+        else if relation == OR:
+            return OrFilter(Filter1, Filter2)
+
+    算法实现是，使用 FilterFactory 类中的 AndFilter and(Filter left, Filter right) 和 OrFilter or(Filter left, Filter right)方法进行实现。
+    
+* combineTwoGlobalTimeExpression: 将两个 GlobalTimeExpression 合并为一个 GlobalTimeExpression。
   
   该方法接受三个输入参数，方法的定义为：
 
@@ -312,7 +328,7 @@ IExpression 为查询过滤条件。一个 IExpression 可以是一个 SingleSer
         输出：GlobalTimeExpression，最终合并后的表达式
     
     该方法分为两个步骤：
-    1. 设 leftGlobalTimeExpression 的 Filter 为 filter1；rightGlobalTimeExpression 的 Filter 为 filter2，则首先将其合并为一个新的Filter，设其为 filter3。两个 Filter 合并的策略见后文介绍的 MergeFilter 方法。
+    1. 设 leftGlobalTimeExpression 的 Filter 为 filter1；rightGlobalTimeExpression 的 Filter 为 filter2，通过 MergeFilter 方法将其合并为一个新的Filter，设为 filter3。
     2. 创建一个新的 GlobalTimeExpression，并将 filter3 作为其 Filter，返回该 GlobalTimeExpression。
 
     下面给出一个合并两个 GlobalTimeExpression 的例子。
@@ -328,23 +344,7 @@ IExpression 为查询过滤条件。一个 IExpression 可以是一个 SingleSer
 
         GlobalTimeExpression(Filter: (time > 100 && time < 200) || (time > 300 && time < 400))
 
-
-* MergeFilter 方法合并两个 Filter。该方法接受三个参数，分别为：
-
-        Filter1：第一个待合并的 Filter
-        Filter2：第二个待合并的 Filter
-        Relation：两个待合并 Filter 之间的关系（ relation 的取值为 AND 或 OR）
-
-    则，该方法执行的策略为
-
-        if relation == AND:
-            return AndFilter(Filter1, Filter2)
-        else if relation == OR:
-            return OrFilter(Filter1, Filter2)
-
-    算法实现是，使用 FilterFactory 类中的 AndFilter and(Filter left, Filter right) 和 OrFilter or(Filter left, Filter right)方法进行实现。
-
-* handleOneGlobalExpression 将 GlobalTimeExpression 和 IExpression 合并为一个可执行表达式。该方法返回的可执行表达式仅由 SingleSeriesExpression 组成。方法的定义如下：
+* handleOneGlobalExpression: 将 GlobalTimeExpression 和 IExpression 合并为一个可执行表达式。该方法返回的可执行表达式仅由 SingleSeriesExpression 组成。方法的定义如下：
 
         IExpression handleOneGlobalTimeExpression(
             GlobalTimeExpression globalTimeExpression,
@@ -355,7 +355,7 @@ IExpression 为查询过滤条件。一个 IExpression 可以是一个 SingleSer
         输入参数1：GlobalTimeExpression
         输入参数2：IExpression
         输入参数3：被投影的时间序列
-        输入参数4：两个待合并的表达式之间的关系，relation 的取值为 AND 或 OR）
+        输入参数4：两个待合并的表达式之间的关系，relation 的取值为 AND 或 OR
 
         输出：合并后的 IExpression，即为可执行表达式。
 
@@ -409,7 +409,7 @@ IExpression 为查询过滤条件。一个 IExpression 可以是一个 SingleSer
                         SingleSeriesExpression(“path2”, tFilter)
                     SingleSeriesExpression(“path3”, tFilter)
 
-* MergeIExpression 方法将两个 IExpression 合并为一个可执行表达式。该方法接受三个参数，分别为
+* MergeIExpression: 将两个 IExpression 合并为一个可执行表达式。该方法接受三个参数，分别为
 
         IExpression1：待合并的第一个 IExpression
         IExpression2：待合并的第二个 IExpression

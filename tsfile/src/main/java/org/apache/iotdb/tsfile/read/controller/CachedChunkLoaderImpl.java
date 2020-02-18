@@ -18,22 +18,23 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
-import java.io.IOException;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 
+import java.io.IOException;
+
 /**
  * Read one Chunk and cache it into a LRUCache.
  */
-public class ChunkLoaderImpl implements IChunkLoader {
+public class CachedChunkLoaderImpl implements IChunkLoader {
 
-  private static final int DEFAULT_CHUNK_CACHE_SIZE = 100000;
+  private static final int DEFAULT_CHUNK_CACHE_SIZE = 1000;
   private TsFileSequenceReader reader;
   private LRUCache<ChunkMetaData, Chunk> chunkCache;
 
-  public ChunkLoaderImpl(TsFileSequenceReader fileSequenceReader) {
+  public CachedChunkLoaderImpl(TsFileSequenceReader fileSequenceReader) {
     this(fileSequenceReader, DEFAULT_CHUNK_CACHE_SIZE);
   }
 
@@ -43,7 +44,7 @@ public class ChunkLoaderImpl implements IChunkLoader {
    * @param fileSequenceReader file sequence reader
    * @param cacheSize cache size
    */
-  public ChunkLoaderImpl(TsFileSequenceReader fileSequenceReader, int cacheSize) {
+  public CachedChunkLoaderImpl(TsFileSequenceReader fileSequenceReader, int cacheSize) {
 
     this.reader = fileSequenceReader;
 
@@ -65,10 +66,5 @@ public class ChunkLoaderImpl implements IChunkLoader {
   @Override
   public void close() throws IOException {
     reader.close();
-  }
-
-  @Override
-  public void clear() {
-    chunkCache.clear();
   }
 }

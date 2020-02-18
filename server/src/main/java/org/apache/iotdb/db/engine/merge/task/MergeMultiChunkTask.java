@@ -152,6 +152,7 @@ class MergeMultiChunkTask {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
     String deviceId = currMergingPaths.get(0).getDevice();
     Long currDeviceMinTime = currTsFile.getStartTimeMap().get(deviceId);
+    //COMMENTS: is this correct? how about if there are other devices (in the currMergingPaths) that have unseq data?
     if (currDeviceMinTime == null) {
       return;
     }

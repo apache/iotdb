@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.query.timegenerator;
 
-import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
-
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -33,6 +32,8 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
+
+import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
 
 public class EngineNodeConstructor extends AbstractNodeConstructor {
 
@@ -51,14 +52,17 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
         Filter filter = ((SingleSeriesExpression) expression).getFilter();
         Path path = ((SingleSeriesExpression) expression).getSeriesPath();
         TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
+
+        QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+            .getQueryDataSource(path, context, null);
+        // update filter by TTL
+        filter = queryDataSource.updateFilterUsingTTL(filter);
+
         return new EngineLeafNode(
-            new SeriesRawDataPointReader(path, dataType, context,
-                QueryResourceManager.getInstance().getQueryDataSource(path, context, filter),
-                null, filter));
+            new SeriesRawDataPointReader(path, dataType, context, queryDataSource, null, filter));
       } catch (MetadataException e) {
         throw new StorageEngineException(e.getMessage());
       }
-
     } else {
       return constructNotSeriesNode(expression, context);
     }

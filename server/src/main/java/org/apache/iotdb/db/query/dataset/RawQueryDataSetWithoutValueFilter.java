@@ -70,7 +70,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
             blockingQueue.put(batchData);
             // if the queue also has free space, just submit another itself
             if (blockingQueue.remainingCapacity() > 0) {
-              pool.submit(this);
+              TASK_POOL_MANAGER.submit(this);
             }
             // the queue has no more space
             // remove itself from the QueryTaskPoolManager
@@ -121,7 +121,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
   // capacity for blocking queue
   private static final int BLOCKING_QUEUE_CAPACITY = 5;
 
-  private static final QueryTaskPoolManager pool = QueryTaskPoolManager.getInstance();
+  private static final QueryTaskPoolManager TASK_POOL_MANAGER = QueryTaskPoolManager.getInstance();
 
   private static final Logger LOGGER = LoggerFactory
       .getLogger(RawQueryDataSetWithoutValueFilter.class);
@@ -153,7 +153,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
       ManagedSeriesReader reader = seriesReaderList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
-      pool.submit(new ReadTask(reader, blockingQueueArray[i]));
+      TASK_POOL_MANAGER.submit(new ReadTask(reader, blockingQueueArray[i]));
     }
     for (int i = 0; i < seriesReaderList.size(); i++) {
       fillCache(i);
@@ -351,7 +351,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
           // now we should submit it again
           if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
             reader.setManagedByQueryManager(true);
-            pool.submit(new ReadTask(reader, blockingQueueArray[seriesIndex]));
+            TASK_POOL_MANAGER.submit(new ReadTask(reader, blockingQueueArray[seriesIndex]));
           }
         }
       }

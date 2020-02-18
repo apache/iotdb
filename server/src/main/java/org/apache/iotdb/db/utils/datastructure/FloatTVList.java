@@ -174,6 +174,12 @@ public class FloatTVList extends TVList {
   }
 
   @Override
+  public TimeValuePair getTimeValuePair(int index) {
+    return new TimeValuePair(getTime(index),
+        TsPrimitiveType.getByType(TSDataType.FLOAT, getFloat(index)));
+  }
+
+  @Override
   protected TimeValuePair getTimeValuePair(int index, long time, Integer floatPrecision,
       TSEncoding encoding) {
     float value = getFloat(index);

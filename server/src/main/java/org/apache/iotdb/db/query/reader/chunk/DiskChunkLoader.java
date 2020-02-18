@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,30 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.memtable;
 
-import java.util.Objects;
+package org.apache.iotdb.db.query.reader.chunk;
 
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
-public class TimeValuePairInMemTable extends TimeValuePair {
+import java.io.IOException;
 
-  public TimeValuePairInMemTable(long timestamp, TsPrimitiveType value) {
-    super(timestamp, value);
+public class DiskChunkLoader implements IChunkLoader {
+
+  private TsFileSequenceReader reader;
+
+  public DiskChunkLoader(TsFileSequenceReader reader) {
+    this.reader = reader;
   }
 
   @Override
-  public boolean equals(Object object) {
-    if (!(object instanceof TimeValuePairInMemTable)) {
-      return false;
-    }
-    TimeValuePairInMemTable o = (TimeValuePairInMemTable) object;
-    return o.getTimestamp() == this.getTimestamp();
+  public Chunk getChunk(ChunkMetaData chunkMetaData) throws IOException {
+    return ChunkCache.getInstance().get(chunkMetaData, reader);
   }
 
   @Override
-  public int hashCode() {
-    return Objects.hash(this.getTimestamp());
+  public void close() throws IOException {
+    reader.close();
   }
 }

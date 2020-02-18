@@ -217,4 +217,19 @@ public class WritableMemChunk implements IWritableMemChunk {
   public void delete(long upperBound) {
     list.delete(upperBound);
   }
+
+  @Override
+  public String toString() {
+    int size = getSortedTVList().size();
+    StringBuilder out = new StringBuilder("MemChunk Size: " + size + System.lineSeparator());
+    if (size != 0) {
+      out.append("Data type:").append(dataType).append(System.lineSeparator());
+      out.append("First point:").append(getSortedTVList().getTimeValuePair(0))
+          .append(System.lineSeparator());
+      out.append("Last point:").append(getSortedTVList().getTimeValuePair(size - 1))
+          .append(System.lineSeparator());
+      ;
+    }
+    return out.toString();
+  }
 }

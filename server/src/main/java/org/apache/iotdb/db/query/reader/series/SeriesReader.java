@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -38,7 +39,6 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
@@ -157,6 +157,11 @@ public class SeriesReader {
     firstChunkMetaData = null;
   }
 
+  /**
+   * This method should be called after hasNxtChunk
+   * @return
+   * @throws IOException
+   */
   public boolean hasNextPage() throws IOException {
     if (!overlappedPageReaders.isEmpty()) {
       return true;
@@ -186,10 +191,17 @@ public class SeriesReader {
   }
 
 
+  /**
+   * This method should only be used when the method isPageOverlapped() return true.
+   * @return
+   * @throws IOException
+   */
   protected BatchData nextPage() throws IOException {
-    BatchData pageData = Objects
-        .requireNonNull(overlappedPageReaders.poll().data, "No Batch data")
-        .getAllSatisfiedPageData();
+    if (overlappedPageReaders.isEmpty()) {
+      throw new IOException("overlappedPageReaders is empty, hasNextPage and isPageOverlapped methods should be called first");
+    }
+
+    BatchData pageData = overlappedPageReaders.poll().data.getAllSatisfiedPageData();
     // only need to consider valueFilter because timeFilter has been set into the page reader
     if (valueFilter == null) {
       return pageData;
@@ -204,7 +216,16 @@ public class SeriesReader {
     return batchData;
   }
 
-  protected boolean isPageOverlapped() {
+  /**
+   * This method should be called after calling hasNextPage.
+   * @return
+   * @throws IOException
+   */
+  protected boolean isPageOverlapped() throws IOException {
+    if (overlappedPageReaders.isEmpty()) {
+      throw new IOException("overlappedPageReaders is empty, hasNextPage method should be called first");
+    }
+
     Statistics pageStatistics = overlappedPageReaders.peek().data.getStatistics();
     return mergeReader.hasNextTimeValuePair()
         || (!seqChunkMetadatas.isEmpty()
@@ -224,6 +245,11 @@ public class SeriesReader {
     overlappedPageReaders.poll();
   }
 
+  /**
+   * This method should be called after hasNextChunk and hasNextPage methods.
+   * @return
+   * @throws IOException
+   */
   public boolean hasNextOverlappedPage() throws IOException {
 
     if (hasCachedNextBatch) {
@@ -366,7 +392,7 @@ public class SeriesReader {
       if (data.getChunkLoader() == null) {
         TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
             .get(resource, resource.isClosed());
-        data.setChunkLoader(new ChunkLoaderImpl(tsFileSequenceReader));
+        data.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
       }
     }
     List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
