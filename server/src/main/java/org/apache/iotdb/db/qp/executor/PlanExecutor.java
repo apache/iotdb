@@ -683,7 +683,10 @@ public class PlanExecutor implements IPlanExecutor {
       }
       insertPlan.setDataTypes(dataTypes);
       storageEngine.insert(insertPlan);
-      insertPlan.updateMNodeLastValues(node);
+      for (int i = 0; i < measurementList.length; i++) {
+        MNode measurementNode = node.getChild(measurementList[i]);
+        measurementNode.updateCachedLast(insertPlan.composeTimeValuePair(i));
+      }
     } catch (PathException | StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } catch (CacheException e) {
@@ -777,7 +780,10 @@ public class PlanExecutor implements IPlanExecutor {
         }
       }
       Integer[] results = storageEngine.insertBatch(batchInsertPlan);
-      batchInsertPlan.updateMNodeLastValues(node);
+      for (int i = 0; i < measurementList.length; i++) {
+        MNode measurementNode = node.getChild(measurementList[i]);
+        measurementNode.updateCachedLast(batchInsertPlan.composeLastTimeValuePair(i));
+      }
       return results;
     } catch (PathException | StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);

@@ -25,14 +25,15 @@ import java.util.List;
 import java.util.Objects;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 
 public class InsertPlan extends PhysicalPlan {
@@ -190,12 +191,8 @@ public class InsertPlan extends PhysicalPlan {
     return "deviceId: " + deviceId + ", time: " + time;
   }
 
-  public void updateMNodeLastValues(MNode node) throws QueryProcessException {
-    for (int i = 0; i < measurements.length; i++) {
-      if (node.hasChild(measurements[i])) {
-        Object value = CommonUtils.parseValue(dataTypes[i], values[i]);
-        node.getChild(measurements[i]).updateCachedLast(time, value, dataTypes[i]);
-      }
-    }
+  public TimeValuePair composeTimeValuePair(int measurementIndex) throws QueryProcessException {
+    Object value = CommonUtils.parseValue(dataTypes[measurementIndex], values[measurementIndex]);
+    return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[measurementIndex], value));
   }
 }

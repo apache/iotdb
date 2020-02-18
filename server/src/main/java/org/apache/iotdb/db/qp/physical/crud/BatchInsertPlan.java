@@ -23,15 +23,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class BatchInsertPlan extends PhysicalPlan {
 
@@ -290,7 +291,7 @@ public class BatchInsertPlan extends PhysicalPlan {
     return maxTime;
   }
 
-  public void updateMNodeLastValues(MNode node) {
+  public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
     long maxTime = Long.MIN_VALUE;
     int maxIndex = 0;
     for (int i = 0; i < times.length; i++) {
@@ -299,12 +300,8 @@ public class BatchInsertPlan extends PhysicalPlan {
         maxIndex = i;
       }
     }
-    for (int i = 0; i < measurements.length; i++) {
-      if (node.hasChild(measurements[i])) {
-        Object[] column = (Object[]) columns[i];
-        node.getChild(measurements[i]).updateCachedLast(maxTime, column[maxIndex], dataTypes[i]);
-      }
-    }
+    Object[] column = (Object[]) columns[measurementIndex];
+    return new TimeValuePair(maxTime, TsPrimitiveType.getByType(dataTypes[measurementIndex], column[maxIndex]));
   }
 
   public long[] getTimes() {

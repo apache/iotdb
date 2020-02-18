@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -251,15 +250,14 @@ public class MNode implements Serializable {
     cachedLastValuePair = timeValuePair;
   }
 
-  public void updateCachedLast(long time, Object value, TSDataType dataType) {
-    TsPrimitiveType primitiveTypeValue =  TsPrimitiveType.getByType(dataType, value);
-    if (cachedLastValuePair != null) {
-      if (time > cachedLastValuePair.getTimestamp()) {
-        cachedLastValuePair.setTimestamp(time);
-        cachedLastValuePair.setValue(primitiveTypeValue);
-      }
-    } else {
-      cachedLastValuePair = new TimeValuePair(time, primitiveTypeValue);
+  public void updateCachedLast(TimeValuePair timeValuePair) {
+    if (timeValuePair == null)
+      return;
+    if (cachedLastValuePair == null) {
+      cachedLastValuePair = new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
+    } else if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()) {
+      cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
+      cachedLastValuePair.setValue(timeValuePair.getValue());
     }
   }
 }
