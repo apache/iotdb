@@ -44,7 +44,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.RootNotExistException;
+import org.apache.iotdb.db.exception.metadata.IncorrectRootException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
@@ -460,7 +460,7 @@ public class MManager {
       if (mtree.getRoot().equals(rootName)) {
         storageGroupName = mtree.deletePath(path);
       } else {
-        throw new RootNotExistException(rootName);
+        throw new IncorrectRootException(rootName);
       }
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
@@ -757,7 +757,7 @@ public class MManager {
       if (mtree.getRoot().equals(rootName)) {
         return mtree.getAllPath(path);
       }
-      throw new RootNotExistException(rootName);
+      throw new IncorrectRootException(rootName);
     } catch (MetadataException e) {
       throw new MetadataException(e);
     } finally {
@@ -780,7 +780,7 @@ public class MManager {
       if (mtree.getRoot().equals(rootName)) {
         return mtree.getShowTimeseriesPath(path);
       }
-      throw new RootNotExistException(rootName);
+      throw new IncorrectRootException(rootName);
     } finally {
       lock.readLock().unlock();
     }

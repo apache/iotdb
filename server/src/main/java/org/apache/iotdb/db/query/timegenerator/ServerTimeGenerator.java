@@ -18,12 +18,9 @@
  */
 package org.apache.iotdb.db.query.timegenerator;
 
-import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
-
 import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -36,7 +33,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
-public class EngineNodeConstructor extends AbstractNodeConstructor {
 /**
  * A timestamp generator for query with filter. e.g. For query clause "select s1, s2 form root where
  * s3 < 0 and time > 100", this class can iterate back to every timestamp of the query.
@@ -57,7 +53,6 @@ public class ServerTimeGenerator extends TimeGenerator {
       throw new StorageEngineException(e.getMessage());
     }
   }
-
 
   @Override
   protected IBatchReader generateNewBatchReader(SingleSeriesExpression expression)

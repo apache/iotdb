@@ -51,11 +51,11 @@ public class InternalMNode extends MNode {
   /**
    * check whether the MNode has child with the given key
    *
-   * @param key key
+   * @param childName key
    */
   @Override
-  public boolean hasChildWithKey(String key) {
-    return this.children.containsKey(key);
+  public boolean hasChild(String childName) {
+    return this.children.containsKey(childName);
   }
 
   /**
@@ -72,7 +72,7 @@ public class InternalMNode extends MNode {
   /**
    * delete key from given child MNode
    *
-   * @param key key
+   * @param key deleted child name
    */
   @Override
   public void deleteChild(String key) {
@@ -82,7 +82,7 @@ public class InternalMNode extends MNode {
   /**
    * get the child MNode under the given key.
    *
-   * @param key key
+   * @param key the queried child name
    */
   @Override
   public MNode getChild(String key) {

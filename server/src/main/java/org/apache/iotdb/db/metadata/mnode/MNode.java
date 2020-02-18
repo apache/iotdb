@@ -96,9 +96,9 @@ public abstract class MNode implements Serializable {
   /**
    * check whether the MNode has child with the given key
    *
-   * @param key key
+   * @param childName child name
    */
-  abstract public boolean hasChildWithKey(String key);
+  abstract public boolean hasChild(String childName);
 
   /**
    * add the given key to given child MNode

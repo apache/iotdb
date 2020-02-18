@@ -137,7 +137,7 @@ public class MManagerImproveTest {
       throws MetadataException {
     MNode node = mManager.getNodeByPathFromCache(deviceId);
     for (String s : measurementList) {
-      assertTrue(node.hasChildWithKey(s));
+      assertTrue(node.hasChild(s));
       MNode measurementNode = node.getChild(s);
       assertTrue(measurementNode.isNodeType(MNodeType.LEAF_MNODE));
       TSDataType dataType = measurementNode.getSchema().getType();

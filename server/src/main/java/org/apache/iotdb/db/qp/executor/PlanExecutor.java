@@ -599,7 +599,7 @@ public class PlanExecutor implements IPlanExecutor {
           throw new MetadataException(String
               .format("Can not get the schema of measurement [%s]", measurement));
         }
-        if (!node.hasChildWithKey(measurement)) {
+        if (!node.hasChild(measurement)) {
           try {
             boolean result = mManager.addPath(fullPath, schema.getType(), schema.getEncodingType(),
                 schema.getCompressor(), Collections.emptyMap());
@@ -695,7 +695,7 @@ public class PlanExecutor implements IPlanExecutor {
 
       for (int i = 0; i < measurementList.length; i++) {
         String measurement = measurementList[i];
-        if (!node.hasChildWithKey(measurement)) {
+        if (!node.hasChild(measurement)) {
           if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
             throw new QueryProcessException(
                 String.format("Current deviceId[%s] does not contain measurement:%s",
@@ -765,7 +765,7 @@ public class PlanExecutor implements IPlanExecutor {
 
       for (int i = 0; i < measurementList.length; i++) {
         // check if timeseries exists
-        if (!node.hasChildWithKey(measurementList[i])) {
+        if (!node.hasChild(measurementList[i])) {
           if (!conf.isAutoCreateSchemaEnabled()) {
             throw new QueryProcessException(
                 String.format("Current deviceId[%s] does not contain measurement:%s",

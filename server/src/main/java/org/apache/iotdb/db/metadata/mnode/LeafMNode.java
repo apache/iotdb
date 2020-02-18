@@ -38,9 +38,9 @@ public class LeafMNode extends MNode {
   }
 
   public LeafMNode(String name, MNode parent, TSDataType dataType, TSEncoding encoding,
-      CompressionType type) {
+      CompressionType type, Map<String, String> props) {
     this(name, parent);
-    this.schema = new MeasurementSchema(name, dataType, encoding, type);
+    this.schema = new MeasurementSchema(name, dataType, encoding, type, props);
   }
 
   @Override
@@ -59,10 +59,10 @@ public class LeafMNode extends MNode {
   /**
    * check whether the MNode has child with the given key
    *
-   * @param key key
+   * @param childName key
    */
   @Override
-  public boolean hasChildWithKey(String key) {
+  public boolean hasChild(String childName) {
     return false;
   }
 

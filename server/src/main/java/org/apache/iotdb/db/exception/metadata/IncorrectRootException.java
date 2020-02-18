@@ -20,11 +20,11 @@
 
 package org.apache.iotdb.db.exception.metadata;
 
-public class RootNotExistException extends MetadataException {
+public class IncorrectRootException extends MetadataException {
 
   private static final long serialVersionUID = 9093228946085335945L;
 
-  public RootNotExistException(String rootName) {
-    super(String.format("%s is not a existing root name", rootName));
+  public IncorrectRootException(String rootName) {
+    super(String.format("Incorrect root [%s]", rootName));
   }
 }
