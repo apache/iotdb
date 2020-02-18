@@ -38,8 +38,6 @@ public abstract class AbstractFileSeriesReader implements IBatchReader {
   protected ChunkReader chunkReader;
   private int chunkToRead;
 
-  private BatchData data;
-
   protected Filter filter;
 
   /**
@@ -79,8 +77,7 @@ public abstract class AbstractFileSeriesReader implements IBatchReader {
 
   @Override
   public BatchData nextBatch() throws IOException {
-    data = chunkReader.nextPageData();
-    return data;
+    return chunkReader.nextPageData();
   }
 
   protected abstract void initChunkReader(ChunkMetaData chunkMetaData) throws IOException;
