@@ -50,7 +50,7 @@ public class GlobalTimeExpression implements IUnaryExpression, Serializable {
 
   @Override
   public IExpression clone() {
-    return new GlobalTimeExpression(filter.clone());
+    return new GlobalTimeExpression(filter.copy());
   }
 
   @Override

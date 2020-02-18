@@ -40,9 +40,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * @author Yuan Tian
- */
 public class
 TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
 

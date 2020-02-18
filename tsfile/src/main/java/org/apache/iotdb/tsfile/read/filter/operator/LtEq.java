@@ -64,10 +64,7 @@ public class LtEq<T extends Comparable<T>> extends UnaryFilter<T> {
   public boolean satisfyStartEndTime(long startTime, long endTime) {
     if (filterType == FilterType.TIME_FILTER) {
       long time = (Long) value;
-      if (time < startTime) {
-        return false;
-      }
-      return true;
+      return time >= startTime;
     } else {
       return true;
     }
@@ -77,18 +74,14 @@ public class LtEq<T extends Comparable<T>> extends UnaryFilter<T> {
   public boolean containStartEndTime(long startTime, long endTime) {
     if (filterType == FilterType.TIME_FILTER) {
       long time = (Long) value;
-      if (endTime <= time) {
-        return true;
-      } else {
-        return false;
-      }
+      return endTime <= time;
     } else {
       return true;
     }
   }
 
   @Override
-  public Filter clone() {
+  public Filter copy() {
     return new LtEq(value, filterType);
   }
 
