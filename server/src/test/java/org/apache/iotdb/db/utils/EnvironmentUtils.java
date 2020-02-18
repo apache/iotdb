@@ -186,6 +186,7 @@ public class EnvironmentUtils {
    * disable memory control</br> this function should be called before all code in the setup
    */
   public static void envSetUp() throws StartupException {
+    logger.warn("EnvironmentUtil setup...");
     System.setProperty(IoTDBConstant.REMOTE_JMX_PORT_NAME, "31999");
     IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(0);
     if (daemon == null) {
