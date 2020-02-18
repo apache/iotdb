@@ -390,7 +390,11 @@ public class PhysicalGenerator {
         ((RawDataQueryPlan) queryPlan).setExpression(expression);
       }
     }
+    try {
       generateDataTypes(queryPlan);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
     deduplicate(queryPlan);
 
     queryPlan.setRowLimit(queryOperator.getRowLimit());
@@ -459,7 +463,7 @@ public class PhysicalGenerator {
     List<Path> paths = queryPlan.getPaths();
     List<TSDataType> dataTypes = new ArrayList<>(paths.size());
     for (Path path : paths) {
-      TSDataType seriesType = MManager.getInstance().getSeriesType(path);
+      TSDataType seriesType = MManager.getInstance().getSeriesType(path.toString());
       dataTypes.add(seriesType);
       queryPlan.addTypeMapping(path, seriesType);
     }
