@@ -196,7 +196,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         case SQLConstant.FIRST_VALUE:
         case SQLConstant.MIN_VALUE:
         case SQLConstant.MAX_VALUE:
-        //case SQLConstant.LAST:
           return getSeriesType(innerPath);
         case SQLConstant.AVG:
         case SQLConstant.SUM:
