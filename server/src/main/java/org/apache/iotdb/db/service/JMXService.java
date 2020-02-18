@@ -105,14 +105,6 @@ public class JMXService implements IService {
 
   @Override
   public void start() throws StartupException {
-    if (System.getProperty(IoTDBConstant.REMOTE_JMX_PORT_NAME) != null) {
-      logger.warn(
-          "JMX settings in conf/{}.sh(Unix or OS X, if you use Windows, check conf/{}.bat) have "
-              + "been bypassed as the JMX connector server is "
-              + "already initialized. Please refer to {}.sh/bat for JMX configuration info",
-          IoTDBConstant.ENV_FILE_NAME, IoTDBConstant.ENV_FILE_NAME, IoTDBConstant.ENV_FILE_NAME);
-      return;
-    }
     System.setProperty(IoTDBConstant.SERVER_RMI_ID, "true");
     boolean localOnly = false;
     String jmxPort = System.getProperty(IoTDBConstant.IOTDB_REMOTE_JMX_PORT_NAME);
