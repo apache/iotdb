@@ -45,7 +45,6 @@ public class IoTDBRecoverIT {
 
   private static final String TIMESTAMP_STR = "Time";
   private static final String TEMPERATURE_STR = "root.ln.wf01.wt01.temperature";
-  private static IoTDB daemon;
   private static String[] creationSqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",
       "SET STORAGE GROUP TO root.vehicle.d1",
@@ -82,8 +81,8 @@ public class IoTDBRecoverIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    EnvironmentUtils.envSetUp(daemon);
+
+    EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
   }
@@ -154,15 +153,14 @@ public class IoTDBRecoverIT {
     }
 
     // we want to recover
-    daemon.stop();
+    EnvironmentUtils.stopDaemon();
     // wait for close
     try {
       Thread.sleep(1000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    daemon.active();
-    //EnvironmentUtils.envSetUp();
+    EnvironmentUtils.activeDaemon();
 
     // count test
     retArray = new String[]{
@@ -209,15 +207,15 @@ public class IoTDBRecoverIT {
     }
 
     // we want to recover
-    daemon.stop();
+    EnvironmentUtils.stopDaemon();
     // wait for close
     try {
       Thread.sleep(1000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    daemon.active();
-    //EnvironmentUtils.envSetUp();
+
+    EnvironmentUtils.activeDaemon();
 
     // maxminValueTest
 

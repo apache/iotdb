@@ -101,7 +101,6 @@ public class IoTDBDisableAlignIT {
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-
     insertData();
 
   }

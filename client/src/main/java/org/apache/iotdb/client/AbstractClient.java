@@ -30,6 +30,9 @@ import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.tool.ImportCsv;
 import org.apache.thrift.TException;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -60,6 +63,7 @@ public abstract class AbstractClient {
 
   private static final String EXECUTE_ARGS = "e";
   private static final String EXECUTE_NAME = "execute";
+  private static final String NULL = "null";
 
   static final String ISO8601_ARGS = "disableISO8601";
   static final List<String> AGGREGRATE_TIME_LIST = new ArrayList<>();
@@ -82,67 +86,18 @@ public abstract class AbstractClient {
   static final String TIMESTAMP_STR = "Time";
   static final int ISO_DATETIME_LEN = 35;
   private static final String IMPORT_CMD = "import";
-  private static final String NEED_NOT_TO_PRINT_TIMESTAMP = "AGGREGATION";
   private static final String DEFAULT_TIME_FORMAT = "default";
   private static String timeFormat = DEFAULT_TIME_FORMAT;
-  static int maxPrintRowCount = 100000;
-  private static int fetchSize = 10000;
+  static int maxPrintRowCount = 1000;
+  private static int fetchSize = 1000;
   static int maxTimeLength = ISO_DATETIME_LEN;
   static int maxValueLength = 15;
-  private static int deviceColumnLength = 20; // for GROUP_BY_DEVICE sql
-  private static int measurementColumnLength = 10; // for GROUP_BY_DEVICE sql
-  // for GROUP_BY_DEVICE sql; this name should be the same as that used in server
-  private static String GROUPBY_DEVICE_COLUMN_NAME = "Device";
-  private static boolean isQuit = false;
   static String TIMESTAMP_PRECISION = "ms";
+  static int lineCount = 0;
 
-  private static final int START_PRINT_INDEX = 2;
-  private static final int NO_ALIGN_PRINT_INTERVAL = 2;
+  private static boolean isReachEnd = false;
 
-  /**
-   * control the width of columns for 'show timeseries path' and 'show storage group'.
-   * <p>
-   * for 'show timeseries path':
-   * <table>
-   * <tr>
-   * <th>Timeseries (width:75)</th>
-   * <th>Storage Group (width:45)</th>
-   * <th>DataType width:8)</th>
-   * <th>Encoding (width:8)</th>
-   * </tr>
-   * <tr>
-   * <td>root.vehicle.d1.s1</td>
-   * <td>root.vehicle</td>
-   * <td>INT32</td>
-   * <td>PLAIN</td>
-   * </tr>
-   * <tr>
-   * <td>...</td>
-   * <td>...</td>
-   * <td>...</td>
-   * <td>...</td>
-   * </tr>
-   * </table>
-   * </p>
-   * <p>
-   * for "show storage group path":
-   * <table>
-   * <tr>
-   * <th>STORAGE_GROUP (width:75)</th>
-   * </tr>
-   * <tr>
-   * <td>root.vehicle</td>
-   * </tr>
-   * <tr>
-   * <td>...</td>
-   * </tr>
-   * </table>
-   * </p>
-   */
-  private static int[] maxValueLengthForShow = new int[]{75, 45, 8, 8};
   static String formatTime = "%" + maxTimeLength + "s|";
-  private static String formatValue = "%" + maxValueLength + "s|";
-  private static final int DIVIDING_LINE_LENGTH = 40;
   static String host = "127.0.0.1";
   static String port = "6667";
   static String username;
@@ -150,21 +105,12 @@ public abstract class AbstractClient {
   static String execute;
   static boolean hasExecuteSQL = false;
 
-  private static boolean printToConsole = true;
-
   static Set<String> keywordSet = new HashSet<>();
 
   static ServerProperties properties = null;
 
-  private static boolean printHeader = false;
-  private static int displayCnt = 0;
-
   private static final PrintStream SCREEN_PRINTER = new PrintStream(System.out);
-  /**
-   * showException is currently fixed to false because the display of exceptions is not elaborate.
-   * We can make it an option in future versions.
-   */
-  private static boolean showException = false;
+  private static boolean cursorBeforeFirst = true;
 
   static void init() {
     keywordSet.add("-" + HOST_ARGS);
@@ -177,58 +123,6 @@ public abstract class AbstractClient {
     keywordSet.add("-" + MAX_PRINT_ROW_COUNT_ARGS);
   }
 
-  /**
-   * Client result output.
-   *
-   * @param res result set
-   * @param printToConsole print to console
-   * @param zoneId time-zone ID
-   * @throws SQLException SQLException
-   */
-  private static void output(ResultSet res, boolean printToConsole, ZoneId zoneId)
-      throws SQLException {
-    int cnt = 0;
-    boolean printTimestamp = true;
-    boolean align = true;
-    displayCnt = 0;
-    printHeader = false;
-    ResultSetMetaData resultSetMetaData = res.getMetaData();
-
-    int colCount = resultSetMetaData.getColumnCount();
-
-    if (res instanceof IoTDBQueryResultSet) {
-      printTimestamp = !((IoTDBQueryResultSet) res).isIgnoreTimeStamp();
-    }
-    else {
-      align = false;
-    }
-
-    // Output values
-    while (cnt < maxPrintRowCount && res.next()) {
-      printRow(printTimestamp, align, colCount, resultSetMetaData, res, zoneId);
-      cnt++;
-      if (!printToConsole && cnt % 10000 == 0) {
-        println(cnt);
-      }
-    }
-
-    if (printToConsole) {
-      if (!printHeader) {
-        printBlockLine(printTimestamp, align, colCount, resultSetMetaData);
-        printName(printTimestamp, align, colCount, resultSetMetaData);
-        printBlockLine(printTimestamp, align, colCount, resultSetMetaData);
-      } else {
-        printBlockLine(printTimestamp, align, colCount, resultSetMetaData);
-      }
-
-    }
-
-    if(!res.next()){
-        printCount(cnt);
-    } else {
-        println(String.format("Reach maxPrintRowCount = %s lines", maxPrintRowCount));
-    }
-  }
 
   private static String getTimestampPrecision() {
     return TIMESTAMP_PRECISION;
@@ -236,109 +130,6 @@ public abstract class AbstractClient {
 
   private static void printCount(int cnt) {
       println("Total line number = " + cnt);
-  }
-
-  private static void printRow(boolean printTimestamp, boolean align, int colCount,
-      ResultSetMetaData resultSetMetaData, ResultSet res, ZoneId zoneId)
-      throws SQLException {
-    // Output Labels
-    if (!printToConsole) {
-      return;
-    }
-    printHeader(printTimestamp, align, colCount, resultSetMetaData);
-    printRowData(printTimestamp, align, res, zoneId, resultSetMetaData, colCount);
-  }
-
-  private static void printHeader(boolean printTimestamp, boolean align, int colCount,
-      ResultSetMetaData resultSetMetaData) throws SQLException {
-    if (!printHeader) {
-      printBlockLine(printTimestamp, align, colCount, resultSetMetaData);
-      printName(printTimestamp, align, colCount, resultSetMetaData);
-      printBlockLine(printTimestamp, align, colCount, resultSetMetaData);
-      printHeader = true;
-    }
-  }
-
-  private static void printShow(int colCount, ResultSet res) throws SQLException {
-    print("|");
-    for (int i = 1; i <= colCount; i++) {
-      formatValue = "%" + maxValueLengthForShow[i - 1] + "s|";
-      printf(formatValue, res.getString(i));
-    }
-    println();
-  }
-
-  private static void printRowData(boolean printTimestamp, boolean align, ResultSet res, ZoneId zoneId,
-      ResultSetMetaData resultSetMetaData, int colCount)
-      throws SQLException {
-    if (displayCnt < maxPrintRowCount) { // NOTE displayCnt only works on queried data results
-      print("|");
-      if (align) {
-        if (printTimestamp) {
-          printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR), zoneId));
-          for (int i = 2; i <= colCount; i++) {
-            printColumnData(resultSetMetaData, true, res, i, zoneId);
-          }
-        } else {
-          for (int i = 1; i <= colCount; i++) {
-            printColumnData(resultSetMetaData, true, res, i, zoneId);
-          }
-        }
-      }
-      else {
-        for (int i = START_PRINT_INDEX; i <= colCount / NO_ALIGN_PRINT_INTERVAL + 1; i++) {
-          if (printTimestamp) {
-            // timeLabel used for indicating the time column.
-            String timeLabel = TIMESTAMP_STR + resultSetMetaData.getColumnLabel(NO_ALIGN_PRINT_INTERVAL * i - START_PRINT_INDEX);
-            try {
-              printf(formatTime, formatDatetime(res.getLong(timeLabel), zoneId));
-            } catch (Exception e) {
-              printf(formatTime, "null");
-              handleException(e);
-            }
-          }
-          printColumnData(resultSetMetaData, false, res, i, zoneId);
-        }
-      }
-      println();
-      displayCnt++;
-    }
-  }
-
-  private static void printColumnData(ResultSetMetaData resultSetMetaData, boolean align,
-      ResultSet res, int i, ZoneId zoneId) throws SQLException {
-    boolean flag = false;
-    for (String timeStr : AGGREGRATE_TIME_LIST) {
-      if (resultSetMetaData.getColumnLabel(i).toUpperCase().contains(timeStr.toUpperCase())) {
-        flag = true;
-        break;
-      }
-    }
-    if (flag) {
-      try {
-        printf(formatValue, formatDatetime(res.getLong(i), zoneId));
-      } catch (Exception e) {
-        printf(formatValue, "null");
-        handleException(e);
-      }
-    } 
-    else if (align) {
-      if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
-        printf("%" + deviceColumnLength + "s|", res.getString(i));
-      } else {
-        printf(formatValue, res.getString(i));
-      }
-    }
-    // for disable align clause
-    else {
-      if (res.getString(i * NO_ALIGN_PRINT_INTERVAL - START_PRINT_INDEX) == null) {
-        //blank space
-        printf(formatValue, "");
-      }
-      else {
-        printf(formatValue, res.getString(i * NO_ALIGN_PRINT_INTERVAL - START_PRINT_INDEX));
-      }
-    }
   }
 
   static Options createOptions() {
@@ -386,40 +177,40 @@ public abstract class AbstractClient {
       long timestamp, ZoneId zoneid, String timestampPrecision) {
     if (timestampPrecision.equals("ms")) {
       long integerofDate = timestamp / 1000;
-      String digits = Long.toString(timestamp % 1000);
+      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000));
       ZonedDateTime dateTime = ZonedDateTime
           .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 3) {
         for (int i = 0; i < 3 - length; i++) {
-          digits = "0" + digits;
+          digits.insert(0, "0");
         }
       }
       return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
     } else if (timestampPrecision.equals("us")) {
       long integerofDate = timestamp / 1000_000;
-      String digits = Long.toString(timestamp % 1000_000);
+      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
       ZonedDateTime dateTime = ZonedDateTime
           .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 6) {
         for (int i = 0; i < 6 - length; i++) {
-          digits = "0" + digits;
+          digits.insert(0, "0");
         }
       }
       return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
     } else {
       long integerofDate = timestamp / 1000_000_000L;
-      String digits = Long.toString(timestamp % 1000_000_000L);
+      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
       ZonedDateTime dateTime = ZonedDateTime
           .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 9) {
         for (int i = 0; i < 9 - length; i++) {
-          digits = "0" + digits;
+          digits.insert(0, "0");
         }
       }
       return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
@@ -505,87 +296,6 @@ public abstract class AbstractClient {
     }
   }
 
-  private static void printBlockLine(boolean printTimestamp, boolean align, int colCount,
-      ResultSetMetaData resultSetMetaData) throws SQLException {
-    StringBuilder blockLine = new StringBuilder();
-    if (align) {
-      if (printTimestamp) {
-        blockLine.append("+").append(StringUtils.repeat('-', maxTimeLength)).append("+");
-        if (resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
-          maxValueLength = measurementColumnLength;
-        } else {
-          int tmp = Integer.MIN_VALUE;
-          for (int i = 1; i <= colCount; i++) {
-            int len = resultSetMetaData.getColumnLabel(i).length();
-            tmp = Math.max(tmp, len);
-          }
-          maxValueLength = tmp;
-        }
-        for (int i = 2; i <= colCount; i++) {
-          if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
-            blockLine.append(StringUtils.repeat('-', deviceColumnLength)).append("+");
-          } else {
-            blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
-          }
-        }
-      } else {
-        blockLine.append("+");
-        for (int i = 1; i <= colCount; i++) {
-          blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
-        }
-      }
-    }
-    // for disable align clause
-    else {
-      int tmp = Integer.MIN_VALUE;
-      for (int i = 1; i <= colCount; i++) {
-        int len = resultSetMetaData.getColumnLabel(i).length();
-        tmp = Math.max(tmp, len);
-      }
-      maxValueLength = tmp;
-      blockLine.append("+");
-      for (int i = 2; i <= colCount / 2 + 1; i++) {
-        if (printTimestamp) {
-          blockLine.append(StringUtils.repeat('-', maxTimeLength)).append("+");
-        }
-        blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
-      }
-    }
-    println(blockLine);
-  }
-
-  private static void printName(boolean printTimestamp, boolean align, int colCount,
-      ResultSetMetaData resultSetMetaData) throws SQLException {
-    print("|");
-    formatValue = "%" + maxValueLength + "s|";
-    if (align) {
-      if (printTimestamp) {
-        printf(formatTime, TIMESTAMP_STR);
-        for (int i = 2; i <= colCount; i++) {
-          if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
-            printf("%" + deviceColumnLength + "s|", resultSetMetaData.getColumnLabel(i));
-          } else {
-            printf(formatValue, resultSetMetaData.getColumnLabel(i));
-          }
-        }
-      } else {
-        for (int i = 1; i <= colCount; i++) {
-          printf(formatValue, resultSetMetaData.getColumnLabel(i));
-        }
-      }
-    }
-    // for disable align
-    else {
-      for (int i = 2; i <= colCount; i += 2) {
-        if (printTimestamp) {
-          printf(formatTime, TIMESTAMP_STR);
-        }
-        printf(formatValue, resultSetMetaData.getColumnLabel(i));
-      }
-    }
-    println();
-  }
-
   static String[] removePasswordArgs(String[] args) {
     int index = -1;
     for (int i = 0; i < args.length; i++) {
@@ -647,7 +357,6 @@ public abstract class AbstractClient {
     String specialCmd = cmd.toLowerCase().trim();
 
     if (QUIT_COMMAND.equals(specialCmd) || EXIT_COMMAND.equals(specialCmd)) {
-      isQuit = true;
       return OperationResult.STOP_OPER;
     }
     if (HELP.equals(specialCmd)) {
@@ -725,7 +434,6 @@ public abstract class AbstractClient {
       setTimeFormat(cmd.split("=")[1]);
     } catch (Exception e) {
       println(String.format("time display format error, %s", e.getMessage()));
-      handleException(e);
       return;
     }
     println("Time display type has set to " + cmd.split("=")[1].trim());
@@ -742,7 +450,6 @@ public abstract class AbstractClient {
       connection.setTimeZone(cmd.split("=")[1].trim());
     } catch (Exception e) {
       println(String.format("Time zone format error: %s", e.getMessage()));
-      handleException(e);
       return;
     }
     println("Time zone has set to " + values[1].trim());
@@ -759,7 +466,6 @@ public abstract class AbstractClient {
       setFetchSize(cmd.split("=")[1]);
     } catch (Exception e) {
       println(String.format("Fetch size format error, %s", e.getMessage()));
-      handleException(e);
       return;
     }
     println("Fetch size has set to " + values[1].trim());
@@ -776,7 +482,6 @@ public abstract class AbstractClient {
       setMaxDisplayNumber(cmd.split("=")[1]);
     } catch (Exception e) {
       println(String.format("Max display number format error, %s", e.getMessage()));
-      handleException(e);
       return;
     }
     println("Max display number has set to " + values[1].trim());
@@ -787,7 +492,6 @@ public abstract class AbstractClient {
       println("Current time zone: " + connection.getTimeZone());
     } catch (Exception e) {
       println("Cannot get time zone from server side because: " + e.getMessage());
-      handleException(e);
     }
   }
 
@@ -805,32 +509,143 @@ public abstract class AbstractClient {
     } catch (SQLException e) {
       println(String.format("Failed to import from %s because %s",
           cmd.split(" ")[1], e.getMessage()));
-      handleException(e);
     } catch (TException e) {
       println("Cannot connect to server");
-      handleException(e);
     }
   }
 
   private static void executeQuery(IoTDBConnection connection, String cmd) {
     long startTime = System.currentTimeMillis();
-    try (Statement statement = connection.createStatement();) {
-      ZoneId zoneId = ZoneId.of(connection.getTimeZone());
+    ResultSet resultSet;
+    ZoneId zoneId;
+    try (Statement statement = connection.createStatement()) {
+      zoneId = ZoneId.of(connection.getTimeZone());
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
       if (hasResultSet) {
-        ResultSet resultSet = statement.getResultSet();
-        output(resultSet, printToConsole, zoneId);
-        if (resultSet != null) {
-          resultSet.close();
+        resultSet = statement.getResultSet();
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        int columnLength = resultSetMetaData.getColumnCount();
+        List<Integer> maxSizeList = new ArrayList<>(columnLength);
+        List<List<String>> lists = cacheResult(resultSet, maxSizeList, columnLength,
+                resultSetMetaData, zoneId);
+        output(lists, maxSizeList);
+        long costTime = System.currentTimeMillis() - startTime;
+        println(String.format("It costs %.3fs", costTime / 1000.0));
+        while(!isReachEnd){
+          println(String.format("Reach the max_display_num = %s. Press ENTER to show more, input 'q' to quit.", maxPrintRowCount));
+          BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+          try{
+            if(br.readLine().equals("")){
+              maxSizeList = new ArrayList<>(columnLength);
+              lists = cacheResult(resultSet, maxSizeList, columnLength,
+                      resultSetMetaData, zoneId);
+              output(lists, maxSizeList);
+            }
+            else {
+              break;
+            }
+          }
+          catch(IOException e){
+            e.printStackTrace();
+          }
         }
+        resetArgs();
       }
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
-      handleException(e);
     }
-    long costTime = System.currentTimeMillis() - startTime;
-    println(String.format("It costs %.3fs", costTime / 1000.0));
+  }
+
+  /**
+   * cache all results
+   * @param resultSet jdbc resultSet
+   * @param maxSizeList the longest result of every column
+   * @param columnCount the number of column
+   * @param resultSetMetaData jdbc resultSetMetaData
+   * @param zoneId your time zone
+   * @return List<List<String>> result
+   * @throws SQLException throw exception
+   */
+  private static List<List<String>> cacheResult(ResultSet resultSet, List<Integer> maxSizeList,
+                                                int columnCount, ResultSetMetaData resultSetMetaData,
+                                                ZoneId zoneId)
+          throws SQLException {
+
+    boolean printTimestamp = !((IoTDBQueryResultSet) resultSet).isIgnoreTimeStamp();
+    List<List<String>> lists = new ArrayList<>(columnCount);
+    for(int i = 1; i <= columnCount; i++) {
+      List<String> list = new ArrayList<>(1001);
+      list.add(resultSetMetaData.getColumnLabel(i));
+      lists.add(list);
+      maxSizeList.add(resultSetMetaData.getColumnLabel(i).length());
+    }
+    int j = 0;
+    if(cursorBeforeFirst){
+      resultSet.next();
+      cursorBeforeFirst = false;
+    }
+    while (j < maxPrintRowCount && !isReachEnd) {
+      for(int i = 1; i <= columnCount; i++) {
+        String tmp;
+        if(printTimestamp && i == 1) {
+          tmp = formatDatetime(resultSet.getLong(TIMESTAMP_STR), zoneId);
+        } else {
+          tmp = resultSet.getString(i);
+        }
+        if(tmp == null) {
+          tmp = NULL;
+        }
+        lists.get(i-1).add(tmp);
+        if(maxSizeList.get(i-1) < tmp.length()) {
+          maxSizeList.set(i-1 , tmp.length());
+        }
+      }
+      j++;
+      isReachEnd = !resultSet.next();
+    }
+    return lists;
+  }
+
+  private static void output(List<List<String>> lists, List<Integer> maxSizeList) {
+    printBlockLine(maxSizeList);
+    printRow(lists,0, maxSizeList);
+    printBlockLine(maxSizeList);
+    for(int i = 1; i < lists.get(0).size(); i++) {
+      printRow(lists, i, maxSizeList);
+    }
+    printBlockLine(maxSizeList);
+    if(isReachEnd) {
+      lineCount += lists.get(0).size()-1;
+      printCount(lineCount);
+    }
+    else {
+      lineCount += maxPrintRowCount;
+    }
+
+  }
+
+  private static void resetArgs() {
+    lineCount = 0;
+    cursorBeforeFirst = true;
+    isReachEnd = false;
+  }
+
+  private static void printBlockLine(List<Integer> maxSizeList) {
+    StringBuilder blockLine = new StringBuilder();
+    for (Integer integer : maxSizeList) {
+      blockLine.append("+").append(StringUtils.repeat("-", integer));
+    }
+    blockLine.append("+");
+    println(blockLine.toString());
+  }
+
+  private static void printRow(List<List<String>> lists, int i, List<Integer> maxSizeList) {
+    printf("|");
+    for (int j = 0; j < maxSizeList.size(); j++) {
+      printf("%"+ maxSizeList.get(j) + "s|", lists.get(j).get(i));
+    }
+    println();
   }
 
   enum OperationResult {
@@ -853,13 +668,24 @@ public abstract class AbstractClient {
     SCREEN_PRINTER.println(msg);
   }
 
-  private static void println(Object obj) {
-    SCREEN_PRINTER.println(obj);
-  }
-
-  static void handleException(Exception e) {
-    if (showException) {
-      e.printStackTrace(SCREEN_PRINTER);
+  static boolean processCommand(String s, IoTDBConnection connection) {
+    if (s == null) {
+      return true;
     }
+    String[] cmds = s.trim().split(";");
+    for (String cmd : cmds) {
+      if (cmd != null && !"".equals(cmd.trim())) {
+        OperationResult result = handleInputCmd(cmd, connection);
+        switch (result) {
+          case STOP_OPER:
+            return false;
+          case CONTINUE_OPER:
+            continue;
+          default:
+            break;
+        }
+      }
+    }
+    return true;
   }
 }
