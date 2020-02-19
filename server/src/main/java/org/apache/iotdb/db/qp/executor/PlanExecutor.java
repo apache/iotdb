@@ -385,9 +385,9 @@ public class PlanExecutor implements IPlanExecutor {
         new Path(COLUMN_TIMESERIES_COMPRESSION)),
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
             TSDataType.TEXT));
-    List<List<String>> timeseriesList = MManager.getInstance()
-        .getShowTimeseriesPath(timeSeriesPlan.getPath().toString());
-    for (List<String> list : timeseriesList) {
+    List<String[]> timeseriesList = MManager.getInstance()
+        .getAllTimeseriesSchema(timeSeriesPlan.getPath().toString());
+    for (String[] list : timeseriesList) {
       RowRecord record = new RowRecord(0);
       for (String s : list) {
         Field field = new Field(TSDataType.TEXT);

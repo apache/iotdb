@@ -32,62 +32,36 @@ public class InternalMNode extends MNode {
 
   private Map<String, MNode> children;
 
-  public InternalMNode(String name, MNode parent) {
-    super(name, parent);
+  public InternalMNode(MNode parent, String name) {
+    super(parent, name);
     this.children = new LinkedHashMap<>();
   }
 
-  /**
-   * check whether the MNode has children
-   */
   @Override
   public boolean hasChildren() {
     return true;
   }
 
-  /**
-   * check whether the MNode has child with the given key
-   *
-   * @param childName key
-   */
   @Override
   public boolean hasChild(String childName) {
     return this.children.containsKey(childName);
   }
 
-  /**
-   * add given child MNode
-   *
-   * @param child child MNode
-   */
   @Override
   public void addChild(MNode child) {
     this.children.put(child.getName(), child);
   }
 
-  /**
-   * delete key from given child MNode
-   *
-   * @param key deleted child name
-   */
   @Override
   public void deleteChild(String key) {
     children.remove(key);
   }
 
-  /**
-   * get the child MNode under the given key.
-   *
-   * @param key the queried child name
-   */
   @Override
   public MNode getChild(String key) {
     return children.get(key);
   }
 
-  /**
-   * get the count of all leaves whose ancestor is current node
-   */
   @Override
   public int getLeafCount() {
     int leafCount = 0;

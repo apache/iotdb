@@ -70,7 +70,6 @@ import org.slf4j.LoggerFactory;
 public class MManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
-  private static final String ROOT_NAME = MetadataConstant.ROOT;
   private static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
 
   // the lock for read/insert
@@ -86,11 +85,11 @@ public class MManager {
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
   private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
-  private IoTDBConfig dbconfig;
+  private IoTDBConfig config;
 
   private MManager() {
-    dbconfig = IoTDBDescriptor.getInstance().getConfig();
-    schemaDir = dbconfig.getSchemaDir();
+    config = IoTDBDescriptor.getInstance().getConfig();
+    schemaDir = config.getSchemaDir();
     File systemFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!systemFolder.exists()) {
       if (systemFolder.mkdirs()) {
@@ -102,7 +101,7 @@ public class MManager {
     logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
     writeToLog = false;
 
-    int cacheSize = dbconfig.getmManagerCacheSize();
+    int cacheSize = config.getmManagerCacheSize();
     mNodeCache = new RandomDeleteCache<String, MNode>(cacheSize) {
       @Override
       public void beforeRemove(MNode object) {
@@ -152,7 +151,7 @@ public class MManager {
       }
       writeToLog = true;
     } catch (IOException | MetadataException e) {
-      mtree = new MTree(ROOT_NAME);
+      mtree = new MTree(IoTDBConstant.PATH_ROOT);
       logger.error("Cannot read MTree from file, using an empty new one", e);
     } finally {
       lock.writeLock().unlock();
@@ -162,7 +161,7 @@ public class MManager {
 
   private void initFromLog(File logFile) throws IOException, MetadataException {
     // init the metadata from the operation log
-    mtree = new MTree(ROOT_NAME);
+    mtree = new MTree(IoTDBConstant.PATH_ROOT);
     if (logFile.exists()) {
       try (FileReader fr = new FileReader(logFile);
           BufferedReader br = new BufferedReader(fr)) {
@@ -180,7 +179,7 @@ public class MManager {
   public void clear() {
     lock.writeLock().lock();
     try {
-      this.mtree = new MTree(ROOT_NAME);
+      this.mtree = new MTree(IoTDBConstant.PATH_ROOT);
       this.mNodeCache.clear();
       this.seriesNumberInStorageGroups.clear();
       this.maxSeriesNumberAmongStorageGroup = 0;
@@ -271,16 +270,16 @@ public class MManager {
         throw new PathAlreadyExistException(path);
       }
       if (!checkStorageGroup(path)) {
-        if (!dbconfig.isAutoCreateSchemaEnabled()) {
+        if (!config.isAutoCreateSchemaEnabled()) {
           throw new MetadataException("Storage group should be created first");
         }
         String storageGroupName = getStorageGroupNameByAutoLevel(path,
-            dbconfig.getDefaultStorageGroupLevel());
+            config.getDefaultStorageGroupLevel());
         setStorageGroup(storageGroupName);
       }
       // optimize the speed of adding timeseries
       String storageGroupName = getStorageGroupName(path);
-      // the two map is stored in the storage group node
+      // measurement -> measurementSchema
       Map<String, MeasurementSchema> schemaMap = getStorageGroupSchemaMap(storageGroupName);
       String lastNode = new Path(path).getMeasurement();
       boolean isNewMeasurement = true;
@@ -425,7 +424,7 @@ public class MManager {
       }
       String storageGroupName = getStorageGroupName(p);
       String emptyStorageGroup;
-      // the two maps are stored in the storage group node
+      // measurement -> measurementSchema
       Map<String, MeasurementSchema> schemaMap = getStorageGroupSchemaMap(storageGroupName);
       // Thread safety: just one thread can access/modify the schemaMap
       synchronized (schemaMap) {
@@ -457,7 +456,7 @@ public class MManager {
         throw new IllegalPathException(path);
       }
       String rootName = nodes[0];
-      if (mtree.getRoot().equals(rootName)) {
+      if (IoTDBConstant.PATH_ROOT.equals(rootName)) {
         storageGroupName = mtree.deletePath(path);
       } else {
         throw new IncorrectRootException(rootName);
@@ -598,19 +597,6 @@ public class MManager {
     }
   }
 
-  /**
-   * Get the full Metadata info.
-   *
-   * @return A {@code Metadata} instance which stores all metadata info
-   */
-  public Metadata getMetadata() throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return new Metadata(mtree.getDeviceIdMap());
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
 
   /**
    * Get devices info with given prefixPath.
@@ -649,12 +635,12 @@ public class MManager {
   /**
    * Get all ColumnSchemas for the storage group seriesPath.
    *
-   * @param path the Path in a storage group
+   * @param storageGroupName the Path in a storage group
    */
-  public List<MeasurementSchema> getStorageGroupSchema(String path) {
+  public List<MeasurementSchema> getStorageGroupSchema(String storageGroupName) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getStorageGroupSchema(path);
+      return mtree.getStorageGroupSchema(storageGroupName);
     } finally {
       lock.readLock().unlock();
     }
@@ -663,10 +649,11 @@ public class MManager {
   /**
    * Get schema map for storage group
    */
-  private Map<String, MeasurementSchema> getStorageGroupSchemaMap(String path) {
+  private Map<String, MeasurementSchema> getStorageGroupSchemaMap(String storageGroup)
+      throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getStorageGroupSchemaMap(path);
+      return mtree.getStorageGroupSchemaMap(storageGroup);
     } finally {
       lock.readLock().unlock();
     }
@@ -676,7 +663,7 @@ public class MManager {
    * Get the storage group name for given path. Notice: This method could be called if and only if
    * the seriesPath includes one node whose {@code isStorageGroup} is true.
    *
-   * @param path a prefix of a fullpath. The prefix should contains the name of a storage group. DO
+   * @param path a prefix or a fullpath. The prefix should contains the name of a storage group. DO
    * NOT SUPPORT WILDCARD.
    * @return A String represented the storage group name
    */
@@ -754,8 +741,8 @@ public class MManager {
     lock.readLock().lock();
     try {
       String rootName = MetaUtils.getNodeNames(path)[0];
-      if (mtree.getRoot().equals(rootName)) {
-        return mtree.getAllPath(path);
+      if (IoTDBConstant.PATH_ROOT.equals(rootName)) {
+        return mtree.getAllTimeseriesName(path);
       }
       throw new IncorrectRootException(rootName);
     } catch (MetadataException e) {
@@ -773,12 +760,12 @@ public class MManager {
    * @return for each storage group, return a List which size =5 (name, sg name, data type,
    * encoding, and compressor). TODO the structure needs to optimize
    */
-  public List<List<String>> getShowTimeseriesPath(String path) throws MetadataException {
+  public List<String[]> getAllTimeseriesSchema(String path) throws MetadataException {
     lock.readLock().lock();
     try {
       String rootName = MetaUtils.getNodeNames(path)[0];
-      if (mtree.getRoot().equals(rootName)) {
-        return mtree.getShowTimeseriesPath(path);
+      if (IoTDBConstant.PATH_ROOT.equals(rootName)) {
+        return mtree.getAllTimeseriesSchema(path);
       }
       throw new IncorrectRootException(rootName);
     } finally {
@@ -887,15 +874,15 @@ public class MManager {
           String storageGroupName = getStorageGroupNameByAutoLevel(path, sgLevel);
           setStorageGroup(storageGroupName);
         }
-        node = mtree.addInternalPath(path);
+        node = mtree.getDeviceNodeWithAutoCreating(path);
       }
     }
     return node;
   }
 
   public MNode getNodeByPathFromCache(String path) throws MetadataException {
-    return getNodeByPathFromCache(path, dbconfig.isAutoCreateSchemaEnabled(),
-        dbconfig.getDefaultStorageGroupLevel());
+    return getNodeByPathFromCache(path, config.isAutoCreateSchemaEnabled(),
+        config.getDefaultStorageGroupLevel());
   }
 
   /**
@@ -923,7 +910,7 @@ public class MManager {
   String getStorageGroupNameByAutoLevel(String path, int level) throws MetadataException {
     String[] nodeNames = MetaUtils.getNodeNames(path);
     StringBuilder storageGroupName = new StringBuilder(nodeNames[0]);
-    if (nodeNames.length < level || !storageGroupName.toString().equals(ROOT_NAME)) {
+    if (nodeNames.length < level || !storageGroupName.toString().equals(IoTDBConstant.PATH_ROOT)) {
       throw new IllegalPathException(path);
     }
     for (int i = 1; i < level; i++) {

@@ -22,7 +22,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 
 class MetaUtils {
 
-  private static final String PATH_SEPARATOR = "\\.";
+  public static final String PATH_SEPARATOR = "\\.";
 
   private MetaUtils() {
 

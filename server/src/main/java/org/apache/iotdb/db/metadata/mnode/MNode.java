@@ -38,14 +38,17 @@ public abstract class MNode implements Serializable {
 
   private MNode parent;
 
-  private String fullPath;
+  /**
+   * from root to this node, only be set when used once
+   */
+  protected String fullPath;
 
   /**
    * Constructor of MNode.
    */
-  public MNode(String name, MNode parent) {
-    this.setName(name);
+  public MNode(MNode parent, String name) {
     this.parent = parent;
+    this.name = name;
   }
 
   /**
@@ -54,32 +57,24 @@ public abstract class MNode implements Serializable {
   public abstract boolean hasChildren();
 
   /**
-   * check whether the MNode has child with the given key
-   *
-   * @param childName child name
+   * check whether the MNode has a child with the name
    */
-  public abstract boolean hasChild(String childName);
+  public abstract boolean hasChild(String name);
 
   /**
-   * add given child MNode
-   *
-   * @param child child MNode
+   * add the given child
    */
   public abstract void addChild(MNode child);
 
   /**
-   * delete key from given child MNode
-   *
-   * @param key key
+   * delete a child
    */
-  public abstract void deleteChild(String key);
+  public abstract void deleteChild(String name);
 
   /**
-   * get the child MNode under the given key.
-   *
-   * @param key key
+   * get the child with the name
    */
-  public abstract MNode getChild(String key);
+  public abstract MNode getChild(String name);
 
   /**
    * get the count of all leaves whose ancestor is current node

@@ -34,33 +34,21 @@ public class LeafMNode extends MNode {
   private static final long serialVersionUID = -1199657856921206435L;
 
   /**
-   * Column's Schema for one timeseries represented by current node if current node is one leaf
+   * measurement's Schema for one timeseries represented by current leaf node
    */
   private MeasurementSchema schema;
 
-  public LeafMNode(String name, MNode parent) {
-    super(name, parent);
-  }
-
-  public LeafMNode(String name, MNode parent, TSDataType dataType, TSEncoding encoding,
+  public LeafMNode(MNode parent, String name, TSDataType dataType, TSEncoding encoding,
       CompressionType type, Map<String, String> props) {
-    this(name, parent);
+    super(parent, name);
     this.schema = new MeasurementSchema(name, dataType, encoding, type, props);
   }
 
-  /**
-   * check whether the MNode has children
-   */
   @Override
   public boolean hasChildren() {
     return false;
   }
 
-  /**
-   * check whether the MNode has child with the given key
-   *
-   * @param childName key
-   */
   @Override
   public boolean hasChild(String childName) {
     return false;
@@ -74,19 +62,11 @@ public class LeafMNode extends MNode {
   public void deleteChild(String key) {
   }
 
-  /**
-   * get the child MNode under the given key.
-   *
-   * @param key key
-   */
   @Override
   public MNode getChild(String key) {
     return null;
   }
 
-  /**
-   * get the count of all leaves whose ancestor is current node
-   */
   @Override
   public int getLeafCount() {
     return 1;

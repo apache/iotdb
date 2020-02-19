@@ -129,12 +129,12 @@ public class MTreeTest {
     }
 
     try {
-      List<String> result = root.getAllPath("root.a.*.s0");
+      List<String> result = root.getAllTimeseriesName("root.a.*.s0");
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0));
       assertEquals("root.a.d1.s0", result.get(1));
 
-      result = root.getAllPath("root.a.*.*.s0");
+      result = root.getAllTimeseriesName("root.a.*.*.s0");
       assertEquals("root.a.b.d0.s0", result.get(0));
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -259,7 +259,7 @@ public class MTreeTest {
     }
     assertFalse(root.isPathExist("root.laptop.d1.s0"));
     try {
-      root.deletePath("root.laptop.d1");
+      root.deleteStorageGroup("root.laptop.d1");
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

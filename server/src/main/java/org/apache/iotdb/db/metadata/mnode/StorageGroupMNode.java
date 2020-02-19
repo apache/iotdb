@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -31,20 +30,22 @@ public class StorageGroupMNode extends InternalMNode {
   private static final long serialVersionUID = 7999036474525817732L;
 
   /**
-   * when the data in a storage group is older than dataTTL, it is considered invalid and will be
-   * eventually removed. only set at storage group level.
+   * when the data file in a storage group is older than dataTTL, it is considered invalid and will
+   * be eventually deleted.
    */
-  private long dataTTL = Long.MAX_VALUE;
+  private long dataTTL;
 
   /**
    * Map for the schema in this storage group
    */
   private Map<String, MeasurementSchema> schemaMap;
 
-  public StorageGroupMNode(String name, MNode parent, long dataTTL, Map<String, MeasurementSchema> schemaMap) {
-    super(name, parent);
+  public StorageGroupMNode(MNode parent, String name, String fullPath, long dataTTL,
+      Map<String, MeasurementSchema> schemaMap) {
+    super(parent, name);
     this.dataTTL = dataTTL;
     this.schemaMap = schemaMap;
+    this.fullPath = fullPath;
   }
 
   public long getDataTTL() {
@@ -59,11 +60,4 @@ public class StorageGroupMNode extends InternalMNode {
     return schemaMap;
   }
 
-  public void setSchemaMap(Map<String, MeasurementSchema> schemaMap) {
-    this.schemaMap = schemaMap;
-  }
-
-  public String getStorageGroupName() {
-    return getFullPath();
-  }
 }
