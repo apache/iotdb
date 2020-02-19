@@ -148,6 +148,21 @@ struct SingleSeriesQueryRequest {
   8: required int dataTypeOrdinal
 }
 
+struct GetAggregateReaderRequest {
+  1: required string path
+  2: optional binary filterBytes
+  3: required long queryId
+  4: required Node requester
+  5: required Node header
+  6: required bool reverse
+  7: required int dataTypeOrdinal
+}
+
+struct GetAggregateReaderResp {
+  1: required long seqReaderId
+  2: required long unseqReaderId
+}
+
 // the spec and load of a node, for query coordinating
 struct TNodeStatus {
 
@@ -262,6 +277,12 @@ service TSDataService extends RaftService {
   list<string> getAllPaths(1:Node header, 2:string path)
 
   PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
+
+  GetAggregateReaderResp getAggregateReader(1:GetAggregateReaderRequest request)
+
+  binary fetchPageHeader(1:Node header, 2:long readerId)
+
+  void skipPageData(1:Node header, 2:long readerId)
 }
 
 service TSMetaService extends RaftService {

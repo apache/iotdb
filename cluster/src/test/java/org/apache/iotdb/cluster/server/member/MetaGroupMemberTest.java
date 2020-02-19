@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -59,6 +60,8 @@ import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderResp;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -72,6 +75,7 @@ import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -81,13 +85,17 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.factory.AggreFuncFactory;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
@@ -97,11 +105,14 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
@@ -166,10 +177,6 @@ public class MetaGroupMemberTest extends MemberTest {
 
       @Override
       TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
-        return executeNonQuery(plan);
-      }
-
-      TSStatus forwardPlan(PhysicalPlan plan, PartitionGroup group) {
         return executeNonQuery(plan);
       }
 
@@ -1085,6 +1092,81 @@ public class MetaGroupMemberTest extends MemberTest {
         }
       });
       resultRef.wait(500);
+    }
+  }
+
+  private void prepareAggregateData()
+      throws QueryProcessException {
+    InsertPlan insertPlan = new InsertPlan();
+    insertPlan.setDeviceId(TestUtils.getTestSg(0));
+    insertPlan.setDataTypes(new TSDataType[] {TSDataType.DOUBLE, TSDataType.DOUBLE,
+        TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE});
+    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0),
+        TestUtils.getTestMeasurement(1), TestUtils.getTestMeasurement(2),
+        TestUtils.getTestMeasurement(3), TestUtils.getTestMeasurement(4)});
+    for (int i = 10; i < 20; i++) {
+      insertPlan.setTime(i);
+      insertPlan.setValues(new String[] {String.valueOf(i), String.valueOf(i), String.valueOf(i),
+          String.valueOf(i), String.valueOf(i)});
+      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
+      queryProcessExecutor.processNonQuery(insertPlan);
+    }
+    StorageEngine.getInstance().syncCloseAllProcessor();
+    for (int i = 0; i < 10; i++) {
+      insertPlan.setTime(i);
+      insertPlan.setValues(new String[] {String.valueOf(i), String.valueOf(i), String.valueOf(i),
+          String.valueOf(i), String.valueOf(i)});
+      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
+      queryProcessExecutor.processNonQuery(insertPlan);
+    }
+    StorageEngine.getInstance().syncCloseAllProcessor();
+  }
+
+  @Test
+  public void testGetAggregateReaders()
+      throws MetadataException, IOException, StorageEngineException, QueryProcessException {
+    prepareAggregateData();
+
+    List<Path> selectedPaths = Arrays.asList(new Path(TestUtils.getTestSeries(0, 0)),
+        new Path(TestUtils.getTestSeries(0, 0)), new Path(TestUtils.getTestSeries(0, 0)),
+        new Path(TestUtils.getTestSeries(0, 0)), new Path(TestUtils.getTestSeries(0, 0)));
+    Filter filter = new AndFilter(TimeFilter.gtEq(5), TimeFilter.lt(15));
+    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    List<IAggregateReader> seqReaders = new ArrayList<>();
+    List<IPointReader> unseqReaders = new ArrayList<>();
+    List<AggregateFunction> aggregateFunctions =
+        Arrays.asList(AggreFuncFactory.getAggrFuncByName(SQLConstant.FIRST_VALUE,
+            TSDataType.DOUBLE), AggreFuncFactory.getAggrFuncByName(SQLConstant.LAST_VALUE,
+            TSDataType.DOUBLE), AggreFuncFactory.getAggrFuncByName(SQLConstant.SUM,
+            TSDataType.DOUBLE), AggreFuncFactory.getAggrFuncByName(SQLConstant.COUNT,
+            TSDataType.DOUBLE),AggreFuncFactory.getAggrFuncByName(SQLConstant.AVG,
+            TSDataType.DOUBLE));
+    List<TSDataType> dataTypes = Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE,
+        TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE);
+
+    metaGroupMember.getAggregateReader(selectedPaths, filter, context, seqReaders, unseqReaders,
+        aggregateFunctions, dataTypes);
+    assertEquals(5, seqReaders.size());
+    assertEquals(5, unseqReaders.size());
+    for (IAggregateReader seqReader : seqReaders) {
+      assertTrue(seqReader.hasNextBatch());
+      BatchData batchData = seqReader.nextBatch();
+      for (int i = 10; i < 15; i++) {
+        assertTrue(batchData.hasCurrent());
+        assertEquals(i, batchData.currentTime());
+        assertEquals(i * 1.0, batchData.getDouble(), 0.00001);
+      }
+      assertFalse(batchData.hasCurrent());
+    }
+
+    for (IPointReader unseqReader : unseqReaders) {
+      for (int i = 10; i < 15; i++) {
+        assertTrue(unseqReader.hasNext());
+        TimeValuePair next = unseqReader.next();
+        assertEquals(i, next.getTimestamp());
+        assertEquals(i * 1.0, next.getValue().getDouble(), 0.00001);
+      }
+      assertFalse(unseqReader.hasNext());
     }
   }
 }

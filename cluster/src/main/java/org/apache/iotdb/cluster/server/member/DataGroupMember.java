@@ -53,7 +53,10 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
+import org.apache.iotdb.cluster.query.reader.BatchedPointReader;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderResp;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
@@ -73,30 +76,36 @@ import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.OldUnseqResourceMergeReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithValueFilter;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -260,7 +269,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   @Override
   public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
-    logger.debug("{}: received a snapshot");
+    logger.debug("{}: received a snapshot", name);
     PartitionedSnapshot snapshot = new PartitionedSnapshot<>(FileSnapshot::new);
     try {
       snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
@@ -633,7 +642,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
     if (request.isSetFilterBytes()) {
-      // TODO-Cluster: deserialize the filters
       timeFilter = FilterFactory.deserialize(request.filterBytes);
     }
     RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequester(),
@@ -802,6 +810,91 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   public DataMemberReport genReport() {
     return new DataMemberReport(character, leader, term.get(),
         logManager.getLastLogTerm(), logManager.getLastLogIndex(), getHeader(), readOnly);
+  }
+
+  @Override
+  public void getAggregateReader(GetAggregateReaderRequest request,
+      AsyncMethodCallback<GetAggregateReaderResp> resultHandler) {
+    String path = request.path;
+    long queryId = request.queryId;
+    Filter filter = null;
+    boolean reverse = request.reverse;
+    TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
+    Node requester = request.requester;
+    logger.debug("{}: Preparing aggregate readers for {}#{} of {}", name, path, queryId, requester);
+    if (!syncLeader()) {
+      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+      return;
+    }
+
+    if (request.isSetFilterBytes()) {
+      filter = FilterFactory.deserialize(request.filterBytes);
+    }
+    RemoteQueryContext context = queryManager.getQueryContext(requester, queryId);
+    try {
+      Pair<IAggregateReader, ManagedSeriesReader> aggregateReaders = getAggregateReaders(
+          new Path(path), context, filter, reverse, dataType);
+      IAggregateReader seqResourceIterateReader = aggregateReaders.left;
+      ManagedSeriesReader unseqResourceMergeReader = aggregateReaders.right;
+
+      long seqReaderId = -1;
+      long unseqReaderId = -1;
+      if (seqResourceIterateReader.hasNextBatch()) {
+        seqReaderId = queryManager.registerAggrReader(seqResourceIterateReader);
+        context.registerLocalReader(seqReaderId);
+      } else {
+        seqResourceIterateReader.close();
+      }
+      if (unseqResourceMergeReader.hasNextBatch()) {
+        unseqReaderId = queryManager.registerReader(unseqResourceMergeReader);
+        context.registerLocalReader(unseqReaderId);
+      } else {
+        unseqResourceMergeReader.close();
+      }
+
+      logger.debug("{}: Constructed aggregate readers {},{} for {}#{} of {}", name, seqReaderId,
+          unseqReaderId, path, queryId, requester);
+      GetAggregateReaderResp resp = new GetAggregateReaderResp(seqReaderId, unseqReaderId);
+      resultHandler.onComplete(resp);
+    } catch (StorageEngineException | IOException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  public Pair<IAggregateReader, ManagedSeriesReader> getAggregateReaders(Path path,
+      QueryContext context, Filter filter, boolean reverse, TSDataType dataType)
+      throws IOException, StorageEngineException {
+    QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+        .getQueryDataSource(path, context);
+    IAggregateReader seqResourceIterateReader = new SeqResourceIterateReader(queryDataSource.getSeriesPath(),
+        queryDataSource.getSeqResources(), filter, context, reverse);
+    ManagedSeriesReader unseqResourceMergeReader = new BatchedPointReader(new OldUnseqResourceMergeReader(
+        queryDataSource.getSeriesPath(), queryDataSource.getUnseqResources(), context, filter),
+        dataType);
+    return new Pair<>(seqResourceIterateReader, unseqResourceMergeReader);
+  }
+
+  @Override
+  public void fetchPageHeader(Node header, long readerId,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    try {
+      PageHeader pageHeader = queryManager.getAggrReader(readerId).nextPageHeader();
+      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      pageHeader.serializeTo(byteArrayOutputStream);
+      resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+    } catch (IOException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void skipPageData(Node header, long readerId, AsyncMethodCallback<Void> resultHandler) {
+    try {
+      queryManager.getAggrReader(readerId).skipPageData();
+      resultHandler.onComplete(null);
+    } catch (IOException e) {
+      resultHandler.onError(e);
+    }
   }
 }
 

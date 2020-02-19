@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,7 @@ public class ClusterQueryManager {
   private Map<Node, Map<Long, RemoteQueryContext>> queryContextMap = new ConcurrentHashMap<>();
   private Map<Long, IBatchReader> seriesReaderMap = new ConcurrentHashMap<>();
   private Map<Long, IReaderByTimestamp> seriesReaderByTimestampMap = new ConcurrentHashMap<>();
+  private Map<Long, IAggregateReader> aggrReaderMap = new ConcurrentHashMap<>();
 
 
   public synchronized RemoteQueryContext getQueryContext(Node node, long queryId) {
@@ -96,6 +98,10 @@ public class ClusterQueryManager {
     return seriesReaderByTimestampMap.get(readerId);
   }
 
+  public IAggregateReader getAggrReader(long readerId) {
+    return aggrReaderMap.get(readerId);
+  }
+
   public void endAllQueries() throws StorageEngineException {
     for (Map<Long, RemoteQueryContext> contextMap : queryContextMap.values()) {
       for (RemoteQueryContext context : contextMap.values()) {
@@ -104,5 +110,11 @@ public class ClusterQueryManager {
     }
     seriesReaderByTimestampMap.clear();
     seriesReaderMap.clear();
+  }
+
+  public long registerAggrReader(IAggregateReader aggregateReader) {
+    long newReaderId = readerIdAtom.incrementAndGet();
+    aggrReaderMap.put(newReaderId, aggregateReader);
+    return newReaderId;
   }
 }

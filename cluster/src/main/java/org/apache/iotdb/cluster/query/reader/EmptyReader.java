@@ -3,12 +3,14 @@ package org.apache.iotdb.cluster.query.reader;
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 
 /**
  * A placeholder when the remote node does not contain satisfying data of a series.
  */
-public class EmptyReader implements ManagedSeriesReader {
+public class EmptyReader implements ManagedSeriesReader, IAggregateReader {
 
   private volatile boolean managedByPool;
   private volatile boolean hasRemaining;
@@ -60,6 +62,16 @@ public class EmptyReader implements ManagedSeriesReader {
 
   @Override
   public void close() throws IOException {
+
+  }
+
+  @Override
+  public PageHeader nextPageHeader() throws IOException {
+    return null;
+  }
+
+  @Override
+  public void skipPageData() throws IOException {
 
   }
 }

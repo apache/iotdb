@@ -44,10 +44,10 @@ import org.slf4j.LoggerFactory;
 public class RemoteSimpleSeriesReader implements ManagedSeriesReader {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteSimpleSeriesReader.class);
-  private long readerId;
-  private Node source;
-  private Node header;
-  private MetaGroupMember metaGroupMember;
+  long readerId;
+  Node source;
+  Node header;
+  MetaGroupMember metaGroupMember;
 
   private BatchData cachedBatch;
   private TimeValuePair cachedPair;

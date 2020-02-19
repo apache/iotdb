@@ -43,11 +43,6 @@ public class ClusterQueryRouter extends EngineQueryRouter {
   }
 
   @Override
-  public QueryDataSet aggregate(AggregationPlan plan, QueryContext context) {
-    throw new UnsupportedOperationException("Aggregate not implemented");
-  }
-
-  @Override
   public QueryDataSet fill(FillQueryPlan plan, QueryContext context) {
     throw new UnsupportedOperationException("Fill not implemented");
   }
@@ -59,6 +54,8 @@ public class ClusterQueryRouter extends EngineQueryRouter {
 
   @Override
   protected AggregateEngineExecutor getAggregateEngine(AggregationPlan aggregationPlan) {
-    return new ClusterAggregateExecutor(aggregationPlan);
+    return new ClusterAggregateExecutor(aggregationPlan, metaGroupMember);
   }
+
+
 }

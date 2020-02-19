@@ -28,11 +28,13 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class TestUtils {
@@ -60,6 +62,41 @@ public class TestUtils {
       logList.add(log);
     }
     return logList;
+  }
+
+  public static List<TimeValuePair> getTestTimeValuePairs(int offset, int size, int step,
+      TSDataType dataType) {
+    List<TimeValuePair> ret = new ArrayList<>(size);
+    long currTime = offset;
+    for (int i = 0; i < size; i++) {
+      TsPrimitiveType value = TsPrimitiveType.getByType(dataType, currTime);
+      TimeValuePair pair = new TimeValuePair(currTime, value);
+      currTime += step;
+      ret.add(pair);
+    }
+    return ret;
+  }
+
+  public static List<BatchData> getTestBatches(int offset, int size, int batchSize, int step,
+      TSDataType dataType) {
+    List<BatchData> ret = new ArrayList<>(size);
+    long currTime = offset;
+    BatchData currBatch = null;
+    for (int i = 0; i < size; i++) {
+      if (i % batchSize == 0) {
+        if (currBatch != null) {
+          ret.add(currBatch);
+        }
+        currBatch = new BatchData(dataType);
+      }
+      TsPrimitiveType value = TsPrimitiveType.getByType(dataType, currTime);
+      currBatch.putAnObject(currTime, value.getValue());
+      currTime += step;
+    }
+    if (currBatch != null) {
+      ret.add(currBatch);
+    }
+    return ret;
   }
 
   public static PartitionTable getPartitionTable(int nodeNum) {

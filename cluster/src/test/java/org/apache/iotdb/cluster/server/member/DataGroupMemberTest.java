@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.server.member;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -54,9 +55,13 @@ import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.query.reader.RemoteAggregateReader;
+import org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderResp;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
@@ -85,10 +90,12 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGt;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
@@ -907,5 +914,128 @@ public class DataGroupMemberTest extends MemberTest {
     } finally {
       dataGroupMember.stop();
     }
+  }
+
+  private GetAggregateReaderResp prepareRemoteAggregateReader(Filter filter)
+      throws QueryProcessException, InterruptedException {
+    InsertPlan insertPlan = new InsertPlan();
+    insertPlan.setDeviceId(TestUtils.getTestSg(0));
+    insertPlan.setDataTypes(new TSDataType[] {TSDataType.DOUBLE});
+    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+    for (int i = 10; i < 20; i++) {
+      insertPlan.setTime(i);
+      insertPlan.setValues(new String[] {String.valueOf(i)});
+      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
+      queryProcessExecutor.processNonQuery(insertPlan);
+    }
+    StorageEngine.getInstance().syncCloseAllProcessor();
+    for (int i = 0; i < 10; i++) {
+      insertPlan.setTime(i);
+      insertPlan.setValues(new String[] {String.valueOf(i)});
+      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
+      queryProcessExecutor.processNonQuery(insertPlan);
+    }
+    StorageEngine.getInstance().syncCloseAllProcessor();
+
+    GetAggregateReaderRequest request = new GetAggregateReaderRequest();
+    request.setPath(TestUtils.getTestSeries(0, 0));
+    request.setQueryId(0);
+    request.setFilterBytes(SerializeUtils.serializeFilter(filter));
+    request.setReverse(false);
+    request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
+    request.setRequester(TestUtils.getNode(0));
+
+    AtomicReference<GetAggregateReaderResp> resultRef = new AtomicReference<>();
+    GenericHandler<GetAggregateReaderResp> handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
+    synchronized (resultRef) {
+      dataGroupMember.getAggregateReader(request, handler);
+      resultRef.wait(500);
+    }
+    return resultRef.get();
+  }
+
+  @Test
+  public void testGetAggregateReaders()
+      throws InterruptedException, QueryProcessException, IOException {
+    GetAggregateReaderResp readerResp = prepareRemoteAggregateReader(TimeFilter.gtEq(5));
+    assertNotNull(readerResp);
+    assertEquals(0, readerResp.seqReaderId);
+    assertEquals(1, readerResp.unseqReaderId);
+
+    RemoteAggregateReader remoteSeqReader = new RemoteAggregateReader(readerResp.seqReaderId,
+        TestUtils.getNode(0),
+        TestUtils.getNode(0), testMetaMember, TSDataType.DOUBLE);
+    RemoteSimpleSeriesReader remoteUnseqReader = new RemoteSimpleSeriesReader(readerResp.unseqReaderId,
+        TestUtils.getNode(0), TestUtils.getNode(0), testMetaMember);
+    assertTrue(remoteSeqReader.hasNextBatch());
+    PageHeader header = remoteSeqReader.nextPageHeader();
+    assertEquals(10, header.getStartTime());
+    assertEquals(19, header.getEndTime());
+    assertEquals(10, header.getNumOfValues());
+    assertEquals(10.0, header.getStatistics().getFirstValue());
+    assertEquals(19.0, header.getStatistics().getLastValue());
+    assertEquals(0.0, header.getStatistics().getSumValue(), 0.00001);
+    BatchData batchData = remoteSeqReader.nextBatch();
+    for (int i = 10; i < 20; i++) {
+      assertTrue(batchData.hasCurrent());
+      assertEquals(i, batchData.currentTime());
+      assertEquals(i * 1.0, batchData.getDouble(), 0.00001);
+      batchData.next();
+    }
+    assertFalse(batchData.hasCurrent());
+
+    assertTrue(remoteUnseqReader.hasNextBatch());
+    batchData = remoteUnseqReader.nextBatch();
+    for (int i = 0; i < 10; i++) {
+      assertTrue(batchData.hasCurrent());
+      assertEquals(i, batchData.currentTime());
+      assertEquals(i * 1.0, batchData.getDouble(), 0.00001);
+      batchData.next();
+    }
+    assertFalse(batchData.hasCurrent());
+  }
+
+  @Test
+  public void testGetEmptyAggregateReader() throws QueryProcessException, InterruptedException {
+    GetAggregateReaderResp readerResp = prepareRemoteAggregateReader(TimeFilter.gtEq(10000));
+    assertNotNull(readerResp);
+    assertEquals(-1, readerResp.unseqReaderId);
+    assertEquals(-1, readerResp.seqReaderId);
+  }
+
+  @Test
+  public void testFetchPageHeader() throws QueryProcessException, InterruptedException {
+    GetAggregateReaderResp readerResp = prepareRemoteAggregateReader(TimeFilter.gtEq(10000));
+    AtomicReference<ByteBuffer> resultRef = new AtomicReference<>();
+    GenericHandler<ByteBuffer> handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
+    synchronized (resultRef) {
+      dataGroupMember.fetchPageHeader(TestUtils.getNode(0), readerResp.seqReaderId, handler);
+      resultRef.wait(500);
+    }
+    ByteBuffer byteBuffer = resultRef.get();
+    assertNotNull(byteBuffer);
+    PageHeader header = PageHeader.deserializeFrom(byteBuffer, TSDataType.DOUBLE);
+    assertEquals(10, header.getStartTime());
+    assertEquals(19, header.getEndTime());
+    assertEquals(10, header.getNumOfValues());
+    assertEquals(10.0, header.getStatistics().getFirstValue());
+    assertEquals(19.0, header.getStatistics().getLastValue());
+    assertEquals(0.0, header.getStatistics().getSumValue(), 0.00001);
+  }
+
+  @Test
+  public void testSkipPageData() throws QueryProcessException, InterruptedException, IOException {
+    GetAggregateReaderResp readerResp = prepareRemoteAggregateReader(TimeFilter.gtEq(10000));
+    AtomicReference<Void> resultRef = new AtomicReference<>();
+    GenericHandler<Void> handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
+    synchronized (resultRef) {
+      dataGroupMember.skipPageData(TestUtils.getNode(0), readerResp.seqReaderId, handler);
+      resultRef.wait(500);
+    }
+
+    RemoteAggregateReader remoteSeqReader = new RemoteAggregateReader(readerResp.seqReaderId,
+        TestUtils.getNode(0),
+        TestUtils.getNode(0), testMetaMember, TSDataType.DOUBLE);
+    assertFalse(remoteSeqReader.hasNextBatch());
   }
 }

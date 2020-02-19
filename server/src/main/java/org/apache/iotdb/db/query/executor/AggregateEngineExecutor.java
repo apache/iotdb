@@ -51,12 +51,13 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 
 public class AggregateEngineExecutor {
 
-  private List<Path> selectedSeries;
-  private List<TSDataType> dataTypes;
+  protected List<Path> selectedSeries;
+  protected List<TSDataType> dataTypes;
   private List<String> aggres;
   private IExpression expression;
 
@@ -90,15 +91,28 @@ public class AggregateEngineExecutor {
 
     List<IAggregateReader> readersOfSequenceData = new ArrayList<>();
     List<IPointReader> readersOfUnSequenceData = new ArrayList<>();
-    List<AggregateFunction> aggregateFunctions = new ArrayList<>();
-    for (int i = 0; i < selectedSeries.size(); i++) {
-      // construct AggregateFunction
-      TSDataType tsDataType = dataTypes.get(i);
-      AggregateFunction function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), tsDataType);
-      function.init();
-      aggregateFunctions.add(function);
+    List<AggregateFunction> aggregateFunctions = initAggregateFuncs();
 
-      QueryDataSource queryDataSource = getDataSource(selectedSeries.get(i), context);
+    initReaders(aggregateFunctions, readersOfSequenceData, readersOfUnSequenceData, timeFilter,
+        context);
+    List<AggreResultData> aggreResultDataList = new ArrayList<>();
+    //TODO use multi-thread
+    for (int i = 0; i < selectedSeries.size(); i++) {
+      AggreResultData aggreResultData = aggregateWithoutValueFilter(aggregateFunctions.get(i),
+          readersOfSequenceData.get(i), readersOfUnSequenceData.get(i), timeFilter);
+      aggreResultDataList.add(aggreResultData);
+    }
+    return constructDataSet(aggreResultDataList);
+  }
+
+  protected void initReaders(List<AggregateFunction> aggregateFunctions,
+      List<IAggregateReader> readersOfSequenceData,
+      List<IPointReader> readersOfUnSequenceData, Filter timeFilter, QueryContext context)
+      throws IOException, StorageEngineException {
+    List<QueryDataSource> queryDataSources = getDataSources(selectedSeries, context);
+    for (int i = 0; i < selectedSeries.size(); i++) {
+      AggregateFunction function = aggregateFunctions.get(i);
+      QueryDataSource queryDataSource = queryDataSources.get(i);
       // add additional time filter if TTL is set
       timeFilter = queryDataSource.updateTimeFilter(timeFilter);
 
@@ -120,19 +134,27 @@ public class AggregateEngineExecutor {
       readersOfSequenceData.add(seqResourceIterateReader);
       readersOfUnSequenceData.add(unseqResourceMergeReader);
     }
-    List<AggreResultData> aggreResultDataList = new ArrayList<>();
-    //TODO use multi-thread
-    for (int i = 0; i < selectedSeries.size(); i++) {
-      AggreResultData aggreResultData = aggregateWithoutValueFilter(aggregateFunctions.get(i),
-          readersOfSequenceData.get(i), readersOfUnSequenceData.get(i), timeFilter);
-      aggreResultDataList.add(aggreResultData);
-    }
-    return constructDataSet(aggreResultDataList);
   }
 
-  protected QueryDataSource getDataSource(Path path, QueryContext context)
+  private List<AggregateFunction> initAggregateFuncs() throws MetadataException {
+    List<AggregateFunction> aggregateFunctions = new ArrayList<>();
+    for (int i = 0; i < selectedSeries.size(); i++) {
+      // construct AggregateFunction
+      TSDataType tsDataType = dataTypes.get(i);
+      AggregateFunction function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), tsDataType);
+      function.init();
+      aggregateFunctions.add(function);
+    }
+    return aggregateFunctions;
+  }
+
+  private List<QueryDataSource> getDataSources(List<Path> paths, QueryContext context)
       throws StorageEngineException {
-    return QueryResourceManager.getInstance().getQueryDataSource(path, context);
+    List<QueryDataSource> dataSources = new ArrayList<>();
+    for (Path path : paths) {
+      dataSources.add(QueryResourceManager.getInstance().getQueryDataSource(path, context));
+    }
+    return dataSources;
   }
 
   /**
@@ -266,24 +288,28 @@ public class AggregateEngineExecutor {
   public QueryDataSet executeWithValueFilter(QueryContext context)
       throws StorageEngineException, MetadataException, IOException {
 
-    EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
+    TimeGenerator timestampGenerator = getTimeGenerator(expression, context);
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     for (Path path : selectedSeries) {
-      SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path, context);
+      IReaderByTimestamp seriesReaderByTimestamp = getReaderByTime(path, context);
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
 
-    List<AggregateFunction> aggregateFunctions = new ArrayList<>();
-    for (int i = 0; i < selectedSeries.size(); i++) {
-      TSDataType type = dataTypes.get(i);
-      AggregateFunction function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), type);
-      function.init();
-      aggregateFunctions.add(function);
-    }
+    List<AggregateFunction> aggregateFunctions = initAggregateFuncs();
     List<AggreResultData> batchDataList = aggregateWithValueFilter(aggregateFunctions,
         timestampGenerator,
         readersOfSelectedSeries);
     return constructDataSet(batchDataList);
+  }
+
+  protected TimeGenerator getTimeGenerator(
+      IExpression expression, QueryContext context) throws StorageEngineException {
+    return new EngineTimeGenerator(expression, context);
+  }
+
+  protected IReaderByTimestamp getReaderByTime(Path path, QueryContext context)
+      throws IOException, StorageEngineException {
+    return new SeriesReaderByTimestamp(path, context);
   }
 
   /**
@@ -291,7 +317,7 @@ public class AggregateEngineExecutor {
    */
   private List<AggreResultData> aggregateWithValueFilter(
       List<AggregateFunction> aggregateFunctions,
-      EngineTimeGenerator timestampGenerator,
+      TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries)
       throws IOException {
 

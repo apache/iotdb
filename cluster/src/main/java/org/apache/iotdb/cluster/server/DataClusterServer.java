@@ -22,7 +22,6 @@ package org.apache.iotdb.cluster.server;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +37,8 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderResp;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -361,10 +362,6 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     this.partitionTable = partitionTable;
   }
 
-  public Collection<Node> getAllHeaders() {
-    return headerGroupMap.keySet();
-  }
-
   public void pullSnapshots() {
     List<Integer> slots = partitionTable.getNodeSlots(thisNode);
     DataGroupMember dataGroupMember = headerGroupMap.get(thisNode);
@@ -377,5 +374,32 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       dataMemberReports.add(value.genReport());
     }
     return dataMemberReports;
+  }
+
+  @Override
+  public void getAggregateReader(GetAggregateReaderRequest request,
+      AsyncMethodCallback<GetAggregateReaderResp> resultHandler) {
+    Node header = request.getHeader();
+    DataGroupMember member = getDataMember(header, resultHandler, request);
+    if (member != null) {
+      member.getAggregateReader(request, resultHandler);
+    }
+  }
+
+  @Override
+  public void fetchPageHeader(Node header, long readerId,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    DataGroupMember member = getDataMember(header, resultHandler, "Fetch PageHeader of " + readerId);
+    if (member != null) {
+      member.fetchPageHeader(header, readerId, resultHandler);
+    }
+  }
+
+  @Override
+  public void skipPageData(Node header, long readerId, AsyncMethodCallback<Void> resultHandler) {
+    DataGroupMember member = getDataMember(header, resultHandler, "Skip page data of " + readerId);
+    if (member != null) {
+      member.skipPageData(header, readerId, resultHandler);
+    }
   }
 }

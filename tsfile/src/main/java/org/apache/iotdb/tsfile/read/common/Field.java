@@ -175,4 +175,44 @@ public class Field {
         throw new UnSupportedDataTypeException("UnSupported: " + dataType);
     }
   }
+
+  @Override
+  public int hashCode() {
+    switch (dataType) {
+      case DOUBLE:
+        return Double.hashCode(getDoubleV());
+      case FLOAT:
+        return Float.hashCode(getFloatV());
+      case INT64:
+        return Long.hashCode(getLongV());
+      case INT32:
+        return Integer.hashCode(getIntV());
+      case BOOLEAN:
+        return Boolean.hashCode(getBoolV());
+      case TEXT:
+        return getBinaryV().hashCode();
+      default:
+        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
+    }
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    switch (dataType) {
+      case DOUBLE:
+        return obj instanceof Double && getDoubleV() == (double) obj;
+      case FLOAT:
+        return obj instanceof Float && getFloatV() == (float) obj;
+      case INT64:
+        return obj instanceof Long && getLongV() == (long) obj;
+      case INT32:
+        return obj instanceof Integer && getIntV() == (int) obj;
+      case BOOLEAN:
+        return obj instanceof Boolean && getBoolV() == (boolean) obj;
+      case TEXT:
+        return obj instanceof Binary && getBinaryV().equals(obj);
+      default:
+        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
+    }
+  }
 }

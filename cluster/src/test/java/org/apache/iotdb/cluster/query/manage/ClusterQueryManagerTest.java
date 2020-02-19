@@ -23,11 +23,14 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
+import java.io.IOException;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.junit.Before;
 import org.junit.Test;
@@ -87,6 +90,38 @@ public class ClusterQueryManagerTest {
     };
     long id = queryManager.registerReaderByTime(reader);
     assertSame(reader, queryManager.getReaderByTimestamp(id));
+  }
+
+  @Test
+  public void testRegisterAggregateReader() {
+    IAggregateReader reader = new IAggregateReader() {
+      @Override
+      public PageHeader nextPageHeader() {
+        return null;
+      }
+
+      @Override
+      public void skipPageData() {
+
+      }
+
+      @Override
+      public boolean hasNextBatch() {
+        return false;
+      }
+
+      @Override
+      public BatchData nextBatch() {
+        return null;
+      }
+
+      @Override
+      public void close() {
+
+      }
+    };
+    long id = queryManager.registerAggrReader(reader);
+    assertSame(reader, queryManager.getAggrReader(id));
   }
 
   @Test
