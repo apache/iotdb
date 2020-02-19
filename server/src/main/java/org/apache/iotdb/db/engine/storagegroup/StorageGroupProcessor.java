@@ -624,7 +624,7 @@ public class StorageGroupProcessor {
           .put(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
     }
 
-    // check memtable size and may async try to flush the filled memtable
+    // check memtable size and may async try to flush the flush memtable
     if (tsFileProcessor.shouldFlush()) {
       tsFileProcessor.adjustMemTable();
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
@@ -655,7 +655,7 @@ public class StorageGroupProcessor {
           .put(insertPlan.getDeviceId(), insertPlan.getTime());
     }
 
-    // check memtable size and may asyncTryToFlush the filled memtable
+    // check memtable size and may asyncTryToFlush the flush memtable
     if (tsFileProcessor.shouldFlush()) {
       tsFileProcessor.adjustMemTable();
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);

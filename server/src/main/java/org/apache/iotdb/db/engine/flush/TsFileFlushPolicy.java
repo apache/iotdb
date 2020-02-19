@@ -40,8 +40,11 @@ public interface TsFileFlushPolicy {
     @Override
     public void apply(StorageGroupProcessor storageGroupProcessor, TsFileProcessor tsFileProcessor,
         boolean isSeq) {
+      long memory = isSeq ?
+          tsFileProcessor.getFlushMemTableMemory() :
+          tsFileProcessor.getWorkMemTableMemory();
       logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
-          tsFileProcessor.getWorkMemTableMemory(),
+          memory,
           tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
 
       if (tsFileProcessor.shouldClose()) {
