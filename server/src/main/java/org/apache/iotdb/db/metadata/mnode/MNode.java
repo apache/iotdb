@@ -52,11 +52,6 @@ public abstract class MNode implements Serializable {
   }
 
   /**
-   * check whether the MNode has children
-   */
-  public abstract boolean hasChildren();
-
-  /**
    * check whether the MNode has a child with the name
    */
   public abstract boolean hasChild(String name);

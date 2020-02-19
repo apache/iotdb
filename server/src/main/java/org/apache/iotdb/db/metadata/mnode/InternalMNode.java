@@ -38,13 +38,8 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public boolean hasChildren() {
-    return true;
-  }
-
-  @Override
-  public boolean hasChild(String childName) {
-    return this.children.containsKey(childName);
+  public boolean hasChild(String name) {
+    return this.children.containsKey(name);
   }
 
   @Override

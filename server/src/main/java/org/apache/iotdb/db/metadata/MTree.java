@@ -405,7 +405,7 @@ public class MTree implements Serializable {
       MNode current = nodeStack.pop();
       if (current instanceof StorageGroupMNode) {
         ret.add((StorageGroupMNode) current);
-      } else if (current.hasChildren()) {
+      } else if (current instanceof InternalMNode) {
         nodeStack.addAll(current.getChildren().values());
       }
     }
@@ -530,7 +530,7 @@ public class MTree implements Serializable {
   Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {
     MNode node = getNodeByPath(path);
 
-    if (!node.hasChildren()) {
+    if (node instanceof LeafMNode) {
       return new HashSet<>();
     }
 
@@ -619,7 +619,7 @@ public class MTree implements Serializable {
       res.add(path);
       return;
     }
-    if (node.hasChildren()) {
+    if (node instanceof InternalMNode) {
       for (MNode child : node.getChildren().values()) {
         findNodes(child, path + PATH_SEPARATOR + child.toString(), res, targetLevel - 1);
       }

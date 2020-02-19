@@ -45,12 +45,7 @@ public class LeafMNode extends MNode {
   }
 
   @Override
-  public boolean hasChildren() {
-    return false;
-  }
-
-  @Override
-  public boolean hasChild(String childName) {
+  public boolean hasChild(String name) {
     return false;
   }
 
