@@ -65,6 +65,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -616,7 +617,7 @@ public class PlanExecutor implements IPlanExecutor {
             }
           }
         }
-        if (node.getChild(measurement).hasChildren()) {
+        if (node.getChild(measurement) instanceof InternalMNode) {
           throw new QueryProcessException(
               String.format("Current Path is not leaf node. %s", fullPath));
         }
@@ -712,7 +713,7 @@ public class PlanExecutor implements IPlanExecutor {
           }
         }
         MNode measurementNode = node.getChild(measurement);
-        if (measurementNode.hasChildren()) {
+        if (measurementNode instanceof InternalMNode) {
           throw new QueryProcessException(
               String.format("Current Path is not leaf node. %s.%s", deviceId, measurement));
         }
@@ -777,7 +778,7 @@ public class PlanExecutor implements IPlanExecutor {
           }
         }
         MNode measurementNode = node.getChild(measurementList[i]);
-        if (measurementNode.hasChildren()) {
+        if (measurementNode instanceof InternalMNode) {
           throw new QueryProcessException(
               String.format("Current Path is not leaf node. %s.%s", deviceId, measurementList[i]));
         }
