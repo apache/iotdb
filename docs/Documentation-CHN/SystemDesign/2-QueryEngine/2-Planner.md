@@ -90,7 +90,7 @@ ConcatPathOptimizer 使用其中的 transform() 方法将给定查询中 FROM �
 2. 判断该查询是否包含 ALIGN BY DEVICE 子句。如果不包含，则可进入步骤3；否则，进入步骤4.
 3. 则调用 concatSelect() 方法将前缀路径和后缀路径合并补全（包括带 * 的路径），形成全路径。如果查询中包含 SLIMIT 子句，则对 SELECT 子句中的路径做相应的筛选。进入步骤5.
 4. 对每一条 FROM 子句中的路径分析其设备名，如果不为空则抛出异常。进入步骤5.
-5. 对 WHERE 子句中过滤条件里包含的路径做补全。此时，SELECT 子句和 WHERE 子句中的路径都是完整的路径。
+5. 对 WHERE 子句过滤条件中包含的后缀路径做补全。完成后，SELECT 子句和 WHERE 子句中的路径都是完整的路径。
 
 ### RemoveNotOptimizer
 
