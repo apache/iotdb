@@ -66,6 +66,7 @@ import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -404,9 +405,9 @@ public class PlanExecutor implements IPlanExecutor {
         , Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
     List<String> selectedSgs = showTTLPlan.getStorageGroups();
 
-    List<MNode> storageGroups = MManager.getInstance().getAllStorageGroupNodes();
+    List<StorageGroupMNode> storageGroups = MManager.getInstance().getAllStorageGroupNodes();
     int timestamp = 0;
-    for (MNode mNode : storageGroups) {
+    for (StorageGroupMNode mNode : storageGroups) {
       String sgName = mNode.getFullPath();
       if (!selectedSgs.isEmpty() && !selectedSgs.contains(sgName)) {
         continue;
@@ -601,8 +602,9 @@ public class PlanExecutor implements IPlanExecutor {
         }
         if (!node.hasChild(measurement)) {
           try {
-            boolean result = mManager.addPath(fullPath, schema.getType(), schema.getEncodingType(),
-                schema.getCompressor(), Collections.emptyMap());
+            boolean result = mManager
+                .createTimeseries(fullPath, schema.getType(), schema.getEncodingType(),
+                    schema.getCompressor(), Collections.emptyMap());
             if (result) {
               storageEngine
                   .addTimeSeries(new Path(fullPath), schema.getType(), schema.getEncodingType(),
@@ -705,7 +707,7 @@ public class PlanExecutor implements IPlanExecutor {
             TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValues[i]);
             Path path = new Path(deviceId, measurement);
             boolean result = mManager
-                .addPath(path.toString(), dataType, getDefaultEncoding(dataType));
+                .createTimeseries(path.toString(), dataType, getDefaultEncoding(dataType));
             if (result) {
               storageEngine.addTimeSeries(path, dataType, getDefaultEncoding(dataType));
             }
@@ -774,7 +776,7 @@ public class PlanExecutor implements IPlanExecutor {
           Path path = new Path(deviceId, measurementList[i]);
           TSDataType dataType = dataTypes[i];
           boolean result = mManager
-              .addPath(path.getFullPath(), dataType, getDefaultEncoding(dataType));
+              .createTimeseries(path.getFullPath(), dataType, getDefaultEncoding(dataType));
           if (result) {
             storageEngine
                 .addTimeSeries(path, dataType, getDefaultEncoding(dataType));
@@ -882,7 +884,7 @@ public class PlanExecutor implements IPlanExecutor {
     Map<String, String> props = createTimeSeriesPlan.getProps();
     try {
       boolean result = mManager
-          .addPath(path.getFullPath(), dataType, encoding, compressor, props);
+          .createTimeseries(path.getFullPath(), dataType, encoding, compressor, props);
       if (result) {
         storageEngine.addTimeSeries(path, dataType, encoding, compressor, props);
       }

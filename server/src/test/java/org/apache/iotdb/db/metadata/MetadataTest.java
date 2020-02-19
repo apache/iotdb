@@ -46,35 +46,35 @@ public class MetadataTest {
 
     try {
       manager.setStorageGroup("root.t.d1");
-      manager.addPath("root.t.d1.s0", "INT32", "RLE");
-      manager.addPath("root.t.d1.s1", "DOUBLE", "RLE");
+      manager.createTimeseries("root.t.d1.s0", "INT32", "RLE");
+      manager.createTimeseries("root.t.d1.s1", "DOUBLE", "RLE");
       manager.setStorageGroup("root.t.d2");
-      manager.addPath("root.t.d2.s1", "DOUBLE", "RLE");
+      manager.createTimeseries("root.t.d2.s1", "DOUBLE", "RLE");
       Metadata metadata1 = manager.getMetadata();
 
       manager.clear();
 
       manager.setStorageGroup("root.t.d3");
-      manager.addPath("root.t.d3.s1", "DOUBLE", "RLE");
-      manager.addPath("root.t.d3.s2", "TEXT", "RLE");
+      manager.createTimeseries("root.t.d3.s1", "DOUBLE", "RLE");
+      manager.createTimeseries("root.t.d3.s2", "TEXT", "RLE");
       manager.setStorageGroup("root.t1.d1");
-      manager.addPath("root.t1.d1.s1", "DOUBLE", "RLE");
-      manager.addPath("root.t1.d1.s2", "TEXT", "RLE");
+      manager.createTimeseries("root.t1.d1.s1", "DOUBLE", "RLE");
+      manager.createTimeseries("root.t1.d1.s2", "TEXT", "RLE");
       Metadata metadata2 = manager.getMetadata();
 
       manager.clear();
 
       manager.setStorageGroup("root.t.d1");
-      manager.addPath("root.t.d1.s0", "INT32", "RLE");
-      manager.addPath("root.t.d1.s1", "DOUBLE", "RLE");
+      manager.createTimeseries("root.t.d1.s0", "INT32", "RLE");
+      manager.createTimeseries("root.t.d1.s1", "DOUBLE", "RLE");
       manager.setStorageGroup("root.t.d2");
-      manager.addPath("root.t.d2.s1", "DOUBLE", "RLE");
+      manager.createTimeseries("root.t.d2.s1", "DOUBLE", "RLE");
       manager.setStorageGroup("root.t.d3");
-      manager.addPath("root.t.d3.s1", "DOUBLE", "RLE");
-      manager.addPath("root.t.d3.s2", "TEXT", "RLE");
+      manager.createTimeseries("root.t.d3.s1", "DOUBLE", "RLE");
+      manager.createTimeseries("root.t.d3.s2", "TEXT", "RLE");
       manager.setStorageGroup("root.t1.d1");
-      manager.addPath("root.t1.d1.s1", "DOUBLE", "RLE");
-      manager.addPath("root.t1.d1.s2", "TEXT", "RLE");
+      manager.createTimeseries("root.t1.d1.s1", "DOUBLE", "RLE");
+      manager.createTimeseries("root.t1.d1.s2", "TEXT", "RLE");
       Metadata metadata = manager.getMetadata();
 
       Metadata combineMetadata = Metadata.combineMetadatas(new Metadata[]{metadata1, metadata2});

@@ -53,17 +53,17 @@ public class ConcatOptimizerTest {
     processor = new Planner();
     MManager.getInstance().init();
     MManager.getInstance().setStorageGroup("root.laptop");
-    MManager.getInstance().addPath("root.laptop.d1.s1", TSDataType.INT64, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.laptop.d1.s1", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPath("root.laptop.d1.s2", TSDataType.INT64, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.laptop.d1.s2", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPath("root.laptop.d2.s1", TSDataType.INT64, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.laptop.d2.s1", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPath("root.laptop.d2.s2", TSDataType.INT64, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.laptop.d2.s2", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPath("root.laptop.d3.s1", TSDataType.INT64, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.laptop.d3.s1", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPath("root.laptop.d3.s2", TSDataType.INT64, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.laptop.d3.s2", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
   }
 

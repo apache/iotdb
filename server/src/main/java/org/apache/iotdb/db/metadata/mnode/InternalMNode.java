@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -31,13 +32,7 @@ public class InternalMNode extends MNode {
 
   public InternalMNode(String name, MNode parent) {
     super(name, parent);
-    this.nodeType = MNodeType.INTERNAL_MNODE;
     this.children = new LinkedHashMap<>();
-  }
-
-  @Override
-  public boolean isNodeType(MNodeType nodeType) {
-    return this.nodeType.equals(nodeType);
   }
 
   /**
@@ -59,14 +54,13 @@ public class InternalMNode extends MNode {
   }
 
   /**
-   * add the given key to given child MNode
+   * add given child MNode
    *
-   * @param key key
    * @param child child MNode
    */
   @Override
-  public void addChild(String key, MNode child) {
-    this.children.put(key, child);
+  public void addChild(MNode child) {
+    this.children.put(child.getName(), child);
   }
 
   /**
@@ -99,6 +93,11 @@ public class InternalMNode extends MNode {
       leafCount += child.getLeafCount();
     }
     return leafCount;
+  }
+
+  @Override
+  public MeasurementSchema getSchema() {
+    return null;
   }
 
   @Override

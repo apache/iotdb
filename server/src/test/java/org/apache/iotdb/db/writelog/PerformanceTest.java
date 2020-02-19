@@ -129,16 +129,16 @@ public class PerformanceTest {
       MManager.getInstance().setStorageGroup("root.logTestDevice");
     } catch (MetadataException ignored) {
     }
-    MManager.getInstance().addPath("root.logTestDevice.s1",
+    MManager.getInstance().createTimeseries("root.logTestDevice.s1",
         TSDataType.DOUBLE.name(),
         TSEncoding.PLAIN.name());
     MManager.getInstance()
-        .addPath("root.logTestDevice.s2", TSDataType.INT32.name(),
+        .createTimeseries("root.logTestDevice.s2", TSDataType.INT32.name(),
             TSEncoding.PLAIN.name());
     MManager.getInstance()
-        .addPath("root.logTestDevice.s3", TSDataType.TEXT.name(),
+        .createTimeseries("root.logTestDevice.s3", TSDataType.TEXT.name(),
             TSEncoding.PLAIN.name());
-    MManager.getInstance().addPath("root.logTestDevice.s4", TSDataType.BOOLEAN.name(),
+    MManager.getInstance().createTimeseries("root.logTestDevice.s4", TSDataType.BOOLEAN.name(),
         TSEncoding.PLAIN.name());
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 

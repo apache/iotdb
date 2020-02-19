@@ -71,13 +71,13 @@ public class PhysicalPlanTest {
   public void before() throws QueryProcessException, MetadataException {
     MManager.getInstance().init();
     MManager.getInstance().setStorageGroup("root.vehicle");
-    MManager.getInstance().addPath("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPath("root.vehicle.d2.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.vehicle.d2.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPath("root.vehicle.d3.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.vehicle.d3.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPath("root.vehicle.d4.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.vehicle.d4.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
   }
 

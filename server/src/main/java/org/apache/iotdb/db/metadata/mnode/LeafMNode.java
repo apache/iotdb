@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import java.util.Collections;
 import java.util.Map;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -33,6 +34,11 @@ public class LeafMNode extends MNode {
 
   private static final long serialVersionUID = -1199657856921206435L;
 
+  /**
+   * Column's Schema for one timeseries represented by current node if current node is one leaf
+   */
+  private MeasurementSchema schema;
+
   public LeafMNode(String name, MNode parent) {
     super(name, parent);
   }
@@ -41,11 +47,6 @@ public class LeafMNode extends MNode {
       CompressionType type, Map<String, String> props) {
     this(name, parent);
     this.schema = new MeasurementSchema(name, dataType, encoding, type, props);
-  }
-
-  @Override
-  public boolean isNodeType(MNodeType nodeType) {
-    return nodeType.equals(MNodeType.LEAF_MNODE);
   }
 
   /**
@@ -67,7 +68,7 @@ public class LeafMNode extends MNode {
   }
 
   @Override
-  public void addChild(String key, MNode child) {
+  public void addChild(MNode child) {
   }
 
   @Override
@@ -95,5 +96,10 @@ public class LeafMNode extends MNode {
   @Override
   public Map<String, MNode> getChildren() {
     return Collections.emptyMap();
+  }
+
+  @Override
+  public MeasurementSchema getSchema() {
+    return schema;
   }
 }

@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -38,11 +37,6 @@ public abstract class MNode implements Serializable {
   private String name;
 
   /**
-   * Map for the schema in this storage group
-   */
-  private Map<String, MeasurementSchema> schemaMap;
-
-  /**
    * Corresponding storage group name for current node
    */
   private String storageGroupName;
@@ -51,20 +45,7 @@ public abstract class MNode implements Serializable {
 
   private String fullPath;
 
-  /**
-   * Column's Schema for one timeseries represented by current node if current node is one leaf
-   */
-  MeasurementSchema schema;
-
   Map<String, MNode> children;
-
-  MNodeType nodeType;
-
-  /**
-   * when the data in a storage group is older than dataTTL, it is considered invalid and will be
-   * eventually removed. only set at storage group level.
-   */
-  private long dataTTL = Long.MAX_VALUE;
 
   /**
    * Constructor of MNode.
@@ -74,58 +55,43 @@ public abstract class MNode implements Serializable {
     this.parent = parent;
   }
 
-  abstract public boolean isNodeType(MNodeType nodeType);
-
-  /**
-   * Set storage group
-   */
-  public void setStorageGroup() {
-    nodeType = MNodeType.STORAGE_GROUP_MNODE;
-    schemaMap = new HashMap<>();
-  }
-
-  public Map<String, MeasurementSchema> getSchemaMap() {
-    return schemaMap;
-  }
-
   /**
    * check whether the MNode has children
    */
-  abstract public boolean hasChildren();
+  public abstract boolean hasChildren();
 
   /**
    * check whether the MNode has child with the given key
    *
    * @param childName child name
    */
-  abstract public boolean hasChild(String childName);
+  public abstract boolean hasChild(String childName);
 
   /**
-   * add the given key to given child MNode
+   * add given child MNode
    *
-   * @param key key
    * @param child child MNode
    */
-  abstract public void addChild(String key, MNode child);
+  public abstract void addChild(MNode child);
 
   /**
    * delete key from given child MNode
    *
    * @param key key
    */
-  abstract public void deleteChild(String key);
+  public abstract void deleteChild(String key);
 
   /**
    * get the child MNode under the given key.
    *
    * @param key key
    */
-  abstract public MNode getChild(String key);
+  public abstract MNode getChild(String key);
 
   /**
    * get the count of all leaves whose ancestor is current node
    */
-  abstract public int getLeafCount();
+  public abstract int getLeafCount();
 
   /**
    * get full path
@@ -136,8 +102,8 @@ public abstract class MNode implements Serializable {
     }
     StringBuilder builder = new StringBuilder(name);
     MNode curr = this;
-    while (curr.parent != null) {
-      curr = curr.parent;
+    while (curr.getParent() != null) {
+      curr = curr.getParent();
       builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.name);
     }
     return fullPath = builder.toString();
@@ -156,15 +122,13 @@ public abstract class MNode implements Serializable {
     return this.getName();
   }
 
-  public MeasurementSchema getSchema() {
-    return schema;
-  }
+  public abstract MeasurementSchema getSchema();
 
   public MNode getParent() {
     return parent;
   }
 
-  abstract public Map<String, MNode> getChildren();
+  public abstract Map<String, MNode> getChildren();
 
   public String getName() {
     return name;
@@ -172,13 +136,5 @@ public abstract class MNode implements Serializable {
 
   public void setName(String name) {
     this.name = name;
-  }
-
-  public long getDataTTL() {
-    return dataTTL;
-  }
-
-  public void setDataTTL(long dataTTL) {
-    this.dataTTL = dataTTL;
   }
 }

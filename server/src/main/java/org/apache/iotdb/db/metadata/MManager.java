@@ -41,13 +41,13 @@ import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.IncorrectRootException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.IncorrectRootException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MNodeType;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
@@ -196,7 +196,7 @@ public class MManager {
   }
 
   public void operation(String cmd) throws IOException, MetadataException {
-    //see addPath() to get the detailed format of the cmd
+    //see createTimeseries() to get the detailed format of the cmd
     String[] args = cmd.trim().split(",");
     switch (args[0]) {
       case MetadataOperationType.ADD_PATH_TO_MTREE:
@@ -210,7 +210,7 @@ public class MManager {
           }
         }
 
-        addPath(args[1], TSDataType.deserialize(Short.parseShort(args[2])),
+        createTimeseries(args[1], TSDataType.deserialize(Short.parseShort(args[2])),
             TSEncoding.deserialize(Short.parseShort(args[3])),
             CompressionType.deserialize(Short.parseShort(args[4])),
             props);
@@ -263,7 +263,7 @@ public class MManager {
    * measurement should be registered to the StorageEngine too)
    */
   @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
-  public boolean addPath(String path, TSDataType dataType, TSEncoding encoding,
+  public boolean createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) throws MetadataException {
     lock.writeLock().lock();
     try {
@@ -327,15 +327,15 @@ public class MManager {
     }
   }
 
-  public boolean addPath(String path, TSDataType dataType, TSEncoding encoding)
+  public boolean createTimeseries(String path, TSDataType dataType, TSEncoding encoding)
       throws MetadataException {
     CompressionType compressionType =
         CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
-    return addPath(path, dataType, encoding, compressionType, Collections.emptyMap());
+    return createTimeseries(path, dataType, encoding, compressionType, Collections.emptyMap());
   }
 
   @TestOnly
-  public void addPath(String path, String dataType, String encoding)
+  public void createTimeseries(String path, String dataType, String encoding)
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
@@ -360,7 +360,7 @@ public class MManager {
     if (nodes.length == 0) {
       throw new IllegalPathException(path);
     }
-    mtree.addPath(path, dataType, encoding, compressor, props);
+    mtree.createTimeseries(path, dataType, encoding, compressor, props);
 
     // Get the storage group name for given seriesPath Notice: This method could be called if and only if the
     // seriesPath includes one node whose {@code isStorageGroup} is true.
@@ -718,7 +718,7 @@ public class MManager {
   /**
    * Get all storage group MNodes
    */
-  public List<MNode> getAllStorageGroupNodes() {
+  public List<StorageGroupMNode> getAllStorageGroupNodes() {
     lock.readLock().lock();
     try {
       return mtree.getAllStorageGroupNodes();
@@ -829,6 +829,21 @@ public class MManager {
   }
 
   /**
+   * Get storage gorup node by path. If storage group is not set, StorageGroupNotSetException will
+   * be thrown
+   *
+   * @param path path
+   */
+  public StorageGroupMNode getStorageGroupNode(String path) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getStorageGroupNode(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * Get node by path with storage group check. If storage group is not set,
    * StorageGroupNotSetException will be thrown
    *
@@ -872,7 +887,7 @@ public class MManager {
           String storageGroupName = getStorageGroupNameByAutoLevel(path, sgLevel);
           setStorageGroup(storageGroupName);
         }
-        node = mtree.addPath(path);
+        node = mtree.addInternalPath(path);
       }
     }
     return node;
@@ -939,10 +954,10 @@ public class MManager {
     lock.writeLock().lock();
     try {
       MNode sgNode = getNodeByPath(storageGroup);
-      if (!sgNode.isNodeType(MNodeType.STORAGE_GROUP_MNODE)) {
+      if (!(sgNode instanceof StorageGroupMNode)) {
         throw new StorageGroupNotSetException(storageGroup);
       }
-      sgNode.setDataTTL(dataTTL);
+      ((StorageGroupMNode) sgNode).setDataTTL(dataTTL);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
         writer

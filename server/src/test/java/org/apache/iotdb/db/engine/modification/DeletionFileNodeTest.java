@@ -80,7 +80,7 @@ public class DeletionFileNodeTest {
 
     MManager.getInstance().setStorageGroup(processorName);
     for (int i = 0; i < 10; i++) {
-      MManager.getInstance().addPath(processorName + "." + measurements[i], dataType,
+      MManager.getInstance().createTimeseries(processorName + "." + measurements[i], dataType,
           encoding);
       StorageEngine.getInstance()
           .addTimeSeries(new Path(processorName, measurements[i]), TSDataType.valueOf(dataType),

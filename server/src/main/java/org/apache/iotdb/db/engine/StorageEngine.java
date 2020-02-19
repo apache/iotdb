@@ -53,7 +53,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -116,9 +116,9 @@ public class StorageEngine implements IService {
      * recover all storage group processors.
      */
 
-    List<MNode> sgNodes = MManager.getInstance().getAllStorageGroupNodes();
+    List<StorageGroupMNode> sgNodes = MManager.getInstance().getAllStorageGroupNodes();
     List<Future> futures = new ArrayList<>();
-    for (MNode storageGroup : sgNodes) {
+    for (StorageGroupMNode storageGroup : sgNodes) {
       futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
         StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
             storageGroup.getFullPath(), fileFlushPolicy);
@@ -189,9 +189,8 @@ public class StorageEngine implements IService {
             logger.info("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
             processor = new StorageGroupProcessor(systemDir, storageGroupName, fileFlushPolicy);
-            processor.setDataTTL(
-                MManager.getInstance().getNodeByPathWithStorageGroupCheck(storageGroupName)
-                    .getDataTTL());
+            StorageGroupMNode sgNode = MManager.getInstance().getStorageGroupNode(storageGroupName);
+            processor.setDataTTL(sgNode.getDataTTL());
             processorMap.put(storageGroupName, processor);
           }
         }

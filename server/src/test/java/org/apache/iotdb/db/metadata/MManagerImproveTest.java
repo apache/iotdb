@@ -28,8 +28,8 @@ import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
+import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -56,7 +56,7 @@ public class MManagerImproveTest {
     for (int j = 0; j < DEVICE_NUM; j++) {
       for (int i = 0; i < TIMESERIES_NUM; i++) {
         String p = "root.t1.v2.d" + j + ".s" + i;
-        mManager.addPath(p, "TEXT", "RLE");
+        mManager.createTimeseries(p, "TEXT", "RLE");
       }
     }
 
@@ -139,7 +139,7 @@ public class MManagerImproveTest {
     for (String s : measurementList) {
       assertTrue(node.hasChild(s));
       MNode measurementNode = node.getChild(s);
-      assertTrue(measurementNode.isNodeType(MNodeType.LEAF_MNODE));
+      assertTrue(measurementNode instanceof LeafMNode);
       TSDataType dataType = measurementNode.getSchema().getType();
       assertEquals(TSDataType.TEXT, dataType);
     }

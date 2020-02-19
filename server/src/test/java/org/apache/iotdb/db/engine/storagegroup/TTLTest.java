@@ -36,13 +36,13 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
+import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -94,7 +94,7 @@ public class TTLTest {
     MManager.getInstance().setStorageGroup(sg2);
     storageGroupProcessor = new StorageGroupProcessor(IoTDBDescriptor.getInstance().getConfig()
         .getSystemDir(), sg1, new DirectFlushPolicy());
-    MManager.getInstance().addPath(g1s1, TSDataType.INT64, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries(g1s1, TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.emptyMap());
     storageGroupProcessor.addMeasurement("s1", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.emptyMap());
@@ -113,11 +113,11 @@ public class TTLTest {
 
     // normally set ttl
     MManager.getInstance().setTTL(sg1, ttl);
-    MNode mNode = MManager.getInstance().getNodeByPathWithStorageGroupCheck(sg1);
+    StorageGroupMNode mNode = MManager.getInstance().getStorageGroupNode(sg1);
     assertEquals(ttl, mNode.getDataTTL());
 
     // default ttl
-    mNode = MManager.getInstance().getNodeByPathWithStorageGroupCheck(sg2);
+    mNode = MManager.getInstance().getStorageGroupNode(sg2);
     assertEquals(Long.MAX_VALUE, mNode.getDataTTL());
   }
 

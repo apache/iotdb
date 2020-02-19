@@ -154,7 +154,7 @@ public class SeriesReaderTestUtil {
     MManager.getInstance().setStorageGroup(SERIES_READER_TEST_SG);
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        MManager.getInstance().addPath(
+        MManager.getInstance().createTimeseries(
             device + PATH_SEPARATOR + measurementSchema.getMeasurementId(), measurementSchema
                 .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
             Collections.emptyMap());

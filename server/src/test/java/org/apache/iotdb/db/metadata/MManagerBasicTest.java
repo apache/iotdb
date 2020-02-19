@@ -79,7 +79,7 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.addPath("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
+      manager.createTimeseries("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections
               .emptyMap());
     } catch (MetadataException e) {
@@ -91,7 +91,7 @@ public class MManagerBasicTest {
     assertTrue(manager.isPathExist("root.laptop.d1.s0"));
     assertFalse(manager.isPathExist("root.laptop.d1.s1"));
     try {
-      manager.addPath("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
+      manager.createTimeseries("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e1) {
       e1.printStackTrace();
@@ -119,7 +119,7 @@ public class MManagerBasicTest {
     assertTrue(manager.isPathExist("root"));
 
     try {
-      manager.addPath("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
+      manager.createTimeseries("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e1) {
       e1.printStackTrace();
@@ -127,7 +127,7 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.addPath("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
+      manager.createTimeseries("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e1) {
       e1.printStackTrace();
@@ -193,9 +193,9 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup("root.laptop.d1");
       manager.setStorageGroup("root.laptop.d2");
-      manager.addPath("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.addPath("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
 
       List<String> list = new ArrayList<>();
@@ -247,13 +247,13 @@ public class MManagerBasicTest {
     assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
     manager.setStorageGroup("root.laptop");
     assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.addPath("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+    manager.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
         CompressionType.GZIP, null);
-    manager.addPath("root.laptop.d1.s2", TSDataType.INT32, TSEncoding.PLAIN,
+    manager.createTimeseries("root.laptop.d1.s2", TSDataType.INT32, TSEncoding.PLAIN,
         CompressionType.GZIP, null);
     assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
     manager.setStorageGroup("root.vehicle");
-    manager.addPath("root.vehicle.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+    manager.createTimeseries("root.vehicle.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
         CompressionType.GZIP, null);
     assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
 
@@ -302,9 +302,9 @@ public class MManagerBasicTest {
 
     try {
       manager.setStorageGroup("root.laptop");
-      manager.addPath("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.addPath("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
       List<String> devices = new ArrayList<>();
       devices.add("root.laptop.d1");
@@ -312,7 +312,7 @@ public class MManagerBasicTest {
       // usual condition
       assertEquals(devices, manager.getDevices("root.laptop"));
       manager.setStorageGroup("root.vehicle");
-      manager.addPath("root.vehicle.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries("root.vehicle.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
       devices.add("root.vehicle.d1");
       // prefix with *
