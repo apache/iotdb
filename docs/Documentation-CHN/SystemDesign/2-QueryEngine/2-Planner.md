@@ -146,7 +146,7 @@ DNF 是 Disjuctive Normal Form 的缩写，即析取范式。DnfFilterOptimizer 
     3. 返回当前节点。
 
 
-对于以上提到的 mergeToConjunctive() 方法，申明如下：
+对于以上提到的 mergeToConjunction() 方法，申明如下：
 
     FilterOperator mergeToConjunction(FilterOperator operator1, FilterOperator operator2)
     输入：两个子 FilterOperator
