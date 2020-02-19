@@ -92,7 +92,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param loadMetadataSize -whether load meta data size
    */
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
-    logger.error("{} reader is opened.", file);
+    logger.error("{} reader is opened. {}", file, getClass().getName());
     this.file = file;
     tsFileInput = FSFactoryProducer.getFileInputFactory().getTsFileInput(file);
     // old version number of TsFile using little endian starts with "v"
