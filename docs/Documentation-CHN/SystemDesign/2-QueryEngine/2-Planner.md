@@ -94,7 +94,7 @@ ConcatPathOptimizer 使用其中的 transform() 方法将给定查询中 FROM �
 
 ### RemoveNotOptimizer
 
-RemoveNotOptimizer 类中的 removeNot() 和 reverseFilter() 方法共同实现了删去NOT关键字的功能。removeNot() 方法的申明如下：
+RemoveNotOptimizer 类中的 removeNot() 和 reverseFilter() 方法共同实现了删去 NOT 关键字的功能。removeNot() 方法的申明如下：
 
     FilterOperator removeNot(FilterOperator filter)
     输入：待优化的可能含有 NOT 关键字的谓词
