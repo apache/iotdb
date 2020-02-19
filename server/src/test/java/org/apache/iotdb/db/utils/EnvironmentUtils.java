@@ -81,6 +81,10 @@ public class EnvironmentUtils {
       daemon.stop();
       daemon = null;
     }
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
+    // clear opened file streams
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+
     TTransport transport = new TSocket("127.0.0.1", 6667, 100);
     if (!transport.isOpen()) {
       try {
@@ -119,9 +123,6 @@ public class EnvironmentUtils {
     } catch (Exception e) {
       //do nothing
     }
-    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
-    // clear opened file streams
-    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
     // clean storage group manager
     if (!StorageEngine.getInstance().deleteAll()) {

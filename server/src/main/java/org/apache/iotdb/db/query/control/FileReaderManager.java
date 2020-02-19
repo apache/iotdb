@@ -198,11 +198,13 @@ public class FileReaderManager implements IService {
   public synchronized void closeAndRemoveAllOpenedReaders() throws IOException {
     for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : closedFileReaderMap.entrySet()) {
       entry.getValue().close();
+      logger.error("{} closedTsFileReader is closed.", entry.getValue().getFileName());
       closedReferenceMap.remove(entry.getKey());
       closedFileReaderMap.remove(entry.getKey());
     }
     for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : unclosedFileReaderMap.entrySet()) {
       entry.getValue().close();
+      logger.error("{} unclosedTsFileReader is closed.", entry.getValue().getFileName());
       unclosedReferenceMap.remove(entry.getKey());
       unclosedFileReaderMap.remove(entry.getKey());
     }
