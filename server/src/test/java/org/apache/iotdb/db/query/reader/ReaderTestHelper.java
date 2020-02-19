@@ -59,8 +59,8 @@ public abstract class ReaderTestHelper {
 
   @After
   public void tearDown() throws Exception {
-    storageGroupProcessor.syncDeleteDataFiles();
     EnvironmentUtils.cleanEnv();
+    storageGroupProcessor.syncDeleteDataFiles();
     EnvironmentUtils.cleanDir(systemDir);
   }
 
