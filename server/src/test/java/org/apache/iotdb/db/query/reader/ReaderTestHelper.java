@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -59,8 +60,9 @@ public abstract class ReaderTestHelper {
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     storageGroupProcessor.syncDeleteDataFiles();
+    EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(systemDir);
   }
 
