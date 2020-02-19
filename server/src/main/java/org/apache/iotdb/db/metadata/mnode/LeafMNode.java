@@ -25,10 +25,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-/**
- * This class is the implementation of Metadata Node. One MNode instance represents one node in the
- * Metadata Tree
- */
 public class LeafMNode extends MNode {
 
   private static final long serialVersionUID = -1199657856921206435L;
@@ -51,14 +47,16 @@ public class LeafMNode extends MNode {
 
   @Override
   public void addChild(MNode child) {
+    // Do nothing
   }
 
   @Override
-  public void deleteChild(String key) {
+  public void deleteChild(String name) {
+    // Do nothing
   }
 
   @Override
-  public MNode getChild(String key) {
+  public MNode getChild(String name) {
     return null;
   }
 

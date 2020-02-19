@@ -541,7 +541,6 @@ public class MTree implements Serializable {
     return childPaths;
   }
 
-
   /**
    * Get all devices under give path
    *

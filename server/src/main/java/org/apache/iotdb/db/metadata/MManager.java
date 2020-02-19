@@ -441,11 +441,6 @@ public class MManager {
     return emptyStorageGroups;
   }
 
-  /**
-   * Delete a given path from MTree.
-   *
-   * @return storage group name if there is no path in the storage group anymore; otherwise null
-   */
   private String deletePathFromMTree(String path) throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
@@ -758,7 +753,7 @@ public class MManager {
    * @param path can be root, root.*  root.*.*.a etc.. if the wildcard is not at the tail, then each
    * wildcard can only match one level, otherwise it can match to the tail.
    * @return for each storage group, return a List which size =5 (name, sg name, data type,
-   * encoding, and compressor). TODO the structure needs to optimize
+   * encoding, and compressor)
    */
   public List<String[]> getAllTimeseriesSchema(String path) throws MetadataException {
     lock.readLock().lock();
@@ -836,7 +831,7 @@ public class MManager {
    *
    * @param path path
    */
-  public MNode getNodeByPathWithStorageGroupCheck(String path) throws MetadataException {
+  private MNode getNodeByPathWithStorageGroupCheck(String path) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getNodeByPathWithStorageGroupCheck(path);

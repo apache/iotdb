@@ -21,10 +21,6 @@ package org.apache.iotdb.db.metadata.mnode;
 import java.util.Map;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-/**
- * This class is the implementation of Metadata Node. One MNode instance represents one node in the
- * Metadata Tree
- */
 public class StorageGroupMNode extends InternalMNode {
 
   private static final long serialVersionUID = 7999036474525817732L;

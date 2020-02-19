@@ -31,12 +31,16 @@ class MetaUtils {
   static String[] getNodeNames(String path) {
     String[] nodeNames;
     if (path.contains("\"") || path.contains("\'")) {
+      // e.g., root.sg.d1."s1.int"  ->  root.sg.d1, s1.int
       String[] measurementDeviceNode = path.trim().replace("\'", "\"").split("\"");
+      // s1.int
       String measurement = measurementDeviceNode[1];
+      // root.sg.d1 -> root, sg, d1
       String[] deviceNodeName = measurementDeviceNode[0].split(PATH_SEPARATOR);
       int nodeNumber = deviceNodeName.length + 1;
       nodeNames = new String[nodeNumber];
       System.arraycopy(deviceNodeName, 0, nodeNames, 0, nodeNumber - 1);
+      // nodeNames = [root, sg, d1, s1.int]
       nodeNames[nodeNumber - 1] = measurement;
     } else {
       nodeNames = path.split(PATH_SEPARATOR);

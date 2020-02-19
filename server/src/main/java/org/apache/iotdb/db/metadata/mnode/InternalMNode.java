@@ -22,10 +22,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-/**
- * This class is the implementation of Metadata Node. One MNode instance represents one node in the
- * Metadata Tree
- */
 public class InternalMNode extends MNode {
 
   private static final long serialVersionUID = 7999036474525817732L;
@@ -48,13 +44,13 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public void deleteChild(String key) {
-    children.remove(key);
+  public void deleteChild(String name) {
+    children.remove(name);
   }
 
   @Override
-  public MNode getChild(String key) {
-    return children.get(key);
+  public MNode getChild(String name) {
+    return children.get(name);
   }
 
   @Override
