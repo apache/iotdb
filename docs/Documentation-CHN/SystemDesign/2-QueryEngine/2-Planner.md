@@ -77,7 +77,7 @@ mvn clean compile 之后生成代码位置：server/target/generated-sources/ant
 
 ### ConcatPathOptimizer
 
-ConcatPathOptimizer 使用其中的 transform() 方法将给定查询中 SELECT 子句、FROM 子句和 WHERE 子句中的路径进行合并。该方法的申明如下：
+ConcatPathOptimizer 使用其中的 transform() 方法将给定查询中 FROM 子句中的前缀路径与 SELECT 子句， WHERE 子句中的后缀路径进行拼接。该方法的申明如下：
 
     Operator transform(Operator operator)
     输入：待转化的 SFWOperator 
