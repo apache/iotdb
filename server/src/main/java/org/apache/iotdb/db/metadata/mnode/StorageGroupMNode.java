@@ -43,7 +43,6 @@ public class StorageGroupMNode extends InternalMNode {
 
   public StorageGroupMNode(String name, MNode parent, long dataTTL, Map<String, MeasurementSchema> schemaMap) {
     super(name, parent);
-    this.children = new LinkedHashMap<>();
     this.dataTTL = dataTTL;
     this.schemaMap = schemaMap;
   }
@@ -62,5 +61,9 @@ public class StorageGroupMNode extends InternalMNode {
 
   public void setSchemaMap(Map<String, MeasurementSchema> schemaMap) {
     this.schemaMap = schemaMap;
+  }
+
+  public String getStorageGroupName() {
+    return getFullPath();
   }
 }

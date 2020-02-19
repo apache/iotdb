@@ -30,6 +30,8 @@ public class InternalMNode extends MNode {
 
   private static final long serialVersionUID = 7999036474525817732L;
 
+  private Map<String, MNode> children;
+
   public InternalMNode(String name, MNode parent) {
     super(name, parent);
     this.children = new LinkedHashMap<>();

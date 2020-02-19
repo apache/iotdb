@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import java.util.Collections;
 import java.util.Map;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;

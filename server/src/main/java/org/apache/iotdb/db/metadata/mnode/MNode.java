@@ -36,16 +36,9 @@ public abstract class MNode implements Serializable {
    */
   private String name;
 
-  /**
-   * Corresponding storage group name for current node
-   */
-  private String storageGroupName;
-
   private MNode parent;
 
   private String fullPath;
-
-  Map<String, MNode> children;
 
   /**
    * Constructor of MNode.
@@ -106,15 +99,8 @@ public abstract class MNode implements Serializable {
       curr = curr.getParent();
       builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.name);
     }
-    return fullPath = builder.toString();
-  }
-
-  public String getStorageGroupName() {
-    return storageGroupName;
-  }
-
-  public void setStorageGroupName(String storageGroupName) {
-    this.storageGroupName = storageGroupName;
+    fullPath = builder.toString();
+    return fullPath;
   }
 
   @Override

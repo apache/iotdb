@@ -703,18 +703,12 @@ public class PlanExecutor implements IPlanExecutor {
                 String.format("Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurement));
           }
-          try {
-            TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValues[i]);
-            Path path = new Path(deviceId, measurement);
-            boolean result = mManager
-                .createTimeseries(path.toString(), dataType, getDefaultEncoding(dataType));
-            if (result) {
-              storageEngine.addTimeSeries(path, dataType, getDefaultEncoding(dataType));
-            }
-          } catch (MetadataException e) {
-            if (!e.getMessage().contains("already exist")) {
-              throw e;
-            }
+          TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValues[i]);
+          Path path = new Path(deviceId, measurement);
+          boolean result = mManager
+              .createTimeseries(path.toString(), dataType, getDefaultEncoding(dataType));
+          if (result) {
+            storageEngine.addTimeSeries(path, dataType, getDefaultEncoding(dataType));
           }
         }
         MNode measurementNode = node.getChild(measurement);
