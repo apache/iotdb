@@ -62,7 +62,7 @@ public class MetricsSystem {
   private int start = 0;
 
   private SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss:SSS");
-  ServerArgument serverArgument = new ServerArgument(IoTDBDescriptor.getInstance().getConfig().getRestPort());
+  private ServerArgument serverArgument = new ServerArgument(IoTDBDescriptor.getInstance().getConfig().getRestPort());
 
   public MetricsSystem() {
     String sourceName = "iot-metrics";
@@ -110,9 +110,9 @@ public class MetricsSystem {
     jsonObject.put(TOTAL_MEMORY, serverArgument.getTotalMemory());
     jsonObject.put(MAX_MEMORY, serverArgument.getMaxMemory());
     jsonObject.put(FREE_MEMORY, serverArgument.getFreeMemory());
-    jsonObject.put(TOTAL_PHYSICAL_MEMORY, serverArgument.getTotalPhysicalMemory());
-    jsonObject.put(FREE_PHYSICAL_MEMORY, serverArgument.getFreePhysicalMemory());
-    jsonObject.put(USED_PHYSICAL_MEMORY, serverArgument.getUsedPhysicalMemory());
+    jsonObject.put(TOTAL_PHYSICAL_MEMORY, String.format("%.0f",serverArgument.getTotalPhysicalMemory() / 1024.0));
+    jsonObject.put(FREE_PHYSICAL_MEMORY, String.format("%.0f",serverArgument.getFreePhysicalMemory() / 1024.0));
+    jsonObject.put(USED_PHYSICAL_MEMORY, String.format("%.0f",serverArgument.getUsedPhysicalMemory() / 1024.0));
     return jsonObject;
   }
 

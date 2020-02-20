@@ -143,4 +143,11 @@ public class RestController {
   public JSONObject getSqlArguments() {
     return metricsSystem.sql_json();
   }
+
+  @Path("/version")
+  @GET
+  @Produces(MediaType.TEXT_PLAIN)
+  public String getVersion() {
+    return IoTDBConstant.VERSION;
+  }
 }
