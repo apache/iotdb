@@ -237,6 +237,9 @@ The path after SELECT in GROUP BY statement must be aggregate function, otherwis
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116099-0b715300-0ac6-11ea-8074-84e04797b8c7.png"></center>
 
 ### Last timestamp Query
+In scenarios when IoT devices updates data in a fast manner, users are more interested in the most recent record of IoT devices. 
+The LAST query is to return the most recent value of the given timeseries in a time-value pair format.
+
 The SQL statement is:
 
 ```
