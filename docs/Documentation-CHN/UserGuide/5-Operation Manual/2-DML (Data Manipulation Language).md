@@ -257,6 +257,26 @@ GROUP BY的SELECT子句里的查询路径必须是聚合函数，否则系统将
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116099-0b715300-0ac6-11ea-8074-84e04797b8c7.png"></center>
 
+### 最近时间戳数据查询
+
+对应的SQL语句是：
+
+```
+select last(path) from <prefixPath>
+```
+其含义是：
+
+查询时间序列prefixPath.path中最近时间戳的数据，该查询会以"时间-值"对的形式将时间戳和值同时返回，并且能够返回某时间戳的多列数据。
+
+下面的例子中查询时间序列root.ln.wf01.wt01.status最近时间戳的数据:
+```
+select last(status) from root.ln.wf01.wt01
+```
+假设root.ln.wf01.wt01中包含多列数据，如id, status, temperature，下面的例子将会把这几列数据在最近时间戳的记录同时返回：
+```
+select last(wt01) from root.ln.wf01
+```
+
 
 ## 数据维护
 

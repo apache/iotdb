@@ -722,6 +722,16 @@ SELECT SUM(Path) (COMMA SUM(Path))* FROM <FromClause> [WHERE <WhereClause>]?
 Eg. SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
+* LAST
+
+The LAST function returns the last time-value pair of the given timeseries. Currently filters are not supported in LAST queries.
+
+```
+SELECT LAST(Path) FROM <FromClause>
+Eg. SELECT LAST(temperature) FROM root.ln.wf01.wt01
+Eg. SELECT LAST(wt01) FROM root.ln.wf01
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
+```
 
 ### TTL
 IoTDB supports storage-level TTL settings, which means it is able to delete old data

@@ -694,6 +694,15 @@ Eg. SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.tempe
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
+* LAST
+
+```
+SELECT LAST(Path) FROM <FromClause>
+Eg. SELECT LAST(temperature) FROM root.ln.wf01.wt01
+Eg. SELECT LAST(wt01) FROM root.ln.wf01
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
+```
+
 ### TTL
 IoTDB支持对存储组级别设置数据存活时间（TTL），这使得IoTDB可以定期、自动地删除一定时间之前的数据。合理使用TTL
 可以帮助您控制IoTDB占用的总磁盘空间以避免出现磁盘写满等异常。并且，随着文件数量的增多，查询性能往往随之下降,

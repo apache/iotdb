@@ -236,6 +236,26 @@ The path after SELECT in GROUP BY statement must be aggregate function, otherwis
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116099-0b715300-0ac6-11ea-8074-84e04797b8c7.png"></center>
 
+### Last timestamp Query
+The SQL statement is:
+
+```
+select last(path) from <prefixPath>
+```
+which means:
+
+Query and return the data with the largest timestamp of timeseries prefixPath.path. The result will be returned in a time-value pair format.
+
+In the following example, we queries the latest record of timeseries root.ln.wf01.wt01.status:
+```
+select last(status) from root.ln.wf01.wt01
+```
+If the path root.ln.wf01.wt01 has multiple columns, for example id, status and temperature, the following case will return values of all the three columns with the largest timestamp.
+```
+select last(wt01) from root.ln.wf01
+```
+
+
 ### Automated Fill
 In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.
 
