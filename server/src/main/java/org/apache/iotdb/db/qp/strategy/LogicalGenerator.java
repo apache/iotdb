@@ -1052,11 +1052,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterLastElement(SqlBaseParser.LastElementContext ctx) {
     super.enterLastElement(ctx);
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    List<LastFunctionCallContext> functionCallContextList = ctx.lastFunctionCall();
-    for (LastFunctionCallContext functionCallContext : functionCallContextList) {
-      Path path = parseSuffixPath(functionCallContext.suffixPath());
-      selectOp.addLastPath(path, functionCallContext.LAST().getText());
-    }
+    LastFunctionCallContext functionCallContext = ctx.lastFunctionCall();
+    Path path = parseSuffixPath(functionCallContext.suffixPath());
+    selectOp.addLastPath(path, functionCallContext.LAST().getText());
     queryOp.setSelectOperator(selectOp);
   }
 
