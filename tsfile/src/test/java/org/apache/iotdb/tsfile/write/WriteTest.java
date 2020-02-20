@@ -103,11 +103,11 @@ public class WriteTest {
     HashMap<String,String> props = new HashMap<>();
     props.put("max_point_number", "2");
     measurementArray.add(new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE,
-                              CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()), props));
+                              TSFileDescriptor.getInstance().getConfig().getCompressor(), props));
     props = new HashMap<>();
     props.put("max_point_number", "3");
     measurementArray.add(new MeasurementSchema("s3", TSDataType.DOUBLE, TSEncoding.TS_2DIFF,
-            CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()), props));
+            TSFileDescriptor.getInstance().getConfig().getCompressor(), props));
     measurementArray.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     schema = new Schema();
     LOG.info(schema.toString());

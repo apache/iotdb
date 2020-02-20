@@ -77,7 +77,7 @@ public class DeletionQueryTest {
       StorageEngine.getInstance()
           .addTimeSeries(new Path(processorName, measurements[i]), TSDataType.valueOf(dataType),
               TSEncoding.valueOf(encoding),
-              CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
+              TSFileDescriptor.getInstance().getConfig().getCompressor(),
               Collections.emptyMap());
     }
   }

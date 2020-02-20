@@ -45,8 +45,7 @@ public class MManagerBasicTest {
 
   @Before
   public void setUp() throws Exception {
-    compressionType = CompressionType
-        .valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
+    compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
     EnvironmentUtils.envSetUp();
   }
 
@@ -73,8 +72,7 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup("root.laptop");
     } catch (MetadataException e) {
-      Assert.assertEquals(
-          "Path [root.laptop] already exist",
+      Assert.assertEquals("root.laptop has already been set to storage group",
           e.getMessage());
     }
 
@@ -99,7 +97,7 @@ public class MManagerBasicTest {
     }
     assertTrue(manager.isPathExist("root.laptop.d1.s1"));
     try {
-      manager.deletePath("root.laptop.d1.s1", false);
+      manager.deleteTimeseries("root.laptop.d1.s1");
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -108,7 +106,7 @@ public class MManagerBasicTest {
     // delete storage group or not
     assertFalse(manager.isPathExist("root.laptop.d1.s1"));
     try {
-      manager.deletePath("root.laptop.d1.s0", false);
+      manager.deleteTimeseries("root.laptop.d1.s0");
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -138,13 +136,13 @@ public class MManagerBasicTest {
     assertFalse(manager.checkStorageGroupByPath("root.laptop.d2"));
 
     try {
-      manager.deletePath("root.laptop.d1.s0", false);
+      manager.deleteTimeseries("root.laptop.d1.s0");
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      manager.deletePath("root.laptop.d1.s1", false);
+      manager.deleteTimeseries("root.laptop.d1.s1");
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -257,21 +255,20 @@ public class MManagerBasicTest {
         CompressionType.GZIP, null);
     assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
 
-    manager.deletePath("root.laptop.d1.s1", false);
+    manager.deleteTimeseries("root.laptop.d1.s1");
     assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.deletePath("root.laptop.d1.s2", false);
+    manager.deleteTimeseries("root.laptop.d1.s2");
     assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
   }
 
   @Test
   public void testGetStorageGroupNameByAutoLevel() {
-    MManager manager = MManager.getInstance();
     int level = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     boolean caughtException;
 
     try {
       assertEquals("root.laptop",
-          manager.getStorageGroupNameByAutoLevel("root.laptop.d1.s1", level));
+          MetaUtils.getStorageGroupNameByLevel("root.laptop.d1.s1", level));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -279,7 +276,7 @@ public class MManagerBasicTest {
 
     caughtException = false;
     try {
-      manager.getStorageGroupNameByAutoLevel("root1.laptop.d1.s1", level);
+      MetaUtils.getStorageGroupNameByLevel("root1.laptop.d1.s1", level);
     } catch (MetadataException e) {
       caughtException = true;
       assertEquals("root1.laptop.d1.s1 is not a legal path", e.getMessage());
@@ -288,7 +285,7 @@ public class MManagerBasicTest {
 
     caughtException = false;
     try {
-      manager.getStorageGroupNameByAutoLevel("root", level);
+      MetaUtils.getStorageGroupNameByLevel("root", level);
     } catch (MetadataException e) {
       caughtException = true;
       assertEquals("root is not a legal path", e.getMessage());

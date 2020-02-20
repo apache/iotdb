@@ -890,22 +890,22 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     String encoding = ctx.encoding().getChild(0).getText().toUpperCase();
     createTimeSeriesOperator.setDataType(TSDataType.valueOf(dataType));
     createTimeSeriesOperator.setEncoding(TSEncoding.valueOf(encoding));
-    String compressor;
+    CompressionType compressor;
     List<PropertyContext> properties = ctx.property();
     Map<String, String> props = new HashMap<>(properties.size(), 1);
     if (ctx.propertyValue() != null) {
-      compressor = ctx.propertyValue().getText().toUpperCase();
+      compressor = CompressionType.valueOf(ctx.propertyValue().getText().toUpperCase());
     } else {
-      compressor = TSFileDescriptor.getInstance().getConfig().getCompressor().toUpperCase();
+      compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
     }
-    checkMetadataArgs(dataType, encoding, compressor);
+    checkMetadataArgs(dataType, encoding, compressor.toString().toUpperCase());
     if (ctx.property(0) != null) {
       for (PropertyContext property : properties) {
         props.put(property.ID().getText().toLowerCase(),
             property.propertyValue().getText().toLowerCase());
       }
     }
-    createTimeSeriesOperator.setCompressor(CompressionType.valueOf(compressor));
+    createTimeSeriesOperator.setCompressor(compressor);
     createTimeSeriesOperator.setProps(props);
     initializedOperator = createTimeSeriesOperator;
   }

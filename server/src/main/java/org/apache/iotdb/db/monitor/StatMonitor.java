@@ -166,7 +166,7 @@ public class StatMonitor implements IService {
         if (!mManager.isPathExist(entry.getKey())) {
           mManager.createTimeseries(entry.getKey(), TSDataType.valueOf(entry.getValue()),
               TSEncoding.valueOf("RLE"),
-              CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
+              TSFileDescriptor.getInstance().getConfig().getCompressor(),
               Collections.emptyMap());
         }
       }

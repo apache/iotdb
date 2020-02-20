@@ -89,7 +89,7 @@ public class TTLTest {
   }
 
   private void createSchemas()
-      throws MetadataException, PathException, StorageGroupProcessorException {
+      throws MetadataException, StorageGroupProcessorException {
     MManager.getInstance().setStorageGroup(sg1);
     MManager.getInstance().setStorageGroup(sg2);
     storageGroupProcessor = new StorageGroupProcessor(IoTDBDescriptor.getInstance().getConfig()
@@ -101,7 +101,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testSetMetaTTL() throws IOException, MetadataException, StorageGroupException {
+  public void testSetMetaTTL() throws IOException, MetadataException {
     // exception is expected when setting ttl to a non-exist storage group
     boolean caught = false;
     try {

@@ -36,8 +36,7 @@ public class MetadataManagerHelper {
       mmanager.setStorageGroup("root.vehicle.d1");
       mmanager.setStorageGroup("root.vehicle.d2");
 
-      CompressionType compressionType =CompressionType.valueOf(
-          TSFileDescriptor.getInstance().getConfig().getCompressor());
+      CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
 
       mmanager.createTimeseries("root.vehicle.d0.s0", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType,

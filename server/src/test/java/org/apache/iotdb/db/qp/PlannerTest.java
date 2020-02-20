@@ -38,8 +38,8 @@ import static org.junit.Assert.assertEquals;
 
 public class PlannerTest {
 
-  private CompressionType compressionType = CompressionType.valueOf(
-      TSFileDescriptor.getInstance().getConfig().getCompressor());
+  private CompressionType compressionType =
+      TSFileDescriptor.getInstance().getConfig().getCompressor();
   private MManager mManager = MManager.getInstance();
   private Planner processor = new Planner();
 

@@ -74,8 +74,7 @@ public class DeletionFileNodeTest {
   }
 
   @Before
-  public void setup() throws MetadataException,
-      PathException, IOException, StorageEngineException, StartupException, StorageGroupException {
+  public void setup() throws MetadataException, StorageEngineException, StartupException {
     EnvironmentUtils.envSetUp();
 
     MManager.getInstance().setStorageGroup(processorName);
@@ -85,7 +84,7 @@ public class DeletionFileNodeTest {
       StorageEngine.getInstance()
           .addTimeSeries(new Path(processorName, measurements[i]), TSDataType.valueOf(dataType),
               TSEncoding.valueOf(encoding),
-              CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
+              TSFileDescriptor.getInstance().getConfig().getCompressor(),
               Collections.emptyMap());
     }
   }

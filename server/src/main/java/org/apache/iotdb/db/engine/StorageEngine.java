@@ -416,7 +416,7 @@ public class StorageEngine implements IService {
       throws StorageEngineException {
     StorageGroupProcessor storageGroupProcessor = getProcessor(path.getDevice());
     CompressionType compressor =
-        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
+        TSFileDescriptor.getInstance().getConfig().getCompressor();
     storageGroupProcessor
         .addMeasurement(path.getMeasurement(), dataType, encoding, compressor,
             Collections.emptyMap());

@@ -105,6 +105,7 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
@@ -198,7 +199,7 @@ public class PlanExecutor implements IPlanExecutor {
       case SET_STORAGE_GROUP:
         return setStorageGroup((SetStorageGroupPlan) plan);
       case DELETE_STORAGE_GROUP:
-        return deleteStorageGroup((DeleteStorageGroupPlan) plan);
+        return deleteStorageGroups((DeleteStorageGroupPlan) plan);
       case TTL:
         operateTTL((SetTTLPlan) plan);
         return true;
@@ -592,7 +593,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
     for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDatas) {
       String device = chunkGroupMetaData.getDeviceID();
-      MNode node = mManager.getNodeByPathFromCache(device, true, sgLevel);
+      MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(device);
       for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
         String measurement = chunkMetaData.getMeasurementUid();
         String fullPath = device + IoTDBConstant.PATH_SEPARATOR + measurement;
@@ -692,7 +693,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
-      MNode node = mManager.getNodeByPathFromCache(deviceId);
+      MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
       String[] strValues = insertPlan.getValues();
       TSDataType[] dataTypes = new TSDataType[measurementList.length];
 
@@ -706,8 +707,11 @@ public class PlanExecutor implements IPlanExecutor {
           }
           TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValues[i]);
           Path path = new Path(deviceId, measurement);
+
           boolean result = mManager
-              .createTimeseries(path.toString(), dataType, getDefaultEncoding(dataType));
+              .createTimeseries(path.toString(), dataType, getDefaultEncoding(dataType),
+                  TSFileDescriptor.getInstance().getConfig().getCompressor(),
+                  Collections.emptyMap());
           if (result) {
             storageEngine.addTimeSeries(path, dataType, getDefaultEncoding(dataType));
           }
@@ -756,7 +760,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
-      MNode node = mManager.getNodeByPathFromCache(deviceId);
+      MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
       TSDataType[] dataTypes = batchInsertPlan.getDataTypes();
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
@@ -771,7 +775,9 @@ public class PlanExecutor implements IPlanExecutor {
           Path path = new Path(deviceId, measurementList[i]);
           TSDataType dataType = dataTypes[i];
           boolean result = mManager
-              .createTimeseries(path.getFullPath(), dataType, getDefaultEncoding(dataType));
+              .createTimeseries(path.getFullPath(), dataType, getDefaultEncoding(dataType),
+                  TSFileDescriptor.getInstance().getConfig().getCompressor(),
+                  Collections.emptyMap());
           if (result) {
             storageEngine
                 .addTimeSeries(path, dataType, getDefaultEncoding(dataType));
@@ -896,7 +902,7 @@ public class PlanExecutor implements IPlanExecutor {
       deleteDataOfTimeSeries(deletePathList);
       Set<String> emptyStorageGroups = new HashSet<>();
       for (Path path : deletePathList) {
-        emptyStorageGroups.addAll(mManager.deletePath(path.toString(), false));
+        emptyStorageGroups.addAll(mManager.deleteTimeseries(path.toString()));
       }
       for (String deleteStorageGroup : emptyStorageGroups) {
         storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
@@ -918,7 +924,7 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  private boolean deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan)
+  private boolean deleteStorageGroups(DeleteStorageGroupPlan deleteStorageGroupPlan)
       throws QueryProcessException {
     List<String> deletePathList = new ArrayList<>();
     try {

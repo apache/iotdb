@@ -24,9 +24,9 @@ public class MetadataOperationType {
     //allowed to do nothing
   }
 
-  public static final String ADD_PATH_TO_MTREE = "0";
-  public static final String DELETE_PATH_FROM_MTREE = "1";
-  public static final String SET_STORAGE_GROUP_TO_MTREE = "2";
+  public static final String CREATE_TIMESERIES = "0";
+  public static final String DELETE_TIMESERIES = "1";
+  public static final String SET_STORAGE_GROUP = "2";
   public static final String SET_TTL = "10";
-  public static final String DELETE_STORAGE_GROUP_FROM_MTREE = "11";
+  public static final String DELETE_STORAGE_GROUP = "11";
 }
