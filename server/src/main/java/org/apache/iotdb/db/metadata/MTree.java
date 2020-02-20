@@ -228,11 +228,14 @@ public class MTree implements Serializable {
     if (!(curNode instanceof LeafMNode)) {
       throw new PathNotExistException(path);
     }
-
+    String[] nodes = MetaUtils.getNodeNames(path);
+    if (nodes.length == 0 || IoTDBConstant.PATH_ROOT.equals(nodes[0])) {
+      throw new IllegalPathException(path);
+    }
     // delete the last node of path
     curNode.getParent().deleteChild(curNode.getName());
     curNode = curNode.getParent();
-    // delete all empty ancestors except storage group and
+    // delete all empty ancestors except storage group
     while (!IoTDBConstant.PATH_ROOT.equals(curNode.getName())
         && curNode.getChildren().size() == 0) {
       // if current storage group has no time series, return the storage group name
@@ -373,7 +376,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all storage groups in current Metadata Tree.
+   * Get all storage group names
    *
    * @return a list contains all distinct storage groups
    */
@@ -393,7 +396,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * @return all storage groups' MNodes
+   * Get all storage group MNodes
    */
   List<StorageGroupMNode> getAllStorageGroupNodes() {
     List<StorageGroupMNode> ret = new ArrayList<>();
@@ -449,7 +452,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all paths under the given path
+   * Get all timeseries under the given path
    *
    * @param path RE in this method is formed by the amalgamation of path and character '*'.
    */
@@ -519,7 +522,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * function for getting child node path in the next level of the given path.
+   * Get child node path in the next level of the given path.
    *
    * e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1, return
    * [root.sg1.d1, root.sg1.d2]
@@ -641,6 +644,24 @@ public class MTree implements Serializable {
       throws MetadataException {
     StorageGroupMNode storageGroupMNode = getStorageGroupNode(storageGroup);
     return storageGroupMNode.getSchemaMap();
+  }
+
+  /**
+   * Get storage group name when creating schema automatically is enable
+   *
+   * @param path path
+   * @param level level
+   */
+  String getStorageGroupNameByAutoLevel(String path, int level) throws MetadataException {
+    String[] nodeNames = MetaUtils.getNodeNames(path);
+    StringBuilder storageGroupName = new StringBuilder(nodeNames[0]);
+    if (nodeNames.length < level || !storageGroupName.toString().equals(IoTDBConstant.PATH_ROOT)) {
+      throw new IllegalPathException(path);
+    }
+    for (int i = 1; i < level; i++) {
+      storageGroupName.append(IoTDBConstant.PATH_SEPARATOR).append(nodeNames[i]);
+    }
+    return storageGroupName.toString();
   }
 
   @Override

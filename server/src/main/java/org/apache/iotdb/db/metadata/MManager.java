@@ -40,8 +40,6 @@ import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.IncorrectRootException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -110,10 +108,13 @@ public class MManager {
 
       @Override
       public MNode loadObjectByKey(String key) throws CacheException {
+        lock.readLock().lock();
         try {
-          return getNodeByPathWithStorageGroupCheck(key);
+          return mtree.getNodeByPathWithStorageGroupCheck(key);
         } catch (MetadataException e) {
           throw new CacheException(e);
+        } finally {
+          lock.readLock().unlock();
         }
       }
     };
@@ -269,11 +270,11 @@ public class MManager {
       if (isPathExist(path)) {
         throw new PathAlreadyExistException(path);
       }
-      if (!checkStorageGroup(path)) {
+      if (!checkStorageGroupByPath(path)) {
         if (!config.isAutoCreateSchemaEnabled()) {
           throw new MetadataException("Storage group should be created first");
         }
-        String storageGroupName = getStorageGroupNameByAutoLevel(path,
+        String storageGroupName = mtree.getStorageGroupNameByAutoLevel(path,
             config.getDefaultStorageGroupLevel());
         setStorageGroup(storageGroupName);
       }
@@ -300,13 +301,13 @@ public class MManager {
                     + "in the storage group %s", lastNode, storageGroupName));
           }
           try {
-            addPathToMTreeInternal(path, dataType, encoding, compressor, props);
+            addInternalPath(path, dataType, encoding, compressor, props);
           } catch (IOException e) {
             throw new MetadataException(e.getMessage());
           }
         } else {
           try {
-            addPathToMTreeInternal(path, dataType, encoding, compressor, props);
+            addInternalPath(path, dataType, encoding, compressor, props);
           } catch (IOException e) {
             throw new MetadataException(e.getMessage());
           }
@@ -342,7 +343,7 @@ public class MManager {
       TSEncoding tsEncoding = TSEncoding.valueOf(encoding);
       CompressionType type = CompressionType
           .valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
-      addPathToMTreeInternal(path, tsDataType, tsEncoding, type, Collections.emptyMap());
+      addInternalPath(path, tsDataType, tsEncoding, type, Collections.emptyMap());
     } finally {
       lock.writeLock().unlock();
     }
@@ -351,18 +352,9 @@ public class MManager {
   /**
    * path will be added to MTree with no check
    */
-  private void addPathToMTreeInternal(String path, TSDataType dataType, TSEncoding encoding,
+  private void addInternalPath(String path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) throws MetadataException, IOException {
-    // Add a seriesPath to Metadata Tree
-    // path Format: root.node.(node)*
-    String[] nodes = MetaUtils.getNodeNames(path);
-    if (nodes.length == 0) {
-      throw new IllegalPathException(path);
-    }
     mtree.createTimeseries(path, dataType, encoding, compressor, props);
-
-    // Get the storage group name for given seriesPath Notice: This method could be called if and only if the
-    // seriesPath includes one node whose {@code isStorageGroup} is true.
     String storageGroupName = getStorageGroupName(path);
     int size = seriesNumberInStorageGroups.get(storageGroupName);
     seriesNumberInStorageGroups.put(storageGroupName, size + 1);
@@ -385,7 +377,7 @@ public class MManager {
 
   private List<String> collectPath(String p) throws MetadataException {
     // Attention: Monitor storage group seriesPath is not allowed to be deleted
-    List<String> subPaths = getPaths(p);
+    List<String> subPaths = getAllTimeseriesName(p);
     if (subPaths.isEmpty()) {
       throw new PathNotExistException(p);
     }
@@ -445,17 +437,7 @@ public class MManager {
     lock.writeLock().lock();
     try {
       mNodeCache.clear();
-      String storageGroupName;
-      String[] nodes = MetaUtils.getNodeNames(path);
-      if (nodes.length == 0) {
-        throw new IllegalPathException(path);
-      }
-      String rootName = nodes[0];
-      if (IoTDBConstant.PATH_ROOT.equals(rootName)) {
-        storageGroupName = mtree.deletePath(path);
-      } else {
-        throw new IncorrectRootException(rootName);
-      }
+      String storageGroupName = mtree.deletePath(path);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
         writer.write(MetadataOperationType.DELETE_PATH_FROM_MTREE + "," + path);
@@ -493,7 +475,6 @@ public class MManager {
       if (mtree.isStorageGroup(path)) {
         return;
       }
-
       mtree.setStorageGroup(path);
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
       ActiveTimeSeriesCounter.getInstance().init(path);
@@ -520,21 +501,19 @@ public class MManager {
    * @param paths list of paths to be deleted. Format: root.node
    */
   public void deleteStorageGroups(List<String> paths) throws MetadataException {
-    List<String> pathList = new ArrayList<>();
-    StringBuilder jointPath = new StringBuilder();
-    for (String storagePath : paths) {
-      pathList.add(storagePath);
-      jointPath.append(",").append(storagePath);
-    }
     lock.writeLock().lock();
     try {
       if (writeToLog) {
+        StringBuilder jointPath = new StringBuilder();
+        for (String storagePath : paths) {
+          jointPath.append(",").append(storagePath);
+        }
         BufferedWriter writer = getLogWriter();
         writer.write(MetadataOperationType.DELETE_STORAGE_GROUP_FROM_MTREE + jointPath);
         writer.newLine();
         writer.flush();
       }
-      for (String delStorageGroup : pathList) {
+      for (String delStorageGroup : paths) {
         try {
           mNodeCache.clear();
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
@@ -578,15 +557,15 @@ public class MManager {
   /**
    * Get series type for given seriesPath.
    *
-   * @param fullPath path
+   * @param path full path
    */
-  public TSDataType getSeriesType(String fullPath) throws MetadataException {
+  public TSDataType getSeriesType(String path) throws MetadataException {
     lock.readLock().lock();
     try {
-      if (fullPath.equals(SQLConstant.RESERVED_TIME)) {
+      if (path.equals(SQLConstant.RESERVED_TIME)) {
         return TSDataType.INT64;
       }
-      return mtree.getSchema(fullPath).getType();
+      return mtree.getSchema(path).getType();
     } finally {
       lock.readLock().unlock();
     }
@@ -630,12 +609,13 @@ public class MManager {
   /**
    * Get all ColumnSchemas for the storage group seriesPath.
    *
-   * @param storageGroupName the Path in a storage group
+   * @param storageGroup storage group name
    */
-  public List<MeasurementSchema> getStorageGroupSchema(String storageGroupName) throws MetadataException {
+  public List<MeasurementSchema> getStorageGroupSchema(String storageGroup)
+      throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getStorageGroupSchema(storageGroupName);
+      return mtree.getStorageGroupSchema(storageGroup);
     } finally {
       lock.readLock().unlock();
     }
@@ -655,12 +635,10 @@ public class MManager {
   }
 
   /**
-   * Get the storage group name for given path. Notice: This method could be called if and only if
-   * the seriesPath includes one node whose {@code isStorageGroup} is true.
+   * Get storage group name by path e.g., root.sg1 is storage group, path is root.sg1.d1, return
+   * root.sg1
    *
-   * @param path a prefix or a fullpath. The prefix should contains the name of a storage group. DO
-   * NOT SUPPORT WILDCARD.
-   * @return A String represented the storage group name
+   * @return storage group in the given path
    */
   public String getStorageGroupName(String path) throws MetadataException {
     lock.readLock().lock();
@@ -672,9 +650,9 @@ public class MManager {
   }
 
   /**
-   * Check storage group name by path
+   * Check whether the given path contains a storage group
    */
-  boolean checkStorageGroup(String path) {
+  boolean checkStorageGroupByPath(String path) {
     lock.readLock().lock();
     try {
       return mtree.checkStorageGroupByPath(path);
@@ -685,8 +663,6 @@ public class MManager {
 
   /**
    * Get all storage group names
-   *
-   * @return A list which stores all storage group names.
    */
   public List<String> getAllStorageGroupNames() {
     lock.readLock().lock();
@@ -710,11 +686,12 @@ public class MManager {
   }
 
   /**
-   * Get all storage group names for given seriesPath
+   * Get all storage groups under the given path
    *
    * @return List of String represented all storage group names
+   * @apiNote :for cluster
    */
-  List<String> getAllStorageGroupNamesByPath(String path) throws MetadataException {
+  List<String> getStorageGroupByPath(String path) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getStorageGroupByPath(path);
@@ -732,14 +709,10 @@ public class MManager {
    * @param path can be a prefix or a full path. if the wildcard is not at the tail, then each
    * wildcard can only match one level, otherwise it can match to the tail.
    */
-  public List<String> getPaths(String path) throws MetadataException {
+  public List<String> getAllTimeseriesName(String path) throws MetadataException {
     lock.readLock().lock();
     try {
-      String rootName = MetaUtils.getNodeNames(path)[0];
-      if (IoTDBConstant.PATH_ROOT.equals(rootName)) {
-        return mtree.getAllTimeseriesName(path);
-      }
-      throw new IncorrectRootException(rootName);
+      return mtree.getAllTimeseriesName(path);
     } catch (MetadataException e) {
       throw new MetadataException(e);
     } finally {
@@ -752,26 +725,24 @@ public class MManager {
    *
    * @param path can be root, root.*  root.*.*.a etc.. if the wildcard is not at the tail, then each
    * wildcard can only match one level, otherwise it can match to the tail.
-   * @return for each storage group, return a List which size =5 (name, sg name, data type,
-   * encoding, and compressor)
+   * @return for each storage group, return a List [name, sg name, data type, encoding, compressor]
    */
   public List<String[]> getAllTimeseriesSchema(String path) throws MetadataException {
     lock.readLock().lock();
     try {
-      String rootName = MetaUtils.getNodeNames(path)[0];
-      if (IoTDBConstant.PATH_ROOT.equals(rootName)) {
-        return mtree.getAllTimeseriesSchema(path);
-      }
-      throw new IncorrectRootException(rootName);
+      return mtree.getAllTimeseriesSchema(path);
     } finally {
       lock.readLock().unlock();
     }
   }
 
   /**
-   * Get node path in the next level of given path
+   * Get child node path in the next level of the given path.
    *
-   * @param path do not accept wildcard. cannot be a full path.
+   * e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1, return
+   * [root.sg1.d1, root.sg1.d2]
+   *
+   * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   public Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {
     lock.readLock().lock();
@@ -785,7 +756,7 @@ public class MManager {
   /**
    * Check whether the path exists.
    *
-   * @param path path
+   * @param path a full path or a prefix path
    */
   public boolean isPathExist(String path) {
     lock.readLock().lock();
@@ -798,8 +769,6 @@ public class MManager {
 
   /**
    * Get node by path
-   *
-   * @param path path
    */
   MNode getNodeByPath(String path) throws MetadataException {
     lock.readLock().lock();
@@ -811,10 +780,8 @@ public class MManager {
   }
 
   /**
-   * Get storage gorup node by path. If storage group is not set, StorageGroupNotSetException will
+   * Get storage group node by path. If storage group is not set, StorageGroupNotSetException will
    * be thrown
-   *
-   * @param path path
    */
   public StorageGroupMNode getStorageGroupNode(String path) throws MetadataException {
     lock.readLock().lock();
@@ -826,58 +793,32 @@ public class MManager {
   }
 
   /**
-   * Get node by path with storage group check. If storage group is not set,
-   * StorageGroupNotSetException will be thrown
-   *
-   * @param path path
-   */
-  private MNode getNodeByPathWithStorageGroupCheck(String path) throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return mtree.getNodeByPathWithStorageGroupCheck(path);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
    * Get node by path from cache
    *
    * @param path path
-   * @param autoCreateSchema whether auto create schema or not
-   * @param sgLevel storage group level
    */
-  public MNode getNodeByPathFromCache(String path, boolean autoCreateSchema, int sgLevel)
-      throws MetadataException {
+  public MNode getNodeByPathFromCache(String path) throws MetadataException {
     lock.readLock().lock();
     MNode node = null;
-    boolean createSchema = false;
-    boolean setStorageGroup = false;
+    boolean createSchema = config.isAutoCreateSchemaEnabled();
     try {
       node = mNodeCache.get(path);
     } catch (CacheException e) {
-      if (!autoCreateSchema) {
+      if (!createSchema) {
         throw new PathNotExistException(path);
-      } else {
-        createSchema = true;
-        setStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
+      }
+      if (e.getCause() instanceof StorageGroupNotSetException) {
+        String storageGroupName = mtree.getStorageGroupNameByAutoLevel(path,
+            config.getDefaultStorageGroupLevel());
+        setStorageGroup(storageGroupName);
       }
     } finally {
       lock.readLock().unlock();
       if (createSchema) {
-        if (setStorageGroup) {
-          String storageGroupName = getStorageGroupNameByAutoLevel(path, sgLevel);
-          setStorageGroup(storageGroupName);
-        }
         node = mtree.getDeviceNodeWithAutoCreating(path);
       }
     }
     return node;
-  }
-
-  public MNode getNodeByPathFromCache(String path) throws MetadataException {
-    return getNodeByPathFromCache(path, config.isAutoCreateSchemaEnabled(),
-        config.getDefaultStorageGroupLevel());
   }
 
   /**
@@ -890,28 +831,6 @@ public class MManager {
     } finally {
       lock.readLock().unlock();
     }
-  }
-
-  public int getSeriesNumber(String storageGroup) {
-    return seriesNumberInStorageGroups.getOrDefault(storageGroup, 0);
-  }
-
-  /**
-   * Get storage group name when creating schema automatically is enable
-   *
-   * @param path path
-   * @param level level
-   */
-  String getStorageGroupNameByAutoLevel(String path, int level) throws MetadataException {
-    String[] nodeNames = MetaUtils.getNodeNames(path);
-    StringBuilder storageGroupName = new StringBuilder(nodeNames[0]);
-    if (nodeNames.length < level || !storageGroupName.toString().equals(IoTDBConstant.PATH_ROOT)) {
-      throw new IllegalPathException(path);
-    }
-    for (int i = 1; i < level; i++) {
-      storageGroupName.append(IoTDBConstant.PATH_SEPARATOR).append(nodeNames[i]);
-    }
-    return storageGroupName.toString();
   }
 
   @TestOnly
@@ -935,11 +854,7 @@ public class MManager {
   public void setTTL(String storageGroup, long dataTTL) throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      MNode sgNode = getNodeByPath(storageGroup);
-      if (!(sgNode instanceof StorageGroupMNode)) {
-        throw new StorageGroupNotSetException(storageGroup);
-      }
-      ((StorageGroupMNode) sgNode).setDataTTL(dataTTL);
+      getStorageGroupNode(storageGroup).setDataTTL(dataTTL);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
         writer

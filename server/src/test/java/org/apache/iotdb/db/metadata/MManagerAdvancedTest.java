@@ -82,11 +82,11 @@ public class MManagerAdvancedTest {
       }
       // test filename by seriesPath
       assertEquals("root.vehicle.d0", mmanager.getStorageGroupName("root.vehicle.d0.s1"));
-      List<String> pathList = mmanager.getPaths("root.vehicle.d1.*");
+      List<String> pathList = mmanager.getAllTimeseriesName("root.vehicle.d1.*");
       assertEquals(6, pathList.size());
-      List<String> paths = mmanager.getPaths("root.vehicle.d0");
+      List<String> paths = mmanager.getAllTimeseriesName("root.vehicle.d0");
       assertEquals(6, paths.size());
-      paths = mmanager.getPaths("root.vehicle.d2");
+      paths = mmanager.getAllTimeseriesName("root.vehicle.d2");
       assertEquals(0, paths.size());
     } catch (MetadataException e) {
       e.printStackTrace();

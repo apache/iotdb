@@ -308,7 +308,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected List<String> getPaths(String path) throws MetadataException {
-    return MManager.getInstance().getPaths(path);
+    return MManager.getInstance().getAllTimeseriesName(path);
   }
 
   private List<String> getNodesList(String schemaPattern, int level) throws MetadataException {
@@ -499,7 +499,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       Set<String> existingPaths = new HashSet<>();
       for (Path p : deletePlan.getPaths()) {
-        existingPaths.addAll(mManager.getPaths(p.getFullPath()));
+        existingPaths.addAll(mManager.getAllTimeseriesName(p.getFullPath()));
       }
       if (existingPaths.isEmpty()) {
         throw new QueryProcessException(

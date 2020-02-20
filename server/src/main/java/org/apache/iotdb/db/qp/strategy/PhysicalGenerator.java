@@ -282,7 +282,7 @@ public class PhysicalGenerator {
           Path fullPath = Path.addPrefixPath(suffixPath, device);
           try {
             List<String> actualPaths = MManager.getInstance()
-                .getPaths(fullPath.getFullPath());  // remove stars in SELECT to get actual paths
+                .getAllTimeseriesName(fullPath.getFullPath());  // remove stars in SELECT to get actual paths
 
             // for actual non exist path
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
