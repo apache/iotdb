@@ -593,7 +593,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
     for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDatas) {
       String device = chunkGroupMetaData.getDeviceID();
-      MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(device);
+      MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(device, true, sgLevel);
       for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
         String measurement = chunkMetaData.getMeasurementUid();
         String fullPath = device + IoTDBConstant.PATH_SEPARATOR + measurement;

@@ -321,7 +321,8 @@ public class MManager {
       TSDataType tsDataType = TSDataType.valueOf(dataType);
       TSEncoding tsEncoding = TSEncoding.valueOf(encoding);
       CompressionType type = TSFileDescriptor.getInstance().getConfig().getCompressor();
-      createTimeseriesWithMemoryCheckAndLog(path, tsDataType, tsEncoding, type, Collections.emptyMap());
+      createTimeseriesWithMemoryCheckAndLog(path, tsDataType, tsEncoding, type,
+          Collections.emptyMap());
     } finally {
       lock.writeLock().unlock();
     }
@@ -330,7 +331,8 @@ public class MManager {
   /**
    * timeseries will be added to MTree with check memory, and log to file
    */
-  private void createTimeseriesWithMemoryCheckAndLog(String timeseries, TSDataType dataType, TSEncoding encoding,
+  private void createTimeseriesWithMemoryCheckAndLog(String timeseries, TSDataType dataType,
+      TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) throws MetadataException {
     mtree.createTimeseries(timeseries, dataType, encoding, compressor, props);
     try {
@@ -371,8 +373,8 @@ public class MManager {
       int size = seriesNumberInStorageGroups.get(prefixPath);
       seriesNumberInStorageGroups.put(prefixPath, 0);
       if (size == maxSeriesNumberAmongStorageGroup) {
-        maxSeriesNumberAmongStorageGroup = seriesNumberInStorageGroups.values().stream()
-            .max(Integer::compareTo).get();
+        seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
+            .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
       }
       try {
         IoTDBConfigDynamicAdapter.getInstance()
@@ -429,8 +431,8 @@ public class MManager {
       int size = seriesNumberInStorageGroups.get(storageGroup);
       seriesNumberInStorageGroups.put(storageGroup, size - 1);
       if (size == maxSeriesNumberAmongStorageGroup) {
-        maxSeriesNumberAmongStorageGroup = seriesNumberInStorageGroups.values().stream()
-            .max(Integer::compareTo).get();
+        seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
+            .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
       }
       return storageGroupName;
     } finally {
@@ -733,32 +735,35 @@ public class MManager {
    *
    * @param path path
    */
-  public MNode getDeviceNodeWithAutoCreateStorageGroup(String path) throws MetadataException {
+  public MNode getDeviceNodeWithAutoCreateStorageGroup(String path, boolean autoCreateSchema,
+      int sgLevel) throws MetadataException {
     lock.readLock().lock();
     MNode node = null;
-    boolean shouldSetStorageGroup = false;
-    boolean autoCreateSchema = config.isAutoCreateSchemaEnabled();
+    boolean setStorageGroup = false;
     try {
       node = mNodeCache.get(path);
     } catch (CacheException e) {
       if (!autoCreateSchema) {
         throw new PathNotExistException(path);
-      }
-      if (e.getCause() instanceof StorageGroupNotSetException) {
-        shouldSetStorageGroup = true;
+      } else {
+        setStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
       }
     } finally {
       lock.readLock().unlock();
-      if (shouldSetStorageGroup) {
-        String storageGroupName = MetaUtils.getStorageGroupNameByLevel(path,
-            config.getDefaultStorageGroupLevel());
-        setStorageGroup(storageGroupName);
-      }
       if (autoCreateSchema) {
+        if (setStorageGroup) {
+          String storageGroupName = MetaUtils.getStorageGroupNameByLevel(path, sgLevel);
+          setStorageGroup(storageGroupName);
+        }
         node = mtree.getDeviceNodeWithAutoCreating(path);
       }
     }
     return node;
+  }
+
+  public MNode getDeviceNodeWithAutoCreateStorageGroup(String path) throws MetadataException {
+    return getDeviceNodeWithAutoCreateStorageGroup(path, config.isAutoCreateSchemaEnabled(),
+        config.getDefaultStorageGroupLevel());
   }
 
   /**
