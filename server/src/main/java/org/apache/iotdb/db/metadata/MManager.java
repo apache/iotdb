@@ -332,8 +332,8 @@ public class MManager {
    * timeseries will be added to MTree with check memory, and log to file
    */
   private void createTimeseriesWithMemoryCheckAndLog(String timeseries, TSDataType dataType,
-      TSEncoding encoding,
-      CompressionType compressor, Map<String, String> props) throws MetadataException {
+      TSEncoding encoding, CompressionType compressor, Map<String, String> props)
+      throws MetadataException {
     mtree.createTimeseries(timeseries, dataType, encoding, compressor, props);
     try {
       // check memory
