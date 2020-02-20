@@ -79,6 +79,14 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     headerGroupMap.put(dataGroupMember.getHeader(), dataGroupMember);
   }
 
+  /**
+   *
+   * @param header the header of the group which the local node is in
+   * @param resultHandler can be set to null if the request is an internal request
+   * @param request the toString() of this parameter should explain what the request is and it is
+   *                only used in logs for tracing
+   * @return
+   */
   public DataGroupMember getDataMember(Node header, AsyncMethodCallback resultHandler,
       Object request) {
     if (header == null) {

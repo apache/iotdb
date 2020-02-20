@@ -52,6 +52,7 @@ import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
+import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
 import org.apache.iotdb.cluster.query.reader.BatchedPointReader;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -73,6 +74,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
+import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -84,6 +86,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.OldUnseqResourceMergeReader;
@@ -91,6 +94,7 @@ import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithValueFilter;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -138,7 +142,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
     queryProcessor = new ClusterQueryParser(metaGroupMember);
-    queryManager = new ClusterQueryManager();
+    setQueryManager(new ClusterQueryManager());
   }
 
   @Override
@@ -154,7 +158,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     pullSnapshotService.shutdownNow();
     pullSnapshotService = null;
     try {
-      queryManager.endAllQueries();
+      getQueryManager().endAllQueries();
     } catch (StorageEngineException e) {
       logger.error("Cannot release queries of {}", name, e);
     }
@@ -169,6 +173,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public Node getHeader() {
     return allNodes.get(0);
+  }
+
+  public ClusterQueryManager getQueryManager() {
+    return queryManager;
+  }
+
+  public void setQueryManager(ClusterQueryManager queryManager) {
+    this.queryManager = queryManager;
   }
 
   public static class Factory {
@@ -309,8 +321,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // TODO-Cluster#352: The problem of duplicated data in remote files is partially resolved by
     //  tracking the merge history using the version numbers of the merged files. But a better
     //  solution still remains to be found.
-    String separatorString = File.separator.equals("\\") ? "\\\\" : "/";
-    String[] pathSegments = resource.getFile().getAbsolutePath().split(separatorString);
+    String[] pathSegments = PartitionUtils.splitTsFilePath(resource);
     int segSize = pathSegments.length;
     // {storageGroupName}/{partitionNum}/{fileName}
     String storageGroupName = pathSegments[segSize - 3];
@@ -354,8 +365,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   private void loadRemoteResource(RemoteTsFileResource resource) {
     // remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/{fileName}
-    String separatorString = File.separator.equals("\\") ? "\\\\" : "/";
-    String[] pathSegments = resource.getFile().getAbsolutePath().split(separatorString);
+    String[] pathSegments = PartitionUtils.splitTsFilePath(resource);
     int segSize = pathSegments.length;
     String storageGroupName = pathSegments[segSize - 3];
     File remoteModFile =
@@ -379,8 +389,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   private File pullRemoteFile(RemoteTsFileResource resource, Node node) {
     logger.debug("{}: pulling remote file {} from {}", name, resource, node);
 
-    String separatorString = File.separator.equals("\\") ? "\\\\" : "/";
-    String[] pathSegments = resource.getFile().getAbsolutePath().split(separatorString);
+    String[] pathSegments = PartitionUtils.splitTsFilePath(resource);
     int segSize = pathSegments.length;
     // remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/{fileName}
     String tempFileName =
@@ -644,7 +653,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     if (request.isSetFilterBytes()) {
       timeFilter = FilterFactory.deserialize(request.filterBytes);
     }
-    RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequester(),
+    RemoteQueryContext queryContext = getQueryManager().getQueryContext(request.getRequester(),
         request.getQueryId());
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
@@ -658,7 +667,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       }
 
       if (batchReader.hasNextBatch()) {
-        long readerId = queryManager.registerReader(batchReader);
+        long readerId = getQueryManager().registerReader(batchReader);
         queryContext.registerLocalReader(readerId);
         logger.debug("{}: Build a reader of {} for {}#{}, readerId: {}", name, path,
             request.getRequester(), request.getQueryId(), readerId);
@@ -685,13 +694,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
 
     Path path = new Path(request.getPath());
-    RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequester(),
+    RemoteQueryContext queryContext = getQueryManager().getQueryContext(request.getRequester(),
         request.getQueryId());
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
     try {
       IReaderByTimestamp readerByTimestamp = getReaderByTimestamp(path, queryContext);
-      long readerId = queryManager.registerReaderByTime(readerByTimestamp);
+      long readerId = getQueryManager().registerReaderByTime(readerByTimestamp);
       queryContext.registerLocalReader(readerId);
 
       logger.debug("{}: Build a readerByTimestamp of {} for {}, readerId: {}", name, path,
@@ -706,7 +715,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   public void endQuery(Node header, Node requester, long queryId,
       AsyncMethodCallback<Void> resultHandler) {
     try {
-      queryManager.endQuery(requester, queryId);
+      getQueryManager().endQuery(requester, queryId);
       resultHandler.onComplete(null);
     } catch (StorageEngineException e) {
       resultHandler.onError(e);
@@ -716,7 +725,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    IReaderByTimestamp reader = queryManager.getReaderByTimestamp(readerId);
+    IReaderByTimestamp reader = getQueryManager().getReaderByTimestamp(readerId);
     if (reader == null) {
       resultHandler.onError(new ReaderNotFoundException(readerId));
       return;
@@ -740,7 +749,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void fetchSingleSeries(Node header, long readerId,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    IBatchReader reader = queryManager.getReader(readerId);
+    IBatchReader reader = getQueryManager().getReader(readerId);
     if (reader == null) {
       resultHandler.onError(new ReaderNotFoundException(readerId));
       return;
@@ -830,7 +839,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     if (request.isSetFilterBytes()) {
       filter = FilterFactory.deserialize(request.filterBytes);
     }
-    RemoteQueryContext context = queryManager.getQueryContext(requester, queryId);
+    RemoteQueryContext context = getQueryManager().getQueryContext(requester, queryId);
     try {
       Pair<IAggregateReader, ManagedSeriesReader> aggregateReaders = getAggregateReaders(
           new Path(path), context, filter, reverse, dataType);
@@ -840,13 +849,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       long seqReaderId = -1;
       long unseqReaderId = -1;
       if (seqResourceIterateReader.hasNextBatch()) {
-        seqReaderId = queryManager.registerAggrReader(seqResourceIterateReader);
+        seqReaderId = getQueryManager().registerAggrReader(seqResourceIterateReader);
         context.registerLocalReader(seqReaderId);
       } else {
         seqResourceIterateReader.close();
       }
       if (unseqResourceMergeReader.hasNextBatch()) {
-        unseqReaderId = queryManager.registerReader(unseqResourceMergeReader);
+        unseqReaderId = getQueryManager().registerReader(unseqResourceMergeReader);
         context.registerLocalReader(unseqReaderId);
       } else {
         unseqResourceMergeReader.close();
@@ -866,6 +875,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       throws IOException, StorageEngineException {
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(path, context);
+    List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
+    TsFileFilter fileFilter = new SlotTsFileFilter(nodeSlots);
+    QueryUtils.filterQueryDataSource(queryDataSource, fileFilter);
+
     IAggregateReader seqResourceIterateReader = new SeqResourceIterateReader(queryDataSource.getSeriesPath(),
         queryDataSource.getSeqResources(), filter, context, reverse);
     ManagedSeriesReader unseqResourceMergeReader = new BatchedPointReader(new OldUnseqResourceMergeReader(
@@ -878,7 +891,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   public void fetchPageHeader(Node header, long readerId,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
-      PageHeader pageHeader = queryManager.getAggrReader(readerId).nextPageHeader();
+      IAggregateReader aggrReader = getQueryManager().getAggrReader(readerId);
+      if (!aggrReader.hasNextBatch()) {
+        resultHandler.onComplete(null);
+        return;
+      }
+      PageHeader pageHeader = getQueryManager().getAggrReader(readerId).nextPageHeader();
       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
       pageHeader.serializeTo(byteArrayOutputStream);
       resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
@@ -890,7 +908,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void skipPageData(Node header, long readerId, AsyncMethodCallback<Void> resultHandler) {
     try {
-      queryManager.getAggrReader(readerId).skipPageData();
+      getQueryManager().getAggrReader(readerId).skipPageData();
       resultHandler.onComplete(null);
     } catch (IOException e) {
       resultHandler.onError(e);

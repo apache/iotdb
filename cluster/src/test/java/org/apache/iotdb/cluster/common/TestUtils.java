@@ -28,6 +28,10 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -182,5 +186,32 @@ public class TestUtils {
       batchB.next();
     }
     return true;
+  }
+
+  public static void prepareAggregateData()
+      throws QueryProcessException {
+    InsertPlan insertPlan = new InsertPlan();
+    insertPlan.setDeviceId(getTestSg(0));
+    insertPlan.setDataTypes(new TSDataType[] {TSDataType.DOUBLE, TSDataType.DOUBLE,
+        TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE});
+    insertPlan.setMeasurements(new String[] {getTestMeasurement(0),
+        getTestMeasurement(1), getTestMeasurement(2),
+        getTestMeasurement(3), getTestMeasurement(4)});
+    for (int i = 10; i < 20; i++) {
+      insertPlan.setTime(i);
+      insertPlan.setValues(new String[] {String.valueOf(i), String.valueOf(i), String.valueOf(i),
+          String.valueOf(i), String.valueOf(i)});
+      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
+      queryProcessExecutor.processNonQuery(insertPlan);
+    }
+    StorageEngine.getInstance().syncCloseAllProcessor();
+    for (int i = 0; i < 10; i++) {
+      insertPlan.setTime(i);
+      insertPlan.setValues(new String[] {String.valueOf(i), String.valueOf(i), String.valueOf(i),
+          String.valueOf(i), String.valueOf(i)});
+      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
+      queryProcessExecutor.processNonQuery(insertPlan);
+    }
+    StorageEngine.getInstance().syncCloseAllProcessor();
   }
 }

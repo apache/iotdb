@@ -21,12 +21,14 @@ package org.apache.iotdb.cluster.utils;
 
 import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Set;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -61,6 +63,7 @@ import org.slf4j.LoggerFactory;
 public class PartitionUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(PartitionUtils.class);
+  private static final String PATH_SPLIT_STRING = File.separator.equals("\\") ? "\\\\" : "/";
   private PartitionUtils() {
     // util class
   }
@@ -110,10 +113,6 @@ public class PartitionUtils {
     long partitionInstance = StorageEngine.fromTimeToTimePartition(timestamp);
     int hash = Murmur128Hash.hash(storageGroupName, partitionInstance, HASH_SALT);
     return Math.abs(hash % slotNum);
-  }
-
-  public static int calculateStorageGroupSlot(String storageGroupName, long timestamp) {
-    return calculateStorageGroupSlot(storageGroupName, timestamp, ClusterConstant.SLOT_NUM);
   }
 
   public static BatchInsertPlan copy(BatchInsertPlan plan, long[] times, Object[] values) {
@@ -358,5 +357,9 @@ public class PartitionUtils {
       result.add(partitionTable.routeToHeader(storageGroupName, currPartitionStart));
       currPartitionStart += partitionInterval;
     }
+  }
+
+  public static String[] splitTsFilePath(TsFileResource resource) {
+    return resource.getFile().getAbsolutePath().split(PATH_SPLIT_STRING);
   }
 }

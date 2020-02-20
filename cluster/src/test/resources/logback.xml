@@ -36,7 +36,7 @@
     <!--<logger name="org.apache.iotdb.db.utils.OpenFileNumUtil" level="debug" />-->
     <!--<logger name="org.apache.iotdb.db.utils.OpenFileNumUtilTest" level="debug" />-->
     <logger name="org.apache.iotdb.db.integration.IoTDBMergeTest" level="INFO"/>
-    <root level="ERROR">
+    <root level="info">
         <appender-ref ref="stdout"/>
     </root>
 </configuration>

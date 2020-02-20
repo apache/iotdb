@@ -40,9 +40,9 @@ public class ClusterQueryExecutorTest extends BaseQueryTest{
   private ClusterQueryExecutor queryExecutor;
 
   @Before
-  public void setUp() throws MetadataException {
+  public void setUp() throws MetadataException, QueryProcessException {
     super.setUp();
-    queryExecutor = new ClusterQueryExecutor(metaGroupMember);
+    queryExecutor = new ClusterQueryExecutor(localMetaGroupMember);
   }
 
   @Test

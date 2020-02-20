@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.query;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.Collections;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -39,9 +38,9 @@ public class ClusterPhysicalGeneratorTest extends BaseQueryTest{
   private ClusterPhysicalGenerator physicalGenerator;
 
   @Before
-  public void setUp() throws MetadataException {
+  public void setUp() throws MetadataException, QueryProcessException {
     super.setUp();
-    physicalGenerator = new ClusterPhysicalGenerator(queryProcessExecutor, metaGroupMember);
+    physicalGenerator = new ClusterPhysicalGenerator(queryProcessExecutor, localMetaGroupMember);
   }
 
   @Test

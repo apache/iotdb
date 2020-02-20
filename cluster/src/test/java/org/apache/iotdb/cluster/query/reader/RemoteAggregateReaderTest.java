@@ -8,13 +8,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.common.TestAggregateReader;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -29,7 +27,6 @@ public class RemoteAggregateReaderTest {
 
   private MetaGroupMember metaGroupMember;
   private IAggregateReader remoteReader;
-  private ClientPool clientPool;
   private DataClient client;
 
   private int pageSize = 1000;
@@ -38,13 +35,7 @@ public class RemoteAggregateReaderTest {
 
   @Before
   public void setUp() throws Exception {
-    clientPool = new ClientPool(null) {
-      @Override
-      public AsyncClient getClient(Node node) {
-        return client;
-      }
-    };
-    client = new DataClient(null, null, TestUtils.getNode(0), clientPool){
+     client = new DataClient(null, null, TestUtils.getNode(0), null){
       @Override
       public void fetchSingleSeries(Node header, long readerId,
           AsyncMethodCallback<ByteBuffer> resultHandler) {
@@ -93,8 +84,8 @@ public class RemoteAggregateReaderTest {
 
     metaGroupMember = new TestMetaGroupMember() {
       @Override
-      public ClientPool getDataClientPool() {
-        return clientPool;
+      public DataClient getDataClient(Node node) {
+        return client;
       }
     };
 

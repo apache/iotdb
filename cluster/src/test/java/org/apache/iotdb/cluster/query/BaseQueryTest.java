@@ -24,14 +24,30 @@ import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
+import org.apache.iotdb.cluster.common.TestDataClient;
+import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestManagedSeriesReader;
+import org.apache.iotdb.cluster.common.TestMetaClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.SlotPartitionTable;
+import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderResp;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
@@ -44,19 +60,34 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.thrift.TException;
+import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
 
 public class BaseQueryTest {
 
-  MetaGroupMember metaGroupMember;
+  MetaGroupMember localMetaGroupMember;
+  DataGroupMember remoteDataGroupMember;
   List<Path> pathList;
   List<TSDataType> dataTypes;
   IQueryProcessExecutor queryProcessExecutor;
 
   @Before
-  public void setUp() throws MetadataException {
-    metaGroupMember = new TestMetaGroupMember() {
+  public void setUp() throws MetadataException, QueryProcessException {
+    List<Node> allNodes = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      allNodes.add(TestUtils.getNode(i));
+    }
+
+    remoteDataGroupMember = new TestDataGroupMember() {
+      @Override
+      public boolean syncLeader() {
+        return true;
+      }
+    };
+
+    localMetaGroupMember = new TestMetaGroupMember() {
       @Override
       public TSDataType getSeriesType(String pathStr) {
         for (int i = 0; i < pathList.size(); i++) {
@@ -94,7 +125,68 @@ public class BaseQueryTest {
           throws MetadataException {
         return MManager.getInstance().getPaths(pathPattern);
       }
+
+      @Override
+      protected DataGroupMember getLocalDataMember(Node header, AsyncMethodCallback resultHandler,
+          Object request) {
+        return new DataGroupMember();
+      }
+
+      @Override
+      public AsyncClient connectNode(Node node) {
+        try {
+          return new TestMetaClient(null, null, node, null) {
+            @Override
+            public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
+              new Thread(() -> resultHandler.onComplete(new TNodeStatus())).start();
+            }
+          };
+        } catch (IOException e) {
+          return null;
+        }
+      }
+
+      @Override
+      public DataClient getDataClient(Node node) throws IOException {
+        return new TestDataClient(node) {
+          @Override
+          public void getAggregateReader(GetAggregateReaderRequest request,
+              AsyncMethodCallback<GetAggregateReaderResp> resultHandler) {
+            new Thread(() -> {
+              remoteDataGroupMember.getAggregateReader(request, resultHandler);
+            }).start();
+          }
+
+          @Override
+          public void fetchPageHeader(Node header, long readerId,
+              AsyncMethodCallback<ByteBuffer> resultHandler) {
+            new Thread(() -> {
+              remoteDataGroupMember.fetchPageHeader(header, readerId, resultHandler);
+            }).start();
+          }
+
+          @Override
+          public void skipPageData(Node header, long readerId,
+              AsyncMethodCallback<Void> resultHandler) {
+            new Thread(() -> {
+              remoteDataGroupMember.skipPageData(header, readerId, resultHandler);
+            }).start();
+          }
+
+          @Override
+          public void fetchSingleSeries(Node header, long readerId,
+              AsyncMethodCallback<ByteBuffer> resultHandler) {
+            new Thread(() -> {
+              remoteDataGroupMember.fetchSingleSeries(header, readerId, resultHandler);
+            }).start();
+          }
+        };
+      }
     };
+    localMetaGroupMember.setAllNodes(allNodes);
+
+    PartitionTable partitionTable = new SlotPartitionTable(allNodes, TestUtils.getNode(0));
+    localMetaGroupMember.setPartitionTable(partitionTable);
 
     pathList = new ArrayList<>();
     dataTypes = new ArrayList<>();
@@ -112,7 +204,7 @@ public class BaseQueryTest {
       @Override
       public TSDataType getSeriesType(Path path) {
         try {
-          return metaGroupMember.getSeriesType(path.getFullPath());
+          return localMetaGroupMember.getSeriesType(path.getFullPath());
         } catch (MetadataException e) {
           return null;
         }
@@ -121,17 +213,23 @@ public class BaseQueryTest {
 
     MManager.getInstance().init();
     for (int i = 0; i < 10; i++) {
-      MManager.getInstance().setStorageGroupToMTree(TestUtils.getTestSg(i));
-      MeasurementSchema schema = TestUtils.getTestSchema(0, i);
-      MManager.getInstance().addPathToMTree(schema.getMeasurementId(), schema.getType(),
-          schema.getEncodingType(), schema.getCompressor(), schema.getProps());
+      try {
+        MManager.getInstance().setStorageGroupToMTree(TestUtils.getTestSg(i));
+        MeasurementSchema schema = TestUtils.getTestSchema(0, i);
+        MManager.getInstance().addPathToMTree(schema.getMeasurementId(), schema.getType(),
+            schema.getEncodingType(), schema.getCompressor(), schema.getProps());
+      } catch (PathAlreadyExistException e) {
+        // ignore
+      }
     }
+    QueryCoordinator.getINSTANCE().setMetaGroupMember(localMetaGroupMember);
   }
 
   @After
   public void tearDown() throws IOException {
     MManager.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
+    QueryCoordinator.getINSTANCE().setMetaGroupMember(null);
   }
 
   void checkDataset(QueryDataSet dataSet, int offset, int size) throws IOException {

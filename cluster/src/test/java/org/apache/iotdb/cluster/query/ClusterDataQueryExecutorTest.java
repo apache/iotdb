@@ -37,7 +37,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
 
   @Test
   public void testNoFilter() throws IOException, StorageEngineException {
-    queryExecutor = new ClusterDataQueryExecutor(pathList, dataTypes, null, metaGroupMember);
+    queryExecutor = new ClusterDataQueryExecutor(pathList, dataTypes, null, localMetaGroupMember);
     QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(
         new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
     checkDataset(dataSet, 0, 100);
@@ -47,7 +47,8 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
   public void testFilter() throws IOException, StorageEngineException {
     IExpression expression = new SingleSeriesExpression(new Path(TestUtils.getTestSeries(0, 0)),
         ValueFilter.gtEq(50.0));
-    queryExecutor = new ClusterDataQueryExecutor(pathList, dataTypes, expression, metaGroupMember);
+    queryExecutor = new ClusterDataQueryExecutor(pathList, dataTypes, expression,
+        localMetaGroupMember);
     QueryDataSet dataSet = queryExecutor.executeWithValueFilter(
         new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
     checkDataset(dataSet, 50, 50);

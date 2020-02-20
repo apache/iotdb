@@ -54,15 +54,25 @@ public class IoTDBTest {
   private static IoTDB daemon = IoTDB.getInstance();
   private QueryProcessExecutor queryProcessExecutor;
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private boolean prevEnableAutoSchema;
 
   @Before
   public void setUp() throws StartupException, QueryProcessException {
+    prevEnableAutoSchema = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
     EnvironmentUtils.closeStatMonitor();
     daemon.active();
     EnvironmentUtils.envSetUp();
     queryProcessExecutor = new QueryProcessExecutor();
     prepareSchema();
     prepareData(0, 0, 100);
+  }
+
+  @After
+  public void tearDown() throws IOException, StorageEngineException {
+    daemon.stop();
+    EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(prevEnableAutoSchema);
   }
 
   private void prepareSchema() throws QueryProcessException {
@@ -104,12 +114,6 @@ public class IoTDBTest {
       insertPlan.setValues(values);
       queryProcessExecutor.insert(insertPlan);
     }
-  }
-
-  @After
-  public void tearDown() throws IOException, StorageEngineException {
-    daemon.stop();
-    EnvironmentUtils.cleanEnv();
   }
 
   protected void setStorageGroup(String storageGroupName) throws QueryProcessException {

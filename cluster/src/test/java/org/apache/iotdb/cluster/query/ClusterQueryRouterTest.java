@@ -29,6 +29,7 @@ import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -48,9 +49,9 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
 
   @Override
   @Before
-  public void setUp() throws MetadataException {
+  public void setUp() throws MetadataException, QueryProcessException {
     super.setUp();
-    clusterQueryRouter = new ClusterQueryRouter(metaGroupMember);
+    clusterQueryRouter = new ClusterQueryRouter(localMetaGroupMember);
   }
 
   @Test

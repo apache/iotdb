@@ -6,7 +6,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -14,7 +13,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -27,11 +25,19 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.junit.Before;
 import org.junit.Test;
 
 public class ClusterAggregateExecutorTest extends BaseQueryTest {
 
   private ClusterAggregateExecutor executor;
+
+  @Override
+  @Before
+  public void setUp() throws MetadataException, QueryProcessException {
+    super.setUp();
+    TestUtils.prepareAggregateData();
+  }
 
   @Test
   public void testNoFilter()
@@ -55,7 +61,7 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
     plan.setDeduplicatedAggregations(aggregations);
 
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
-    executor = new ClusterAggregateExecutor(plan, metaGroupMember);
+    executor = new ClusterAggregateExecutor(plan, localMetaGroupMember);
     QueryDataSet queryDataSet = executor.executeWithoutValueFilter(context);
     assertTrue(queryDataSet.hasNext());
     RowRecord record = queryDataSet.next();
@@ -63,14 +69,14 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
     assertEquals(5, fields.size());
     Object[] answers = new Object[] {0,0,0,0,0};
     for (int i = 0; i < 5; i++) {
-      assertEquals(answers[i], fields.get(i));
+      assertEquals(answers[i].toString(), fields.get(i).toString());
     }
     assertFalse(queryDataSet.hasNext());
   }
 
   @Test
   public void testFilter()
-      throws MetadataException, QueryProcessException, StorageEngineException, IOException {
+      throws MetadataException, StorageEngineException, IOException {
     AggregationPlan plan = new AggregationPlan();
     List<Path> paths = Arrays.asList(
         new Path(TestUtils.getTestSeries(0, 0)),
@@ -94,7 +100,7 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
         new GlobalTimeExpression(TimeFilter.gtEq(3))));
 
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
-    executor = new ClusterAggregateExecutor(plan, metaGroupMember);
+    executor = new ClusterAggregateExecutor(plan, localMetaGroupMember);
     QueryDataSet queryDataSet = executor.executeWithValueFilter(context);
     assertTrue(queryDataSet.hasNext());
     RowRecord record = queryDataSet.next();

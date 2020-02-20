@@ -49,7 +49,7 @@ public class RemoteSimpleSeriesReader implements ManagedSeriesReader {
   Node header;
   MetaGroupMember metaGroupMember;
 
-  private BatchData cachedBatch;
+  BatchData cachedBatch;
   private TimeValuePair cachedPair;
 
   private AtomicReference<ByteBuffer> fetchResult = new AtomicReference<>();
@@ -150,8 +150,8 @@ public class RemoteSimpleSeriesReader implements ManagedSeriesReader {
     this.hasRemaining = hasRemaining;
   }
 
-  private void fetchBatch() throws IOException {
-    DataClient client = (DataClient) metaGroupMember.getDataClientPool().getClient(source);
+  void fetchBatch() throws IOException {
+    DataClient client = metaGroupMember.getDataClient(source);
     synchronized (fetchResult) {
       fetchResult.set(null);
       try {

@@ -42,7 +42,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.client.ClientPool;
+import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.common.TestDataClient;
 import org.apache.iotdb.cluster.common.TestMetaClient;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
@@ -60,8 +60,6 @@ import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
-import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderRequest;
-import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderResp;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -75,7 +73,6 @@ import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -109,7 +106,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
@@ -253,67 +249,62 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
-      public ClientPool getDataClientPool() {
-        return new ClientPool(null) {
+      public DataClient getDataClient(Node node) throws IOException {
+        return new TestDataClient(node) {
+
           @Override
-          public AsyncClient getClient(Node node) throws IOException {
-            return new TestDataClient(node) {
+          public void querySingleSeries(SingleSeriesQueryRequest request,
+              AsyncMethodCallback<Long> resultHandler) {
+            new Thread(() -> dataGroupMember.querySingleSeries(request, resultHandler)).start();
+          }
 
-              @Override
-              public void querySingleSeries(SingleSeriesQueryRequest request,
-                  AsyncMethodCallback<Long> resultHandler) {
-                new Thread(() -> dataGroupMember.querySingleSeries(request, resultHandler)).start();
-              }
+          @Override
+          public void fetchSingleSeries(Node header, long readerId,
+              AsyncMethodCallback<ByteBuffer> resultHandler) {
+            new Thread(() -> dataGroupMember.fetchSingleSeries(header, readerId, resultHandler))
+                .start();
+          }
 
-              @Override
-              public void fetchSingleSeries(Node header, long readerId,
-                  AsyncMethodCallback<ByteBuffer> resultHandler) {
-                new Thread(() -> dataGroupMember.fetchSingleSeries(header, readerId, resultHandler))
-                    .start();
-              }
+          @Override
+          public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
+              AsyncMethodCallback<Long> resultHandler) {
+            new Thread(
+                () -> dataGroupMember.querySingleSeriesByTimestamp(request, resultHandler))
+                .start();
+          }
 
-              @Override
-              public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
-                  AsyncMethodCallback<Long> resultHandler) {
-                new Thread(
-                    () -> dataGroupMember.querySingleSeriesByTimestamp(request, resultHandler))
-                    .start();
-              }
+          @Override
+          public void fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp,
+              AsyncMethodCallback<ByteBuffer> resultHandler) {
+            new Thread(
+                () -> dataGroupMember.fetchSingleSeriesByTimestamp(header, readerId, timestamp,
+                    resultHandler)).start();
+          }
 
-              @Override
-              public void fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp,
-                  AsyncMethodCallback<ByteBuffer> resultHandler) {
-                new Thread(
-                    () -> dataGroupMember.fetchSingleSeriesByTimestamp(header, readerId, timestamp,
-                        resultHandler)).start();
+          @Override
+          public void getAllPaths(Node header, String path,
+              AsyncMethodCallback<List<String>> resultHandler) {
+            new Thread(() -> {
+              try {
+                resultHandler.onComplete(MManager.getInstance().getPaths(path));
+              } catch (MetadataException e) {
+                resultHandler.onError(e);
               }
+            }).start();
+          }
 
-              @Override
-              public void getAllPaths(Node header, String path,
-                  AsyncMethodCallback<List<String>> resultHandler) {
-                new Thread(() -> {
-                  try {
-                    resultHandler.onComplete(MManager.getInstance().getPaths(path));
-                  } catch (MetadataException e) {
-                    resultHandler.onError(e);
-                  }
-                }).start();
+          @Override
+          public void executeNonQueryPlan(ExecutNonQueryReq request,
+              AsyncMethodCallback<TSStatus> resultHandler) {
+            new Thread(() -> {
+              try {
+                PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
+                queryProcessExecutor.processNonQuery(plan);
+                resultHandler.onComplete(StatusUtils.OK);
+              } catch (IOException | QueryProcessException e) {
+                resultHandler.onError(e);
               }
-
-              @Override
-              public void executeNonQueryPlan(ExecutNonQueryReq request,
-                  AsyncMethodCallback<TSStatus> resultHandler) {
-                new Thread(() -> {
-                  try {
-                    PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
-                    queryProcessExecutor.processNonQuery(plan);
-                    resultHandler.onComplete(StatusUtils.OK);
-                  } catch (IOException | QueryProcessException e) {
-                    resultHandler.onError(e);
-                  }
-                }).start();
-              }
-            };
+            }).start();
           }
         };
       }
@@ -1095,37 +1086,10 @@ public class MetaGroupMemberTest extends MemberTest {
     }
   }
 
-  private void prepareAggregateData()
-      throws QueryProcessException {
-    InsertPlan insertPlan = new InsertPlan();
-    insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setDataTypes(new TSDataType[] {TSDataType.DOUBLE, TSDataType.DOUBLE,
-        TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE});
-    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0),
-        TestUtils.getTestMeasurement(1), TestUtils.getTestMeasurement(2),
-        TestUtils.getTestMeasurement(3), TestUtils.getTestMeasurement(4)});
-    for (int i = 10; i < 20; i++) {
-      insertPlan.setTime(i);
-      insertPlan.setValues(new String[] {String.valueOf(i), String.valueOf(i), String.valueOf(i),
-          String.valueOf(i), String.valueOf(i)});
-      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
-      queryProcessExecutor.processNonQuery(insertPlan);
-    }
-    StorageEngine.getInstance().syncCloseAllProcessor();
-    for (int i = 0; i < 10; i++) {
-      insertPlan.setTime(i);
-      insertPlan.setValues(new String[] {String.valueOf(i), String.valueOf(i), String.valueOf(i),
-          String.valueOf(i), String.valueOf(i)});
-      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
-      queryProcessExecutor.processNonQuery(insertPlan);
-    }
-    StorageEngine.getInstance().syncCloseAllProcessor();
-  }
-
   @Test
   public void testGetAggregateReaders()
       throws MetadataException, IOException, StorageEngineException, QueryProcessException {
-    prepareAggregateData();
+    TestUtils.prepareAggregateData();
 
     List<Path> selectedPaths = Arrays.asList(new Path(TestUtils.getTestSeries(0, 0)),
         new Path(TestUtils.getTestSeries(0, 0)), new Path(TestUtils.getTestSeries(0, 0)),
