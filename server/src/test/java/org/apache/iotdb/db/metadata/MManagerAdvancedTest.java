@@ -29,6 +29,8 @@ import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -138,6 +140,22 @@ public class MManagerAdvancedTest {
 
     paths = mmanager.getLeafNodePathInNextLevel("root.vehicle.d2.s2");
     Assert.assertEquals(1, paths.size());
+  }
+
+  @Test
+  public void testCachedLastTimeValue()
+          throws PathException, IOException, StorageGroupException {
+    mmanager.addPathToMTree("root.vehicle.d2.s0", "DOUBLE", "RLE");
+
+    TimeValuePair tv1 = new TimeValuePair(1000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 0));
+    TimeValuePair tv2 = new TimeValuePair(2000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 0));
+    TimeValuePair tv3 = new TimeValuePair(1500, TsPrimitiveType.getByType(TSDataType.DOUBLE, 0));
+    MNode node = mmanager.getNodeByPath("root.vehicle.d2.s0");
+    node.setCachedLast(tv1);
+    node.updateCachedLast(tv2);
+    Assert.assertEquals(tv2.getTimestamp(), node.getCachedLast().getTimestamp());
+    node.updateCachedLast(tv3);
+    Assert.assertEquals(tv2.getTimestamp(), node.getCachedLast().getTimestamp());
   }
 
 }

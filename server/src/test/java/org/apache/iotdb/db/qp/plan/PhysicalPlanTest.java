@@ -619,4 +619,23 @@ public class PhysicalPlanTest {
     Assert.assertEquals(1, plan.getDeduplicatedDataTypes().size());
     Assert.assertEquals(new Path("root.vehicle.d1.s1"), plan.getDeduplicatedPaths().get(0));
   }
+
+  @Test
+  public void testLastPlanPaths() throws QueryProcessException {
+    String sqlStr = "SELECT last(s1) FROM root.vehicle.d1";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    Path path = new Path("root.vehicle.d1.s1");
+    assertEquals(1, plan.getPaths().size());
+    assertEquals(path.toString(), plan.getPaths().get(0).toString());
+  }
+
+  @Test
+  public void testLastPlanDataTypes() throws QueryProcessException {
+    String sqlStr = "SELECT last(d1) FROM root.vehicle";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+
+    assertEquals(1, ((LastQueryPlan) plan).getDataTypes().size());
+    TSDataType dataType = ((LastQueryPlan) plan).getDataTypes().get(0);
+    assertEquals(TSDataType.FLOAT, dataType);
+  }
 }
