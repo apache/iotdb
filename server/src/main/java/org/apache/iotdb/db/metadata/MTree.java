@@ -64,8 +64,8 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Create a timeseries with a full path from root to leaf node
-   * Before creating a timeseries, the storage group should be set first
+   * Create a timeseries with a full path from root to leaf node Before creating a timeseries, the
+   * storage group should be set first
    *
    * @param path timeseries path
    * @param dataType data type
@@ -194,8 +194,8 @@ public class MTree implements Serializable {
   /**
    * Check whether path is storage group or not
    *
-   * e.g., path = root.a.b.sg.
-   * if nor a and b is StorageGroupMNode and sg is a StorageGroupMNode path is a storage group
+   * e.g., path = root.a.b.sg. if nor a and b is StorageGroupMNode and sg is a StorageGroupMNode
+   * path is a storage group
    *
    * @param path path
    * @apiNote :for cluster
@@ -224,19 +224,17 @@ public class MTree implements Serializable {
    * @param path Format: root.node(.node)+
    */
   String deletePath(String path) throws MetadataException {
-
     MNode curNode = getNodeByPath(path);
-
-    // if the storage group node is deleted, the storageGroupName should be return
     if (!(curNode instanceof LeafMNode)) {
-      throw new MetadataException(path + " is not a time series");
+      throw new PathNotExistException(path);
     }
 
     // delete the last node of path
     curNode.getParent().deleteChild(curNode.getName());
     curNode = curNode.getParent();
     // delete all empty ancestors except storage group and
-    while (!IoTDBConstant.PATH_ROOT.equals(curNode.getName()) && curNode.getChildren().size() == 0) {
+    while (!IoTDBConstant.PATH_ROOT.equals(curNode.getName())
+        && curNode.getChildren().size() == 0) {
       // if current storage group has no time series, return the storage group name
       if (curNode instanceof StorageGroupMNode) {
         return curNode.getFullPath();
@@ -248,8 +246,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get measurement schema for a given path.
-   * Path must be a complete Path from root to leaf node.
+   * Get measurement schema for a given path. Path must be a complete Path from root to leaf node.
    */
   MeasurementSchema getSchema(String path) throws MetadataException {
     MNode node = getNodeByPath(path);
@@ -260,8 +257,8 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get node by path with storage group check
-   * If storage group is not set, StorageGroupNotSetException will be thrown
+   * Get node by path with storage group check If storage group is not set,
+   * StorageGroupNotSetException will be thrown
    */
   MNode getNodeByPathWithStorageGroupCheck(String path) throws MetadataException {
     boolean storageGroupChecked = false;
@@ -369,7 +366,8 @@ public class MTree implements Serializable {
       }
     } else {
       for (MNode child : node.getChildren().values()) {
-        findStorageGroup(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, storageGroupNames);
+        findStorageGroup(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
+            storageGroupNames);
       }
     }
   }
@@ -424,7 +422,7 @@ public class MTree implements Serializable {
     MNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
-      if (cur instanceof  StorageGroupMNode) {
+      if (cur instanceof StorageGroupMNode) {
         return cur.getFullPath();
       } else if (cur == null) {
         throw new StorageGroupNotSetException(path);
@@ -514,7 +512,8 @@ public class MTree implements Serializable {
       }
     } else {
       for (MNode child : node.getChildren().values()) {
-        findPath(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, timeseriesSchemaList);
+        findPath(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
+            timeseriesSchemaList);
       }
     }
   }
@@ -522,8 +521,8 @@ public class MTree implements Serializable {
   /**
    * function for getting child node path in the next level of the given path.
    *
-   * e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1]
-   * given path = root.sg1, return [root.sg1.d1, root.sg1.d2]
+   * e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1, return
+   * [root.sg1.d1, root.sg1.d2]
    *
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
