@@ -23,7 +23,6 @@ import java.io.IOException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -115,7 +114,7 @@ public class PerformanceTest {
 
   @Test
   public void recoverTest()
-      throws IOException, PathException, StorageGroupException {
+      throws IOException, MetadataException, StorageGroupException {
     // this test insert 1000000 * 3 logs , recover from them and report elapsed time
     if (skip) {
       return;
@@ -127,25 +126,25 @@ public class PerformanceTest {
     tempProcessorStore.createNewFile();
 
     try {
-      MManager.getInstance().setStorageGroupToMTree("root.logTestDevice");
+      MManager.getInstance().setStorageGroup("root.logTestDevice");
     } catch (MetadataException ignored) {
     }
-    MManager.getInstance().addPathToMTree("root.logTestDevice.s1",
+    MManager.getInstance().createTimeseries("root.logTestDevice.s1",
         TSDataType.DOUBLE.name(),
         TSEncoding.PLAIN.name());
     MManager.getInstance()
-        .addPathToMTree("root.logTestDevice.s2", TSDataType.INT32.name(),
+        .createTimeseries("root.logTestDevice.s2", TSDataType.INT32.name(),
             TSEncoding.PLAIN.name());
     MManager.getInstance()
-        .addPathToMTree("root.logTestDevice.s3", TSDataType.TEXT.name(),
+        .createTimeseries("root.logTestDevice.s3", TSDataType.TEXT.name(),
             TSEncoding.PLAIN.name());
-    MManager.getInstance().addPathToMTree("root.logTestDevice.s4", TSDataType.BOOLEAN.name(),
+    MManager.getInstance().createTimeseries("root.logTestDevice.s4", TSDataType.BOOLEAN.name(),
         TSEncoding.PLAIN.name());
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
     for (int i = 0; i < 1000000; i++) {
       InsertPlan bwInsertPlan = new InsertPlan("root.logTestDevice", 100,
-      new String[]{"s1", "s2", "s3", "s4"}, new String[]{"1.0", "15", "str", "false"});
+          new String[]{"s1", "s2", "s3", "s4"}, new String[]{"1.0", "15", "str", "false"});
       UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
           new Path("root.logTestDevice.s1"));
       DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));

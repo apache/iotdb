@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
+import org.apache.iotdb.tsfile.read.controller.CachedChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
@@ -53,7 +53,7 @@ public class TimeGeneratorTest {
     TsFileGeneratorForTest.generateFile(1000, 10 * 1024 * 1024, 10000);
     fileReader = new TsFileSequenceReader(FILE_PATH);
     metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader);
-    chunkLoader = new ChunkLoaderImpl(fileReader);
+    chunkLoader = new CachedChunkLoaderImpl(fileReader);
   }
 
   @After
@@ -75,7 +75,7 @@ public class TimeGeneratorTest {
             new SingleSeriesExpression(new Path("d1.s4"), filter2)),
         new SingleSeriesExpression(new Path("d1.s1"), filter3));
 
-    TimeGeneratorImpl timestampGenerator = new TimeGeneratorImpl(IExpression, chunkLoader,
+    TsFileTimeGenerator timestampGenerator = new TsFileTimeGenerator(IExpression, chunkLoader,
         metadataQuerierByFile);
     while (timestampGenerator.hasNext()) {
       // System.out.println(timestampGenerator.next());

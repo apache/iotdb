@@ -19,79 +19,108 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 
 public class OrNode implements Node {
+
+  private final int fetchSize = TSFileDescriptor.getInstance().getConfig().getBatchSize();
 
   private Node leftChild;
   private Node rightChild;
 
-  private boolean hasCachedLeftValue;
-  private long cachedLeftValue;
-  private boolean hasCachedRightValue;
-  private long cachedRightValue;
+  private TimeColumn leftTimeColumn;
+  private TimeColumn rightTimeColumn;
+
+  private TimeColumn cachedTimeColumn;
+  private boolean hasCachedValue;
+
 
   public OrNode(Node leftChild, Node rightChild) {
     this.leftChild = leftChild;
     this.rightChild = rightChild;
-    this.hasCachedLeftValue = false;
-    this.hasCachedRightValue = false;
   }
 
   @Override
-  public boolean hasNext() throws IOException {
-    if (hasCachedLeftValue || hasCachedRightValue) {
+  public boolean hasNextTimeColumn() throws IOException {
+    if (hasCachedValue) {
       return true;
     }
-    return leftChild.hasNext() || rightChild.hasNext();
-  }
 
-  private boolean hasLeftValue() throws IOException {
-    return hasCachedLeftValue || leftChild.hasNext();
-  }
-
-  private long getLeftValue() throws IOException {
-    if (hasCachedLeftValue) {
-      hasCachedLeftValue = false;
-      return cachedLeftValue;
+    if (!hasLeftValue() && leftChild.hasNextTimeColumn()) {
+      leftTimeColumn = leftChild.nextTimeColumn();
     }
-    return leftChild.next();
-  }
-
-  private boolean hasRightValue() throws IOException {
-    return hasCachedRightValue || rightChild.hasNext();
-  }
-
-  private long getRightValue() throws IOException {
-    if (hasCachedRightValue) {
-      hasCachedRightValue = false;
-      return cachedRightValue;
+    if (!hasRightValue() && rightChild.hasNextTimeColumn()) {
+      rightTimeColumn = rightChild.nextTimeColumn();
     }
-    return rightChild.next();
+
+    if (hasLeftValue() && !hasRightValue()) {
+      cachedTimeColumn = leftTimeColumn;
+      hasCachedValue = true;
+      return true;
+    } else if (!hasLeftValue() && hasRightValue()) {
+      cachedTimeColumn = rightTimeColumn;
+      hasCachedValue = true;
+      return true;
+    }
+
+    cachedTimeColumn = new TimeColumn(fetchSize);
+
+    while (hasLeftValue() && hasRightValue()) {
+      long leftValue = leftTimeColumn.currentTime();
+      long rightValue = rightTimeColumn.currentTime();
+
+      if (leftValue < rightValue) {
+        hasCachedValue = true;
+        cachedTimeColumn.add(leftValue);
+        leftTimeColumn.next();
+        if (!leftTimeColumn.hasCurrent() && leftChild.hasNextTimeColumn()) {
+          leftTimeColumn = leftChild.nextTimeColumn();
+        }
+      } else if (leftValue > rightValue) {
+        hasCachedValue = true;
+        cachedTimeColumn.add(rightValue);
+        rightTimeColumn.next();
+        if (!rightTimeColumn.hasCurrent() && rightChild.hasNextTimeColumn()) {
+          rightTimeColumn = rightChild.nextTimeColumn();
+        }
+      } else {
+        hasCachedValue = true;
+        cachedTimeColumn.add(leftValue);
+        leftTimeColumn.next();
+        rightTimeColumn.next();
+        if (!leftTimeColumn.hasCurrent() && leftChild.hasNextTimeColumn()) {
+          leftTimeColumn = leftChild.nextTimeColumn();
+        }
+        if (!rightTimeColumn.hasCurrent() && rightChild.hasNextTimeColumn()) {
+          rightTimeColumn = rightChild.nextTimeColumn();
+        }
+      }
+
+      if (cachedTimeColumn.size() >= fetchSize) {
+        break;
+      }
+    }
+    return hasCachedValue;
   }
 
   @Override
-  public long next() throws IOException {
-    if (hasLeftValue() && !hasRightValue()) {
-      return getLeftValue();
-    } else if (!hasLeftValue() && hasRightValue()) {
-      return getRightValue();
-    } else if (hasLeftValue() && hasRightValue()) {
-      long leftValue = getLeftValue();
-      long rightValue = getRightValue();
-      if (leftValue < rightValue) {
-        hasCachedRightValue = true;
-        cachedRightValue = rightValue;
-        return leftValue;
-      } else if (leftValue > rightValue) {
-        hasCachedLeftValue = true;
-        cachedLeftValue = leftValue;
-        return rightValue;
-      } else {
-        return leftValue;
-      }
+  public TimeColumn nextTimeColumn() throws IOException {
+    if (hasCachedValue || hasNextTimeColumn()) {
+      hasCachedValue = false;
+      return cachedTimeColumn;
     }
-    return -1;
+    throw new IOException("no more data");
   }
+
+  private boolean hasLeftValue() {
+    return leftTimeColumn != null && leftTimeColumn.hasCurrent();
+  }
+
+  private boolean hasRightValue() {
+    return rightTimeColumn != null && rightTimeColumn.hasCurrent();
+  }
+
 
   @Override
   public NodeType getType() {

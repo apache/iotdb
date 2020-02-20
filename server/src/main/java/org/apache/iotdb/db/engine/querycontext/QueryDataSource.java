@@ -64,18 +64,17 @@ public class QueryDataSource {
   }
 
   /**
-   *
-   * @return an updated time filter concerning TTL
+   * @return an updated filter concerning TTL
    */
-  public Filter updateTimeFilter(Filter timeFilter) {
+  public Filter updateFilterUsingTTL(Filter filter) {
     if (dataTTL != Long.MAX_VALUE) {
-      if (timeFilter != null) {
-        timeFilter = new AndFilter(timeFilter, TimeFilter.gtEq(System.currentTimeMillis() -
+      if (filter != null) {
+        filter = new AndFilter(filter, TimeFilter.gtEq(System.currentTimeMillis() -
             dataTTL));
       } else {
-        timeFilter = TimeFilter.gtEq(System.currentTimeMillis() - dataTTL);
+        filter = TimeFilter.gtEq(System.currentTimeMillis() - dataTTL);
       }
     }
-    return timeFilter;
+    return filter;
   }
 }

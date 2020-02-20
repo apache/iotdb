@@ -111,7 +111,7 @@ public class MergeTask implements Callable<Void> {
     mergeLogger.logFiles(resource);
 
     List<MeasurementSchema> measurementSchemas = MManager.getInstance()
-        .getSchemaForStorageGroup(storageGroupName);
+        .getStorageGroupSchema(storageGroupName);
     resource.addMeasurements(measurementSchemas);
 
     List<String> storageGroupPaths = MManager.getInstance().getPaths(storageGroupName + ".*");

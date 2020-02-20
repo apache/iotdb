@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read.common;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class RowRecord {
 
@@ -38,6 +39,10 @@ public class RowRecord {
 
   public void addField(Field f) {
     this.fields.add(f);
+  }
+
+  public void addField(Object value, TSDataType dataType) {
+    this.fields.add(Field.getField(value, dataType));
   }
 
   @Override

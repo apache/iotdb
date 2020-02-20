@@ -53,7 +53,6 @@ import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
 import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
-import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
@@ -62,7 +61,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AddLabelContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlignByDeviceClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
@@ -70,12 +69,10 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AutoCreateSchemaContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountNodesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountTimeseriesContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreatePropertyContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateTimeseriesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DateExpressionContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteLabelContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStorageGroupContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteTimeseriesContext;
@@ -90,13 +87,11 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleToUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantWatermarkEmbeddingContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByClauseContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByDeviceClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertColumnSpecContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertValuesSpecContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LimitClauseContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LinkPathContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllRoleOfUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllUserOfRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListPrivilegesRoleContext;
@@ -142,7 +137,6 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeIntervalContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeseriesPathContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TypeClauseContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnlinkPathContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnsetTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UpdateStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.WhereClauseContext;
@@ -305,64 +299,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     createTimeSeriesOperator = new CreateTimeSeriesOperator(SQLConstant.TOK_METADATA_CREATE);
     operatorType = SQLConstant.TOK_METADATA_CREATE;
     createTimeSeriesOperator.setPath(parseTimeseriesPath(ctx.timeseriesPath()));
-  }
-
-  @Override
-  public void enterCreateProperty(CreatePropertyContext ctx) {
-    super.enterCreateProperty(ctx);
-    PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_CREATE,
-        PropertyOperator.PropertyType.ADD_TREE);
-    propertyOperator.setPropertyPath(new Path(ctx.ID().getText()));
-    initializedOperator = propertyOperator;
-    operatorType = SQLConstant.TOK_PROPERTY_CREATE;
-  }
-
-  @Override
-  public void enterAddLabel(AddLabelContext ctx) {
-    super.enterAddLabel(ctx);
-    PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_ADD_LABEL,
-        PropertyOperator.PropertyType.ADD_PROPERTY_LABEL);
-    propertyOperator
-        .setPropertyPath(new Path(new String[]{ctx.ID(1).getText(), ctx.ID(0).getText()}));
-    initializedOperator = propertyOperator;
-    operatorType = SQLConstant.TOK_PROPERTY_ADD_LABEL;
-  }
-
-  @Override
-  public void enterDeleteLabel(DeleteLabelContext ctx) {
-    super.enterDeleteLabel(ctx);
-    PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_DELETE_LABEL,
-        PropertyOperator.PropertyType.DELETE_PROPERTY_LABEL);
-    propertyOperator
-        .setPropertyPath(new Path(new String[]{ctx.ID(1).getText(), ctx.ID(0).getText()}));
-    initializedOperator = propertyOperator;
-    operatorType = SQLConstant.TOK_PROPERTY_DELETE_LABEL;
-  }
-
-  @Override
-  public void enterLinkPath(LinkPathContext ctx) {
-    super.enterLinkPath(ctx);
-    PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_LINK,
-        PropertyOperator.PropertyType.ADD_PROPERTY_TO_METADATA);
-    Path metaPath = parsePrefixPath(ctx.prefixPath());
-    propertyOperator.setMetadataPath(metaPath);
-    propertyOperator.setPropertyPath(new Path(new String[]{ctx.propertyLabelPair().ID(0).getText()
-        , ctx.propertyLabelPair().ID(1).getText()}));
-    initializedOperator = propertyOperator;
-    operatorType = SQLConstant.TOK_PROPERTY_LINK;
-  }
-
-  @Override
-  public void enterUnlinkPath(UnlinkPathContext ctx) {
-    super.enterUnlinkPath(ctx);
-    PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_UNLINK,
-        PropertyOperator.PropertyType.DEL_PROPERTY_FROM_METADATA);
-    Path metaPath = parsePrefixPath(ctx.prefixPath());
-    propertyOperator.setMetadataPath(metaPath);
-    propertyOperator.setPropertyPath(new Path(new String[]{ctx.propertyLabelPair().ID(0).getText()
-        , ctx.propertyLabelPair().ID(1).getText()}));
-    initializedOperator = propertyOperator;
-    operatorType = SQLConstant.TOK_PROPERTY_UNLINK;
   }
 
   @Override
@@ -727,7 +663,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterDisableAlign(SqlBaseParser.DisableAlignContext ctx) {
     super.enterDisableAlign(ctx);
-    queryOp.setAlign(false);
+    queryOp.setAlignByTime(false);
   }
 
   @Override
@@ -788,28 +724,29 @@ public class LogicalGenerator extends SqlBaseBaseListener {
           , dataType, ctx.linearClause().LINEAR().getText()));
     }
 
+    int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
     if (ctx.linearClause() != null) {
       if (ctx.linearClause().DURATION(0) != null) {
         long beforeRange = parseDuration(ctx.linearClause().DURATION(0).getText());
         long afterRange = parseDuration(ctx.linearClause().DURATION(1).getText());
         fillTypes.put(dataType, new LinearFill(beforeRange, afterRange));
       } else {
-        fillTypes.put(dataType, new LinearFill(-1, -1));
+        fillTypes.put(dataType, new LinearFill(defaultFillInterval, defaultFillInterval));
       }
     } else {
       if (ctx.previousClause().DURATION() != null) {
         long preRange = parseDuration(ctx.previousClause().DURATION().getText());
         fillTypes.put(dataType, new PreviousFill(preRange));
       } else {
-        fillTypes.put(dataType, new PreviousFill(-1));
+        fillTypes.put(dataType, new PreviousFill(defaultFillInterval));
       }
     }
   }
 
   @Override
-  public void enterGroupByDeviceClause(GroupByDeviceClauseContext ctx) {
-    super.enterGroupByDeviceClause(ctx);
-    queryOp.setGroupByDevice(true);
+  public void enterAlignByDeviceClause(AlignByDeviceClauseContext ctx) {
+    super.enterAlignByDeviceClause(ctx);
+    queryOp.setAlignByDevice(true);
   }
 
   /**
