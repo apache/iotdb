@@ -27,6 +27,8 @@ import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * ForceAppendTsFileWriter opens a COMPLETE TsFile, reads and truncate its metadata to support
@@ -36,8 +38,12 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter{
 
   private Map<String, MeasurementSchema> knownSchemas;
   private long truncatePosition;
-
+  private static Logger logger = LoggerFactory.getLogger(ForceAppendTsFileWriter.class);
+  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   public ForceAppendTsFileWriter(File file) throws IOException {
+    if (resourceLogger.isInfoEnabled()) {
+      resourceLogger.info("{} is opened.", file.getName());
+    }
     this.out = new DefaultTsFileOutput(file, true);
     this.file = file;
 

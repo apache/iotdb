@@ -220,10 +220,10 @@ public class JDBCService implements JDBCServiceMBean, IService {
         poolServer.setServerEventHandler(new JDBCServiceEventHandler(impl, threadStartLatch));
         poolServer.serve();
       } catch (TTransportException e) {
-        logger.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME,
-            getID().getName(), e);
+        throw new RuntimeException(String.format("%s: failed to start %s, because ", IoTDBConstant.GLOBAL_DB_NAME,
+            getID().getName()), e);
       } catch (Exception e) {
-        logger.error("{}: {} exit, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
+        throw new RuntimeException(String.format("%s: %s exit, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName()), e);
       } finally {
         close();
         // TODO debug log, will be deleted in production env

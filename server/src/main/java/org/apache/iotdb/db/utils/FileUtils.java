@@ -21,8 +21,10 @@ package org.apache.iotdb.db.utils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +40,10 @@ public class FileUtils {
     }
     try {
       Files.delete(folder.toPath());
-    } catch (NoSuchFileException e) {
-      logger.warn(e.getMessage(), e);
+    } catch (NoSuchFileException | DirectoryNotEmptyException e) {
+      logger.warn("{}: {}", e.getMessage(), Arrays.toString(folder.list()), e);
+    } catch (Exception e) {
+      logger.warn("{}: {}", e.getMessage(), folder.getName(), e);
     }
   }
 }
