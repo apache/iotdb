@@ -22,11 +22,10 @@ import org.apache.iotdb.db.qp.logical.Operator;
 
 public class GroupByPlan extends AggregationPlan {
 
-  // [startTime, endTime)
   private long startTime;
   private long endTime;
-  // aggregation time interval
-  private long interval;
+  // time interval
+  private long unit;
   // sliding step
   private long slidingStep;
 
@@ -51,12 +50,12 @@ public class GroupByPlan extends AggregationPlan {
     this.endTime = endTime;
   }
 
-  public long getInterval() {
-    return interval;
+  public long getUnit() {
+    return unit;
   }
 
-  public void setInterval(long interval) {
-    this.interval = interval;
+  public void setUnit(long unit) {
+    this.unit = unit;
   }
 
   public long getSlidingStep() {

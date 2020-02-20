@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -95,12 +96,12 @@ public class TsFileResource {
   /**
    * Mem chunk data. Only be set in a temporal TsFileResource in a query process.
    */
-  private List<ReadOnlyMemChunk> readOnlyMemChunk;
+  private ReadOnlyMemChunk readOnlyMemChunk;
 
   private ReentrantReadWriteLock writeQueryLock = new ReentrantReadWriteLock();
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
-
+  
   /**
    * for sealed TsFile, call setClosed to close TsFileResource
    */
@@ -109,7 +110,7 @@ public class TsFileResource {
     this.startTimeMap = new ConcurrentHashMap<>();
     this.endTimeMap = new HashMap<>();
   }
-
+  
   /**
    * unsealed TsFile
    */
@@ -126,7 +127,7 @@ public class TsFileResource {
   public TsFileResource(File file,
       Map<String, Long> startTimeMap,
       Map<String, Long> endTimeMap,
-      List<ReadOnlyMemChunk> readOnlyMemChunk,
+      ReadOnlyMemChunk readOnlyMemChunk,
       List<ChunkMetaData> chunkMetaDataList) {
     this.file = file;
     this.startTimeMap = startTimeMap;
@@ -215,14 +216,14 @@ public class TsFileResource {
   }
 
   void forceUpdateEndTime(String device, long time) {
-    endTimeMap.put(device, time);
+      endTimeMap.put(device, time);
   }
 
   public List<ChunkMetaData> getChunkMetaDataList() {
     return chunkMetaDataList;
   }
 
-  public List<ReadOnlyMemChunk> getReadOnlyMemChunk() {
+  public ReadOnlyMemChunk getReadOnlyMemChunk() {
     return readOnlyMemChunk;
   }
 
@@ -347,7 +348,6 @@ public class TsFileResource {
 
   /**
    * check if any of the device lives over the given time bound
-   *
    * @param timeLowerBound
    */
   public boolean stillLives(long timeLowerBound) {
@@ -364,8 +364,8 @@ public class TsFileResource {
   }
 
   /**
-   * set a file flag indicating that the file is being closed, so during recovery we could know we
-   * should close the file.
+   * set a file flag indicating that the file is being closed, so during recovery we could know
+   * we should close the file.
    */
   public void setCloseFlag() {
     try {
@@ -393,7 +393,7 @@ public class TsFileResource {
   public void setHistoricalVersions(Set<Long> historicalVersions) {
     this.historicalVersions = historicalVersions;
   }
-
+  
   public void setProcessor(TsFileProcessor processor) {
     this.processor = processor;
   }

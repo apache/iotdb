@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.PathException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -67,10 +67,10 @@ public class FileNodeManagerBenchmark {
   private static void prepare()
       throws MetadataException, PathException, IOException, StorageGroupException {
     MManager manager = MManager.getInstance();
-    manager.setStorageGroup(prefix);
+    manager.setStorageGroupToMTree(prefix);
     for (String device : devices) {
       for (String measurement : measurements) {
-        manager.createTimeseries(device + "." + measurement, TSDataType.INT64.toString(),
+        manager.addPathToMTree(device + "." + measurement, TSDataType.INT64.toString(),
             TSEncoding.PLAIN.toString());
       }
     }

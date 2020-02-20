@@ -295,7 +295,7 @@ Statement statement = connection.createStatement()) {
     }
   }
 
-  private void prepareData() {
+  private void prepareData() throws SQLException {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");

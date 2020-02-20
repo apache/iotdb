@@ -18,17 +18,15 @@
  */
 package org.apache.iotdb.db.exception;
 
-import org.apache.iotdb.rpc.TSStatusCode;
-
-public class TsFileProcessorException extends IoTDBException {
+public class TsFileProcessorException extends ProcessException {
 
   private static final long serialVersionUID = 3749107630243950925L;
 
   public TsFileProcessorException(String message) {
-    super(message, TSStatusCode.TSFILE_PROCESSOR_ERROR.getStatusCode());
+    super(message);
   }
 
   public TsFileProcessorException(Exception exception) {
-    super(exception.getMessage(), TSStatusCode.TSFILE_PROCESSOR_ERROR.getStatusCode());
+    super(exception.getMessage());
   }
 }

@@ -40,10 +40,6 @@
 * 4-MergeManager
 # Chapter 5: DataQuery
 * 1-DataQuery
-* 2-SeriesReader
-* 3-RawDataQuery
-* 4-AggregationQuery
-* 5-GroupByQuery
 # Chapter 6: Tools
 * 1-Sync
 # Chapter 7: Connector

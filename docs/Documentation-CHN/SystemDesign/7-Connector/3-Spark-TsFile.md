@@ -37,7 +37,7 @@
 |    5 | null                          | null                     | null                       | null                          | false                    | null                       |
 |    6 | null                          | null                     | ccc                        | null                          | null                     | null                       |
 
-窄表结构: 关系型数据库模式，IOTDB align by device格式
+窄表结构: 关系型数据库模式，IOTDB group by device格式
 
 | time | device_name                   | status                   | hardware                   | temperature |
 |------|-------------------------------|--------------------------|----------------------------|-------------------------------|

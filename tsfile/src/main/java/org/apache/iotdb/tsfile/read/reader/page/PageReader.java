@@ -20,11 +20,8 @@ package org.apache.iotdb.tsfile.read.reader.page;
 
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
@@ -32,51 +29,33 @@ import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class PageReader implements IPageReader {
-
-  private PageHeader pageHeader;
+public class PageReader {
 
   private TSDataType dataType;
 
-  /**
-   * decoder for value column
-   */
+  /** decoder for value column */
   private Decoder valueDecoder;
 
-  /**
-   * decoder for time column
-   */
+  /** decoder for time column */
   private Decoder timeDecoder;
 
-  /**
-   * time column in memory
-   */
+  /** time column in memory */
   private ByteBuffer timeBuffer;
 
-  /**
-   * value column in memory
-   */
+  /** value column in memory */
   private ByteBuffer valueBuffer;
 
   private Filter filter;
 
-  /**
-   * Data whose timestamp <= deletedAt should be considered deleted(not be returned).
-   */
+  /** Data whose timestamp <= deletedAt should be considered deleted(not be returned). */
   private long deletedAt = Long.MIN_VALUE;
 
   public PageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder,
       Decoder timeDecoder, Filter filter) {
-    this(null, pageData, dataType, valueDecoder, timeDecoder, filter);
-  }
-
-  public PageReader(PageHeader pageHeader, ByteBuffer pageData, TSDataType dataType,
-      Decoder valueDecoder, Decoder timeDecoder, Filter filter) {
     this.dataType = dataType;
     this.valueDecoder = valueDecoder;
     this.timeDecoder = timeDecoder;
     this.filter = filter;
-    this.pageHeader = pageHeader;
     splitDataToTimeStampAndValue(pageData);
   }
 
@@ -98,13 +77,13 @@ public class PageReader implements IPageReader {
   /**
    * @return the returned BatchData may be empty, but never be null
    */
-  @Override
   public BatchData getAllSatisfiedPageData() throws IOException {
 
     BatchData pageData = new BatchData(dataType);
 
     while (timeDecoder.hasNext(timeBuffer)) {
       long timestamp = timeDecoder.readLong(timeBuffer);
+
       switch (dataType) {
         case BOOLEAN:
           boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
@@ -149,9 +128,10 @@ public class PageReader implements IPageReader {
     return pageData;
   }
 
-  @Override
-  public Statistics getStatistics() {
-    return pageHeader.getStatistics();
+
+  public void close() {
+    timeBuffer = null;
+    valueBuffer = null;
   }
 
   public void setDeletedAt(long deletedAt) {

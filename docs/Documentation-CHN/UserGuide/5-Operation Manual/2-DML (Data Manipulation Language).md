@@ -147,9 +147,9 @@ select wf01.wt01.status,wf02.wt02.hardware from root.ln where (time > 2017-11-01
 
 #### 其他结果返回形式
 
-IoTDB支持另外两种结果返回形式: 按设备时间对齐 'align by device' 和 时序不对齐 'disable align'.
+IoTDB支持另外两种结果返回形式: 按设备时间对齐 'group by device' 和 时序不对齐 'disable align'.
 
-'align by device' 对齐方式下，设备ID会单独作为一列出现。在select 子句中写了多少列，最终结果就会有该列数+2 （时间列和设备名字列）。SQL形如:
+'group by device' 对齐方式下，设备ID会单独作为一列出现。在select 子句中写了多少列，最终结果就会有该列数+2 （时间列和设备名字列）。SQL形如:
 
 ```
 select s1,s2 from root.sg1.* GROUP BY DEVICE

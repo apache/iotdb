@@ -156,6 +156,7 @@ public class AuthorityChecker {
       case MERGEJOIN:
       case NULL:
       case ORDERBY:
+      case PROPERTY:
       case SFW:
       case UNION:
         logger.error("Illegal operator type authorization : {}", type);

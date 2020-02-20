@@ -66,11 +66,6 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
     return tsfileMetaDataHitRatio;
   }
 
-  @Override
-  public double getChunkHitRatio() {
-    return ChunkCache.getInstance().calculateChunkHitRatio();
-  }
-
   public static CacheHitRatioMonitor getInstance() {
     return instance;
   }

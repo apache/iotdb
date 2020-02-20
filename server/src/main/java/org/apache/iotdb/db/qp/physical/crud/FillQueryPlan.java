@@ -23,7 +23,7 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class FillQueryPlan extends RawDataQueryPlan {
+public class FillQueryPlan extends QueryPlan {
 
   private long queryTime;
   private Map<TSDataType, IFill> fillType;

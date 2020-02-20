@@ -16,22 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+package org.apache.iotdb.tsfile.file.metadata;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * MetaData of one chunk.
  */
 public class ChunkMetaData {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ChunkMetaData.class);
+
 
   private String measurementUid;
 
@@ -54,9 +59,15 @@ public class ChunkMetaData {
   private long deletedAt = Long.MIN_VALUE;
 
   /**
+   * Priority of chunk metadata, used in unsequence resource merge reader to identify the priority
+   * of reader
+   */
+  private int priority;
+
+  /**
    * ChunkLoader of metadata, used to create ChunkReaderWrap
    */
-  private IChunkLoader chunkLoader;
+  private ChunkLoaderImpl chunkLoader;
 
   private Statistics statistics;
 
@@ -82,7 +93,8 @@ public class ChunkMetaData {
   @Override
   public String toString() {
     return String.format("measurementId: %s, datatype: %s, version: %d, deletedAt: %d, "
-        + "Statistics: %s", measurementUid, tsDataType, version, deletedAt, statistics);
+        + "Statistics: %s, Start time: %s",
+        measurementUid, tsDataType, version, deletedAt, statistics, getStartTime());
   }
 
   public long getNumOfPoints() {
@@ -169,11 +181,19 @@ public class ChunkMetaData {
     this.deletedAt = deletedAt;
   }
 
-  public IChunkLoader getChunkLoader() {
+  public int getPriority() {
+    return priority;
+  }
+
+  public void setPriority(int priority) {
+    this.priority = priority;
+  }
+
+  public ChunkLoaderImpl getChunkLoader() {
     return chunkLoader;
   }
 
-  public void setChunkLoader(IChunkLoader chunkLoader) {
+  public void setChunkLoader(ChunkLoaderImpl chunkLoader) {
     this.chunkLoader = chunkLoader;
   }
 

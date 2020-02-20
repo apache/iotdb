@@ -24,7 +24,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -52,12 +52,12 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
   }
 
   @Override
-  public boolean hasNextTimeValuePair() throws IOException {
+  public boolean hasNext() throws IOException {
     return inputStream.available() > 0;
   }
 
   @Override
-  public TimeValuePair nextTimeValuePair() throws IOException {
+  public TimeValuePair next() throws IOException {
     return reader.read(inputStream);
   }
 

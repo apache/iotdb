@@ -38,6 +38,7 @@ public class SQLConstant {
 
   public static final String GROUPBY_DEVICE_COLUMN_NAME = "Device";
   public static final String RESERVED_TIME = "time";
+  public static final String RESERVED_FREQ = "freq";
   public static final String IS_AGGREGATION = "IS_AGGREGATION";
   public static final String NOW_FUNC = "now()";
   public static final String START_TIME_STR = "1970-1-01T00:00:00";
@@ -218,7 +219,7 @@ public class SQLConstant {
   }
 
   public static boolean isReservedPath(Path pathStr) {
-    return pathStr.equals(SQLConstant.RESERVED_TIME);
+    return pathStr.equals(SQLConstant.RESERVED_TIME) || pathStr.equals(SQLConstant.RESERVED_FREQ);
 
   }
 }

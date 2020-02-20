@@ -23,13 +23,17 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.strategy.ParseDriver;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
+import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -174,10 +178,26 @@ public class LogicalPlanSmallTest {
     String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 2 soffset 1";
     RootOperator operator = (RootOperator) parseDriver
         .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    MManager.getInstance().init();
-    ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
-    concatPathOptimizer.transform(operator);
-    MManager.getInstance().clear();
+
+    MemIntQpExecutor executor = new MemIntQpExecutor();
+    Path path1 = new Path(
+        new StringContainer(new String[]{"root", "vehicle", "d1", "s1"},
+            TsFileConstant.PATH_SEPARATOR));
+    Path path2 = new Path(
+        new StringContainer(new String[]{"root", "vehicle", "d2", "s1"},
+            TsFileConstant.PATH_SEPARATOR));
+    Path path3 = new Path(
+        new StringContainer(new String[]{"root", "vehicle", "d3", "s1"},
+            TsFileConstant.PATH_SEPARATOR));
+    Path path4 = new Path(
+        new StringContainer(new String[]{"root", "vehicle", "d4", "s1"},
+            TsFileConstant.PATH_SEPARATOR));
+    executor.insert(new InsertPlan(path1.getDevice(), 10, path1.getMeasurement(), "10"));
+    executor.insert(new InsertPlan(path2.getDevice(), 10, path2.getMeasurement(), "10"));
+    executor.insert(new InsertPlan(path3.getDevice(), 10, path3.getMeasurement(), "10"));
+    executor.insert(new InsertPlan(path4.getDevice(), 10, path4.getMeasurement(), "10"));
+    ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer(executor);
+    operator = (SFWOperator) concatPathOptimizer.transform(operator);
     // expected to throw LogicalOptimizeException: SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.
   }
 
@@ -197,7 +217,7 @@ public class LogicalPlanSmallTest {
     RootOperator operator = (RootOperator) parseDriver
             .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
-    Assert.assertFalse(((QueryOperator)operator).isAlignByTime());
+    Assert.assertFalse(((QueryOperator)operator).isAlign());
   }
 
   @Test
@@ -206,12 +226,12 @@ public class LogicalPlanSmallTest {
     RootOperator operator = (RootOperator) parseDriver
             .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
-    Assert.assertTrue(((QueryOperator)operator).isAlignByTime());
+    Assert.assertTrue(((QueryOperator)operator).isAlign());
   }
 
   @Test (expected = ParseCancellationException.class)
-  public void testDisableAlignConflictAlignByDevice() {
-    String sqlStr = "select * from root.vehicle disable align align by device";
+  public void testDisableAlignConflictGroupByDevice() {
+    String sqlStr = "select * from root.vehicle disable align group by device";
     RootOperator operator = (RootOperator) parseDriver
             .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
   }

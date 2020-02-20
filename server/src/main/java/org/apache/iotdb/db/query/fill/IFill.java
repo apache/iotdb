@@ -19,25 +19,24 @@
 
 package org.apache.iotdb.db.query.fill;
 
+import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-
-import java.io.IOException;
 
 public abstract class IFill {
 
   long queryTime;
   TSDataType dataType;
 
-  IBatchReader allDataReader;
+  IPointReader allDataReader;
 
   public IFill(TSDataType dataType, long queryTime) {
     this.dataType = dataType;
@@ -47,17 +46,18 @@ public abstract class IFill {
   public IFill() {
   }
 
-  public abstract IFill copy();
+  public abstract IFill copy(Path path);
 
-  public void constructReaders(Path path, QueryContext context)
-      throws StorageEngineException {
-    Filter timeFilter = constructFilter();
-    allDataReader = new SeriesRawDataBatchReader(path, dataType, context,
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
-        timeFilter, null);
+  public abstract void constructReaders(Path path, QueryContext context)
+      throws IOException, StorageEngineException;
+
+  void constructReaders(Path path, QueryContext context, long beforeRange)
+      throws IOException, StorageEngineException {
+    Filter timeFilter = constructFilter(beforeRange);
+    allDataReader = new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context, true);
   }
 
-  public abstract TimeValuePair getFillResult() throws IOException, UnSupportedFillTypeException;
+  public abstract IPointReader getFillResult() throws IOException, UnSupportedFillTypeException;
 
   public TSDataType getDataType() {
     return this.dataType;
@@ -71,5 +71,43 @@ public abstract class IFill {
     this.queryTime = queryTime;
   }
 
-  abstract Filter constructFilter();
+  private Filter constructFilter(long beforeRange) {
+    // if the fill time range is not set, beforeRange will be set to -1.
+    if (beforeRange == -1) {
+      return null;
+    }
+    return TimeFilter.gtEq(queryTime - beforeRange);
+  }
+
+  class TimeValuePairPointReader implements IPointReader {
+
+    private boolean isUsed;
+    private TimeValuePair pair;
+
+    public TimeValuePairPointReader(TimeValuePair pair) {
+      this.pair = pair;
+      this.isUsed = (pair == null);
+    }
+
+    @Override
+    public boolean hasNext() {
+      return !isUsed;
+    }
+
+    @Override
+    public TimeValuePair next() {
+      isUsed = true;
+      return pair;
+    }
+
+    @Override
+    public TimeValuePair current() {
+      return pair;
+    }
+
+    @Override
+    public void close() {
+      // no need to close
+    }
+  }
 }

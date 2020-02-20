@@ -19,24 +19,28 @@
 
 package org.apache.iotdb.tsfile.read.reader.series;
 
-import java.io.IOException;
-import java.util.List;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+
+import java.io.IOException;
+import java.util.List;
 
 /**
  * Series reader is used to query one series of one tsfile.
  */
-public abstract class AbstractFileSeriesReader implements IBatchReader {
+public abstract class AbstractFileSeriesReader implements IAggregateReader {
 
   protected IChunkLoader chunkLoader;
   protected List<ChunkMetaData> chunkMetaDataList;
   protected ChunkReader chunkReader;
   private int chunkToRead;
+
+  private BatchData data;
 
   protected Filter filter;
 
@@ -51,7 +55,11 @@ public abstract class AbstractFileSeriesReader implements IBatchReader {
     this.chunkToRead = 0;
   }
 
-  @Override
+  /**
+   * check if current chunk has next batch data.
+   *
+   * @return True if current chunk has next batch data
+   */
   public boolean hasNextBatch() throws IOException {
 
     // current chunk has additional batch
@@ -75,9 +83,24 @@ public abstract class AbstractFileSeriesReader implements IBatchReader {
     return false;
   }
 
-  @Override
+  /**
+   * get next batch data.
+   */
   public BatchData nextBatch() throws IOException {
-    return chunkReader.nextPageData();
+    data = chunkReader.nextPageData();
+    return data;
+  }
+
+  public BatchData currentBatch() {
+    return data;
+  }
+
+  public PageHeader nextPageHeader() {
+    return chunkReader.nextPageHeader();
+  }
+
+  public void skipPageData() {
+    chunkReader.skipPageData();
   }
 
   protected abstract void initChunkReader(ChunkMetaData chunkMetaData) throws IOException;

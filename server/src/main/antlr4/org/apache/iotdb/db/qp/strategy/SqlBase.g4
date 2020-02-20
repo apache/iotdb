@@ -153,13 +153,13 @@ fromClause
 specialClause
     : specialLimit
     | groupByClause specialLimit?
-    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
+    | fillClause slimitClause? groupByDeviceClauseOrDisableAlign?
     ;
 
 specialLimit
-    : limitClause slimitClause? alignByDeviceClauseOrDisableAlign?
-    | slimitClause limitClause? alignByDeviceClauseOrDisableAlign?
-    | alignByDeviceClauseOrDisableAlign
+    : limitClause slimitClause? groupByDeviceClauseOrDisableAlign?
+    | slimitClause limitClause? groupByDeviceClauseOrDisableAlign?
+    | groupByDeviceClauseOrDisableAlign
     ;
 
 limitClause
@@ -178,17 +178,17 @@ soffsetClause
     : SOFFSET INT
     ;
 
-alignByDeviceClause
-    : ALIGN BY DEVICE
-    | GROUP BY DEVICE
+groupByDeviceClause
+    :
+    GROUP BY DEVICE
     ;
 
 disableAlign
     : DISABLE ALIGN
     ;
 
-alignByDeviceClauseOrDisableAlign
-    : alignByDeviceClause
+groupByDeviceClauseOrDisableAlign
+    : groupByDeviceClause
     | disableAlign
     ;
 
@@ -258,7 +258,7 @@ rootOrId
     ;
 
 timeInterval
-    : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RR_BRACKET
+    : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
     ;
 
 timeValue

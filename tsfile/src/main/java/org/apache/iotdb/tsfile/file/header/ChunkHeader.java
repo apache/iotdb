@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,6 +35,10 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public class ChunkHeader {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ChunkHeader.class);
+
+  private static final byte MARKER = MetaMarker.CHUNK_HEADER;
 
   private String measurementID;
   private int dataSize;
@@ -81,7 +87,7 @@ public class ChunkHeader {
       throws IOException {
     if (!markerRead) {
       byte marker = (byte) inputStream.read();
-      if (marker != MetaMarker.CHUNK_HEADER) {
+      if (marker != MARKER) {
         MetaMarker.handleUnexpectedMarker(marker);
       }
     }

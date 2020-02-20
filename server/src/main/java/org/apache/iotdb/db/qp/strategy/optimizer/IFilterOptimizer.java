@@ -27,5 +27,6 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 @FunctionalInterface
 public interface IFilterOptimizer {
 
-  FilterOperator optimize(FilterOperator filter) throws QueryProcessException;
+  FilterOperator optimize(FilterOperator filter)
+      throws QueryProcessException;
 }

@@ -19,22 +19,20 @@
 
 package org.apache.iotdb.db.query.fill;
 
-import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-
 import java.io.IOException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class LinearFill extends IFill {
 
   private long beforeRange;
   private long afterRange;
-  private BatchData batchData;
 
   public LinearFill(long beforeRange, long afterRange) {
     this.beforeRange = beforeRange;
@@ -49,7 +47,6 @@ public class LinearFill extends IFill {
     super(dataType, queryTime);
     this.beforeRange = beforeRange;
     this.afterRange = afterRange;
-    batchData = new BatchData();
   }
 
   public long getBeforeRange() {
@@ -69,30 +66,22 @@ public class LinearFill extends IFill {
   }
 
   @Override
-  public IFill copy() {
+  public IFill copy(Path path) {
     return new LinearFill(dataType, queryTime, beforeRange, afterRange);
   }
 
   @Override
-  Filter constructFilter() {
-    Filter lowerBound = beforeRange == -1 ? TimeFilter.gtEq(Long.MIN_VALUE)
-        : TimeFilter.gtEq(queryTime - beforeRange);
-    Filter upperBound = afterRange == -1 ? TimeFilter.ltEq(Long.MAX_VALUE)
-        : TimeFilter.ltEq(queryTime + afterRange);
-    // [queryTIme - beforeRange, queryTime + afterRange]
-    return FilterFactory.and(lowerBound, upperBound);
+  public void constructReaders(Path path, QueryContext context)
+      throws IOException, StorageEngineException {
+    super.constructReaders(path, context, beforeRange);
   }
 
   @Override
-  public TimeValuePair getFillResult() throws IOException, UnSupportedFillTypeException {
+  public IPointReader getFillResult() throws IOException, UnSupportedFillTypeException {
     TimeValuePair beforePair = null;
     TimeValuePair afterPair = null;
-    while (batchData.hasCurrent() || allDataReader.hasNextBatch()) {
-      if (!batchData.hasCurrent() && allDataReader.hasNextBatch()) {
-        batchData = allDataReader.nextBatch();
-      }
-      afterPair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
-      batchData.next();
+    while (allDataReader.hasNext()) {
+      afterPair = allDataReader.next();
       if (afterPair.getTimestamp() <= queryTime) {
         beforePair = afterPair;
       } else {
@@ -100,17 +89,19 @@ public class LinearFill extends IFill {
       }
     }
 
-    // no before data or has data on the query timestamp
     if (beforePair == null || beforePair.getTimestamp() == queryTime) {
-      return beforePair;
+      return new TimeValuePairPointReader(beforePair);
     }
 
-    // on after data or after data is out of range
-    if (afterPair.getTimestamp() < queryTime || (afterRange != -1 && afterPair.getTimestamp() > queryTime + afterRange)) {
-      return new TimeValuePair(queryTime, null);
+    // if afterRange equals -1, this means that there is no time-bound filling.
+    if (afterRange == -1) {
+      return new TimeValuePairPointReader(average(beforePair, afterPair));
     }
 
-    return average(beforePair, afterPair);
+    if (afterPair.getTimestamp() > queryTime + afterRange || afterPair.getTimestamp() < queryTime) {
+      return new TimeValuePairPointReader(new TimeValuePair(queryTime, null));
+    }
+    return new TimeValuePairPointReader(average(beforePair, afterPair));
   }
 
   // returns the average of two points

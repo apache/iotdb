@@ -23,9 +23,11 @@ import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 import java.util.Collection;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -66,8 +68,9 @@ public class TSPlanContextAuthorTest {
   }
 
   @Test
-  public void testAnalyzeAuthor() throws QueryProcessException {
-    Planner processor = new Planner();
+  public void testAnalyzeAuthor()
+      throws QueryProcessException, MetadataException {
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     AuthorPlan author = (AuthorPlan) processor.parseSQLToPhysicalPlan(inputSQL);
     if (author == null) {
       fail();

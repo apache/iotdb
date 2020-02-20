@@ -32,8 +32,6 @@ matrix:
       osx_image: xcode10.1 # with JDK11.0.1+13 installed
       name: osx-oraclejdk11
       script:
-        - rm -rf /Users/travis/.m2/repository/org/apache/maven/plugins
-        - rm -rf /Users/travis/.m2/repository/org/apache/tomcat
         - java -version
         - mvn -version
         - mvn -B apache-rat:check
@@ -56,8 +54,6 @@ matrix:
           update: true
           casks: adoptopenjdk-openjdk11
       script:
-        - rm -rf /Users/travis/.m2/repository/org/apache/maven/plugins
-        - rm -rf /Users/travis/.m2/repository/org/apache/tomcat
         - java -version
         - mvn -version
         - mvn -B apache-rat:check

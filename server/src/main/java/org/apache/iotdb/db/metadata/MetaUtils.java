@@ -18,33 +18,27 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
-
-class MetaUtils {
-
-  public static final String PATH_SEPARATOR = "\\.";
-
-  private MetaUtils() {
-
-  }
-
-  static String[] getNodeNames(String path) {
+public class MetaUtils {
+  public static String[] getNodeNames(String path, String separator) {
     String[] nodeNames;
+    path = path.trim();
     if (path.contains("\"") || path.contains("\'")) {
-      String[] measurementDeviceNode = path.trim().replace("\'", "\"").split("\"");
-      String measurement = measurementDeviceNode[1];
-      String[] deviceNodeName = measurementDeviceNode[0].split(PATH_SEPARATOR);
+      String[] deviceAndMeasurement;
+      if (path.contains("\"")) {
+        deviceAndMeasurement = path.split("\"");
+      } else {
+        deviceAndMeasurement = path.split("\'");
+      }
+      String device = deviceAndMeasurement[0];
+      String measurement = deviceAndMeasurement[1];
+      String[] deviceNodeName = device.split(separator);
       int nodeNumber = deviceNodeName.length + 1;
       nodeNames = new String[nodeNumber];
       System.arraycopy(deviceNodeName, 0, nodeNames, 0, nodeNumber - 1);
       nodeNames[nodeNumber - 1] = measurement;
     } else {
-      nodeNames = path.split(PATH_SEPARATOR);
+      nodeNames = path.split(separator);
     }
     return nodeNames;
-  }
-
-  static String getNodeRegByIdx(int idx, String[] nodes) {
-    return idx >= nodes.length ? PATH_WILDCARD : nodes[idx];
   }
 }

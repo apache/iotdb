@@ -21,12 +21,12 @@ package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class SystemCheckException extends IoTDBException {
+public class SystemCheckException extends ProcessException {
 
   private static final long serialVersionUID = 3845398095925149972L;
 
   public SystemCheckException(String walFolder) {
-    super(String.format("[%s] is not a directory", walFolder),
-        TSStatusCode.SYSTEM_CHECK_ERROR.getStatusCode());
+    super(String.format("[%s] is not a directory", walFolder));
+    errorCode = TSStatusCode.SYSTEM_CHECK_ERROR.getStatusCode();
   }
 }

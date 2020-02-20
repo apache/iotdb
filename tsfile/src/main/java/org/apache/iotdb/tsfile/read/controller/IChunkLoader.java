@@ -18,10 +18,9 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
+import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-
-import java.io.IOException;
 
 public interface IChunkLoader {
 
@@ -34,4 +33,9 @@ public interface IChunkLoader {
    * close the file reader.
    */
   void close() throws IOException;
+
+  /**
+   * clear Chunk cache if used.
+   */
+  void clear();
 }

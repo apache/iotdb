@@ -39,7 +39,7 @@ public abstract class LRUCache<K, T> implements Cache<K, T> {
   }
 
   @Override
-  public synchronized T get(K key) throws IOException {
+  public T get(K key) throws IOException {
     if (cache.containsKey(key)) {
       return cache.get(key);
     } else {
@@ -50,13 +50,13 @@ public abstract class LRUCache<K, T> implements Cache<K, T> {
   }
 
   @Override
-  public synchronized void clear() {
+  public void clear() {
     cache.clear();
   }
 
-  public synchronized void put(K key, T value) {
+  public void put(K key, T value) {
     cache.put(key, value);
   }
 
-  protected abstract T loadObjectByKey(K key) throws IOException;
+  public abstract T loadObjectByKey(K key) throws IOException;
 }

@@ -21,54 +21,50 @@ package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggreResultData;
+import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.factory.AggreResultFactory;
-import org.apache.iotdb.db.query.reader.series.IAggregateReader;
-import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.OldUnseqResourceMergeReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.*;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
-  /**
-   * Merges same series to one map. For example: Given: paths: s1, s2, s3, s1 and aggregations:
-   * count, sum, count, sum seriesMap: s1 -> 0, 3; s2 -> 1; s3 -> 2
-   */
-  private Map<Path, List<Integer>> pathToAggrIndexesMap;
-
-  /**
-   * Maps path and its aggregate reader
-   */
-  private Map<Path, IAggregateReader> aggregateReaders;
-  private List<BatchData> cachedBatchDataList;
-  private GroupByPlan groupByPlan;
+  private List<IPointReader> unSequenceReaderList;
+  private List<IAggregateReader> sequenceReaderList;
+  private List<BatchData> batchDataList;
+  private List<Boolean> hasCachedSequenceDataList;
+  private Filter timeFilter;
 
   /**
    * constructor.
    */
   public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByPlan groupByPlan)
-      throws StorageEngineException {
+      throws PathException, IOException, StorageEngineException {
     super(context, groupByPlan);
 
-    this.pathToAggrIndexesMap = new HashMap<>();
-    this.aggregateReaders = new HashMap<>();
-    this.cachedBatchDataList = new ArrayList<>();
+    this.unSequenceReaderList = new ArrayList<>();
+    this.sequenceReaderList = new ArrayList<>();
+    this.timeFilter = null;
+    this.hasCachedSequenceDataList = new ArrayList<>();
+    this.batchDataList = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
-      cachedBatchDataList.add(null);
+      hasCachedSequenceDataList.add(false);
+      batchDataList.add(null);
     }
     initGroupBy(context, groupByPlan);
   }
@@ -77,33 +73,32 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * init reader and aggregate function.
    */
   private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
-      throws StorageEngineException {
+      throws StorageEngineException, IOException, PathException {
     IExpression expression = groupByPlan.getExpression();
-    this.groupByPlan = groupByPlan;
-
-    Filter timeFilter = null;
+    initAggreFuction(groupByPlan);
     // init reader
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
+    for (Path path : paths) {
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+          .getQueryDataSource(path, context);
+      timeFilter = queryDataSource.updateTimeFilter(timeFilter);
 
-    for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
-      List<Integer> indexList = pathToAggrIndexesMap
-          .computeIfAbsent(path, key -> new ArrayList<>());
-      indexList.add(i);
-      if (!aggregateReaders.containsKey(path)) {
+      // sequence reader for sealed tsfile, unsealed tsfile, memory
+      IAggregateReader seqResourceIterateReader = new SeqResourceIterateReader(
+          queryDataSource.getSeriesPath(), queryDataSource.getSeqResources(), timeFilter, context,
+          false);
 
-        QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-            .getQueryDataSource(path, context, timeFilter);
-        // update filter by TTL
-        timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
+      // unseq reader for all chunk groups in unSeqFile, memory
+      IPointReader unseqResourceMergeReader = new OldUnseqResourceMergeReader(
+          queryDataSource.getSeriesPath(), queryDataSource.getUnseqResources(), context,
+          timeFilter);
 
-        IAggregateReader seriesReader = new SeriesAggregateReader(path, dataTypes.get(i), context,
-            queryDataSource, timeFilter, null);
-        aggregateReaders.put(path, seriesReader);
-      }
+      sequenceReaderList.add(seqResourceIterateReader);
+      unSequenceReaderList.add(unseqResourceMergeReader);
     }
+
   }
 
   @Override
@@ -113,160 +108,214 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           + "in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
-    RowRecord record = new RowRecord(curStartTime);
-    AggregateResult[] aggregateResultList = new AggregateResult[paths.size()];
-    for (Map.Entry<Path, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
-      List<AggregateResult> aggregateResults;
+    RowRecord record = new RowRecord(startTime);
+    for (int i = 0; i < functions.size(); i++) {
+      AggreResultData res;
       try {
-        aggregateResults = nextIntervalAggregation(entry);
+        res = nextSeries(i);
       } catch (QueryProcessException e) {
         throw new IOException(e);
       }
-      int index = 0;
-      for (int i : entry.getValue()) {
-        aggregateResultList[i] = aggregateResults.get(index);
-        index++;
-      }
-    }
-    if (aggregateResultList.length == 0) {
-      record.addField(new Field(null));
-    } else {
-      for (AggregateResult res : aggregateResultList) {
-        record.addField(res.getResult(), res.getDataType());
+      if (res == null) {
+        record.addField(new Field(null));
+      } else {
+        record.addField(getField(res));
       }
     }
     return record;
   }
 
   /**
-   * calculate the group by result of one series
+   * calculate the group by result of the series indexed by idx.
    *
-   * @param pathToAggrIndexes entry of path to aggregation indexes map
+   * @param idx series id
    */
-  private List<AggregateResult> nextIntervalAggregation(Map.Entry<Path,
-      List<Integer>> pathToAggrIndexes) throws IOException, QueryProcessException {
-    List<AggregateResult> aggregateResultList = new ArrayList<>();
-    List<Boolean> isCalculatedList = new ArrayList<>();
-    List<Integer> indexList = pathToAggrIndexes.getValue();
+  private AggreResultData nextSeries(int idx) throws IOException, QueryProcessException {
+    IPointReader unsequenceReader = unSequenceReaderList.get(idx);
+    IAggregateReader sequenceReader = sequenceReaderList.get(idx);
+    AggregateFunction function = functions.get(idx);
+    function.init();
 
-    int remainingToCalculate = indexList.size();
-    TSDataType tsDataType = groupByPlan.getDeduplicatedDataTypes().get(indexList.get(0));
+    // skip the points with timestamp less than startTime
+    skipBeforeStartTimeData(idx, sequenceReader, unsequenceReader);
 
-    for (int index : indexList) {
-      AggregateResult result = AggreResultFactory
-          .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(index), tsDataType);
-      aggregateResultList.add(result);
+    // cal group by in batch data
+    boolean finishCheckSequenceData = calGroupByInBatchData(idx, function, unsequenceReader);
+    if (finishCheckSequenceData) {
+      // check unsequence data
+      function.calculateValueFromUnsequenceReader(unsequenceReader, endTime);
+      return function.getResult().deepCopy();
+    }
 
-      BatchData lastBatch = cachedBatchDataList.get(index);
+    // continue checking sequence data
+    while (sequenceReader.hasNextBatch()) {
+      PageHeader pageHeader = sequenceReader.nextPageHeader();
 
-      calcBatchData(result, lastBatch);
-      if (isEndCalc(result, lastBatch)) {
-        isCalculatedList.add(true);
-        remainingToCalculate--;
-        if (remainingToCalculate == 0) {
-          return aggregateResultList;
-        }
+      // memory data
+      if (pageHeader == null) {
+        batchDataList.set(idx, sequenceReader.nextBatch());
+        hasCachedSequenceDataList.set(idx, true);
+        finishCheckSequenceData = calGroupByInBatchData(idx, function, unsequenceReader);
       } else {
-        isCalculatedList.add(false);
-      }
-    }
-    TimeRange timeRange = new TimeRange(curStartTime, curEndTime - 1);
-    IAggregateReader reader = aggregateReaders.get(pathToAggrIndexes.getKey());
+        // page data
+        long minTime = pageHeader.getStartTime();
+        long maxTime = pageHeader.getEndTime();
+        // no point in sequence data with a timestamp less than endTime
+        if (minTime >= endTime) {
+          finishCheckSequenceData = true;
+        } else if (canUseHeader(minTime, maxTime, unsequenceReader, function)) {
+          // cal using page header
+          function.calculateValueFromPageHeader(pageHeader);
+          sequenceReader.skipPageData();
+        } else {
+          // cal using page data
+          batchDataList.set(idx, sequenceReader.nextBatch());
+          hasCachedSequenceDataList.set(idx, true);
+          finishCheckSequenceData = calGroupByInBatchData(idx, function, unsequenceReader);
+        }
 
-    while (reader.hasNextChunk()) {
-      // cal by chunk statistics
-      Statistics chunkStatistics = reader.currentChunkStatistics();
-      if (chunkStatistics.getStartTime() >= curEndTime) {
-        return aggregateResultList;
-      }
-      if (reader.canUseCurrentChunkStatistics() && timeRange.contains(
-          new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
-        for (int i = 0; i < aggregateResultList.size(); i++) {
-          if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-            AggregateResult result = aggregateResultList.get(i);
-            result.updateResultFromStatistics(chunkStatistics);
-            if (result.isCalculatedAggregationResult()) {
-              isCalculatedList.set(i, true);
-              remainingToCalculate--;
-              if (remainingToCalculate == 0) {
-                return aggregateResultList;
-              }
-            }
-          }
-        }
-        reader.skipCurrentChunk();
-        continue;
-      }
-
-      while (reader.hasNextPage()) {
-        //cal by page statistics
-        Statistics pageStatistics = reader.currentPageStatistics();
-        if (pageStatistics.getStartTime() >= curEndTime) {
-          return aggregateResultList;
-        }
-        if (reader.canUseCurrentPageStatistics() && timeRange.contains(
-            new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
-          for (int i = 0; i < aggregateResultList.size(); i++) {
-            if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-              AggregateResult result = aggregateResultList.get(i);
-              result.updateResultFromStatistics(pageStatistics);
-              if (result.isCalculatedAggregationResult()) {
-                isCalculatedList.set(i, true);
-                remainingToCalculate--;
-                if (remainingToCalculate == 0) {
-                  return aggregateResultList;
-                }
-              }
-            }
-          }
-          reader.skipCurrentPage();
-          continue;
-        }
-        while (reader.hasNextOverlappedPage()) {
-          // cal by page data
-          BatchData batchData = reader.nextOverlappedPage();
-          for (int i = 0; i < aggregateResultList.size(); i++) {
-            if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-              AggregateResult result = aggregateResultList.get(i);
-              calcBatchData(result, batchData);
-              int idx = pathToAggrIndexes.getValue().get(i);
-              if (batchData.hasCurrent()) {
-                cachedBatchDataList.set(idx, batchData);
-              }
-              if (isEndCalc(result, null)) {
-                isCalculatedList.set(i, true);
-                remainingToCalculate--;
-                if (remainingToCalculate == 0) {
-                  break;
-                }
-              }
-            }
-          }
+        if (finishCheckSequenceData) {
+          break;
         }
       }
     }
-    return aggregateResultList;
-  }
-
-  private boolean isEndCalc(AggregateResult function, BatchData lastBatch) {
-    return (lastBatch != null && lastBatch.hasCurrent() && lastBatch.currentTime() >= curEndTime)
-        || function.isCalculatedAggregationResult();
+    // cal using unsequence data
+    function.calculateValueFromUnsequenceReader(unsequenceReader, endTime);
+    return function.getResult().deepCopy();
   }
 
   /**
-   * this batchData >= curEndTime
+   * calculate groupBy's result in batch data.
+   *
+   * @param idx              series index
+   * @param function         aggregate function of the series
+   * @param unsequenceReader unsequence reader of the series
+   * @return if all sequential data been computed
    */
-  private void calcBatchData(AggregateResult result, BatchData batchData) throws IOException {
-    if (batchData == null || !batchData.hasCurrent()) {
+  private boolean calGroupByInBatchData(int idx, AggregateFunction function,
+      IPointReader unsequenceReader)
+      throws IOException, QueryProcessException {
+    BatchData batchData = batchDataList.get(idx);
+    boolean hasCachedSequenceData = hasCachedSequenceDataList.get(idx);
+    boolean finishCheckSequenceData = false;
+    // there was unprocessed data in last batch
+    if (hasCachedSequenceData && batchData.hasCurrent()) {
+      function.calculateValueFromPageData(batchData, unsequenceReader, endTime);
+    }
+
+    if (hasCachedSequenceData && batchData.hasCurrent()) {
+      finishCheckSequenceData = true;
+    } else {
+      hasCachedSequenceData = false;
+    }
+    batchDataList.set(idx, batchData);
+    hasCachedSequenceDataList.set(idx, hasCachedSequenceData);
+    return finishCheckSequenceData;
+  }
+
+  /**
+   * skip the points with timestamp less than startTime.
+   *
+   * @param idx              the index of series
+   * @param sequenceReader   sequence Reader
+   * @param unsequenceReader unsequence Reader
+   * @throws IOException exception when reading file
+   */
+  private void skipBeforeStartTimeData(int idx, IAggregateReader sequenceReader,
+      IPointReader unsequenceReader)
+      throws IOException {
+
+    // skip the unsequenceReader points with timestamp less than startTime
+    skipPointInUnsequenceData(unsequenceReader);
+
+    // skip the cached batch data points with timestamp less than startTime
+    if (skipPointInBatchData(idx)) {
       return;
     }
-    while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
+
+    // skip the points in sequenceReader data whose timestamp are less than startTime
+    while (sequenceReader.hasNextBatch()) {
+      PageHeader pageHeader = sequenceReader.nextPageHeader();
+      // memory data
+      if (pageHeader == null) {
+        batchDataList.set(idx, sequenceReader.nextBatch());
+        hasCachedSequenceDataList.set(idx, true);
+        if (skipPointInBatchData(idx)) {
+          return;
+        }
+      } else {
+        // page data
+
+        // timestamps of all points in the page are less than startTime
+        if (pageHeader.getEndTime() < startTime) {
+          sequenceReader.skipPageData();
+          continue;
+        } else if (pageHeader.getStartTime() >= startTime) {
+          // timestamps of all points in the page are greater or equal to startTime, needn't to skip
+          return;
+        }
+        // the page has overlap with startTime
+        batchDataList.set(idx, sequenceReader.nextBatch());
+        hasCachedSequenceDataList.set(idx, true);
+        if (skipPointInBatchData(idx)) {
+          return;
+        }
+      }
+    }
+  }
+
+  /**
+   * skip points in unsequence reader whose timestamp is less than startTime.
+   *
+   * @param unsequenceReader unsequence reader
+   */
+  private void skipPointInUnsequenceData(IPointReader unsequenceReader) throws IOException {
+    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < startTime) {
+      unsequenceReader.next();
+    }
+  }
+
+  /**
+   * skip points in batch data whose timestamp is less than startTime.
+   *
+   * @param idx series index
+   * @return whether has next in batch data
+   */
+  private boolean skipPointInBatchData(int idx) {
+    BatchData batchData = batchDataList.get(idx);
+    boolean hasCachedSequenceData = hasCachedSequenceDataList.get(idx);
+    if (!hasCachedSequenceData) {
+      return false;
+    }
+
+    // skip the cached batch data points with timestamp less than startTime
+    while (batchData.hasCurrent() && batchData.currentTime() < startTime) {
       batchData.next();
     }
+    batchDataList.set(idx, batchData);
     if (batchData.hasCurrent()) {
-      result.updateResultFromPageData(batchData, curEndTime);
-      // reset batch data for next calculation
-      batchData.resetBatchData();
+      return true;
+    } else {
+      hasCachedSequenceDataList.set(idx, false);
+      return false;
     }
+  }
+
+  private boolean canUseHeader(long minTime, long maxTime, IPointReader unSequenceReader,
+      AggregateFunction function)
+      throws IOException, QueryProcessException {
+    if (timeFilter != null && !timeFilter.containStartEndTime(minTime, maxTime)) {
+      return false;
+    }
+
+    TimeRange range = new TimeRange(startTime, endTime - 1);
+    if (!range.contains(new TimeRange(minTime, maxTime))) {
+      return false;
+    }
+
+    // cal unsequence data with timestamps between pages.
+    function.calculateValueFromUnsequenceReader(unSequenceReader, minTime);
+
+    return !(unSequenceReader.hasNext() && unSequenceReader.current().getTimestamp() <= maxTime);
   }
 }

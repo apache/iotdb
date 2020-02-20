@@ -21,8 +21,8 @@ package org.apache.iotdb.db.qp.strategy.optimizer;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.*;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -40,6 +40,11 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   private static final String WARNING_NO_SUFFIX_PATHS = "given SFWOperator doesn't have suffix paths, cannot concat seriesPath";
   private static final String WARNING_NO_PREFIX_PATHS = "given SFWOperator doesn't have prefix paths, cannot concat seriesPath";
 
+  private IQueryProcessExecutor executor;
+
+  public ConcatPathOptimizer(IQueryProcessExecutor executor) {
+    this.executor = executor;
+  }
 
   @Override
   public Operator transform(Operator operator) throws LogicalOptimizeException {
@@ -75,9 +80,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     checkAggrOfSelectOperator(select);
 
-    boolean isAlignByDevice = false;
+    boolean isGroupByDevice = false;
     if (operator instanceof QueryOperator) {
-      if (!((QueryOperator) operator).isAlignByDevice()) {
+      if (!((QueryOperator) operator).isGroupByDevice()) {
         concatSelect(prefixPaths, select); // concat and remove star
 
         if (((QueryOperator) operator).hasSlimit()) {
@@ -86,7 +91,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           slimitTrim(select, seriesLimit, seriesOffset);
         }
       } else {
-        isAlignByDevice = true;
+        isGroupByDevice = true;
         for (Path path : initialSuffixPaths) {
           String device = path.getDevice();
           if (!device.isEmpty()) {
@@ -106,7 +111,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     if (filter == null) {
       return operator;
     }
-    if(!isAlignByDevice){
+    if(!isGroupByDevice){
       sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter));
     }
     // GROUP_BY_DEVICE leaves the concatFilter to PhysicalGenerator to optimize filter without prefix first
@@ -268,7 +273,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     LinkedHashMap<String, Integer> pathMap = new LinkedHashMap<>();
     try {
       for (Path path : paths) {
-        List<String> all = MManager.getInstance().getPaths(path.getFullPath());
+        List<String> all;
+        all = executor.getAllMatchedPaths(path.getFullPath());
         for (String subPath : all) {
           if (!pathMap.containsKey(subPath)) {
             pathMap.put(subPath, 1);
@@ -290,7 +296,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<String> newAggregations = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       try {
-        List<String> actualPaths = MManager.getInstance().getPaths(paths.get(i).getFullPath());
+        List<String> actualPaths = executor.getAllMatchedPaths(paths.get(i).getFullPath());
         for (String actualPath : actualPaths) {
           retPaths.add(new Path(actualPath));
           if (afterConcatAggregations != null && !afterConcatAggregations.isEmpty()) {

@@ -50,10 +50,6 @@ public abstract class UnaryFilter<T extends Comparable<T>> implements Filter, Se
     return value;
   }
 
-  public void setValue(T value) {
-    this.value = value;
-  }
-
   public FilterType getFilterType() {
     return filterType;
   }

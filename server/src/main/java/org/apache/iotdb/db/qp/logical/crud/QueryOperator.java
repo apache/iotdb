@@ -45,8 +45,8 @@ public class QueryOperator extends SFWOperator {
   private int seriesLimit = 0;
   private int seriesOffset = 0;
 
-  private boolean isAlignByDevice = false;
-  private boolean isAlignByTime = true;
+  private boolean isGroupByDevice = false;
+  private boolean isAlign = true;
 
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);
@@ -149,19 +149,19 @@ public class QueryOperator extends SFWOperator {
     this.slidingStep = slidingStep;
   }
 
-  public boolean isAlignByDevice() {
-    return isAlignByDevice;
+  public boolean isGroupByDevice() {
+    return isGroupByDevice;
   }
 
-  public void setAlignByDevice(boolean isAlignByDevice) {
-    this.isAlignByDevice = isAlignByDevice;
+  public void setGroupByDevice(boolean isGroupByDevice) {
+    this.isGroupByDevice = isGroupByDevice;
   }
 
-  public boolean isAlignByTime() {
-    return isAlignByTime;
+  public boolean isAlign() {
+    return isAlign;
   }
 
-  public void setAlignByTime(boolean isAlignByTime) {
-    this.isAlignByTime = isAlignByTime;
+  public void setAlign(boolean align) {
+    isAlign = align;
   }
 }

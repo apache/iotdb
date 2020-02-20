@@ -54,7 +54,7 @@ public class ChunkLoaderTest {
     List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
         .getChunkMetaDataList(new Path("d2.s1"));
 
-    CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
+    ChunkLoaderImpl seriesChunkLoader = new ChunkLoaderImpl(fileReader);
     for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
       Chunk chunk = seriesChunkLoader.getChunk(chunkMetaData);
       ChunkHeader chunkHeader = chunk.getHeader();
