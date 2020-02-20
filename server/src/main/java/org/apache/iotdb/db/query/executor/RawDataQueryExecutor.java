@@ -32,7 +32,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
+import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -91,7 +91,7 @@ public class RawDataQueryExecutor {
 
       QueryDataSource queryDataSource = QueryResourceManager.getInstance()
           .getQueryDataSource(path, context, timeFilter);
-      timeFilter = queryDataSource.updateTimeFilterUsingTTL(timeFilter);
+      timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
       ManagedSeriesReader reader = new SeriesRawDataBatchReader(path, dataType, context,
           queryDataSource, timeFilter, null);
@@ -108,7 +108,7 @@ public class RawDataQueryExecutor {
    */
   public QueryDataSet executeWithValueFilter(QueryContext context) throws StorageEngineException {
 
-    EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(
+    ServerTimeGenerator timestampGenerator = new ServerTimeGenerator(
         optimizedExpression, context);
 
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();

@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.query.timegenerator;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
@@ -39,8 +40,8 @@ public class NodeTest {
     long[] timestamps = new long[]{1, 2, 3, 4, 5, 6, 7};
     AbstractFileSeriesReader seriesReader = new FakedFileSeriesReader(timestamps);
     Node leafNode = new LeafNode(seriesReader);
-    while (leafNode.hasNext()) {
-      Assert.assertEquals(timestamps[index++], leafNode.next());
+    while (leafNode.hasNextTimeColumn()) {
+      Assert.assertEquals(timestamps[index++], leafNode.nextTimeColumn().currentTime());
     }
   }
 
@@ -62,9 +63,13 @@ public class NodeTest {
     int index = 0;
     Node orNode = new OrNode(new LeafNode(new FakedFileSeriesReader(left)),
         new LeafNode(new FakedFileSeriesReader(right)));
-    while (orNode.hasNext()) {
-      long value = orNode.next();
-      Assert.assertEquals(ret[index++], value);
+    while (orNode.hasNextTimeColumn()) {
+      TimeColumn timeSeries = orNode.nextTimeColumn();
+      while (timeSeries.hasCurrent()) {
+        long value = timeSeries.currentTime();
+        timeSeries.next();
+        Assert.assertEquals(ret[index++], value);
+      }
     }
     Assert.assertEquals(ret.length, index);
   }
@@ -82,9 +87,13 @@ public class NodeTest {
     int index = 0;
     Node andNode = new AndNode(new LeafNode(new FakedFileSeriesReader(left)),
         new LeafNode(new FakedFileSeriesReader(right)));
-    while (andNode.hasNext()) {
-      long value = andNode.next();
-      Assert.assertEquals(ret[index++], value);
+    while (andNode.hasNextTimeColumn()) {
+      TimeColumn timeSeries = andNode.nextTimeColumn();
+      while (timeSeries.hasCurrent()) {
+        long value = timeSeries.currentTime();
+        timeSeries.next();
+        Assert.assertEquals(ret[index++], value);
+      }
     }
     Assert.assertEquals(ret.length, index);
   }
@@ -111,11 +120,6 @@ public class NodeTest {
     @Override
     public BatchData nextBatch() {
       hasCachedData = false;
-      return data;
-    }
-
-    @Override
-    public BatchData currentBatch() {
       return data;
     }
 

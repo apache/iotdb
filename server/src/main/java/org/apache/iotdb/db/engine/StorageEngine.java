@@ -316,11 +316,11 @@ public class StorageEngine implements IService {
   public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context,
       QueryFileManager filePathsManager)
       throws StorageEngineException {
-    //TODO use context.
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.query(deviceId, measurementId, context, filePathsManager, seriesExpression.getFilter());
+    return storageGroupProcessor
+        .query(deviceId, measurementId, context, filePathsManager, seriesExpression.getFilter());
   }
 
   /**

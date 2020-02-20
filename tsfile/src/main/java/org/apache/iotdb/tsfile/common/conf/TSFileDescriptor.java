@@ -111,7 +111,8 @@ public class TSFileDescriptor {
           .parseInt(properties.getProperty("page_size_in_byte",
               Integer.toString(conf.getPageSizeInByte()))));
       if (conf.getPageSizeInByte() > conf.getGroupSizeInByte()) {
-        logger.warn("page_size is greater than group size, will set it as the same with group size");
+        logger
+            .warn("page_size is greater than group size, will set it as the same with group size");
         conf.setPageSizeInByte(conf.getGroupSizeInByte());
       }
       conf.setMaxNumberOfPointsInPage(Integer
@@ -128,6 +129,8 @@ public class TSFileDescriptor {
       conf.setTimeEncoder(properties.getProperty("time_encoder", conf.getTimeEncoder()));
       conf.setValueEncoder(properties.getProperty("value_encoder", conf.getValueEncoder()));
       conf.setCompressor(properties.getProperty("compressor", conf.getCompressor()));
+      conf.setBatchSize(Integer.parseInt(properties.getProperty("batch_size",
+          Integer.toString(conf.getBatchSize()))));
     } catch (IOException e) {
       logger.warn("Cannot load config file, use default configuration", e);
     } catch (Exception e) {

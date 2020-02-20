@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.dataset;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
+import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class RawQueryDataSetWithValueFilter extends QueryDataSet {
 
-  private EngineTimeGenerator timeGenerator;
+  private ServerTimeGenerator timeGenerator;
   private List<IReaderByTimestamp> seriesReaderByTimestampList;
   private boolean hasCachedRowRecord;
   private RowRecord cachedRowRecord;
@@ -38,13 +38,13 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
   /**
    * constructor of EngineDataSetWithValueFilter.
    *
-   * @param paths paths in List structure
-   * @param dataTypes time series data type
+   * @param paths         paths in List structure
+   * @param dataTypes     time series data type
    * @param timeGenerator EngineTimeGenerator object
-   * @param readers readers in List(IReaderByTimeStamp) structure
+   * @param readers       readers in List(IReaderByTimeStamp) structure
    */
   public RawQueryDataSetWithValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-      EngineTimeGenerator timeGenerator, List<IReaderByTimestamp> readers) {
+      ServerTimeGenerator timeGenerator, List<IReaderByTimestamp> readers) {
     super(paths, dataTypes);
     this.timeGenerator = timeGenerator;
     this.seriesReaderByTimestampList = readers;
@@ -94,13 +94,5 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
       }
     }
     return hasCachedRowRecord;
-  }
-
-  public EngineTimeGenerator getTimeGenerator() {
-    return timeGenerator;
-  }
-
-  public List<IReaderByTimestamp> getReaders() {
-    return seriesReaderByTimestampList;
   }
 }

@@ -340,6 +340,7 @@ public class TsFileProcessor {
 
   /**
    * TODO if the flushing thread is too fast, the tmpMemTable.wait() may never wakeup
+   * Tips: I am trying to solve this issue by checking whether the table exist before wait()
    */
   public void syncFlush() throws IOException {
     IMemTable tmpMemTable;
@@ -357,17 +358,17 @@ public class TsFileProcessor {
     synchronized (tmpMemTable) {
       try {
         long startWait = System.currentTimeMillis();
-        while (true) {
+        while (flushingMemTables.contains(tmpMemTable)) {
           tmpMemTable.wait(1000);
 
-          flushQueryLock.readLock().lock();
-          try {
-            if (!flushingMemTables.contains(tmpMemTable)) {
-              break;
-            }
-          } finally {
-            flushQueryLock.readLock().unlock();
-          }
+          //flushQueryLock.readLock().lock();
+//          try {
+//            if (!flushingMemTables.contains(tmpMemTable)) {
+//              break;
+//            }
+//          } finally {
+//            //flushQueryLock.readLock().unlock();
+//          }
 
           if ((System.currentTimeMillis() - startWait) > 60_000) {
             logger.warn("has waited for synced flushing a memtable in {} for 60 seconds.",
@@ -431,7 +432,11 @@ public class TsFileProcessor {
     flushQueryLock.writeLock().lock();
     try {
       writer.makeMetadataVisible();
-      flushingMemTables.remove(memTable);
+      if (!flushingMemTables.remove(memTable)) {
+        logger.warn(
+            "put the memtable (signal={}) out of flushingMemtables but it is not in the queue.",
+            memTable.isSignalMemTable());
+      }
       memTable.release();
       MemTablePool.getInstance().putBack(memTable, storageGroupName);
       logger.debug("storage group {} flush finished, remove a memtable from flushing list, "
@@ -475,10 +480,9 @@ public class TsFileProcessor {
       }
     }
 
-    releaseFlushedMemTable(memTableToFlush);
-
     // for sync flush
     synchronized (memTableToFlush) {
+      releaseFlushedMemTable(memTableToFlush);
       memTableToFlush.notifyAll();
     }
 
