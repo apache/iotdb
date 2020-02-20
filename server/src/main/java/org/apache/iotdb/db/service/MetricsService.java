@@ -88,7 +88,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
     metricsWebUI.getHandlers().add(metricsSystem.getServletHandlers());
     metricsWebUI.initialize();
     server = metricsWebUI.getServer(port);
-    server.setStopTimeout(5000);
+    server.setStopTimeout(0);
     metricsSystem.start();
     try {
       executorService.execute(new MetricsServiceThread(server));
