@@ -590,36 +590,49 @@ public class TsFileProcessor {
         IWritableMemChunk series = workMemTable.getMemTableMap().get(deviceId).get(measurementId);
         String[] measurements = new String[] {measurementId};
         TSDataType[] dataTypes = new TSDataType[] {series.getType()};
-        BatchInsertPlan batchInsertPlan = new BatchInsertPlan(deviceId, measurements, dataTypes);
         TVList tvList = series.getSortedTVList();
         int rowCount = (int)(tvList.size() * config.getDefaultStep());
-        long[] times = tvList.getPartialSortedTimes(config.getDefaultStep());
-        Object[] columns = new Object[1];
+        long[] flushTimes = tvList.getPartialTimes(0, rowCount);
+        long[] workTimes = tvList.getPartialTimes(rowCount, tvList.size());
+        Object[] flushColumns = new Object[1];
+        Object[] workColumns = new Object[1];
         switch (series.getType()) {
           case TEXT:
-            columns[0] = tvList.getPartialSortedBinaries(config.getDefaultStep());
+            flushColumns[0] = tvList.getPartialBinaries(0, rowCount);
+            workColumns[0] = tvList.getPartialBinaries(rowCount, tvList.size());
             break;
           case FLOAT:
-            columns[0] = tvList.getPartialSortedFloats(config.getDefaultStep());
+            flushColumns[0] = tvList.getPartialFloats(0, rowCount);
+            workColumns[0] = tvList.getPartialFloats(rowCount, tvList.size());
             break;
           case INT32:
-            columns[0] = tvList.getPartialSortedInts(config.getDefaultStep());
+            flushColumns[0] = tvList.getPartialInts(0, rowCount);
+            workColumns[0] = tvList.getPartialInts(rowCount, tvList.size());
             break;
           case INT64:
-            columns[0] = tvList.getPartialSortedLongs(config.getDefaultStep());
+            flushColumns[0] = tvList.getPartialLongs(0, rowCount);
+            workColumns[0] = tvList.getPartialLongs(rowCount, tvList.size());
             break;
           case DOUBLE:
-            columns[0] = tvList.getPartialSortedDoubles(config.getDefaultStep());
+            flushColumns[0] = tvList.getPartialDoubles(0, rowCount);
+            workColumns[0] = tvList.getPartialDoubles(rowCount, tvList.size());
             break;
           case BOOLEAN:
-            columns[0] = tvList.getPartialSortedBooleans(config.getDefaultStep());
+            flushColumns[0] = tvList.getPartialBooleans(0, rowCount);
+            workColumns[0] = tvList.getPartialBooleans(rowCount, tvList.size());
             break;
         }
-        batchInsertPlan.setTimes(times);
-        batchInsertPlan.setColumns(columns);
-        batchInsertPlan.setRowCount(rowCount);
-        flushMemTable.insertBatch(batchInsertPlan, 0, batchInsertPlan.getRowCount());
-        workMemTable.delete(deviceId, measurementId, tvList.getTime(rowCount - 1));
+        BatchInsertPlan flushBatchInsertPlan = new BatchInsertPlan(deviceId, measurements, dataTypes);
+        flushBatchInsertPlan.setTimes(flushTimes);
+        flushBatchInsertPlan.setColumns(flushColumns);
+        flushBatchInsertPlan.setRowCount(rowCount);
+        flushMemTable.insertBatch(flushBatchInsertPlan, 0, rowCount);
+        BatchInsertPlan workBatchInsertPlan = new BatchInsertPlan(deviceId, measurements, dataTypes);
+        workBatchInsertPlan.setTimes(workTimes);
+        workBatchInsertPlan.setColumns(workColumns);
+        workBatchInsertPlan.setRowCount(tvList.size() - rowCount);
+        workMemTable.clear();
+        workMemTable.insertBatch(workBatchInsertPlan, 0, tvList.size() - rowCount);
       }
     }
   }

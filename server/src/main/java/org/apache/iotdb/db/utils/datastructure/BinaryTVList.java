@@ -64,15 +64,17 @@ public class BinaryTVList extends TVList {
   }
 
   @Override
-  public Binary[] getPartialSortedBinaries(float ratio) {
-    int count = (int)(ratio * size);
-    Binary[] partialSortedValues = new Binary[count];
-    for (int i = 0; i < count; i++) {
+  public Binary[] getPartialBinaries(int start, int end) {
+    if (start < 0 || start > end || end > size) {
+      return null;
+    }
+    Binary[] partialValues = new Binary[end - start];
+    for (int i = start; i < end; i++) {
       int arrayIndex = i / ARRAY_SIZE;
       int elementIndex = i % ARRAY_SIZE;
-      partialSortedValues[i] = values.get(arrayIndex)[elementIndex];
+      partialValues[i - start] = values.get(arrayIndex)[elementIndex];
     }
-    return partialSortedValues;
+    return partialValues;
   }
 
   protected void set(int index, long timestamp, Binary value) {

@@ -68,15 +68,17 @@ public abstract class TVList {
     return timestamps.get(arrayIndex)[elementIndex];
   }
 
-  public long[] getPartialSortedTimes(float ratio) {
-    int count = (int)(ratio * size);
-    long[] partialSortedTimes = new long[count];
-    for (int i = 0; i < count; i++) {
+  public long[] getPartialTimes(int start, int end) {
+    if (start < 0 || start > end || end > size) {
+      return null;
+    }
+    long[] partialTimes = new long[end - start];
+    for (int i = start; i < end; i++) {
       int arrayIndex = i / ARRAY_SIZE;
       int elementIndex = i % ARRAY_SIZE;
-      partialSortedTimes[i] = timestamps.get(arrayIndex)[elementIndex];
+      partialTimes[i - start] = timestamps.get(arrayIndex)[elementIndex];
     }
-    return partialSortedTimes;
+    return partialTimes;
   }
 
   public void putLong(long time, long value) {
@@ -175,27 +177,27 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public long[] getPartialSortedLongs(float ratio) {
+  public long[] getPartialLongs(int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public int[] getPartialSortedInts(float ratio) {
+  public int[] getPartialInts(int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public float[] getPartialSortedFloats(float ratio) {
+  public float[] getPartialFloats(int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public double[] getPartialSortedDoubles(float ratio) {
+  public double[] getPartialDoubles(int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public Binary[] getPartialSortedBinaries(float ratio) {
+  public Binary[] getPartialBinaries(int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public boolean[] getPartialSortedBooleans(float ratio) {
+  public boolean[] getPartialBooleans(int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

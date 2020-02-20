@@ -63,15 +63,17 @@ public class FloatTVList extends TVList {
   }
 
   @Override
-  public float[] getPartialSortedFloats(float ratio) {
-    int count = (int)(ratio * size);
-    float[] partialSortedValues = new float[count];
-    for (int i = 0; i < count; i++) {
+  public float[] getPartialFloats(int start, int end) {
+    if (start < 0 || start > end || end > size) {
+      return null;
+    }
+    float[] partialValues = new float[end - start];
+    for (int i = start; i < end; i++) {
       int arrayIndex = i / ARRAY_SIZE;
       int elementIndex = i % ARRAY_SIZE;
-      partialSortedValues[i] = values.get(arrayIndex)[elementIndex];
+      partialValues[i - start] = values.get(arrayIndex)[elementIndex];
     }
-    return partialSortedValues;
+    return partialValues;
   }
 
   protected void set(int index, long timestamp, float value) {
