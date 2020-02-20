@@ -41,8 +41,10 @@
     <!-- enable me if you want to monitor when files are opened and closed.
     <logger name="FileMonitor" level="info"/>
     -->
-    <logger name="FileMonitor" level="info"/>
+    <logger name="org.apache.iotdb.db.engine.merge" level="DEBUG"/>
+    <logger name="org.eclipse.jetty.util.thread.QueuedThreadPool" level="DEBUG"/>
     <logger name="org.apache.iotdb.db.service.MetricsService" level="INFO" />
+    <logger name="org.apache.iotdb.db.engine.flush.FlushManager" level="INFO" />
     <root level="WARN">
         <appender-ref ref="stdout"/>
     </root>

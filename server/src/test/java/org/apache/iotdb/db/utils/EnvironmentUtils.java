@@ -78,6 +78,7 @@ public class EnvironmentUtils {
   private static IoTDB daemon;
 
   public static void cleanEnv() throws IOException, StorageEngineException {
+    logger.warn("EnvironmentUtil cleanEnv...");
     if (daemon != null) {
       daemon.stop();
       daemon = null;
@@ -191,6 +192,8 @@ public class EnvironmentUtils {
     logger.warn("EnvironmentUtil setup...");
     System.setProperty(IoTDBConstant.REMOTE_JMX_PORT_NAME, "31999");
     IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(0);
+    //we do not start 8181 port in test.
+    IoTDBDescriptor.getInstance().getConfig().setEnableMetricsWebService(false);
     if (daemon == null) {
       daemon = new IoTDB();
     }

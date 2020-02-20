@@ -80,6 +80,9 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
   @Override
   public synchronized void startService() throws StartupException {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableMetricsWebService()) {
+      return;
+    }
     logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     executorService = Executors.newSingleThreadExecutor();
     int port = getMetricsPort();
@@ -88,7 +91,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
     metricsWebUI.getHandlers().add(metricsSystem.getServletHandlers());
     metricsWebUI.initialize();
     server = metricsWebUI.getServer(port);
-    server.setStopTimeout(5000);
+    server.setStopTimeout(10000);
     metricsSystem.start();
     try {
       executorService.execute(new MetricsServiceThread(server));

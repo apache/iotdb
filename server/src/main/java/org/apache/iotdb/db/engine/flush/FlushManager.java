@@ -88,6 +88,7 @@ public class FlushManager implements FlushManagerMBean, IService {
       TsFileProcessor tsFileProcessor = tsFileProcessorQueue.poll();
       tsFileProcessor.flushOneMemTable();
       tsFileProcessor.setManagedByFlushManager(false);
+      logger.error("Flush Thread re-register TSProcessor {} to the queue.", tsFileProcessor.getStorageGroupName());
       registerTsFileProcessor(tsFileProcessor);
     }
   }
@@ -99,11 +100,16 @@ public class FlushManager implements FlushManagerMBean, IService {
   public void registerTsFileProcessor(TsFileProcessor tsFileProcessor) {
     synchronized (tsFileProcessor) {
       if (!tsFileProcessor.isManagedByFlushManager() && tsFileProcessor.getFlushingMemTableSize() > 0) {
-        logger.info("storage group {} begin to submit a flush thread, flushing memtable size: {}",
-            tsFileProcessor.getStorageGroupName(), tsFileProcessor.getFlushingMemTableSize());
         tsFileProcessorQueue.add(tsFileProcessor);
+        logger.info("storage group {} begin to submit a flush thread, flushing memtable size: {}, queue size: {}",
+            tsFileProcessor.getStorageGroupName(), tsFileProcessor.getFlushingMemTableSize(), tsFileProcessorQueue.size());
         tsFileProcessor.setManagedByFlushManager(true);
         flushPool.submit(new FlushThread());
+      } else if (tsFileProcessor.isManagedByFlushManager()){
+        logger.info("tsFileProcessor {} is already in the flushPool, the first one: {}", tsFileProcessor.getStorageGroupName(),
+            tsFileProcessorQueue.size() >0 ? tsFileProcessorQueue.getFirst().getStorageGroupName() : "empty now");
+      } else {
+        logger.info("No flushing memetable to do, register TsProcessor {} failed.", tsFileProcessor.getStorageGroupName());
       }
     }
   }
@@ -121,5 +127,11 @@ public class FlushManager implements FlushManagerMBean, IService {
     }
 
     private static FlushManager instance = new FlushManager();
+  }
+
+  public String toString() {
+    return String.format("TSProcessors in the queue: %d, TaskPool size %d + %d,",
+        tsFileProcessorQueue.size(), flushPool.getWorkingTasksNumber(),
+        flushPool.getWaitingTasksNumber());
   }
 }
