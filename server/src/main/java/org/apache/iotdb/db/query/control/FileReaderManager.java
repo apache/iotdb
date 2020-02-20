@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 public class FileReaderManager implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(FileReaderManager.class);
+  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
 
   /**
    * max number of file streams being cached, must be lower than 65535.
@@ -198,13 +199,17 @@ public class FileReaderManager implements IService {
   public synchronized void closeAndRemoveAllOpenedReaders() throws IOException {
     for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : closedFileReaderMap.entrySet()) {
       entry.getValue().close();
-      logger.error("{} closedTsFileReader is closed.", entry.getValue().getFileName());
+      if (resourceLogger.isInfoEnabled()) {
+        resourceLogger.info("{} closedTsFileReader is closed.", entry.getValue().getFileName());
+      }
       closedReferenceMap.remove(entry.getKey());
       closedFileReaderMap.remove(entry.getKey());
     }
     for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : unclosedFileReaderMap.entrySet()) {
       entry.getValue().close();
-      logger.error("{} unclosedTsFileReader is closed.", entry.getValue().getFileName());
+      if (resourceLogger.isInfoEnabled()) {
+        resourceLogger.info("{} unclosedTsFileReader is closed.", entry.getValue().getFileName());
+      }
       unclosedReferenceMap.remove(entry.getKey());
       unclosedFileReaderMap.remove(entry.getKey());
     }

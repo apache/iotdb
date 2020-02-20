@@ -62,7 +62,7 @@ public class TsFileIOWriter {
   public static final byte[] versionNumberBytes;
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(TsFileIOWriter.class);
-
+  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   static {
     magicStringBytes = BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING);
     versionNumberBytes = TSFileConfig.VERSION_NUMBER.getBytes();
@@ -94,7 +94,9 @@ public class TsFileIOWriter {
   public TsFileIOWriter(File file) throws IOException {
     this.out = new DefaultTsFileOutput(file);
     this.file = file;
-    logger.error("{} is opened.", file.getName());
+    if (resourceLogger.isInfoEnabled()) {
+      resourceLogger.info("{} is opened.", file.getName());
+    }
     startFile();
   }
 
@@ -255,7 +257,9 @@ public class TsFileIOWriter {
 
     // close file
     out.close();
-    logger.error("{} is closed.", file.getName());
+    if (resourceLogger.isInfoEnabled()) {
+      resourceLogger.error("{} is closed.", file.getName());
+    }
     canWrite = false;
     logger.info("output stream is closed");
   }

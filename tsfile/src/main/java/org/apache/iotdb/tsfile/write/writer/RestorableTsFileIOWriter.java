@@ -48,7 +48,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
   private static final Logger logger = LoggerFactory
       .getLogger(RestorableTsFileIOWriter.class);
-
+  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   private long truncatedPosition = -1;
   private Map<String, MeasurementSchema> knownSchemas = new HashMap<>();
 
@@ -71,7 +71,9 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @throws IOException if write failed, or the file is broken but autoRepair==false.
    */
   public RestorableTsFileIOWriter(File file) throws IOException {
-    logger.error("{} is opened.", file.getName());
+    if (resourceLogger.isInfoEnabled()) {
+      resourceLogger.info("{} is opened.", file.getName());
+    }
     this.file = file;
     this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
 

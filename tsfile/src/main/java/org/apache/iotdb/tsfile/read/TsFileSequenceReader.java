@@ -57,6 +57,7 @@ import org.slf4j.LoggerFactory;
 public class TsFileSequenceReader implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileSequenceReader.class);
+  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
   protected String file;
@@ -92,7 +93,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param loadMetadataSize -whether load meta data size
    */
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
-    logger.error("{} reader is opened. {}", file, getClass().getName());
+    if (resourceLogger.isInfoEnabled()) {
+      resourceLogger.info("{} reader is opened. {}", file, getClass().getName());
+    }
     this.file = file;
     tsFileInput = FSFactoryProducer.getFileInputFactory().getTsFileInput(file);
     // old version number of TsFile using little endian starts with "v"
@@ -467,7 +470,9 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   public void close() throws IOException {
-    logger.error("{} reader is closed.", file);
+    if (resourceLogger.isInfoEnabled()) {
+      resourceLogger.error("{} reader is closed.", file);
+    }
     this.tsFileInput.close();
     deviceMetadataMap = null;
   }

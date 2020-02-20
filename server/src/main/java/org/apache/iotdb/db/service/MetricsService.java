@@ -114,7 +114,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
   @Override
   public void stopService() {
-    logger.warn("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    logger.info("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     try {
       if (server != null) {
         server.stop();
@@ -135,7 +135,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
       executorService.shutdownNow();
     }
     checkAndWaitPortIsClosed();
-    logger.warn("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
   }
 
   private void checkAndWaitPortIsClosed() {

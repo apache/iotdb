@@ -39,8 +39,11 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter{
   private Map<String, MeasurementSchema> knownSchemas;
   private long truncatePosition;
   private static Logger logger = LoggerFactory.getLogger(ForceAppendTsFileWriter.class);
+  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   public ForceAppendTsFileWriter(File file) throws IOException {
-    logger.error("{} is opened.", file.getName());
+    if (resourceLogger.isInfoEnabled()) {
+      resourceLogger.info("{} is opened.", file.getName());
+    }
     this.out = new DefaultTsFileOutput(file, true);
     this.file = file;
 
