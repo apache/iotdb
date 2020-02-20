@@ -47,6 +47,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBSessionIT {
 
@@ -207,10 +209,12 @@ public class IoTDBSessionIT {
     session.setStorageGroup("root.sg1");
 
     createTimeseries();
+
     insert();
 
     // sql test
     insert_via_sql();
+
     query3();
 
 //    insertRowBatchTest1();
@@ -225,7 +229,6 @@ public class IoTDBSessionIT {
     insertInBatch();
 
     query4();
-
     // Add another storage group to test the deletion of storage group
     session.setStorageGroup("root.sg2");
     session.createTimeseries("root.sg2.d1.s1", TSDataType.INT64, TSEncoding.RLE,
