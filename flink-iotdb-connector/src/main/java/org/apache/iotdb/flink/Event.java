@@ -18,17 +18,19 @@
 
 package org.apache.iotdb.flink;
 
+import java.util.List;
+
 public class Event {
     private String device;
     private Long timestamp;
-    private String measurement;
-    private String value;
+    private List<String> measurements;
+    private List<String> values;
 
-    public Event(String device, Long timestamp, String measurement, String value) {
+    public Event(String device, Long timestamp, List<String> measurements, List<String> values) {
         this.device = device;
         this.timestamp = timestamp;
-        this.measurement = measurement;
-        this.value = value;
+        this.measurements = measurements;
+        this.values = values;
     }
 
     public String getDevice() {
@@ -39,11 +41,11 @@ public class Event {
         return timestamp;
     }
 
-    public String getMeasurement() {
-        return measurement;
+    public List<String> getMeasurements() {
+        return measurements;
     }
 
-    public String getValue() {
-        return value;
+    public List<String> getValues() {
+        return values;
     }
 }

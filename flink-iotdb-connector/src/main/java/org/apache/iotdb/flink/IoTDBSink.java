@@ -18,7 +18,6 @@
 
 package org.apache.iotdb.flink;
 
-import com.google.common.collect.Lists;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.state.FunctionInitializationContext;
 import org.apache.flink.runtime.state.FunctionSnapshotContext;
@@ -27,9 +26,6 @@ import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,8 +59,10 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> implements CheckpointedF
         session.open();
 
         session.setStorageGroup(options.getStorageGroup());
-        for (String sensor : options.getTimeseries()) {
-            session.createTimeseries(sensor, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED);
+        for (IoTDBOptions.TimeseriesOption option : options.getTimeseriesOptionList()) {
+            if (!session.checkTimeseriesExists(option.getPath())) {
+                session.createTimeseries(option.getPath(), option.getDataType(), option.getEncoding(), option.getCompressor());
+            }
         }
 
         if (batchFlushOnCheckpoint && !((StreamingRuntimeContext) getRuntimeContext()).isCheckpointingEnabled()) {
@@ -94,7 +92,7 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> implements CheckpointedF
         }
 
         TSStatus status = session.insert(event.getDevice(), event.getTimestamp(),
-                Lists.newArrayList(event.getMeasurement()), Lists.newArrayList(event.getValue()));
+                event.getMeasurements(), event.getValues());
         LOG.debug("sync send event result: {}", status);
     }
 
@@ -132,8 +130,8 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> implements CheckpointedF
                     for (Event event : batchList) {
                         deviceIds.add(event.getDevice());
                         timestamps.add(event.getTimestamp());
-                        measurementsList.add(Lists.newArrayList(event.getMeasurement()));
-                        valuesList.add(Lists.newArrayList(event.getValue()));
+                        measurementsList.add(event.getMeasurements());
+                        valuesList.add(event.getValues());
                     }
                     List<TSStatus> statusList = session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
                     LOG.debug("sync send events result: {}", statusList);

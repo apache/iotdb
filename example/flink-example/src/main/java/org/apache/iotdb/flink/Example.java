@@ -17,7 +17,7 @@
  */
 package org.apache.iotdb.flink;
 
-import org.apache.flink.shaded.guava18.com.google.common.collect.Lists;
+import com.google.common.collect.Lists;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 
@@ -36,9 +36,9 @@ public class Example {
         options.setUser("root");
         options.setPassword("root");
         options.setStorageGroup("root.sg");
-        options.setTimeseries(Lists.newArrayList("root.sg.d1.s1"));
+        options.setTimeseriesOptionList(Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.d1.s1")));
 
-        IoTSerializationSchema serializationSchema = new DefaultIoTSerializationSchema();
+        IoTSerializationSchema serializationSchema = new DefaultIoTSerializationSchema(options);
         IoTDBSink ioTDBSink = new IoTDBSink(options, serializationSchema)
                 // enable batching
                 .withBatchFlushOnCheckpoint(true)
@@ -71,8 +71,8 @@ public class Example {
                 Map tuple = new HashMap();
                 tuple.put("device", "root.sg.d1");
                 tuple.put("timestamp", String.valueOf(System.currentTimeMillis()));
-                tuple.put("measurement", "s1");
-                tuple.put("value", String.valueOf(random.nextDouble()));
+                tuple.put("measurements", "s1");
+                tuple.put("values", String.valueOf(random.nextDouble()));
 
                 context.collect(tuple);
                 Thread.sleep(1000);

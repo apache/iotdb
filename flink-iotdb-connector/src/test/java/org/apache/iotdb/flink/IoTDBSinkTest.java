@@ -18,6 +18,7 @@
 
 package org.apache.iotdb.flink;
 
+import com.google.common.collect.Lists;
 import org.apache.iotdb.session.Session;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,8 +39,8 @@ public class IoTDBSinkTest {
     @Before
     public void setUp() throws Exception {
         IoTDBOptions options = new IoTDBOptions();
-        IoTSerializationSchema serializationSchema = new DefaultIoTSerializationSchema();
-        ioTDBSink = new IoTDBSink(options, serializationSchema);
+        options.setTimeseriesOptionList(Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
+        ioTDBSink = new IoTDBSink(options, new DefaultIoTSerializationSchema(options));
 
         session = mock(Session.class);
         ioTDBSink.setSession(session);
@@ -48,10 +49,10 @@ public class IoTDBSinkTest {
     @Test
     public void testSink() throws Exception {
         Map tuple = new HashMap();
-        tuple.put("device", "D01");
+        tuple.put("device", "root.sg.D01");
         tuple.put("timestamp", "1581861293000");
-        tuple.put("measurement", "temperature");
-        tuple.put("value", "36.5");
+        tuple.put("measurements", "temperature");
+        tuple.put("values", "36.5");
 
         ioTDBSink.invoke(tuple, null);
         verify(session).insert(any(String.class), any(Long.class), any(List.class), any(List.class));

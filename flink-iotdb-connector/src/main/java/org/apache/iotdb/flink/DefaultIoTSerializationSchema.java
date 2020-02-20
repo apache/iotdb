@@ -18,13 +18,28 @@
 
 package org.apache.iotdb.flink;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class DefaultIoTSerializationSchema implements IoTSerializationSchema<Map<String,String>> {
     public static final String FIELD_DEVICE = "device";
     public static final String FIELD_TIMESTAMP = "timestamp";
-    public static final String FIELD_MEASUREMENT = "measurement";
-    public static final String FIELD_VALUE = "value";
+    public static final String FIELD_MEASUREMENTS = "measurements";
+    public static final String FIELD_VALUES = "values";
+    public static final String DEFAULT_SEPARATOR = ",";
+
+    private Map<String, IoTDBOptions.TimeseriesOption> timeseriesOptionMap;
+
+    public DefaultIoTSerializationSchema(IoTDBOptions ioTDBOptions) {
+        timeseriesOptionMap = new HashMap<>();
+        for (IoTDBOptions.TimeseriesOption timeseriesOption : ioTDBOptions.getTimeseriesOptionList()) {
+            timeseriesOptionMap.put(timeseriesOption.getPath(), timeseriesOption);
+        }
+    }
 
     @Override
     public Event serialize(Map<String,String> tuple) {
@@ -33,11 +48,31 @@ public class DefaultIoTSerializationSchema implements IoTSerializationSchema<Map
         }
 
         String device = tuple.get(FIELD_DEVICE);
+
         String ts = tuple.get(FIELD_TIMESTAMP);
         Long timestamp = ts == null ? System.currentTimeMillis() : Long.parseLong(ts);
-        String measurement = tuple.get(FIELD_MEASUREMENT);
-        String value = "'" + tuple.get(FIELD_VALUE) + "'";
 
-        return new Event(device, timestamp, measurement, value);
+        List<String> measurements = null;
+        if (tuple.get(FIELD_MEASUREMENTS) != null) {
+            measurements = Arrays.asList(tuple.get(FIELD_MEASUREMENTS).split(DEFAULT_SEPARATOR));
+        }
+
+        List<String> values = null;
+        if (tuple.get(FIELD_VALUES) != null) {
+            values = Arrays.asList(tuple.get(FIELD_VALUES).split(DEFAULT_SEPARATOR));
+        }
+
+        if (device != null && measurements != null && values != null && measurements.size() == values.size()) {
+            for (int i = 0; i < measurements.size(); i++) {
+                String measurement = device + "." + measurements.get(i);
+                IoTDBOptions.TimeseriesOption timeseriesOption = timeseriesOptionMap.get(measurement);
+                if (timeseriesOption!= null && TSDataType.TEXT.equals(timeseriesOption.getDataType())) {
+                    // The TEXT data type should be covered by " or '
+                    values.set(i, "'" + values.get(i) + "'");
+                }
+            }
+        }
+
+        return new Event(device, timestamp, measurements, values);
     }
 }
