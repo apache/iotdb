@@ -95,7 +95,7 @@ public class TsFileIOWriter {
     this.out = new DefaultTsFileOutput(file);
     this.file = file;
     if (resourceLogger.isInfoEnabled()) {
-      resourceLogger.info("{} is opened.", file.getName());
+      resourceLogger.info("{} writer is opened.", file.getName());
     }
     startFile();
   }
@@ -258,7 +258,7 @@ public class TsFileIOWriter {
     // close file
     out.close();
     if (resourceLogger.isInfoEnabled()) {
-      resourceLogger.error("{} is closed.", file.getName());
+      resourceLogger.info("{} writer is closed.", file.getName());
     }
     canWrite = false;
     logger.info("output stream is closed");

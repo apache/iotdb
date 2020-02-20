@@ -471,7 +471,7 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   public void close() throws IOException {
     if (resourceLogger.isInfoEnabled()) {
-      resourceLogger.error("{} reader is closed.", file);
+      resourceLogger.info("{} reader is closed.", file);
     }
     this.tsFileInput.close();
     deviceMetadataMap = null;
