@@ -152,7 +152,7 @@ DNF 是 Disjuctive Normal Form 的缩写，即析取范式。DnfFilterOptimizer 
     输入：两个子 FilterOperator
     输出：合并后的合取式
 
-该方法生成关系“与”，并将输入的两个 FilterOperator 作为其两个子节点。
+该方法将输入的两个子合取式 Operator 合并为一个合取式，例如：(a and b) merge (c) -> (a and b and c)
 
 
 ### MergeSingleFilterOptimizer
