@@ -440,7 +440,13 @@ public class IoTDBConnection implements Connection {
 
     } catch (TException e) {
       transport.close();
-      throw new SQLException(String.format("Can not establish connection with %s : %s",
+      if (e.getMessage().contains("Required field 'client_protocol' was not present!")) {
+        // the server is an old version (less than 0.10)
+        throw new SQLException(String.format(
+            "Can not establish connection with %s : You may try to connect an old version IoTDB instance using a client with new version: %s. ",
+            params.getJdbcUriString(), e.getMessage()), e);
+      }
+      throw new SQLException(String.format("Can not establish connection with %s : %s. ",
           params.getJdbcUriString(), e.getMessage()), e);
     } catch (IoTDBRPCException e) {
       // failed to connect, disconnect from the server
