@@ -739,19 +739,19 @@ public class MManager {
       int sgLevel) throws MetadataException {
     lock.readLock().lock();
     MNode node = null;
-    boolean setStorageGroup = false;
+    boolean shouldSetStorageGroup = false;
     try {
       node = mNodeCache.get(path);
     } catch (CacheException e) {
       if (!autoCreateSchema) {
         throw new PathNotExistException(path);
       } else {
-        setStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
+        shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
       }
     } finally {
       lock.readLock().unlock();
       if (autoCreateSchema) {
-        if (setStorageGroup) {
+        if (shouldSetStorageGroup) {
           String storageGroupName = MetaUtils.getStorageGroupNameByLevel(path, sgLevel);
           setStorageGroup(storageGroupName);
         }
