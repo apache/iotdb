@@ -19,19 +19,23 @@
 
 package org.apache.iotdb.cluster.common;
 
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 
 public class TestDataGroupMember extends DataGroupMember {
 
   public TestDataGroupMember() {
     super();
-    allNodes = new ArrayList<>();
-    thisNode = TestUtils.getNode(0);
-    for (int i = 0; i < 10; i++) {
-      allNodes.add(TestUtils.getNode(i));
-    }
+    setQueryManager(new ClusterQueryManager());
+  }
+
+  public TestDataGroupMember(Node thisNode, List<Node> allNodes) {
+    super();
+    this.thisNode = thisNode;
+    this.allNodes = allNodes;
     setQueryManager(new ClusterQueryManager());
   }
 }

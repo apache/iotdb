@@ -26,7 +26,10 @@ import static junit.framework.TestCase.assertTrue;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import javax.xml.crypto.Data;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestDataClient;
@@ -65,29 +68,94 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
 
+/**
+ * allNodes: node0, node1... node9
+ * localNode: node0
+ * pathList: root.sg0.s0, root.sg0.s1... root.sg0.s9 (all double type)
+ */
 public class BaseQueryTest {
 
   MetaGroupMember localMetaGroupMember;
-  DataGroupMember remoteDataGroupMember;
+  Map<Node, DataGroupMember> dataGroupMemberMap;
+  Map<Node, MetaGroupMember> metaGroupMemberMap;
   List<Path> pathList;
   List<TSDataType> dataTypes;
   IQueryProcessExecutor queryProcessExecutor;
+  PartitionTable partitionTable;
+  List<Node> allNodes;
 
   @Before
   public void setUp() throws MetadataException, QueryProcessException {
-    List<Node> allNodes = new ArrayList<>();
+    allNodes = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       allNodes.add(TestUtils.getNode(i));
     }
 
-    remoteDataGroupMember = new TestDataGroupMember() {
+    dataGroupMemberMap = new HashMap<>();
+    metaGroupMemberMap = new HashMap<>();
+
+    partitionTable = new SlotPartitionTable(allNodes, TestUtils.getNode(0));
+    localMetaGroupMember = getMetaGroupMember(TestUtils.getNode(0));
+
+    pathList = new ArrayList<>();
+    dataTypes = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      pathList.add(new Path(TestUtils.getTestSeries(0, i)));
+      dataTypes.add(TSDataType.DOUBLE);
+    }
+
+    queryProcessExecutor = new QueryProcessExecutor() {
+      @Override
+      public List<String> getAllMatchedPaths(String originPath) throws MetadataException {
+        return MManager.getInstance().getPaths(originPath);
+      }
+
+      @Override
+      public TSDataType getSeriesType(Path path) {
+        try {
+          return localMetaGroupMember.getSeriesType(path.getFullPath());
+        } catch (MetadataException e) {
+          return null;
+        }
+      }
+    };
+
+    MManager.getInstance().init();
+    for (int i = 0; i < 10; i++) {
+      try {
+        MManager.getInstance().setStorageGroupToMTree(TestUtils.getTestSg(i));
+        MeasurementSchema schema = TestUtils.getTestSchema(0, i);
+        MManager.getInstance().addPathToMTree(schema.getMeasurementId(), schema.getType(),
+            schema.getEncodingType(), schema.getCompressor(), schema.getProps());
+      } catch (PathAlreadyExistException e) {
+        // ignore
+      }
+    }
+    QueryCoordinator.getINSTANCE().setMetaGroupMember(localMetaGroupMember);
+  }
+
+  private DataGroupMember getDataGroupMember(Node node) {
+    return dataGroupMemberMap.computeIfAbsent(node, this::newDataGroupMember);
+  }
+
+  private DataGroupMember newDataGroupMember(Node node) {
+    DataGroupMember newMember = new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
       @Override
       public boolean syncLeader() {
         return true;
       }
     };
+    newMember.setThisNode(node);
+    newMember.setMetaGroupMember(localMetaGroupMember);
+    return newMember;
+  }
 
-    localMetaGroupMember = new TestMetaGroupMember() {
+  private MetaGroupMember getMetaGroupMember(Node node) {
+    return metaGroupMemberMap.computeIfAbsent(node, this::newMetaGroupMember);
+  }
+
+  private MetaGroupMember newMetaGroupMember(Node node) {
+    MetaGroupMember ret = new TestMetaGroupMember() {
       @Override
       public TSDataType getSeriesType(String pathStr) {
         for (int i = 0; i < pathList.size(); i++) {
@@ -129,7 +197,7 @@ public class BaseQueryTest {
       @Override
       protected DataGroupMember getLocalDataMember(Node header, AsyncMethodCallback resultHandler,
           Object request) {
-        return new DataGroupMember();
+        return getDataGroupMember(getThisNode());
       }
 
       @Override
@@ -152,77 +220,36 @@ public class BaseQueryTest {
           @Override
           public void getAggregateReader(GetAggregateReaderRequest request,
               AsyncMethodCallback<GetAggregateReaderResp> resultHandler) {
-            new Thread(() -> {
-              remoteDataGroupMember.getAggregateReader(request, resultHandler);
-            }).start();
+            new Thread(() -> getDataGroupMember(request.getHeader()).getAggregateReader(request,
+                resultHandler)).start();
           }
 
           @Override
           public void fetchPageHeader(Node header, long readerId,
               AsyncMethodCallback<ByteBuffer> resultHandler) {
-            new Thread(() -> {
-              remoteDataGroupMember.fetchPageHeader(header, readerId, resultHandler);
-            }).start();
+            new Thread(() -> getDataGroupMember(header).fetchPageHeader(header, readerId,
+                resultHandler)).start();
           }
 
           @Override
           public void skipPageData(Node header, long readerId,
               AsyncMethodCallback<Void> resultHandler) {
-            new Thread(() -> {
-              remoteDataGroupMember.skipPageData(header, readerId, resultHandler);
-            }).start();
+            new Thread(() -> getDataGroupMember(header).skipPageData(header, readerId, resultHandler)).start();
           }
 
           @Override
           public void fetchSingleSeries(Node header, long readerId,
               AsyncMethodCallback<ByteBuffer> resultHandler) {
-            new Thread(() -> {
-              remoteDataGroupMember.fetchSingleSeries(header, readerId, resultHandler);
-            }).start();
+            new Thread(() -> getDataGroupMember(header).fetchSingleSeries(header, readerId,
+                resultHandler)).start();
           }
         };
       }
     };
-    localMetaGroupMember.setAllNodes(allNodes);
-
-    PartitionTable partitionTable = new SlotPartitionTable(allNodes, TestUtils.getNode(0));
-    localMetaGroupMember.setPartitionTable(partitionTable);
-
-    pathList = new ArrayList<>();
-    dataTypes = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      pathList.add(new Path(TestUtils.getTestSeries(0, i)));
-      dataTypes.add(TSDataType.DOUBLE);
-    }
-
-    queryProcessExecutor = new QueryProcessExecutor() {
-      @Override
-      public List<String> getAllMatchedPaths(String originPath) throws MetadataException {
-        return MManager.getInstance().getPaths(originPath);
-      }
-
-      @Override
-      public TSDataType getSeriesType(Path path) {
-        try {
-          return localMetaGroupMember.getSeriesType(path.getFullPath());
-        } catch (MetadataException e) {
-          return null;
-        }
-      }
-    };
-
-    MManager.getInstance().init();
-    for (int i = 0; i < 10; i++) {
-      try {
-        MManager.getInstance().setStorageGroupToMTree(TestUtils.getTestSg(i));
-        MeasurementSchema schema = TestUtils.getTestSchema(0, i);
-        MManager.getInstance().addPathToMTree(schema.getMeasurementId(), schema.getType(),
-            schema.getEncodingType(), schema.getCompressor(), schema.getProps());
-      } catch (PathAlreadyExistException e) {
-        // ignore
-      }
-    }
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(localMetaGroupMember);
+    ret.setThisNode(node);
+    ret.setPartitionTable(partitionTable);
+    ret.setAllNodes(allNodes);
+    return ret;
   }
 
   @After

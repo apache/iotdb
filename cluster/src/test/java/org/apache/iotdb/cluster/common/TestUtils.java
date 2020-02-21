@@ -213,5 +213,13 @@ public class TestUtils {
       queryProcessExecutor.processNonQuery(insertPlan);
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
+    for (int i = 10; i < 20; i++) {
+      insertPlan.setTime(i);
+      insertPlan.setValues(new String[] {String.valueOf(i), String.valueOf(i), String.valueOf(i),
+          String.valueOf(i), String.valueOf(i)});
+      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
+      queryProcessExecutor.processNonQuery(insertPlan);
+    }
+    StorageEngine.getInstance().syncCloseAllProcessor();
   }
 }

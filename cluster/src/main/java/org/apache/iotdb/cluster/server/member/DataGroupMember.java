@@ -611,7 +611,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       throws IOException, StorageEngineException {
     // pull the newest data
     if (syncLeader()) {
-      return new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context, pushdownUnseq);
+      List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
+      return new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context,
+          pushdownUnseq, new SlotTsFileFilter(nodeSlots));
     } else {
       throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
     }
@@ -622,7 +624,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       throws IOException, StorageEngineException {
     // pull the newest data
     if (syncLeader()) {
-      return new SeriesReaderWithValueFilter(path, dataType, timeFilter, context);
+      List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
+      return new SeriesReaderWithValueFilter(path, dataType, timeFilter, context,
+          new SlotTsFileFilter(nodeSlots));
     } else {
       throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
     }
@@ -913,6 +917,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     } catch (IOException e) {
       resultHandler.onError(e);
     }
+  }
+
+  @TestOnly
+  public void setMetaGroupMember(MetaGroupMember metaGroupMember) {
+    this.metaGroupMember = metaGroupMember;
   }
 }
 

@@ -55,6 +55,7 @@ import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
+import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -197,14 +198,16 @@ public class MetaGroupMemberTest extends MemberTest {
       ManagedSeriesReader getSeriesReaderWithoutValueFilter(Path path, TSDataType dataType,
           Filter timeFilter, QueryContext context, boolean pushdownUnseq)
           throws IOException, StorageEngineException {
+        List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
         return new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context,
-            pushdownUnseq);
+            pushdownUnseq, new SlotTsFileFilter(nodeSlots));
       }
 
       @Override
       ManagedSeriesReader getSeriesReaderWithValueFilter(Path path, TSDataType dataType,
           Filter timeFilter, QueryContext context) throws IOException, StorageEngineException {
-        return new SeriesReaderWithValueFilter(path, dataType, timeFilter, context);
+        List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
+        return new SeriesReaderWithValueFilter(path, dataType, timeFilter, context, new SlotTsFileFilter(nodeSlots));
       }
     };
   }

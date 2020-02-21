@@ -403,7 +403,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return client;
   }
 
-  void setThisNode(Node thisNode) {
+  public void setThisNode(Node thisNode) {
     this.thisNode = thisNode;
     allNodes.add(thisNode);
   }

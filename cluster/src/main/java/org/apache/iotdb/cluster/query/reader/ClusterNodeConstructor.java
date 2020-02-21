@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.timegenerator.EngineNodeConstructor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -40,8 +41,10 @@ public class ClusterNodeConstructor extends EngineNodeConstructor {
 
   @Override
   protected IPointReader getSeriesReader(Path path, TSDataType dataType, Filter filter,
-      QueryContext context)
+      QueryContext context, TsFileFilter fileFilter)
       throws IOException, StorageEngineException {
+    //TODO-Cluster: high-level fileFilter is currently always null, add an AndFileFilter when it
+    // is used in IoTDB
     return metaGroupMember.getSeriesReader(path, dataType, filter, context, false, true);
   }
 
