@@ -266,24 +266,6 @@ public class StorageGroupProcessorTest {
     }
   }
 
-  @Test
-  public void testSlidingWindowSingle() throws QueryProcessException {
-    for (int j = 10; j > 0; j--) {
-      TSRecord record = new TSRecord(j, deviceId);
-      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      processor.insert(new InsertPlan(record));
-    }
-
-    processor.putAllWorkingTsFileProcessorIntoClosingList();
-    processor.waitForAllCurrentTsFileProcessorsClosed();
-    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
-        null);
-
-    for (TsFileResource resource : queryDataSource.getSeqResources()) {
-      Assert.assertTrue(resource.isClosed());
-    }
-  }
-
   class DummySGP extends StorageGroupProcessor {
 
     DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {

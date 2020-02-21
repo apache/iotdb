@@ -74,6 +74,19 @@ public class LongTVListTest {
     }
   }
 
+  @Test
+  public void testLongTVList4() {
+    LongTVList tvList = new LongTVList();
+    for (long i = 0; i < 1000; i++) {
+      tvList.putLong(i, i);
+    }
+    long[] partialTimes = tvList.getPartialTimes(0, tvList.size);
+    long[] partialValues = tvList.getPartialLongs(0, tvList.size);
+    for (long i = 0; i < tvList.size; i++) {
+      Assert.assertEquals(i, partialTimes[(int)i]);
+      Assert.assertEquals(i, partialValues[(int)i]);
+    }
+  }
 
   @Test
   public void compareLongTVListSortTime() {
