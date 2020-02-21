@@ -23,9 +23,11 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.NewUnseqResourceMergeReader;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -83,9 +85,11 @@ public class SeriesReaderWithoutValueFilter implements ManagedSeriesReader {
    * to. We do not push down value filter to unsequence readers
    */
   public SeriesReaderWithoutValueFilter(Path seriesPath, TSDataType dataType, Filter timeFilter,
-      QueryContext context, boolean pushdownUnseq) throws StorageEngineException, IOException {
+      QueryContext context, boolean pushdownUnseq, TsFileFilter fileFilter) throws StorageEngineException,
+      IOException {
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
             .getQueryDataSource(seriesPath, context);
+    QueryUtils.filterQueryDataSource(queryDataSource, fileFilter);
     timeFilter = queryDataSource.updateTimeFilter(timeFilter);
 
     // reader for sequence resources
