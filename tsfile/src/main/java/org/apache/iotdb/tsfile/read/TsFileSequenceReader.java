@@ -441,16 +441,13 @@ public class TsFileSequenceReader implements AutoCloseable {
     ByteBuffer buffer = readData(position, header.getCompressedSize());
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(type);
     ByteBuffer uncompressedBuffer = ByteBuffer.allocate(header.getUncompressedSize());
-    switch (type) {
-      case UNCOMPRESSED:
-        return buffer;
-      default:
-        // FIXME if the buffer is not array-implemented.
-        unCompressor.uncompress(buffer.array(), buffer.position(), buffer.remaining(),
-            uncompressedBuffer.array(),
-            0);
-        return uncompressedBuffer;
-    }
+    if (type == CompressionType.UNCOMPRESSED) {
+      return buffer;
+    }// FIXME if the buffer is not array-implemented.
+    unCompressor.uncompress(buffer.array(), buffer.position(), buffer.remaining(),
+        uncompressedBuffer.array(),
+        0);
+    return uncompressedBuffer;
   }
 
   /**
