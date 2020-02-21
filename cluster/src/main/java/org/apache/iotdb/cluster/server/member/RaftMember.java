@@ -649,6 +649,12 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return StatusUtils.TIME_OUT;
   }
 
+  /**
+   * Only the group leader can call this method.
+   * Will commit the log locally and send it to followers
+   * @param plan
+   * @return
+   */
   TSStatus processPlanLocally(PhysicalPlan plan) {
     logger.debug("{}: Processing plan {}", name, plan);
     synchronized (logManager) {
@@ -689,6 +695,13 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return null;
   }
 
+  /**
+   * if the node is not a leader, will send it to the leader.
+   * Otherwise do it locally (whether to send it to followers depends on the implementation of
+   * executeNonQuery()).
+   * @param request
+   * @param resultHandler
+   */
   public void executeNonQueryPlan(ExecutNonQueryReq request,
       AsyncMethodCallback<TSStatus> resultHandler) {
     if (character != NodeCharacter.LEADER) {
@@ -714,8 +727,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   /**
-   * Request and check the leader's commitId to see whether this node has caught up, if not wait
-   * until this node catches up.
+   * Request and check the leader's commitId to see whether this node has caught up.
+   * If not, wait until this node catches up.
    * @return true if the node has caught up, false otherwise
    */
   public boolean syncLeader() {
