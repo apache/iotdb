@@ -58,7 +58,6 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Runnable {
     if (raftMember.getHeader() != null) {
       request.setHeader(raftMember.getHeader());
     }
-    //TODO out of memory if too much data?
     request.setSnapshotBytes(snapshot.serialize());
 
     AtomicBoolean succeed = new AtomicBoolean(false);

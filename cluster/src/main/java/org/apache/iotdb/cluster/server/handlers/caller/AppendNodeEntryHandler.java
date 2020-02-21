@@ -48,6 +48,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
   @Override
   public void onComplete(Long response) {
+    logger.debug("Append response {} from {}", response, receiver);
     if (leaderShipStale.get()) {
       // someone has rejected this log because the leadership is stale
       return;

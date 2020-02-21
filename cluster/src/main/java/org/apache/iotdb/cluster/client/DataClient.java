@@ -50,17 +50,12 @@ public class DataClient extends AsyncClient {
   }
 
   public static class Factory implements ClientFactory {
-    private org.apache.thrift.async.TAsyncClientManager clientManager;
     private org.apache.thrift.protocol.TProtocolFactory protocolFactory;
-    public Factory(org.apache.thrift.async.TAsyncClientManager clientManager, org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
-      this.clientManager = clientManager;
+    public Factory(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
       this.protocolFactory = protocolFactory;
     }
     public RaftService.AsyncClient getAsyncClient(Node node, ClientPool pool) throws IOException {
-      if (!clientManager.isRunning()) {
-        clientManager = new TAsyncClientManager();
-      }
-      return new DataClient(protocolFactory, clientManager, node, pool);
+      return new DataClient(protocolFactory, new TAsyncClientManager(), node, pool);
     }
   }
 }

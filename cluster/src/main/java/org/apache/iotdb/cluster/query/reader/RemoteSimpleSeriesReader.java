@@ -44,12 +44,12 @@ import org.slf4j.LoggerFactory;
 public class RemoteSimpleSeriesReader implements ManagedSeriesReader {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteSimpleSeriesReader.class);
-  private long readerId;
-  private Node source;
-  private Node header;
-  private MetaGroupMember metaGroupMember;
+  long readerId;
+  Node source;
+  Node header;
+  MetaGroupMember metaGroupMember;
 
-  private BatchData cachedBatch;
+  BatchData cachedBatch;
   private TimeValuePair cachedPair;
 
   private AtomicReference<ByteBuffer> fetchResult = new AtomicReference<>();
@@ -150,8 +150,8 @@ public class RemoteSimpleSeriesReader implements ManagedSeriesReader {
     this.hasRemaining = hasRemaining;
   }
 
-  private void fetchBatch() throws IOException {
-    DataClient client = (DataClient) metaGroupMember.getDataClientPool().getClient(source);
+  void fetchBatch() throws IOException {
+    DataClient client = metaGroupMember.getDataClient(source);
     synchronized (fetchResult) {
       fetchResult.set(null);
       try {

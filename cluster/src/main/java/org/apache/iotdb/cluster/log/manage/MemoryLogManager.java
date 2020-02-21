@@ -27,6 +27,7 @@ import java.util.List;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.LogManager;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,7 +101,9 @@ public abstract class MemoryLogManager implements LogManager {
         try {
           logApplier.apply(log);
         } catch (QueryProcessException e) {
-          logger.error("Cannot apply a log {} in snapshot, ignored", log, e);
+          if (!(e.getCause() instanceof PathAlreadyExistException)) {
+            logger.error("Cannot apply a log {} in snapshot, ignored", log, e);
+          }
         }
         commitLogIndex = i;
       }

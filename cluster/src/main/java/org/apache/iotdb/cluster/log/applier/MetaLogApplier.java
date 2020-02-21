@@ -23,12 +23,12 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +39,6 @@ public class MetaLogApplier extends BaseApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaLogApplier.class);
   private MetaGroupMember member;
-  private QueryProcessExecutor queryExecutor;
 
   public MetaLogApplier(MetaGroupMember member) {
     super(member);
@@ -64,6 +63,9 @@ public class MetaLogApplier extends BaseApplier {
         logger.error("Cannot close {} file in {}", closeFileLog.isSeq() ? "seq" : "unseq",
             closeFileLog.getStorageGroupName());
       }
+    } else if (log instanceof RemoveNodeLog) {
+      RemoveNodeLog removeNodeLog = ((RemoveNodeLog) log);
+      member.applyRemoveNode(removeNodeLog.getRemovedNode());
     } else {
       // TODO-Cluster#348 support more types of logs
       logger.error("Unsupported log: {}", log);

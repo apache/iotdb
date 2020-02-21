@@ -56,7 +56,7 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
 
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
-    DataClient client = (DataClient) metaGroupMember.getDataClientPool().getClient(source);
+    DataClient client = metaGroupMember.getDataClient(source);
     synchronized (fetchResult) {
       fetchResult.set(null);
       try {

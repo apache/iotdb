@@ -27,6 +27,8 @@ import java.util.regex.Pattern;
  */
 public class Utils {
 
+  static final Pattern URL_PATTERN = Pattern.compile("([^:]+):([0-9]{1,5})/?");
+
   /**
    * Parse JDBC connection URL The only supported format of the URL is:
    * jdbc:iotdb://localhost:6667/.
@@ -38,9 +40,8 @@ public class Utils {
       return params;
     }
     boolean isUrlLegal = false;
-    Pattern pattern = Pattern.compile("([^:]+):([0-9]{1,5})/?");
     String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
-    Matcher matcher = pattern.matcher(subURL);
+    Matcher matcher = URL_PATTERN.matcher(subURL);
     if(matcher.matches()) {
       isUrlLegal = true;
     }

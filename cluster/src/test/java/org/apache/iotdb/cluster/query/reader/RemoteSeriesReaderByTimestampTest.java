@@ -26,11 +26,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -40,11 +38,12 @@ import org.junit.Test;
 
 public class RemoteSeriesReaderByTimestampTest {
 
-  private RemoteSeriesReaderByTimestamp reader;
-  private ClientPool clientPool = new ClientPool(null) {
+  private BatchData batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
+
+  private MetaGroupMember metaGroupMember = new MetaGroupMember() {
     @Override
-    public AsyncClient getClient(Node node) throws IOException {
-      return new DataClient(null, null, node, clientPool) {
+    public DataClient getDataClient(Node node) throws IOException {
+      return new DataClient(null, null, node, null) {
         @Override
         public void fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp,
             AsyncMethodCallback<ByteBuffer> resultHandler) {
@@ -72,18 +71,11 @@ public class RemoteSeriesReaderByTimestampTest {
       };
     }
   };
-  private BatchData batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
-
-  private MetaGroupMember metaGroupMember = new MetaGroupMember() {
-    @Override
-    public ClientPool getDataClientPool() {
-      return clientPool;
-    }
-  };
 
   @Test
   public void test() throws IOException {
-    reader = new RemoteSeriesReaderByTimestamp(0, TestUtils.getNode(1), TestUtils.getNode(0),
+    RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(0,
+        TestUtils.getNode(1), TestUtils.getNode(0),
         metaGroupMember);
     for (int i = 0; i < 100; i++) {
       assertEquals(i * 1.0, reader.getValueInTimestamp(i));

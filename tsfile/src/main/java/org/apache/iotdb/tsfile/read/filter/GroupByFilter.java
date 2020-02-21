@@ -146,4 +146,12 @@ public class GroupByFilter implements Filter, Serializable {
   public int hashCode() {
     return Objects.hash(unit, slidingStep, startTime, endTime);
   }
+
+  public long getStartTime() {
+    return startTime;
+  }
+
+  public long getEndTime() {
+    return endTime;
+  }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.server.member;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -33,8 +34,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
@@ -42,6 +45,7 @@ import org.apache.iotdb.cluster.common.TestDataClient;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
@@ -49,10 +53,15 @@ import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.query.reader.RemoteAggregateReader;
+import org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderResp;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
@@ -81,16 +90,17 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGt;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
@@ -100,14 +110,18 @@ import org.junit.Test;
 public class DataGroupMemberTest extends MemberTest {
 
   private DataGroupMember dataGroupMember;
-  private DataGroupMember.Factory factory;
   private Map<Integer, FileSnapshot> snapshotMap;
   private Map<Integer, RemoteFileSnapshot> receivedSnapshots;
+  private Set<Integer> pulledSnapshots;
   private boolean hasInitialSnapshots;
   private boolean enableSyncLeader;
+  private int numSlotsToPull = 2;
+  private int prevReplicationNum;
 
   @Before
   public void setUp() throws Exception {
+    prevReplicationNum = ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
+    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(3);
     super.setUp();
     dataGroupMember = getDataGroupMember(TestUtils.getNode(0));
     snapshotMap = new HashMap<>();
@@ -117,9 +131,16 @@ public class DataGroupMemberTest extends MemberTest {
       snapshotMap.put(i, fileSnapshot);
     }
     receivedSnapshots = new HashMap<>();
+    pulledSnapshots = new HashSet<>();
   }
 
-  private PartitionedSnapshotLogManager getLogManager() {
+  @After
+  public void tearDown() throws Exception {
+    super.tearDown();
+    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(prevReplicationNum);
+  }
+
+  private PartitionedSnapshotLogManager getLogManager(PartitionGroup partitionGroup) {
     return new TestPartitionedLogManager(new DataLogApplier(testMetaMember),
         testMetaMember.getPartitionTable(), partitionGroup.getHeader(), FileSnapshot::new) {
       @Override
@@ -140,10 +161,14 @@ public class DataGroupMemberTest extends MemberTest {
     };
   }
 
-  private DataGroupMember getDataGroupMember(Node node) throws IOException {
-    return new DataGroupMember(new TCompactProtocol.Factory(), new PartitionGroup(partitionGroup)
-        , node, getLogManager(),
-        testMetaMember, new TAsyncClientManager()) {
+  private DataGroupMember getDataGroupMember(Node node) {
+    PartitionGroup nodes = partitionTable.getHeaderGroup(node);
+    return getDataGroupMember(node, nodes);
+  }
+
+  private DataGroupMember getDataGroupMember(Node node, PartitionGroup nodes) {
+    return new DataGroupMember(new TCompactProtocol.Factory(), nodes, node, getLogManager(nodes),
+        testMetaMember) {
       @Override
       public AsyncClient connectNode(Node node) {
         try {
@@ -173,7 +198,16 @@ public class DataGroupMemberTest extends MemberTest {
                 PullSnapshotResp resp = new PullSnapshotResp();
                 Map<Integer, ByteBuffer> snapshotBufferMap = new HashMap<>();
                 for (Integer requiredSlot : request.getRequiredSlots()) {
-                  snapshotBufferMap.put(requiredSlot, snapshotMap.get(requiredSlot).serialize());
+                  FileSnapshot fileSnapshot = snapshotMap.get(requiredSlot);
+                  if (fileSnapshot != null) {
+                    snapshotBufferMap.put(requiredSlot, fileSnapshot.serialize());
+                  }
+                  synchronized (dataGroupMember) {
+                    pulledSnapshots.add(requiredSlot);
+                    if (pulledSnapshots.size() == numSlotsToPull) {
+                      dataGroupMember.notifyAll();
+                    }
+                  }
                 }
                 resp.setSnapshotBytes(snapshotBufferMap);
                 resultHandler.onComplete(resp);
@@ -239,21 +273,19 @@ public class DataGroupMemberTest extends MemberTest {
     };
   }
 
-  @After
-  public void tearDown() throws Exception {
-    super.tearDown();
-  }
-
   @Test
   public void testGetHeader() {
     assertEquals(TestUtils.getNode(0), dataGroupMember.getHeader());
   }
 
   @Test
-  public void testAddNode() throws IOException {
-    DataGroupMember firstMember = dataGroupMember;
-    DataGroupMember midMember = getDataGroupMember(TestUtils.getNode(50));
-    DataGroupMember lastMember = getDataGroupMember(TestUtils.getNode(90));
+  public void testAddNode() {
+    PartitionGroup partitionGroup = new PartitionGroup(TestUtils.getNode(0),
+        TestUtils.getNode(50), TestUtils.getNode(90));
+    DataGroupMember firstMember = getDataGroupMember(TestUtils.getNode(0),
+        new PartitionGroup(partitionGroup));
+    DataGroupMember midMember = getDataGroupMember(TestUtils.getNode(50), new PartitionGroup(partitionGroup));
+    DataGroupMember lastMember = getDataGroupMember(TestUtils.getNode(90), new PartitionGroup(partitionGroup));
 
     Node newNodeBeforeGroup = TestUtils.getNode(-5);
     assertFalse(firstMember.addNode(newNodeBeforeGroup));
@@ -266,8 +298,8 @@ public class DataGroupMemberTest extends MemberTest {
     assertTrue(lastMember.addNode(newNodeInGroup));
 
     Node newNodeAfterGroup = TestUtils.getNode(101);
-    assertFalse(firstMember.addNode(newNodeInGroup));
-    assertFalse(midMember.addNode(newNodeInGroup));
+    assertFalse(firstMember.addNode(newNodeAfterGroup));
+    assertFalse(midMember.addNode(newNodeAfterGroup));
   }
 
   @Test
@@ -404,7 +436,7 @@ public class DataGroupMemberTest extends MemberTest {
     hasInitialSnapshots = true;
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     PullSnapshotRequest request = new PullSnapshotRequest();
-    List<Integer> requiredSlots = Arrays.asList(1, 3, 5, 7, 9, 11);
+    List<Integer> requiredSlots = Arrays.asList(1, 3, 5, 7, 9, 11, 101);
     request.setRequiredSlots(requiredSlots);
     AtomicReference<Map<Integer, FileSnapshot>> reference = new AtomicReference<>();
     PullSnapshotHandler<FileSnapshot> handler = new PullSnapshotHandler<>(reference,
@@ -425,9 +457,9 @@ public class DataGroupMemberTest extends MemberTest {
     dataGroupMember.start();
     try {
       hasInitialSnapshots = false;
-      partitionTable.addNode(TestUtils.getNode(10));
+      partitionTable.addNode(TestUtils.getNode(100));
       List<Integer> requiredSlots = Arrays.asList(19, 39, 59, 79, 99);
-      dataGroupMember.pullSnapshots(requiredSlots, TestUtils.getNode(10));
+      dataGroupMember.pullNodeAdditionSnapshots(requiredSlots, TestUtils.getNode(100));
       assertEquals(requiredSlots.size(), receivedSnapshots.size());
       for (Integer requiredSlot : requiredSlots) {
         receivedSnapshots.get(requiredSlot).getRemoteSnapshot();
@@ -827,4 +859,183 @@ public class DataGroupMemberTest extends MemberTest {
     return resource;
   }
 
+  @Test
+  public void testRemoveLeader() throws TTransportException, InterruptedException {
+    Node nodeToRemove = TestUtils.getNode(10);
+    NodeRemovalResult nodeRemovalResult = testMetaMember.getPartitionTable()
+        .removeNode(nodeToRemove);
+    dataGroupMember.setLeader(nodeToRemove);
+    dataGroupMember.start();
+    numSlotsToPull = 2;
+
+    try {
+      synchronized (dataGroupMember) {
+        dataGroupMember.removeNode(nodeToRemove, nodeRemovalResult);
+        dataGroupMember.wait(500);
+      }
+
+      assertEquals(NodeCharacter.ELECTOR, dataGroupMember.getCharacter());
+      assertEquals(Long.MIN_VALUE, dataGroupMember.getLastHeartBeatReceivedTime());
+      assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));
+      assertFalse(dataGroupMember.getAllNodes().contains(nodeToRemove));
+      List<Integer> newSlots = nodeRemovalResult.getNewSlotOwners().get(TestUtils.getNode(0));
+      assertEquals(newSlots.size(), pulledSnapshots.size());
+      for (Integer newSlot : newSlots) {
+        assertTrue(pulledSnapshots.contains(newSlot));
+      }
+    } finally {
+      dataGroupMember.stop();
+    }
+  }
+
+  @Test
+  public void testRemoveNonLeader() throws TTransportException, InterruptedException {
+    Node nodeToRemove = TestUtils.getNode(10);
+    NodeRemovalResult nodeRemovalResult = testMetaMember.getPartitionTable()
+        .removeNode(nodeToRemove);
+    dataGroupMember.setLeader(TestUtils.getNode(20));
+    dataGroupMember.start();
+    numSlotsToPull = 2;
+
+    try {
+      synchronized (dataGroupMember) {
+        dataGroupMember.removeNode(nodeToRemove, nodeRemovalResult);
+        dataGroupMember.wait(500);
+      }
+
+      assertEquals(0, dataGroupMember.getLastHeartBeatReceivedTime());
+      assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));
+      assertFalse(dataGroupMember.getAllNodes().contains(nodeToRemove));
+      List<Integer> newSlots = nodeRemovalResult.getNewSlotOwners().get(TestUtils.getNode(0));
+      assertEquals(newSlots.size(), pulledSnapshots.size());
+      for (Integer newSlot : newSlots) {
+        assertTrue(pulledSnapshots.contains(newSlot));
+      }
+    } finally {
+      dataGroupMember.stop();
+    }
+  }
+
+  private GetAggregateReaderResp prepareRemoteAggregateReader(Filter filter)
+      throws QueryProcessException, InterruptedException {
+    InsertPlan insertPlan = new InsertPlan();
+    insertPlan.setDeviceId(TestUtils.getTestSg(0));
+    insertPlan.setDataTypes(new TSDataType[] {TSDataType.DOUBLE});
+    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+    for (int i = 10; i < 20; i++) {
+      insertPlan.setTime(i);
+      insertPlan.setValues(new String[] {String.valueOf(i)});
+      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
+      queryProcessExecutor.processNonQuery(insertPlan);
+    }
+    StorageEngine.getInstance().syncCloseAllProcessor();
+    for (int i = 0; i < 10; i++) {
+      insertPlan.setTime(i);
+      insertPlan.setValues(new String[] {String.valueOf(i)});
+      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
+      queryProcessExecutor.processNonQuery(insertPlan);
+    }
+    StorageEngine.getInstance().syncCloseAllProcessor();
+
+    GetAggregateReaderRequest request = new GetAggregateReaderRequest();
+    request.setPath(TestUtils.getTestSeries(0, 0));
+    request.setQueryId(0);
+    request.setFilterBytes(SerializeUtils.serializeFilter(filter));
+    request.setReverse(false);
+    request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
+    request.setRequester(TestUtils.getNode(0));
+
+    AtomicReference<GetAggregateReaderResp> resultRef = new AtomicReference<>();
+    GenericHandler<GetAggregateReaderResp> handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
+    synchronized (resultRef) {
+      dataGroupMember.getAggregateReader(request, handler);
+      resultRef.wait(500);
+    }
+    return resultRef.get();
+  }
+
+  @Test
+  public void testGetAggregateReaders()
+      throws InterruptedException, QueryProcessException, IOException {
+    GetAggregateReaderResp readerResp = prepareRemoteAggregateReader(TimeFilter.gtEq(5));
+    assertNotNull(readerResp);
+    assertEquals(0, readerResp.seqReaderId);
+    assertEquals(1, readerResp.unseqReaderId);
+
+    RemoteAggregateReader remoteSeqReader = new RemoteAggregateReader(readerResp.seqReaderId,
+        TestUtils.getNode(0),
+        TestUtils.getNode(0), testMetaMember, TSDataType.DOUBLE);
+    RemoteSimpleSeriesReader remoteUnseqReader = new RemoteSimpleSeriesReader(readerResp.unseqReaderId,
+        TestUtils.getNode(0), TestUtils.getNode(0), testMetaMember);
+    assertTrue(remoteSeqReader.hasNextBatch());
+    PageHeader header = remoteSeqReader.nextPageHeader();
+    assertEquals(10, header.getStartTime());
+    assertEquals(19, header.getEndTime());
+    assertEquals(10, header.getNumOfValues());
+    assertEquals(10.0, header.getStatistics().getFirstValue());
+    assertEquals(19.0, header.getStatistics().getLastValue());
+    assertEquals(0.0, header.getStatistics().getSumValue(), 0.00001);
+    BatchData batchData = remoteSeqReader.nextBatch();
+    for (int i = 10; i < 20; i++) {
+      assertTrue(batchData.hasCurrent());
+      assertEquals(i, batchData.currentTime());
+      assertEquals(i * 1.0, batchData.getDouble(), 0.00001);
+      batchData.next();
+    }
+    assertFalse(batchData.hasCurrent());
+
+    assertTrue(remoteUnseqReader.hasNextBatch());
+    batchData = remoteUnseqReader.nextBatch();
+    for (int i = 0; i < 10; i++) {
+      assertTrue(batchData.hasCurrent());
+      assertEquals(i, batchData.currentTime());
+      assertEquals(i * 1.0, batchData.getDouble(), 0.00001);
+      batchData.next();
+    }
+    assertFalse(batchData.hasCurrent());
+  }
+
+  @Test
+  public void testGetEmptyAggregateReader() throws QueryProcessException, InterruptedException {
+    GetAggregateReaderResp readerResp = prepareRemoteAggregateReader(TimeFilter.gtEq(10000));
+    assertNotNull(readerResp);
+    assertEquals(-1, readerResp.unseqReaderId);
+    assertEquals(-1, readerResp.seqReaderId);
+  }
+
+  @Test
+  public void testFetchPageHeader() throws QueryProcessException, InterruptedException {
+    GetAggregateReaderResp readerResp = prepareRemoteAggregateReader(TimeFilter.gtEq(10000));
+    AtomicReference<ByteBuffer> resultRef = new AtomicReference<>();
+    GenericHandler<ByteBuffer> handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
+    synchronized (resultRef) {
+      dataGroupMember.fetchPageHeader(TestUtils.getNode(0), readerResp.seqReaderId, handler);
+      resultRef.wait(500);
+    }
+    ByteBuffer byteBuffer = resultRef.get();
+    assertNotNull(byteBuffer);
+    PageHeader header = PageHeader.deserializeFrom(byteBuffer, TSDataType.DOUBLE);
+    assertEquals(10, header.getStartTime());
+    assertEquals(19, header.getEndTime());
+    assertEquals(10, header.getNumOfValues());
+    assertEquals(10.0, header.getStatistics().getFirstValue());
+    assertEquals(19.0, header.getStatistics().getLastValue());
+    assertEquals(0.0, header.getStatistics().getSumValue(), 0.00001);
+  }
+
+  @Test
+  public void testSkipPageData() throws QueryProcessException, InterruptedException, IOException {
+    GetAggregateReaderResp readerResp = prepareRemoteAggregateReader(TimeFilter.gtEq(10000));
+    AtomicReference<Void> resultRef = new AtomicReference<>();
+    GenericHandler<Void> handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
+    synchronized (resultRef) {
+      dataGroupMember.skipPageData(TestUtils.getNode(0), readerResp.seqReaderId, handler);
+      resultRef.wait(500);
+    }
+
+    RemoteAggregateReader remoteSeqReader = new RemoteAggregateReader(readerResp.seqReaderId,
+        TestUtils.getNode(0),
+        TestUtils.getNode(0), testMetaMember, TSDataType.DOUBLE);
+    assertFalse(remoteSeqReader.hasNextBatch());
+  }
 }

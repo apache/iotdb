@@ -789,7 +789,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.4.0</version>
+                        <version>1.3.0</version>
                         <executions>
                             <execution>
                                 <id>get-thrift-executable</id>
@@ -1187,4 +1187,10 @@
             </modules>
         </profile>
     </profiles>
+    <repositories>
+        <repository>
+            <id>spring-libs</id>
+            <url>http://repo.spring.io/libs-milestone/</url>
+        </repository>
+    </repositories>
 </project>

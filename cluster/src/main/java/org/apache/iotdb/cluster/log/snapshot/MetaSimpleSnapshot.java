@@ -23,6 +23,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.cluster.log.Log;
@@ -36,6 +37,7 @@ public class MetaSimpleSnapshot extends SimpleSnapshot{
   private List<String> storageGroups;
 
   public MetaSimpleSnapshot() {
+    storageGroups = Collections.emptyList();
   }
 
   public MetaSimpleSnapshot(List<Log> snapshot, List<String> storageGroups) {

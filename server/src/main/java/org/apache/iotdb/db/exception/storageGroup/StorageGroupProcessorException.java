@@ -27,6 +27,7 @@ public class StorageGroupProcessorException extends ProcessException {
 
   public StorageGroupProcessorException(Exception exception) {
     super(exception.getMessage());
+    initCause(exception);
     errorCode = TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode();
   }
 

@@ -28,11 +28,17 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class TestUtils {
@@ -62,12 +68,47 @@ public class TestUtils {
     return logList;
   }
 
+  public static List<TimeValuePair> getTestTimeValuePairs(int offset, int size, int step,
+      TSDataType dataType) {
+    List<TimeValuePair> ret = new ArrayList<>(size);
+    long currTime = offset;
+    for (int i = 0; i < size; i++) {
+      TsPrimitiveType value = TsPrimitiveType.getByType(dataType, currTime);
+      TimeValuePair pair = new TimeValuePair(currTime, value);
+      currTime += step;
+      ret.add(pair);
+    }
+    return ret;
+  }
+
+  public static List<BatchData> getTestBatches(int offset, int size, int batchSize, int step,
+      TSDataType dataType) {
+    List<BatchData> ret = new ArrayList<>(size);
+    long currTime = offset;
+    BatchData currBatch = null;
+    for (int i = 0; i < size; i++) {
+      if (i % batchSize == 0) {
+        if (currBatch != null) {
+          ret.add(currBatch);
+        }
+        currBatch = new BatchData(dataType);
+      }
+      TsPrimitiveType value = TsPrimitiveType.getByType(dataType, currTime);
+      currBatch.putAnObject(currTime, value.getValue());
+      currTime += step;
+    }
+    if (currBatch != null) {
+      ret.add(currBatch);
+    }
+    return ret;
+  }
+
   public static PartitionTable getPartitionTable(int nodeNum) {
     List<Node> nodes = new ArrayList<>();
     for (int i = 0; i < nodeNum; i++) {
       nodes.add(getNode(i));
     }
-    return new SlotPartitionTable(nodes, getNode(0));
+    return new SlotPartitionTable(nodes, getNode(0), 100);
   }
 
   public static String getTestSg(int i) {
@@ -145,5 +186,32 @@ public class TestUtils {
       batchB.next();
     }
     return true;
+  }
+
+  public static void prepareAggregateData()
+      throws QueryProcessException {
+    InsertPlan insertPlan = new InsertPlan();
+    insertPlan.setDeviceId(getTestSg(0));
+    insertPlan.setDataTypes(new TSDataType[] {TSDataType.DOUBLE, TSDataType.DOUBLE,
+        TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE});
+    insertPlan.setMeasurements(new String[] {getTestMeasurement(0),
+        getTestMeasurement(1), getTestMeasurement(2),
+        getTestMeasurement(3), getTestMeasurement(4)});
+    for (int i = 10; i < 20; i++) {
+      insertPlan.setTime(i);
+      insertPlan.setValues(new String[] {String.valueOf(i), String.valueOf(i), String.valueOf(i),
+          String.valueOf(i), String.valueOf(i)});
+      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
+      queryProcessExecutor.processNonQuery(insertPlan);
+    }
+    StorageEngine.getInstance().syncCloseAllProcessor();
+    for (int i = 0; i < 10; i++) {
+      insertPlan.setTime(i);
+      insertPlan.setValues(new String[] {String.valueOf(i), String.valueOf(i), String.valueOf(i),
+          String.valueOf(i), String.valueOf(i)});
+      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
+      queryProcessExecutor.processNonQuery(insertPlan);
+    }
+    StorageEngine.getInstance().syncCloseAllProcessor();
   }
 }

@@ -113,6 +113,10 @@ struct PullSnapshotRequest {
   1: required list<int> requiredSlots
   // for data group
   2: optional Node header
+  // set to true if the previous holder has been removed from the cluster.
+  // This will make the previous holder read-only so that different new
+  // replicas can pull the same snapshot.
+  3: required bool requireReadOnly
 }
 
 struct PullSnapshotResp {
@@ -142,6 +146,21 @@ struct SingleSeriesQueryRequest {
   6: required Node header
   7: optional bool withValueFilter
   8: required int dataTypeOrdinal
+}
+
+struct GetAggregateReaderRequest {
+  1: required string path
+  2: optional binary filterBytes
+  3: required long queryId
+  4: required Node requester
+  5: required Node header
+  6: required bool reverse
+  7: required int dataTypeOrdinal
+}
+
+struct GetAggregateReaderResp {
+  1: required long seqReaderId
+  2: required long unseqReaderId
 }
 
 // the spec and load of a node, for query coordinating
@@ -258,6 +277,12 @@ service TSDataService extends RaftService {
   list<string> getAllPaths(1:Node header, 2:string path)
 
   PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
+
+  GetAggregateReaderResp getAggregateReader(1:GetAggregateReaderRequest request)
+
+  binary fetchPageHeader(1:Node header, 2:long readerId)
+
+  void skipPageData(1:Node header, 2:long readerId)
 }
 
 service TSMetaService extends RaftService {
@@ -270,6 +295,20 @@ service TSMetaService extends RaftService {
   * @param node a new node that needs to be added
   **/
   AddNodeResponse addNode(1: Node node)
+
+  /**
+  * Remove a node from the cluster. If the node is not in the cluster or the cluster size will
+  * less than replication number, the request will be rejected.
+  * return -1(RESPONSE_AGREE) or -3(RESPONSE_REJECT) or -9(RESPONSE_CLUSTER_TOO_SMALL)
+  **/
+  long removeNode(1: Node node)
+
+   /**
+   * When a node is removed from the cluster, if it is not the meta leader, it cannot receive
+   * the commit command by heartbeat since it has been removed, so the leader should tell it
+   * directly that it is no longer in the cluster.
+   **/
+   void exile()
 
   TNodeStatus queryNodeStatus()
 

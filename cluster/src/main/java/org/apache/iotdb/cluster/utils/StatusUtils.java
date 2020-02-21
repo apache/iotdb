@@ -39,6 +39,7 @@ public class StatusUtils {
   public static final TSStatus EXECUTE_STATEMENT_ERROR =
       getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   public static final TSStatus NO_STORAGE_GROUP = getStatus(TSStatusCode.STORAGE_GROUP_ERROR);
+  public static final TSStatus NODE_READ_ONLY = getStatus(TSStatusCode.NODE_READ_ONLY);
 
   private static TSStatus getStatus(TSStatusCode statusCode) {
     TSStatusType tsStatusType = new TSStatusType();
@@ -54,6 +55,9 @@ public class StatusUtils {
         break;
       case PARTITION_NOT_READY:
         tsStatusType.setMessage("Partition table is not ready");
+        break;
+      case NODE_READ_ONLY:
+        tsStatusType.setMessage("Current node is read-only, please retry to find another available node");
         break;
       default:
         tsStatusType.setMessage("");

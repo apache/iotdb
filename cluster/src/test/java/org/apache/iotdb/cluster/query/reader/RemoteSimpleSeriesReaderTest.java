@@ -27,12 +27,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -44,9 +42,7 @@ import org.junit.Test;
 
 public class RemoteSimpleSeriesReaderTest {
 
-  private MetaGroupMember metaGroupMember;
   private RemoteSimpleSeriesReader reader;
-  private ClientPool clientPool;
   private DataClient client;
   private BatchData batchData;
   private boolean batchUsed;
@@ -55,13 +51,7 @@ public class RemoteSimpleSeriesReaderTest {
   public void setUp() throws IOException {
     batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
     batchUsed = false;
-    clientPool = new ClientPool(null) {
-      @Override
-      public AsyncClient getClient(Node node) {
-        return client;
-      }
-    };
-    client = new DataClient(null, null, TestUtils.getNode(0), clientPool){
+    client = new DataClient(null, null, TestUtils.getNode(0), null){
       @Override
       public void fetchSingleSeries(Node header, long readerId,
           AsyncMethodCallback<ByteBuffer> resultHandler) {
@@ -78,10 +68,11 @@ public class RemoteSimpleSeriesReaderTest {
         }).start();
       }
     };
-    metaGroupMember = new TestMetaGroupMember(){
+    MetaGroupMember metaGroupMember = new TestMetaGroupMember() {
+
       @Override
-      public ClientPool getDataClientPool() {
-        return clientPool;
+      public DataClient getDataClient(Node node) {
+        return client;
       }
     };
     reader = new RemoteSimpleSeriesReader(0, TestUtils.getNode(1), TestUtils.getNode(0),

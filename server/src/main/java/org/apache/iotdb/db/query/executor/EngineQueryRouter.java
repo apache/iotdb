@@ -106,8 +106,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
       if (expression != null) {
         IExpression optimizedExpression = ExpressionOptimizer.getInstance()
             .optimize(expression, selectedSeries);
-        AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
-            aggregationPlan);
+        AggregateEngineExecutor engineExecutor = getAggregateEngine(aggregationPlan);
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
           return engineExecutor.executeWithoutValueFilter(context);
         } else {
@@ -123,6 +122,9 @@ public class EngineQueryRouter implements IEngineQueryRouter {
     }
   }
 
+  protected AggregateEngineExecutor getAggregateEngine(AggregationPlan aggregationPlan) {
+    return new AggregateEngineExecutor(aggregationPlan);
+  }
 
   @Override
   public QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)

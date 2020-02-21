@@ -105,8 +105,7 @@ public class SlotPartitionTable implements PartitionTable {
     int nodeNum = nodeRing.size();
     int slotsPerNode = totalSlotNumbers / nodeNum;
       for (Node node : nodeRing) {
-        List<Integer> nodeSlots = new ArrayList<>();
-        nodeSlotMap.put(node, nodeSlots);
+        nodeSlotMap.put(node, new ArrayList<>());
       }
 
       for (int i = 0; i < totalSlotNumbers; i++) {
@@ -162,10 +161,6 @@ public class SlotPartitionTable implements PartitionTable {
       ret.addAll(nodeRing.subList(nodeIndex, endIndex));
     }
     return ret;
-  }
-
-  private int nextIndex(int currIndex) {
-    return currIndex == nodeRing.size() - 1 ? 0 : currIndex + 1;
   }
 
   @Override
@@ -348,6 +343,7 @@ public class SlotPartitionTable implements PartitionTable {
 
     nodeRing.addAll(nodeSlotMap.keySet());
     nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
+    logger.info("All known nodes: {}", nodeRing);
 
     localGroups = getPartitionGroups(thisNode);
   }
@@ -361,7 +357,6 @@ public class SlotPartitionTable implements PartitionTable {
   public Map<Integer, Node> getPreviousNodeMap(Node node) {
     return previousNodeMap.get(node);
   }
-
 
   @Override
   public List<Integer> getNodeSlots(Node header) {
@@ -403,5 +398,64 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public int hashCode() {
     return 0;
+  }
+
+  @Override
+  public NodeRemovalResult removeNode(Node target) {
+    synchronized (nodeRing) {
+      if (!nodeRing.contains(target)) {
+        return null;
+      }
+
+      NodeRemovalResult result = new NodeRemovalResult();
+      result.setRemovedGroup(getHeaderGroup(target));
+      nodeRing.remove(target);
+
+      // if the node belongs to a group that headed by target, this group should be removed
+      // and other groups containing target should be updated
+      int removedGroupIdx = -1;
+      for(int i = 0; i < localGroups.size(); i++) {
+        PartitionGroup oldGroup = localGroups.get(i);
+        Node header = oldGroup.getHeader();
+        if (header.equals(target)) {
+          removedGroupIdx = i;
+        } else {
+          PartitionGroup newGrp = getHeaderGroup(header);
+          localGroups.set(i, newGrp);
+        }
+      }
+      if (removedGroupIdx != -1) {
+        localGroups.remove(removedGroupIdx);
+        // each node exactly joins replicationNum groups, so when a group is removed, the node
+        // should join a new one
+        int thisNodeIdx = nodeRing.indexOf(thisNode);
+        // this node must be the last node of the new group
+        int headerNodeIdx = thisNodeIdx - (replicationNum - 1);
+        headerNodeIdx = headerNodeIdx < 0 ? headerNodeIdx + nodeRing.size() : headerNodeIdx;
+        Node header = nodeRing.get(headerNodeIdx);
+        PartitionGroup newGrp = getHeaderGroup(header);
+        localGroups.add(newGrp);
+        result.setNewGroup(newGrp);
+      }
+
+      // the slots movement is only done logically, the new node itself will pull data from the
+      // old node
+      Map<Node, List<Integer>> nodeListMap = retrieveSlots(target);
+      result.setNewSlotOwners(nodeListMap);
+      return result;
+    }
+  }
+
+  private Map<Node, List<Integer>> retrieveSlots(Node target) {
+    Map<Node, List<Integer>> newHolderSlotMap = new HashMap<>();
+    List<Integer> slots = nodeSlotMap.remove(target);
+    for (int i = 0; i < slots.size(); i++) {
+      int slot = slots.get(i);
+      Node newHolder = nodeRing.get(i % nodeRing.size());
+      slotNodeMap.put(slot, newHolder);
+      nodeSlotMap.get(newHolder).add(slot);
+      newHolderSlotMap.computeIfAbsent(newHolder, n -> new ArrayList<>()).add(slot);
+    }
+    return newHolderSlotMap;
   }
 }

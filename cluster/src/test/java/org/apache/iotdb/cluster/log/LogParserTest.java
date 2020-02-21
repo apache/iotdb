@@ -27,6 +27,7 @@ import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.Test;
@@ -68,6 +69,20 @@ public class LogParserTest {
   @Test
   public void testCloseFileLog() throws UnknownLogTypeException {
     CloseFileLog log = new CloseFileLog(TestUtils.getTestSg(5), false);
+    log.setCurrLogIndex(8);
+    log.setCurrLogTerm(8);
+    log.setPreviousLogIndex(7);
+    log.setPreviousLogTerm(7);
+
+    ByteBuffer buffer = log.serialize();
+    Log serialized = logParser.parse(buffer);
+    assertEquals(log, serialized);
+  }
+
+  @Test
+  public void testRemoveNodeLog() throws UnknownLogTypeException {
+    RemoveNodeLog log = new RemoveNodeLog();
+    log.setRemovedNode(TestUtils.getNode(0));
     log.setCurrLogIndex(8);
     log.setCurrLogTerm(8);
     log.setPreviousLogIndex(7);

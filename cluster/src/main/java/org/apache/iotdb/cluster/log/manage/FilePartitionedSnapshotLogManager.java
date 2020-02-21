@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Different from PartitionedSnapshotLogManager, FilePartitionedSnapshotLogManager does not store
- * the committed in memory, it considers the logs are contained in the TsFiles so it will record
+ * the committed in memory after snapshots, it considers the logs are contained in the TsFiles so it will record
  * every TsFiles in the slot instead.
  * TODO IOTDB-439 but the log is stored in memory already by appendLog method.
  */

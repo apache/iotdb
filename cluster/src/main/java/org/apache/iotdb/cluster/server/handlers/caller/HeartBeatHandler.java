@@ -49,7 +49,7 @@ public class HeartBeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
 
   @Override
   public void onComplete(HeartBeatResponse resp) {
-    logger.debug("{}: Received a heartbeat response", memberName);
+    logger.trace("{}: Received a heartbeat response", memberName);
     long followerTerm = resp.getTerm();
     if (followerTerm == RESPONSE_AGREE) {
       // current leadership is still valid
@@ -60,12 +60,15 @@ public class HeartBeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
       long lastLogTerm = resp.getLastLogTerm();
       long localLastLogIdx = localMember.getLogManager().getLastLogIndex();
       long localLastLogTerm = localMember.getLogManager().getLastLogTerm();
-      logger.debug("{}: Node {} is still alive, log index: {}/{}, log term: {}/{}",
+      logger.trace("{}: Node {} is still alive, log index: {}/{}, log term: {}/{}",
           memberName, follower, lastLogIdx
           ,localLastLogIdx, lastLogTerm, localLastLogTerm);
 
       if (localLastLogIdx > lastLogIdx ||
           lastLogIdx == localLastLogIdx && localLastLogTerm > lastLogTerm) {
+        logger.debug("{}: catching up node {}, index-term: {}-{}/{}-{}", memberName, follower,
+            lastLogIdx, lastLogTerm,
+            localLastLogIdx, localLastLogTerm);
         localMember.catchUp(follower, lastLogIdx);
       }
     } else {

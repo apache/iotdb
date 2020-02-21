@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.common;
 
 import java.util.ArrayList;
+import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 
 public class TestDataGroupMember extends DataGroupMember {
@@ -31,5 +32,6 @@ public class TestDataGroupMember extends DataGroupMember {
     for (int i = 0; i < 10; i++) {
       allNodes.add(TestUtils.getNode(i));
     }
+    setQueryManager(new ClusterQueryManager());
   }
 }

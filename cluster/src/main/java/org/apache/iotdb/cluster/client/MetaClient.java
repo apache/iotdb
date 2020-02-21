@@ -46,24 +46,21 @@ public class MetaClient extends AsyncClient {
   public void onComplete() {
     super.onComplete();
     // return itself to the pool if the job is done
-    pool.putClient(node, this);
+    if (pool != null) {
+      pool.putClient(node, this);
+    }
   }
 
   public static class Factory implements ClientFactory {
-    private org.apache.thrift.async.TAsyncClientManager clientManager;
     private org.apache.thrift.protocol.TProtocolFactory protocolFactory;
-    public Factory(org.apache.thrift.async.TAsyncClientManager clientManager, org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
-      this.clientManager = clientManager;
+    public Factory(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
       this.protocolFactory = protocolFactory;
     }
 
     @Override
     public RaftService.AsyncClient getAsyncClient(Node node, ClientPool pool)
         throws IOException {
-      if (!clientManager.isRunning()) {
-        clientManager = new TAsyncClientManager();
-      }
-      return new MetaClient(protocolFactory, clientManager, node, pool);
+      return new MetaClient(protocolFactory, new TAsyncClientManager(), node, pool);
     }
   }
 }

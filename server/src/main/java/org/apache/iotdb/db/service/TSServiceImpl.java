@@ -954,15 +954,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   }
 
-
-
   /**
    * create QueryDataSet and buffer it for fetchResults
    */
   private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan) throws
           QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException, SQLException {
 
-    QueryContext context = new QueryContext(queryId);
+    QueryContext context = genQueryContext(queryId);
     QueryDataSet queryDataSet = processor.getExecutor().processQuery(physicalPlan, context);
     queryId2DataSet.put(queryId, queryDataSet);
     return queryDataSet;

@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log.snapshot;
 
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -33,26 +34,38 @@ import org.slf4j.LoggerFactory;
 public class RemoteFileSnapshot extends Snapshot implements RemoteSnapshot {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteFileSnapshot.class);
-  private Future pullSnapshotTask;
+  private static final ByteBuffer EMPTY_SNAPSHOT_BYTES = new FileSnapshot().serialize();
+  private Future<Map<Integer, FileSnapshot>> pullSnapshotTask;
+  private Map<Integer, FileSnapshot> remoteSnapshots;
+  private int slot;
 
-  public RemoteFileSnapshot(Future pullSnapshotTask) {
+  public RemoteFileSnapshot(Future<Map<Integer, FileSnapshot>> pullSnapshotTask, int slot) {
     this.pullSnapshotTask = pullSnapshotTask;
+    this.slot = slot;
   }
 
   @Override
   public ByteBuffer serialize() {
-    return null;
+    if (remoteSnapshots == null) {
+      getRemoteSnapshot();
+    }
+    FileSnapshot fileSnapshot = remoteSnapshots.get(slot);
+    if (fileSnapshot != null) {
+      return fileSnapshot.serialize();
+    } else {
+      return EMPTY_SNAPSHOT_BYTES;
+    }
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-    // remote file snapshot is not serialized
+    // remote file snapshot is not deserialized
   }
 
   @Override
   public void getRemoteSnapshot() {
     try {
-      pullSnapshotTask.get();
+       remoteSnapshots = pullSnapshotTask.get();
     } catch (InterruptedException | ExecutionException e) {
       logger.error("Cannot pull remote file snapshot:", e);
     }

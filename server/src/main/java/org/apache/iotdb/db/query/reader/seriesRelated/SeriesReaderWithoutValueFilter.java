@@ -138,12 +138,15 @@ public class SeriesReaderWithoutValueFilter implements ManagedSeriesReader {
 
   private boolean hasNextInSeq() throws IOException {
     // has next point in cached seqBatchData
-    if (seqBatchData != null && seqBatchData.hasCurrent())
+    if (seqBatchData != null && seqBatchData.hasCurrent()) {
       return true;
+    }
     // has next batch in seq reader
-    if (seqResourceIterateReader.hasNextBatch()) {
+    while (seqResourceIterateReader.hasNextBatch()) {
       seqBatchData = seqResourceIterateReader.nextBatch();
-      return true;
+      if (seqBatchData != null && seqBatchData.hasCurrent()) {
+        return true;
+      }
     }
     return false;
   }
@@ -153,9 +156,11 @@ public class SeriesReaderWithoutValueFilter implements ManagedSeriesReader {
     if (unseqBatchData != null && unseqBatchData.hasCurrent())
       return true;
     // has next batch in unseq reader
-    if (unseqResourceMergeReader != null && unseqResourceMergeReader.hasNextBatch()) {
+    while (unseqResourceMergeReader != null && unseqResourceMergeReader.hasNextBatch()) {
       unseqBatchData = unseqResourceMergeReader.nextBatch();
-      return true;
+      if (unseqBatchData != null && unseqBatchData.hasCurrent()) {
+        return true;
+      }
     }
     return false;
   }

@@ -58,5 +58,6 @@ public class MetaHeartBeatThread extends HeartBeatThread {
     }
 
     super.sendHeartbeat(node, client);
+    request.unsetPartitionTableBytes();
   }
 }

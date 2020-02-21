@@ -48,11 +48,16 @@ import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
 import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
+import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
+import org.apache.iotdb.cluster.query.reader.BatchedPointReader;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderResp;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
@@ -63,38 +68,48 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
+import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.OldUnseqResourceMergeReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithValueFilter;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -118,17 +133,16 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
-      PartitionedSnapshotLogManager logManager, MetaGroupMember metaGroupMember,
-      TAsyncClientManager clientManager) {
+      PartitionedSnapshotLogManager logManager, MetaGroupMember metaGroupMember) {
     super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
-        new ClientPool(new DataClient.Factory(clientManager, factory)));
+        new ClientPool(new DataClient.Factory(factory)));
     this.thisNode = thisNode;
     this.logManager = logManager;
     super.logManager = logManager;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
     queryProcessor = new ClusterQueryParser(metaGroupMember);
-    queryManager = new ClusterQueryManager();
+    setQueryManager(new ClusterQueryManager());
   }
 
   @Override
@@ -143,6 +157,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     super.stop();
     pullSnapshotService.shutdownNow();
     pullSnapshotService = null;
+    try {
+      getQueryManager().endAllQueries();
+    } catch (StorageEngineException e) {
+      logger.error("Cannot release queries of {}", name, e);
+    }
   }
 
   /**
@@ -156,24 +175,29 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     return allNodes.get(0);
   }
 
+  public ClusterQueryManager getQueryManager() {
+    return queryManager;
+  }
+
+  public void setQueryManager(ClusterQueryManager queryManager) {
+    this.queryManager = queryManager;
+  }
+
   public static class Factory {
     private TProtocolFactory protocolFactory;
     private MetaGroupMember metaGroupMember;
-    private TAsyncClientManager clientManager;
     private LogApplier applier;
 
-    Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember, LogApplier applier
-        ,TAsyncClientManager clientManager) {
+    Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember, LogApplier applier) {
       this.protocolFactory = protocolFactory;
       this.metaGroupMember = metaGroupMember;
       this.applier = applier;
-      this.clientManager = clientManager;
     }
 
     public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode) {
       return new DataGroupMember(protocolFactory, partitionGroup, thisNode,
           new FilePartitionedSnapshotLogManager(applier, metaGroupMember.getPartitionTable(),
-              partitionGroup.getHeader()), metaGroupMember, clientManager);
+              partitionGroup.getHeader()), metaGroupMember);
     }
   }
 
@@ -229,7 +253,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
     long thisMetaLastLogIndex = metaGroupMember.getLogManager().getLastLogIndex();
     long thisMetaLastLogTerm = metaGroupMember.getLogManager().getLastLogTerm();
-    long thisMetaTerm = metaGroupMember.getTerm().get();
 
     // term of the electors's MetaGroupMember is not verified, so 0 and 1 are used to make sure
     // the verification does not fail
@@ -258,6 +281,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   @Override
   public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
+    logger.debug("{}: received a snapshot", name);
     PartitionedSnapshot snapshot = new PartitionedSnapshot<>(FileSnapshot::new);
     try {
       snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
@@ -297,10 +321,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // TODO-Cluster#352: The problem of duplicated data in remote files is partially resolved by
     //  tracking the merge history using the version numbers of the merged files. But a better
     //  solution still remains to be found.
-    String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
+    String[] pathSegments = PartitionUtils.splitTsFilePath(resource);
     int segSize = pathSegments.length;
-    // {storageGroupName}/{fileName}
-    String storageGroupName = pathSegments[segSize - 2];
+    // {storageGroupName}/{partitionNum}/{fileName}
+    String storageGroupName = pathSegments[segSize - 3];
     return StorageEngine.getInstance().isFileAlreadyExist(resource, storageGroupName);
   }
 
@@ -340,10 +364,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   private void loadRemoteResource(RemoteTsFileResource resource) {
-    // remote/{nodeIdentifier}/{storageGroupName}/{fileName}
-    String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
+    // remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/{fileName}
+    String[] pathSegments = PartitionUtils.splitTsFilePath(resource);
     int segSize = pathSegments.length;
-    String storageGroupName = pathSegments[segSize - 2];
+    String storageGroupName = pathSegments[segSize - 3];
     File remoteModFile =
         new File(resource.getFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
     try {
@@ -365,11 +389,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   private File pullRemoteFile(RemoteTsFileResource resource, Node node) {
     logger.debug("{}: pulling remote file {} from {}", name, resource, node);
 
-    String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
+    String[] pathSegments = PartitionUtils.splitTsFilePath(resource);
     int segSize = pathSegments.length;
-    // remote/{nodeIdentifier}/{storageGroupName}/{fileName}
+    // remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/{fileName}
     String tempFileName =
-        node.getNodeIdentifier() + File.separator + pathSegments[segSize - 2] + File.separator + pathSegments[segSize - 1];
+        node.getNodeIdentifier() + File.separator + pathSegments[segSize - 3] +
+            File.separator + pathSegments[segSize - 2] + File.separator + pathSegments[segSize - 1];
     File tempFile = new File(REMOTE_FILE_TEMP_DIR, tempFileName);
     tempFile.getParentFile().mkdirs();
     File tempModFile = new File(REMOTE_FILE_TEMP_DIR, tempFileName + ModificationFile.FILE_SUFFIX);
@@ -449,29 +474,26 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       }
       return;
     }
+    if (request.isRequireReadOnly()) {
+      setReadOnly();
+    }
 
     // this synchronized should work with the one in AppendEntry when a log is going to commit,
     // which may prevent the newly arrived data from being invisible to the new header.
     synchronized (logManager) {
       List<Integer> requiredSlots = request.getRequiredSlots();
       logger.debug("{}: {} slots are requested", name, requiredSlots.size());
-      // check whether this slot is held by the node
-      List<Integer> heldSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
 
       PullSnapshotResp resp = new PullSnapshotResp();
       Map<Integer, ByteBuffer> resultMap = new HashMap<>();
       logManager.takeSnapshot();
 
+      PartitionedSnapshot allSnapshot = (PartitionedSnapshot) logManager.getSnapshot();
       for (int requiredSlot : requiredSlots) {
-        if (!heldSlots.contains(requiredSlot)) {
-          // logger.debug("{}: the required slot {} is not held by the node", name,
-          // requiredSlot);
-          continue;
-        }
-
-        PartitionedSnapshot allSnapshot = (PartitionedSnapshot) logManager.getSnapshot();
         Snapshot snapshot = allSnapshot.getSnapshot(requiredSlot);
-        resultMap.put(requiredSlot, snapshot.serialize());
+        if (snapshot != null) {
+          resultMap.put(requiredSlot, snapshot.serialize());
+        }
       }
       resp.setSnapshotBytes(resultMap);
       logger.debug("{}: Sending {} snapshots to the requester", name, resultMap.size());
@@ -479,7 +501,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
-  public void pullSnapshots(List<Integer> slots, Node newNode) {
+  /**
+   * Pull snapshots from the previous holders after newNode joins the cluster.
+   * @param slots
+   * @param newNode
+   */
+  public void pullNodeAdditionSnapshots(List<Integer> slots, Node newNode) {
     synchronized (logManager) {
       logger.info("{} pulling {} slots from remote", name, slots.size());
       PartitionedSnapshot snapshot = (PartitionedSnapshot) logManager.getSnapshot();
@@ -499,20 +526,25 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       for (Entry<Node, List<Integer>> entry : holderSlotsMap.entrySet()) {
         Node node = entry.getKey();
         List<Integer> nodeSlots = entry.getValue();
-        pullFileSnapshot(node, nodeSlots);
+        pullFileSnapshot(metaGroupMember.getPartitionTable().getHeaderGroup(node),  nodeSlots, false);
       }
     }
   }
 
-  private void pullFileSnapshot(Node node, List<Integer> nodeSlots) {
-    PartitionGroup prevHolders =
-        new PartitionGroup(metaGroupMember.getPartitionTable().getHeaderGroup(node));
-
+  /**
+   *
+   * @param prevHolders
+   * @param nodeSlots
+   * @param requireReadOnly set to true if the previous holder has been removed from the cluster.
+   *                       This will make the previous holder read-only so that different new
+   *                        replicas can pull the same snapshot.
+   */
+  private void pullFileSnapshot(PartitionGroup prevHolders,  List<Integer> nodeSlots, boolean requireReadOnly) {
     Future<Map<Integer, FileSnapshot>> snapshotFuture =
-        pullSnapshotService.submit(new PullSnapshotTask(node, nodeSlots, this,
-            prevHolders, FileSnapshot::new));
+        pullSnapshotService.submit(new PullSnapshotTask(prevHolders.getHeader(), nodeSlots, this,
+            prevHolders, FileSnapshot::new, requireReadOnly));
     for (int slot : nodeSlots) {
-      logManager.setSnapshot(new RemoteFileSnapshot(snapshotFuture), slot);
+      logManager.setSnapshot(new RemoteFileSnapshot(snapshotFuture, slot), slot);
     }
   }
 
@@ -529,7 +561,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       }
     }
 
-    return forwardPlan(plan, leader);
+    return forwardPlan(plan, leader, getHeader());
   }
 
   @Override
@@ -573,6 +605,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     resultHandler.onComplete(resp);
   }
 
+  //TODO-Cluster: the reader should not read data outside of the group, because it may be out-dated
   ManagedSeriesReader getSeriesReaderWithoutValueFilter(Path path, TSDataType dataType, Filter timeFilter,
       QueryContext context, boolean pushdownUnseq)
       throws IOException, StorageEngineException {
@@ -618,10 +651,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
     if (request.isSetFilterBytes()) {
-      // TODO-Cluster: deserialize the filters
       timeFilter = FilterFactory.deserialize(request.filterBytes);
     }
-    RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequester(),
+    RemoteQueryContext queryContext = getQueryManager().getQueryContext(request.getRequester(),
         request.getQueryId());
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
@@ -634,12 +666,18 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
             request.isPushdownUnseq());
       }
 
-      long readerId = queryManager.registerReader(batchReader);
-      queryContext.registerLocalReader(readerId);
-
-      logger.debug("{}: Build a reader of {} for {}, readerId: {}", name, path,
-          request.getRequester(), readerId);
-      resultHandler.onComplete(readerId);
+      if (batchReader.hasNextBatch()) {
+        long readerId = getQueryManager().registerReader(batchReader);
+        queryContext.registerLocalReader(readerId);
+        logger.debug("{}: Build a reader of {} for {}#{}, readerId: {}", name, path,
+            request.getRequester(), request.getQueryId(), readerId);
+        resultHandler.onComplete(readerId);
+      } else {
+        logger.debug("{}: There is no data {} for {}#{}", name, path,
+            request.getRequester(), request.getQueryId());
+        resultHandler.onComplete(-1L);
+        batchReader.close();
+      }
     } catch (IOException | StorageEngineException e) {
       resultHandler.onError(e);
     }
@@ -656,13 +694,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
 
     Path path = new Path(request.getPath());
-    RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequester(),
+    RemoteQueryContext queryContext = getQueryManager().getQueryContext(request.getRequester(),
         request.getQueryId());
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
     try {
       IReaderByTimestamp readerByTimestamp = getReaderByTimestamp(path, queryContext);
-      long readerId = queryManager.registerReaderByTime(readerByTimestamp);
+      long readerId = getQueryManager().registerReaderByTime(readerByTimestamp);
       queryContext.registerLocalReader(readerId);
 
       logger.debug("{}: Build a readerByTimestamp of {} for {}, readerId: {}", name, path,
@@ -677,7 +715,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   public void endQuery(Node header, Node requester, long queryId,
       AsyncMethodCallback<Void> resultHandler) {
     try {
-      queryManager.endQuery(requester, queryId);
+      getQueryManager().endQuery(requester, queryId);
       resultHandler.onComplete(null);
     } catch (StorageEngineException e) {
       resultHandler.onError(e);
@@ -687,7 +725,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    IReaderByTimestamp reader = queryManager.getReaderByTimestamp(readerId);
+    IReaderByTimestamp reader = getQueryManager().getReaderByTimestamp(readerId);
     if (reader == null) {
       resultHandler.onError(new ReaderNotFoundException(readerId));
       return;
@@ -711,14 +749,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void fetchSingleSeries(Node header, long readerId,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    IBatchReader reader = queryManager.getReader(readerId);
+    IBatchReader reader = getQueryManager().getReader(readerId);
     if (reader == null) {
       resultHandler.onError(new ReaderNotFoundException(readerId));
       return;
     }
     try {
       if (reader.hasNextBatch()) {
-        int count = 0;
         BatchData batchData = reader.nextBatch();
 
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -740,6 +777,140 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     try {
       resultHandler.onComplete(MManager.getInstance().getPaths(path));
     } catch (MetadataException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  /**
+   * When the node does not play a member in a group any more, the corresponding local data should
+   * be removed.
+   */
+  public void removeLocalData(List<Integer> slots) {
+    for (Integer slot : slots) {
+      //TODO-Cluster: remove the data in the slot
+    }
+  }
+
+  /**
+   * When a node is removed and IT IS NOT THE HEADER of the group, the member should take over
+   * some slots from the removed group, and add a new node to the group the removed node was in the
+   * group.
+   */
+  public void removeNode(Node removedNode, NodeRemovalResult removalResult) {
+    synchronized (allNodes) {
+      if (allNodes.contains(removedNode)) {
+        // update the group if the deleted node was in it
+        allNodes = metaGroupMember.getPartitionTable().getHeaderGroup(getHeader());
+        if (removedNode.equals(leader)) {
+          synchronized (term) {
+            setCharacter(NodeCharacter.ELECTOR);
+            setLastHeartBeatReceivedTime(Long.MIN_VALUE);
+          }
+        }
+      }
+      List<Integer> slotsToPull = removalResult.getNewSlotOwners().get(getHeader());
+      if (slotsToPull != null) {
+        // pull the slots that should be taken over
+        pullFileSnapshot(removalResult.getRemovedGroup(), slotsToPull, true);
+      }
+    }
+  }
+
+  public DataMemberReport genReport() {
+    return new DataMemberReport(character, leader, term.get(),
+        logManager.getLastLogTerm(), logManager.getLastLogIndex(), getHeader(), readOnly);
+  }
+
+  @Override
+  public void getAggregateReader(GetAggregateReaderRequest request,
+      AsyncMethodCallback<GetAggregateReaderResp> resultHandler) {
+    String path = request.path;
+    long queryId = request.queryId;
+    Filter filter = null;
+    boolean reverse = request.reverse;
+    TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
+    Node requester = request.requester;
+    logger.debug("{}: Preparing aggregate readers for {}#{} of {}", name, path, queryId, requester);
+    if (!syncLeader()) {
+      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+      return;
+    }
+
+    if (request.isSetFilterBytes()) {
+      filter = FilterFactory.deserialize(request.filterBytes);
+    }
+    RemoteQueryContext context = getQueryManager().getQueryContext(requester, queryId);
+    try {
+      Pair<IAggregateReader, ManagedSeriesReader> aggregateReaders = getAggregateReaders(
+          new Path(path), context, filter, reverse, dataType);
+      IAggregateReader seqResourceIterateReader = aggregateReaders.left;
+      ManagedSeriesReader unseqResourceMergeReader = aggregateReaders.right;
+
+      long seqReaderId = -1;
+      long unseqReaderId = -1;
+      if (seqResourceIterateReader.hasNextBatch()) {
+        seqReaderId = getQueryManager().registerAggrReader(seqResourceIterateReader);
+        context.registerLocalReader(seqReaderId);
+      } else {
+        seqResourceIterateReader.close();
+      }
+      if (unseqResourceMergeReader.hasNextBatch()) {
+        unseqReaderId = getQueryManager().registerReader(unseqResourceMergeReader);
+        context.registerLocalReader(unseqReaderId);
+      } else {
+        unseqResourceMergeReader.close();
+      }
+
+      logger.debug("{}: Constructed aggregate readers {},{} for {}#{} of {}", name, seqReaderId,
+          unseqReaderId, path, queryId, requester);
+      GetAggregateReaderResp resp = new GetAggregateReaderResp(seqReaderId, unseqReaderId);
+      resultHandler.onComplete(resp);
+    } catch (StorageEngineException | IOException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  public Pair<IAggregateReader, ManagedSeriesReader> getAggregateReaders(Path path,
+      QueryContext context, Filter filter, boolean reverse, TSDataType dataType)
+      throws IOException, StorageEngineException {
+    QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+        .getQueryDataSource(path, context);
+    List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
+    TsFileFilter fileFilter = new SlotTsFileFilter(nodeSlots);
+    QueryUtils.filterQueryDataSource(queryDataSource, fileFilter);
+
+    IAggregateReader seqResourceIterateReader = new SeqResourceIterateReader(queryDataSource.getSeriesPath(),
+        queryDataSource.getSeqResources(), filter, context, reverse);
+    ManagedSeriesReader unseqResourceMergeReader = new BatchedPointReader(new OldUnseqResourceMergeReader(
+        queryDataSource.getSeriesPath(), queryDataSource.getUnseqResources(), context, filter),
+        dataType);
+    return new Pair<>(seqResourceIterateReader, unseqResourceMergeReader);
+  }
+
+  @Override
+  public void fetchPageHeader(Node header, long readerId,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    try {
+      IAggregateReader aggrReader = getQueryManager().getAggrReader(readerId);
+      if (!aggrReader.hasNextBatch()) {
+        resultHandler.onComplete(null);
+        return;
+      }
+      PageHeader pageHeader = getQueryManager().getAggrReader(readerId).nextPageHeader();
+      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      pageHeader.serializeTo(byteArrayOutputStream);
+      resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+    } catch (IOException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void skipPageData(Node header, long readerId, AsyncMethodCallback<Void> resultHandler) {
+    try {
+      getQueryManager().getAggrReader(readerId).skipPageData();
+      resultHandler.onComplete(null);
+    } catch (IOException e) {
       resultHandler.onError(e);
     }
   }

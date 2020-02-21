@@ -185,7 +185,7 @@ public class ClientServer extends TSServiceImpl {
         for (Node queriedNode : queriedNodes) {
           GenericHandler handler = new GenericHandler(queriedNode, new AtomicReference());
           try {
-            DataClient client = (DataClient) metaGroupMember.getDataClientPool().getClient(queriedNode);
+            DataClient client = metaGroupMember.getDataClient(queriedNode);
             client.endQuery(header, metaGroupMember.getThisNode(), queryId, handler);
           } catch (IOException | TException e) {
             logger.error("Cannot end query {} in {}", queryId, queriedNode);

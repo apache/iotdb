@@ -36,9 +36,9 @@ public class ClusterQueryParserTest extends BaseQueryTest {
 
   @Override
   @Before
-  public void setUp() throws MetadataException {
+  public void setUp() throws MetadataException, QueryProcessException {
     super.setUp();
-    parser = new ClusterQueryParser(metaGroupMember);
+    parser = new ClusterQueryParser(localMetaGroupMember);
   }
 
   @Test

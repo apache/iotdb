@@ -176,4 +176,13 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     return member;
   }
 
+  @Override
+  public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
+    member.removeNode(node, resultHandler);
+  }
+
+  @Override
+  public void exile(AsyncMethodCallback<Void> resultHandler) {
+    member.exile(resultHandler);
+  }
 }

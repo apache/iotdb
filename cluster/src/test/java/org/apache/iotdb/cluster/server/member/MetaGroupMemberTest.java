@@ -36,18 +36,19 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.client.ClientPool;
+import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.common.TestDataClient;
 import org.apache.iotdb.cluster.common.TestMetaClient;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
@@ -81,13 +82,17 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.factory.AggreFuncFactory;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
@@ -97,16 +102,17 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.apache.thrift.transport.TTransportException;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -117,17 +123,19 @@ public class MetaGroupMemberTest extends MemberTest {
   private DataClusterServer dataClusterServer;
   private AtomicLong dummyResponse;
   private boolean mockDataClusterServer;
+  private Node exiledNode;
 
   @Before
   public void setUp() throws Exception {
     super.setUp();
     dummyResponse = new AtomicLong(Response.RESPONSE_AGREE);
     metaGroupMember = getMetaGroupMember(TestUtils.getNode(0));
+    metaGroupMember.setAllNodes(allNodes);
     // a faked data member to respond requests
-    dataGroupMember = getDataGroupMember(partitionGroup, TestUtils.getNode(0));
+    dataGroupMember = getDataGroupMember(allNodes, TestUtils.getNode(0));
     dataGroupMember.setCharacter(LEADER);
     dataClusterServer = new DataClusterServer(TestUtils.getNode(0),
-        new DataGroupMember.Factory(null, metaGroupMember, null, null) {
+        new DataGroupMember.Factory(null, metaGroupMember, null) {
           @Override
           public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode) {
             return getDataGroupMember(partitionGroup, thisNode);
@@ -139,12 +147,13 @@ public class MetaGroupMemberTest extends MemberTest {
     metaGroupMember.getThisNode().setNodeIdentifier(0);
     mockDataClusterServer = false;
     QueryCoordinator.getINSTANCE().setMetaGroupMember(metaGroupMember);
+    exiledNode = null;
   }
 
   private DataGroupMember getDataGroupMember(PartitionGroup group, Node node) {
     return new DataGroupMember(null, group, node, new TestPartitionedLogManager(null,
-        partitionTable, partitionGroup.getHeader(), TestSnapshot::new),
-        metaGroupMember, null) {
+        partitionTable, group.getHeader(), TestSnapshot::new),
+        metaGroupMember) {
       @Override
       public boolean syncLeader() {
         return true;
@@ -163,12 +172,7 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
-      TSStatus forwardPlan(PhysicalPlan plan, Node node) {
-        return executeNonQuery(plan);
-      }
-
-      @Override
-      TSStatus forwardPlan(PhysicalPlan plan, PartitionGroup group) {
+      TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
         return executeNonQuery(plan);
       }
 
@@ -245,55 +249,62 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
-      public ClientPool getDataClientPool() {
-        return new ClientPool(null) {
+      public DataClient getDataClient(Node node) throws IOException {
+        return new TestDataClient(node) {
+
           @Override
-          public AsyncClient getClient(Node node) throws IOException {
-            return new TestDataClient(node) {
-              private AtomicLong readerId = new AtomicLong();
-              private Map<Long, IReaderByTimestamp> readerByTimestampMap = new HashMap<>();
+          public void querySingleSeries(SingleSeriesQueryRequest request,
+              AsyncMethodCallback<Long> resultHandler) {
+            new Thread(() -> dataGroupMember.querySingleSeries(request, resultHandler)).start();
+          }
 
-              @Override
-              public void querySingleSeries(SingleSeriesQueryRequest request,
-                  AsyncMethodCallback<Long> resultHandler) {
-                new Thread(() -> dataGroupMember.querySingleSeries(request, resultHandler)).start();
-              }
+          @Override
+          public void fetchSingleSeries(Node header, long readerId,
+              AsyncMethodCallback<ByteBuffer> resultHandler) {
+            new Thread(() -> dataGroupMember.fetchSingleSeries(header, readerId, resultHandler))
+                .start();
+          }
 
-              @Override
-              public void fetchSingleSeries(Node header, long readerId,
-                  AsyncMethodCallback<ByteBuffer> resultHandler) {
-                new Thread(() -> dataGroupMember.fetchSingleSeries(header, readerId, resultHandler))
-                    .start();
-              }
+          @Override
+          public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
+              AsyncMethodCallback<Long> resultHandler) {
+            new Thread(
+                () -> dataGroupMember.querySingleSeriesByTimestamp(request, resultHandler))
+                .start();
+          }
 
-              @Override
-              public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
-                  AsyncMethodCallback<Long> resultHandler) {
-                new Thread(
-                    () -> dataGroupMember.querySingleSeriesByTimestamp(request, resultHandler))
-                    .start();
-              }
+          @Override
+          public void fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp,
+              AsyncMethodCallback<ByteBuffer> resultHandler) {
+            new Thread(
+                () -> dataGroupMember.fetchSingleSeriesByTimestamp(header, readerId, timestamp,
+                    resultHandler)).start();
+          }
 
-              @Override
-              public void fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp,
-                  AsyncMethodCallback<ByteBuffer> resultHandler) {
-                new Thread(
-                    () -> dataGroupMember.fetchSingleSeriesByTimestamp(header, readerId, timestamp,
-                        resultHandler)).start();
+          @Override
+          public void getAllPaths(Node header, String path,
+              AsyncMethodCallback<List<String>> resultHandler) {
+            new Thread(() -> {
+              try {
+                resultHandler.onComplete(MManager.getInstance().getPaths(path));
+              } catch (MetadataException e) {
+                resultHandler.onError(e);
               }
+            }).start();
+          }
 
-              @Override
-              public void getAllPaths(Node header, String path,
-                  AsyncMethodCallback<List<String>> resultHandler) {
-                new Thread(() -> {
-                  try {
-                    resultHandler.onComplete(MManager.getInstance().getPaths(path));
-                  } catch (MetadataException e) {
-                    resultHandler.onError(e);
-                  }
-                }).start();
+          @Override
+          public void executeNonQueryPlan(ExecutNonQueryReq request,
+              AsyncMethodCallback<TSStatus> resultHandler) {
+            new Thread(() -> {
+              try {
+                PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
+                queryProcessExecutor.processNonQuery(plan);
+                resultHandler.onComplete(StatusUtils.OK);
+              } catch (IOException | QueryProcessException e) {
+                resultHandler.onError(e);
               }
-            };
+            }).start();
           }
         };
       }
@@ -378,6 +389,19 @@ public class MetaGroupMemberTest extends MemberTest {
             public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
               new Thread(() -> resultHandler.onComplete(new TNodeStatus())).start();
             }
+
+            @Override
+            public void exile(AsyncMethodCallback<Void> resultHandler) {
+             new Thread(() -> exiledNode = node).start();
+            }
+
+            @Override
+            public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
+              new Thread(() -> {
+                metaGroupMember.applyRemoveNode(node);
+                resultHandler.onComplete(Response.RESPONSE_AGREE);
+              }).start();
+            }
           };
         } catch (IOException e) {
           return null;
@@ -395,12 +419,6 @@ public class MetaGroupMemberTest extends MemberTest {
       dataGroupMember.start();
       dataClusterServer.addDataGroupMember(dataGroupMember);
     }
-  }
-
-  @Override
-  @After
-  public void tearDown() throws Exception {
-    super.tearDown();
   }
 
   @Test
@@ -919,5 +937,200 @@ public class MetaGroupMemberTest extends MemberTest {
     }
     MetaGroupMember metaGroupMember = getMetaGroupMember(new Node());
     assertEquals(100, metaGroupMember.getThisNode().getNodeIdentifier());
+  }
+
+  @Test
+  public void testRemoveNodeWithoutPartitionTable() throws InterruptedException {
+    metaGroupMember.setPartitionTable(null);
+    AtomicBoolean passed = new AtomicBoolean(false);
+    synchronized (metaGroupMember) {
+      metaGroupMember.removeNode(TestUtils.getNode(0), new AsyncMethodCallback<Long>() {
+        @Override
+        public void onComplete(Long aLong) {
+          synchronized (metaGroupMember) {
+            metaGroupMember.notifyAll();
+          }
+        }
+
+        @Override
+        public void onError(Exception e) {
+          new Thread(() -> {
+            synchronized (metaGroupMember) {
+              passed.set(e instanceof PartitionTableUnavailableException);
+              metaGroupMember.notifyAll();
+            }
+          }).start();
+        }
+      });
+      metaGroupMember.wait(500);
+    }
+
+    assertTrue(passed.get());
+  }
+
+  @Test
+  public void testRemoveThisNode() throws InterruptedException {
+    AtomicReference<Long> resultRef = new AtomicReference<>();
+    metaGroupMember.setLeader(metaGroupMember.getThisNode());
+    metaGroupMember.setCharacter(LEADER);
+    doRemoveNode(resultRef, metaGroupMember.getThisNode());
+    assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
+    assertFalse(metaGroupMember.getAllNodes().contains(metaGroupMember.getThisNode()));
+  }
+
+  @Test
+  public void testRemoveLeader() throws InterruptedException {
+    AtomicReference<Long> resultRef = new AtomicReference<>();
+    metaGroupMember.setLeader(TestUtils.getNode(40));
+    metaGroupMember.setCharacter(FOLLOWER);
+    doRemoveNode(resultRef, TestUtils.getNode(40));
+    assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
+    assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(40)));
+    assertEquals(ELECTOR, metaGroupMember.getCharacter());
+    assertEquals(Long.MIN_VALUE, metaGroupMember.getLastHeartBeatReceivedTime());
+  }
+
+  @Test
+  public void testRemoveNonLeader() throws InterruptedException {
+    AtomicReference<Long> resultRef = new AtomicReference<>();
+    metaGroupMember.setLeader(TestUtils.getNode(40));
+    metaGroupMember.setCharacter(FOLLOWER);
+    doRemoveNode(resultRef, TestUtils.getNode(20));
+    assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
+    assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(20)));
+    assertEquals(0, metaGroupMember.getLastHeartBeatReceivedTime());
+  }
+
+  @Test
+  public void testRemoveNodeAsLeader() throws InterruptedException {
+    AtomicReference<Long> resultRef = new AtomicReference<>();
+    metaGroupMember.setLeader(metaGroupMember.getThisNode());
+    metaGroupMember.setCharacter(LEADER);
+    doRemoveNode(resultRef, TestUtils.getNode(20));
+    assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
+    assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(20)));
+    assertEquals(TestUtils.getNode(20), exiledNode);
+  }
+
+  @Test
+  public void testRemoveNonExistNode() throws InterruptedException {
+    AtomicBoolean passed = new AtomicBoolean(false);
+    metaGroupMember.setCharacter(LEADER);
+    metaGroupMember.setLeader(metaGroupMember.getThisNode());
+    synchronized (metaGroupMember) {
+      metaGroupMember.removeNode(TestUtils.getNode(120), new AsyncMethodCallback<Long>() {
+        @Override
+        public void onComplete(Long aLong) {
+          synchronized (metaGroupMember) {
+            passed.set(aLong.equals(Response.RESPONSE_REJECT));
+            metaGroupMember.notifyAll();
+          }
+        }
+
+        @Override
+        public void onError(Exception e) {
+          new Thread(() -> {
+            synchronized (metaGroupMember) {
+              e.printStackTrace();
+              metaGroupMember.notifyAll();
+            }
+          }).start();
+        }
+      });
+      metaGroupMember.wait(500);
+    }
+
+    assertTrue(passed.get());
+  }
+
+  @Test
+  public void testRemoveTooManyNodes() throws InterruptedException {
+    for (int i = 0; i < 7; i ++) {
+      AtomicReference<Long> resultRef = new AtomicReference<>();
+      metaGroupMember.setCharacter(LEADER);
+      doRemoveNode(resultRef, TestUtils.getNode(90 - i * 10));
+      assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
+      assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(90 - i * 10)));
+    }
+    AtomicReference<Long> resultRef = new AtomicReference<>();
+    metaGroupMember.setCharacter(LEADER);
+    doRemoveNode(resultRef, TestUtils.getNode(20));
+    assertEquals(Response.RESPONSE_CLUSTER_TOO_SMALL, (long) resultRef.get());
+    assertTrue(metaGroupMember.getAllNodes().contains(TestUtils.getNode(20)));
+  }
+
+  private void doRemoveNode(AtomicReference<Long> resultRef, Node nodeToRemove) throws InterruptedException {
+    synchronized (resultRef) {
+      metaGroupMember.removeNode(nodeToRemove, new AsyncMethodCallback<Long>() {
+        @Override
+        public void onComplete(Long o) {
+          new Thread(() -> {
+            synchronized (resultRef) {
+              resultRef.set(o);
+              resultRef.notifyAll();
+            }
+          }).start();
+        }
+
+        @Override
+        public void onError(Exception e) {
+          new Thread(() -> {
+            synchronized (resultRef) {
+              e.printStackTrace();
+              resultRef.notifyAll();
+            }
+          }).start();
+        }
+      });
+      resultRef.wait(500);
+    }
+  }
+
+  @Test
+  public void testGetAggregateReaders()
+      throws MetadataException, IOException, StorageEngineException, QueryProcessException {
+    TestUtils.prepareAggregateData();
+
+    List<Path> selectedPaths = Arrays.asList(new Path(TestUtils.getTestSeries(0, 0)),
+        new Path(TestUtils.getTestSeries(0, 0)), new Path(TestUtils.getTestSeries(0, 0)),
+        new Path(TestUtils.getTestSeries(0, 0)), new Path(TestUtils.getTestSeries(0, 0)));
+    Filter filter = new AndFilter(TimeFilter.gtEq(5), TimeFilter.lt(15));
+    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    List<IAggregateReader> seqReaders = new ArrayList<>();
+    List<IPointReader> unseqReaders = new ArrayList<>();
+    List<AggregateFunction> aggregateFunctions =
+        Arrays.asList(AggreFuncFactory.getAggrFuncByName(SQLConstant.FIRST_VALUE,
+            TSDataType.DOUBLE), AggreFuncFactory.getAggrFuncByName(SQLConstant.LAST_VALUE,
+            TSDataType.DOUBLE), AggreFuncFactory.getAggrFuncByName(SQLConstant.SUM,
+            TSDataType.DOUBLE), AggreFuncFactory.getAggrFuncByName(SQLConstant.COUNT,
+            TSDataType.DOUBLE),AggreFuncFactory.getAggrFuncByName(SQLConstant.AVG,
+            TSDataType.DOUBLE));
+    List<TSDataType> dataTypes = Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE,
+        TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE);
+
+    metaGroupMember.getAggregateReader(selectedPaths, filter, context, seqReaders, unseqReaders,
+        aggregateFunctions, dataTypes);
+    assertEquals(5, seqReaders.size());
+    assertEquals(5, unseqReaders.size());
+    for (IAggregateReader seqReader : seqReaders) {
+      assertTrue(seqReader.hasNextBatch());
+      BatchData batchData = seqReader.nextBatch();
+      for (int i = 10; i < 15; i++) {
+        assertTrue(batchData.hasCurrent());
+        assertEquals(i, batchData.currentTime());
+        assertEquals(i * 1.0, batchData.getDouble(), 0.00001);
+      }
+      assertFalse(batchData.hasCurrent());
+    }
+
+    for (IPointReader unseqReader : unseqReaders) {
+      for (int i = 10; i < 15; i++) {
+        assertTrue(unseqReader.hasNext());
+        TimeValuePair next = unseqReader.next();
+        assertEquals(i, next.getTimestamp());
+        assertEquals(i * 1.0, next.getValue().getDouble(), 0.00001);
+      }
+      assertFalse(unseqReader.hasNext());
+    }
   }
 }

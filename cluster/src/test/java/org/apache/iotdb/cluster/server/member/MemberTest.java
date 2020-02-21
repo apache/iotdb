@@ -43,11 +43,10 @@ public class MemberTest {
   MetaGroupMember testMetaMember;
   LogManager metaLogManager;
   PartitionTable partitionTable;
-  PartitionGroup partitionGroup;
   QueryProcessExecutor queryProcessExecutor;
 
   private List<String> prevUrls;
-  private List<Node> allNodes;
+  PartitionGroup allNodes;
 
   @Before
   public void setUp() throws Exception {
@@ -59,11 +58,6 @@ public class MemberTest {
     }
     ClusterDescriptor.getINSTANCE().getConfig().setSeedNodeUrls(testUrls);
 
-    partitionGroup = new PartitionGroup();
-    for (int i = 0; i < 100; i += 10) {
-      partitionGroup.add(TestUtils.getNode(i));
-    }
-
     metaLogManager = new TestLogManager();
     testMetaMember = new TestMetaGroupMember() {
       @Override
@@ -72,8 +66,8 @@ public class MemberTest {
       }
     };
 
-    allNodes = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
+    allNodes = new PartitionGroup();
+    for (int i = 0; i < 100; i += 10) {
       allNodes.add(TestUtils.getNode(i));
     }
     partitionTable = new SlotPartitionTable(allNodes, TestUtils.getNode(0), 100);

@@ -92,10 +92,12 @@ public class StorageEngine implements IService {
   private static final ExecutorService recoveryThreadPool = IoTDBThreadPoolFactory
       .newFixedThreadPool(Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
 
-  private static final StorageEngine INSTANCE = new StorageEngine();
+  static class InstanceHolder {
+    private static final StorageEngine INSTANCE = new StorageEngine();
+  }
 
   public static StorageEngine getInstance() {
-    return INSTANCE;
+    return InstanceHolder.INSTANCE;
   }
 
   private ScheduledExecutorService ttlCheckThread;
@@ -524,7 +526,7 @@ public class StorageEngine implements IService {
   public boolean isFileAlreadyExist(TsFileResource tsFileResource, String storageGroup) {
     // TODO-Cluster#350: integrate with time partitioning
     StorageGroupProcessor processor = processorMap.get(storageGroup);
-    return processor.isFileAlreadyExist(tsFileResource);
+    return processor != null && processor.isFileAlreadyExist(tsFileResource);
   }
 
   public static long getTimePartitionInterval() {

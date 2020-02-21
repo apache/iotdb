@@ -98,6 +98,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
 
   public void setSnapshot(T snapshot, int slot) {
     synchronized (slotSnapshots) {
+      // TODO-Cluster#451: persist the remote snapshot so the pulling can be recovered in restart
       slotSnapshots.put(slot, snapshot);
     }
   }

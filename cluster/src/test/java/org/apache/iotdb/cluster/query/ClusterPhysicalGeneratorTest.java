@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.query;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.Collections;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -39,18 +38,17 @@ public class ClusterPhysicalGeneratorTest extends BaseQueryTest{
   private ClusterPhysicalGenerator physicalGenerator;
 
   @Before
-  public void setUp() throws MetadataException {
+  public void setUp() throws MetadataException, QueryProcessException {
     super.setUp();
-    physicalGenerator = new ClusterPhysicalGenerator(queryProcessExecutor, metaGroupMember);
+    physicalGenerator = new ClusterPhysicalGenerator(queryProcessExecutor, localMetaGroupMember);
   }
 
   @Test
   public void test() throws QueryProcessException {
     QueryOperator operator = new QueryOperator(SQLConstant.TOK_QUERY);
-    operator.setGroupByDevice(true);
 
     SelectOperator selectOperator = new SelectOperator(SQLConstant.TOK_SELECT);
-    selectOperator.setSuffixPathList(Collections.singletonList(new Path("*")));
+    selectOperator.setSuffixPathList(pathList);
     FromOperator fromOperator = new FromOperator(SQLConstant.TOK_FROM);
     fromOperator.addPrefixTablePath(new Path(TestUtils.getTestSg(0)));
 
@@ -58,8 +56,7 @@ public class ClusterPhysicalGeneratorTest extends BaseQueryTest{
     operator.setFromOperator(fromOperator);
     QueryPlan plan = (QueryPlan) physicalGenerator.transformToPhysicalPlan(operator);
 
-    // TODO: Enable this when IOTDB-412 is fixed
-    //assertEquals(pathList, plan.getDeduplicatedPaths());
+    assertEquals(pathList, plan.getDeduplicatedPaths());
     assertEquals(dataTypes, plan.getDeduplicatedDataTypes());
   }
 }

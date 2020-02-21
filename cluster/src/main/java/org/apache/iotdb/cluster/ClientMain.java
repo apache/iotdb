@@ -43,8 +43,12 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ClientMain {
+  
+  private static final Logger logger = LoggerFactory.getLogger(ClientMain.class);
 
   public static void main(String[] args)
       throws TException, InterruptedException, SQLException, IoTDBRPCException {
@@ -74,8 +78,12 @@ public class ClientMain {
       throws TException, SQLException, IoTDBRPCException {
     long statementId = client.requestStatementId(sessionId);
     executeQuery(client, sessionId,"SELECT * FROM root", statementId);
-    executeQuery(client, sessionId, "SELECT * FROM root WHERE time <= 432000000", statementId);
-    executeQuery(client, sessionId, "SELECT * FROM root.*.* WHERE s1 <= 0.5", statementId);
+    executeQuery(client, sessionId, "SELECT * FROM root WHERE time <= 691200000", statementId);
+    executeQuery(client, sessionId, "SELECT * FROM root.*.* WHERE s1 <= 0.7", statementId);
+    executeQuery(client, sessionId, "SELECT s1 FROM root.beijing.d1", statementId);
+    executeQuery(client, sessionId, "SELECT s1 FROM root.shanghai.d1", statementId);
+    executeQuery(client, sessionId, "SELECT s1 FROM root.guangzhou.d1", statementId);
+    executeQuery(client, sessionId, "SELECT s1 FROM root.shenzhen.d1", statementId);
 
     TSCloseOperationReq tsCloseOperationReq = new TSCloseOperationReq(sessionId);
     tsCloseOperationReq.setStatementId(statementId);
@@ -84,17 +92,17 @@ public class ClientMain {
 
   private static void executeQuery(Client client, long sessionId, String query, long statementId)
       throws TException, SQLException, IoTDBRPCException {
-    System.out.println(query);
+    logger.info(query);
     TSExecuteStatementResp resp = client
         .executeQueryStatement(new TSExecuteStatementReq(sessionId, query, statementId));
     long queryId = resp.getQueryId();
-    System.out.println(resp.columns);
+    logger.info(resp.columns.toString());
 
     SessionDataSet dataSet = new SessionDataSet(query, resp.getColumns(),
         resp.getDataTypeList(), queryId, client, sessionId, resp.queryDataSet);
 
     while (dataSet.hasNext()) {
-      System.out.println(dataSet.next());
+      logger.info(dataSet.next().toString());
     }
 
     TSCloseOperationReq tsCloseOperationReq = new TSCloseOperationReq(sessionId);
@@ -106,10 +114,10 @@ public class ClientMain {
 
   private static void testInsertion(Client client, long sessionId) throws TException,
       InterruptedException {
-    System.out.println(client.setStorageGroup(sessionId, "root.beijing"));
-    System.out.println(client.setStorageGroup(sessionId, "root.shanghai"));
-    System.out.println(client.setStorageGroup(sessionId, "root.guangzhou"));
-    System.out.println(client.setStorageGroup(sessionId, "root.shenzhen"));
+    logger.info(client.setStorageGroup(sessionId, "root.beijing").toString());
+    logger.info(client.setStorageGroup(sessionId, "root.shanghai").toString());
+    logger.info(client.setStorageGroup(sessionId, "root.guangzhou").toString());
+    logger.info(client.setStorageGroup(sessionId, "root.shenzhen").toString());
 
     // wait until the storage group creations are committed
     Thread.sleep(3000);
@@ -120,13 +128,13 @@ public class ClientMain {
     req.setEncoding(TSEncoding.GORILLA.ordinal());
     req.setCompressor(CompressionType.SNAPPY.ordinal());
     req.setPath("root.beijing.d1.s1");
-    System.out.println(client.createTimeseries(req));
+    logger.info(client.createTimeseries(req).toString());
     req.setPath("root.shanghai.d1.s1");
-    System.out.println(client.createTimeseries(req));
+    logger.info(client.createTimeseries(req).toString());
     req.setPath("root.guangzhou.d1.s1");
-    System.out.println(client.createTimeseries(req));
+    logger.info(client.createTimeseries(req).toString());
     req.setPath("root.shenzhen.d1.s1");
-    System.out.println(client.createTimeseries(req));
+    logger.info(client.createTimeseries(req).toString());
 
     // wait until the timeseries creations are committed
     Thread.sleep(3000);
@@ -138,17 +146,17 @@ public class ClientMain {
       insertReq.setTimestamp(i * 24 * 3600 * 1000L);
       insertReq.setValues(Collections.singletonList(Double.toString(i * 0.1)));
       insertReq.setDeviceId("root.beijing.d1");
-      System.out.println(insertReq);
-      System.out.println(client.insert(insertReq));
+      logger.info(insertReq.toString());
+      logger.info(client.insert(insertReq).toString());
       insertReq.setDeviceId("root.shanghai.d1");
-      System.out.println(insertReq);
-      System.out.println(client.insert(insertReq));
+      logger.info(insertReq.toString());
+      logger.info(client.insert(insertReq).toString());
       insertReq.setDeviceId("root.guangzhou.d1");
-      System.out.println(insertReq);
-      System.out.println(client.insert(insertReq));
+      logger.info(insertReq.toString());
+      logger.info(client.insert(insertReq).toString());
       insertReq.setDeviceId("root.shenzhen.d1");
-      System.out.println(insertReq);
-      System.out.println(client.insert(insertReq));
+      logger.info(insertReq.toString());
+      logger.info(client.insert(insertReq).toString());
     }
   }
 
