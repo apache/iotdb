@@ -480,10 +480,9 @@ public class TsFileProcessor {
       }
     }
 
-    releaseFlushedMemTable(memTableToFlush);
-
     // for sync flush
     synchronized (memTableToFlush) {
+      releaseFlushedMemTable(memTableToFlush);
       memTableToFlush.notifyAll();
     }
 
