@@ -164,14 +164,15 @@ if __name__ == '__main__':
     transport.open()
 
     # Authentication
-    clientProtocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1
+    clientProtocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2
     resp = client.openSession(TSOpenSessionReq(client_protocol=clientProtocol,
                                                username=username,
                                                password=password))
     if resp.serverProtocolVersion != clientProtocol:
         print('Inconsistent protocol, server version: %d, client version: %d'
               % (resp.serverProtocolVersion, clientProtocol))
-        exit()
+        if resp.serverProtocolVersion > clientProtocol:
+          exit()
     sessionId = resp.sessionId
 
     # This is necessary for resource control

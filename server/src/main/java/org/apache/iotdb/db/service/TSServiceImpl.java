@@ -221,9 +221,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info("meet error while logging in.", e);
       status = false;
     }
+
     TSStatus tsStatus;
     long sessionId = -1;
     if (status) {
+      //check the version compatibility
+      boolean compatible = checkCompatibility(req.getClient_protocol());
+      if (!compatible) {
+        tsStatus = getStatus(TSStatusCode.INCOMPATIBLE_VERSION, "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
+        TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
+            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
+        resp.setSessionId(sessionId);
+        return resp;
+      }
+
       tsStatus = getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
       sessionId = sessionIdGenerator.incrementAndGet();
       sessionIdUsernameMap.put(sessionId, req.getUsername());
@@ -233,12 +244,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       tsStatus = getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
-            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1);
+            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
     resp.setSessionId(sessionId);
     logger.info("{}: Login status: {}. User : {}", IoTDBConstant.GLOBAL_DB_NAME,
             tsStatus.getStatusType().getMessage(), req.getUsername());
 
     return resp;
+  }
+
+  private boolean checkCompatibility(TSProtocolVersion version) {
+    return version.equals(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
   }
 
   @Override
