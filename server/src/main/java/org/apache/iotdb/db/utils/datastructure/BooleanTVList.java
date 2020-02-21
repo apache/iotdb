@@ -64,8 +64,14 @@ public class BooleanTVList extends TVList {
 
   @Override
   public boolean[] getPartialBooleans(int start, int end) {
-    if (start < 0 || start > end || end > size) {
-      return null;
+    if (start < 0) {
+      throw new ArrayIndexOutOfBoundsException(start);
+    }
+    if (end > size) {
+      throw new ArrayIndexOutOfBoundsException(end);
+    }
+    if (start > end) {
+      throw new ArrayIndexOutOfBoundsException(end - start);
     }
     boolean[] partialValues = new boolean[end - start];
     for (int i = start; i < end; i++) {

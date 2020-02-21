@@ -399,7 +399,6 @@ public class TsFileProcessor {
       } else {
         addAMemtableIntoFlushingList(flushMemTable);
       }
-
     } catch (IOException e) {
       logger.error("WAL notify start flush failed", e);
     } finally {
@@ -583,57 +582,68 @@ public class TsFileProcessor {
   }
 
   public void adjustMemTable() throws QueryProcessException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    flushMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
-    for (String deviceId : workMemTable.getMemTableMap().keySet()) {
-      for (String measurementId : workMemTable.getMemTableMap().get(deviceId).keySet()) {
-        IWritableMemChunk series = workMemTable.getMemTableMap().get(deviceId).get(measurementId);
-        String[] measurements = new String[] {measurementId};
-        TSDataType[] dataTypes = new TSDataType[] {series.getType()};
-        TVList tvList = series.getSortedTVList();
-        int rowCount = (int)(tvList.size() * config.getDefaultStep());
-        long[] flushTimes = tvList.getPartialTimes(0, rowCount);
-        long[] workTimes = tvList.getPartialTimes(rowCount, tvList.size());
-        Object[] flushColumns = new Object[1];
-        Object[] workColumns = new Object[1];
-        switch (series.getType()) {
-          case TEXT:
-            flushColumns[0] = tvList.getPartialBinaries(0, rowCount);
-            workColumns[0] = tvList.getPartialBinaries(rowCount, tvList.size());
-            break;
-          case FLOAT:
-            flushColumns[0] = tvList.getPartialFloats(0, rowCount);
-            workColumns[0] = tvList.getPartialFloats(rowCount, tvList.size());
-            break;
-          case INT32:
-            flushColumns[0] = tvList.getPartialInts(0, rowCount);
-            workColumns[0] = tvList.getPartialInts(rowCount, tvList.size());
-            break;
-          case INT64:
-            flushColumns[0] = tvList.getPartialLongs(0, rowCount);
-            workColumns[0] = tvList.getPartialLongs(rowCount, tvList.size());
-            break;
-          case DOUBLE:
-            flushColumns[0] = tvList.getPartialDoubles(0, rowCount);
-            workColumns[0] = tvList.getPartialDoubles(rowCount, tvList.size());
-            break;
-          case BOOLEAN:
-            flushColumns[0] = tvList.getPartialBooleans(0, rowCount);
-            workColumns[0] = tvList.getPartialBooleans(rowCount, tvList.size());
-            break;
+    if (!sequence) {
+      return;
+    }
+    flushQueryLock.writeLock().lock();
+    try {
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+      IMemTable tmpWorkMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
+      flushMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
+      for (String deviceId : workMemTable.getMemTableMap().keySet()) {
+        for (String measurementId : workMemTable.getMemTableMap().get(deviceId).keySet()) {
+          IWritableMemChunk series = workMemTable.getMemTableMap().get(deviceId).get(measurementId);
+          String[] measurements = new String[] {measurementId};
+          TSDataType[] dataTypes = new TSDataType[] {series.getType()};
+          TVList tvList = series.getSortedTVList();
+          int rowCount = (int)(tvList.size() * config.getDefaultStep());
+          long[] flushTimes = tvList.getPartialTimes(0, rowCount);
+          long[] workTimes = tvList.getPartialTimes(rowCount, tvList.size());
+          Object[] flushColumns = new Object[1];
+          Object[] workColumns = new Object[1];
+          switch (series.getType()) {
+            case TEXT:
+              flushColumns[0] = tvList.getPartialBinaries(0, rowCount);
+              workColumns[0] = tvList.getPartialBinaries(rowCount, tvList.size());
+              break;
+            case FLOAT:
+              flushColumns[0] = tvList.getPartialFloats(0, rowCount);
+              workColumns[0] = tvList.getPartialFloats(rowCount, tvList.size());
+              break;
+            case INT32:
+              flushColumns[0] = tvList.getPartialInts(0, rowCount);
+              workColumns[0] = tvList.getPartialInts(rowCount, tvList.size());
+              break;
+            case INT64:
+              flushColumns[0] = tvList.getPartialLongs(0, rowCount);
+              workColumns[0] = tvList.getPartialLongs(rowCount, tvList.size());
+              break;
+            case DOUBLE:
+              flushColumns[0] = tvList.getPartialDoubles(0, rowCount);
+              workColumns[0] = tvList.getPartialDoubles(rowCount, tvList.size());
+              break;
+            case BOOLEAN:
+              flushColumns[0] = tvList.getPartialBooleans(0, rowCount);
+              workColumns[0] = tvList.getPartialBooleans(rowCount, tvList.size());
+              break;
+          }
+          BatchInsertPlan flushBatchInsertPlan = new BatchInsertPlan(deviceId, measurements, dataTypes);
+          flushBatchInsertPlan.setTimes(flushTimes);
+          flushBatchInsertPlan.setColumns(flushColumns);
+          flushBatchInsertPlan.setRowCount(rowCount);
+          flushMemTable.insertBatch(flushBatchInsertPlan, 0, rowCount);
+          BatchInsertPlan workBatchInsertPlan = new BatchInsertPlan(deviceId, measurements, dataTypes);
+          workBatchInsertPlan.setTimes(workTimes);
+          workBatchInsertPlan.setColumns(workColumns);
+          workBatchInsertPlan.setRowCount(tvList.size() - rowCount);
+          tmpWorkMemTable.insertBatch(workBatchInsertPlan, 0, tvList.size() - rowCount);
         }
-        BatchInsertPlan flushBatchInsertPlan = new BatchInsertPlan(deviceId, measurements, dataTypes);
-        flushBatchInsertPlan.setTimes(flushTimes);
-        flushBatchInsertPlan.setColumns(flushColumns);
-        flushBatchInsertPlan.setRowCount(rowCount);
-        flushMemTable.insertBatch(flushBatchInsertPlan, 0, rowCount);
-        BatchInsertPlan workBatchInsertPlan = new BatchInsertPlan(deviceId, measurements, dataTypes);
-        workBatchInsertPlan.setTimes(workTimes);
-        workBatchInsertPlan.setColumns(workColumns);
-        workBatchInsertPlan.setRowCount(tvList.size() - rowCount);
-        workMemTable.clear();
-        workMemTable.insertBatch(workBatchInsertPlan, 0, tvList.size() - rowCount);
       }
+      workMemTable.release();
+      MemTablePool.getInstance().putBack(workMemTable, storageGroupName);
+      workMemTable = tmpWorkMemTable;
+    } finally {
+      flushQueryLock.writeLock().unlock();
     }
   }
 

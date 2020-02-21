@@ -69,8 +69,14 @@ public abstract class TVList {
   }
 
   public long[] getPartialTimes(int start, int end) {
-    if (start < 0 || start > end || end > size) {
-      return null;
+    if (start < 0) {
+      throw new ArrayIndexOutOfBoundsException(start);
+    }
+    if (end > size) {
+      throw new ArrayIndexOutOfBoundsException(end);
+    }
+    if (start > end) {
+      throw new ArrayIndexOutOfBoundsException(end - start);
     }
     long[] partialTimes = new long[end - start];
     for (int i = start; i < end; i++) {
