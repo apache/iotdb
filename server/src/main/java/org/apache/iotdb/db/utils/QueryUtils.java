@@ -77,7 +77,7 @@ public class QueryUtils {
     return false;
   }
 
-  // remove files that do not belong to the given slots
+  // remove files that do not satisfy the filter
   public static void filterQueryDataSource(QueryDataSource queryDataSource, TsFileFilter fileFilter) {
     if (fileFilter == null) {
       return;

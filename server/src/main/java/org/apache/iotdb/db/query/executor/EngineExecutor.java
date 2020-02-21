@@ -27,6 +27,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.NewEngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
@@ -62,8 +63,10 @@ public class EngineExecutor implements DataQueryExecutor {
 
   protected ManagedSeriesReader getSeriesReaderWithoutValueFilter(Path path,
       TSDataType dataType, Filter timeFilter,
-      QueryContext context, boolean pushdownUnseq) throws IOException, StorageEngineException {
-    return new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context, true);
+      QueryContext context, boolean pushdownUnseq, TsFileFilter fileFilter) throws IOException,
+      StorageEngineException {
+    return new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context, pushdownUnseq,
+        fileFilter);
   }
 
   protected IReaderByTimestamp getReaderByTimestamp(Path path, QueryContext context)
@@ -90,7 +93,7 @@ public class EngineExecutor implements DataQueryExecutor {
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
       ManagedSeriesReader reader = getSeriesReaderWithoutValueFilter(path, dataType, timeFilter, context,
-          true);
+          true, null);
       readersOfSelectedSeries.add(reader);
     }
 
@@ -116,7 +119,7 @@ public class EngineExecutor implements DataQueryExecutor {
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
       ManagedSeriesReader reader = new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context,
-          true);
+          true, null);
       readersOfSelectedSeries.add(reader);
     }
 

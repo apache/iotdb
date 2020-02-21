@@ -558,6 +558,15 @@ public class Session {
     }
   }
 
+  public boolean checkTimeseriesExists(String path) throws IoTDBSessionException {
+    checkPathValidity(path);
+    try {
+      return executeQueryStatement(String.format("SHOW TIMESERIES %s", path)).hasNext();
+    } catch (Exception e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
   private TSStatus checkAndReturn(TSStatus resp) {
     if (resp.statusType.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       logger.error(resp.statusType.getMessage());

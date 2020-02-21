@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithValueFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -57,7 +58,7 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
         Filter filter = ((SingleSeriesExpression) expression).getFilter();
         Path path = ((SingleSeriesExpression) expression).getSeriesPath();
         TSDataType dataType = getSeriesType(path.getFullPath());
-        return new EngineLeafNode(getSeriesReader(path, dataType, filter, context));
+        return new EngineLeafNode(getSeriesReader(path, dataType, filter, context, null));
       } catch (IOException | MetadataException e) {
         throw new StorageEngineException(e);
       }
@@ -72,8 +73,8 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
   }
 
   protected IPointReader getSeriesReader(Path path, TSDataType dataType, Filter filter,
-      QueryContext context)
+      QueryContext context, TsFileFilter fileFilter)
       throws IOException, StorageEngineException {
-    return new SeriesReaderWithValueFilter(path, dataType, filter, context);
+    return new SeriesReaderWithValueFilter(path, dataType, filter, context, fileFilter);
   }
 }
