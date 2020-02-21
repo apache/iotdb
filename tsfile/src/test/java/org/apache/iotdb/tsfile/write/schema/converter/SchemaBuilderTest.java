@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 public class SchemaBuilderTest {
 
   @Test
-  public void testJsonConverter() {
+  public void testJsonConverter1() {
 
     Map<String, String> props = new HashMap<>();
     props.put(JsonFormatConstant.MAX_POINT_NUMBER, "3");
@@ -49,6 +49,57 @@ public class SchemaBuilderTest {
 
     Collection<TimeseriesSchema> timeseries = schema.getTimeseriesSchemaMap().values();
     String[] tsDesStrings = { "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,{},UNCOMPRESSED]" };
+    int i = 0;
+    for (TimeseriesSchema desc : timeseries) {
+      assertEquals(tsDesStrings[i++], desc.toString());
+    }
+  }
+  
+  @Test
+  public void testJsonConverter2() {
+
+    Map<String, String> props = new HashMap<>();
+    props.put(JsonFormatConstant.MAX_POINT_NUMBER, "3");
+    Schema schema = new Schema();
+    Map<String, TimeseriesSchema> template = new HashMap<>();
+    template.put("s4", 
+        new TimeseriesSchema("s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
+    template.put("s5",
+        new TimeseriesSchema("s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
+    schema.regieterDeviceTemplate("template1", template);
+    schema.regiesterDevice("d1", "template1");
+
+    Collection<TimeseriesSchema> timeseries = schema.getTimeseriesSchemaMap().values();
+    String[] tsDesStrings = { "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,{},UNCOMPRESSED]" };
+    int i = 0;
+    for (TimeseriesSchema desc : timeseries) {
+      assertEquals(tsDesStrings[i++], desc.toString());
+    }
+  }
+
+
+  @Test
+  public void testJsonConverter3() {
+
+    Map<String, String> props = new HashMap<>();
+    props.put(JsonFormatConstant.MAX_POINT_NUMBER, "3");
+    Schema schema = new Schema();
+    Map<String, TimeseriesSchema> template = new HashMap<>();
+    template.put("s4", 
+        new TimeseriesSchema("s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
+    template.put("s5",
+        new TimeseriesSchema("s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
+    schema.regieterDeviceTemplate("template1", template);
+    
+    schema.extendTemplate("template1",
+        new TimeseriesSchema("s6", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY, props));
+    
+    schema.regiesterDevice("d1", "template1");
+
+    Collection<TimeseriesSchema> timeseries = schema.getTimeseriesSchemaMap().values();
+    String[] tsDesStrings = { "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", 
+                              "[s5,INT32,TS_2DIFF,{},UNCOMPRESSED]",
+                              "[s6,INT64,RLE,{max_point_number=3},SNAPPY]"};
     int i = 0;
     for (TimeseriesSchema desc : timeseries) {
       assertEquals(tsDesStrings[i++], desc.toString());

@@ -241,6 +241,7 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   /**
    * this function does not modify the position of the file reader.
+   * @throws IOException io error
    */
   public TsFileMetaData readFileMetadata() throws IOException {
     if (tsFileMetaData == null) {
@@ -249,6 +250,13 @@ public class TsFileSequenceReader implements AutoCloseable {
     return tsFileMetaData;
   }
 
+  /**
+   * this function reads measurements and TimeseriesMetaDatas in given device
+   *
+   * @param device name
+   * @return the map measurementId -> TimeseriesMetaData in one device
+   * @throws IOException io error
+   */
   public Map<String, TimeseriesMetaData> readAllTimeseriesMetaDataInDevice(String device)
       throws IOException {
     if (cachedTimeseriesMetaDataMap == null) {
@@ -278,6 +286,13 @@ public class TsFileSequenceReader implements AutoCloseable {
     return timeseriesMetaDataMapInOneDevice;
   }
 
+  /**
+   * this function reads ChunkMetaDataList in given device
+   *
+   * @param device name
+   * @return ChunkMetaDataList
+   * @throws IOException io error
+   */
   public List<ChunkMetaData> readChunkMetadataInDevice(String device) throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
@@ -296,7 +311,12 @@ public class TsFileSequenceReader implements AutoCloseable {
     return chunkMetaDataList;
   }
 
-
+  /**
+   * this function reads all ChunkMetaData in this file
+   *
+   * @return ChunkMetaDataList
+   * @throws IOException io error
+   */
   public List<ChunkMetaData> readAllChunkMetadatas() throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
@@ -311,6 +331,12 @@ public class TsFileSequenceReader implements AutoCloseable {
     return chunkMetaDataList;
   }
 
+  /**
+   * this function return all timeseries names in this file
+   *
+   * @return list of Paths
+   * @throws IOException io error
+   */
   public List<Path> getAllPaths() throws IOException {
     List<Path> paths = new ArrayList<>();
     if (tsFileMetaData == null) {
@@ -541,16 +567,17 @@ public class TsFileSequenceReader implements AutoCloseable {
    *
    * @param newSchema   @OUT. the measurement schema in the file will be added into this parameter.
    *                    (can be null)
-   * @param newMetaData @OUT can not be null, the chunk group metadta in the file will be added into
-   *                    this parameter.
+   * @param chunkMetadataListMap   @OUT. the treeMap (Path -> ChunkmetadataList)
+   *                    (can be null)
    * @param fastFinish  if true and the file is complete, then newSchema and newMetaData parameter
    *                    will be not modified.
    * @return the position of the file that is fine. All data after the position in the file should
    * be truncated.
    */
 
-  public long selfCheck(Map<Path, TimeseriesSchema> newSchema, boolean fastFinish)
-      throws IOException {
+  public long selfCheck(Map<Path, TimeseriesSchema> newSchema, 
+      Map<Path, List<ChunkMetaData>> chunkMetadataListMap,
+      boolean fastFinish) throws IOException {
     File checkFile = FSFactoryProducer.getFSFactory().getFile(this.file);
     long fileSize;
     if (!checkFile.exists()) {
@@ -650,6 +677,15 @@ public class TsFileSequenceReader implements AutoCloseable {
                 newSchema.putIfAbsent(new Path(deviceID, tsSchema.getMeasurementId()), tsSchema);
               }
             }
+            if (chunkMetadataListMap != null) {
+              for (ChunkMetaData chunk : chunks) {
+                Path path = new Path(deviceID, chunk.getMeasurementUid());
+                List<ChunkMetaData> chunkMetaDataList = chunkMetadataListMap
+                    .getOrDefault(path, new ArrayList<>());
+                chunkMetaDataList.add(chunk);
+                chunkMetadataListMap.put(path, chunkMetaDataList);
+              }
+            }
             endOffsetOfChunkGroup = this.position();
             newChunkGroup = true;
             truncatedPosition = this.position();
@@ -685,6 +721,12 @@ public class TsFileSequenceReader implements AutoCloseable {
     return totalChunkNum;
   }
 
+  /**
+   * get ChunkMetaDatas in given path
+   *
+   * @param Path of timeseries
+   * @return List of ChunkMetaData
+   */
   public List<ChunkMetaData> getChunkMetadataList(Path path) throws IOException {
     Map<String, TimeseriesMetaData> timeseriesMetaDataMap =
         readAllTimeseriesMetaDataInDevice(path.getDevice());
@@ -698,6 +740,12 @@ public class TsFileSequenceReader implements AutoCloseable {
     return chunkMetaDataList;
   }
 
+  /**
+   * get ChunkMetaDatas in given TimeseriesMetaData
+   *
+   * @param TimeseriesMetaData
+   * @return List of ChunkMetaData
+   */
   public List<ChunkMetaData> readChunkMetaDataList(TimeseriesMetaData timeseriesMetaData)
       throws IOException {
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
@@ -711,6 +759,11 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
 
+  /**
+   * get all TimeseriesMetaData in file, sorted by device Ids
+   *
+   * @return list of TimeseriesMetaData
+   */
   public List<TimeseriesMetaData> getSortedTimeseriesMetaDataListByDeviceIds() throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();

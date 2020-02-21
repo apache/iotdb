@@ -187,8 +187,9 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
                 file.getAbsolutePath()));
       }
       Map<Path, TimeseriesSchema> schemaMap = new HashMap<>();
+      Map<Path, List<ChunkMetaData>> chunkMetaDataListMap = null;
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
-        reader.selfCheck(schemaMap, false);
+        reader.selfCheck(schemaMap, chunkMetaDataListMap, false);
       }
 
       FileLoaderUtils.checkTsFileResource(tsFileResource);

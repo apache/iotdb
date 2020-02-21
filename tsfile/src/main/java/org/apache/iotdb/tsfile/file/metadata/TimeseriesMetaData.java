@@ -24,6 +24,9 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TimeseriesMetaData {
@@ -32,22 +35,22 @@ public class TimeseriesMetaData {
   private int chunkMetaDataListDataSize;
 
   private String measurementId;
+  private TSDataType tsDataType;
+  
   private List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
+  
+  private Statistics<?> statistics;
 
   public TimeseriesMetaData() {
-
-  }
-
-  public TimeseriesMetaData(String measurementId, List<ChunkMetaData> chunkMetaDataList) {
-    this.measurementId = measurementId;
-    this.chunkMetaDataList = chunkMetaDataList;
   }
 
   public static TimeseriesMetaData deserializeFrom(ByteBuffer buffer) {
     TimeseriesMetaData timeseriesMetaData = new TimeseriesMetaData();
     timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readString(buffer));
+    timeseriesMetaData.setTSDataType(ReadWriteIOUtils.readDataType(buffer));
     timeseriesMetaData.setOffsetOfChunkMetaDataList(ReadWriteIOUtils.readLong(buffer));
     timeseriesMetaData.setDataSizeOfChunkMetaDataList(ReadWriteIOUtils.readInt(buffer));
+    timeseriesMetaData.statistics = Statistics.deserialize(buffer, timeseriesMetaData.tsDataType);
     return timeseriesMetaData;
   }
 
@@ -61,8 +64,10 @@ public class TimeseriesMetaData {
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(measurementId, outputStream);
+    byteLen += ReadWriteIOUtils.write(tsDataType, outputStream);
     byteLen += ReadWriteIOUtils.write(startOffsetOfChunkMetaDataList, outputStream);
     byteLen += ReadWriteIOUtils.write(chunkMetaDataListDataSize, outputStream);
+    byteLen += statistics.serialize(outputStream);
     return byteLen;
   }
 
@@ -100,6 +105,22 @@ public class TimeseriesMetaData {
 
   public void setDataSizeOfChunkMetaDataList(int size) {
     this.chunkMetaDataListDataSize = size;
+  }
+
+  public TSDataType getTSDataType() {
+    return tsDataType;
+  }
+
+  public void setTSDataType(TSDataType tsDataType) {
+    this.tsDataType = tsDataType;
+  }
+
+  public Statistics<?> getStatistics() {
+    return statistics;
+  }
+
+  public void setStatistics(Statistics<?> statistics) {
+    this.statistics = statistics;
   }
 
 }

@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 import org.slf4j.Logger;
@@ -133,7 +134,13 @@ public class TsFileWriter implements AutoCloseable {
           "the given file Writer does not support writing any more. Maybe it is an complete TsFile");
     }
     this.fileWriter = fileWriter;
-    this.schema = schema;
+    
+    if (fileWriter instanceof RestorableTsFileIOWriter) {
+      this.schema = new Schema(((RestorableTsFileIOWriter) fileWriter).getKnownSchema());
+    }
+    else {
+      this.schema = schema;
+    }
     this.pageSize = conf.getPageSizeInByte();
     this.chunkGroupSizeThreshold = conf.getGroupSizeInByte();
     config.setTSFileStorageFs(conf.getTSFileStorageFs().name());
@@ -144,10 +151,10 @@ public class TsFileWriter implements AutoCloseable {
     }
   }
 
-  // TODO: device Template
-  public void addDeviceTemplates(Map<String, TimeseriesSchema> template)
-      throws WriteProcessException {
 
+  public void addDeviceTemplate(String templateName, Map<String, TimeseriesSchema> template)
+      throws WriteProcessException {
+    schema.regieterDeviceTemplate(templateName, template);
   }
 
   public void addTimeseries(Path path, TimeseriesSchema timeseriesSchema)

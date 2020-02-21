@@ -73,7 +73,7 @@ public class TsFileIOWriter {
   protected List<List<ChunkMetaData>> chunkGroupMetaDataList = new ArrayList<>();
   protected List<String> deviceList = new ArrayList<>();
   protected List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
-  private Map<Path, List<ChunkMetaData>> chunkMetadataListMap = new TreeMap<>();
+  protected Map<Path, List<ChunkMetaData>> chunkMetadataListMap = new TreeMap<>();
   private ChunkMetaData currentChunkMetaData;
   private long markedPosition;
   private Map<String, Pair<Long, Integer>> deviceMetaDataMap;
@@ -267,29 +267,37 @@ public class TsFileIOWriter {
   }
 
   /**
-   * @return tsOffsets in TsFileMetaData
+   * Flush ChunkMetadataList and TimeseriesMetaData
+   * @return DeviceMetaDataMap in TsFileMetaData
    */
   private Map<String, Pair<Long, Integer>> flushAllChunkMetadataList() throws IOException {
 
     // convert ChunkMetadataList to this field
     Map<String, List<TimeseriesMetaData>> deviceTimeseriesMetadataMap = new LinkedHashMap<>();
-    // flush chunkMetadataList one by one
     for (Map.Entry<Path, List<ChunkMetaData>> entry : chunkMetadataListMap.entrySet()) {
       Path path = entry.getKey();
       String deviceId = path.getDevice();
+      // create device -> TimeseriesMetaDataList Map
       List<TimeseriesMetaData> timeseriesMetadataList = deviceTimeseriesMetadataMap
           .getOrDefault(deviceId, new ArrayList<>());
+      // create TimeseriesMetaData
       TimeseriesMetaData timeseriesMetaData = new TimeseriesMetaData();
       timeseriesMetaData.setMeasurementId(path.getMeasurement());
+      timeseriesMetaData.setTSDataType(entry.getValue().get(0).getDataType());
       timeseriesMetaData.setOffsetOfChunkMetaDataList(out.getPosition());
+      Statistics<?> statistics = entry.getValue().get(0).getStatistics();
       int chunkMetadataListLength = 0;
+        // flush chunkMetadataList one by one
       for (ChunkMetaData chunkMetadata : entry.getValue()) {
+        statistics.mergeStatistics(chunkMetadata.getStatistics());
         chunkMetadataListLength += chunkMetadata.serializeTo(out.wrapAsStream());
       }
+      timeseriesMetaData.setStatistics(statistics);
       timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetadataListLength);
       timeseriesMetadataList.add(timeseriesMetaData);
       deviceTimeseriesMetadataMap.put(deviceId, timeseriesMetadataList);
     }
+    // create DeviceMetaDataMap device -> Pair<TimeseriesMetaDataOffset, TimeseriesMetaDataLength> 
     Map<String, Pair<Long, Integer>> deviceMetadataMap = new HashMap<>();
     for (Map.Entry<String, List<TimeseriesMetaData>> entry : deviceTimeseriesMetadataMap
         .entrySet()) {

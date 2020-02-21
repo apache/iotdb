@@ -22,6 +22,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
@@ -49,19 +52,23 @@ public class TimeSeriesMetadataTest {
 
   @Test
   public void testWriteIntoFile() throws IOException {
-    TimeseriesSchema timeseriesSchema = TestHelper.createSimpleTimeseriesSchema(measurementUID);
+    TimeseriesMetaData timeseriesSchema = TestHelper.createSimpleTimseriesMetaData(measurementUID);
     serialized(timeseriesSchema);
-    TimeseriesSchema readMetadata = deSerialized();
+    TimeseriesMetaData readMetadata = deSerialized();
     timeseriesSchema.equals(readMetadata);
     serialized(readMetadata);
   }
 
-  private TimeseriesSchema deSerialized() {
+  private TimeseriesMetaData deSerialized() {
     FileInputStream fis = null;
-    TimeseriesSchema metaData = null;
+    TimeseriesMetaData metaData = null;
     try {
       fis = new FileInputStream(new File(PATH));
-      // metaData = TimeseriesSchema.deserializeFrom(fis);
+      FileChannel fch = fis.getChannel();
+      ByteBuffer buffer = ByteBuffer.allocate((int) fch.size());
+      fch.read(buffer);
+      buffer.flip();
+      metaData = TimeseriesMetaData.deserializeFrom(buffer);
       return metaData;
     } catch (IOException e) {
       e.printStackTrace();
@@ -77,7 +84,7 @@ public class TimeSeriesMetadataTest {
     return metaData;
   }
 
-  private void serialized(TimeseriesSchema metaData) {
+  private void serialized(TimeseriesMetaData metaData) {
     File file = new File(PATH);
     if (file.exists()) {
       file.delete();
@@ -85,7 +92,7 @@ public class TimeSeriesMetadataTest {
     FileOutputStream fos = null;
     try {
       fos = new FileOutputStream(file);
-      // metaData.serializeTo(fos);
+      metaData.serializeTo(fos);
     } catch (IOException e) {
       e.printStackTrace();
     } finally {

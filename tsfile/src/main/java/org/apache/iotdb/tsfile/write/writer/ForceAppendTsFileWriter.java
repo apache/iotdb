@@ -20,8 +20,10 @@ package org.apache.iotdb.tsfile.write.writer;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
@@ -33,6 +35,7 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 public class ForceAppendTsFileWriter extends TsFileIOWriter {
 
   private Map<Path, TimeseriesSchema> knownSchemas;
+  private Map<Path, List<ChunkMetaData>> chunkMetadataListMap;
   private long truncatePosition;
 
   public ForceAppendTsFileWriter(File file) throws IOException {
@@ -52,7 +55,7 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
             "File " + file.getPath() + " is not a complete TsFile");
       }
       // truncate metadata and marker
-      truncatePosition = reader.selfCheck(knownSchemas, true);
+      truncatePosition = reader.selfCheck(knownSchemas, chunkMetadataListMap, true);
     }
   }
 

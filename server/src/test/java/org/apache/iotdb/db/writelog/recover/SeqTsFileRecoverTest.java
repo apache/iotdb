@@ -26,7 +26,10 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -87,16 +90,16 @@ public class SeqTsFileRecoverTest {
     tsF.getParentFile().mkdirs();
 
     schema = new Schema();
+    Map<String, TimeseriesSchema> template = new HashMap<>();
     for (int i = 0; i < 10; i++) {
-      for (int j = 0; j < 10; j++) {
-        schema.registerTimeseries(new Path(("device" + i), ("sensor" + j)),
-            new TimeseriesSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN));
-      }
+      template.put("sensor" + i, new TimeseriesSchema("sensor" + i, TSDataType.INT64,
+          TSEncoding.PLAIN));
     }
-    for (int j = 0; j < 10; j++) {
-      schema.registerTimeseries(new Path("device99", ("sensor" + j)),
-          new TimeseriesSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN));
+    schema.regieterDeviceTemplate("template1", template);
+    for (int i = 0; i < 10; i++) {
+      schema.regiesterDevice("device" + i, "template1");
     }
+    schema.regiesterDevice("device99", "template1");
     writer = new TsFileWriter(tsF, schema);
 
     TSRecord tsRecord = new TSRecord(100, "device99");

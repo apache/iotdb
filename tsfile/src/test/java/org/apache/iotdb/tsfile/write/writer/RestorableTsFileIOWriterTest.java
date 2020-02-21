@@ -386,6 +386,7 @@ public class RestorableTsFileIOWriterTest {
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
+
     writer.close();
 
     long size = file.length();

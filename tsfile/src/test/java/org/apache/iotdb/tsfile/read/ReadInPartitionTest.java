@@ -81,7 +81,9 @@ public class ReadInPartitionTest {
       d1s6timeRangeList.add(new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
       long[] startEndOffsets = new long[2];
       startEndOffsets[0] = chunkMetaData.getOffsetOfChunkHeader();
-      startEndOffsets[1] = chunkMetaData.getOffsetOfChunkHeader() + 30;
+      startEndOffsets[1] = chunkMetaData.getOffsetOfChunkHeader()
+          + chunkMetaData.getMeasurementUid().getBytes().length
+          + Long.BYTES + Short.BYTES + chunkMetaData.getStatistics().getSerializedSize();;
       d1chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
     

@@ -54,7 +54,9 @@ public class IMetadataQuerierByFileImplTest {
       d1s6timeRangeList.add(new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
       long[] startEndOffsets = new long[2];
       startEndOffsets[0] = chunkMetaData.getOffsetOfChunkHeader();
-      startEndOffsets[1] = chunkMetaData.getOffsetOfChunkHeader() + 30;
+      startEndOffsets[1] = chunkMetaData.getOffsetOfChunkHeader() 
+          + chunkMetaData.getMeasurementUid().getBytes().length
+          + Long.BYTES + Short.BYTES + chunkMetaData.getStatistics().getSerializedSize();
       d1chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
     
@@ -63,7 +65,9 @@ public class IMetadataQuerierByFileImplTest {
       d2s1timeRangeList.add(new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
       long[] startEndOffsets = new long[2];
       startEndOffsets[0] = chunkMetaData.getOffsetOfChunkHeader();
-      startEndOffsets[1] = chunkMetaData.getOffsetOfChunkHeader() + 20;
+      startEndOffsets[1] = chunkMetaData.getOffsetOfChunkHeader()
+          + chunkMetaData.getMeasurementUid().getBytes().length
+          + Long.BYTES + Short.BYTES + chunkMetaData.getStatistics().getSerializedSize();
       d2chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
   }
@@ -98,14 +102,13 @@ public class IMetadataQuerierByFileImplTest {
 
     long spacePartitionStartPos = d1chunkGroupMetaDataOffsetList.get(0)[0];
     long spacePartitionEndPos = d1chunkGroupMetaDataOffsetList.get(1)[1];
-    System.out.println(spacePartitionStartPos);
-    System.out.println(spacePartitionEndPos);
     ArrayList<TimeRange> resTimeRanges = new ArrayList<>(
         metadataQuerierByFile.convertSpace2TimePartition(paths, spacePartitionStartPos, spacePartitionEndPos));
 
     ArrayList<TimeRange> unionCandidates = new ArrayList<>();
     unionCandidates.add(d1s6timeRangeList.get(0));
     unionCandidates.add(d2s1timeRangeList.get(0));
+    unionCandidates.add(d1s6timeRangeList.get(1));
     ArrayList<TimeRange> expectedRanges = new ArrayList<>(TimeRange.sortAndMerge(unionCandidates));
     Assert.assertEquals(expectedRanges.toString(), resTimeRanges.toString());
 
@@ -121,8 +124,6 @@ public class IMetadataQuerierByFileImplTest {
 
     long spacePartitionStartPos = d2chunkGroupMetaDataOffsetList.get(0)[0];
     long spacePartitionEndPos = d2chunkGroupMetaDataOffsetList.get(0)[1];
-    System.out.println(spacePartitionStartPos);
-    System.out.println(spacePartitionEndPos);
     ArrayList<TimeRange> inCandidates = new ArrayList<>();
     ArrayList<TimeRange> beforeCandidates = new ArrayList<>();
     ArrayList<TimeRange> resTimeRanges = new ArrayList<>(

@@ -86,6 +86,9 @@ public class Schema {
   }
 
   public void regieterDeviceTemplate(String templateName, Map<String, TimeseriesSchema> template) {
+    if (deviceTemplates == null) {
+      deviceTemplates = new HashMap<>();
+    }
     this.deviceTemplates.put(templateName, template);
   }
 
@@ -93,10 +96,22 @@ public class Schema {
     Map<String, TimeseriesSchema> template = this.deviceTemplates
         .getOrDefault(templateName, new HashMap<>());
     template.put(descriptor.getMeasurementId(), descriptor);
+    this.deviceTemplates.put(templateName, template);
   }
 
   public void regiesterDevice(String deviceId, String templateName) {
+    if (!deviceTemplates.containsKey(templateName)) {
+      return;
+    }
+    if (devices == null) {
+      devices = new HashMap<>();
+    }
     this.devices.put(deviceId, templateName);
+    Map<String, TimeseriesSchema> template = deviceTemplates.get(templateName);
+    for (Map.Entry<String, TimeseriesSchema> entry : template.entrySet()) {
+      Path path = new Path(deviceId, entry.getKey());
+      registerTimeseries(path, entry.getValue());
+    }
   }
 
   public TimeseriesSchema getSeriesSchema(Path path) {

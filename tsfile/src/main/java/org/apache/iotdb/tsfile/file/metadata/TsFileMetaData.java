@@ -74,6 +74,14 @@ public class TsFileMetaData {
 
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
+    
+    // read bloom filter
+    if (buffer.hasRemaining()) {
+      byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer).array();
+      int filterSize = ReadWriteIOUtils.readInt(buffer);
+      int hashFunctionSize = ReadWriteIOUtils.readInt(buffer);
+      fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize, hashFunctionSize);
+    }
 
     return fileMetaData;
   }

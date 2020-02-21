@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -47,6 +48,18 @@ public class TestHelper {
 
   public static TimeseriesSchema createSimpleTimeseriesSchema(String measurementuid) {
     return new TimeseriesSchema(measurementuid, TSDataType.INT64, TSEncoding.RLE);
+  }
+  
+  public static TimeseriesMetaData createSimpleTimseriesMetaData(String measurementuid) {
+    Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
+    statistics.setEmpty(false);
+    TimeseriesMetaData timeseriesMetaData = new TimeseriesMetaData();
+    timeseriesMetaData.setMeasurementId(measurementuid);
+    timeseriesMetaData.setTSDataType(PageHeaderTest.DATA_TYPE);
+    timeseriesMetaData.setOffsetOfChunkMetaDataList(1000L);
+    timeseriesMetaData.setDataSizeOfChunkMetaDataList(200);
+    timeseriesMetaData.setStatistics(statistics);
+    return timeseriesMetaData;
   }
 
   public static PageHeader createTestPageHeader() {
