@@ -22,7 +22,9 @@
 # Spark Tsfile 连接器
 
 ## 设计目的
+
 * 使用Spark SQL读取指定Tsfile的数据，以Spark DataFrame的形式返回给客户端
+
 * 使用Spark Dataframe中的数据生成Tsfile
 
 ## 支持格式
@@ -77,6 +79,7 @@ SQL转化为表达式后，由于窄表结构与Tsfile原生查询结构不同�
 
 #### 5. 查询实际执行
 实际数据查询执行由Tsfile原生组件完成，参见：
+
 * [Tsfile原生查询流程](../1-TsFile/4-Read.md)
 
 ## 写入步骤流程
@@ -84,11 +87,15 @@ SQL转化为表达式后，由于窄表结构与Tsfile原生查询结构不同�
 
 #### 宽表结构
 其主要转化代码在如下两个文件中：
+
 * src/main/scala/org/apache/iotdb/spark/tsfile/WideConverter.scala 负责结构转化
+
 * src/main/scala/org/apache/iotdb/spark/tsfile/WideTsFileOutputWriter.scala 负责匹配spark接口与执行写入，会调用上一个文件中的结构转化功能
 
 #### 窄表结构
 其主要转化代码在如下两个文件中：
+
 * src/main/scala/org/apache/iotdb/spark/tsfile/NarrowConverter.scala 负责结构转化
+
 * src/main/scala/org/apache/iotdb/spark/tsfile/NarrowTsFileOutputWriter.scala 负责匹配spark接口与执行写入，会调用上一个文件中的结构转化功能
 

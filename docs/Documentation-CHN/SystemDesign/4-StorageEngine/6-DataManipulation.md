@@ -19,7 +19,7 @@
 
 -->
 
-# 数据操控设计简介
+# 数据增删改
 
 下面介绍四种常用数据操控操作，分别是插入，更新，删除和TTL设置
 
@@ -87,6 +87,10 @@
 
 * 总入口: public void setTTL(String storageGroup, long dataTTL) StorageEngine.java
     * 找到对应的 StorageGroupProcessor
-    * 设置新的data ttl
+    * 在 StorageGroupProcessor 中设置新的data ttl
     * 对所有TsfileResource进行TTL检查
     * 如果某个文件在当前TTL下失效，则删除文件
+
+同时，我们在 StorageEngine 中启动了一个定时检查文件TTL的线程，详见
+
+* src/main/java/org/apache/iotdb/db/engine/StorageEngine.java 中的 start 方法

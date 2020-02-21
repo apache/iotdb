@@ -22,6 +22,7 @@
 # Spark IOTDB 连接器
 
 ## 设计目的
+
 * 使用Spark SQL读取IOTDB的数据，以Spark DataFrame的形式返回给客户端
 
 ## 核心思想
@@ -29,18 +30,22 @@
 
 ## 执行流程
 #### 1. 入口
+
 * src/main/scala/org/apache/iotdb/spark/db/DefaultSource.scala
 
 #### 2. 构建Relation
 Relation主要保存了RDD的元信息，比如列名字，分区策略等，调用Relation的buildScan方法可以创建RDD
+
 * src/main/scala/org/apache/iotdb/spark/db/IoTDBRelation.scala
 
 #### 3. 构建RDD
 RDD中执行对IOTDB的SQL请求，保存游标
+
 * src/main/scala/org/apache/iotdb/spark/db/IoTDBRDD.scala中的compute方法
 
 #### 4. 迭代RDD
 由于Spark懒加载机制，用户遍历RDD时才具体调用RDD的迭代，也就是IOTDB的fetch Result
+
 * src/main/scala/org/apache/iotdb/spark/db/IoTDBRDD.scala中的getNext方法
 
 
@@ -76,6 +81,7 @@ RDD中执行对IOTDB的SQL请求，保存游标
 
 #### 2. 使用Transformer
 可以使用Transformer进行宽窄表之间的转换，计算由Spark完成
+
 * src/main/scala/org/apache/iotdb/spark/db/Transformer.scala
 
 宽表转窄表使用了遍历device列表，生成对应的窄表，在union起来的策略，并行性较好（无shuffle）

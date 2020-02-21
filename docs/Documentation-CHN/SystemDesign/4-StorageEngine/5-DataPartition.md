@@ -27,7 +27,27 @@
 
 存储组由用户显示指定，使用语句"SET STORAGE GROUP TO"来指定存储组，每一个存储组有一个对应的StoragetGroupProcessor
 
+其拥有的主要字段为：
+
+* 一个读写锁
+
+* 每个时间分区所对应的未关闭的顺序文件树
+
+* 每个时间分区所对应的未关闭的乱序文件列表
+
+* 该存储组的全部顺序文件列表（按照时间排序）
+
+* 该存储组的全部乱序文件列表（无顺序）
+
+* 记录每一个设备最后写入时间的map
+
+* 记录每一个设备最后刷盘时间的map
+
+* 每个时间分区所对应的版本生成器map
+
+
 ### 相关代码
+
 * src/main/java/org/apache/iotdb/db/engine/StorageEngine.java
 
 
@@ -37,7 +57,7 @@
 
 ### 实现逻辑
 
-StoragetGroupProcessor对插入的数据进行分区计算，找到指定的TsfileProcessor，而每一个TsfileProcessor对应的tsfile会被放置在不同的分区文件夹内
+StorageGroupProcessor 对插入的数据进行分区计算，找到指定的 TsFileProcessor，而每一个 TsFileProcessor 对应的 TsFile 会被放置在不同的分区文件夹内
 
 ### 文件结构
 
@@ -63,4 +83,4 @@ data
 
 ### 相关代码
 
-* src/main/java/org/apache/iotdb/db/engine/storagegroup.StoragetGroupProcessor.java中的getOrCreateTsFileProcessorIntern方法
+* src/main/java/org/apache/iotdb/db/engine/storagegroup.StoragetGroupProcessor.java 中的 getOrCreateTsFileProcessorIntern 方法
