@@ -22,6 +22,9 @@ package org.apache.iotdb.db.utils;
 import java.util.List;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 
 public class QueryUtils {
@@ -72,5 +75,16 @@ public class QueryUtils {
       }
     }
     return false;
+  }
+
+  // remove files that do not satisfy the filter
+  public static void filterQueryDataSource(QueryDataSource queryDataSource, TsFileFilter fileFilter) {
+    if (fileFilter == null) {
+      return;
+    }
+    List<TsFileResource> seqResources = queryDataSource.getSeqResources();
+    List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
+    seqResources.removeIf(fileFilter::fileNotSatisfy);
+    unseqResources.removeIf(fileFilter::fileNotSatisfy);
   }
 }

@@ -56,7 +56,8 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
         Filter filter = ((SingleSeriesExpression) expression).getFilter();
         Path path = ((SingleSeriesExpression) expression).getSeriesPath();
         TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
-        return new EngineLeafNode(new SeriesReaderWithValueFilter(path, dataType, filter, context));
+        return new EngineLeafNode(new SeriesReaderWithValueFilter(path, dataType, filter, context
+            , null));
       } catch (IOException | PathException e) {
         throw new StorageEngineException(e.getMessage());
       }
