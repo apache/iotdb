@@ -84,7 +84,7 @@ public class TsFileProcessorTest {
 
   @Test
   public void testWriteAndFlush() throws IOException, QueryProcessException {
-    logger.error("testWriteAndFlush begin..");
+    logger.info("testWriteAndFlush begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
@@ -132,7 +132,7 @@ public class TsFileProcessorTest {
 
   @Test
   public void testWriteAndRestoreMetadata() throws IOException, QueryProcessException {
-    logger.error("testWriteAndRestoreMetadata begin..");
+    logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
@@ -165,7 +165,7 @@ public class TsFileProcessorTest {
         assertEquals(num, timeValuePair.getValue().getInt());
       }
     }
-    logger.error("syncFlush..");
+    logger.info("syncFlush..");
     // flush synchronously
     processor.syncFlush();
 
@@ -195,7 +195,7 @@ public class TsFileProcessorTest {
       }
     }
     restorableTsFileIOWriter.close();
-    logger.error("syncClose..");
+    logger.info("syncClose..");
     processor.syncClose();
     //we need to close the tsfile writer first and then reopen it.
   }
@@ -203,7 +203,7 @@ public class TsFileProcessorTest {
 
   @Test
   public void testMultiFlush() throws IOException, QueryProcessException {
-    logger.error("testWriteAndRestoreMetadata begin..");
+    logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
@@ -238,7 +238,7 @@ public class TsFileProcessorTest {
 
   @Test
   public void testWriteAndClose() throws IOException, QueryProcessException {
-    logger.error("testWriteAndRestoreMetadata begin..");
+    logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE,
         this::closeTsFileProcessor, (tsFileProcessor) -> true, true);

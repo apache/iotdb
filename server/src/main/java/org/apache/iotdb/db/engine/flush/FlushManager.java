@@ -88,7 +88,10 @@ public class FlushManager implements FlushManagerMBean, IService {
       TsFileProcessor tsFileProcessor = tsFileProcessorQueue.poll();
       tsFileProcessor.flushOneMemTable();
       tsFileProcessor.setManagedByFlushManager(false);
-      logger.error("Flush Thread re-register TSProcessor {} to the queue.", tsFileProcessor.getStorageGroupName());
+      if (logger.isDebugEnabled()) {
+        logger.debug("Flush Thread re-register TSProcessor {} to the queue.",
+            tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
+      }
       registerTsFileProcessor(tsFileProcessor);
     }
   }
@@ -99,17 +102,29 @@ public class FlushManager implements FlushManagerMBean, IService {
   @SuppressWarnings("squid:S2445")
   public void registerTsFileProcessor(TsFileProcessor tsFileProcessor) {
     synchronized (tsFileProcessor) {
-      if (!tsFileProcessor.isManagedByFlushManager() && tsFileProcessor.getFlushingMemTableSize() > 0) {
+      if (!tsFileProcessor.isManagedByFlushManager()
+          && tsFileProcessor.getFlushingMemTableSize() > 0) {
         tsFileProcessorQueue.add(tsFileProcessor);
-        logger.info("storage group {} begin to submit a flush thread, flushing memtable size: {}, queue size: {}",
-            tsFileProcessor.getStorageGroupName(), tsFileProcessor.getFlushingMemTableSize(), tsFileProcessorQueue.size());
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "{} begin to submit a flush thread, flushing memtable size: {}, queue size: {}",
+              tsFileProcessor.getTsFileResource().getFile().getAbsolutePath(),
+              tsFileProcessor.getFlushingMemTableSize(), tsFileProcessorQueue.size());
+        }
         tsFileProcessor.setManagedByFlushManager(true);
         flushPool.submit(new FlushThread());
-      } else if (tsFileProcessor.isManagedByFlushManager()){
-        logger.info("tsFileProcessor {} is already in the flushPool, the first one: {}", tsFileProcessor.getStorageGroupName(),
-            tsFileProcessorQueue.size() >0 ? tsFileProcessorQueue.getFirst().getStorageGroupName() : "empty now");
-      } else {
-        logger.info("No flushing memetable to do, register TsProcessor {} failed.", tsFileProcessor.getStorageGroupName());
+      } else if (logger.isDebugEnabled()) {
+        if (tsFileProcessor.isManagedByFlushManager()) {
+          logger.debug(
+              "{} is already in the flushPool, the first one: {}, the given processor flushMemtable number = {}",
+              tsFileProcessor.getTsFileResource().getFile().getAbsolutePath(),
+              tsFileProcessorQueue.isEmpty() ? "empty now"
+                  : tsFileProcessorQueue.getFirst().getStorageGroupName(),
+              tsFileProcessor.getFlushingMemTableSize());
+        } else {
+          logger.debug("No flushing memetable to do, register TsProcessor {} failed.",
+              tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
+        }
       }
     }
   }
