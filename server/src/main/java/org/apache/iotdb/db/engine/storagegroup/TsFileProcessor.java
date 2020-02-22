@@ -378,8 +378,10 @@ public class TsFileProcessor {
       addAMemtableIntoFlushingList(tmpMemTable);
     } finally {
       flushQueryLock.writeLock().unlock();
-      logger.error(FLUSH_QUERY_WRITE_RELEASE, storageGroupName,
-          tsFileResource.getFile().getName());
+      if (logger.isDebugEnabled()) {
+        logger.error(FLUSH_QUERY_WRITE_RELEASE, storageGroupName,
+            tsFileResource.getFile().getName());
+      }
     }
 
     synchronized (tmpMemTable) {
@@ -498,8 +500,10 @@ public class TsFileProcessor {
       logger.error("{}: {}", storageGroupName, tsFileResource.getFile().getName(), e);
     } finally {
       flushQueryLock.writeLock().unlock();
-      logger.error(FLUSH_QUERY_WRITE_RELEASE, storageGroupName,
-          tsFileResource.getFile().getName());
+      if (logger.isDebugEnabled()) {
+        logger.debug(FLUSH_QUERY_WRITE_RELEASE, storageGroupName,
+            tsFileResource.getFile().getName());
+      }
     }
   }
 

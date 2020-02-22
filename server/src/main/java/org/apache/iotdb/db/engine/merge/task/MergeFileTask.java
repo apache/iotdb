@@ -165,6 +165,8 @@ class MergeFileTask {
           .moveFile(new File(seqFile.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
               new File(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
       seqFile.setFile(nextMergeVersionFile);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
     } finally {
       seqFile.getWriteQueryLock().writeLock().unlock();
     }
@@ -249,7 +251,9 @@ class MergeFileTask {
           .moveFile(new File(seqFile.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
               new File(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
       seqFile.setFile(nextMergeVersionFile);
-    } finally {
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+    }  finally {
       seqFile.getWriteQueryLock().writeLock().unlock();
     }
   }
