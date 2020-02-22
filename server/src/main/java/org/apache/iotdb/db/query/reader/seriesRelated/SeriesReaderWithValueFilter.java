@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.reader.seriesRelated;
 import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
@@ -48,9 +49,10 @@ public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter 
   private TimeValuePair timeValuePair;
   private BatchData batchData;
 
-  public SeriesReaderWithValueFilter(Path seriesPath, TSDataType dataType, Filter filter, QueryContext context)
+  public SeriesReaderWithValueFilter(Path seriesPath, TSDataType dataType, Filter filter,
+      QueryContext context, TsFileFilter fileFilter)
       throws StorageEngineException, IOException {
-    super(seriesPath, dataType, filter, context, false);
+    super(seriesPath, dataType, filter, context, false, fileFilter);
     this.filter = filter;
   }
 

@@ -78,7 +78,7 @@ public class EngineExecutor {
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
       ManagedSeriesReader reader = new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context,
-          true);
+          true, null);
       readersOfSelectedSeries.add(reader);
     }
 
@@ -104,7 +104,7 @@ public class EngineExecutor {
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
       ManagedSeriesReader reader = new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context,
-          true);
+          true, null);
       readersOfSelectedSeries.add(reader);
     }
 
