@@ -29,21 +29,21 @@
 
 其拥有的主要字段为：
 
-* 一个读写锁
+* 一个读写锁: insertLock
 
-* 每个时间分区所对应的未关闭的顺序文件树
+* 每个时间分区所对应的未关闭的顺序文件树: workSequenceTsFileProcessors
 
-* 每个时间分区所对应的未关闭的乱序文件列表
+* 每个时间分区所对应的未关闭的乱序文件列表: workUnsequenceTsFileProcessors
 
-* 该存储组的全部顺序文件列表（按照时间排序）
+* 该存储组的全部顺序文件列表（按照时间排序）: sequenceFileTreeSet
 
-* 该存储组的全部乱序文件列表（无顺序）
+* 该存储组的全部乱序文件列表（无顺序）: unSequenceFileList
 
-* 记录每一个设备最后写入时间的map
+* 记录每一个设备最后写入时间的map，顺序数据刷盘时会使用该map记录的时间: latestTimeForEachDevice
 
-* 记录每一个设备最后刷盘时间的map
+* 记录每一个设备最后刷盘时间的map，用来区分顺序和乱序数据: latestFlushedTimeForEachDevice
 
-* 每个时间分区所对应的版本生成器map
+* 每个时间分区所对应的版本生成器map，便于查询时确定不同chunk的优先级: timePartitionIdVersionControllerMap
 
 
 ### 相关代码
