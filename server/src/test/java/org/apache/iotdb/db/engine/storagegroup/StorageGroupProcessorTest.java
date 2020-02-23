@@ -79,6 +79,7 @@ public class StorageGroupProcessorTest {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     MergeManager.getINSTANCE().stop();
+    EnvironmentUtils.cleanEnv();
   }
 
 

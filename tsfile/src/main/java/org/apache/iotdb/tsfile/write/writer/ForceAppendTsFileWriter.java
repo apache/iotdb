@@ -42,7 +42,7 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter{
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   public ForceAppendTsFileWriter(File file) throws IOException {
     if (resourceLogger.isInfoEnabled()) {
-      resourceLogger.info("{} is opened.", file.getName());
+      resourceLogger.info("{} writer is opened.", file.getName());
     }
     this.out = new DefaultTsFileOutput(file, true);
     this.file = file;

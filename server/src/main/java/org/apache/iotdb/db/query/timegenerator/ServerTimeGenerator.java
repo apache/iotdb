@@ -70,6 +70,6 @@ public class ServerTimeGenerator extends TimeGenerator {
       throw new IOException(e);
     }
 
-    return new SeriesRawDataBatchReader(path, dataType, context, queryDataSource, null, filter);
+    return new SeriesRawDataBatchReader(path, dataType, context, queryDataSource, null, filter, null);
   }
 }

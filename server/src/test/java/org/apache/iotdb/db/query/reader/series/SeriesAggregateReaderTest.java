@@ -71,7 +71,7 @@ public class SeriesAggregateReaderTest {
       Path path = new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0");
       QueryDataSource queryDataSource = new QueryDataSource(path, seqResources, unseqResources);
       SeriesAggregateReader seriesReader = new SeriesAggregateReader(path, TSDataType.INT32,
-          new QueryContext(), queryDataSource, null, null);
+          new QueryContext(), queryDataSource, null, null, null);
       AggregateResult aggregateResult = AggreResultFactory
           .getAggrResultByName("count", TSDataType.INT32);
       int loopTime = 0;

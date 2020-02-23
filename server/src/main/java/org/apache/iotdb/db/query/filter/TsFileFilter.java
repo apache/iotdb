@@ -16,36 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.utils;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+package org.apache.iotdb.db.query.filter;
+
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 /**
- * A subclass extending <code>ByteArrayOutputStream</code>. It's used to return the byte array directly. Note that the
- * size of byte array is large than actual size of valid contents, thus it's used cooperating with <code>size()</code>
- *
- * For example, put buf in PublicBAOS into a ByteBuffer
- *
- * PublicBAOS pbos = new PublicBAOS();
- * ByteBuffer buffer = ByteBuffer.allocate(pbos.size());
- * buffer.put(pbos, 0, pbos.size());
- *
+ * TsFileFilter is used to filter unwanted TsFiles in a QueryDataSource, to better support data
+ * partitioning in the distributed version and other features.
  */
-public class PublicBAOS extends ByteArrayOutputStream {
-
-  public PublicBAOS() {
-    super();
-  }
-
-  /**
-   * get current all bytes data
-   *
-   * @return all bytes data
-   */
-  public byte[] getBuf() {
-
-    return this.buf;
-  }
-
+@FunctionalInterface
+public interface TsFileFilter {
+  boolean fileNotSatisfy(TsFileResource resource);
 }

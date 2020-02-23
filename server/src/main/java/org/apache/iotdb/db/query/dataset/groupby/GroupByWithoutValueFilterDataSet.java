@@ -100,7 +100,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
         IAggregateReader seriesReader = new SeriesAggregateReader(path, dataTypes.get(i), context,
-            queryDataSource, timeFilter, null);
+            queryDataSource, timeFilter, null, null);
         aggregateReaders.put(path, seriesReader);
       }
     }

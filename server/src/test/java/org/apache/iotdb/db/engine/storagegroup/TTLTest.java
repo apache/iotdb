@@ -197,7 +197,7 @@ public class TTLTest {
     assertEquals(0, unseqResource.size());
     Path path = new Path(sg1, s1);
     IBatchReader reader = new SeriesRawDataBatchReader(path, TSDataType.INT64,
-        EnvironmentUtils.TEST_QUERY_CONTEXT, dataSource, null, null);
+        EnvironmentUtils.TEST_QUERY_CONTEXT, dataSource, null, null, null);
 
     int cnt = 0;
     while (reader.hasNextBatch()) {

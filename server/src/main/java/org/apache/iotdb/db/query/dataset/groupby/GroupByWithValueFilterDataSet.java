@@ -84,7 +84,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
       allDataReaderList.add(new SeriesReaderByTimestamp(path, dataTypes.get(i), context,
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, null)));
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null));
     }
   }
 

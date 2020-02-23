@@ -68,4 +68,15 @@ public class BatchDataTest {
       fail();
     }
   }
+
+  @Test
+  public void testSignal() {
+    BatchData batchData = SignalBatchData.getInstance();
+    try {
+      batchData.hasCurrent();
+    } catch (UnsupportedOperationException e) {
+      return;
+    }
+    fail();
+  }
 }

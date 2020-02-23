@@ -84,7 +84,7 @@ public class AggregationExecutor {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
 
-    //TODO use multi-thread
+    // TODO use multi-thread
     Map<Path, List<Integer>> pathToAggrIndexesMap = groupAggregationsBySeries(selectedSeries);
     AggregateResult[] aggregateResultList = new AggregateResult[selectedSeries.size()];
     for (Map.Entry<Path, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
@@ -123,7 +123,7 @@ public class AggregationExecutor {
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
     IAggregateReader seriesReader = new SeriesAggregateReader(pathToAggrIndexes.getKey(),
-        tsDataType, context, queryDataSource, timeFilter, null);
+        tsDataType, context, queryDataSource, timeFilter, null, null);
 
     for (int i : pathToAggrIndexes.getValue()) {
       // construct AggregateResult
@@ -211,7 +211,7 @@ public class AggregationExecutor {
       Path path = selectedSeries.get(i);
       SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path,
           dataTypes.get(i), context,
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, null));
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
 

@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read.query.timegenerator;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
@@ -48,7 +47,7 @@ public class TimeGeneratorTest {
   private IChunkLoader chunkLoader;
 
   @Before
-  public void before() throws InterruptedException, WriteProcessException, IOException {
+  public void before() throws IOException {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
     TsFileGeneratorForTest.generateFile(1000, 10 * 1024 * 1024, 10000);
     fileReader = new TsFileSequenceReader(FILE_PATH);

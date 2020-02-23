@@ -22,8 +22,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
-import java.io.IOException;
-
 public class MemPageReader implements IPageReader {
 
   private BatchData batchData;
