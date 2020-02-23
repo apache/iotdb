@@ -29,7 +29,7 @@
 
 * 命题
     
-    在数学逻辑中，为了表达现实世界中的事件时，需要将事件抽象为**命题**。在数据库的查询语句中，我们可以将选择条件抽象为命题，即 s<sub>1</sub> > 10 就是一个命题。命题总有一个“值”，该值要么是“真”，要么是“假”。命题可以由其他命题通过**联结词**进行连接构成。在查询语句中，这样的连接词包括否定(&not;)，合取(&and;)，析取(&or;)。不包含任何联结词的命题为**原子命题**，至少包含一个联结词的命题称作**复合命题**。
+    在数学逻辑中，为了表达现实世界中的事件时，需要将事件抽象为**命题**。在数据库的查询语句中，我们可以将选择条件抽象为命题，即 s<sub>1</sub> > 10 就是一个命题。命题总有一个“值”，该值要么是“真”，要么是“假”。命题可以由其他命题通过**联结词**进行连接构成。在查询语句中，这样的联结词包括否定(&not;)，合取(&and;)，析取(&or;)。不包含任何联结词的命题为**原子命题**，至少包含一个联结词的命题称作**复合命题**。
 
 * 合取范式
 
@@ -42,6 +42,10 @@
     一个命题公式称为析取范式，当且仅当它具有以下形式：
     <center>A<sub>1</sub>&or;A<sub>2</sub>&or;...A<sub>n</sub>, n &ge; 1</center>
     其中A<sub>1</sub>, A<sub>2</sub>, ..., A<sub>n</sub>都由命题变元或其否定所组成的合取式。
+
+* Operator
+
+    在系统中，我们将所有的查询语句都定义为 Operator，可以从 Operator 类中的枚举类 OperatorType 中查看所有 Operator 类型。特别地，我们将形如 "select ... from ... where ..." 这一类查询定义为 SWFOperator。SWFOperator 中包含 SelectOperator （以存储待投影的路径）， FromOperator （以存储待查询的时间序列路径）以及 FilterOperator （以存储谓词）。
 
 ## SQL 解析
 
@@ -77,7 +81,7 @@ mvn clean compile 之后生成代码位置：server/target/generated-sources/ant
 
 ### ConcatPathOptimizer
 
-ConcatPathOptimizer 使用其中的 transform() 方法将给定查询中 FROM 子句中的前缀路径与 SELECT 子句， WHERE 子句中的后缀路径进行拼接。该方法的申明如下：
+ConcatPathOptimizer 使用其中的 transform() 方法将给定查询中 FROM 子句中的前缀路径与 SELECT 子句， WHERE 子句中的后缀路径进行拼接。该方法的声明如下：
 
     Operator transform(Operator operator)
     输入：待转化的 SFWOperator 
@@ -94,7 +98,7 @@ ConcatPathOptimizer 使用其中的 transform() 方法将给定查询中 FROM �
 
 ### RemoveNotOptimizer
 
-RemoveNotOptimizer 类中的 removeNot() 和 reverseFilter() 方法共同实现了删去 NOT 关键字的功能。removeNot() 方法的申明如下：
+RemoveNotOptimizer 类中的 removeNot() 和 reverseFilter() 方法共同实现了删去 NOT 关键字的功能。removeNot() 方法的声明如下：
 
     FilterOperator removeNot(FilterOperator filter)
     输入：待优化的可能含有 NOT 关键字的谓词
@@ -107,7 +111,7 @@ RemoveNotOptimizer 类中的 removeNot() 和 reverseFilter() 方法共同实现�
 3. 此时的“与”、“或”关系一定包含2个孩子节点。对左右孩子递归调用 removeNot() 方法，去除左右子树中的 NOT 关键词，再将该节点返回。
 4. 对该节点调用 reverseFilter() 方法，取反，并且去除 NOT 关键字。
 
-reverseFilter() 方法的申明如下：
+reverseFilter() 方法的声明如下：
 
     FilterOperator reverseFilter(FilterOperator filter)
     输入：待取反的节点
@@ -124,7 +128,7 @@ removeNot() 和 reverseFilter() 之间存在一定的耦合关系。removeNot() 
 
 ### DnfFilterOptimizer
 
-DNF 是 Disjuctive Normal Form 的缩写，即析取范式。DnfFilterOptimizer 中的 optimize() 方法来依靠 getDnf() 来实现，对过滤条件进行优化，将过滤条件转化为析取范式的形式。该方法的申明如下：
+DNF 是 Disjuctive Normal Form 的缩写，即析取范式。DnfFilterOptimizer 中的 optimize() 方法来依靠 getDnf() 来实现，对过滤条件进行优化，将过滤条件转化为析取范式的形式。该方法的声明如下：
 
     FilterOperator getDnf(FilterOperator filter)
     输入：待优化的 FilterOperator
@@ -146,7 +150,7 @@ DNF 是 Disjuctive Normal Form 的缩写，即析取范式。DnfFilterOptimizer 
     3. 返回当前节点。
 
 
-对于以上提到的 mergeToConjunction() 方法，申明如下：
+对于以上提到的 mergeToConjunction() 方法，声明如下：
 
     FilterOperator mergeToConjunction(FilterOperator operator1, FilterOperator operator2)
     输入：两个子 FilterOperator
@@ -158,7 +162,7 @@ DNF 是 Disjuctive Normal Form 的缩写，即析取范式。DnfFilterOptimizer 
 ### MergeSingleFilterOptimizer
 
 
-MergeSingleFilterOptimizer 类主要通过 mergeSamePathFilter() 方法对节点进行合并。该方法的申明如下：
+MergeSingleFilterOptimizer 类主要通过 mergeSamePathFilter() 方法对节点进行合并。该方法的声明如下：
 
     Path mergeSamePathFilter(FilterOperator filter)
     输入：待转换（合并）的 Filter
@@ -166,7 +170,7 @@ MergeSingleFilterOptimizer 类主要通过 mergeSamePathFilter() 方法对节点
 
 该方法的步骤如下：
 
-1. 如果该节点是叶子节点，则直接返回节点中包含的路径，进入步骤2.
+1. 如果该节点是叶子节点，则直接返回节点中包含的路径；否则，进入步骤2.
 2. 对当前节点依次递归地使用 mergeSamePathFilter() 方法访问子节点并获取子节点所表示的路径，如果子节点路径不同，则将当前节点所表示的路径设为 null，进入步骤3；否则，设为子节点的公共路径，并返回该路径。
 3. 如果子节点均为 BasicFunctionOperator，则对子节点按照路径进行排序。进入步骤4.
 4. 对当前节点调用 mergeSingleFilters() 方法获得当前节点内子节点表示的路径非 null 的最大序号。该操作会将子节点中路径相同的节点合并，同时保留路径非 null 子节点。
@@ -216,7 +220,7 @@ RawDataQueryPlan 有三个子类，分别为 GroupByPlan、FillQueryPlan 和 Agg
 
 - prefixPaths：FROM 子句中的前缀路径，如 root.*.*, root.sg.d1;
 - devices：对 prefixPaths 进行去星和设备去重后得到的设备列表;
-- suffixPaths：SELECT 子句中的后缀路径，如 s0, temperature, *;
+- suffixPaths：SELECT 子句中的后缀路径，如 s0, temperature, \*;
 - measurements：存储实际存在且非常量的 Measurement，在 measurementSetOfGivenSuffix 所举示例中，measurements = [s1,s2,s3,s1];
 - deviceToMeasurementsMap：存储每个设备对应的 measurements;
 - dataTypeConsistencyChecker：检验不同设备的同名 Measurement 的数据类型一致性，如 root.sg1.d1.s0 为 INT32 类型而 root.sg2.d3.s0 为 FLOAT 类型则不满足一致性;
