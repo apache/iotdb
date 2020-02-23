@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkReader;
@@ -76,12 +77,12 @@ public class SeriesReader {
   private boolean hasCachedNextBatch;
   private BatchData cachedBatchData;
 
-
   public SeriesReader(Path seriesPath, TSDataType dataType, QueryContext context,
-      QueryDataSource dataSource, Filter timeFilter, Filter valueFilter) {
+      QueryDataSource dataSource, Filter timeFilter, Filter valueFilter, TsFileFilter fileFilter) {
     this.seriesPath = seriesPath;
     this.dataType = dataType;
     this.context = context;
+    QueryUtils.filterQueryDataSource(dataSource, fileFilter);
     this.seqFileResource = dataSource.getSeqResources();
     this.unseqFileResource = sortUnSeqFileResources(dataSource.getUnseqResources());
     this.timeFilter = timeFilter;

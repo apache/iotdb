@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -34,9 +35,9 @@ public class SeriesAggregateReader implements IAggregateReader {
   private final SeriesReader seriesReader;
 
   public SeriesAggregateReader(Path seriesPath, TSDataType dataType, QueryContext context,
-      QueryDataSource dataSource, Filter timeFilter, Filter valueFilter) {
+      QueryDataSource dataSource, Filter timeFilter, Filter valueFilter, TsFileFilter fileFilter) {
     this.seriesReader = new SeriesReader(seriesPath, dataType, context, dataSource, timeFilter,
-        valueFilter);
+        valueFilter, fileFilter);
   }
 
   @Override
