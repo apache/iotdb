@@ -216,17 +216,27 @@ RawDataQueryPlan 有三个子类，分别为 GroupByPlan、FillQueryPlan 和 Agg
 
 ##### AlignByDevicePlan 转化
 
+AlignByDevicePlan 即按设备对齐查询对应的表结构为：
+
+| Time | Device | sensor1 | sensor2 | sensor3 | ... |
+| ---- | ------ | ------- | ------- | ------- | --- |
+|      |        |         |         |         |     |
+
 首先解释一下 AlignByDevicePlan 中一些重要字段的作用。
 
 - prefixPaths：FROM 子句中的前缀路径，如 root.*.*, root.sg.d1;
 - devices：对 prefixPaths 进行去星和设备去重后得到的设备列表;
 - suffixPaths：SELECT 子句中的后缀路径，如 s0, temperature, \*;
-- measurements：存储实际存在且非常量的 Measurement，在 measurementSetOfGivenSuffix 所举示例中，measurements = [s1,s2,s3,s1];
+- measurementSetOfGivenSuffix：记录该 suffix 对应的 measurements，如 select *,s1 from root.sg.d0, root.sg.d1，对于后缀 *, measurementSetOfGivenSuffix = {s1,s2,s3} (all measurements in devices)，对于后缀 s1, measurementSetOfGivenSuffix = {s1};
 - deviceToMeasurementsMap：存储每个设备对应的 measurements;
 - dataTypeConsistencyChecker：检验不同设备的同名 Measurement 的数据类型一致性，如 root.sg1.d1.s0 为 INT32 类型而 root.sg2.d3.s0 为 FLOAT 类型则不满足一致性;
+
+Measurement 共有三种类型，常量 Measurement，不存在的 Measurement 以及存在且非常量的 Measurement，下面将结合具体字段进行解释。
+
 - loc：标记当前 Measurement 在 SELECT 后缀路径中的位置;
+- measurements：存储实际存在且非常量的 Measurement，在上面 measurementSetOfGivenSuffix 所举示例中，measurements = [s1,s2,s3,s1];
 - nonExistMeasurement：存储不存在的 Measurement，注意其定义位置在第一层 suffixPaths 循环，且为 Set 类型，目的是不对同一个 suffix 下的重复 Measurement 添加重复记录，但可以对多次出现的同名 suffix 增加记录。其将在一个 suffix 循环结束后将 Set 集合内的元素一起添加到 AlignByDevicePlan 中;
-- measurementSetOfGivenSuffix：记录该 suffix 对应的 measurements，如 select *,s1 from root.sg.d0, root.sg.d1，对于后缀 *, measurementSetOfGivenSuffix = {s1,s2,s3}，对于后缀 s1, measurementSetOfGivenSuffix = {s1};
+- constMeasurement：存储常量 Measurement。
 
 接下来介绍 AlignByDevicePlan 的转化过程：
 
@@ -251,7 +261,7 @@ Map<String, IExpression> concatFilterByDevice(List<String> devices,
 
 concatFilterByDevice() 方法的主要处理逻辑在 concatFilterPath() 中：
 
-concatFilterPath() 方法遍历未拼接的 FilterOperator 二叉树，判断节点是否为叶子节点，如果是，则取该叶子结点的路径，如果路径以 time 或 root 开头则不做处理，否则将设备名与节点路径进行拼接后返回；如果不是，则对该节点的所有子节点进行迭代处理。
+concatFilterPath() 方法遍历未拼接的 FilterOperator 二叉树，判断节点是否为叶子节点，如果是，则取该叶子结点的路径，如果路径以 time 或 root 开头则不做处理，否则将设备名与节点路径进行拼接后返回；如果不是，则对该节点的所有子节点进行迭代处理。例如：SELECT * FROM root.sg.d1 WHERE time = 1 AND root.sg.d1.s1 = 10 AND s2 < 25，则其过滤条件拼接后的结果为 time = 1 AND root.sg.d1.s1 = 10 AND root.sg.d1.s2 < 25
 
 ##### RawDataQueryPlan 转化
 
