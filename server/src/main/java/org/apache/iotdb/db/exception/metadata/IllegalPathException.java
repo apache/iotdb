@@ -15,16 +15,19 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.db.exception.storageGroup;
+package org.apache.iotdb.db.exception.metadata;
 
-public class StorageGroupPathException extends StorageGroupException {
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  private static final long serialVersionUID = 3739300272099030533L;
+public class IllegalPathException extends MetadataException {
 
-  public StorageGroupPathException(String path) {
-    super(String
-        .format("The prefix of the seriesPath [%s] is not one storage group seriesPath", path));
+  private static final long serialVersionUID = 2693272249167539978L;
+
+  public IllegalPathException(String path) {
+    super(String.format("%s is not a legal path", path));
+    errorCode = TSStatusCode.PATH_ILLEGAL.getStatusCode();
   }
 }

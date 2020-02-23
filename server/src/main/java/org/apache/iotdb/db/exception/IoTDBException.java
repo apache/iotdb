@@ -23,10 +23,15 @@ package org.apache.iotdb.db.exception;
 public class IoTDBException extends Exception {
 
   private static final long serialVersionUID = 8480450962311247736L;
-  protected final int errorCode;
+  protected int errorCode;
 
   public IoTDBException(String message, int errorCode) {
     super(message);
+    this.errorCode = errorCode;
+  }
+
+  public IoTDBException(Throwable cause, int errorCode) {
+    super(cause);
     this.errorCode = errorCode;
   }
 

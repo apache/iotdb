@@ -19,31 +19,32 @@
 package org.apache.iotdb.db.utils;
 
 import java.util.List;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 
 
 public class SchemaUtils {
 
-  private SchemaUtils(){}
+  private SchemaUtils() {
+  }
 
   /**
    * Construct the Schema of the FileNode named processorName.
+   *
    * @param processorName the name of a FileNode.
    * @return the schema of the FileNode named processorName.
-   * @throws WriteProcessException when the fileSchema cannot be created.
    */
-  public static Schema constructSchema(String processorName) {
+  public static Schema constructSchema(String processorName) throws MetadataException {
     List<MeasurementSchema> columnSchemaList;
-    columnSchemaList = MManager.getInstance().getSchemaForStorageGroup(processorName);
+    columnSchemaList = MManager.getInstance().getStorageGroupSchema(processorName);
     return getSchemaFromColumnSchema(columnSchemaList);
   }
 
   /**
-   * getSchemaFromColumnSchema construct a Schema using the schema of the columns and the
-   * device type.
+   * getSchemaFromColumnSchema construct a Schema using the schema of the columns and device type.
+   *
    * @param schemaList the schema of the columns in this file.
    * @return a Schema contains the provided schemas.
    */

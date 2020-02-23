@@ -128,7 +128,7 @@ public class TSFileDescriptor {
               .getProperty("float_precision", Integer.toString(conf.getFloatPrecision()))));
       conf.setTimeEncoder(properties.getProperty("time_encoder", conf.getTimeEncoder()));
       conf.setValueEncoder(properties.getProperty("value_encoder", conf.getValueEncoder()));
-      conf.setCompressor(properties.getProperty("compressor", conf.getCompressor()));
+      conf.setCompressor(properties.getProperty("compressor", conf.getCompressor().toString()));
       conf.setBatchSize(Integer.parseInt(properties.getProperty("batch_size",
           Integer.toString(conf.getBatchSize()))));
     } catch (IOException e) {

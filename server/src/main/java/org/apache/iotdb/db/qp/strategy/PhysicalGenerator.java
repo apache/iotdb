@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -50,7 +49,6 @@ import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
 import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
-import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
@@ -76,7 +74,6 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
-import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
@@ -129,10 +126,6 @@ public class PhysicalGenerator {
       case DELETE_TIMESERIES:
         DeleteTimeSeriesOperator deletePath = (DeleteTimeSeriesOperator) operator;
         return new DeleteTimeSeriesPlan(deletePath.getDeletePathList());
-      case PROPERTY:
-        PropertyOperator property = (PropertyOperator) operator;
-        return new PropertyPlan(property.getPropertyType(), property.getPropertyPath(),
-            property.getMetadataPath());
       case DELETE:
         DeleteDataOperator delete = (DeleteDataOperator) operator;
         paths = delete.getSelectedPaths();
@@ -289,7 +282,7 @@ public class PhysicalGenerator {
           Path fullPath = Path.addPrefixPath(suffixPath, device);
           try {
             List<String> actualPaths = MManager.getInstance()
-                .getPaths(fullPath.getFullPath());  // remove stars in SELECT to get actual paths
+                .getAllTimeseriesName(fullPath.getFullPath());  // remove stars in SELECT to get actual paths
 
             // for actual non exist path
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
@@ -397,7 +390,11 @@ public class PhysicalGenerator {
         ((RawDataQueryPlan) queryPlan).setExpression(expression);
       }
     }
-    generateDataTypes(queryPlan);
+    try {
+      generateDataTypes(queryPlan);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
     deduplicate(queryPlan);
 
     queryPlan.setRowLimit(queryOperator.getRowLimit());
@@ -435,7 +432,7 @@ public class PhysicalGenerator {
         deviceSet.addAll(tempDS);
       }
       retDevices = new ArrayList<>(deviceSet);
-    } catch (PathException e) {
+    } catch (MetadataException e) {
       throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
     }
     return retDevices;
@@ -460,11 +457,11 @@ public class PhysicalGenerator {
     basicOperator.setSinglePath(concatPath);
   }
 
-  private void generateDataTypes(QueryPlan queryPlan) throws PathException {
+  private void generateDataTypes(QueryPlan queryPlan) throws MetadataException {
     List<Path> paths = queryPlan.getPaths();
     List<TSDataType> dataTypes = new ArrayList<>(paths.size());
     for (Path path : paths) {
-      TSDataType seriesType = MManager.getInstance().getSeriesType(path);
+      TSDataType seriesType = MManager.getInstance().getSeriesType(path.toString());
       dataTypes.add(seriesType);
       queryPlan.addTypeMapping(path, seriesType);
     }

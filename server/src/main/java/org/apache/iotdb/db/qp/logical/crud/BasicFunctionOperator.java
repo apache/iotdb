@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import java.util.Objects;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -75,10 +75,10 @@ public class BasicFunctionOperator extends FunctionOperator {
 
   @Override
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter()
-      throws LogicalOperatorException, PathException {
-    TSDataType type = MManager.getInstance().getSeriesType(singlePath);
+      throws LogicalOperatorException, MetadataException {
+    TSDataType type = MManager.getInstance().getSeriesType(singlePath.toString());
     if (type == null) {
-      throw new PathException(
+      throw new MetadataException(
           "given seriesPath:{" + singlePath.getFullPath() + "} don't exist in metadata");
     }
     IUnaryExpression ret;

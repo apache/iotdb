@@ -18,16 +18,16 @@
  *
  */
 
-package org.apache.iotdb.db.exception.path;
+package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class NotStorageGroupException extends PathException {
+public class PathAlreadyExistException extends MetadataException {
 
-  private static final long serialVersionUID = 2693272249167539978L;
+  private static final long serialVersionUID = -6713847897890531438L;
 
-  public NotStorageGroupException(String path) {
-    super(String.format("[%s] is not a storage group", path),
-        TSStatusCode.NOT_STORAGE_GROUP_ERROR.getStatusCode());
+  public PathAlreadyExistException(String path) {
+    super(String.format("Path [%s] already exist", path),
+        TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode());
   }
 }

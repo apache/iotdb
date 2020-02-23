@@ -205,7 +205,7 @@ public class StorageGroupProcessor {
 
   public StorageGroupProcessor(String systemInfoDir, String storageGroupName,
       TsFileFlushPolicy fileFlushPolicy)
-      throws StorageGroupProcessorException {
+      throws StorageGroupProcessorException, MetadataException {
     this.storageGroupName = storageGroupName;
     this.fileFlushPolicy = fileFlushPolicy;
 
@@ -445,9 +445,9 @@ public class StorageGroupProcessor {
     }
   }
 
-  private Schema constructSchema(String storageGroupName) {
-    List<MeasurementSchema> columnSchemaList;
-    columnSchemaList = MManager.getInstance().getSchemaForStorageGroup(storageGroupName);
+  private Schema constructSchema(String storageGroupName) throws MetadataException {
+    List<MeasurementSchema> columnSchemaList =
+        MManager.getInstance().getStorageGroupSchema(storageGroupName);
 
     Schema newSchema = new Schema();
     for (MeasurementSchema measurementSchema : columnSchemaList) {

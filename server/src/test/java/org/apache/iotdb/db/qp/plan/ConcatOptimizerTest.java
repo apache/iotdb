@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 import org.antlr.v4.runtime.RecognitionException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.Planner;
@@ -44,7 +44,7 @@ import org.junit.Test;
 /**
  * test the correctness of {@linkplain ConcatPathOptimizer ConcatPathOptimizer}
  */
-public class TestConcatOptimizer {
+public class ConcatOptimizerTest {
 
   private Planner processor;
 
@@ -52,20 +52,19 @@ public class TestConcatOptimizer {
   public void before() throws MetadataException, PathException {
     processor = new Planner();
     MManager.getInstance().init();
-    MManager.getInstance().setStorageGroupToMTree("root.laptop");
-    MManager.getInstance().addPathToMTree("root.laptop.d1.s1", TSDataType.INT64, TSEncoding.PLAIN,
+    MManager.getInstance().setStorageGroup("root.laptop");
+    MManager.getInstance().createTimeseries("root.laptop.d1.s1", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPathToMTree("root.laptop.d1.s2", TSDataType.INT64, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.laptop.d1.s2", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPathToMTree("root.laptop.d2.s1", TSDataType.INT64, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.laptop.d2.s1", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPathToMTree("root.laptop.d2.s2", TSDataType.INT64, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.laptop.d2.s2", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPathToMTree("root.laptop.d3.s1", TSDataType.INT64, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.laptop.d3.s1", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPathToMTree("root.laptop.d3.s2", TSDataType.INT64, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.laptop.d3.s2", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-
   }
 
   @After
@@ -91,7 +90,7 @@ public class TestConcatOptimizer {
   }
 
   @Test
-  public void testConcat3() throws QueryProcessException, RecognitionException{
+  public void testConcat3() throws QueryProcessException, RecognitionException {
     String inputSQL = "select s1 from root.laptop.d1 where s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
     SingleSeriesExpression seriesExpression = new SingleSeriesExpression(
@@ -99,5 +98,4 @@ public class TestConcatOptimizer {
         ValueFilter.lt(10));
     assertEquals(seriesExpression.toString(), ((RawDataQueryPlan) plan).getExpression().toString());
   }
-
 }
