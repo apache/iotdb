@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
+import org.apache.iotdb.tsfile.read.query.timegenerator.node.NodeType;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
 import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.junit.Assert;
@@ -33,6 +34,13 @@ import org.junit.Test;
 import java.io.IOException;
 
 public class NodeTest {
+
+  @Test
+  public void testType() {
+    Assert.assertEquals(NodeType.LEAF, new LeafNode(null).getType());
+    Assert.assertEquals(NodeType.AND, new AndNode(null, null).getType());
+    Assert.assertEquals(NodeType.OR, new OrNode(null, null).getType());
+  }
 
   @Test
   public void testLeafNode() throws IOException {
