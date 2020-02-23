@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.query.externalsort.serialize;
 
 import java.io.IOException;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 public interface IExternalSortFileSerializer {
 

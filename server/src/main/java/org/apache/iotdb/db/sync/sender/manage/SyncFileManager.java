@@ -35,7 +35,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -103,12 +103,12 @@ public class SyncFileManager implements ISyncFileManager {
         continue;
       }
       try {
-        if (!MManager.getInstance().getStorageGroupNameByPath(sgFolder.getName())
+        if (!MManager.getInstance().getStorageGroupName(sgFolder.getName())
             .equals(sgFolder.getName())) {
           // the folder is not a sg folder
           continue;
         }
-      } catch (StorageGroupException e) {
+      } catch (MetadataException e) {
         // the folder is not a sg folder
         continue;
       }
@@ -135,7 +135,7 @@ public class SyncFileManager implements ISyncFileManager {
           if (!file.getName().endsWith(TSFILE_SUFFIX)) {
             continue;
           }
-          if(checkFileValidity(file)){
+          if (checkFileValidity(file)) {
             currentSealedLocalFilesMap.get(sgName).get(timeRangeId).add(file);
           }
         }
@@ -143,7 +143,7 @@ public class SyncFileManager implements ISyncFileManager {
     }
   }
 
-  private boolean checkFileValidity(File file){
+  private boolean checkFileValidity(File file) {
     return new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
         && !new File(
         file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists() && !new File(
@@ -182,7 +182,7 @@ public class SyncFileManager implements ISyncFileManager {
     for (String sgName : allSGs.keySet()) {
       toBeSyncedFilesMap.putIfAbsent(sgName, new HashMap<>());
       deletedFilesMap.putIfAbsent(sgName, new HashMap<>());
-      for(Entry<Long, Set<File>> entry: currentSealedLocalFilesMap
+      for (Entry<Long, Set<File>> entry : currentSealedLocalFilesMap
           .getOrDefault(sgName, Collections.emptyMap()).entrySet()) {
         Long timeRangeId = entry.getKey();
         toBeSyncedFilesMap.get(sgName).putIfAbsent(timeRangeId, new HashSet<>());
