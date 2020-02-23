@@ -209,10 +209,7 @@ public class TsFileIOWriter {
   public void endCurrentChunk() {
     chunkMetaDataList.add(currentChunkMetaData);
     Path path = new Path(deviceId, currentChunkMetaData.getMeasurementUid());
-    List<ChunkMetaData> chunkMetaDataListOfOnePath = chunkMetadataListMap.getOrDefault(path,
-        new ArrayList<ChunkMetaData>());
-    chunkMetaDataListOfOnePath.add(currentChunkMetaData);
-    chunkMetadataListMap.put(path, chunkMetaDataListOfOnePath);
+    chunkMetadataListMap.computeIfAbsent(path, k -> new ArrayList<>()).add(currentChunkMetaData);
     currentChunkMetaData = null;
     totalChunkNum++;
   }

@@ -37,8 +37,6 @@ public class TimeseriesMetaData {
   private String measurementId;
   private TSDataType tsDataType;
   
-  private List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
-  
   private Statistics<?> statistics;
 
   public TimeseriesMetaData() {
@@ -69,18 +67,6 @@ public class TimeseriesMetaData {
     byteLen += ReadWriteIOUtils.write(chunkMetaDataListDataSize, outputStream);
     byteLen += statistics.serialize(outputStream);
     return byteLen;
-  }
-
-  public void addChunkMeteData(ChunkMetaData chunkMetaData) {
-    chunkMetaDataList.add(chunkMetaData);
-  }
-
-  public List<ChunkMetaData> getChunkMetaDataList() {
-    return chunkMetaDataList;
-  }
-
-  public void setChunkMetaDataList(List<ChunkMetaData> chunkMetaDataList) {
-    this.chunkMetaDataList = chunkMetaDataList;
   }
 
   public long getOffsetOfChunkMetaDataList() {
