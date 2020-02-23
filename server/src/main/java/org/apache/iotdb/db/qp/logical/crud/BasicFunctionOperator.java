@@ -22,8 +22,8 @@ import java.util.Objects;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -74,9 +74,9 @@ public class BasicFunctionOperator extends FunctionOperator {
   }
 
   @Override
-  protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
-      IQueryProcessExecutor executor) throws LogicalOperatorException, PathException {
-    TSDataType type = executor.getSeriesType(singlePath);
+  protected Pair<IUnaryExpression, String> transformToSingleQueryFilter()
+      throws LogicalOperatorException, PathException {
+    TSDataType type = MManager.getInstance().getSeriesType(singlePath);
     if (type == null) {
       throw new PathException(
           "given seriesPath:{" + singlePath.getFullPath() + "} don't exist in metadata");

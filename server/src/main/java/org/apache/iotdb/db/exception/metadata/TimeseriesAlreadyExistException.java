@@ -28,7 +28,7 @@ public class TimeseriesAlreadyExistException extends MetadataException {
   private static final long serialVersionUID = -6713847897890531438L;
 
   public TimeseriesAlreadyExistException(String path) {
-    super(String.format("Timeseries [%s] already exist", path));
-    errorCode = TSStatusCode.TIMESERIES_ALREADY_EXIST_ERROR.getStatusCode();
+    super(String.format("Timeseries [%s] already exist", path),
+        TSStatusCode.TIMESERIES_ALREADY_EXIST_ERROR.getStatusCode());
   }
 }

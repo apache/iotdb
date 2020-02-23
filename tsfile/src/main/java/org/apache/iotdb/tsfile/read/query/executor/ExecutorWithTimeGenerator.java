@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.DataSetWithTimeGenerator;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGeneratorImpl;
+import org.apache.iotdb.tsfile.read.query.timegenerator.TsFileTimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
 public class ExecutorWithTimeGenerator implements QueryExecutor {
@@ -60,7 +60,7 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
     List<Path> selectedPathList = queryExpression.getSelectedSeries();
 
     // get TimeGenerator by IExpression
-    TimeGenerator timeGenerator = new TimeGeneratorImpl(expression, chunkLoader, metadataQuerier);
+    TimeGenerator timeGenerator = new TsFileTimeGenerator(expression, chunkLoader, metadataQuerier);
 
     // the size of hasFilter is equal to selectedPathList, if a series has a filter, it is true,
     // otherwise false

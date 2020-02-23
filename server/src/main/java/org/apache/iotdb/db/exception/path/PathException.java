@@ -26,12 +26,14 @@ public class PathException extends QueryProcessException {
   private static final long serialVersionUID = 2141197032898163234L;
 
   public PathException() {
-    super("Timeseries is null");
-    errorCode = TSStatusCode.PATH_ERROR.getStatusCode();
+    super("Timeseries is null", TSStatusCode.PATH_ERROR.getStatusCode());
   }
 
   public PathException(String message) {
-    super(message);
-    errorCode = TSStatusCode.PATH_ERROR.getStatusCode();
+    super(message, TSStatusCode.PATH_ERROR.getStatusCode());
+  }
+
+  public PathException(String message, int errorCode) {
+    super(message, errorCode);
   }
 }

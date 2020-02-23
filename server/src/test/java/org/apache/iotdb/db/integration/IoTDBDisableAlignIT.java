@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
@@ -102,7 +101,6 @@ public class IoTDBDisableAlignIT {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     insertData();
-
   }
   
   @AfterClass
@@ -378,7 +376,7 @@ public class IoTDBDisableAlignIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select count(*) from root.vehicle GROUP BY ([2,50],20ms) disable align");
+          "select count(*) from root.vehicle GROUP BY ([2,50),20ms) disable align");
       fail("No exception thrown.");
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains("Group by doesn't support disable align clause."));

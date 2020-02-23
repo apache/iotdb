@@ -63,6 +63,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AddLabelContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlignByDeviceClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
@@ -90,7 +91,6 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleToUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantWatermarkEmbeddingContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByClauseContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByDeviceClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertColumnSpecContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertStatementContext;
@@ -727,7 +727,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterDisableAlign(SqlBaseParser.DisableAlignContext ctx) {
     super.enterDisableAlign(ctx);
-    queryOp.setAlign(false);
+    queryOp.setAlignByTime(false);
   }
 
   @Override
@@ -788,28 +788,29 @@ public class LogicalGenerator extends SqlBaseBaseListener {
           , dataType, ctx.linearClause().LINEAR().getText()));
     }
 
+    int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
     if (ctx.linearClause() != null) {
       if (ctx.linearClause().DURATION(0) != null) {
         long beforeRange = parseDuration(ctx.linearClause().DURATION(0).getText());
         long afterRange = parseDuration(ctx.linearClause().DURATION(1).getText());
         fillTypes.put(dataType, new LinearFill(beforeRange, afterRange));
       } else {
-        fillTypes.put(dataType, new LinearFill(-1, -1));
+        fillTypes.put(dataType, new LinearFill(defaultFillInterval, defaultFillInterval));
       }
     } else {
       if (ctx.previousClause().DURATION() != null) {
         long preRange = parseDuration(ctx.previousClause().DURATION().getText());
         fillTypes.put(dataType, new PreviousFill(preRange));
       } else {
-        fillTypes.put(dataType, new PreviousFill(-1));
+        fillTypes.put(dataType, new PreviousFill(defaultFillInterval));
       }
     }
   }
 
   @Override
-  public void enterGroupByDeviceClause(GroupByDeviceClauseContext ctx) {
-    super.enterGroupByDeviceClause(ctx);
-    queryOp.setGroupByDevice(true);
+  public void enterAlignByDeviceClause(AlignByDeviceClauseContext ctx) {
+    super.enterAlignByDeviceClause(ctx);
+    queryOp.setAlignByDevice(true);
   }
 
   /**

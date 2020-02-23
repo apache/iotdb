@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator;
 
-public class AggregationPlan extends QueryPlan {
+public class AggregationPlan extends RawDataQueryPlan {
 
   private List<String> aggregations = new ArrayList<>();
   private List<String> deduplicatedAggregations = new ArrayList<>();

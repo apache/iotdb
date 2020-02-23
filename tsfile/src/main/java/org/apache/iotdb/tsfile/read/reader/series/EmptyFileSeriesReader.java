@@ -53,11 +53,6 @@ public class EmptyFileSeriesReader extends AbstractFileSeriesReader {
   }
 
   @Override
-  public BatchData currentBatch() {
-    return data;
-  }
-
-  @Override
   public void close() {
     data = null;
   }

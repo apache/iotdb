@@ -47,6 +47,7 @@ import org.apache.iotdb.db.exception.path.NotStorageGroupException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.monitor.MonitorConstants;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
@@ -786,12 +787,22 @@ public class MManager {
    * @return TSDataType
    */
   public TSDataType getSeriesType(String fullPath) throws PathException {
+    if (fullPath.equals(SQLConstant.RESERVED_TIME)) {
+      return TSDataType.INT64;
+    }
     lock.readLock().lock();
     try {
       return getSchemaForOnePath(fullPath).getType();
     } finally {
       lock.readLock().unlock();
     }
+  }
+
+  public TSDataType getSeriesType(Path path) throws PathException {
+    if (path.equals(SQLConstant.RESERVED_TIME)) {
+      return TSDataType.INT64;
+    }
+    return getSeriesType(path.getFullPath());
   }
 
   /**
