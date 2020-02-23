@@ -58,6 +58,7 @@
         <module>spark-iotdb-connector</module>
         <module>distribution</module>
         <module>hive-connector</module>
+        <module>web</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -519,6 +520,8 @@
                             <exclude>**/*.plan</exclude>
                             <exclude>NOTICE-binary</exclude>
                             <exclude>LICENSE-binary</exclude>
+                            <exclude>**/dist/**</exclude>
+                            <exclude>**/node_modules/**</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
