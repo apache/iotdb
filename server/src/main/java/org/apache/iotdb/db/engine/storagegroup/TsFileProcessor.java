@@ -390,15 +390,6 @@ public class TsFileProcessor {
         while (flushingMemTables.contains(tmpMemTable)) {
           tmpMemTable.wait(1000);
 
-          //flushQueryLock.readLock().lock();
-//          try {
-//            if (!flushingMemTables.contains(tmpMemTable)) {
-//              break;
-//            }
-//          } finally {
-//            //flushQueryLock.readLock().unlock();
-//          }
-
           if ((System.currentTimeMillis() - startWait) > 60_000) {
             logger.warn("has waited for synced flushing a memtable in {} for 60 seconds.",
                 this.tsFileResource.getFile().getAbsolutePath());

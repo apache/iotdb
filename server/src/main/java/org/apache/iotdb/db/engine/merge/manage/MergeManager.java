@@ -147,6 +147,7 @@ public class MergeManager implements IService {
       service.awaitTermination(millseconds, TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       logger.warn("MergeThreadPool can not be closed in {} ms", millseconds);
+      Thread.currentThread().interrupt();
     }
     service.shutdownNow();
   }
