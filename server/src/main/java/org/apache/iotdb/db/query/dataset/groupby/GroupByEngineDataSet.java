@@ -18,31 +18,25 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.factory.AggreFuncFactory;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   protected long queryId;
-  private long unit;
+  private long interval;
   private long slidingStep;
-  private long intervalStartTime;
-  private long intervalEndTime;
+  // total query [startTime, endTime)
+  private long startTime;
+  private long endTime;
 
-  protected long startTime;
-  protected long endTime;
+  // current interval [curStartTime, curEndTime)
+  protected long curStartTime;
+  protected long curEndTime;
   private int usedIndex;
-  protected List<AggregateFunction> functions;
   protected boolean hasCachedTimeInterval;
 
   /**
@@ -51,27 +45,15 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   public GroupByEngineDataSet(QueryContext context, GroupByPlan groupByPlan) {
     super(groupByPlan.getDeduplicatedPaths(), groupByPlan.getDeduplicatedDataTypes());
     this.queryId = context.getQueryId();
-    this.unit = groupByPlan.getUnit();
+    this.interval = groupByPlan.getInterval();
     this.slidingStep = groupByPlan.getSlidingStep();
-    this.intervalStartTime = groupByPlan.getStartTime();
-    this.intervalEndTime = groupByPlan.getEndTime();
-    this.functions = new ArrayList<>();
+    this.startTime = groupByPlan.getStartTime();
+    this.endTime = groupByPlan.getEndTime();
 
     // init group by time partition
     this.usedIndex = 0;
     this.hasCachedTimeInterval = false;
-    this.endTime = -1;
-  }
-
-  protected void initAggreFuction(GroupByPlan groupByPlan) throws PathException {
-    // construct AggregateFunctions
-    for (int i = 0; i < paths.size(); i++) {
-      AggregateFunction function = AggreFuncFactory
-          .getAggrFuncByName(groupByPlan.getDeduplicatedAggregations().get(i),
-              groupByPlan.getDeduplicatedDataTypes().get(i));
-      function.init();
-      functions.add(function);
-    }
+    this.curEndTime = -1;
   }
 
   @Override
@@ -81,53 +63,21 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       return true;
     }
 
-    startTime = usedIndex * slidingStep + intervalStartTime;
+    curStartTime = usedIndex * slidingStep + startTime;
     usedIndex++;
-    if (startTime <= intervalEndTime) {
+    //This is an open interval , [0-100)
+    if (curStartTime < endTime) {
       hasCachedTimeInterval = true;
-      endTime = Math.min(startTime + unit, intervalEndTime + 1);
+      curEndTime = Math.min(curStartTime + interval, endTime);
       return true;
     } else {
       return false;
     }
   }
 
-  /**
-   * this method is only used in the test class to get the next time partition.
-   */
+  @TestOnly
   public Pair<Long, Long> nextTimePartition() {
     hasCachedTimeInterval = false;
-    return new Pair<>(startTime, endTime);
+    return new Pair<>(curStartTime, curEndTime);
   }
-
-  protected Field getField(AggreResultData aggreResultData) {
-    if (!aggreResultData.isSetValue()) {
-      return new Field(null);
-    }
-    Field field = new Field(aggreResultData.getDataType());
-    switch (aggreResultData.getDataType()) {
-      case INT32:
-        field.setIntV(aggreResultData.getIntRet());
-        break;
-      case INT64:
-        field.setLongV(aggreResultData.getLongRet());
-        break;
-      case FLOAT:
-        field.setFloatV(aggreResultData.getFloatRet());
-        break;
-      case DOUBLE:
-        field.setDoubleV(aggreResultData.getDoubleRet());
-        break;
-      case BOOLEAN:
-        field.setBoolV(aggreResultData.isBooleanRet());
-        break;
-      case TEXT:
-        field.setBinaryV(aggreResultData.getBinaryRet());
-        break;
-      default:
-        throw new UnSupportedDataTypeException("UnSupported: " + aggreResultData.getDataType());
-    }
-    return field;
-  }
-
 }

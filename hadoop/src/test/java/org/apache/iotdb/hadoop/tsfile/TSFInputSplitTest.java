@@ -35,8 +35,6 @@ import static org.junit.Assert.*;
 /**
  * Test the {@link TSFInputSplit}
  * Assert the readFields function and write function is right
- *
- * @author Yuan Tian
  */
 public class TSFInputSplitTest {
 

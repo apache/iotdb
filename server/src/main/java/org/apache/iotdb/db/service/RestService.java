@@ -78,10 +78,14 @@ public class RestService implements RestServiceMBean, IService {
 
   @Override
   public synchronized void startService() {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableMetricsWebService()) {
+      return;
+    }
     logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     executorService = Executors.newSingleThreadExecutor();
     int port = getRestPort();
     server = RestUtil.getJettyServer(RestUtil.getRestContextHandler(), port);
+    server.setStopTimeout(10000);
     try {
       executorService.execute(new MetricsServiceThread(server));
       logger.info("{}: start {} successfully, listening on ip {} port {}",
@@ -126,7 +130,6 @@ public class RestService implements RestServiceMBean, IService {
           .error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(),
               e);
       executorService.shutdownNow();
-      Thread.currentThread().interrupt();
     }
     checkAndWaitPortIsClosed();
     logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
@@ -179,7 +182,6 @@ public class RestService implements RestServiceMBean, IService {
       } catch (@SuppressWarnings("squid:S2142") InterruptedException e1) {
         //we do not sure why InterruptedException happens, but it indeed occurs in Travis WinOS
         logger.error(e1.getMessage(), e1);
-        stopService();
       } catch (Exception e) {
         logger.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
       }

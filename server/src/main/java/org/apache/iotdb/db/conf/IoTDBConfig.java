@@ -155,7 +155,7 @@ public class IoTDBConfig {
   private int maxMemtableNumber = 20;
 
   /**
-   * The amount of data that is read every time.
+   * The amount of data iterate each time in server
    */
   private int batchSize = 100000;
 
@@ -188,12 +188,17 @@ public class IoTDBConfig {
   /**
    * Memory allocated for fileMetaData cache in read process
    */
-  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 3 / 19;
+  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 3 / 39;
 
   /**
    * Memory allocated for chunkMetaData cache in read process
    */
-  private long allocateMemoryForChumkMetaDataCache = allocateMemoryForRead * 6 / 19;
+  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead * 6 / 39;
+
+  /**
+   * Memory allocated for chunk cache in read process
+   */
+  private long allocateMemoryForChunkCache = allocateMemoryForRead * 10 / 39;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
@@ -296,7 +301,7 @@ public class IoTDBConfig {
   /**
    * Switch of creating schema automatically
    */
-  private boolean enableAutoCreateSchema = false;
+  private boolean enableAutoCreateSchema = true;
 
   /**
    * Storage group level when creating schema automatically is enabled
@@ -459,6 +464,11 @@ public class IoTDBConfig {
   private int memtableNumInEachStorageGroup = 10;
 
   /**
+   * the default fill interval in LinearFill and PreviousFill, 10min
+   */
+  private int defaultFillInterval = 600000;
+
+  /**
    * default TTL for storage groups that are not set TTL by statements, in ms
    * Notice: if this property is changed, previous created storage group which are not set TTL will
    * also be affected.
@@ -469,10 +479,12 @@ public class IoTDBConfig {
    */
   private long partitionInterval = 604800;
 
-
   //just for test
   //wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
+
+  private boolean enableMetricsWebService = true;
+
 
   public IoTDBConfig() {
     // empty constructor
@@ -484,6 +496,14 @@ public class IoTDBConfig {
 
   public void setMemtableNumInEachStorageGroup(int memtableNumInEachStorageGroup) {
     this.memtableNumInEachStorageGroup = memtableNumInEachStorageGroup;
+  }
+
+  public int getDefaultFillInterval() {
+    return defaultFillInterval;
+  }
+
+  public void setDefaultFillInterval(int defaultFillInterval) {
+    this.defaultFillInterval = defaultFillInterval;
   }
 
   public long getPartitionInterval() {
@@ -1035,12 +1055,20 @@ public class IoTDBConfig {
     this.allocateMemoryForFileMetaDataCache = allocateMemoryForFileMetaDataCache;
   }
 
-  public long getAllocateMemoryForChumkMetaDataCache() {
-    return allocateMemoryForChumkMetaDataCache;
+  public long getAllocateMemoryForChunkMetaDataCache() {
+    return allocateMemoryForChunkMetaDataCache;
   }
 
-  public void setAllocateMemoryForChumkMetaDataCache(long allocateMemoryForChumkMetaDataCache) {
-    this.allocateMemoryForChumkMetaDataCache = allocateMemoryForChumkMetaDataCache;
+  public void setAllocateMemoryForChunkMetaDataCache(long allocateMemoryForChunkMetaDataCache) {
+    this.allocateMemoryForChunkMetaDataCache = allocateMemoryForChunkMetaDataCache;
+  }
+
+  public long getAllocateMemoryForChunkCache() {
+    return allocateMemoryForChunkCache;
+  }
+
+  public void setAllocateMemoryForChunkCache(long allocateMemoryForChunkCache) {
+    this.allocateMemoryForChunkCache = allocateMemoryForChunkCache;
   }
 
   public boolean isEnableWatermark() {
@@ -1327,5 +1355,13 @@ public class IoTDBConfig {
 
   public void setThriftServerAwaitTimeForStopService(int thriftServerAwaitTimeForStopService) {
     this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
+  }
+
+  public boolean isEnableMetricsWebService() {
+    return enableMetricsWebService;
+  }
+
+  public void setEnableMetricsWebService(boolean enableMetricsWebService) {
+    this.enableMetricsWebService = enableMetricsWebService;
   }
 }

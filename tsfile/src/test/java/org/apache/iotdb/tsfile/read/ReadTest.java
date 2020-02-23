@@ -18,14 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -37,12 +30,17 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.FileGenerator;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 public class ReadTest {
 
@@ -349,9 +347,9 @@ public class ReadTest {
   public void queryDoubleTest() throws IOException {
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path("d1.s7"));
-    IExpression valFilter = new SingleSeriesExpression(new Path("d1.s7"), ValueFilter.gt(7.0));
+    IExpression valFilter = new SingleSeriesExpression(new Path("d1.s7"), ValueFilter.gt(1.0));
     IExpression tFilter = BinaryExpression
-        .and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618021L)),
+        .and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618011L)),
             new GlobalTimeExpression(TimeFilter.ltEq(1480562618033L)));
     IExpression finalFilter = BinaryExpression.and(valFilter, tFilter);
     QueryExpression queryExpression = QueryExpression.create(pathList, finalFilter);

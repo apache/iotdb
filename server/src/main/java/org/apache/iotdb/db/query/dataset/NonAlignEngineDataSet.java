@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
-import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
+import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -55,8 +55,8 @@ public class NonAlignEngineDataSet extends QueryDataSet {
 
 
     public ReadTask(ManagedSeriesReader reader,
-                    BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue,
-                    WatermarkEncoder encoder, int index) {
+        BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue, WatermarkEncoder encoder,
+        int index) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
       this.encoder = encoder;
@@ -73,12 +73,11 @@ public class NonAlignEngineDataSet extends QueryDataSet {
           // so here we don't need to check whether the queue has free space
           // the reader has next batch
           if ((cachedBatchData[index] != null && cachedBatchData[index].hasCurrent())
-                  || reader.hasNextBatch()) {
+              || reader.hasNextBatch()) {
             BatchData batchData;
             if (cachedBatchData[index] != null && cachedBatchData[index].hasCurrent()) {
               batchData = cachedBatchData[index];
-            }
-            else {
+            } else {
               batchData = reader.nextBatch();
             }
             int rowCount = 0;
@@ -124,27 +123,25 @@ public class NonAlignEngineDataSet extends QueryDataSet {
                       break;
                     case BOOLEAN:
                       ReadWriteIOUtils.write(batchData.getBoolean(),
-                              valueBAOS);
+                          valueBAOS);
                       break;
                     case TEXT:
                       ReadWriteIOUtils
-                              .write(batchData.getBinary(),
-                                      valueBAOS);
+                          .write(batchData.getBinary(),
+                              valueBAOS);
                       break;
                     default:
                       throw new UnSupportedDataTypeException(
-                              String.format("Data type %s is not supported.", type));
+                          String.format("Data type %s is not supported.", type));
                   }
                 }
                 batchData.next();
-              }
-              else {
+              } else {
                 if (reader.hasNextBatch()) {
                   batchData = reader.nextBatch();
                   cachedBatchData[index] = batchData;
                   continue;
-                }
-                else {
+                } else {
                   break;
                 }
               }
@@ -249,12 +246,12 @@ public class NonAlignEngineDataSet extends QueryDataSet {
   /**
    * constructor of EngineDataSet.
    *
-   * @param paths paths in List structure
+   * @param paths     paths in List structure
    * @param dataTypes time series data type
-   * @param readers readers in List(IPointReader) structure
+   * @param readers   readers in List(IPointReader) structure
    */
   public NonAlignEngineDataSet(List<Path> paths, List<TSDataType> dataTypes,
-                               List<ManagedSeriesReader> readers) {
+      List<ManagedSeriesReader> readers) {
     super(paths, dataTypes);
     this.seriesReaderWithoutValueFilterList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
@@ -286,10 +283,10 @@ public class NonAlignEngineDataSet extends QueryDataSet {
   }
 
   /**
-   * for RPC in RawData query between client and server
-   * fill time buffers and value buffers
+   * for RPC in RawData query between client and server fill time buffers and value buffers
    */
-  public TSQueryNonAlignDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder) throws InterruptedException {
+  public TSQueryNonAlignDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
+      throws InterruptedException {
     if (!initialized) {
       init(encoder, fetchSize);
     }
@@ -301,7 +298,8 @@ public class NonAlignEngineDataSet extends QueryDataSet {
 
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
       if (!noMoreDataInQueueArray[seriesIndex]) {
-        Pair<ByteBuffer, ByteBuffer> timeValueByteBufferPair = blockingQueueArray[seriesIndex].take();
+        Pair<ByteBuffer, ByteBuffer> timeValueByteBufferPair = blockingQueueArray[seriesIndex]
+            .take();
         if (timeValueByteBufferPair.left == null || timeValueByteBufferPair.right == null) {
           noMoreDataInQueueArray[seriesIndex] = true;
           timeValueByteBufferPair.left = ByteBuffer.allocate(0);
@@ -309,8 +307,7 @@ public class NonAlignEngineDataSet extends QueryDataSet {
         }
         timeBufferList.add(timeValueByteBufferPair.left);
         valueBufferList.add(timeValueByteBufferPair.right);
-      }
-      else {
+      } else {
         timeBufferList.add(ByteBuffer.allocate(0));
         valueBufferList.add(ByteBuffer.allocate(0));
         continue;
@@ -325,7 +322,7 @@ public class NonAlignEngineDataSet extends QueryDataSet {
           if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
             reader.setManagedByQueryManager(true);
             pool.submit(new ReadTask(reader, blockingQueueArray[seriesIndex],
-                    encoder, seriesIndex));
+                encoder, seriesIndex));
           }
         }
       }

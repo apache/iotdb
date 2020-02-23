@@ -20,44 +20,41 @@ package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public class LeafNode implements Node {
 
-  private AbstractFileSeriesReader reader;
+  private IBatchReader reader;
 
-  private BatchData data = null;
+  private BatchData cacheData;
+  private TimeColumn cachedTimeSeries;
+  private boolean hasCached;
 
-  private boolean gotData = false;
-
-  public LeafNode(AbstractFileSeriesReader reader) {
+  public LeafNode(IBatchReader reader) {
     this.reader = reader;
   }
 
   @Override
-  public boolean hasNext() throws IOException {
-
-    if (gotData) {
-      data.next();
-      gotData = false;
+  public boolean hasNextTimeColumn() throws IOException {
+    if (hasCached) {
+      return true;
     }
-
-    if (data == null || !data.hasCurrent()) {
-      if (reader.hasNextBatch()) {
-        data = reader.nextBatch();
-      } else {
-        return false;
-      }
+    if (reader.hasNextBatch()) {
+      hasCached = true;
+      cacheData = reader.nextBatch();
+      cachedTimeSeries = cacheData.getTimeColumn();
     }
-
-    return data.hasCurrent();
+    return hasCached;
   }
 
   @Override
-  public long next() {
-    long time = data.currentTime();
-    gotData = true;
-    return time;
+  public TimeColumn nextTimeColumn() throws IOException {
+    if (hasCached || hasNextTimeColumn()) {
+      hasCached = false;
+      return cachedTimeSeries;
+    }
+    throw new IOException("no more data");
   }
 
   /**
@@ -67,20 +64,17 @@ public class LeafNode implements Node {
    * @return True if the current time equals the given time. False if not.
    */
   public boolean currentTimeIs(long time) {
-    if (!reader.currentBatch().hasCurrent()) {
+    if (!cacheData.hasCurrent()) {
       return false;
     }
-    return reader.currentBatch().currentTime() == time;
+    return cacheData.currentTime() == time;
   }
 
   /**
    * Function for getting the value at the given time.
    */
   public Object currentValue(long time) {
-    if (data.currentTime() == time) {
-      return data.currentValue();
-    }
-    return null;
+    return cacheData.getValueInTimestamp(time);
   }
 
   @Override

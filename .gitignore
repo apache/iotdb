@@ -80,8 +80,13 @@ tsfile/src/test/resources/*.ts
 local-snapshots-dir/
 venv/
 
+
 ### web ###
 web/dist/*
 web/node_modules/*
 web/*.png
 web/package-lock.json
+
+partitions.tmp
+partitions
+node_identifier
