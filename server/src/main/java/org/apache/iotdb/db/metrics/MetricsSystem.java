@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metrics;
 
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
@@ -55,11 +56,6 @@ public class MetricsSystem {
    */
   private MetricRegistry metricRegistry = new MetricRegistry();
   private List<SqlArgument> sqlArgumentsList = TSServiceImpl.sqlArgumentsList;
-
-  /**
-   * start index of unused sqlArgument in sqlArgumentsList
-   */
-  private int start = 0;
 
   private SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss:SSS");
   private ServerArgument serverArgument = new ServerArgument(IoTDBDescriptor.getInstance().getConfig().getRestPort());
@@ -116,11 +112,11 @@ public class MetricsSystem {
     return jsonObject;
   }
 
-  public JSONObject sql_json() {
-    JSONObject sql = new JSONObject();
-    for(int i = start; i < sqlArgumentsList.size(); i++) {
-      start++;
-      TSExecuteStatementResp resp = sqlArgumentsList.get(i).getTSExecuteStatementResp();
+  public JSONArray sql_json() {
+    JSONArray jsonArray = new JSONArray();
+    for (SqlArgument sqlArgument : sqlArgumentsList) {
+      JSONObject sql = new JSONObject();
+      TSExecuteStatementResp resp = sqlArgument.getTSExecuteStatementResp();
       String errMsg = resp.getStatus().getStatusType().getMessage();
       int statusCode = resp.getStatus().getStatusType().getCode();
       String status;
@@ -133,17 +129,18 @@ public class MetricsSystem {
       } else {
         status = "FAILED";
       }
-      sql.put("startTime", sdf.format(new Date(sqlArgumentsList.get(i).getStartTime())));
-      sql.put("endTime", sdf.format(new Date(sqlArgumentsList.get(i).getEndTime())));
-      sql.put("time", sqlArgumentsList.get(i).getEndTime() - sqlArgumentsList.get(i).getStartTime());
-      sql.put("sql", sqlArgumentsList.get(i).getStatement());
+      sql.put("startTime", sdf.format(new Date(sqlArgument.getStartTime())));
+      sql.put("endTime", sdf.format(new Date(sqlArgument.getEndTime())));
+      sql.put("time", sqlArgument.getEndTime() - sqlArgument.getStartTime());
+      sql.put("sql", sqlArgument.getStatement());
       sql.put("status", status);
       sql.put("errMsg", errMsg);
-      sql.put("physicalPlan", sqlArgumentsList.get(i).getPlan().getClass().getSimpleName());
-      sql.put("operatorType", sqlArgumentsList.get(i).getPlan().getOperatorType());
-      sql.put("path", sqlArgumentsList.get(i).getPlan().getPaths().toString());
+      sql.put("physicalPlan", sqlArgument.getPlan().getClass().getSimpleName());
+      sql.put("operatorType", sqlArgument.getPlan().getOperatorType());
+      sql.put("path", sqlArgument.getPlan().getPaths().toString());
+      jsonArray.add(sql);
     }
-    return sql;
+    return jsonArray;
   }
 
 }

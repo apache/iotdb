@@ -140,7 +140,7 @@ public class RestController {
   @Path("/sql_arguments")
   @GET
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getSqlArguments() {
+  public JSONArray getSqlArguments() {
     return metricsSystem.sql_json();
   }
 
