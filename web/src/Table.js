@@ -30,7 +30,7 @@ class Table extends React.Component {
 
     async getMachineAction() {
         try {
-            await fetch( 'http://localhost:8181/sql_arguments', {
+            await fetch( 'http://localhost:8181/rest/sql_arguments', {
                 method:'GET',
                 headers:{
                     Accept: 'application/json',

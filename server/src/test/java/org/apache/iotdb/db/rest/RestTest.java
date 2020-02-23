@@ -41,16 +41,16 @@ public class RestTest {
   private Client client = ClientBuilder.newClient();
 
   private static final String REST_URI
-      = "http://localhost:8181/query";
+      = "http://localhost:8181/rest/query";
 
   private static final String LOGIN
-      = "http://localhost:8181/login";
+      = "http://localhost:8181/rest/login";
 
   private static final String METRICS1
-      = "http://localhost:8181/sql_arguments";
+      = "http://localhost:8181/rest/sql_arguments";
 
   private static final String METRICS2
-      = "http://localhost:8181/server_information";
+      = "http://localhost:8181/rest/server_information";
 
   private static String[] creationSqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",

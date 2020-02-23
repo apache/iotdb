@@ -35,17 +35,17 @@ import org.eclipse.jetty.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MetricsService implements MetricsServiceMBean, IService {
+public class RestService implements RestServiceMBean, IService {
 
-  private static final Logger logger = LoggerFactory.getLogger(MetricsService.class);
+  private static final Logger logger = LoggerFactory.getLogger(RestService.class);
   private final String mbeanName = String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE,
       IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
   private Server server;
   private ExecutorService executorService;
 
-  public static final MetricsService getInstance() {
-    return MetricsServiceHolder.INSTANCE;
+  public static final RestService getInstance() {
+    return RestServiceHolder.INSTANCE;
   }
 
   @Override
@@ -54,7 +54,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
   }
 
   @Override
-  public int getMetricsPort() {
+  public int getRestPort() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     return config.getRestPort();
   }
@@ -62,8 +62,8 @@ public class MetricsService implements MetricsServiceMBean, IService {
   @Override
   public void start() throws StartupException {
     try {
-      JMXService.registerMBean(getInstance(), mbeanName);
       startService();
+      JMXService.registerMBean(getInstance(), mbeanName);
     } catch (Exception e) {
       logger.error("Failed to start {} because: ", this.getID().getName(), e);
       throw new StartupException(this.getID().getName(), e.getMessage());
@@ -77,10 +77,10 @@ public class MetricsService implements MetricsServiceMBean, IService {
   }
 
   @Override
-  public synchronized void startService() throws StartupException {
+  public synchronized void startService() {
     logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     executorService = Executors.newSingleThreadExecutor();
-    int port = getMetricsPort();
+    int port = getRestPort();
     server = RestUtil.getJettyServer(RestUtil.getRestContextHandler(), port);
     try {
       executorService.execute(new MetricsServiceThread(server));
@@ -99,7 +99,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
   }
 
   @Override
-  public void restartService() throws StartupException {
+  public void restartService(){
     stopService();
     startService();
   }
@@ -110,6 +110,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
     try {
       if (server != null) {
         server.stop();
+        server.destroy();
         server = null;
       }
       if (executorService != null) {
@@ -132,7 +133,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
   }
 
   private void checkAndWaitPortIsClosed() {
-    SocketAddress socketAddress = new InetSocketAddress("localhost", getMetricsPort());
+    SocketAddress socketAddress = new InetSocketAddress("localhost", getRestPort());
     @SuppressWarnings("squid:S2095")
     Socket socket = new Socket();
     int timeout = 1;
@@ -151,14 +152,14 @@ public class MetricsService implements MetricsServiceMBean, IService {
         }
       }
     }
-    logger.error("Port {} can not be closed.", getMetricsPort());
+    logger.error("Port {} can not be closed.", getRestPort());
   }
 
-  private static class MetricsServiceHolder {
+  private static class RestServiceHolder {
 
-    private static final MetricsService INSTANCE = new MetricsService();
+    private static final RestService INSTANCE = new RestService();
 
-    private MetricsServiceHolder() {}
+    private RestServiceHolder() {}
   }
 
   private class MetricsServiceThread implements Runnable {

@@ -29,7 +29,7 @@ class ServerInfo extends React.Component{
     }
 
     componentDidMount(){
-        fetch('http://localhost:8181/server_information',{
+        fetch('http://localhost:8181/rest/server_information',{
             method:'GET',
             headers:{
                 Accept: 'application/json',

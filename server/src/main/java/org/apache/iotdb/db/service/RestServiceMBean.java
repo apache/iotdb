@@ -14,15 +14,17 @@
  */
 package org.apache.iotdb.db.service;
 
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import org.apache.iotdb.db.exception.StartupException;
 
-public interface MetricsServiceMBean {
+public interface RestServiceMBean {
 
-  int getMetricsPort();
+  int getRestPort();
 
-  void startService() throws StartupException;
+  void startService();
 
-  void restartService() throws StartupException;
+  void restartService();
 
   void stopService();
 

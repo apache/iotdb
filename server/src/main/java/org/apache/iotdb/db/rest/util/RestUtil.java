@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.db.rest.util;
 
+import javax.servlet.ServletContext;
 import org.apache.iotdb.db.rest.filter.CORSFilter;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ErrorHandler;
+import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -35,7 +37,12 @@ public class RestUtil {
     ctx.setContextPath("/");
     resourceConfig.packages("org.apache.iotdb.db.rest.controller");
     ServletHolder servletHolder = new ServletHolder(new ServletContainer(resourceConfig));
-    ctx.addServlet(servletHolder, "/*");
+    ctx.addServlet(servletHolder, "/rest/*");
+    ctx.setWelcomeFiles(new String[]{"index.html"});
+    ServletHolder staticHolder = new ServletHolder("default", DefaultServlet.class);
+    staticHolder.setInitParameter("resourceBase","file://" + System.getProperty("user.dir") + "/web/");
+    staticHolder.setInitParameter("dirAllowed","true");
+    ctx.addServlet(staticHolder, "/");
     return ctx;
   }
 

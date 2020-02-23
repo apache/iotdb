@@ -30,7 +30,6 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -45,7 +44,7 @@ import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.service.MetricsService;
+import org.apache.iotdb.db.service.RestService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.Assert;
@@ -127,7 +126,7 @@ public class EnvironmentUtils {
     }
     // close metadata
     MManager.getInstance().clear();
-    MetricsService.getInstance().stop();
+    RestService.getInstance().stop();
     // delete all directory
     cleanAllDir();
 

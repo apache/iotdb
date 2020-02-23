@@ -29,7 +29,7 @@ class Header extends React.Component{
     }
 
     componentDidMount() {
-        fetch('http://localhost:8181/version', {
+        fetch('http://localhost:8181/rest/version', {
             method:'GET',
             headers:{
                 Accept: 'text/plain',
