@@ -80,3 +80,6 @@ tsfile/src/test/resources/*.ts
 local-snapshots-dir/
 venv/
 
+### web ###
+web/dist
+web/node_modules
