@@ -68,7 +68,7 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
 
 - prefixPaths, suffixPaths：前者为 FROM 子句中的前缀路径，示例中为 `root.sg.d1`, `root.sg.*`; 后者为 SELECT 子句中的后缀路径，示例中为 `s1`, `"1"`, `*`, `s2`, `s5`。
 - devices：对 prefixPaths 进行去星和设备去重后得到的设备列表，示例中为 `[root.sg.d1, root.sg.d2]`。
-- measurementSetOfGivenSuffix：记录该 suffix 对应的 measurements，示例中，对于后缀 *, `measurementSetOfGivenSuffix = {s1,s2}`，对于后缀 s1, `measurementSetOfGivenSuffix = {s1}`;
+- measurementSetOfGivenSuffix：记录该 suffix 对应的 measurements，示例中，对于后缀 \*, `measurementSetOfGivenSuffix = {s1,s2}`，对于后缀 s1, `measurementSetOfGivenSuffix = {s1}`;
 
 Measurement 共有三种类型，常量 Measurement，不存在的 Measurement 以及存在且非常量的 Measurement，下面将结合具体字段进行解释。
 
