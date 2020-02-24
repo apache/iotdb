@@ -63,84 +63,34 @@ public class MetricsSystem {
   public MetricsSystem() {
     String sourceName = "iot-metrics";
     metricRegistry.register(MetricRegistry.name(sourceName, HOST),
-        new Gauge<String>() {
-          @Override
-          public String getValue() {
-            return serverArgument.getHost();
-          }
-        });
+        (Gauge<String>) () -> serverArgument.getHost());
     
     metricRegistry.register(MetricRegistry.name(sourceName, PORT),
-        new Gauge<Integer>() {
-          @Override
-          public Integer getValue() {
-            return serverArgument.getPort();
-          }
-        });
+        (Gauge<Integer>) () -> serverArgument.getPort());
     
     metricRegistry.register(MetricRegistry.name(sourceName, CORES),
-        new Gauge<Integer>() {
-          @Override
-          public Integer getValue() {
-            return serverArgument.getCores();
-          }
-        });
+        (Gauge<Integer>) () -> serverArgument.getCores());
     
     metricRegistry.register(MetricRegistry.name(sourceName, CPU_RATIO),
-        new Gauge<Integer>() {
-          @Override
-          public Integer getValue() {
-            return serverArgument.getCpuRatio();
-          }
-        });
+        (Gauge<Integer>) () -> serverArgument.getCpuRatio());
 
     metricRegistry.register(MetricRegistry.name(sourceName, TOTAL_MEMORY),
-        new Gauge<Long>() {
-          @Override
-          public Long getValue() {
-            return serverArgument.getTotalMemory();
-          }
-        });
+        (Gauge<Long>) () -> serverArgument.getTotalMemory());
 
     metricRegistry.register(MetricRegistry.name(sourceName, MAX_MEMORY),
-        new Gauge<Long>() {
-          @Override
-          public Long getValue() {
-            return serverArgument.getMaxMemory();
-          }
-        });
+        (Gauge<Long>) () -> serverArgument.getMaxMemory());
 
     metricRegistry.register(MetricRegistry.name(sourceName, FREE_MEMORY),
-        new Gauge<Long>() {
-          @Override
-          public Long getValue() {
-            return serverArgument.getFreeMemory();
-          }
-        });
+        (Gauge<Long>) () -> serverArgument.getFreeMemory());
 
     metricRegistry.register(MetricRegistry.name(sourceName, TOTAL_PHYSICAL_MEMORY),
-        new Gauge<Long>() {
-          @Override
-          public Long getValue() {
-            return serverArgument.getTotalPhysicalMemory();
-          }
-        });
+        (Gauge<Long>) () -> serverArgument.getTotalPhysicalMemory());
 
     metricRegistry.register(MetricRegistry.name(sourceName, FREE_PHYSICAL_MEMORY),
-        new Gauge<Long>() {
-          @Override
-          public Long getValue() {
-            return serverArgument.getFreePhysicalMemory();
-          }
-        });
+        (Gauge<Long>) () -> serverArgument.getFreePhysicalMemory());
 
     metricRegistry.register(MetricRegistry.name(sourceName, USED_PHYSICAL_MEMORY),
-        new Gauge<Long>() {
-          @Override
-          public Long getValue() {
-            return serverArgument.getUsedPhysicalMemory();
-          }
-        });
+        (Gauge<Long>) () -> serverArgument.getUsedPhysicalMemory());
   }
 
   public JSONObject metricsJson() throws JsonProcessingException {

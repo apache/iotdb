@@ -93,7 +93,7 @@ public class RestController {
       JSONArray array = (JSONArray) jsonObject.get("targets"); // metricsJson array is []
       JSONArray result = new JSONArray();
       for (int i = 0; i < array.size(); i++) {
-        JSONObject object = (JSONObject) array.get(i); // {}
+        JSONObject object = (JSONObject) array.get(i);
         if (!object.containsKey(targetStr)) {
           result.add(JSONObject.parse("[]"));
           return result;

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.rest.util;
 
-import javax.servlet.ServletContext;
 import org.apache.iotdb.db.rest.filter.CORSFilter;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ErrorHandler;
@@ -29,6 +28,9 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 
 public class RestUtil {
+
+  private RestUtil() {}
+
   public static ServletContextHandler getRestContextHandler() {
     ServletContextHandler ctx =
         new ServletContextHandler(ServletContextHandler.NO_SESSIONS);

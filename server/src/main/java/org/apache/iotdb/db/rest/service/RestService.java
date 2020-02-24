@@ -166,7 +166,7 @@ public class RestService {
   /**
    * function for parsing time format.
    */
-  private long parseTimeFormat(String timestampStr) throws SQLParserException {
+  private long parseTimeFormat(String timestampStr) {
     if (timestampStr == null || timestampStr.trim().equals("")) {
       throw new SQLParserException("input timestamp cannot be empty");
     }
@@ -194,7 +194,7 @@ public class RestService {
    * @return request JSON
    * @throws JSONException JSONException
    */
-  public JSONObject getRequestBodyJson(HttpServletRequest request) throws JSONException {
+  public JSONObject getRequestBodyJson(HttpServletRequest request){
     try {
       BufferedReader br = new BufferedReader(new InputStreamReader(request.getInputStream()));
       StringBuilder sb = new StringBuilder();
@@ -216,15 +216,15 @@ public class RestService {
    * @return type (string)
    * @throws JSONException JSONException
    */
-  public String getJsonType(JSONObject jsonObject) throws JSONException {
-    JSONArray array = (JSONArray) jsonObject.get("targets"); // []
-    JSONObject object = (JSONObject) array.get(0); // {}
+  public String getJsonType(JSONObject jsonObject){
+    JSONArray array = (JSONArray) jsonObject.get("targets");
+    JSONObject object = (JSONObject) array.get(0);
     return (String) object.get("type");
   }
 
   public void setJsonTable(JSONObject obj, String target,
       Pair<String, String> timeRange)
-      throws JSONException, StorageEngineException, QueryFilterOptimizationException,
+      throws StorageEngineException, QueryFilterOptimizationException,
       MetadataException, IOException, SQLException, QueryProcessException, AuthException {
     List<TimeValue> timeValue = querySeries(target, timeRange);
     JSONArray columns = new JSONArray();
@@ -249,7 +249,7 @@ public class RestService {
 
   public void setJsonTimeseries(JSONObject obj, String target,
       Pair<String, String> timeRange)
-      throws JSONException, StorageEngineException, QueryFilterOptimizationException,
+      throws StorageEngineException, QueryFilterOptimizationException,
       MetadataException, IOException, SQLException, QueryProcessException, AuthException {
     List<TimeValue> timeValue = querySeries(target, timeRange);
     logger.info("query size: {}", timeValue.size());

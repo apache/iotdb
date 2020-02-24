@@ -60,13 +60,12 @@ public class RestService implements RestServiceMBean, IService {
   }
 
   @Override
-  public void start() throws StartupException {
+  public void start() {
     try {
       startService();
       JMXService.registerMBean(getInstance(), mbeanName);
     } catch (Exception e) {
       logger.error("Failed to start {} because: ", this.getID().getName(), e);
-      throw new StartupException(this.getID().getName(), e.getMessage());
     }
   }
 
@@ -146,7 +145,7 @@ public class RestService implements RestServiceMBean, IService {
         socket.connect(socketAddress, timeout);
         count--;
       } catch (IOException e) {
-        return;
+        logger.error(e.getMessage());
       } finally {
         try {
           socket.close();
