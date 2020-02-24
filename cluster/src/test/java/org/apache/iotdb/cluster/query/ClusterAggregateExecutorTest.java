@@ -67,7 +67,7 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
     RowRecord record = queryDataSet.next();
     List<Field> fields = record.getFields();
     assertEquals(5, fields.size());
-    Object[] answers = new Object[] {0,0,0,0,0};
+    Object[] answers = new Object[] {0, 19.0, 9.5, 20, 190};
     for (int i = 0; i < 5; i++) {
       assertEquals(answers[i].toString(), fields.get(i).toString());
     }
