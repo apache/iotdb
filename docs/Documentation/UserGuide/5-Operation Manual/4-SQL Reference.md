@@ -453,6 +453,39 @@ You could expect a table like:
 
 ```
 
+* Select Last Record Statement
+
+The LAST function returns the last time-value pair of the given timeseries. Currently filters are not supported in LAST queries.
+
+```
+SELECT LAST <SelectClause> FROM <FromClause> <DisableAlignClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+DisableAlignClause : [DISABLE ALIGN]
+
+Eg. SELECT LAST s1 FROM root.sg.d1 disable align
+Eg. SELECT LAST s1, s2 FROM root.sg.d1 disable align
+Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2 disable align
+
+Rules:
+1. the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
+
+2. The result set of last query will always be displayed in a "disable-aligned" format showed below.
+For example, "select last s1, s2 from root.sg.d1, root.sg.d2 disable align", the query result would be:
+
+| Time | Path         | Value |
+| ---  | ------------ | ----- |
+|  5   | root.sg.d1.s1| 100   |
+|  2   | root.sg.d1.s2| 400   |
+|  4   | root.sg.d2.s1| 250   |
+|  9   | root.sg.d2.s2| 600   |
+
+3. LAST query syntax is expecting users to write a "diable align" keyword at the end of the query. 
+However, as it is a unique SQL syntax in IoTDB, IoTDB accepts LAST queries without "disable align" and treats them as "disable align" ones.
+Query like "select last s1 from root.sg.d1" will be parsed exactly the same as "select last s1 from root.sg.d1 disable align". 
+
+```
+
 ### Database Management Statement
 
 * Create User
@@ -720,16 +753,6 @@ The SUM function returns the sum of the choosen timeseries (one or more) over a 
 ```
 SELECT SUM(Path) (COMMA SUM(Path))* FROM <FromClause> [WHERE <WhereClause>]?
 Eg. SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
-Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
-```
-* LAST
-
-The LAST function returns the last time-value pair of the given timeseries. Currently filters are not supported in LAST queries.
-
-```
-SELECT LAST(Path) FROM <FromClause>
-Eg. SELECT LAST(temperature) FROM root.ln.wf01.wt01
-Eg. SELECT LAST(wt01) FROM root.ln.wf01
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 

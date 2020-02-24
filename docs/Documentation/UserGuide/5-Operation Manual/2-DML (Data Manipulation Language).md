@@ -243,19 +243,31 @@ The LAST query is to return the most recent value of the given timeseries in a t
 The SQL statement is:
 
 ```
-select last(path) from <prefixPath>
+select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <DISABLE ALIGN>
 ```
 which means:
 
-Query and return the data with the largest timestamp of timeseries prefixPath.path. The result will be returned in a time-value pair format.
+Query and return the data with the largest timestamp of timeseries prefixPath.path.
 
 In the following example, we queries the latest record of timeseries root.ln.wf01.wt01.status:
 ```
-select last(status) from root.ln.wf01.wt01
+select last status from root.ln.wf01.wt01 disable align
 ```
-If the path root.ln.wf01.wt01 has multiple columns, for example id, status and temperature, the following case will return values of all the three columns with the largest timestamp.
+The result will be returned in a three column table format.
 ```
-select last(wt01) from root.ln.wf01
+| Time | Path                    | Value |
+| ---  | ----------------------- | ----- |
+|  5   | root.ln.wf01.wt01.status| 100   |
+```
+If the path root.ln.wf01.wt01 has multiple columns, for example id, status and temperature, the following case will return records of all the three measurements with the largest timestamp.
+```
+select last id, status, temperature from root.ln.wf01.wt01 disable align
+
+| Time | Path                         | Value |
+| ---  | ---------------------------- | ----- |
+|  5   | root.ln.wf01.wt01.id         | 10    |
+|  7   | root.ln.wf01.wt01.status     | true  |
+|  9   | root.ln.wf01.wt01.temperature| 35.7  |
 ```
 
 
