@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -115,7 +116,9 @@ public class FileReaderManager implements IService {
 
   private void clearMap(Map<TsFileResource, TsFileSequenceReader> readerMap,
       Map<TsFileResource, AtomicInteger> refMap) {
-    for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : readerMap.entrySet()) {
+    Iterator<Map.Entry<TsFileResource, TsFileSequenceReader>> iterator = readerMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<TsFileResource, TsFileSequenceReader> entry = iterator.next();
       TsFileSequenceReader reader = entry.getValue();
       AtomicInteger refAtom = refMap.get(entry.getKey());
 
@@ -125,7 +128,7 @@ public class FileReaderManager implements IService {
         } catch (IOException e) {
           logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
         }
-        readerMap.remove(entry.getKey());
+        iterator.remove();
         refMap.remove(entry.getKey());
       }
     }

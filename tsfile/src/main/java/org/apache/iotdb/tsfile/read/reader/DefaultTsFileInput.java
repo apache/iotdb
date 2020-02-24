@@ -18,20 +18,30 @@
  */
 package org.apache.iotdb.tsfile.read.reader;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
 public class DefaultTsFileInput implements TsFileInput {
 
+  private static final Logger LOGGER = LoggerFactory
+          .getLogger(DefaultTsFileInput.class);
+
   FileChannel channel;
+
+  private String path;
 
   public DefaultTsFileInput(Path file) throws IOException {
     channel = FileChannel.open(file, StandardOpenOption.READ);
+    path = file.toString();
   }
 
   @Override
@@ -57,7 +67,12 @@ public class DefaultTsFileInput implements TsFileInput {
 
   @Override
   public int read(ByteBuffer dst, long position) throws IOException {
-    return channel.read(dst, position);
+    try {
+      return channel.read(dst, position);
+    } catch (ClosedChannelException e) {
+      LOGGER.error(String.format("File is closed while reading %s", path));
+      throw e;
+    }
   }
 
   @Override
