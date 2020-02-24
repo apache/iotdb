@@ -57,11 +57,10 @@ public abstract class TimeGenerator {
 
     while (operatorNode.hasNextTimeColumn()) {
       cacheTimes = operatorNode.nextTimeColumn();
-      if (!cacheTimes.hasCurrent()) {
-        continue;
+      if (cacheTimes.hasCurrent()) {
+        hasCache = true;
+        break;
       }
-      hasCache = true;
-      break;
     }
     return hasCache;
   }

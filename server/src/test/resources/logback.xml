@@ -44,6 +44,8 @@
     <logger name="org.apache.iotdb.db.engine.merge" level="DEBUG"/>
     <logger name="org.eclipse.jetty.util.thread.QueuedThreadPool" level="DEBUG"/>
     <logger name="org.apache.iotdb.db.service.MetricsService" level="INFO" />
+    <logger name="org.apache.iotdb.db.engine.flush.FlushManager" level="INFO" />
+    <logger name="org.apache.iotdb.db.integration.IoTDBMergeTest" level="INFO" />
     <root level="WARN">
         <appender-ref ref="stdout"/>
     </root>

@@ -418,7 +418,7 @@ public class PhysicalGenerator {
     Map<String, IExpression> deviceToFilterMap = new HashMap<>();
     for (String device : devices) {
       FilterOperator newOperator = operator.copy();
-      newOperator = concatFilterPath(device, newOperator);
+      concatFilterPath(device, newOperator);
 
       deviceToFilterMap.put(device, newOperator.transformToExpression());
     }
@@ -444,25 +444,23 @@ public class PhysicalGenerator {
     return retDevices;
   }
 
-  private FilterOperator concatFilterPath(String prefix, FilterOperator operator) {
+  private void concatFilterPath(String prefix, FilterOperator operator) {
     if (!operator.isLeaf()) {
       for (FilterOperator child : operator.getChildren()) {
         concatFilterPath(prefix, child);
       }
-      return operator;
+      return;
     }
     BasicFunctionOperator basicOperator = (BasicFunctionOperator) operator;
     Path filterPath = basicOperator.getSinglePath();
 
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
     if (SQLConstant.isReservedPath(filterPath) || filterPath.startWith(SQLConstant.ROOT)) {
-      return operator;
+      return;
     }
 
     Path concatPath = Path.addPrefixPath(filterPath, prefix);
     basicOperator.setSinglePath(concatPath);
-
-    return basicOperator;
   }
 
   private void generateDataTypes(QueryPlan queryPlan) throws PathException {

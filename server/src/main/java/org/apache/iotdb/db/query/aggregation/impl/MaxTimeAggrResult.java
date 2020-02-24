@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
+//TODO Consider how to reverse order in SeriesReader
 public class MaxTimeAggrResult extends AggregateResult {
 
   public MaxTimeAggrResult() {
@@ -62,7 +63,6 @@ public class MaxTimeAggrResult extends AggregateResult {
     }
   }
 
-  //TODO Consider how to reverse order in dataReader(IReaderByTimeStamp)
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {

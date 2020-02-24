@@ -18,17 +18,11 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
-
 
 public class SeriesRawDataPointReader implements IPointReader {
 
@@ -38,15 +32,8 @@ public class SeriesRawDataPointReader implements IPointReader {
   private BatchData batchData;
   private TimeValuePair timeValuePair;
 
-
   public SeriesRawDataPointReader(SeriesReader seriesReader) {
     this.seriesReader = seriesReader;
-  }
-
-  public SeriesRawDataPointReader(Path seriesPath, TSDataType dataType, QueryContext context,
-      QueryDataSource dataSource, Filter timeFilter, Filter valueFilter) {
-    this.seriesReader = new SeriesReader(seriesPath, dataType, context, dataSource, timeFilter,
-        valueFilter);
   }
 
   private boolean hasNext() throws IOException {
@@ -102,7 +89,7 @@ public class SeriesRawDataPointReader implements IPointReader {
   }
 
   @Override
-  public TimeValuePair currentTimeValuePair() throws IOException {
+  public TimeValuePair currentTimeValuePair() {
     return timeValuePair;
   }
 

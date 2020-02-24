@@ -16,36 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.utils;
+package org.apache.iotdb.db.exception.runtime;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+public class JDBCServiceException extends RuntimeException{
 
-/**
- * A subclass extending <code>ByteArrayOutputStream</code>. It's used to return the byte array directly. Note that the
- * size of byte array is large than actual size of valid contents, thus it's used cooperating with <code>size()</code>
- *
- * For example, put buf in PublicBAOS into a ByteBuffer
- *
- * PublicBAOS pbos = new PublicBAOS();
- * ByteBuffer buffer = ByteBuffer.allocate(pbos.size());
- * buffer.put(pbos, 0, pbos.size());
- *
- */
-public class PublicBAOS extends ByteArrayOutputStream {
+  private static final long serialVersionUID = 520836932066897810L;
 
-  public PublicBAOS() {
-    super();
+  public JDBCServiceException(String message) {
+    super(message);
   }
 
-  /**
-   * get current all bytes data
-   *
-   * @return all bytes data
-   */
-  public byte[] getBuf() {
-
-    return this.buf;
+  public JDBCServiceException(String message, Throwable e) {
+    super(message + e.getMessage());
   }
 
 }

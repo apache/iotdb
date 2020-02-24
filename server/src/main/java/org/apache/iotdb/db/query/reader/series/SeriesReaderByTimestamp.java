@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -36,9 +37,9 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   private long currentTime = Long.MIN_VALUE;
 
   public SeriesReaderByTimestamp(Path seriesPath, TSDataType dataType, QueryContext context,
-      QueryDataSource dataSource) {
+      QueryDataSource dataSource, TsFileFilter fileFilter) {
     seriesReader = new SeriesReader(seriesPath, dataType, context,
-        dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null);
+        dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null, fileFilter);
   }
 
   @Override

@@ -840,7 +840,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       // constant
       else if (constMeasurementsLoc < plan.getConstMeasurements().size()
-          && loc == plan.getPositionOfConstMeasurements().get(constMeasurementsLoc)) {
+              && loc == plan.getPositionOfConstMeasurements().get(constMeasurementsLoc)) {
         // for shifting
         plan.getPositionOfConstMeasurements().set(constMeasurementsLoc, loc - shiftLoc);
 
@@ -1139,10 +1139,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSGetTimeZoneResp getTimeZone(long sessionId) {
     TSStatus tsStatus;
-    TSGetTimeZoneResp resp;
+    TSGetTimeZoneResp resp = null;
     try {
       tsStatus = getStatus(TSStatusCode.SUCCESS_STATUS);
-      resp = new TSGetTimeZoneResp(tsStatus, sessionIdZoneIdMap.get(sessionId).toString());
+      ZoneId zoneId = sessionIdZoneIdMap.get(sessionId);
+      if (zoneId != null) {
+        resp = new TSGetTimeZoneResp(tsStatus, zoneId.toString());
+      }
     } catch (Exception e) {
       logger.error("meet error while generating time zone.", e);
       tsStatus = getStatus(TSStatusCode.GENERATE_TIME_ZONE_ERROR);
