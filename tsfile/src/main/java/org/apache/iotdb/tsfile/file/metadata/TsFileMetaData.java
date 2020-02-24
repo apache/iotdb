@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * TSFileMetaData collects all metadata info and saves in its data structure.
@@ -122,7 +122,7 @@ public class TsFileMetaData {
    * @return -byte length
    */
   public int serializeBloomFilter(OutputStream outputStream,
-      Map<Path, TimeseriesSchema> schemaDescriptors)
+      Map<Path, MeasurementSchema> schemaDescriptors)
       throws IOException {
     int byteLen = 0;
     BloomFilter filter = buildBloomFilter(schemaDescriptors);
@@ -142,7 +142,7 @@ public class TsFileMetaData {
    * @param schemaDescriptors
    * @return bloom filter
    */
-  private BloomFilter buildBloomFilter(Map<Path, TimeseriesSchema> schemaDescriptors) {
+  private BloomFilter buildBloomFilter(Map<Path, MeasurementSchema> schemaDescriptors) {
     Set<Path> paths = schemaDescriptors.keySet();
     BloomFilter bloomFilter = BloomFilter
         .getEmptyBloomFilter(TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(),

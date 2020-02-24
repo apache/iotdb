@@ -20,32 +20,36 @@
 
 package org.apache.iotdb.db.engine.merge;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
+import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 public class MergeOverLapTest extends MergeTest {
 
@@ -81,7 +85,8 @@ public class MergeOverLapTest extends MergeTest {
     }
     for (int i = 0; i < unseqFileNum; i++) {
       File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
-              i + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
+          i + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + i
+              + IoTDBConstant.TSFILE_NAME_SEPARATOR
               + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
               + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
@@ -91,8 +96,9 @@ public class MergeOverLapTest extends MergeTest {
       prepareUnseqFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
     File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
-            unseqFileNum + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
-            + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
+        unseqFileNum + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
+            + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
+            + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
             + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
@@ -106,17 +112,17 @@ public class MergeOverLapTest extends MergeTest {
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
     for (String deviceId : deviceIds) {
-      for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
+      for (MeasurementSchema MeasurementSchema : measurementSchemas) {
         fileWriter.addTimeseries(
-            new Path(deviceId, timeseriesSchema.getMeasurementId()), timeseriesSchema);
+            new Path(deviceId, MeasurementSchema.getMeasurementId()), MeasurementSchema);
       }
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (int j = 0; j < deviceNum; j++) {
         TSRecord record = new TSRecord(i, deviceIds[j]);
         for (int k = 0; k < measurementNum; k++) {
-          record.addTuple(DataPoint.getDataPoint(timeseriesSchemas[k].getType(),
-              timeseriesSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
+          record.addTuple(DataPoint.getDataPoint(measurementSchemas[k].getType(),
+              measurementSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
         }
         fileWriter.write(record);
         tsFileResource.updateStartTime(deviceIds[j], i);
@@ -127,8 +133,8 @@ public class MergeOverLapTest extends MergeTest {
         for (int j = 0; j < deviceNum; j++) {
           TSRecord record = new TSRecord(i, deviceIds[j]);
           for (int k = 0; k < measurementNum; k++) {
-            record.addTuple(DataPoint.getDataPoint(timeseriesSchemas[k].getType(),
-                timeseriesSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
+            record.addTuple(DataPoint.getDataPoint(measurementSchemas[k].getType(),
+                measurementSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
           }
           fileWriter.write(record);
           tsFileResource.updateStartTime(deviceIds[j], i);
@@ -145,21 +151,24 @@ public class MergeOverLapTest extends MergeTest {
   @Test
   public void testFullMerge() throws Exception {
     MergeTask mergeTask =
-        new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(), (k, v, l) -> {}, "test",
+        new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
+            (k, v, l) -> {
+            }, "test",
             true, 1, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], timeseriesSchemas[0].getMeasurementId());
-    SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
-        Collections.singletonList(seqResources.get(0)),
-        null, context);
+    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    List<TsFileResource> resources = new ArrayList<>();
+    resources.add(seqResources.get(0));
+    IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(), context,
+        resources, new ArrayList<>(), null, null);
     int cnt = 0;
     try {
       while (tsFilesReader.hasNextBatch()) {
         BatchData batchData = tsFilesReader.nextBatch();
         for (int i = 0; i < batchData.length(); i++) {
-          cnt ++;
+          cnt++;
           assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
         }
       }

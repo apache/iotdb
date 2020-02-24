@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,12 +69,12 @@ public class RecordUtils {
     for (int i = 2; i < items.length - 1; i += 2) {
       // get measurementId and value
       measurementId = items[i].trim();
-      TimeseriesSchema timeseriesSchema = schema.getSeriesSchema(new Path(deviceId, measurementId));
-      if (timeseriesSchema == null) {
+      MeasurementSchema MeasurementSchema = schema.getSeriesSchema(new Path(deviceId, measurementId));
+      if (MeasurementSchema == null) {
         LOG.warn("measurementId:{},type not found, pass", measurementId);
         continue;
       }
-      type = timeseriesSchema.getType();
+      type = MeasurementSchema.getType();
       String value = items[i + 1].trim();
       // if value is not null, wrap it with corresponding DataPoint and add to
       // TSRecord

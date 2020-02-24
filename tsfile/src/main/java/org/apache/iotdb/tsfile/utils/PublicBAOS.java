@@ -29,10 +29,6 @@ import java.io.ByteArrayOutputStream;
  */
 public class PublicBAOS extends ByteArrayOutputStream {
 
-  public PublicBAOS(int size) {
-    super(size);
-  }
-
   public PublicBAOS() {
     super();
   }
@@ -45,15 +41,6 @@ public class PublicBAOS extends ByteArrayOutputStream {
   public byte[] getBuf() {
 
     return this.buf;
-  }
-
-  /**
-   * Construct one {@link ByteArrayInputStream} from the buff data
-   *
-   * @return one {@link ByteArrayInputStream} have all buff data
-   */
-  public ByteArrayInputStream transformToInputStream() {
-    return new ByteArrayInputStream(this.buf, 0, size());
   }
 
 }

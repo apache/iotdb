@@ -58,6 +58,7 @@ public class IoTDBMergeTest {
 
   @Test
   public void test() throws SQLException {
+    logger.info("test...");
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -106,6 +107,7 @@ public class IoTDBMergeTest {
 
   @Test
   public void testInvertedOrder() {
+    logger.info("testInvertedOrder...");
     // case: seq data and unseq data are written in reverted order
     // e.g.: write 1. seq [10, 20), 2. seq [20, 30), 3. unseq [20, 30), 4. unseq [10, 20)
     try (Connection connection = DriverManager
@@ -169,6 +171,7 @@ public class IoTDBMergeTest {
 
   @Test
   public void testCrossPartition() throws SQLException, StorageEngineException {
+    logger.info("testCrossPartition...");
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {

@@ -22,7 +22,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class MemTableTestUtils {
 
@@ -36,7 +36,7 @@ public class MemTableTestUtils {
   static {
     schema
         .registerTimeseries(new Path(deviceId0, measurementId0), 
-            new TimeseriesSchema(measurementId0, dataType0, TSEncoding.PLAIN));
+            new MeasurementSchema(measurementId0, dataType0, TSEncoding.PLAIN));
   }
 
   public static void produceData(IMemTable iMemTable, long startTime, long endTime, String deviceId,

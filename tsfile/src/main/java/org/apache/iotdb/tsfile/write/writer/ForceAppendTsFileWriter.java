@@ -26,7 +26,10 @@ import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * ForceAppendTsFileWriter opens a COMPLETE TsFile, reads and truncate its metadata to support
@@ -34,11 +37,15 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
  */
 public class ForceAppendTsFileWriter extends TsFileIOWriter {
 
-  private Map<Path, TimeseriesSchema> knownSchemas;
+  private Map<Path, MeasurementSchema> knownSchemas;
   private Map<Path, List<ChunkMetaData>> chunkMetadataListMap;
   private long truncatePosition;
-
+  private static Logger logger = LoggerFactory.getLogger(ForceAppendTsFileWriter.class);
+  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   public ForceAppendTsFileWriter(File file) throws IOException {
+    if (resourceLogger.isInfoEnabled()) {
+      resourceLogger.info("{} writer is opened.", file.getName());
+    }
     this.out = new DefaultTsFileOutput(file, true);
     this.file = file;
 
@@ -67,7 +74,7 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
     return truncatePosition;
   }
 
-  public Map<Path, TimeseriesSchema> getKnownSchema() {
+  public Map<Path, MeasurementSchema> getKnownSchema() {
     return knownSchemas;
   }
 }

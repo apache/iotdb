@@ -50,7 +50,7 @@ import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
 @SuppressWarnings("squid:S4042") // Suppress use java.nio.Files#delete warning
@@ -122,7 +122,7 @@ public class RestorableTsFileIOWriterTest {
     File file = new File(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.getIOWriter()
-        .startFlushChunk(new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.PLAIN),
+        .startFlushChunk(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.PLAIN),
             CompressionType.SNAPPY, TSDataType.FLOAT, TSEncoding.PLAIN, new FloatStatistics(), 100,
             10);
     writer.getIOWriter().close();
@@ -139,9 +139,9 @@ public class RestorableTsFileIOWriterTest {
     File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.addTimeseries(new Path("d1.s1"),
-        new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.addTimeseries(new Path("d1.s2"),
-        new TimeseriesSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(new TSRecord(1, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
@@ -163,9 +163,9 @@ public class RestorableTsFileIOWriterTest {
     File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.addTimeseries(new Path("d1.s1"),
-        new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.addTimeseries(new Path("d1.s2"),
-        new TimeseriesSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(new TSRecord(1, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
@@ -201,9 +201,9 @@ public class RestorableTsFileIOWriterTest {
     File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.addTimeseries(new Path("d1.s1"),
-        new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.addTimeseries(new Path("d1.s2"),
-        new TimeseriesSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(new TSRecord(1, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
@@ -229,13 +229,13 @@ public class RestorableTsFileIOWriterTest {
     File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.addTimeseries(new Path("d1.s1"),
-        new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.addTimeseries(new Path("d1.s2"),
-        new TimeseriesSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.addTimeseries(new Path("d2.s1"),
-        new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.addTimeseries(new Path("d2.s2"),
-        new TimeseriesSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(new TSRecord(1, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
@@ -268,13 +268,13 @@ public class RestorableTsFileIOWriterTest {
     File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.addTimeseries(new Path("d1.s1"),
-        new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.addTimeseries(new Path("d1.s2"),
-        new TimeseriesSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.addTimeseries(new Path("d2.s1"),
-        new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.addTimeseries(new Path("d2.s2"),
-        new TimeseriesSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(new TSRecord(1, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
@@ -309,13 +309,13 @@ public class RestorableTsFileIOWriterTest {
     File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.addTimeseries(new Path("d1.s1"),
-        new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.addTimeseries(new Path("d1.s2"),
-        new TimeseriesSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.addTimeseries(new Path("d2.s1"),
-        new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.addTimeseries(new Path("d2.s2"),
-        new TimeseriesSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(new TSRecord(1, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
@@ -350,9 +350,9 @@ public class RestorableTsFileIOWriterTest {
     File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.addTimeseries(new Path("d1.s1"),
-        new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.addTimeseries(new Path("d1.s2"),
-        new TimeseriesSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(new TSRecord(1, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
@@ -379,9 +379,9 @@ public class RestorableTsFileIOWriterTest {
     File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.addTimeseries(new Path("d1.s1"),
-        new TimeseriesSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.addTimeseries(new Path("d1.s2"),
-        new TimeseriesSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(new TSRecord(1, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))

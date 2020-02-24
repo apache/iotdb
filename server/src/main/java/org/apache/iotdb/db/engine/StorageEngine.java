@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Map;
@@ -46,14 +47,13 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.MNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -62,6 +62,7 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -115,9 +116,9 @@ public class StorageEngine implements IService {
      * recover all storage group processors.
      */
 
-    List<MNode> sgNodes = MManager.getInstance().getAllStorageGroups();
+    List<StorageGroupMNode> sgNodes = MManager.getInstance().getAllStorageGroupNodes();
     List<Future> futures = new ArrayList<>();
-    for (MNode storageGroup : sgNodes) {
+    for (StorageGroupMNode storageGroup : sgNodes) {
       futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
         StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
             storageGroup.getFullPath(), fileFlushPolicy);
@@ -177,7 +178,7 @@ public class StorageEngine implements IService {
   public StorageGroupProcessor getProcessor(String path) throws StorageEngineException {
     String storageGroupName = "";
     try {
-      storageGroupName = MManager.getInstance().getStorageGroupNameByPath(path);
+      storageGroupName = MManager.getInstance().getStorageGroupName(path);
       StorageGroupProcessor processor;
       processor = processorMap.get(storageGroupName);
       if (processor == null) {
@@ -188,15 +189,15 @@ public class StorageEngine implements IService {
             logger.info("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
             processor = new StorageGroupProcessor(systemDir, storageGroupName, fileFlushPolicy);
-            processor.setDataTTL(
-                MManager.getInstance().getNodeByPathWithCheck(storageGroupName).getDataTTL());
+            StorageGroupMNode storageGroup = MManager.getInstance()
+                .getStorageGroupNode(storageGroupName);
+            processor.setDataTTL(storageGroup.getDataTTL());
             processorMap.put(storageGroupName, processor);
           }
         }
       }
       return processor;
-    } catch (StorageGroupException | StorageGroupProcessorException | PathException e) {
-      logger.error("Fail to get StorageGroupProcessor {}", storageGroupName, e);
+    } catch (StorageGroupProcessorException | MetadataException e) {
       throw new StorageEngineException(e);
     }
   }
@@ -275,17 +276,20 @@ public class StorageEngine implements IService {
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupName);
     if (processor != null) {
+      logger.info("async closing sg processor is called for closing {}, seq = {}", storageGroupName,
+          isSeq);
       processor.writeLock();
       try {
-        if(isSeq) {
+        if (isSeq) {
           // to avoid concurrent modification problem, we need a new array list
-          for (TsFileProcessor tsfileProcessor : new ArrayList<>(processor.getWorkSequenceTsFileProcessors())) {
+          for (TsFileProcessor tsfileProcessor : new ArrayList<>(
+              processor.getWorkSequenceTsFileProcessors())) {
             processor.moveOneWorkProcessorToClosingList(true, tsfileProcessor);
           }
-        }
-        else {
+        } else {
           // to avoid concurrent modification problem, we need a new array list
-          for (TsFileProcessor tsfileProcessor : new ArrayList<>(processor.getWorkUnsequenceTsFileProcessor())) {
+          for (TsFileProcessor tsfileProcessor : new ArrayList<>(
+              processor.getWorkUnsequenceTsFileProcessor())) {
             processor.moveOneWorkProcessorToClosingList(false, tsfileProcessor);
           }
         }
@@ -324,11 +328,11 @@ public class StorageEngine implements IService {
   public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context,
       QueryFileManager filePathsManager)
       throws StorageEngineException {
-    //TODO use context.
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.query(deviceId, measurementId, context, filePathsManager);
+    return storageGroupProcessor
+        .query(deviceId, measurementId, context, filePathsManager, seriesExpression.getFilter());
   }
 
   /**
@@ -408,6 +412,16 @@ public class StorageEngine implements IService {
         .addTimeseries(path, dataType, encoding, compressor, props);
   }
 
+  public void addTimeSeries(Path path, TSDataType dataType, TSEncoding encoding)
+      throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor = getProcessor(path.getDevice());
+    CompressionType compressor =
+        TSFileDescriptor.getInstance().getConfig().getCompressor();
+    storageGroupProcessor
+        .addTimeseries(path, dataType, encoding, compressor,
+            Collections.emptyMap());
+  }
+
 
   /**
    * delete all data of storage groups' timeseries.
@@ -441,13 +455,13 @@ public class StorageEngine implements IService {
   }
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
-      throws TsFileProcessorException, StorageEngineException, StorageGroupException {
+      throws TsFileProcessorException, StorageEngineException, MetadataException {
     Map<String, Long> startTimeMap = newTsFileResource.getStartTimeMap();
     if (startTimeMap == null || startTimeMap.isEmpty()) {
       throw new StorageEngineException("Can not get the corresponding storage group.");
     }
     String device = startTimeMap.keySet().iterator().next();
-    String storageGroupName = MManager.getInstance().getStorageGroupNameByPath(device);
+    String storageGroupName = MManager.getInstance().getStorageGroupName(device);
     getProcessor(storageGroupName).loadNewTsFile(newTsFileResource);
   }
 

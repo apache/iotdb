@@ -31,7 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
+import org.apache.iotdb.tsfile.read.controller.CachedChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 
@@ -57,7 +57,7 @@ public class ChunkLoaderTest {
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader);
     List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile.getChunkMetaDataList(new Path("d2.s1"));
 
-    ChunkLoaderImpl seriesChunkLoader = new ChunkLoaderImpl(fileReader);
+    CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
     for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
       Chunk chunk = seriesChunkLoader.getChunk(chunkMetaData);
       ChunkHeader chunkHeader = chunk.getHeader();

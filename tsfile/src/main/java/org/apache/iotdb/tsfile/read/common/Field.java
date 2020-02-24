@@ -41,9 +41,9 @@ public class Field {
     this.dataType = dataType;
   }
 
-  public static Field copy(Field field){
+  public static Field copy(Field field) {
     Field out = new Field(field.dataType);
-    if(out.dataType != null) {
+    if (out.dataType != null) {
       switch (out.dataType) {
         case DOUBLE:
           out.setDoubleV(field.getDoubleV());
@@ -64,7 +64,7 @@ public class Field {
           out.setBinaryV(field.getBinaryV());
           break;
         default:
-          throw new UnSupportedDataTypeException("UnSupported: " + out.dataType);
+          throw new UnSupportedDataTypeException(out.dataType.toString());
       }
     }
 
@@ -133,20 +133,20 @@ public class Field {
       return "null";
     }
     switch (dataType) {
-    case BOOLEAN:
-      return String.valueOf(boolV);
-    case INT32:
-      return String.valueOf(intV);
-    case INT64:
-      return String.valueOf(longV);
-    case FLOAT:
-      return String.valueOf(floatV);
-    case DOUBLE:
-      return String.valueOf(doubleV);
-    case TEXT:
-      return binaryV.toString();
-    default:
-      throw new UnSupportedDataTypeException(String.valueOf(dataType));
+      case BOOLEAN:
+        return String.valueOf(boolV);
+      case INT32:
+        return String.valueOf(intV);
+      case INT64:
+        return String.valueOf(longV);
+      case FLOAT:
+        return String.valueOf(floatV);
+      case DOUBLE:
+        return String.valueOf(doubleV);
+      case TEXT:
+        return binaryV.toString();
+      default:
+        throw new UnSupportedDataTypeException(dataType.toString());
     }
   }
 
@@ -160,20 +160,50 @@ public class Field {
       return null;
     }
     switch (dataType) {
-    case DOUBLE:
-      return getDoubleV();
-    case FLOAT:
-      return getFloatV();
-    case INT64:
-      return getLongV();
-    case INT32:
-      return getIntV();
-    case BOOLEAN:
-      return getBoolV();
-    case TEXT:
-      return getBinaryV();
-    default:
-      throw new UnSupportedDataTypeException("UnSupported: " + dataType);
+      case DOUBLE:
+        return getDoubleV();
+      case FLOAT:
+        return getFloatV();
+      case INT64:
+        return getLongV();
+      case INT32:
+        return getIntV();
+      case BOOLEAN:
+        return getBoolV();
+      case TEXT:
+        return getBinaryV();
+      default:
+        throw new UnSupportedDataTypeException(dataType.toString());
     }
+  }
+
+  public static Field getField(Object value, TSDataType dataType) {
+    if (value == null) {
+      return new Field(null);
+    }
+    Field field = new Field(dataType);
+    switch (dataType) {
+      case INT32:
+        field.setIntV((int) value);
+        break;
+      case INT64:
+        field.setLongV((long) value);
+        break;
+      case FLOAT:
+        field.setFloatV((float) value);
+        break;
+      case DOUBLE:
+        field.setDoubleV((double) value);
+        break;
+      case BOOLEAN:
+        field.setBoolV((boolean) value);
+        break;
+      case TEXT:
+        field.setBinaryV((Binary) value);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(dataType.toString());
+    }
+    return field;
   }
 }

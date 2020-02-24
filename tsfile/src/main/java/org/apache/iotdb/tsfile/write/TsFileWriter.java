@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
@@ -33,12 +29,18 @@ import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * TsFileWriter is the entrance for writing processing. It receives a record and send it to
@@ -152,17 +154,21 @@ public class TsFileWriter implements AutoCloseable {
   }
 
 
-  public void addDeviceTemplate(String templateName, Map<String, TimeseriesSchema> template)
+  public void addDeviceTemplate(String templateName, Map<String, MeasurementSchema> template)
       throws WriteProcessException {
-    schema.regieterDeviceTemplate(templateName, template);
+    schema.registerDeviceTemplate(templateName, template);
   }
 
-  public void addTimeseries(Path path, TimeseriesSchema timeseriesSchema)
+  public void addDevice(String deviceId, String templateName) throws WriteProcessException {
+    schema.registerDevice(deviceId, templateName);
+  }
+
+  public void addTimeseries(Path path, MeasurementSchema MeasurementSchema)
       throws WriteProcessException {
     if (schema.containsTimeseries(path)) {
       throw new WriteProcessException("given timeseries has exists! " + path.toString());
     }
-    schema.registerTimeseries(path, timeseriesSchema);
+    schema.registerTimeseries(path, MeasurementSchema);
   }
 
   /**
@@ -183,7 +189,7 @@ public class TsFileWriter implements AutoCloseable {
 
     // add all SeriesWriter of measurements in this TSRecord to this
     // ChunkGroupWriter
-    Map<Path, TimeseriesSchema> schemaDescriptorMap = schema.getTimeseriesSchemaMap();
+    Map<Path, MeasurementSchema> schemaDescriptorMap = schema.getMeasurementSchemaMap();
     for (DataPoint dp : record.dataPointList) {
       String measurementId = dp.getMeasurementId();
       Path path = new Path(record.deviceId, measurementId);
@@ -215,8 +221,8 @@ public class TsFileWriter implements AutoCloseable {
     String deviceId = rowBatch.deviceId;
 
     // add all SeriesWriter of measurements in this RowBatch to this ChunkGroupWriter
-    Map<Path, TimeseriesSchema> schemaDescriptorMap = schema.getTimeseriesSchemaMap();
-    for (TimeseriesSchema timeseries : rowBatch.timeseries) {
+    Map<Path, MeasurementSchema> schemaDescriptorMap = schema.getMeasurementSchemaMap();
+    for (MeasurementSchema timeseries : rowBatch.timeseries) {
       String measurementId = timeseries.getMeasurementId();
       if (schemaDescriptorMap.containsKey(new Path(deviceId, measurementId))) {
         groupWriter.tryToAddSeriesWriter(schemaDescriptorMap.get(new Path(deviceId, measurementId)),
@@ -360,5 +366,24 @@ public class TsFileWriter implements AutoCloseable {
    */
   public void flushForTest() throws IOException {
     flushAllChunks();
+  }
+
+  public void flushForTest(Long version) throws IOException {
+    if (recordCount > 0) {
+      for (Map.Entry<String, IChunkGroupWriter> entry: groupWriters.entrySet()) {
+        long pos = fileWriter.getPos();
+        String deviceId = entry.getKey();
+        IChunkGroupWriter groupWriter = entry.getValue();
+        fileWriter.startChunkGroup(deviceId);
+        long dataSize = groupWriter.flushToFileWriter(fileWriter);
+        if (fileWriter.getPos() - pos != dataSize) {
+          throw new IOException(String.format(
+                  "Flushed data size is inconsistent with computation! Estimated: %d, Actual: %d",
+                  dataSize, fileWriter.getPos() - pos));
+        }
+        fileWriter.endChunkGroup(version);
+      }
+      reset();
+    }
   }
 }

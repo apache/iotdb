@@ -31,7 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +55,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public void tryToAddSeriesWriter(TimeseriesSchema schema, int pageSizeThreshold) {
+  public void tryToAddSeriesWriter(MeasurementSchema schema, int pageSizeThreshold) {
     if (!chunkWriters.containsKey(schema.getMeasurementId())) {
       IChunkWriter seriesWriter = new ChunkWriterImpl(schema);
       this.chunkWriters.put(schema.getMeasurementId(), seriesWriter);
@@ -77,7 +77,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
 
   @Override
   public void write(RowBatch rowBatch) throws WriteProcessException, IOException {
-    List<TimeseriesSchema> timeseries = rowBatch.timeseries;
+    List<MeasurementSchema> timeseries = rowBatch.timeseries;
     for (int i = 0; i < timeseries.size(); i++) {
       String measurementId = timeseries.get(i).getMeasurementId();
       TSDataType dataType = timeseries.get(i).getType();

@@ -34,8 +34,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.resourceRelated.CachedUnseqResourceMergeReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.resource.CachedUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -45,7 +45,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 /**
@@ -60,8 +60,8 @@ public class MergeResource {
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
-  private Map<Path, TimeseriesSchema> timeseriesSchemaMap = new HashMap<>();
-  private Map<TimeseriesSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
+  private Map<String, MeasurementSchema> measurementSchemaMap = new HashMap<>(); //is this too waste?
+  private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
   private long timeLowerBound = Long.MIN_VALUE;
 
@@ -98,12 +98,12 @@ public class MergeResource {
     fileReaderCache.clear();
     fileWriterCache.clear();
     modificationCache.clear();
-    timeseriesSchemaMap.clear();
+    measurementSchemaMap.clear();
     chunkWriterCache.clear();
   }
 
-  public TimeseriesSchema getSchema(Path path) {
-    return timeseriesSchemaMap.get(path);
+  public MeasurementSchema getSchema(Path path) {
+    return measurementSchemaMap.get(measurement);
   }
 
   /**
@@ -172,8 +172,8 @@ public class MergeResource {
    * Construct the a new or get an existing ChunkWriter of a measurement. Different timeseries of
    * the same measurement shares the same instance.
    */
-  public IChunkWriter getChunkWriter(TimeseriesSchema timeseriesSchema) {
-    return chunkWriterCache.computeIfAbsent(timeseriesSchema, ChunkWriterImpl::new);
+  public IChunkWriter getChunkWriter(MeasurementSchema MeasurementSchema) {
+    return chunkWriterCache.computeIfAbsent(MeasurementSchema, ChunkWriterImpl::new);
   }
 
   /**
@@ -260,9 +260,9 @@ public class MergeResource {
     this.cacheDeviceMeta = cacheDeviceMeta;
   }
 
-  public void addTimeseriesSchemaMap(Map<String, TimeseriesSchema> schemasMap) {
-    for (Map.Entry<String, TimeseriesSchema> entry : schemasMap.entrySet()) {
-      timeseriesSchemaMap.put(new Path(entry.getKey()), entry.getValue());
+  public void addMeasurementSchemaMap(List<MeasurementSchema> schemas) {
+    for (MeasurementSchema measurementSchema : schemas) {
+      measurementSchemaMap.put(measurementSchema.getMeasurementId(), measurementSchema);
     }
   }
 

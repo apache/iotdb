@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
@@ -50,19 +50,19 @@ public class TsFileIOWriterTest {
     TsFileIOWriter writer = new TsFileIOWriter(new File(tsfile));
 
     // file schema
-    TimeseriesSchema timeseriesSchema = TestHelper.createSimpleTimeseriesSchema("sensor01");
+    MeasurementSchema MeasurementSchema = TestHelper.createSimpleMeasurementSchema("sensor01");
     Schema schema = new Schema();
-    schema.registerTimeseries(new Path(deviceId, "sensor01"), timeseriesSchema);
+    schema.registerTimeseries(new Path(deviceId, "sensor01"), MeasurementSchema);
 
     // chunk statistics
-    Statistics statistics = Statistics.getStatsByType(timeseriesSchema.getType());
+    Statistics statistics = Statistics.getStatsByType(MeasurementSchema.getType());
     statistics.updateStats(0L, 0L);
 
     // chunk group 1
     writer.startChunkGroup(deviceId);
-    writer.startFlushChunk(timeseriesSchema, timeseriesSchema.getCompressionType(),
-        timeseriesSchema.getType(),
-        timeseriesSchema.getEncodingType(), statistics, 0, 0);
+    writer.startFlushChunk(MeasurementSchema, MeasurementSchema.getCompressor(),
+        MeasurementSchema.getType(),
+        MeasurementSchema.getEncodingType(), statistics, 0, 0);
     writer.endCurrentChunk();
     writer.endChunkGroup(0);
 

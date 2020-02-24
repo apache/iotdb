@@ -35,7 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * This writer is used to write time-value into a page. It consists of a time
@@ -64,10 +64,10 @@ public class PageWriter {
     this(null, null);
   }
 
-  public PageWriter(TimeseriesSchema timeseriesSchema) {
-    this(timeseriesSchema.getTimeEncoder(), timeseriesSchema.getValueEncoder());
-    this.statistics = Statistics.getStatsByType(timeseriesSchema.getType());
-    this.compressor = ICompressor.getCompressor(timeseriesSchema.getCompressionType());
+  public PageWriter(MeasurementSchema MeasurementSchema) {
+    this(MeasurementSchema.getTimeEncoder(), MeasurementSchema.getValueEncoder());
+    this.statistics = Statistics.getStatsByType(MeasurementSchema.getType());
+    this.compressor = ICompressor.getCompressor(MeasurementSchema.getCompressor());
   }
 
   private PageWriter(Encoder timeEncoder, Encoder valueEncoder) {
@@ -283,7 +283,7 @@ public class PageWriter {
   /**
    * reset this page
    */
-  public void reset(TimeseriesSchema measurementSchema) {
+  public void reset(MeasurementSchema measurementSchema) {
     timeOut.reset();
     valueOut.reset();
     statistics = Statistics.getStatsByType(measurementSchema.getType());

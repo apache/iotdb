@@ -33,7 +33,7 @@ import org.apache.iotdb.spark.tsfile.qp.common.TSQueryPlan;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class PhysicalOptimizer {
 

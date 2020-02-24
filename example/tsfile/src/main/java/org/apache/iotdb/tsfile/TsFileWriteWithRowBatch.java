@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
 
@@ -54,7 +54,7 @@ public class TsFileWriteWithRowBatch {
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
         schema.registerTimeseries(new Path("device_1", "sensor_" + (i + 1)),
-            new TimeseriesSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
+            new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
       }
 
       // add measurements into TSFileWriter

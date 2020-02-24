@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class TestHelper {
 
@@ -46,8 +46,8 @@ public class TestHelper {
     return deviceMetaDataMap;
   }
 
-  public static TimeseriesSchema createSimpleTimeseriesSchema(String measurementuid) {
-    return new TimeseriesSchema(measurementuid, TSDataType.INT64, TSEncoding.RLE);
+  public static MeasurementSchema createSimpleMeasurementSchema(String measurementuid) {
+    return new MeasurementSchema(measurementuid, TSDataType.INT64, TSEncoding.RLE);
   }
   
   public static TimeseriesMetaData createSimpleTimseriesMetaData(String measurementuid) {

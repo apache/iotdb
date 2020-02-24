@@ -46,7 +46,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +59,7 @@ public class TsFileIOWriter {
   public static final byte[] versionNumberBytes;
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(TsFileIOWriter.class);
-
+  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   static {
     magicStringBytes = BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING);
     versionNumberBytes = TSFileConfig.VERSION_NUMBER.getBytes();
@@ -95,6 +95,10 @@ public class TsFileIOWriter {
    */
   public TsFileIOWriter(File file) throws IOException {
     this.out = new DefaultTsFileOutput(file);
+    this.file = file;
+    if (resourceLogger.isInfoEnabled()) {
+      resourceLogger.info("{} writer is opened.", file.getName());
+    }
     startFile();
   }
 
@@ -157,29 +161,29 @@ public class TsFileIOWriter {
   /**
    * start a {@linkplain ChunkMetaData ChunkMetaData}.
    *
-   * @param timeseriesSchema     - schema of this time series
+   * @param MeasurementSchema     - schema of this time series
    * @param compressionCodecName - compression name of this time series
    * @param tsDataType           - data type
    * @param statistics           - Chunk statistics
    * @param dataSize             - the serialized size of all pages
    * @throws IOException if I/O error occurs
    */
-  public void startFlushChunk(TimeseriesSchema timeseriesSchema,
+  public void startFlushChunk(MeasurementSchema MeasurementSchema,
       CompressionType compressionCodecName,
       TSDataType tsDataType, TSEncoding encodingType, Statistics<?> statistics, int dataSize,
       int numOfPages)
       throws IOException {
 
-    currentChunkMetaData = new ChunkMetaData(timeseriesSchema.getMeasurementId(), tsDataType,
+    currentChunkMetaData = new ChunkMetaData(MeasurementSchema.getMeasurementId(), tsDataType,
         out.getPosition(),
         statistics);
 
     // flush ChunkHeader to TsFileIOWriter
     if (logger.isDebugEnabled()) {
-      logger.debug("start series chunk:{}, file position {}", timeseriesSchema, out.getPosition());
+      logger.debug("start series chunk:{}, file position {}", MeasurementSchema, out.getPosition());
     }
 
-    ChunkHeader header = new ChunkHeader(timeseriesSchema.getMeasurementId(), dataSize, tsDataType,
+    ChunkHeader header = new ChunkHeader(MeasurementSchema.getMeasurementId(), dataSize, tsDataType,
         compressionCodecName, encodingType, numOfPages);
     header.serializeTo(out.wrapAsStream());
 
@@ -226,7 +230,7 @@ public class TsFileIOWriter {
     ReadWriteIOUtils.write(MetaMarker.SEPARATOR, out.wrapAsStream());
 
     // get all measurementSchema of this TsFile
-    Map<Path, TimeseriesSchema> schemaDescriptors = schema.getTimeseriesSchemaMap();
+    Map<Path, MeasurementSchema> schemaDescriptors = schema.getMeasurementSchemaMap();
     logger.debug("get time series list:{}", schemaDescriptors);
 
     deviceMetaDataMap = flushAllChunkMetadataList();
@@ -258,6 +262,9 @@ public class TsFileIOWriter {
 
     // close file
     out.close();
+    if (resourceLogger.isInfoEnabled()) {
+      resourceLogger.info("{} writer is closed.", file.getName());
+    }
     canWrite = false;
     chunkMetadataListMap = new TreeMap<>();
     logger.info("output stream is closed");

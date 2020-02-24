@@ -32,6 +32,7 @@ import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -54,7 +55,7 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
@@ -66,7 +67,9 @@ public class SeqTsFileRecoverTest {
   private File tsF;
   private TsFileWriter writer;
   private WriteLogNode node;
-  private String logNodePrefix = "testNode/0";
+
+  private String logNodePrefix = TestConstant.BASE_OUTPUT_PATH.concat("testRecover");
+  private String storageGroup = "target";
   private Schema schema;
   private TsFileResource resource;
   private VersionController versionController = new VersionController() {
@@ -90,16 +93,16 @@ public class SeqTsFileRecoverTest {
     tsF.getParentFile().mkdirs();
 
     schema = new Schema();
-    Map<String, TimeseriesSchema> template = new HashMap<>();
+    Map<String, MeasurementSchema> template = new HashMap<>();
     for (int i = 0; i < 10; i++) {
-      template.put("sensor" + i, new TimeseriesSchema("sensor" + i, TSDataType.INT64,
+      template.put("sensor" + i, new MeasurementSchema("sensor" + i, TSDataType.INT64,
           TSEncoding.PLAIN));
     }
-    schema.regieterDeviceTemplate("template1", template);
+    schema.registerDeviceTemplate("template1", template);
     for (int i = 0; i < 10; i++) {
-      schema.regiesterDevice("device" + i, "template1");
+      schema.registerDevice("device" + i, "template1");
     }
-    schema.regiesterDevice("device99", "template1");
+    schema.registerDevice("device99", "template1");
     writer = new TsFileWriter(tsF, schema);
 
     TSRecord tsRecord = new TSRecord(100, "device99");
@@ -152,7 +155,7 @@ public class SeqTsFileRecoverTest {
   public void testNonLastRecovery() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, schema,
         versionController, resource, true, false);
-    ActiveTimeSeriesCounter.getInstance().init(logNodePrefix);
+    ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     RestorableTsFileIOWriter writer = performer.recover();
     assertFalse(writer.canWrite());
 
@@ -201,7 +204,7 @@ public class SeqTsFileRecoverTest {
   public void testLastRecovery() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, schema,
         versionController, resource, true, true);
-    ActiveTimeSeriesCounter.getInstance().init(logNodePrefix);
+    ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     RestorableTsFileIOWriter writer = performer.recover();
     assertTrue(writer.canWrite());
     writer.endFile(schema);

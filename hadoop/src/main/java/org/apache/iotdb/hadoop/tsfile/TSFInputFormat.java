@@ -28,6 +28,7 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
+import org.apache.iotdb.hadoop.tsfile.TSFInputSplit.ChunkGroupInfo;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -301,45 +302,53 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
 
     Arrays.sort(blockLocations, Comparator.comparingLong(BlockLocation::getOffset));
 
-    Map<String, List<TimeseriesMetaData>> deviceTimeseriesMetaDataListMap = new HashMap<>();
+    List<ChunkGroupInfo> ChunkGroupInfoList = new ArrayList<>();
     int currentBlockIndex = 0;
     long splitSize = 0;
     List<String> hosts = new ArrayList<>();
     for (Map.Entry<String, List<TimeseriesMetaData>> entry : fileReader.getSortedTimeseriesMetaDataMap().entrySet()) {
       String deviceId = entry.getKey();
       List<TimeseriesMetaData> timeseriesMetaDataList = entry.getValue();
-      logger.info("");
+      logger.info("The device name is {}", deviceId);
       for (TimeseriesMetaData timeseriesMetaData : timeseriesMetaDataList) {
-        long middle = (timeseriesMetaData.getOffsetOfChunkMetaDataList() 
-            + timeseriesMetaData.getDataSizeOfChunkMetaDataList() / 2);
-        int blkIndex = getBlockLocationIndex(blockLocations, middle, logger);
-        if (hosts.size() == 0) {
-          hosts.addAll(Arrays.asList(blockLocations[blkIndex].getHosts()));
-        }
-        if (blkIndex != currentBlockIndex) {
-          TSFInputSplit tsfInputSplit = makeSplit(path, timeseriesMetaDataList, splitSize, hosts);
-          logger.info("The tsfile inputSplit information is {}", tsfInputSplit);
-          splits.add(tsfInputSplit);
-
-          currentBlockIndex = blkIndex;
-          timeseriesMetaDataList.clear();
-          timeseriesMetaDataList.add(timeseriesMetaData);
-          splitSize = getTotalByteSizeOfChunkMetaDataList(timeseriesMetaData);
-          hosts.clear();
-        } else {
-          timeseriesMetaDataList.add(timeseriesMetaData);
-          splitSize += getTotalByteSizeOfChunkMetaDataList(timeseriesMetaData);
+        List<ChunkMetaData> chunkMetaDataList = fileReader.readChunkMetaDataList(timeseriesMetaData);
+        for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
+          long middle = chunkMetaData.getOffsetOfChunkHeader() 
+              + getTotalByteSizeOfChunk(chunkMetaData) / 2;
+          int blkIndex = getBlockLocationIndex(blockLocations, middle, logger);
+          if (hosts.size() == 0) {
+            hosts.addAll(Arrays.asList(blockLocations[blkIndex].getHosts()));
+          }
+          ChunkGroupInfo chunkGroupInfo = new ChunkGroupInfo(deviceId, 
+              new String[] {chunkMetaData.getMeasurementUid()}, 
+              chunkMetaData.getOffsetOfChunkHeader(), 
+              chunkMetaData.getOffsetOfChunkHeader() + getTotalByteSizeOfChunk(chunkMetaData));
+          if (blkIndex != currentBlockIndex) {
+            TSFInputSplit tsfInputSplit = makeSplit(path, ChunkGroupInfoList, splitSize, hosts);
+            logger.info("The tsfile inputSplit information is {}", tsfInputSplit);
+            splits.add(tsfInputSplit);
+  
+            currentBlockIndex = blkIndex;
+            ChunkGroupInfoList.clear();
+            ChunkGroupInfoList.add(chunkGroupInfo);
+            splitSize = getTotalByteSizeOfChunk(chunkMetaData);
+            hosts.clear();
+          } else {
+            ChunkGroupInfoList.add(chunkGroupInfo);
+            splitSize += getTotalByteSizeOfChunk(chunkMetaData);
+          }
         }
       }
     }
-    TSFInputSplit tsfInputSplit = makeSplit(path, timeseriesMetaDataList, splitSize, hosts);
+    TSFInputSplit tsfInputSplit = makeSplit(path, ChunkGroupInfoList, splitSize, hosts);
     logger.info("The tsfile inputSplit information is {}", tsfInputSplit);
     splits.add(tsfInputSplit);
     return splits;
   }
-  
-  private static long getTotalByteSizeOfChunkMetaDataList(TimeseriesMetaData timeseriesMetaData) {
-    return timeseriesMetaData.getDataSizeOfChunkMetaDataList();
+
+  private static long getTotalByteSizeOfChunk(ChunkMetaData chunkMetaData) {
+    return chunkMetaData.getMeasurementUid().getBytes().length
+        + Long.BYTES + Short.BYTES + chunkMetaData.getStatistics().getSerializedSize();
   }
 
 
@@ -361,14 +370,10 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
             + blockLocations[blockLocations.length - 1].getLength());
     return -1;
   }
-  
-  private static TSFInputSplit makeSplit(Path path, List<TimeseriesMetaData> timeseriesMetaDataList,
+
+  private static TSFInputSplit makeSplit(Path path, List<ChunkGroupInfo> chunkGroupInfoList,
       long length, List<String> hosts) {
-    return new TSFInputSplit(path, hosts.toArray(new String[0]), length,
-        timeseriesMetaDataList.stream()
-        .map(TSFInputSplit.ChunkGroupInfo::new)
-        .collect(Collectors.toList())
-    );
+    return new TSFInputSplit(path, hosts.toArray(new String[0]), length, chunkGroupInfoList);
   }
 
 }

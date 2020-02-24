@@ -34,7 +34,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,11 +111,11 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logFiles(resource);
 
-    Map<String, TimeseriesSchema> timeseriesSchemasMap = MManager.getInstance()
-        .getStorageGroupSchemaMap(storageGroupName);
-    resource.addTimeseriesSchemaMap(timeseriesSchemasMap);
+    List<MeasurementSchema> measurementSchemas = MManager.getInstance()
+        .getStorageGroupSchema(storageGroupName);
+    resource.addMeasurements(measurementSchemas);
 
-    List<String> storageGroupPaths = MManager.getInstance().getPaths(storageGroupName + ".*");
+    List<String> storageGroupPaths = MManager.getInstance().getAllTimeseriesName(storageGroupName + ".*");
     List<Path> unmergedSeries = new ArrayList<>();
     for (String path : storageGroupPaths) {
       unmergedSeries.add(new Path(path));

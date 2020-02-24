@@ -35,15 +35,15 @@ import org.apache.iotdb.tsfile.write.record.RowBatch;
 public class Schema {
 
   /**
-   * Path (device + measurement) -> TimeseriesSchema By default, use the LinkedHashMap to store the
+   * Path (device + measurement) -> MeasurementSchema By default, use the LinkedHashMap to store the
    * order of insertion
    */
-  private Map<Path, TimeseriesSchema> timeseriesSchemaMap;
+  private Map<Path, MeasurementSchema> MeasurementSchemaMap;
 
   /**
-   * template name -> (measuremnet -> TimeseriesSchema)
+   * template name -> (measuremnet -> MeasurementSchema)
    */
-  private Map<String, Map<String, TimeseriesSchema>> deviceTemplates;
+  private Map<String, Map<String, MeasurementSchema>> deviceTemplates;
 
   /**
    * device -> template name
@@ -55,11 +55,11 @@ public class Schema {
    */
 
   public Schema() {
-    this.timeseriesSchemaMap = new LinkedHashMap<>();
+    this.MeasurementSchemaMap = new LinkedHashMap<>();
   }
 
-  public Schema(Map<Path, TimeseriesSchema> knownSchema) {
-    this.timeseriesSchemaMap = knownSchema;
+  public Schema(Map<Path, MeasurementSchema> knownSchema) {
+    this.MeasurementSchemaMap = knownSchema;
   }
 
   /**
@@ -68,7 +68,7 @@ public class Schema {
    * @param deviceId the name of the device specified to be written in
    */
   public RowBatch createRowBatch(String deviceId) {
-    return new RowBatch(deviceId, new ArrayList<>(timeseriesSchemaMap.values()));
+    return new RowBatch(deviceId, new ArrayList<>(MeasurementSchemaMap.values()));
   }
 
   /**
@@ -78,28 +78,28 @@ public class Schema {
    * @param maxBatchSize max size of rows in batch
    */
   public RowBatch createRowBatch(String deviceId, int maxBatchSize) {
-    return new RowBatch(deviceId, new ArrayList<>(timeseriesSchemaMap.values()), maxBatchSize);
+    return new RowBatch(deviceId, new ArrayList<>(MeasurementSchemaMap.values()), maxBatchSize);
   }
 
-  public void registerTimeseries(Path path, TimeseriesSchema descriptor) {
-    this.timeseriesSchemaMap.put(path, descriptor);
+  public void registerTimeseries(Path path, MeasurementSchema descriptor) {
+    this.MeasurementSchemaMap.put(path, descriptor);
   }
 
-  public void regieterDeviceTemplate(String templateName, Map<String, TimeseriesSchema> template) {
+  public void registerDeviceTemplate(String templateName, Map<String, MeasurementSchema> template) {
     if (deviceTemplates == null) {
       deviceTemplates = new HashMap<>();
     }
     this.deviceTemplates.put(templateName, template);
   }
 
-  public void extendTemplate(String templateName, TimeseriesSchema descriptor) {
-    Map<String, TimeseriesSchema> template = this.deviceTemplates
+  public void extendTemplate(String templateName, MeasurementSchema descriptor) {
+    Map<String, MeasurementSchema> template = this.deviceTemplates
         .getOrDefault(templateName, new HashMap<>());
     template.put(descriptor.getMeasurementId(), descriptor);
     this.deviceTemplates.put(templateName, template);
   }
 
-  public void regiesterDevice(String deviceId, String templateName) {
+  public void registerDevice(String deviceId, String templateName) {
     if (!deviceTemplates.containsKey(templateName)) {
       return;
     }
@@ -107,37 +107,37 @@ public class Schema {
       devices = new HashMap<>();
     }
     this.devices.put(deviceId, templateName);
-    Map<String, TimeseriesSchema> template = deviceTemplates.get(templateName);
-    for (Map.Entry<String, TimeseriesSchema> entry : template.entrySet()) {
+    Map<String, MeasurementSchema> template = deviceTemplates.get(templateName);
+    for (Map.Entry<String, MeasurementSchema> entry : template.entrySet()) {
       Path path = new Path(deviceId, entry.getKey());
       registerTimeseries(path, entry.getValue());
     }
   }
 
-  public TimeseriesSchema getSeriesSchema(Path path) {
-    return timeseriesSchemaMap.get(path);
+  public MeasurementSchema getSeriesSchema(Path path) {
+    return MeasurementSchemaMap.get(path);
   }
 
   public TSDataType getTimeseriesDataType(Path path) {
-    if (!timeseriesSchemaMap.containsKey(path)) {
+    if (!MeasurementSchemaMap.containsKey(path)) {
       return null;
     }
-    return timeseriesSchemaMap.get(path).getType();
+    return MeasurementSchemaMap.get(path).getType();
   }
 
   public boolean containsDevice(String device) {
     return devices.containsKey(device);
   }
 
-  public Map<Path, TimeseriesSchema> getTimeseriesSchemaMap() {
-    return timeseriesSchemaMap;
+  public Map<Path, MeasurementSchema> getMeasurementSchemaMap() {
+    return MeasurementSchemaMap;
   }
 
   /**
    * check if this schema contains a measurement named measurementId.
    */
   public boolean containsTimeseries(Path path) {
-    return timeseriesSchemaMap.containsKey(path);
+    return MeasurementSchemaMap.containsKey(path);
   }
 
 }

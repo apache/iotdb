@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
@@ -48,14 +49,15 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TsFileSequenceReader implements AutoCloseable {
 
-  protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(TsFileSequenceReader.class);
+  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
+  protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   protected String file;
   private TsFileInput tsFileInput;
   private long fileMetadataPos;
@@ -65,7 +67,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   private TsFileMetaData tsFileMetaData;
   private EndianType endianType = EndianType.BIG_ENDIAN;
   private Map<String, Map<String, TimeseriesMetaData>> cachedTimeseriesMetaDataMap;
-  private boolean cacheMetadata;
+  private boolean cacheDeviceMetadata;
+  private ConcurrentHashMap deviceMetadataMap;
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
@@ -87,6 +90,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param loadMetadataSize -whether load meta data size
    */
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
+    if (resourceLogger.isInfoEnabled()) {
+      resourceLogger.info("{} reader is opened. {}", file, getClass().getName());
+    }
     this.file = file;
     tsFileInput = FSFactoryProducer.getFileInputFactory().getTsFileInput(file);
     try {
@@ -102,12 +108,12 @@ public class TsFileSequenceReader implements AutoCloseable {
   // used in merge resource
 
   // TODO: deviceMetadataMap
-  public TsFileSequenceReader(String file, boolean loadMetadata, boolean cacheMetadata)
+  public TsFileSequenceReader(String file, boolean loadMetadata, boolean cacheDeviceMetadata)
       throws IOException {
     this(file, loadMetadata);
-    this.cacheMetadata = cacheMetadata;
-    if (cacheMetadata) {
-      cachedTimeseriesMetaDataMap = new LinkedHashMap<>();
+    this.cacheDeviceMetadata = cacheDeviceMetadata;
+    if (cacheDeviceMetadata) {
+      deviceMetadataMap = new ConcurrentHashMap<>();
     }
   }
 
@@ -489,15 +495,13 @@ public class TsFileSequenceReader implements AutoCloseable {
     ByteBuffer buffer = readData(position, header.getCompressedSize());
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(type);
     ByteBuffer uncompressedBuffer = ByteBuffer.allocate(header.getUncompressedSize());
-    switch (type) {
-      case UNCOMPRESSED:
-        return buffer;
-      default:
-        // FIXME if the buffer is not array-implemented.
-        unCompressor.uncompress(buffer.array(), buffer.position(), buffer.remaining(),
-            uncompressedBuffer.array(), 0);
-        return uncompressedBuffer;
-    }
+    if (type == CompressionType.UNCOMPRESSED) {
+      return buffer;
+    }// FIXME if the buffer is not array-implemented.
+    unCompressor.uncompress(buffer.array(), buffer.position(), buffer.remaining(),
+        uncompressedBuffer.array(),
+        0);
+    return uncompressedBuffer;
   }
 
   /**
@@ -517,6 +521,9 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   public void close() throws IOException {
+    if (resourceLogger.isInfoEnabled()) {
+      resourceLogger.info("{} reader is closed.", file);
+    }
     this.tsFileInput.close();
     // deviceMetadataMap = null;
   }
@@ -575,7 +582,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * be truncated.
    */
 
-  public long selfCheck(Map<Path, TimeseriesSchema> newSchema, 
+  public long selfCheck(Map<Path, MeasurementSchema> newSchema, 
       Map<Path, List<ChunkMetaData>> chunkMetadataListMap,
       boolean fastFinish) throws IOException {
     File checkFile = FSFactoryProducer.getFSFactory().getFile(this.file);
@@ -621,7 +628,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     boolean goon = true;
     byte marker;
     int chunkCnt = 0;
-    List<TimeseriesSchema> timeseriesSchemaList = new ArrayList<>();
+    List<MeasurementSchema> MeasurementSchemaList = new ArrayList<>();
     try {
       while (goon && (marker = this.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
@@ -638,10 +645,10 @@ public class TsFileSequenceReader implements AutoCloseable {
             // insertion is not tolerable
             ChunkHeader header = this.readChunkHeader();
             measurementID = header.getMeasurementID();
-            TimeseriesSchema timeseriesSchema = new TimeseriesSchema(measurementID,
+            MeasurementSchema MeasurementSchema = new MeasurementSchema(measurementID,
                 header.getDataType(),
                 header.getEncodingType(), header.getCompressionType());
-            timeseriesSchemaList.add(timeseriesSchema);
+            MeasurementSchemaList.add(MeasurementSchema);
             dataType = header.getDataType();
             Statistics<?> chunkStatistics = Statistics.getStatsByType(dataType);
             if (header.getNumOfPages() > 0) {
@@ -673,7 +680,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
             deviceID = chunkGroupFooter.getDeviceID();
             if (newSchema != null) {
-              for (TimeseriesSchema tsSchema : timeseriesSchemaList) {
+              for (MeasurementSchema tsSchema : MeasurementSchemaList) {
                 newSchema.putIfAbsent(new Path(deviceID, tsSchema.getMeasurementId()), tsSchema);
               }
             }
@@ -692,7 +699,7 @@ public class TsFileSequenceReader implements AutoCloseable {
 
             totalChunkNum += chunkCnt;
             chunkCnt = 0;
-            timeseriesSchemaList = new ArrayList<>();
+            MeasurementSchemaList = new ArrayList<>();
             break;
           default:
             // the disk file is corrupted, using this file may be dangerous

@@ -42,7 +42,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -54,7 +54,7 @@ public class MergeUpgradeTest {
 
   private int seqFileNum = 2;
   private TSEncoding encoding = TSEncoding.RLE;
-  private TimeseriesSchema[] timeseriesSchemas;
+  private MeasurementSchema[] MeasurementSchemas;
   private int timeseriesNum = 5;
   private long ptNum = 10;
   private boolean changeVersion = true;
@@ -105,9 +105,9 @@ public class MergeUpgradeTest {
   }
 
   private void prepareSeries() {
-    timeseriesSchemas = new TimeseriesSchema[timeseriesNum];
+    MeasurementSchemas = new MeasurementSchema[timeseriesNum];
     for (int i = 0; i < timeseriesNum; i++) {
-      timeseriesSchemas[i] = new TimeseriesSchema("sensor" + i, TSDataType.DOUBLE,
+      MeasurementSchemas[i] = new MeasurementSchema("sensor" + i, TSDataType.DOUBLE,
           encoding, CompressionType.UNCOMPRESSED);
     }
   }
@@ -145,14 +145,14 @@ public class MergeUpgradeTest {
 
   private void prepareData(TsFileResource tsFileResource, TsFileWriter fileWriter, long timeOffset,
       long ptNum, long valueOffset) throws WriteProcessException, IOException {
-    for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-      fileWriter.addTimeseries(new Path(deviceName, timeseriesSchema.getMeasurementId()), timeseriesSchema);
+    for (MeasurementSchema MeasurementSchema : MeasurementSchemas) {
+      fileWriter.addTimeseries(new Path(deviceName, MeasurementSchema.getMeasurementId()), MeasurementSchema);
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       TSRecord record = new TSRecord(i, deviceName);
       for (int k = 0; k < timeseriesNum; k++) {
-        record.addTuple(DataPoint.getDataPoint(timeseriesSchemas[k].getType(),
-            timeseriesSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
+        record.addTuple(DataPoint.getDataPoint(MeasurementSchemas[k].getType(),
+            MeasurementSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
       }
       fileWriter.write(record);
       tsFileResource.updateStartTime(deviceName, i);

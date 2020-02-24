@@ -48,7 +48,7 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
 
@@ -65,7 +65,7 @@ public class WriteTest {
   private String outputDataFile;
   private String errorOutputDataFile;
   private Random rm = new Random();
-  private ArrayList<TimeseriesSchema> timeseriesArray;
+  private ArrayList<MeasurementSchema> measurementArray;
   private ArrayList<Path> pathArray;
   private Schema schema;
   private int stageSize = 4;
@@ -103,22 +103,21 @@ public class WriteTest {
     if (errorFile.exists()) {
       errorFile.delete();
     }
-    timeseriesArray = new ArrayList<>();
-    timeseriesArray.add(new TimeseriesSchema("s0", TSDataType.INT32, TSEncoding.RLE));
-    timeseriesArray.add(new TimeseriesSchema("s1", TSDataType.INT64, TSEncoding.TS_2DIFF));
+    measurementArray = new ArrayList<>();
+    measurementArray.add(new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.RLE));
+    measurementArray.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.TS_2DIFF));
     HashMap<String, String> props = new HashMap<>();
     props.put("max_point_number", "2");
-    timeseriesArray.add(new TimeseriesSchema("s2", TSDataType.FLOAT, TSEncoding.RLE,
-        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()), props));
+    measurementArray.add(new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE,
+                              TSFileDescriptor.getInstance().getConfig().getCompressor(), props));
     props = new HashMap<>();
     props.put("max_point_number", "3");
-    timeseriesArray.add(new TimeseriesSchema("s3", TSDataType.DOUBLE, TSEncoding.TS_2DIFF,
-        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()), props));
-    timeseriesArray.add(new TimeseriesSchema("s4", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    measurementArray.add(new MeasurementSchema("s3", TSDataType.DOUBLE, TSEncoding.TS_2DIFF,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(), props));
+    measurementArray.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     pathArray = new ArrayList<>();
-    for (int i = 0; i < timeseriesArray.size(); i++) {
-      Path path = new Path("root.sg0.d0.s" + i);
-      pathArray.add(path);
+    for (int i = 0 ; i < 5; i++) {
+      pathArray.add(new Path("d1", "s" + i));
     }
     schema = new Schema();
     LOG.info(schema.toString());
@@ -198,13 +197,6 @@ public class WriteTest {
     TsFileSequenceReader reader = new TsFileSequenceReader(outputDataFile);
     TsFileMetaData metaData = reader.readFileMetadata();
 
-    // Assert.assertEquals("{s3=[s3,DOUBLE,TS_2DIFF,{max_point_number=3},UNCOMPRESSED],
-    // "
-    // + "s4=[s4,BOOLEAN,PLAIN,{},UNCOMPRESSED], " +
-    // "s0=[s0,INT32,RLE,{},UNCOMPRESSED], "
-    // + "s1=[s1,INT64,TS_2DIFF,{},UNCOMPRESSED], "
-    // + "s2=[s2,FLOAT,RLE,{max_point_number=2},UNCOMPRESSED]}",
-    // metaData.getTimeseriesSchema().toString());
   }
 
   public void write() throws IOException, WriteProcessException {
@@ -212,8 +204,8 @@ public class WriteTest {
     long startTime = System.currentTimeMillis();
     String[] strings;
     // add all measurement except the last one at before writing
-    for (int i = 0; i < timeseriesArray.size() - 1; i++) {
-      tsFileWriter.addTimeseries(pathArray.get(i), timeseriesArray.get(i));
+    for (int i = 0; i < measurementArray.size() - 1; i++) {
+      tsFileWriter.addTimeseries(pathArray.get(i), measurementArray.get(i));
     }
     while (true) {
       if (lineCount % stageSize == 0) {
@@ -225,8 +217,8 @@ public class WriteTest {
         }
       }
       if (lineCount == ROW_COUNT / 2) {
-        tsFileWriter.addTimeseries(pathArray.get(timeseriesArray.size() - 1),
-            timeseriesArray.get(timeseriesArray.size() - 1));
+        tsFileWriter.addTimeseries(pathArray.get(measurementArray.size() - 1),
+            measurementArray.get(measurementArray.size() - 1));
       }
       strings = getNextRecord(lineCount, stageState);
       for (String str : strings) {
@@ -236,8 +228,8 @@ public class WriteTest {
       lineCount++;
     }
     // test duplicate measurement adding
-    Path path = pathArray.get(timeseriesArray.size() - 1);
-    TimeseriesSchema dupTimeseries = timeseriesArray.get(timeseriesArray.size() - 1);
+    Path path = pathArray.get(measurementArray.size() - 1);
+    MeasurementSchema dupTimeseries = measurementArray.get(measurementArray.size() - 1);
     try {
       tsFileWriter.addTimeseries(path, dupTimeseries);
     } catch (WriteProcessException e) {

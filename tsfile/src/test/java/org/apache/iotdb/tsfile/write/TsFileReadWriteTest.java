@@ -47,7 +47,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 
 public class TsFileReadWriteTest {
@@ -105,9 +105,9 @@ public class TsFileReadWriteTest {
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       // add measurements into file schema
       tsFileWriter.addTimeseries(new Path("device_1", "sensor_1"),
-          new TimeseriesSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+          new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
       tsFileWriter.addTimeseries(new Path("device_1", "sensor_2"),
-          new TimeseriesSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+          new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
       // construct TSRecord
       TSRecord tsRecord = new TSRecord(1, "device_1");
       DataPoint dPoint1 = new FloatDataPoint("sensor_1", 1.2f);
@@ -147,7 +147,7 @@ public class TsFileReadWriteTest {
     // add measurements into file schema
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       tsFileWriter.addTimeseries(new Path("device_1", "sensor_1"),
-          new TimeseriesSchema("sensor_1", dataType, encodingType));
+          new MeasurementSchema("sensor_1", dataType, encodingType));
       for (long i = 1; i < floatCount; i++) {
         // construct TSRecord
         TSRecord tsRecord = new TSRecord(i, "device_1");

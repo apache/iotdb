@@ -34,7 +34,7 @@ import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -47,7 +47,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 
@@ -64,7 +64,7 @@ abstract class MergeTest {
   TSEncoding encoding = TSEncoding.PLAIN;
 
   String[] deviceIds;
-  TimeseriesSchema[] timeseriesSchemas;
+  MeasurementSchema[] measurementSchemas;
 
   List<TsFileResource> seqResources = new ArrayList<>();
   List<TsFileResource> unseqResources = new ArrayList<>();
@@ -96,21 +96,21 @@ abstract class MergeTest {
   }
 
   private void prepareSeries() throws MetadataException, PathException {
-    timeseriesSchemas = new TimeseriesSchema[measurementNum];
+    measurementSchemas = new MeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
-      timeseriesSchemas[i] = new TimeseriesSchema("sensor" + i, TSDataType.DOUBLE,
+      measurementSchemas[i] = new MeasurementSchema("sensor" + i, TSDataType.DOUBLE,
           encoding, CompressionType.UNCOMPRESSED);
     }
     deviceIds = new String[deviceNum];
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = MERGE_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    MManager.getInstance().setStorageGroupToMTree(MERGE_TEST_SG);
+    MManager.getInstance().setStorageGroup(MERGE_TEST_SG);
     for (String device : deviceIds) {
-      for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-        MManager.getInstance().addPathToMTree(
-            device + PATH_SEPARATOR + timeseriesSchema.getMeasurementId(), timeseriesSchema
-            .getType(), timeseriesSchema.getEncodingType(), timeseriesSchema.getCompressionType(),
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
+        MManager.getInstance().createTimeseries(
+            device + PATH_SEPARATOR + measurementSchema.getMeasurementId(), measurementSchema
+                .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
             Collections.emptyMap());
       }
     }
@@ -170,17 +170,17 @@ abstract class MergeTest {
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
     for (String deviceId : deviceIds) {
-      for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.addTimeseries(
-            new Path(deviceId, timeseriesSchema.getMeasurementId()), timeseriesSchema);
+            new Path(deviceId, measurementSchema.getMeasurementId()), measurementSchema);
       }
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (int j = 0; j < deviceNum; j++) {
         TSRecord record = new TSRecord(i, deviceIds[j]);
         for (int k = 0; k < measurementNum; k++) {
-          record.addTuple(DataPoint.getDataPoint(timeseriesSchemas[k].getType(),
-              timeseriesSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
+          record.addTuple(DataPoint.getDataPoint(measurementSchemas[k].getType(),
+              measurementSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
         }
         fileWriter.write(record);
         tsFileResource.updateStartTime(deviceIds[j], i);

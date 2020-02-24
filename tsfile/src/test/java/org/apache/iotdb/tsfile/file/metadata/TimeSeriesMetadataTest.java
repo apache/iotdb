@@ -27,7 +27,7 @@ import java.nio.channels.FileChannel;
 
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,10 +52,10 @@ public class TimeSeriesMetadataTest {
 
   @Test
   public void testWriteIntoFile() throws IOException {
-    TimeseriesMetaData timeseriesSchema = TestHelper.createSimpleTimseriesMetaData(measurementUID);
-    serialized(timeseriesSchema);
+    TimeseriesMetaData MeasurementSchema = TestHelper.createSimpleTimseriesMetaData(measurementUID);
+    serialized(MeasurementSchema);
     TimeseriesMetaData readMetadata = deSerialized();
-    timeseriesSchema.equals(readMetadata);
+    MeasurementSchema.equals(readMetadata);
     serialized(readMetadata);
   }
 

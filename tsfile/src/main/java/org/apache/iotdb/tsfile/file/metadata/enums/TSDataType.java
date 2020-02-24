@@ -32,20 +32,20 @@ public enum TSDataType {
       throw new IllegalArgumentException("Invalid input: " + i);
     }
     switch (i) {
-    case 0:
-      return BOOLEAN;
-    case 1:
-      return INT32;
-    case 2:
-      return INT64;
-    case 3:
-      return FLOAT;
-    case 4:
-      return DOUBLE;
-    case 5:
-      return TEXT;
-    default:
-      return TEXT;
+      case 0:
+        return BOOLEAN;
+      case 1:
+        return INT32;
+      case 2:
+        return INT64;
+      case 3:
+        return FLOAT;
+      case 4:
+        return DOUBLE;
+      case 5:
+        return TEXT;
+      default:
+        return TEXT;
     }
   }
 

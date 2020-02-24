@@ -24,7 +24,7 @@ import java.util.List;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 /**
@@ -89,7 +89,7 @@ public interface IChunkGroupWriter {
    * @param pageSize
    *            the specified page size
    */
-  void tryToAddSeriesWriter(TimeseriesSchema measurementSchema, int pageSize);
+  void tryToAddSeriesWriter(MeasurementSchema measurementSchema, int pageSize);
 
   /** get the serialized size of current chunkGroup header + all chunks.
    *        Notice, the value does not include any un-sealed page in the chunks.

@@ -23,7 +23,7 @@ import java.util.List;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * Multiple time series of one device that share a time column
@@ -39,7 +39,7 @@ public class RowBatch {
   /**
    * the list of measurement schemas for creating the row batch
    */
-  public List<TimeseriesSchema> timeseries;
+  public List<MeasurementSchema> timeseries;
 
   /**
    * timestamps in this row batch
@@ -71,7 +71,7 @@ public class RowBatch {
    * @param deviceId   the name of the device specified to be written in
    * @param timeseries the list of measurement schemas for creating the row batch
    */
-  public RowBatch(String deviceId, List<TimeseriesSchema> timeseries) {
+  public RowBatch(String deviceId, List<MeasurementSchema> timeseries) {
     this(deviceId, timeseries, DEFAULT_SIZE);
   }
 
@@ -85,7 +85,7 @@ public class RowBatch {
    *                     batch
    * @param maxBatchSize the maximum number of rows for this row batch
    */
-  public RowBatch(String deviceId, List<TimeseriesSchema> timeseries, int maxBatchSize) {
+  public RowBatch(String deviceId, List<MeasurementSchema> timeseries, int maxBatchSize) {
     this.deviceId = deviceId;
     this.timeseries = timeseries;
     this.maxBatchSize = maxBatchSize;

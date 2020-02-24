@@ -53,7 +53,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -203,9 +203,9 @@ public class Session {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
-    for (TimeseriesSchema timeseriesSchema : rowBatch.timeseries) {
-      request.addToMeasurements(timeseriesSchema.getMeasurementId());
-      request.addToTypes(timeseriesSchema.getType().ordinal());
+    for (MeasurementSchema MeasurementSchema : rowBatch.timeseries) {
+      request.addToMeasurements(MeasurementSchema.getMeasurementId());
+      request.addToTypes(MeasurementSchema.getType().ordinal());
     }
     request.setTimestamps(SessionUtils.getTimeBuffer(rowBatch));
     request.setValues(SessionUtils.getValueBuffer(rowBatch));
@@ -393,9 +393,9 @@ public class Session {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
-    for (TimeseriesSchema timeseriesSchema : rowBatch.timeseries) {
-      request.addToMeasurements(timeseriesSchema.getMeasurementId());
-      request.addToTypes(timeseriesSchema.getType().ordinal());
+    for (MeasurementSchema MeasurementSchema : rowBatch.timeseries) {
+      request.addToMeasurements(MeasurementSchema.getMeasurementId());
+      request.addToTypes(MeasurementSchema.getType().ordinal());
     }
     request.setTimestamps(SessionUtils.getTimeBuffer(rowBatch));
     request.setValues(SessionUtils.getValueBuffer(rowBatch));
@@ -554,6 +554,15 @@ public class Session {
     try {
       return checkAndReturn(client.createTimeseries(request));
     } catch (TException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
+  public boolean checkTimeseriesExists(String path) throws IoTDBSessionException {
+    checkPathValidity(path);
+    try {
+      return executeQueryStatement(String.format("SHOW TIMESERIES %s", path)).hasNext();
+    } catch (Exception e) {
       throw new IoTDBSessionException(e);
     }
   }

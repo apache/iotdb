@@ -32,7 +32,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class SchemaBuilderTest {
 
@@ -43,14 +43,14 @@ public class SchemaBuilderTest {
     props.put(JsonFormatConstant.MAX_POINT_NUMBER, "3");
     Schema schema = new Schema();
     schema.registerTimeseries(new Path("d1", "s4"),
-        new TimeseriesSchema("s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
+        new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
     schema.registerTimeseries(new Path("d1", "s5"),
-        new TimeseriesSchema("s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
+        new MeasurementSchema("s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
 
-    Collection<TimeseriesSchema> timeseries = schema.getTimeseriesSchemaMap().values();
+    Collection<MeasurementSchema> timeseries = schema.getMeasurementSchemaMap().values();
     String[] tsDesStrings = { "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,{},UNCOMPRESSED]" };
     int i = 0;
-    for (TimeseriesSchema desc : timeseries) {
+    for (MeasurementSchema desc : timeseries) {
       assertEquals(tsDesStrings[i++], desc.toString());
     }
   }
@@ -61,18 +61,18 @@ public class SchemaBuilderTest {
     Map<String, String> props = new HashMap<>();
     props.put(JsonFormatConstant.MAX_POINT_NUMBER, "3");
     Schema schema = new Schema();
-    Map<String, TimeseriesSchema> template = new HashMap<>();
+    Map<String, MeasurementSchema> template = new HashMap<>();
     template.put("s4", 
-        new TimeseriesSchema("s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
+        new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
     template.put("s5",
-        new TimeseriesSchema("s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
-    schema.regieterDeviceTemplate("template1", template);
-    schema.regiesterDevice("d1", "template1");
+        new MeasurementSchema("s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
+    schema.registerDeviceTemplate("template1", template);
+    schema.registerDevice("d1", "template1");
 
-    Collection<TimeseriesSchema> timeseries = schema.getTimeseriesSchemaMap().values();
+    Collection<MeasurementSchema> timeseries = schema.getMeasurementSchemaMap().values();
     String[] tsDesStrings = { "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,{},UNCOMPRESSED]" };
     int i = 0;
-    for (TimeseriesSchema desc : timeseries) {
+    for (MeasurementSchema desc : timeseries) {
       assertEquals(tsDesStrings[i++], desc.toString());
     }
   }
@@ -84,24 +84,24 @@ public class SchemaBuilderTest {
     Map<String, String> props = new HashMap<>();
     props.put(JsonFormatConstant.MAX_POINT_NUMBER, "3");
     Schema schema = new Schema();
-    Map<String, TimeseriesSchema> template = new HashMap<>();
+    Map<String, MeasurementSchema> template = new HashMap<>();
     template.put("s4", 
-        new TimeseriesSchema("s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
+        new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
     template.put("s5",
-        new TimeseriesSchema("s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
-    schema.regieterDeviceTemplate("template1", template);
+        new MeasurementSchema("s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
+    schema.registerDeviceTemplate("template1", template);
     
     schema.extendTemplate("template1",
-        new TimeseriesSchema("s6", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY, props));
+        new MeasurementSchema("s6", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY, props));
     
-    schema.regiesterDevice("d1", "template1");
+    schema.registerDevice("d1", "template1");
 
-    Collection<TimeseriesSchema> timeseries = schema.getTimeseriesSchemaMap().values();
+    Collection<MeasurementSchema> timeseries = schema.getMeasurementSchemaMap().values();
     String[] tsDesStrings = { "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", 
                               "[s5,INT32,TS_2DIFF,{},UNCOMPRESSED]",
                               "[s6,INT64,RLE,{max_point_number=3},SNAPPY]"};
     int i = 0;
-    for (TimeseriesSchema desc : timeseries) {
+    for (MeasurementSchema desc : timeseries) {
       assertEquals(tsDesStrings[i++], desc.toString());
     }
   }

@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.junit.Assert;
 import org.junit.Test;
 
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 public class MinTimeMaxTimeFilterTest {
 
@@ -51,6 +52,11 @@ public class MinTimeMaxTimeFilterTest {
     timeEq = TimeFilter.eq(300L);
     Assert.assertFalse(timeEq.satisfyStartEndTime(minTime, maxTime));
     Assert.assertFalse(timeEq.containStartEndTime(minTime, maxTime));
+
+    UnaryFilter<Long> uTimeEq = TimeFilter.eq(400L);
+    uTimeEq.setValue(401L);
+    Assert.assertEquals(401L, uTimeEq.getValue().longValue());
+
 
     Filter valueEq = ValueFilter.eq(100);
     Assert.assertTrue(valueEq.satisfyStartEndTime(minTime, maxTime));

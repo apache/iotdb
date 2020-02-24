@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.tsfile.encoding.decoder.delta;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -34,8 +37,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
 import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
@@ -58,6 +60,7 @@ public class DeltaBinaryEncoderLongTest {
 
   @Test
   public void testBasic() throws IOException {
+    reader.reset();
     long data[] = new long[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = i * i * BASIC_FACTOR;
@@ -67,6 +70,7 @@ public class DeltaBinaryEncoderLongTest {
 
   @Test
   public void testBoundInt() throws IOException {
+    reader.reset();
     long data[] = new long[ROW_NUM];
     for (int i = 2; i < 21; i++) {
       boundInt(i, data);
@@ -74,6 +78,7 @@ public class DeltaBinaryEncoderLongTest {
   }
 
   private void boundInt(int power, long[] data) throws IOException {
+    reader.reset();
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = ran.nextInt((int) Math.pow(2, power)) * BASIC_FACTOR;
     }
@@ -82,6 +87,7 @@ public class DeltaBinaryEncoderLongTest {
 
   @Test
   public void testRandom() throws IOException {
+    reader.reset();
     long data[] = new long[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = ran.nextLong();
@@ -91,6 +97,7 @@ public class DeltaBinaryEncoderLongTest {
 
   @Test
   public void testMaxMin() throws IOException {
+    reader.reset();
     long data[] = new long[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = (i & 1) == 0 ? Long.MAX_VALUE : Long.MIN_VALUE;
@@ -100,6 +107,7 @@ public class DeltaBinaryEncoderLongTest {
 
   @Test
   public void testRegularEncoding() throws IOException {
+    reader.reset();
     List<String> dates = getBetweenDate("1970-01-08", "1978-01-08");
 
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
@@ -121,6 +129,7 @@ public class DeltaBinaryEncoderLongTest {
 
   @Test
   public void testRegularWithMissingPoints() throws IOException {
+    reader.reset();
     List<String> dates = getBetweenDate("1970-01-08", "1978-01-08");
 
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");

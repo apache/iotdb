@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,10 +46,11 @@ import org.slf4j.LoggerFactory;
  */
 public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
-  private static final Logger logger = LoggerFactory.getLogger(RestorableTsFileIOWriter.class);
-
+  private static final Logger logger = LoggerFactory
+      .getLogger(RestorableTsFileIOWriter.class);
+  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   private long truncatedPosition = -1;
-  private Map<Path, TimeseriesSchema> knownSchemas = new HashMap<>();
+  private Map<Path, MeasurementSchema> knownSchemas = new HashMap<>();
 
   private int lastFlushedChunkGroupIndex = 0;
 
@@ -65,6 +66,9 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @throws IOException if write failed, or the file is broken but autoRepair==false.
    */
   public RestorableTsFileIOWriter(File file) throws IOException {
+    if (resourceLogger.isInfoEnabled()) {
+      resourceLogger.info("{} is opened.", file.getName());
+    }
     this.file = file;
     this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
 
@@ -145,7 +149,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     return truncatedPosition;
   }
 
-  public Map<Path, TimeseriesSchema> getKnownSchema() {
+  public Map<Path, MeasurementSchema> getKnownSchema() {
     return knownSchemas;
   }
 
@@ -229,7 +233,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     return append;
   }
 
-  public void addSchema(Path path, TimeseriesSchema schema) {
+  public void addSchema(Path path, MeasurementSchema schema) {
     knownSchemas.put(path, schema);
   }
 }

@@ -47,7 +47,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 
@@ -55,7 +55,6 @@ import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 public class TsFileGeneratorForTest {
 
   public static final long START_TIMESTAMP = 1480562618000L;
-  private static final Logger LOG = LoggerFactory.getLogger(TsFileGeneratorForTest.class);
   private static String inputDataFile;
   public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("testTsFile.tsfile");
   private static String errorOutputDataFile;
@@ -163,11 +162,11 @@ public class TsFileGeneratorForTest {
 
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
-    TsFileWriter innerWriter = new TsFileWriter(file, schema, TSFileDescriptor.getInstance().getConfig());
 
     // write
-    try (Scanner in = new Scanner(fsFactory.getFile(inputDataFile))) {
-      assert in != null;
+    try (TsFileWriter innerWriter = new TsFileWriter(file, schema,
+        TSFileDescriptor.getInstance().getConfig());
+        Scanner in = new Scanner(fsFactory.getFile(inputDataFile))) {
       while (in.hasNextLine()) {
         String str = in.nextLine();
         TSRecord record = RecordUtils.parseSimpleTupleRecord(str, schema);
@@ -175,73 +174,25 @@ public class TsFileGeneratorForTest {
       }
     } catch (WriteProcessException e) {
       e.printStackTrace();
-    } finally {
-      innerWriter.close();
     }
-  }
-
-  private static JSONObject generateTestData() {
-    TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    JSONObject s1 = new JSONObject();
-    s1.put(JsonFormatConstant.MEASUREMENT_UID, "s1");
-    s1.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT32.toString());
-    s1.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.getValueEncoder());
-    JSONObject s2 = new JSONObject();
-    s2.put(JsonFormatConstant.MEASUREMENT_UID, "s2");
-    s2.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-    s2.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.getValueEncoder());
-    JSONObject s3 = new JSONObject();
-    s3.put(JsonFormatConstant.MEASUREMENT_UID, "s3");
-    s3.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-    s3.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.getValueEncoder());
-    JSONObject s4 = new JSONObject();
-    s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
-    s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
-    s4.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
-    JSONObject s5 = new JSONObject();
-    s5.put(JsonFormatConstant.MEASUREMENT_UID, "s5");
-    s5.put(JsonFormatConstant.DATA_TYPE, TSDataType.BOOLEAN.toString());
-    s5.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
-    JSONObject s6 = new JSONObject();
-    s6.put(JsonFormatConstant.MEASUREMENT_UID, "s6");
-    s6.put(JsonFormatConstant.DATA_TYPE, TSDataType.FLOAT.toString());
-    s6.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.RLE.toString());
-    JSONObject s7 = new JSONObject();
-    s7.put(JsonFormatConstant.MEASUREMENT_UID, "s7");
-    s7.put(JsonFormatConstant.DATA_TYPE, TSDataType.DOUBLE.toString());
-    s7.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.RLE.toString());
-
-    JSONArray measureGroup1 = new JSONArray();
-    measureGroup1.add(s1);
-    measureGroup1.add(s2);
-    measureGroup1.add(s3);
-    measureGroup1.add(s4);
-    measureGroup1.add(s5);
-    measureGroup1.add(s6);
-    measureGroup1.add(s7);
-
-    JSONObject jsonSchema = new JSONObject();
-    jsonSchema.put(JsonFormatConstant.DELTA_TYPE, "test_type");
-    jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, measureGroup1);
-    return jsonSchema;
   }
 
   private static Schema generateTestSchema() {
     Schema schema = new Schema();
-    schema.registerTimeseries(new Path("d1.s1"), new TimeseriesSchema("s1", TSDataType.INT32, TSEncoding.RLE));
-    schema.registerTimeseries(new Path("d1.s2"), new TimeseriesSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path("d1.s3"), new TimeseriesSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
-    schema.registerTimeseries(new Path("d1.s4"), new TimeseriesSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN,
+    schema.registerTimeseries(new Path("d1.s1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d1.s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d1.s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+    schema.registerTimeseries(new Path("d1.s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20")));
-    schema.registerTimeseries(new Path("d1.s5"), new TimeseriesSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
-    schema.registerTimeseries(new Path("d1.s6"), new TimeseriesSchema("s6", TSDataType.FLOAT, TSEncoding.RLE,
+    schema.registerTimeseries(new Path("d1.s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d1.s6"), new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE,
         CompressionType.SNAPPY, Collections.singletonMap(Encoder.MAX_POINT_NUMBER, "5")));
-    schema.registerTimeseries(new Path("d1.s7"), new TimeseriesSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA));
+    schema.registerTimeseries(new Path("d1.s7"), new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA));
 
-    schema.registerTimeseries(new Path("d2.s1"), new TimeseriesSchema("s1", TSDataType.INT32, TSEncoding.RLE));
-    schema.registerTimeseries(new Path("d2.s2"), new TimeseriesSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path("d2.s3"), new TimeseriesSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
-    schema.registerTimeseries(new Path("d2.s4"), new TimeseriesSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN,
+    schema.registerTimeseries(new Path("d2.s1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d2.s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d2.s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+    schema.registerTimeseries(new Path("d2.s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20")));
     return schema;
   }
