@@ -93,12 +93,12 @@ public class FileReaderManager implements IService {
     closedReferenceMap.remove(seqFile);
     TsFileSequenceReader reader = closedFileReaderMap.remove(seqFile);
     if (reader != null) {
-      reader.close();
+      reader.close("Merge");
     }
     unclosedReferenceMap.remove(seqFile);
     reader = unclosedFileReaderMap.remove(seqFile);
     if (reader != null) {
-      reader.close();
+      reader.close("Merge");
     }
   }
 
@@ -124,7 +124,7 @@ public class FileReaderManager implements IService {
 
       if (refAtom != null && refAtom.get() == 0) {
         try {
-          reader.close();
+          reader.close("no reference");
         } catch (IOException e) {
           logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
         }

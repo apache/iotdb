@@ -70,7 +70,7 @@ public class DefaultTsFileInput implements TsFileInput {
     try {
       return channel.read(dst, position);
     } catch (ClosedChannelException e) {
-      LOGGER.error(String.format("File is closed while reading %s", path));
+      LOGGER.error("File is closed while reading {}", path);
       throw e;
     }
   }
