@@ -82,6 +82,7 @@ public class RestTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
+    EnvironmentUtils.setEnableRestService(true);
     EnvironmentUtils.envSetUp();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
     Class.forName(Config.JDBC_DRIVER_NAME);

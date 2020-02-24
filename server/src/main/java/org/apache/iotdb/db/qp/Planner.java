@@ -63,8 +63,8 @@ public class Planner {
   }
 
   public PhysicalPlan logicalPlanToPhysicalPlan(Operator operator) throws QueryProcessException {
-    operator = logicalOptimize(operator, executor);
-    PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
+    operator = logicalOptimize(operator);
+    PhysicalGenerator physicalGenerator = new PhysicalGenerator();
     return physicalGenerator.transformToPhysicalPlan(operator);
   }
 

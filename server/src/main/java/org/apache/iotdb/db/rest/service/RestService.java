@@ -36,15 +36,13 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.QueryProcessor;
+import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.IPlanExecutor;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromOperator;
@@ -64,14 +62,13 @@ import org.slf4j.LoggerFactory;
 
 public class RestService {
 
-  protected QueryProcessor processor = new QueryProcessor(new QueryProcessExecutor());
+  protected Planner planner = new Planner();
   private static final Logger logger = LoggerFactory.getLogger(RestService.class);
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
   private String username;
 
-
   private List<TimeValue> querySeries(String s, Pair<String, String> timeRange)
-      throws QueryProcessException, StorageGroupException, AuthException, MetadataException, QueryFilterOptimizationException, SQLException, StorageEngineException, IOException {
+      throws QueryProcessException, AuthException, IOException, MetadataException, QueryFilterOptimizationException, SQLException, StorageEngineException {
     String from = timeRange.left;
     String to = timeRange.right;
     String suffixPath = s.substring(s.lastIndexOf('.') + 1);
@@ -80,23 +77,10 @@ public class RestService {
         + prefixPath + " WHERE time > " + from + " and time < " + to;
     logger.info(sql);
     QueryOperator queryOperator = generateOperator(suffixPath, prefixPath, timeRange);
-    QueryPlan plan = (QueryPlan) processor.logicalPlanToPhysicalPlan(queryOperator);
+    QueryPlan plan = (QueryPlan) planner.logicalPlanToPhysicalPlan(queryOperator);
     List<Path> paths = plan.getPaths();
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-    }
-
-    // check seriesPath exists
-    if (paths.isEmpty()) {
-      throw new PathException("The path doesn't exist");
-    }
-
-    // check file level set
-    try {
-      checkFileLevelSet(paths);
-    } catch (StorageGroupException e) {
-      logger.error("meet error while checking file level.", e);
-      throw new StorageGroupException(e.getMessage());
     }
 
     // check permissions
@@ -104,8 +88,9 @@ public class RestService {
       throw new AuthException("Don't have permissions");
     }
 
+    IPlanExecutor executor = new PlanExecutor();
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
-    QueryDataSet queryDataSet = processor.getExecutor().processQuery(plan, context);
+    QueryDataSet queryDataSet = executor.processQuery(plan, context);
     String[] args;
     List<TimeValue> list = new ArrayList<>();
     while(queryDataSet.hasNext()) {
@@ -124,10 +109,6 @@ public class RestService {
 
   private boolean checkAuthorization(List<Path> paths, PhysicalPlan plan) throws AuthException {
     return AuthorityChecker.check(username, paths, plan.getOperatorType(), null);
-  }
-
-  private void checkFileLevelSet(List<Path> paths) throws StorageGroupException {
-    MManager.getInstance().checkFileLevel(paths);
   }
 
 
@@ -244,7 +225,7 @@ public class RestService {
   public void setJsonTable(JSONObject obj, String target,
       Pair<String, String> timeRange)
       throws JSONException, StorageEngineException, QueryFilterOptimizationException,
-      MetadataException, IOException, StorageGroupException, SQLException, QueryProcessException, AuthException {
+      MetadataException, IOException, SQLException, QueryProcessException, AuthException {
     List<TimeValue> timeValue = querySeries(target, timeRange);
     JSONArray columns = new JSONArray();
     JSONObject column = new JSONObject();
@@ -269,7 +250,7 @@ public class RestService {
   public void setJsonTimeseries(JSONObject obj, String target,
       Pair<String, String> timeRange)
       throws JSONException, StorageEngineException, QueryFilterOptimizationException,
-      MetadataException, IOException, StorageGroupException, SQLException, QueryProcessException, AuthException {
+      MetadataException, IOException, SQLException, QueryProcessException, AuthException {
     List<TimeValue> timeValue = querySeries(target, timeRange);
     logger.info("query size: {}", timeValue.size());
     JSONArray dataPoints = new JSONArray();
