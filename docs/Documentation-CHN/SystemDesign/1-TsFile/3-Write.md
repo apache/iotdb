@@ -29,14 +29,6 @@ TsFile 的写入流程如下图所示：
 
 其中，每个设备对应一个 ChunkGroupWriter，每个传感器对应一个 ChunkWriter。
 
-文件的写入主要分为三种操作，在图上用 1、2、3 标注
-
-* 1、写内存换冲区
-* 2、持久化 ChunkGroup
-* 3、关闭文件
-
-## 1、写内存缓冲区
-
 TsFile 文件层的写入接口有两种
 
 * TsFileWriter.write(TSRecord record)
@@ -47,8 +39,17 @@ TsFile 文件层的写入接口有两种
 
 	写入一个设备多个时间戳多个测点。
 
-当调用 write 接口时，这个设备的数据会交给对应的 ChunkGroupWriter，其中的每个测点会交给对应的 ChunkWriter 进行写入。ChunkWriter 完成编码和打包（生成 Page）。
+文件的写入主要分为三种操作，在图上用 1、2、3 标注
 
+* 1、写内存缓冲区
+* 2、持久化 ChunkGroup
+* 3、关闭文件
+
+## 1、写内存缓冲区
+
+* 当调用 TsFileWriter.write 接口时，这个设备的数据会交给对应的 ChunkGroupWriter，其中的每个测点(DataPoint)会交给对应的 ChunkWriter 进行写入。
+* 当 ChunkWriter 写入一个传感器的数据点时，会调用 PageWriter.write 方法将数据写入 PageWriter 中的 time 和 value 各自的缓冲区，并更新统计值。 
+* 当前 PageWriter 缓冲区到达一定内存时，PageWriter 将内部数据打包成一个完整的 page(包括 header 和 data) 放到 pageBuffer 中，并且更新 chunk 中的统计值。 
 
 ## 2、持久化 ChunkGroup
 
