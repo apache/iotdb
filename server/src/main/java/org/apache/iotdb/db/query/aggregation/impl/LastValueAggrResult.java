@@ -94,7 +94,7 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void merge(AggregateResult another) {
+  public void merge(AggregateResult another) {
     LastValueAggrResult anotherFirst = (LastValueAggrResult) another;
     if(this.getValue() == null || this.timestamp < anotherFirst.timestamp){
       this.setValue( anotherFirst.getValue() );

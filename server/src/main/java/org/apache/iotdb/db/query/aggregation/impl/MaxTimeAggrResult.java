@@ -86,7 +86,7 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void merge(AggregateResult another) {
+  public void merge(AggregateResult another) {
     MaxTimeAggrResult anotherMaxTime = (MaxTimeAggrResult) another;
     if (anotherMaxTime.getResult() != null) {
       this.updateMaxTimeResult(anotherMaxTime.getResult());

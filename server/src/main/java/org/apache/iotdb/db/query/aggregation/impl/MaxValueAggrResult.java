@@ -84,7 +84,7 @@ public class MaxValueAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void merge(AggregateResult another) {
+  public void merge(AggregateResult another) {
      this.updateResult((Comparable<Object>)another.getResult());
   }
 

@@ -106,7 +106,7 @@ public class SumAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void merge(AggregateResult another) {
+  public void merge(AggregateResult another) {
     SumAggrResult anotherSum = (SumAggrResult) another;
     setDoubleValue(getDoubleValue() + anotherSum.getDoubleValue());
   }

@@ -114,7 +114,7 @@ public class AvgAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void merge(AggregateResult another) {
+  public void merge(AggregateResult another) {
     AvgAggrResult anotherAvg = (AvgAggrResult) another;
     avg = (avg * cnt + anotherAvg.avg * anotherAvg.cnt) / (cnt + anotherAvg.cnt);
   }

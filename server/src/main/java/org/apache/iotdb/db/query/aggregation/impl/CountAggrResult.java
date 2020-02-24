@@ -88,7 +88,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
   }
 
   @Override
-  protected void merge(AggregateResult another) {
+  public void merge(AggregateResult another) {
     CountAggrResult anotherCount = (CountAggrResult) another;
     setLongValue(anotherCount.getResult() + this.getResult());
   }

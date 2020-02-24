@@ -94,6 +94,11 @@ public abstract class AggregateResult {
    */
   public abstract boolean isCalculatedAggregationResult();
 
+  /**
+   * Merge another aggregateResult into this
+   */
+  public abstract void merge(AggregateResult another);
+
   public void reset() {
     hasResult = false;
   }
@@ -210,5 +215,4 @@ public abstract class AggregateResult {
     return hasResult;
   }
 
-  abstract protected void merge(AggregateResult another);
 }

@@ -79,7 +79,7 @@ public class MinValueAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void merge(AggregateResult another) {
+  public void merge(AggregateResult another) {
     if (another.getResult() != null) {
       Object value = another.getResult();
       this.updateResult((Comparable<Object>) value);

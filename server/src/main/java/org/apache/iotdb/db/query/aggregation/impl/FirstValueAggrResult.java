@@ -99,7 +99,7 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void merge(AggregateResult another) {
+  public void merge(AggregateResult another) {
     FirstValueAggrResult anotherFirst = (FirstValueAggrResult) another;
     if(this.getValue() == null || this.timestamp > anotherFirst.timestamp){
       this.setValue( anotherFirst.getValue() );

@@ -83,7 +83,7 @@ public class MinTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void merge(AggregateResult another) {
+  public void merge(AggregateResult another) {
     MinTimeAggrResult anotherMinTime = (MinTimeAggrResult) another;
     if (hasResult() && anotherMinTime.hasResult() && getResult() > anotherMinTime.getResult()) {
       setLongValue(anotherMinTime.getResult());
