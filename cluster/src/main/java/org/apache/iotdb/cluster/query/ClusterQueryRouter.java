@@ -24,7 +24,6 @@ import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.executor.AggregateEngineExecutor;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 

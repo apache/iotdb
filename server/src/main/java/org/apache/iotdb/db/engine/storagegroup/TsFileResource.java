@@ -95,7 +95,7 @@ public class TsFileResource {
   /**
    * Mem chunk data. Only be set in a temporal TsFileResource in a query process.
    */
-  private ReadOnlyMemChunk readOnlyMemChunk;
+  private List<ReadOnlyMemChunk> readOnlyMemChunk;
 
   private ReentrantReadWriteLock writeQueryLock = new ReentrantReadWriteLock();
 
@@ -120,7 +120,6 @@ public class TsFileResource {
     this.historicalVersions = other.historicalVersions;
   }
 
-
   /**
    * for sealed TsFile, call setClosed to close TsFileResource
    */
@@ -129,7 +128,7 @@ public class TsFileResource {
     this.startTimeMap = new ConcurrentHashMap<>();
     this.endTimeMap = new HashMap<>();
   }
-  
+
   /**
    * unsealed TsFile
    */
@@ -146,7 +145,7 @@ public class TsFileResource {
   public TsFileResource(File file,
       Map<String, Long> startTimeMap,
       Map<String, Long> endTimeMap,
-      ReadOnlyMemChunk readOnlyMemChunk,
+      List<ReadOnlyMemChunk> readOnlyMemChunk,
       List<ChunkMetaData> chunkMetaDataList) {
     this.file = file;
     this.startTimeMap = startTimeMap;
@@ -235,14 +234,14 @@ public class TsFileResource {
   }
 
   void forceUpdateEndTime(String device, long time) {
-      endTimeMap.put(device, time);
+    endTimeMap.put(device, time);
   }
 
   public List<ChunkMetaData> getChunkMetaDataList() {
     return chunkMetaDataList;
   }
 
-  public ReadOnlyMemChunk getReadOnlyMemChunk() {
+  public List<ReadOnlyMemChunk> getReadOnlyMemChunk() {
     return readOnlyMemChunk;
   }
 
@@ -367,6 +366,7 @@ public class TsFileResource {
 
   /**
    * check if any of the device lives over the given time bound
+   *
    * @param timeLowerBound
    */
   public boolean stillLives(long timeLowerBound) {
@@ -391,8 +391,8 @@ public class TsFileResource {
   }
 
   /**
-   * set a file flag indicating that the file is being closed, so during recovery we could know
-   * we should close the file.
+   * set a file flag indicating that the file is being closed, so during recovery we could know we
+   * should close the file.
    */
   void setCloseFlag() {
     try {
@@ -420,7 +420,7 @@ public class TsFileResource {
   public void setHistoricalVersions(Set<Long> historicalVersions) {
     this.historicalVersions = historicalVersions;
   }
-  
+
   public void setProcessor(TsFileProcessor processor) {
     this.processor = processor;
   }

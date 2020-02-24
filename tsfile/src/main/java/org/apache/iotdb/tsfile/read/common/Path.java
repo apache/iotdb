@@ -76,7 +76,6 @@ public class Path implements Serializable {
    * extract device and measurement info from complete path string
    *
    * @param pathSc complete path string
-   * @return str[0] is the device string, and str[1] is the measurement string
    */
   private void init(String pathSc) {
     pathSc = pathSc.trim();
@@ -185,7 +184,7 @@ public class Path implements Serializable {
   }
 
   public boolean equals(String obj) {
-    return obj != null && this.fullPath.equals(obj);
+    return this.fullPath.equals(obj);
   }
 
   @Override

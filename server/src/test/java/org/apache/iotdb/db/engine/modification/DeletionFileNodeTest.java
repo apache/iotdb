@@ -27,10 +27,9 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
+import java.util.List;
 import junit.framework.TestCase;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -39,17 +38,16 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -73,17 +71,17 @@ public class DeletionFileNodeTest {
   }
 
   @Before
-  public void setup() throws
-      MetadataException, IOException, StorageEngineException, StartupException, StorageGroupException {
+  public void setup() throws MetadataException, StorageEngineException, StartupException {
     EnvironmentUtils.envSetUp();
 
-    MManager.getInstance().setStorageGroupToMTree(processorName);
+    MManager.getInstance().setStorageGroup(processorName);
     for (int i = 0; i < 10; i++) {
-      MManager.getInstance().addPathToMTree(processorName + "." + measurements[i], dataType,
+      MManager.getInstance().createTimeseries(processorName + "." + measurements[i], dataType,
           encoding);
       StorageEngine.getInstance()
           .addTimeSeries(new Path(processorName, measurements[i]), TSDataType.valueOf(dataType),
-              TSEncoding.valueOf(encoding), CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
+              TSEncoding.valueOf(encoding),
+              TSFileDescriptor.getInstance().getConfig().getCompressor(),
               Collections.emptyMap());
     }
   }
@@ -95,7 +93,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInBufferWriteCache() throws
-      StorageEngineException, QueryProcessException {
+      StorageEngineException, QueryProcessException, IOException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -113,14 +111,17 @@ public class DeletionFileNodeTest {
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);
     QueryDataSource dataSource = QueryResourceManager.getInstance()
-        .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT);
+        .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
 
-    Iterator<TimeValuePair> timeValuePairs =
-        dataSource.getSeqResources().get(0).getReadOnlyMemChunk().getIterator();
+    List<ReadOnlyMemChunk> timeValuePairs =
+        dataSource.getSeqResources().get(0).getReadOnlyMemChunk();
     int count = 0;
-    while (timeValuePairs.hasNext()) {
-      timeValuePairs.next();
-      count++;
+    for (ReadOnlyMemChunk chunk : timeValuePairs) {
+      IPointReader iterator = chunk.getPointReader();
+      while (iterator.hasNextTimeValuePair()) {
+        iterator.nextTimeValuePair();
+        count++;
+      }
     }
     assertEquals(50, count);
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
@@ -148,13 +149,14 @@ public class DeletionFileNodeTest {
         new Deletion(new Path(processorName, measurements[3]), 203, 30),
     };
 
-    File fileNodeDir = new File(DirectoryManager.getInstance().getSequenceFileFolder(0), processorName);
+    File fileNodeDir = new File(DirectoryManager.getInstance().getSequenceFileFolder(0),
+        processorName);
     List<File> modFiles = new ArrayList<>();
-    for(File directory : fileNodeDir.listFiles()){
+    for (File directory : fileNodeDir.listFiles()) {
       assertTrue(directory.isDirectory());
-      if(directory.isDirectory()){
-        for(File file : directory.listFiles()){
-          if(file.getPath().endsWith(ModificationFile.FILE_SUFFIX)){
+      if (directory.isDirectory()) {
+        for (File file : directory.listFiles()) {
+          if (file.getPath().endsWith(ModificationFile.FILE_SUFFIX)) {
             modFiles.add(file);
           }
         }
@@ -178,7 +180,8 @@ public class DeletionFileNodeTest {
   }
 
   @Test
-  public void testDeleteInOverflowCache() throws StorageEngineException, QueryProcessException {
+  public void testDeleteInOverflowCache()
+      throws StorageEngineException, QueryProcessException, IOException {
     // insert sequence data
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -207,14 +210,17 @@ public class DeletionFileNodeTest {
         measurements[5]), null);
 
     QueryDataSource dataSource = QueryResourceManager.getInstance()
-        .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT);
+        .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
 
-    Iterator<TimeValuePair> timeValuePairs =
-        dataSource.getUnseqResources().get(0).getReadOnlyMemChunk().getIterator();
+    List<ReadOnlyMemChunk> timeValuePairs =
+        dataSource.getUnseqResources().get(0).getReadOnlyMemChunk();
     int count = 0;
-    while (timeValuePairs.hasNext()) {
-      timeValuePairs.next();
-      count++;
+    for (ReadOnlyMemChunk chunk : timeValuePairs) {
+      IPointReader iterator = chunk.getPointReader();
+      while (iterator.hasNextTimeValuePair()) {
+        iterator.nextTimeValuePair();
+        count++;
+      }
     }
     assertEquals(50, count);
 
@@ -254,13 +260,14 @@ public class DeletionFileNodeTest {
         new Deletion(new Path(processorName, measurements[3]), 303, 30),
     };
 
-    File fileNodeDir = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(), processorName);
+    File fileNodeDir = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(),
+        processorName);
     List<File> modFiles = new ArrayList<>();
-    for(File directory : fileNodeDir.listFiles()){
+    for (File directory : fileNodeDir.listFiles()) {
       assertTrue(directory.isDirectory());
-      if(directory.isDirectory()){
-        for(File file : directory.listFiles()){
-          if(file.getPath().endsWith(ModificationFile.FILE_SUFFIX)){
+      if (directory.isDirectory()) {
+        for (File file : directory.listFiles()) {
+          if (file.getPath().endsWith(ModificationFile.FILE_SUFFIX)) {
             modFiles.add(file);
           }
         }
@@ -271,7 +278,7 @@ public class DeletionFileNodeTest {
     LocalTextModificationAccessor accessor =
         new LocalTextModificationAccessor(modFiles.get(0).getPath());
     Collection<Modification> modifications = accessor.read();
-    assertEquals( 3, modifications.size());
+    assertEquals(3, modifications.size());
     int i = 0;
     for (Modification modification : modifications) {
       TestCase.assertEquals(modification, realModifications[i++]);

@@ -19,10 +19,6 @@
 package org.apache.iotdb.tsfile.write;
 
 
-import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
@@ -352,5 +348,24 @@ public class TsFileWriter implements AutoCloseable{
    */
   public void flushForTest() throws IOException {
     flushAllChunkGroups();
+  }
+
+  public void flushForTest(Long version) throws IOException {
+    if (recordCount > 0) {
+      for (Map.Entry<String, IChunkGroupWriter> entry: groupWriters.entrySet()) {
+        long pos = fileWriter.getPos();
+        String deviceId = entry.getKey();
+        IChunkGroupWriter groupWriter = entry.getValue();
+        fileWriter.startChunkGroup(deviceId);
+        long dataSize = groupWriter.flushToFileWriter(fileWriter);
+        if (fileWriter.getPos() - pos != dataSize) {
+          throw new IOException(String.format(
+                  "Flushed data size is inconsistent with computation! Estimated: %d, Actual: %d",
+                  dataSize, fileWriter.getPos() - pos));
+        }
+        fileWriter.endChunkGroup(version);
+      }
+      reset();
+    }
   }
 }

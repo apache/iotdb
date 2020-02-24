@@ -32,7 +32,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -47,23 +46,24 @@ public class SchemaUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
 
-  private SchemaUtils(){}
+  private SchemaUtils() {
+  }
 
   /**
    * Construct the Schema of the FileNode named processorName.
+   *
    * @param processorName the name of a FileNode.
    * @return the schema of the FileNode named processorName.
-   * @throws WriteProcessException when the fileSchema cannot be created.
    */
-  public static Schema constructSchema(String processorName) {
+  public static Schema constructSchema(String processorName) throws MetadataException {
     List<MeasurementSchema> columnSchemaList;
-    columnSchemaList = MManager.getInstance().getSchemaForStorageGroup(processorName);
+    columnSchemaList = MManager.getInstance().getStorageGroupSchema(processorName);
     return getSchemaFromColumnSchema(columnSchemaList);
   }
 
   /**
-   * getSchemaFromColumnSchema construct a Schema using the schema of the columns and the
-   * device type.
+   * getSchemaFromColumnSchema construct a Schema using the schema of the columns and device type.
+   *
    * @param schemaList the schema of the columns in this file.
    * @return a Schema contains the provided schemas.
    */
@@ -82,9 +82,7 @@ public class SchemaUtils {
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();
       CompressionType compressionType = schema.getCompressor();
-      MManager.getInstance().addPathToMTree(path, dataType, encoding, compressionType,
-          Collections.emptyMap());
-      boolean result = MManager.getInstance().addPathToMTree(path, dataType, encoding,
+      boolean result = MManager.getInstance().createTimeseries(path, dataType, encoding,
           compressionType, Collections.emptyMap());
       if (result) {
         StorageEngine.getInstance().addTimeSeries(new Path(path), dataType, encoding,
@@ -93,7 +91,8 @@ public class SchemaUtils {
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
     } catch (MetadataException | StorageEngineException e) {
-      logger.error("Cannot create timeseries in snapshot, ignored", schema.getMeasurementId(), e);
+      logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getMeasurementId(),
+          e);
     }
 
   }
@@ -110,8 +109,6 @@ public class SchemaUtils {
       case SQLConstant.RESERVED_TIME:
       case COLUMN_TTL:
         return TSDataType.INT64;
-      case SQLConstant.RESERVED_FREQ:
-        return TSDataType.FLOAT;
       default:
         // do nothing
     }

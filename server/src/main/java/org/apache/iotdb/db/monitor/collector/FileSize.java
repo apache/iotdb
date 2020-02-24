@@ -37,9 +37,7 @@ import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeConstants;
 import org.apache.iotdb.db.monitor.StatMonitor;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -80,7 +78,7 @@ public class FileSize implements IStatistic {
       Path path = new Path(seriesPath);
       try {
         storageEngine.addTimeSeries(path, TSDataType.valueOf(MonitorConstants.DATA_TYPE_INT64),
-            TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
+            TSEncoding.valueOf("RLE"), TSFileDescriptor.getInstance().getConfig().getCompressor(),
             Collections.emptyMap());
       } catch (StorageEngineException e) {
         logger.error("Register File Size Stats into storageEngine Failed.", e);
@@ -147,7 +145,7 @@ public class FileSize implements IStatistic {
             fileSizes.put(kinds, FileUtils.sizeOfDirectory(file));
           } catch (Exception e) {
             logger.error("Meet error while trying to get {} size with dir {} .", kinds,
-                    kinds.getPath(), e);
+                kinds.getPath(), e);
             fileSizes.put(kinds, ABNORMAL_VALUE);
           }
         } else {
@@ -158,7 +156,8 @@ public class FileSize implements IStatistic {
     return fileSizes;
   }
 
-  private long collectSeqFileSize(EnumMap<FileSizeConstants, Long> fileSizes, FileSizeConstants kinds) {
+  private long collectSeqFileSize(EnumMap<FileSizeConstants, Long> fileSizes,
+      FileSizeConstants kinds) {
     long fileSize = INIT_VALUE_IF_FILE_NOT_EXIST;
     for (String sequenceDir : config.getDataDirs()) {
       if (sequenceDir.contains("unsequence")) {

@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.hive;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -27,10 +31,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 
 public class TsFileTestHelper {
 
@@ -61,7 +61,8 @@ public class TsFileTestHelper {
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
         schema.registerMeasurement(
-                new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
+            new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF,
+                CompressionType.UNCOMPRESSED));
       }
 
       // add measurements into TSFileWriter

@@ -31,10 +31,10 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.executor.EngineQueryRouter;
+import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -161,7 +161,7 @@ public class IoTDBSequenceDataQueryIT {
   @Test
   public void readWithoutFilterTest() throws IOException, StorageEngineException {
 
-    EngineQueryRouter engineExecutor = new EngineQueryRouter();
+    QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     pathList.add(new Path(Constant.d0s0));
@@ -181,10 +181,10 @@ public class IoTDBSequenceDataQueryIT {
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-    QueryPlan queryPlan = new QueryPlan();
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPaths(pathList);
-    QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
+    QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -199,7 +199,7 @@ public class IoTDBSequenceDataQueryIT {
 
   @Test
   public void readWithTimeFilterTest() throws IOException, StorageEngineException {
-    EngineQueryRouter engineExecutor = new EngineQueryRouter();
+    QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     pathList.add(new Path(Constant.d0s0));
@@ -213,11 +213,11 @@ public class IoTDBSequenceDataQueryIT {
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
-    QueryPlan queryPlan = new QueryPlan();
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPaths(pathList);
     queryPlan.setExpression(globalTimeExpression);
-    QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
+    QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -236,7 +236,7 @@ public class IoTDBSequenceDataQueryIT {
   @Test
   public void readWithValueFilterTest() throws IOException, StorageEngineException {
     // select * from root where root.vehicle.d0.s0 >=14
-    EngineQueryRouter engineExecutor = new EngineQueryRouter();
+    QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     pathList.add(new Path(Constant.d0s0));
@@ -261,11 +261,11 @@ public class IoTDBSequenceDataQueryIT {
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
-    QueryPlan queryPlan = new QueryPlan();
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPaths(pathList);
     queryPlan.setExpression(singleSeriesExpression);
-    QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
+    QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {

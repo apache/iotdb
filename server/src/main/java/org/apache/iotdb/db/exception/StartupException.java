@@ -20,22 +20,20 @@ package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class StartupException extends ProcessException {
+public class StartupException extends IoTDBException {
 
   private static final long serialVersionUID = -8591716406230730147L;
 
   public StartupException(String name, String message) {
-    super(String.format("Failed to start [%s], because [%s]", name, message));
-    errorCode = TSStatusCode.START_UP_ERROR.getStatusCode();
+    super(String.format("Failed to start [%s], because [%s]", name, message),
+        TSStatusCode.START_UP_ERROR.getStatusCode());
   }
 
   public StartupException(Throwable cause) {
-    super(cause.getMessage());
-    errorCode = TSStatusCode.START_UP_ERROR.getStatusCode();
+    super(cause.getMessage(), TSStatusCode.START_UP_ERROR.getStatusCode());
   }
 
   public StartupException(String message) {
-    super(message);
-    errorCode = TSStatusCode.START_UP_ERROR.getStatusCode();
+    super(message, TSStatusCode.START_UP_ERROR.getStatusCode());
   }
 }

@@ -32,6 +32,8 @@ matrix:
       osx_image: xcode10.1 # with JDK11.0.1+13 installed
       name: osx-oraclejdk11
       script:
+        - rm -rf /Users/travis/.m2/repository/org/apache/maven/plugins
+        - rm -rf /Users/travis/.m2/repository/org/apache/tomcat
         - java -version
         - mvn -version
         - mvn -B apache-rat:check
@@ -54,6 +56,8 @@ matrix:
           update: true
           casks: adoptopenjdk-openjdk11
       script:
+        - rm -rf /Users/travis/.m2/repository/org/apache/maven/plugins
+        - rm -rf /Users/travis/.m2/repository/org/apache/tomcat
         - java -version
         - mvn -version
         - mvn -B apache-rat:check
@@ -136,7 +140,7 @@ matrix:
         - mvn -version
         # Output something every 10 minutes or Travis kills the job
         - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-        - travis_wait 40 mvn -B clean integration-test
+        - travis_wait 20 mvn -B clean integration-test
         # Killing background sleep loop
         - kill %1
 

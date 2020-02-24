@@ -40,9 +40,9 @@ public class Field {
     this.dataType = dataType;
   }
 
-  public static Field copy(Field field){
+  public static Field copy(Field field) {
     Field out = new Field(field.dataType);
-    if(out.dataType != null) {
+    if (out.dataType != null) {
       switch (out.dataType) {
         case DOUBLE:
           out.setDoubleV(field.getDoubleV());
@@ -63,7 +63,7 @@ public class Field {
           out.setBinaryV(field.getBinaryV());
           break;
         default:
-          throw new UnSupportedDataTypeException("UnSupported: " + out.dataType);
+          throw new UnSupportedDataTypeException(out.dataType.toString());
       }
     }
 
@@ -145,7 +145,7 @@ public class Field {
       case TEXT:
         return binaryV.toString();
       default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+        throw new UnSupportedDataTypeException(dataType.toString());
     }
   }
 
@@ -172,47 +172,37 @@ public class Field {
       case TEXT:
         return getBinaryV();
       default:
-        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
+        throw new UnSupportedDataTypeException(dataType.toString());
     }
   }
 
-  @Override
-  public int hashCode() {
-    switch (dataType) {
-      case DOUBLE:
-        return Double.hashCode(getDoubleV());
-      case FLOAT:
-        return Float.hashCode(getFloatV());
-      case INT64:
-        return Long.hashCode(getLongV());
-      case INT32:
-        return Integer.hashCode(getIntV());
-      case BOOLEAN:
-        return Boolean.hashCode(getBoolV());
-      case TEXT:
-        return getBinaryV().hashCode();
-      default:
-        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
+  public static Field getField(Object value, TSDataType dataType) {
+    if (value == null) {
+      return new Field(null);
     }
-  }
-
-  @Override
-  public boolean equals(Object obj) {
+    Field field = new Field(dataType);
     switch (dataType) {
-      case DOUBLE:
-        return obj instanceof Double && getDoubleV() == (double) obj;
-      case FLOAT:
-        return obj instanceof Float && getFloatV() == (float) obj;
-      case INT64:
-        return obj instanceof Long && getLongV() == (long) obj;
       case INT32:
-        return obj instanceof Integer && getIntV() == (int) obj;
+        field.setIntV((int) value);
+        break;
+      case INT64:
+        field.setLongV((long) value);
+        break;
+      case FLOAT:
+        field.setFloatV((float) value);
+        break;
+      case DOUBLE:
+        field.setDoubleV((double) value);
+        break;
       case BOOLEAN:
-        return obj instanceof Boolean && getBoolV() == (boolean) obj;
+        field.setBoolV((boolean) value);
+        break;
       case TEXT:
-        return obj instanceof Binary && getBinaryV().equals(obj);
+        field.setBinaryV((Binary) value);
+        break;
       default:
-        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
+        throw new UnSupportedDataTypeException(dataType.toString());
     }
+    return field;
   }
 }

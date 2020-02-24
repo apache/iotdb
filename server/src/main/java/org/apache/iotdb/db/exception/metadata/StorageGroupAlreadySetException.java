@@ -21,6 +21,8 @@ package org.apache.iotdb.db.exception.metadata;
 
 public class StorageGroupAlreadySetException extends MetadataException {
 
+  private static final long serialVersionUID = 9110669164701929779L;
+
   public StorageGroupAlreadySetException(String path) {
     super(String.format("%s has already been set to storage group", path));
   }
