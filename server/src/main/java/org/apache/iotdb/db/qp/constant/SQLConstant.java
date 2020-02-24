@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.db.qp.constant;
 
+import org.apache.iotdb.db.qp.strategy.SqlBaseLexer;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.util.HashMap;
 import java.util.Map;
-
-import org.apache.iotdb.db.qp.strategy.SqlBaseLexer;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * this class contains several constants used in SQL.
@@ -65,6 +63,8 @@ public class SQLConstant {
   public static final String COUNT = "count";
   public static final String AVG = "avg";
   public static final String SUM = "sum";
+
+  public static final String ALL = "all";
 
   public static final int KW_AND = 1;
   public static final int KW_OR = 2;

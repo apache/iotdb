@@ -31,15 +31,26 @@ public class PreviousFill extends IFill {
 
   private long beforeRange;
   private BatchData batchData;
+  private boolean untilLast;
 
   public PreviousFill(TSDataType dataType, long queryTime, long beforeRange) {
-    super(dataType, queryTime);
-    this.beforeRange = beforeRange;
-    batchData = new BatchData();
+    this(dataType, queryTime, beforeRange, false);
   }
 
   public PreviousFill(long beforeRange) {
+    this(beforeRange, false);
+  }
+
+  public PreviousFill(TSDataType dataType, long queryTime, long beforeRange, boolean untilLast) {
+    super(dataType, queryTime);
     this.beforeRange = beforeRange;
+    batchData = new BatchData();
+    this.untilLast = untilLast;
+  }
+
+  public PreviousFill(long beforeRange, boolean untilLast) {
+    this.beforeRange = beforeRange;
+    this.untilLast = untilLast;
   }
 
   @Override
@@ -82,5 +93,9 @@ public class PreviousFill extends IFill {
       beforePair = new TimeValuePair(queryTime, null);
     }
     return beforePair;
+  }
+
+  public boolean isUntilLast() {
+    return untilLast;
   }
 }

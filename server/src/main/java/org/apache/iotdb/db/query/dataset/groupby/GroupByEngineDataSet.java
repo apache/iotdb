@@ -21,8 +21,11 @@ package org.apache.iotdb.db.query.dataset.groupby;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
 
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
@@ -73,6 +76,13 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     } else {
       return false;
     }
+  }
+
+  @Override
+  protected abstract RowRecord nextWithoutConstraint() throws IOException;
+
+  public long getStartTime() {
+    return startTime;
   }
 
   @TestOnly
