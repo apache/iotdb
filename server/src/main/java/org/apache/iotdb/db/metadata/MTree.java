@@ -41,6 +41,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.mnode.DeviceMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -49,7 +50,6 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -83,7 +83,7 @@ public class MTree implements Serializable {
     MNode cur = root;
     boolean hasSetStorageGroup = false;
     // e.g, path = root.sg.d1.s1,  create internal node root -> sg -> d1
-    for (int i = 1; i < nodeNames.length - 1; i++) {
+    for (int i = 1; i < nodeNames.length - 2; i++) {
       String nodeName = nodeNames[i];
       if (cur instanceof StorageGroupMNode) {
         hasSetStorageGroup = true;
@@ -98,6 +98,14 @@ public class MTree implements Serializable {
       }
       cur = cur.getChild(nodeName);
     }
+    // d1
+    if (!cur.hasChild(nodeNames[nodeNames.length - 2])) {
+      if (cur instanceof LeafMNode) {
+        throw new PathAlreadyExistException(cur.getFullPath());
+      }
+      cur.addChild(new DeviceMNode(cur, nodeNames[nodeNames.length - 2], new HashMap<>()));
+    }
+    cur = cur.getChild(nodeNames[nodeNames.length - 2]);
     MNode leaf = new LeafMNode(cur, nodeNames[nodeNames.length - 1], dataType, encoding,
         compressor, props);
     cur.addChild(leaf);
@@ -108,19 +116,26 @@ public class MTree implements Serializable {
    *
    * e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
    */
-  MNode getDeviceNodeWithAutoCreating(String deviceId) throws MetadataException {
+  DeviceMNode getDeviceNodeWithAutoCreating(String deviceId) throws MetadataException {
     String[] nodeNames = MetaUtils.getNodeNames(deviceId);
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(deviceId);
     }
     MNode cur = root;
-    for (int i = 1; i < nodeNames.length; i++) {
+    for (int i = 1; i < nodeNames.length - 1; i++) {
       if (!cur.hasChild(nodeNames[i])) {
         cur.addChild(new InternalMNode(cur, nodeNames[i]));
       }
       cur = cur.getChild(nodeNames[i]);
     }
-    return cur;
+    if (!cur.hasChild(nodeNames[nodeNames.length - 1])) {
+      if (cur instanceof LeafMNode) {
+        throw new PathAlreadyExistException(cur.getFullPath());
+      }
+      cur.addChild(new DeviceMNode(cur, nodeNames[nodeNames.length - 1], new HashMap<>()));
+    }
+    cur = cur.getChild(nodeNames[nodeNames.length - 1]);
+    return (DeviceMNode) cur;
   }
 
   /**
@@ -174,7 +189,7 @@ public class MTree implements Serializable {
       throw new StorageGroupAlreadySetException(path);
     } else {
       StorageGroupMNode storageGroupMNode = new StorageGroupMNode(cur, nodeNames[i], path,
-          IoTDBDescriptor.getInstance().getConfig().getDefaultTTL(), new HashMap<>());
+          IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
       cur.addChild(storageGroupMNode);
     }
   }
@@ -270,7 +285,7 @@ public class MTree implements Serializable {
    * Get node by path with storage group check If storage group is not set,
    * StorageGroupNotSetException will be thrown
    */
-  MNode getNodeByPathWithStorageGroupCheck(String path) throws MetadataException {
+  DeviceMNode getNodeByPathWithStorageGroupCheck(String path) throws MetadataException {
     boolean storageGroupChecked = false;
     String[] nodes = MetaUtils.getNodeNames(path);
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
@@ -278,7 +293,7 @@ public class MTree implements Serializable {
     }
 
     MNode cur = root;
-    for (int i = 1; i < nodes.length; i++) {
+    for (int i = 1; i < nodes.length - 1; i++) {
       if (!cur.hasChild(nodes[i])) {
         if (!storageGroupChecked) {
           throw new StorageGroupNotSetException(path);
@@ -295,7 +310,14 @@ public class MTree implements Serializable {
     if (!storageGroupChecked) {
       throw new StorageGroupNotSetException(path);
     }
-    return cur;
+    if (!cur.hasChild(nodes[nodes.length - 1])) {
+      if (cur instanceof LeafMNode) {
+        throw new PathAlreadyExistException(cur.getFullPath());
+      }
+      cur.addChild(new DeviceMNode(cur, nodes[nodes.length - 1], new HashMap<>()));
+    }
+    cur = cur.getChild(nodes[nodes.length - 1]);
+    return (DeviceMNode) cur;
   }
 
   /**
@@ -307,6 +329,18 @@ public class MTree implements Serializable {
       return (StorageGroupMNode) node;
     } else {
       throw new StorageGroupNotSetException(path);
+    }
+  }
+
+  /**
+   * Get device node, if the give path is not a device, throw exception
+   */
+  DeviceMNode getDeviceNode(String path) throws MetadataException {
+    MNode node = getNodeByPath(path);
+    if (node instanceof DeviceMNode) {
+      return (DeviceMNode) node;
+    } else {
+      throw new PathNotExistException(path);
     }
   }
 
@@ -624,25 +658,29 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all ColumnSchemas for the storage group path.
+   * Get all ColumnSchemas for the device path.
    *
    * @return ArrayList<ColumnSchema> The list of the schema
    */
-  List<MeasurementSchema> getStorageGroupSchema(String storageGroup) throws MetadataException {
-    StorageGroupMNode storageGroupMNode = getStorageGroupNode(storageGroup);
-    return new ArrayList<>(storageGroupMNode.getSchemaMap().values());
+  List<MeasurementSchema> getDeviceSchema(String device) throws MetadataException {
+    DeviceMNode deviceMNode = getDeviceNode(device);
+    return new ArrayList<>(deviceMNode.getSchemaMap().values());
   }
 
-
   /**
-   * Get schema map for the storage group
+   * Get schema map for the device
    *
    * measurement -> measurementSchema
    */
-  Map<String, MeasurementSchema> getStorageGroupSchemaMap(String storageGroup)
+  Map<String, MeasurementSchema> getDeviceSchemaMap(String device)
       throws MetadataException {
-    StorageGroupMNode storageGroupMNode = getStorageGroupNode(storageGroup);
-    return storageGroupMNode.getSchemaMap();
+    DeviceMNode deviceMNode;
+    try {
+      deviceMNode = getDeviceNode(device);
+    } catch (PathNotExistException e) {
+      return new HashMap<>();
+    }
+    return deviceMNode.getSchemaMap();
   }
 
   @Override

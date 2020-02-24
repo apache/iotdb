@@ -53,6 +53,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
@@ -446,14 +447,7 @@ public class StorageGroupProcessor {
   }
 
   private Schema constructSchema(String storageGroupName) throws MetadataException {
-    List<MeasurementSchema> columnSchemaList =
-        MManager.getInstance().getStorageGroupSchema(storageGroupName);
-
-    Schema newSchema = new Schema();
-    for (Map.Entry<String, MeasurementSchema> entry : schemaMap.entrySet()) {
-      newSchema.registerTimeseries(new Path(entry.getKey()), entry.getValue());
-    }
-    return newSchema;
+    return SchemaUtils.constructSchema(storageGroupName);
   }
 
 

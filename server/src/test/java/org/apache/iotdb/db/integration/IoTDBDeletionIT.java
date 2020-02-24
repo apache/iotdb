@@ -38,7 +38,7 @@ import org.junit.Test;
 public class IoTDBDeletionIT {
 
   private static String[] creationSqls = new String[]{
-          "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
+          "SET STORAGE GROUP TO root.vehicle",
           "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
           "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
           "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -140,13 +140,13 @@ public class IoTDBDeletionIT {
     }
   }
 
-  // @Test
+  @Test
   public void testDelAfterFlush() throws SQLException {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
+      statement.execute("SET STORAGE GROUP TO root.ln.wf01");
       statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN,"
           + " ENCODING=PLAIN");
       statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,status) "

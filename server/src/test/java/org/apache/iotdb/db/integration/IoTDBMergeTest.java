@@ -65,7 +65,7 @@ public class IoTDBMergeTest {
       statement.execute("SET STORAGE GROUP TO root.mergeTest");
       for (int i = 1; i <= 3; i++) {
         try {
-          statement.execute("CREATE TIMESERIES root.mergeTest.s" + i + " WITH DATATYPE=INT64,"
+          statement.execute("CREATE TIMESERIES root.mergeTest.d0.s" + i + " WITH DATATYPE=INT64,"
               + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
@@ -75,12 +75,12 @@ public class IoTDBMergeTest {
       for (int i = 0; i < 10; i++) {
         logger.info("Running the {} round merge", i);
         for (int j = i * 10 + 1; j <= (i+1) * 10; j++) {
-          statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+          statement.execute(String.format("INSERT INTO root.mergeTest.d0(timestamp,s1,s2,s3) VALUES (%d,%d,"
               + "%d,%d)", j, j+1, j+2, j+3));
         }
         statement.execute("FLUSH");
         for (int j = i * 10 + 1; j <= (i+1) * 10; j++) {
-          statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+          statement.execute(String.format("INSERT INTO root.mergeTest.d0(timestamp,s1,s2,s3) VALUES (%d,%d,"
               + "%d,%d)", j, j+10, j+20, j+30));
         }
         statement.execute("FLUSH");
@@ -91,9 +91,9 @@ public class IoTDBMergeTest {
           cnt = 0;
           while (resultSet.next()) {
             long time = resultSet.getLong("Time");
-            long s1 = resultSet.getLong("root.mergeTest.s1");
-            long s2 = resultSet.getLong("root.mergeTest.s2");
-            long s3 = resultSet.getLong("root.mergeTest.s3");
+            long s1 = resultSet.getLong("root.mergeTest.d0.s1");
+            long s2 = resultSet.getLong("root.mergeTest.d0.s2");
+            long s3 = resultSet.getLong("root.mergeTest.d0.s3");
             assertEquals(time + 10, s1);
             assertEquals(time + 20, s2);
             assertEquals(time + 30, s3);
@@ -116,7 +116,7 @@ public class IoTDBMergeTest {
       statement.execute("SET STORAGE GROUP TO root.mergeTest");
       for (int i = 1; i <= 3; i++) {
         try {
-          statement.execute("CREATE TIMESERIES root.mergeTest.s" + i + " WITH DATATYPE=INT64,"
+          statement.execute("CREATE TIMESERIES root.mergeTest.d0.s" + i + " WITH DATATYPE=INT64,"
               + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
@@ -124,23 +124,23 @@ public class IoTDBMergeTest {
       }
 
       for (int j = 10; j < 20; j++) {
-        statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+        statement.execute(String.format("INSERT INTO root.mergeTest.d0(timestamp,s1,s2,s3) VALUES (%d,%d,"
             + "%d,%d)", j, j+1, j+2, j+3));
       }
       statement.execute("FLUSH");
       for (int j = 20; j < 30; j++) {
-        statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+        statement.execute(String.format("INSERT INTO root.mergeTest.d0(timestamp,s1,s2,s3) VALUES (%d,%d,"
             + "%d,%d)", j, j+1, j+2, j+3));
       }
       statement.execute("FLUSH");
 
       for (int j = 20; j < 30; j++) {
-        statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+        statement.execute(String.format("INSERT INTO root.mergeTest.d0(timestamp,s1,s2,s3) VALUES (%d,%d,"
             + "%d,%d)", j, j+10, j+20, j+30));
       }
       statement.execute("FLUSH");
       for (int j = 10; j < 20; j++) {
-        statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+        statement.execute(String.format("INSERT INTO root.mergeTest.d0(timestamp,s1,s2,s3) VALUES (%d,%d,"
             + "%d,%d)", j, j+10, j+20, j+30));
       }
       statement.execute("FLUSH");
@@ -152,9 +152,9 @@ public class IoTDBMergeTest {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          long s1 = resultSet.getLong("root.mergeTest.s1");
-          long s2 = resultSet.getLong("root.mergeTest.s2");
-          long s3 = resultSet.getLong("root.mergeTest.s3");
+          long s1 = resultSet.getLong("root.mergeTest.d0.s1");
+          long s2 = resultSet.getLong("root.mergeTest.d0.s2");
+          long s3 = resultSet.getLong("root.mergeTest.d0.s3");
           assertEquals(cnt + 10, time);
           assertEquals(time + 10, s1);
           assertEquals(time + 20, s2);
@@ -178,7 +178,7 @@ public class IoTDBMergeTest {
       statement.execute("SET STORAGE GROUP TO root.mergeTest");
       for (int i = 1; i <= 3; i++) {
         try {
-          statement.execute("CREATE TIMESERIES root.mergeTest.s" + i + " WITH DATATYPE=INT64,"
+          statement.execute("CREATE TIMESERIES root.mergeTest.d0.s" + i + " WITH DATATYPE=INT64,"
               + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
@@ -191,13 +191,13 @@ public class IoTDBMergeTest {
         for (int i = 0; i < 10; i++) {
           // sequence files
           for (int j = i * 1000 + 300 + k * 100; j <= i * 1000 + 399 + k * 100; j++) {
-            statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+            statement.execute(String.format("INSERT INTO root.mergeTest.d0(timestamp,s1,s2,s3) VALUES (%d,%d,"
                 + "%d,%d)", j, j+1, j+2, j+3));
           }
           statement.execute("FLUSH");
           // unsequence files
           for (int j = i * 1000 + k * 100; j <= i * 1000 + 99 + k * 100; j++) {
-            statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+            statement.execute(String.format("INSERT INTO root.mergeTest.d0(timestamp,s1,s2,s3) VALUES (%d,%d,"
                 + "%d,%d)", j, j+10, j+20, j+30));
           }
           statement.execute("FLUSH");
@@ -211,9 +211,9 @@ public class IoTDBMergeTest {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          long s1 = resultSet.getLong("root.mergeTest.s1");
-          long s2 = resultSet.getLong("root.mergeTest.s2");
-          long s3 = resultSet.getLong("root.mergeTest.s3");
+          long s1 = resultSet.getLong("root.mergeTest.d0.s1");
+          long s2 = resultSet.getLong("root.mergeTest.d0.s2");
+          long s3 = resultSet.getLong("root.mergeTest.d0.s3");
           assertEquals(cnt, time);
           if (time % 1000 < 700) {
             assertEquals(time + 10, s1);

@@ -54,7 +54,7 @@ public class MemTablePoolTest {
     System.out.println("memtable pool use deque and synchronized consume:" + time);
   }
 
-  //@Test
+  @Test
   public void testSort() {
     long start = System.currentTimeMillis();
     TreeMap<Long, Long> treeMap = new TreeMap<>();

@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.utils;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -40,9 +42,15 @@ public class SchemaUtils {
    * @return the schema of the FileNode named processorName.
    */
   public static Schema constructSchema(String processorName) throws MetadataException {
-    Map<String, MeasurementSchema> columnSchemaMap;
-    columnSchemaMap = MManager.getInstance().getStorageGroupSchema(processorName);
-    return getSchemaFromColumnSchema(columnSchemaMap);
+    List<String> devices = MManager.getInstance().getDevices(processorName);
+    Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>();
+    for (String device : devices) {
+      Map<String, MeasurementSchema> schema = MManager.getInstance().getDeviceSchemaMap(device);
+      for (Entry<String, MeasurementSchema> entry : schema.entrySet()) {
+        measurementSchemaMap.put(new Path(device, entry.getKey()), entry.getValue());
+      }
+    }
+    return getSchemaFromColumnSchema(measurementSchemaMap);
   }
 
   /**
@@ -51,10 +59,10 @@ public class SchemaUtils {
    * @param schemaList the schema of the columns in this file.
    * @return a Schema contains the provided schemas.
    */
-  public static Schema getSchemaFromColumnSchema(Map<String, MeasurementSchema> schemaMap) {
+  public static Schema getSchemaFromColumnSchema(Map<Path, MeasurementSchema> schemaMap) {
     Schema schema = new Schema();
-    for (Map.Entry<String, MeasurementSchema> entry : schemaMap.entrySet()) {
-      schema.registerTimeseries(new Path(entry.getKey()), entry.getValue());
+    for (Map.Entry<Path, MeasurementSchema> entry : schemaMap.entrySet()) {
+      schema.registerTimeseries(entry.getKey(), entry.getValue());
     }
     return schema;
   }

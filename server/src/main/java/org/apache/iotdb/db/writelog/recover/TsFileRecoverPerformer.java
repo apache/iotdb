@@ -211,7 +211,7 @@ public class TsFileRecoverPerformer {
 
       if (!isLastFile || isLastFile && tsFileResource.isCloseFlagSet()) {
         // end the file if it is not the last file or it is closed before crush
-        restorableTsFileIOWriter.endFile(schema);
+        restorableTsFileIOWriter.endFile();
         tsFileResource.cleanCloseFlag();
       }
       // otherwise this file is not closed before crush, do nothing so we can continue writing

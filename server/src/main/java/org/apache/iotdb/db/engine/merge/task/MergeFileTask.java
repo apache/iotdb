@@ -42,7 +42,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.ForceAppendTsFileWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -153,7 +152,7 @@ class MergeFileTask {
           writeMergedChunkGroup(chunkMetaDataList, deviceId, newFileReader, oldFileWriter);
         }
       }
-      oldFileWriter.endFile(new Schema(newFileWriter.getKnownSchema()));
+      oldFileWriter.endFile();
 
       updateHistoricalVersions(seqFile);
       seqFile.serialize();
@@ -234,7 +233,7 @@ class MergeFileTask {
       }
     }
 
-    fileWriter.endFile(new Schema(fileWriter.getKnownSchema()));
+    fileWriter.endFile();
 
     updateHistoricalVersions(seqFile);
     seqFile.serialize();

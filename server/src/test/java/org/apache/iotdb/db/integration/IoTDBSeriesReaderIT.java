@@ -234,7 +234,7 @@ public class IoTDBSeriesReaderIT {
     }
   }
 
-  // @Test
+  @Test
   public void selectAllTest() throws IOException, StorageEngineException {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();

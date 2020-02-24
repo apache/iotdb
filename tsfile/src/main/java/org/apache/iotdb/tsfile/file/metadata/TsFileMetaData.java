@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.BloomFilter;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * TSFileMetaData collects all metadata info and saves in its data structure.
@@ -121,11 +121,10 @@ public class TsFileMetaData {
    * @param schemaDescriptors
    * @return -byte length
    */
-  public int serializeBloomFilter(OutputStream outputStream,
-      Map<Path, MeasurementSchema> schemaDescriptors)
+  public int serializeBloomFilter(OutputStream outputStream, Set<Path> paths)
       throws IOException {
     int byteLen = 0;
-    BloomFilter filter = buildBloomFilter(schemaDescriptors);
+    BloomFilter filter = buildBloomFilter(paths);
 
     byte[] bytes = filter.serialize();
     byteLen += ReadWriteIOUtils.write(bytes.length, outputStream);
@@ -142,8 +141,7 @@ public class TsFileMetaData {
    * @param schemaDescriptors
    * @return bloom filter
    */
-  private BloomFilter buildBloomFilter(Map<Path, MeasurementSchema> schemaDescriptors) {
-    Set<Path> paths = schemaDescriptors.keySet();
+  private BloomFilter buildBloomFilter(Set<Path> paths) {
     BloomFilter bloomFilter = BloomFilter
         .getEmptyBloomFilter(TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(),
             paths.size());

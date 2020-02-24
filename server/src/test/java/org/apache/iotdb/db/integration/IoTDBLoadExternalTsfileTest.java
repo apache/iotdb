@@ -227,7 +227,7 @@ public class IoTDBLoadExternalTsfileTest {
     }
   }
 
-  //@Test
+  @Test
   public void loadUnsequenceTsfileTest() throws SQLException {
     prepareData(insertUnsequenceSqls);
     String[] queryRes = new String[]{

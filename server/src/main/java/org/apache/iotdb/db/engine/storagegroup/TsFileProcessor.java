@@ -603,7 +603,7 @@ public class TsFileProcessor {
   private void endFile() throws IOException, TsFileProcessorException {
     long closeStartTime = System.currentTimeMillis();
     tsFileResource.serialize();
-    writer.endFile(schema);
+    writer.endFile();
     tsFileResource.cleanCloseFlag();
 
     // remove this processor from Closing list in StorageGroupProcessor,

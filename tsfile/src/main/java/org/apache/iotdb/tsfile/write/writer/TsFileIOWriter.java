@@ -224,16 +224,15 @@ public class TsFileIOWriter {
    * @param schema Schema
    * @throws IOException if I/O error occurs
    */
-  public void endFile(Schema schema) throws IOException {
+  public void endFile() throws IOException {
 
-    // serialize the SEPARATOR of MetaData and ChunkGroups
+    // serialize the SEPARATOR of MetaData
     ReadWriteIOUtils.write(MetaMarker.SEPARATOR, out.wrapAsStream());
-
-    // get all measurementSchema of this TsFile
-    Map<Path, MeasurementSchema> schemaDescriptors = schema.getMeasurementSchemaMap();
-    logger.debug("get time series list:{}", schemaDescriptors);
-
+    
+    logger.debug("get time series list:{}", chunkMetadataListMap.keySet());
+    
     deviceMetaDataMap = flushAllChunkMetadataList();
+    
     TsFileMetaData tsFileMetaData = new TsFileMetaData();
     tsFileMetaData.setDeviceMetaDataMap(deviceMetaDataMap);
     tsFileMetaData.setTotalChunkNum(totalChunkNum);
@@ -249,7 +248,7 @@ public class TsFileIOWriter {
     }
 
     // write bloom filter
-    size += tsFileMetaData.serializeBloomFilter(out.wrapAsStream(), schemaDescriptors);
+    size += tsFileMetaData.serializeBloomFilter(out.wrapAsStream(), chunkMetadataListMap.keySet());
     if (logger.isDebugEnabled()) {
       logger.debug("finish flushing the bloom filter file pos:{}", out.getPosition());
     }
@@ -291,7 +290,7 @@ public class TsFileIOWriter {
       timeseriesMetaData.setOffsetOfChunkMetaDataList(out.getPosition());
       Statistics<?> statistics = entry.getValue().get(0).getStatistics();
       int chunkMetadataListLength = 0;
-        // flush chunkMetadataList one by one
+      // flush chunkMetadataList one by one
       for (ChunkMetaData chunkMetadata : entry.getValue()) {
         statistics.mergeStatistics(chunkMetadata.getStatistics());
         chunkMetadataListLength += chunkMetadata.serializeTo(out.wrapAsStream());

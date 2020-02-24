@@ -67,7 +67,7 @@ public class TsFileIOWriterTest {
     writer.endChunkGroup(0);
 
     // end file
-    writer.endFile(schema);
+    writer.endFile();
   }
 
   @After

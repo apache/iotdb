@@ -207,7 +207,7 @@ public class SeqTsFileRecoverTest {
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     RestorableTsFileIOWriter writer = performer.recover();
     assertTrue(writer.canWrite());
-    writer.endFile(schema);
+    writer.endFile();
 
     assertEquals(2, (long) resource.getStartTimeMap().get("device99"));
     assertEquals(100, (long) resource.getEndTimeMap().get("device99"));

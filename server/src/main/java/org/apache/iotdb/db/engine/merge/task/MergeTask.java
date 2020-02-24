@@ -23,8 +23,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
@@ -111,9 +113,15 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logFiles(resource);
 
-    List<MeasurementSchema> measurementSchemas = MManager.getInstance()
-        .getStorageGroupSchema(storageGroupName);
-    resource.addMeasurements(measurementSchemas);
+    List<String> devices = MManager.getInstance().getDevices(storageGroupName);
+    Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>();
+    for (String device : devices) {
+      Map<String, MeasurementSchema> schema = MManager.getInstance().getDeviceSchemaMap(device);
+      for (Entry<String, MeasurementSchema> entry : schema.entrySet()) {
+        measurementSchemaMap.put(new Path(device, entry.getKey()), entry.getValue());
+      }
+    }
+    resource.setMeasurementSchemaMap(measurementSchemaMap);
 
     List<String> storageGroupPaths = MManager.getInstance().getAllTimeseriesName(storageGroupName + ".*");
     List<Path> unmergedSeries = new ArrayList<>();

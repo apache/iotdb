@@ -60,7 +60,7 @@ public class MergeResource {
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
-  private Map<String, MeasurementSchema> measurementSchemaMap = new HashMap<>(); //is this too waste?
+  private Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>(); //is this too waste?
   private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
   private long timeLowerBound = Long.MIN_VALUE;
@@ -103,7 +103,7 @@ public class MergeResource {
   }
 
   public MeasurementSchema getSchema(Path path) {
-    return measurementSchemaMap.get(measurement);
+    return measurementSchemaMap.get(path);
   }
 
   /**
@@ -170,10 +170,10 @@ public class MergeResource {
 
   /**
    * Construct the a new or get an existing ChunkWriter of a measurement. Different timeseries of
-   * the same measurement shares the same instance.
+   * the same measurement and data type shares the same instance.
    */
-  public IChunkWriter getChunkWriter(MeasurementSchema MeasurementSchema) {
-    return chunkWriterCache.computeIfAbsent(MeasurementSchema, ChunkWriterImpl::new);
+  public IChunkWriter getChunkWriter(MeasurementSchema measurementSchema) {
+    return chunkWriterCache.computeIfAbsent(measurementSchema, ChunkWriterImpl::new);
   }
 
   /**
@@ -260,10 +260,8 @@ public class MergeResource {
     this.cacheDeviceMeta = cacheDeviceMeta;
   }
 
-  public void addMeasurementSchemaMap(List<MeasurementSchema> schemas) {
-    for (MeasurementSchema measurementSchema : schemas) {
-      measurementSchemaMap.put(measurementSchema.getMeasurementId(), measurementSchema);
-    }
+  public void setMeasurementSchemaMap(Map<Path, MeasurementSchema> measurementSchemaMap) {
+    this.measurementSchemaMap = measurementSchemaMap;
   }
 
 }
