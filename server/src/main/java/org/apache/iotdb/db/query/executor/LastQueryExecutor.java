@@ -20,10 +20,8 @@
 package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -85,7 +83,8 @@ public class LastQueryExecutor {
           QueryContext context)
           throws IOException, QueryProcessException, StorageEngineException {
     LastQueryResult queryResult = new LastQueryResult();
-    MNode node = null;
+   /* Retrieve last value from MNode
+   MNode node = null;
     try {
       node = MManager.getInstance().getNodeByPathFromCache(seriesPath.toString());
     } catch (PathException e) {
@@ -96,13 +95,12 @@ public class LastQueryExecutor {
     if (node.getCachedLast() != null) {
       queryResult.setPairResult(node.getCachedLast());
       return queryResult;
-    }
+    }*/
 
     // construct series reader without value filter
-    Filter timeFilter = null;
     IAggregateReader seriesReader = new SeriesAggregateReader(
             seriesPath, tsDataType, context, QueryResourceManager.getInstance()
-            .getQueryDataSource(seriesPath, context, timeFilter), timeFilter, null);
+            .getQueryDataSource(seriesPath, context, null), null, null, null);
 
     long maxTime = Long.MIN_VALUE;
     while (seriesReader.hasNextChunk()) {
@@ -143,8 +141,10 @@ public class LastQueryExecutor {
         }
       }
     }
+    /* Update cached last value
     if (queryResult.hasResult())
       node.setCachedLast(queryResult.getPairResult());
+      */
     return queryResult;
   }
 
