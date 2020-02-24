@@ -46,7 +46,7 @@ public class IoTDBConfig {
   /**
    * Port which the rest service listens to.
    */
-  private int RestPort = 8181;
+  private int restPort = 8181;
   private String rpcAddress = "0.0.0.0";
 
   /**
@@ -615,11 +615,11 @@ public class IoTDBConfig {
   }
 
   public int getRestPort() {
-    return RestPort;
+    return restPort;
   }
 
   public void setRestPort(int restPort) {
-    this.RestPort = restPort;
+    this.restPort = restPort;
   }
 
   public String getRpcAddress() {

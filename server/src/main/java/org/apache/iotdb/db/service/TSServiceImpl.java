@@ -136,7 +136,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final int DELETE_SIZE = 50;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
-  public static Vector<SqlArgument> sqlArgumentsList = new Vector<>();
+  public static ArrayList sqlArgumentsList = new ArrayList();
 
   private Planner processor;
   private IPlanExecutor executor;
