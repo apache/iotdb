@@ -216,52 +216,7 @@ RawDataQueryPlan 有三个子类，分别为 GroupByPlan、FillQueryPlan 和 Agg
 
 ##### AlignByDevicePlan 转化
 
-AlignByDevicePlan 即按设备对齐查询对应的表结构为：
-
-| Time | Device | sensor1 | sensor2 | sensor3 | ... |
-| ---- | ------ | ------- | ------- | ------- | --- |
-|      |        |         |         |         |     |
-
-首先解释一下 AlignByDevicePlan 中一些重要字段的作用。
-
-- prefixPaths：FROM 子句中的前缀路径，如 root.*.*, root.sg.d1;
-- devices：对 prefixPaths 进行去星和设备去重后得到的设备列表;
-- suffixPaths：SELECT 子句中的后缀路径，如 s0, temperature, \*;
-- measurementSetOfGivenSuffix：记录该 suffix 对应的 measurements，如 select *,s1 from root.sg.d0, root.sg.d1，对于后缀 *, measurementSetOfGivenSuffix = {s1,s2,s3} (all measurements in devices)，对于后缀 s1, measurementSetOfGivenSuffix = {s1};
-- deviceToMeasurementsMap：存储每个设备对应的 measurements;
-- dataTypeConsistencyChecker：检验不同设备的同名 Measurement 的数据类型一致性，如 root.sg1.d1.s0 为 INT32 类型而 root.sg2.d3.s0 为 FLOAT 类型则不满足一致性;
-
-Measurement 共有三种类型，常量 Measurement，不存在的 Measurement 以及存在且非常量的 Measurement，下面将结合具体字段进行解释。
-
-- loc：标记当前 Measurement 在 SELECT 后缀路径中的位置;
-- measurements：存储实际存在且非常量的 Measurement，在上面 measurementSetOfGivenSuffix 所举示例中，measurements = [s1,s2,s3,s1];
-- nonExistMeasurement：存储不存在的 Measurement，注意其定义位置在第一层 suffixPaths 循环，且为 Set 类型，目的是不对同一个 suffix 下的重复 Measurement 添加重复记录，但可以对多次出现的同名 suffix 增加记录。其将在一个 suffix 循环结束后将 Set 集合内的元素一起添加到 AlignByDevicePlan 中;
-- constMeasurement：存储常量 Measurement。
-
-接下来介绍 AlignByDevicePlan 的转化过程：
-
-为了避免冗余，AlignByDevicePlan 将 GroupByPlan 等三个子类查询设置为其中的变量而非其子类，因此如果查询类型是三种子类查询，则需要先对 AlignByDevicePlan 中的变量进行赋值，并修改其对应的查询类型。
-
-同样以 GroupByPlan 为例，通过调用 setGroupByPlan() 方法对 AlignByDevicePlan 中的 GroupByPlan 进行赋值，并调用 setOperatorType(OperatorType.GROUPBY); 将查询类型设置为降频聚合查询。
-
-接下来对 AlignByDevicePlan 的处理主要包括：
-
-1. 首先获取 FROM 子句中的前缀路径，SELECT 子句中的后缀路径，以及包含的聚合类型。在拿到前缀路径 prefixPaths 时，直接调用 removeStarsInDeviceWithUnique() 方法对前缀路径进行解析并去重，最终得到非重复的设备列表 devices。
-2. 然后遍历后缀路径和设备列表进行 Path 拼接，并对三种不同类型的 Measurement 进行处理，同时设置变量 loc 标记每个 Measurement 对应的位置。其中，如果后缀路径以单引号或双引号开头，则将其存储为常量 constMeasurement；如果拼接后的路径不存在，则将其存储为 nonExistMeasurement；否则视为正常 Measurement 进入步骤3。
-3. 通过拼接 Path 得到 actualPaths 进行遍历。首先需要检验数据类型的一致性，不满足返回错误信息，满足则记录下该 Measurement，对 measurementSetOfGivenSuffix, deviceToMeasurementsMap 等进行更新。
-4. 循环结束后，将循环中得到的变量信息赋值到 AlignByDevicePlan 中。
-5. 最后调用 concatFilterByDevice() 方法计算 deviceToFilterMap，得到将每个设备分别拼接后对应的 Filter 信息。
-
-```java
-Map<String, IExpression> concatFilterByDevice(List<String> devices,
-      FilterOperator operator)
-输入：去重后的 devices 列表和未拼接的 FilterOperator
-输入：经过拼接后的 deviceToFilterMap，记录了每个设备对应的 Filter 信息
-```
-
-concatFilterByDevice() 方法的主要处理逻辑在 concatFilterPath() 中：
-
-concatFilterPath() 方法遍历未拼接的 FilterOperator 二叉树，判断节点是否为叶子节点，如果是，则取该叶子结点的路径，如果路径以 time 或 root 开头则不做处理，否则将设备名与节点路径进行拼接后返回；如果不是，则对该节点的所有子节点进行迭代处理。例如：SELECT * FROM root.sg.d1 WHERE time = 1 AND root.sg.d1.s1 = 10 AND s2 < 25，则其过滤条件拼接后的结果为 time = 1 AND root.sg.d1.s1 = 10 AND root.sg.d1.s2 < 25
+AlignByDevicePlan 的转化过程可以参考 [AlignByDeviceQuery](/#/SystemDesign/progress/chap5/sec6).
 
 ##### RawDataQueryPlan 转化
 
