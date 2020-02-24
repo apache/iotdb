@@ -29,6 +29,9 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public class FirstValueAggrResult extends AggregateResult {
 
+  // timestamp of current value
+  private long timestamp = Long.MAX_VALUE;
+
   public FirstValueAggrResult(TSDataType dataType) {
     super(dataType);
     reset();
@@ -40,17 +43,14 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics)
-      throws QueryProcessException {
+  public void updateResultFromStatistics(Statistics statistics) {
     if (hasResult()) {
       return;
     }
 
     Object firstVal = statistics.getFirstValue();
-    if (firstVal == null) {
-      throw new QueryProcessException("ChunkMetaData contains no FIRST value");
-    }
     setValue(firstVal);
+    timestamp = statistics.getStartTime();
   }
 
   @Override
@@ -60,6 +60,7 @@ public class FirstValueAggrResult extends AggregateResult {
     }
     if (dataInThisPage.hasCurrent()) {
       setValue(dataInThisPage.currentValue());
+      timestamp = dataInThisPage.currentTime();
     }
   }
 
@@ -70,6 +71,7 @@ public class FirstValueAggrResult extends AggregateResult {
     }
     if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       setValue(dataInThisPage.currentValue());
+      timestamp = dataInThisPage.currentTime();
       dataInThisPage.next();
     }
   }
@@ -85,6 +87,7 @@ public class FirstValueAggrResult extends AggregateResult {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
         setValue(value);
+        timestamp = timestamps[i];
         break;
       }
     }
@@ -93,5 +96,14 @@ public class FirstValueAggrResult extends AggregateResult {
   @Override
   public boolean isCalculatedAggregationResult() {
     return hasResult();
+  }
+
+  @Override
+  protected void merge(AggregateResult another) {
+    FirstValueAggrResult anotherFirst = (FirstValueAggrResult) another;
+    if(this.getValue() == null || this.timestamp > anotherFirst.timestamp){
+      this.setValue( anotherFirst.getValue() );
+      this.timestamp = anotherFirst.timestamp;
+    }
   }
 }

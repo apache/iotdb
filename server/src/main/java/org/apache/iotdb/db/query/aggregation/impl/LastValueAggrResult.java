@@ -28,6 +28,9 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public class LastValueAggrResult extends AggregateResult {
 
+  //timestamp of current value
+  private long timestamp = Long.MIN_VALUE;
+
   public LastValueAggrResult(TSDataType dataType) {
     super(dataType);
     reset();
@@ -42,6 +45,7 @@ public class LastValueAggrResult extends AggregateResult {
   public void updateResultFromStatistics(Statistics statistics) {
     Object lastVal = statistics.getLastValue();
     setValue(lastVal);
+    timestamp = statistics.getEndTime();
   }
 
   @Override
@@ -51,7 +55,7 @@ public class LastValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
-    long time = -1;
+    long time = Long.MIN_VALUE;
     Object lastVal = null;
     while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       time = dataInThisPage.currentTime();
@@ -59,8 +63,9 @@ public class LastValueAggrResult extends AggregateResult {
       dataInThisPage.next();
     }
 
-    if (time != -1) {
+    if (time != Long.MIN_VALUE) {
       setValue(lastVal);
+      timestamp = time;
     }
   }
 
@@ -68,7 +73,7 @@ public class LastValueAggrResult extends AggregateResult {
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
 
-    long time = -1;
+    long time = Long.MIN_VALUE;
     Object lastVal = null;
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
@@ -77,14 +82,24 @@ public class LastValueAggrResult extends AggregateResult {
         lastVal = value;
       }
     }
-    if (time != -1) {
+    if (time != Long.MIN_VALUE) {
       setValue(lastVal);
+      timestamp = time;
     }
   }
 
   @Override
   public boolean isCalculatedAggregationResult() {
     return false;
+  }
+
+  @Override
+  protected void merge(AggregateResult another) {
+    LastValueAggrResult anotherFirst = (LastValueAggrResult) another;
+    if(this.getValue() == null || this.timestamp < anotherFirst.timestamp){
+      this.setValue( anotherFirst.getValue() );
+      this.timestamp = anotherFirst.timestamp;
+    }
   }
 
 }

@@ -78,6 +78,14 @@ public class MinValueAggrResult extends AggregateResult {
     return false;
   }
 
+  @Override
+  protected void merge(AggregateResult another) {
+    if (another.getResult() != null) {
+      Object value = another.getResult();
+      this.updateResult((Comparable<Object>) value);
+    }
+  }
+
   private void updateResult(Comparable<Object> minVal) {
     if (minVal == null) {
       return;

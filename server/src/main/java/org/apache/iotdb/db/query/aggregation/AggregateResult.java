@@ -209,4 +209,6 @@ public abstract class AggregateResult {
   protected boolean hasResult() {
     return hasResult;
   }
+
+  abstract protected void merge(AggregateResult another);
 }

@@ -104,4 +104,10 @@ public class SumAggrResult extends AggregateResult {
   public boolean isCalculatedAggregationResult() {
     return false;
   }
+
+  @Override
+  protected void merge(AggregateResult another) {
+    SumAggrResult anotherSum = (SumAggrResult) another;
+    setDoubleValue(getDoubleValue() + anotherSum.getDoubleValue());
+  }
 }
