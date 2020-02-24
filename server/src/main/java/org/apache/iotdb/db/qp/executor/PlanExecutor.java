@@ -38,7 +38,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -63,14 +62,14 @@ import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.MNode;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
-import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
@@ -90,7 +89,6 @@ import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
-import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
@@ -109,7 +107,6 @@ import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
@@ -152,7 +149,7 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException, QueryFilterOptimizationException,
-      QueryProcessException, MetadataException, SQLException {
+      QueryProcessException, MetadataException {
     if (queryPlan instanceof QueryPlan) {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
@@ -203,10 +200,7 @@ public class PlanExecutor implements IPlanExecutor {
       case SET_STORAGE_GROUP:
         return setStorageGroup((SetStorageGroupPlan) plan);
       case DELETE_STORAGE_GROUP:
-        return deleteStorageGroup((DeleteStorageGroupPlan) plan);
-      case PROPERTY:
-        PropertyPlan property = (PropertyPlan) plan;
-        return operateProperty(property);
+        return deleteStorageGroups((DeleteStorageGroupPlan) plan);
       case TTL:
         operateTTL((SetTTLPlan) plan);
         return true;
@@ -256,7 +250,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowQuery(ShowPlan showPlan)
-      throws QueryProcessException, MetadataException, SQLException {
+      throws QueryProcessException, MetadataException {
     switch (showPlan.getShowContentType()) {
       case TTL:
         return processShowTTLQuery((ShowTTLPlan) showPlan);
@@ -285,10 +279,11 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private QueryDataSet processCountNodes(CountPlan countPlan) throws SQLException {
+  private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {
     List<String> nodes = getNodesList(countPlan.getPath().toString(), countPlan.getLevel());
     int num = nodes.size();
-    SingleDataSet singleDataSet = new SingleDataSet(Collections.singletonList(new Path(COLUMN_COUNT)),
+    SingleDataSet singleDataSet = new SingleDataSet(
+        Collections.singletonList(new Path(COLUMN_COUNT)),
         Collections.singletonList(TSDataType.INT32));
     Field field = new Field(TSDataType.INT32);
     field.setIntV(num);
@@ -298,10 +293,10 @@ public class PlanExecutor implements IPlanExecutor {
     return singleDataSet;
   }
 
-  private QueryDataSet processCountNodeTimeSeries(CountPlan countPlan)
-      throws SQLException, MetadataException {
+  private QueryDataSet processCountNodeTimeSeries(CountPlan countPlan) throws MetadataException {
     List<String> nodes = getNodesList(countPlan.getPath().toString(), countPlan.getLevel());
-    ListDataSet listDataSet = new ListDataSet(Arrays.asList(new Path(COLUMN_COLUMN), new Path(COLUMN_COUNT)),
+    ListDataSet listDataSet = new ListDataSet(
+        Arrays.asList(new Path(COLUMN_COLUMN), new Path(COLUMN_COUNT)),
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
     for (String columnPath : nodes) {
       RowRecord record = new RowRecord(0);
@@ -317,16 +312,17 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected List<String> getPaths(String path) throws MetadataException {
-    return MManager.getInstance().getPaths(path);
+    return MManager.getInstance().getAllTimeseriesName(path);
   }
 
-  private List<String> getNodesList(String schemaPattern, int level) throws SQLException {
+  private List<String> getNodesList(String schemaPattern, int level) throws MetadataException {
     return MManager.getInstance().getNodesList(schemaPattern, level);
   }
 
   private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {
     int num = getPaths(countPlan.getPath().toString()).size();
-    SingleDataSet singleDataSet = new SingleDataSet(Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
+    SingleDataSet singleDataSet = new SingleDataSet(
+        Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
         Collections.singletonList(TSDataType.INT32));
     Field field = new Field(TSDataType.INT32);
     field.setIntV(num);
@@ -336,12 +332,13 @@ public class PlanExecutor implements IPlanExecutor {
     return singleDataSet;
   }
 
-  private QueryDataSet processShowDevices(ShowDevicesPlan showDevicesPlan) throws PathException {
+  private QueryDataSet processShowDevices(ShowDevicesPlan showDevicesPlan)
+      throws MetadataException {
     ListDataSet listDataSet = new ListDataSet(Collections.singletonList(new Path(COLUMN_DEVICES)),
         Collections.singletonList(TSDataType.TEXT));
     List<String> devices;
     devices = MManager.getInstance().getDevices(showDevicesPlan.getPath().toString());
-    for(String s: devices) {
+    for (String s : devices) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
       field.setBinaryV(new Binary(s));
@@ -352,12 +349,13 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowChildPaths(ShowChildPathsPlan showChildPathsPlan)
-      throws PathException {
+      throws MetadataException {
     Set<String> childPathsList = MManager.getInstance()
         .getChildNodePathInNextLevel(showChildPathsPlan.getPath().toString());
-    ListDataSet listDataSet = new ListDataSet(Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
+    ListDataSet listDataSet = new ListDataSet(
+        Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
         Collections.singletonList(TSDataType.TEXT));
-    for(String s: childPathsList) {
+    for (String s : childPathsList) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
       field.setBinaryV(new Binary(s));
@@ -368,10 +366,11 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowStorageGroup() {
-    ListDataSet listDataSet = new ListDataSet(Collections.singletonList(new Path(COLUMN_STORAGE_GROUP)),
+    ListDataSet listDataSet = new ListDataSet(
+        Collections.singletonList(new Path(COLUMN_STORAGE_GROUP)),
         Collections.singletonList(TSDataType.TEXT));
     List<String> storageGroupList = MManager.getInstance().getAllStorageGroupNames();
-    for(String s: storageGroupList) {
+    for (String s : storageGroupList) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
       field.setBinaryV(new Binary(s));
@@ -381,19 +380,21 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan timeSeriesPlan) throws PathException {
+  private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan timeSeriesPlan)
+      throws MetadataException {
     ListDataSet listDataSet = new ListDataSet(Arrays.asList(
         new Path(COLUMN_TIMESERIES),
         new Path(COLUMN_STORAGE_GROUP),
         new Path(COLUMN_TIMESERIES_DATATYPE),
         new Path(COLUMN_TIMESERIES_ENCODING),
         new Path(COLUMN_TIMESERIES_COMPRESSION)),
-        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
-    List<List<String>> timeseriesList = MManager.getInstance()
-        .getShowTimeseriesPath(timeSeriesPlan.getPath().toString());
-    for(List<String> list : timeseriesList) {
+        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
+            TSDataType.TEXT));
+    List<String[]> timeseriesList = MManager.getInstance()
+        .getAllTimeseriesSchema(timeSeriesPlan.getPath().toString());
+    for (String[] list : timeseriesList) {
       RowRecord record = new RowRecord(0);
-      for(String s : list) {
+      for (String s : list) {
         Field field = new Field(TSDataType.TEXT);
         field.setBinaryV(new Binary(s));
         record.addField(field);
@@ -404,13 +405,14 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowTTLQuery(ShowTTLPlan showTTLPlan) {
-    ListDataSet listDataSet = new ListDataSet(Arrays.asList(new Path(COLUMN_STORAGE_GROUP),new Path(COLUMN_TTL))
+    ListDataSet listDataSet = new ListDataSet(
+        Arrays.asList(new Path(COLUMN_STORAGE_GROUP), new Path(COLUMN_TTL))
         , Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
     List<String> selectedSgs = showTTLPlan.getStorageGroups();
 
-    List<MNode> storageGroups = MManager.getInstance().getAllStorageGroups();
+    List<StorageGroupMNode> storageGroups = MManager.getInstance().getAllStorageGroupNodes();
     int timestamp = 0;
-    for (MNode mNode : storageGroups) {
+    for (StorageGroupMNode mNode : storageGroups) {
       String sgName = mNode.getFullPath();
       if (!selectedSgs.isEmpty() && !selectedSgs.contains(sgName)) {
         continue;
@@ -434,7 +436,8 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowVersion() {
-    SingleDataSet singleDataSet = new SingleDataSet(Collections.singletonList(new Path(IoTDBConstant.COLUMN_VERSION)),
+    SingleDataSet singleDataSet = new SingleDataSet(
+        Collections.singletonList(new Path(IoTDBConstant.COLUMN_VERSION)),
         Collections.singletonList(TSDataType.TEXT));
     Field field = new Field(TSDataType.TEXT);
     field.setBinaryV(new Binary(IoTDBConstant.VERSION));
@@ -445,7 +448,8 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowDynamicParameterQuery() {
-    ListDataSet listDataSet = new ListDataSet(Arrays.asList(new Path(COLUMN_PARAMETER), new Path(COLUMN_VALUE)),
+    ListDataSet listDataSet = new ListDataSet(
+        Arrays.asList(new Path(COLUMN_PARAMETER), new Path(COLUMN_VALUE)),
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
     int timestamp = 0;
@@ -468,7 +472,8 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowFlushTaskInfo() {
-    ListDataSet listDataSet = new ListDataSet(Arrays.asList(new Path(COLUMN_ITEM), new Path(COLUMN_VALUE)),
+    ListDataSet listDataSet = new ListDataSet(
+        Arrays.asList(new Path(COLUMN_ITEM), new Path(COLUMN_VALUE)),
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
     int timestamp = 0;
@@ -498,14 +503,14 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       Set<String> existingPaths = new HashSet<>();
       for (Path p : deletePlan.getPaths()) {
-        existingPaths.addAll(mManager.getPaths(p.getFullPath()));
+        existingPaths.addAll(mManager.getAllTimeseriesName(p.getFullPath()));
       }
       if (existingPaths.isEmpty()) {
         throw new QueryProcessException(
             "TimeSeries does not exist and its data cannot be deleted");
       }
       for (String onePath : existingPaths) {
-        if (!mManager.pathExist(onePath)) {
+        if (!mManager.isPathExist(onePath)) {
           throw new QueryProcessException(String
               .format("TimeSeries %s does not exist and its data cannot be deleted", onePath));
         }
@@ -585,23 +590,41 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void createSchemaAutomatically(List<ChunkGroupMetaData> chunkGroupMetaDatas,
       Map<String, MeasurementSchema> knownSchemas, int sgLevel)
-      throws CacheException, QueryProcessException, MetadataException, StorageEngineException {
+      throws QueryProcessException, MetadataException, StorageEngineException {
     if (chunkGroupMetaDatas.isEmpty()) {
       return;
     }
     for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDatas) {
       String device = chunkGroupMetaData.getDeviceID();
-      MNode node = mManager.getNodeByPathFromCache(device, true, sgLevel);
+      MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(device, true, sgLevel);
       for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-        String fullPath =
-            device + IoTDBConstant.PATH_SEPARATOR + chunkMetaData.getMeasurementUid();
-        MeasurementSchema schema = knownSchemas.get(chunkMetaData.getMeasurementUid());
+        String measurement = chunkMetaData.getMeasurementUid();
+        String fullPath = device + IoTDBConstant.PATH_SEPARATOR + measurement;
+        MeasurementSchema schema = knownSchemas.get(measurement);
         if (schema == null) {
           throw new MetadataException(String
-              .format("Can not get the schema of measurement [%s]",
-                  chunkMetaData.getMeasurementUid()));
+              .format("Can not get the schema of measurement [%s]", measurement));
         }
-        checkPathExists(node, fullPath, schema, true);
+        if (!node.hasChild(measurement)) {
+          try {
+            boolean result = mManager
+                .createTimeseries(fullPath, schema.getType(), schema.getEncodingType(),
+                    schema.getCompressor(), Collections.emptyMap());
+            if (result) {
+              storageEngine
+                  .addTimeSeries(new Path(fullPath), schema.getType(), schema.getEncodingType(),
+                      schema.getCompressor(), Collections.emptyMap());
+            }
+          } catch (MetadataException e) {
+            if (!e.getMessage().contains("already exist")) {
+              throw e;
+            }
+          }
+        }
+        if (node.getChild(measurement) instanceof InternalMNode) {
+          throw new QueryProcessException(
+              String.format("Current Path is not leaf node. %s", fullPath));
+        }
       }
     }
   }
@@ -639,7 +662,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       MManager.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
       StorageEngine.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
-    } catch (PathException | StorageEngineException e) {
+    } catch (MetadataException | StorageEngineException e) {
       throw new QueryProcessException(e);
     } catch (IOException e) {
       throw new QueryProcessException(e.getMessage());
@@ -656,13 +679,13 @@ public class PlanExecutor implements IPlanExecutor {
     String deviceId = path.getDevice();
     String measurementId = path.getMeasurement();
     try {
-      if (!mManager.pathExist(path.getFullPath())) {
+      if (!mManager.isPathExist(path.getFullPath())) {
         throw new QueryProcessException(
             String.format("Time series %s does not exist.", path.getFullPath()));
       }
-      mManager.getStorageGroupNameByPath(path.getFullPath());
+      mManager.getStorageGroupName(path.getFullPath());
       storageEngine.delete(deviceId, measurementId, timestamp);
-    } catch (StorageGroupException | StorageEngineException e) {
+    } catch (MetadataException | StorageEngineException e) {
       throw new QueryProcessException(e);
     }
   }
@@ -673,12 +696,35 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
-      MNode node = mManager.getNodeByPathFromCache(deviceId);
+      MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
       String[] strValues = insertPlan.getValues();
       TSDataType[] dataTypes = new TSDataType[measurementList.length];
 
       for (int i = 0; i < measurementList.length; i++) {
-        MNode measurementNode = checkPathExists(node, deviceId, measurementList[i], strValues[i]);
+        String measurement = measurementList[i];
+        if (!node.hasChild(measurement)) {
+          if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+            throw new QueryProcessException(
+                String.format("Current deviceId[%s] does not contain measurement:%s",
+                    deviceId, measurement));
+          }
+          TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValues[i]);
+          Path path = new Path(deviceId, measurement);
+
+          boolean result = mManager
+              .createTimeseries(path.toString(), dataType, getDefaultEncoding(dataType),
+                  TSFileDescriptor.getInstance().getConfig().getCompressor(),
+                  Collections.emptyMap());
+          if (result) {
+            storageEngine.addTimeSeries(path, dataType, getDefaultEncoding(dataType));
+          }
+        }
+        MNode measurementNode = node.getChild(measurement);
+        if (measurementNode instanceof InternalMNode) {
+          throw new QueryProcessException(
+              String.format("Current Path is not leaf node. %s.%s", deviceId, measurement));
+        }
+
         dataTypes[i] = measurementNode.getSchema().getType();
       }
       insertPlan.setDataTypes(dataTypes);
@@ -689,59 +735,30 @@ public class PlanExecutor implements IPlanExecutor {
       }
     } catch (PathException | StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
-    } catch (CacheException e) {
-      throw new QueryProcessException(e.getMessage());
     }
   }
 
-  private MNode checkPathExists(MNode node, String deviceId, String measurement, String strValue)
-      throws MetadataException, QueryProcessException, StorageEngineException {
-    // check if timeseries exists
-    if (!node.hasChild(measurement)) {
-      if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
-        throw new QueryProcessException(
-            String.format("Current deviceId[%s] does not contain measurement:%s", deviceId,
-                measurement));
-      }
-      try {
-        addPathToMTree(deviceId, measurement, strValue);
-      } catch (MetadataException e) {
-        if (!e.getMessage().contains("already exist")) {
-          throw e;
-        }
-      }
-    }
-    MNode measurementNode = node.getChild(measurement);
-    if (!measurementNode.isLeaf()) {
-      throw new QueryProcessException(
-          String.format("Current Path is not leaf node. %s.%s", deviceId, measurement));
-    }
-    return measurementNode;
-  }
-
-  private void checkPathExists(MNode node, String fullPath, MeasurementSchema schema,
-      boolean autoCreateSchema)
-      throws QueryProcessException, StorageEngineException, MetadataException {
-    // check if timeseries exists
-    String measurement = schema.getMeasurementId();
-    if (!node.hasChild(measurement)) {
-      if (!autoCreateSchema) {
-        throw new QueryProcessException(
-            String.format("Path[%s] does not exist", fullPath));
-      }
-      try {
-        addPathToMTree(fullPath, schema.getType(), schema.getEncodingType(),
-            schema.getCompressor());
-      } catch (MetadataException e) {
-        if (!e.getMessage().contains("already exist")) {
-          throw e;
-        }
-      }
-    }
-    MNode measurementNode = node.getChild(measurement);
-    if (!measurementNode.isLeaf()) {
-      throw new QueryProcessException(
-          String.format("Current Path is not leaf node. %s", fullPath));
+  /**
+   * Get default encoding by dataType
+   */
+  private TSEncoding getDefaultEncoding(TSDataType dataType) {
+    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    switch (dataType) {
+      case BOOLEAN:
+        return conf.getDefaultBooleanEncoding();
+      case INT32:
+        return conf.getDefaultInt32Encoding();
+      case INT64:
+        return conf.getDefaultInt64Encoding();
+      case FLOAT:
+        return conf.getDefaultFloatEncoding();
+      case DOUBLE:
+        return conf.getDefaultDoubleEncoding();
+      case TEXT:
+        return conf.getDefaultTextEncoding();
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", dataType.toString()));
     }
   }
 
@@ -750,12 +767,11 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
-      MNode node = mManager.getNodeByPathFromCache(deviceId);
+      MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
       TSDataType[] dataTypes = batchInsertPlan.getDataTypes();
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
       for (int i = 0; i < measurementList.length; i++) {
-
         // check if timeseries exists
         if (!node.hasChild(measurementList[i])) {
           if (!conf.isAutoCreateSchemaEnabled()) {
@@ -763,10 +779,19 @@ public class PlanExecutor implements IPlanExecutor {
                 String.format("Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurementList[i]));
           }
-          addPathToMTree(deviceId, measurementList[i], dataTypes[i]);
+          Path path = new Path(deviceId, measurementList[i]);
+          TSDataType dataType = dataTypes[i];
+          boolean result = mManager
+              .createTimeseries(path.getFullPath(), dataType, getDefaultEncoding(dataType),
+                  TSFileDescriptor.getInstance().getConfig().getCompressor(),
+                  Collections.emptyMap());
+          if (result) {
+            storageEngine
+                .addTimeSeries(path, dataType, getDefaultEncoding(dataType));
+          }
         }
         MNode measurementNode = node.getChild(measurementList[i]);
-        if (!measurementNode.isLeaf()) {
+        if (measurementNode instanceof InternalMNode) {
           throw new QueryProcessException(
               String.format("Current Path is not leaf node. %s.%s", deviceId, measurementList[i]));
         }
@@ -787,8 +812,6 @@ public class PlanExecutor implements IPlanExecutor {
       return results;
     } catch (PathException | StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
-    } catch (CacheException e) {
-      throw new QueryProcessException(e.getMessage());
     }
   }
 
@@ -872,11 +895,12 @@ public class PlanExecutor implements IPlanExecutor {
     TSEncoding encoding = createTimeSeriesPlan.getEncoding();
     Map<String, String> props = createTimeSeriesPlan.getProps();
     try {
-      boolean result = mManager.addPathToMTree(path, dataType, encoding, compressor, props);
+      boolean result = mManager
+          .createTimeseries(path.getFullPath(), dataType, encoding, compressor, props);
       if (result) {
         storageEngine.addTimeSeries(path, dataType, encoding, compressor, props);
       }
-    } catch (StorageEngineException | MetadataException | PathException e) {
+    } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     }
     return true;
@@ -887,7 +911,10 @@ public class PlanExecutor implements IPlanExecutor {
     List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
     try {
       deleteDataOfTimeSeries(deletePathList);
-      Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList, false);
+      Set<String> emptyStorageGroups = new HashSet<>();
+      for (Path path : deletePathList) {
+        emptyStorageGroups.addAll(mManager.deleteTimeseries(path.toString()));
+      }
       for (String deleteStorageGroup : emptyStorageGroups) {
         storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
       }
@@ -901,21 +928,22 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     Path path = setStorageGroupPlan.getPath();
     try {
-      mManager.setStorageGroupToMTree(path.getFullPath());
+      mManager.setStorageGroup(path.getFullPath());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
     return true;
   }
 
-  private boolean deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan)
+  private boolean deleteStorageGroups(DeleteStorageGroupPlan deleteStorageGroupPlan)
       throws QueryProcessException {
-    List<Path> deletePathList = deleteStorageGroupPlan.getPaths();
+    List<String> deletePathList = new ArrayList<>();
     try {
-      mManager.deleteStorageGroupsFromMTree(deletePathList);
-      for (Path storageGroupPath : deletePathList) {
+      for (Path storageGroupPath : deleteStorageGroupPlan.getPaths()) {
         storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
+        deletePathList.add(storageGroupPath.getFullPath());
       }
+      mManager.deleteStorageGroups(deletePathList);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -934,36 +962,6 @@ public class PlanExecutor implements IPlanExecutor {
       deletePlan.setDeleteTime(Long.MAX_VALUE);
       processNonQuery(deletePlan);
     }
-  }
-
-  private boolean operateProperty(PropertyPlan propertyPlan) throws QueryProcessException {
-    PropertyOperator.PropertyType propertyType = propertyPlan.getPropertyType();
-    Path propertyPath = propertyPlan.getPropertyPath();
-    Path metadataPath = propertyPlan.getMetadataPath();
-    try {
-      switch (propertyType) {
-        case ADD_TREE:
-          mManager.addAPTree(propertyPath.getFullPath());
-          break;
-        case ADD_PROPERTY_LABEL:
-          mManager.addPathToPTree(propertyPath.getFullPath());
-          break;
-        case DELETE_PROPERTY_LABEL:
-          mManager.deletePathFromPTree(propertyPath.getFullPath());
-          break;
-        case ADD_PROPERTY_TO_METADATA:
-          mManager.linkMNodeToPTree(propertyPath.getFullPath(), metadataPath.getFullPath());
-          break;
-        case DEL_PROPERTY_FROM_METADATA:
-          mManager.unlinkMNodeFromPTree(propertyPath.getFullPath(), metadataPath.getFullPath());
-          break;
-        default:
-          throw new QueryProcessException("unknown namespace type:" + propertyType);
-      }
-    } catch (PathException | IOException | MetadataException e) {
-      throw new QueryProcessException("meet error in " + propertyType + " . " + e.getMessage());
-    }
-    return true;
   }
 
   private QueryDataSet processAuthorQuery(AuthorPlan plan)
@@ -1160,81 +1158,5 @@ public class PlanExecutor implements IPlanExecutor {
       }
     }
     return dataSet;
-  }
-
-  /**
-   * register with value
-   */
-  private void addPathToMTree(String deviceId, String measurementId, Object value)
-      throws PathException, MetadataException, StorageEngineException {
-    TSDataType predictedDataType = TypeInferenceUtils.getPredictedDataType(value);
-    Path path = new Path(deviceId, measurementId);
-    TSEncoding encoding = getDefaultEncoding(predictedDataType);
-    CompressionType compressionType =
-        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
-    addPathToMTree(path, predictedDataType, encoding, compressionType);
-  }
-
-  /**
-   * register with datatype
-   */
-  private void addPathToMTree(String deviceId, String measurementId, TSDataType dataType)
-      throws PathException, MetadataException, StorageEngineException {
-    Path path = new Path(deviceId, measurementId);
-    TSEncoding encoding = getDefaultEncoding(dataType);
-    CompressionType compressionType =
-        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
-    addPathToMTree(path, dataType, encoding, compressionType);
-  }
-
-  /**
-   * Add a seriesPath to MTree, register with datatype, encoding and compression
-   */
-  private void addPathToMTree(Path path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressionType)
-      throws PathException, MetadataException, StorageEngineException {
-    boolean result = mManager.addPathToMTree(
-        path, dataType, encoding, compressionType, Collections.emptyMap());
-    if (result) {
-      storageEngine.addTimeSeries(path, dataType, encoding, compressionType, Collections.emptyMap());
-    }
-  }
-
-  /**
-   * Add a seriesPath to MTree, register with datatype, encoding and compression
-   */
-  private void addPathToMTree(String path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressionType)
-      throws PathException, MetadataException, StorageEngineException {
-    boolean result = mManager.addPathToMTree(
-        path, dataType, encoding, compressionType, Collections.emptyMap());
-    if (result) {
-      storageEngine.addTimeSeries(new Path(path),
-          dataType, encoding, compressionType, Collections.emptyMap());
-    }
-  }
-
-  /**
-   * Get default encoding by dataType
-   */
-  private TSEncoding getDefaultEncoding(TSDataType dataType) {
-    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-    switch (dataType) {
-      case BOOLEAN:
-        return conf.getDefaultBooleanEncoding();
-      case INT32:
-        return conf.getDefaultInt32Encoding();
-      case INT64:
-        return conf.getDefaultInt64Encoding();
-      case FLOAT:
-        return conf.getDefaultFloatEncoding();
-      case DOUBLE:
-        return conf.getDefaultDoubleEncoding();
-      case TEXT:
-        return conf.getDefaultTextEncoding();
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType.toString()));
-    }
   }
 }

@@ -63,7 +63,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
    */
   public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding) {
     this(measurementId, type, encoding,
-        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
   }
 

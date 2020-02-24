@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.common.conf;
 
 import java.nio.charset.Charset;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 /**
@@ -130,7 +131,7 @@ public class TSFileConfig {
    * Data compression method, TsFile supports UNCOMPRESSED or SNAPPY. Default value is UNCOMPRESSED
    * which means no compression
    */
-  private String compressor = "UNCOMPRESSED";
+  private CompressionType compressor = CompressionType.SNAPPY;
   /**
    * Line count threshold for checking page memory occupied size.
    */
@@ -320,12 +321,12 @@ public class TSFileConfig {
     this.dftSatisfyRate = dftSatisfyRate;
   }
 
-  public String getCompressor() {
+  public CompressionType getCompressor() {
     return compressor;
   }
 
   public void setCompressor(String compressor) {
-    this.compressor = compressor;
+    this.compressor = CompressionType.valueOf(compressor);
   }
 
   public int getPageCheckSizeThreshold() {

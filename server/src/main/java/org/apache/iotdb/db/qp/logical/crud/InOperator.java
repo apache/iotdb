@@ -24,7 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -76,10 +76,10 @@ public class InOperator extends FunctionOperator {
 
   @Override
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter()
-      throws LogicalOperatorException, PathException {
-    TSDataType type = MManager.getInstance().getSeriesType(singlePath);
+      throws LogicalOperatorException, MetadataException {
+    TSDataType type = MManager.getInstance().getSeriesType(singlePath.toString());
     if (type == null) {
-      throw new PathException(
+      throw new MetadataException(
           "given seriesPath:{" + singlePath.getFullPath() + "} don't exist in metadata");
     }
     IUnaryExpression ret;

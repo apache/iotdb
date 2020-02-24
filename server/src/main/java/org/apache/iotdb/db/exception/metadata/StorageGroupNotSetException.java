@@ -16,24 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.path;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.rpc.TSStatusCode;
+package org.apache.iotdb.db.exception.metadata;
 
-public class PathException extends QueryProcessException {
+public class StorageGroupNotSetException extends MetadataException {
 
-  private static final long serialVersionUID = 2141197032898163234L;
+  private static final long serialVersionUID = 3739300272099030533L;
 
-  public PathException() {
-    super("Timeseries is null", TSStatusCode.PATH_ERROR.getStatusCode());
-  }
-
-  public PathException(String message) {
-    super(message, TSStatusCode.PATH_ERROR.getStatusCode());
-  }
-
-  public PathException(String message, int errorCode) {
-    super(message, errorCode);
+  public StorageGroupNotSetException(String path) {
+    super(String.format("Storage group is not set for current seriesPath: [%s]", path));
   }
 }

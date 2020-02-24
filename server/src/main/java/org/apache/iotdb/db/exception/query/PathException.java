@@ -16,22 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.exception.query;
 
-package org.apache.iotdb.db.exception.path;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public class MTreePathException extends PathException {
+public class PathException extends QueryProcessException {
 
-  private static final long serialVersionUID = 5633901351119088504L;
+  private static final long serialVersionUID = 2141197032898163234L;
 
-  public MTreePathException(String error, String path) {
-    super(String.format("%s [%s] is not correct. ", error, path));
+  public PathException() {
+    super("Timeseries is null", TSStatusCode.PATH_ERROR.getStatusCode());
   }
 
-  public MTreePathException(String timeseriesPath, String error, String message) {
-    super(String.format("Timeseries [%s] %s. %s", timeseriesPath, error, message));
+  public PathException(String message) {
+    super(message, TSStatusCode.PATH_ERROR.getStatusCode());
   }
 
-  public MTreePathException(String message) {
-    super(message);
+  public PathException(String message, int errorCode) {
+    super(message, errorCode);
   }
 }

@@ -18,7 +18,12 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.exception.path.PathException;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
+
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -30,12 +35,6 @@ import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
 
 /**
  * This class is for filter operator and implements {@link Operator} . It may consist of more than
@@ -114,7 +113,12 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    */
   public IExpression transformToExpression() throws QueryProcessException {
     if (isSingle) {
-      Pair<IUnaryExpression, String> ret = transformToSingleQueryFilter();
+      Pair<IUnaryExpression, String> ret;
+      try {
+        ret = transformToSingleQueryFilter();
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
+      }
       return ret.left;
     } else {
       if (childOperators.isEmpty()) {
@@ -146,10 +150,10 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    *
    * @return - pair.left: UnaryQueryFilter constructed by its one child; pair.right: Path
    * represented by this child.
-   * @throws QueryProcessException exception in filter transforming
+   * @throws MetadataException exception in filter transforming
    */
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter()
-      throws LogicalOperatorException, PathException {
+      throws LogicalOperatorException, MetadataException {
     if (childOperators.isEmpty()) {
       throw new LogicalOperatorException(String.valueOf(tokenIntType),
           "TransformToSingleFilter: this filter is not a leaf, but it's empty.");
@@ -209,7 +213,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     // if child is leaf, will execute BasicFunctionOperator.equals()
     FilterOperator operator = (FilterOperator) fil;
     return this.tokenIntType == operator.tokenIntType
-            && this.getChildren().equals(operator.getChildren());
+        && this.getChildren().equals(operator.getChildren());
   }
 
   @Override

@@ -15,15 +15,16 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.db.exception.storageGroup;
+package org.apache.iotdb.db.exception.metadata;
 
-public class StorageGroupNotSetException extends StorageGroupException {
+public class StorageGroupAlreadySetException extends MetadataException {
 
-  private static final long serialVersionUID = 3739300272099030533L;
+  private static final long serialVersionUID = 9110669164701929779L;
 
-  public StorageGroupNotSetException(String path) {
-    super(String.format("Storage group is not set for current seriesPath: [%s]", path));
+  public StorageGroupAlreadySetException(String path) {
+    super(String.format("%s has already been set to storage group", path));
   }
 }

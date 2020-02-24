@@ -213,7 +213,7 @@ public class IoTDBDescriptor {
       }
 
       conf.setmManagerCacheSize(Integer
-          .parseInt(properties.getProperty("schema_manager_cache_size",
+          .parseInt(properties.getProperty("metadata_node_cache_size",
               Integer.toString(conf.getmManagerCacheSize())).trim()));
 
       conf.setLanguageVersion(properties.getProperty("language_version",
@@ -452,7 +452,8 @@ public class IoTDBDescriptor {
         .getProperty("value_encoder",
             TSFileDescriptor.getInstance().getConfig().getValueEncoder()));
     TSFileDescriptor.getInstance().getConfig().setCompressor(properties
-        .getProperty("compressor", TSFileDescriptor.getInstance().getConfig().getCompressor()));
+        .getProperty("compressor",
+            TSFileDescriptor.getInstance().getConfig().getCompressor().toString()));
   }
 
   public void loadHotModifiedProps() throws QueryProcessException {

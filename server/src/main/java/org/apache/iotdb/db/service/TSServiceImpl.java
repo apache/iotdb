@@ -54,9 +54,9 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.Planner;
@@ -78,8 +78,8 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
+import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -204,7 +204,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           throw new QueryProcessException("aggregate does not support " + aggrType + " function.");
       }
     }
-    return MManager.getInstance().getSeriesType(path);
+    TSDataType dataType;
+    try {
+      dataType = MManager.getInstance().getSeriesType(path);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+
+    return dataType;
   }
 
   @Override
@@ -347,7 +354,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * convert from TSStatusCode to TSStatus, which has message appending with existed status message
    *
-   * @param statusType    status type
+   * @param statusType status type
    * @param appendMessage appending message
    */
   private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
@@ -400,7 +407,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   protected List<String> getPaths(String path) throws MetadataException {
-    return MManager.getInstance().getPaths(path);
+    return MManager.getInstance().getAllTimeseriesName(path);
   }
 
   /**
@@ -593,7 +600,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   /**
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
-   *             AuthorPlan
+   * AuthorPlan
    */
   private TSExecuteStatementResp executeQueryStatement(
       long statementId, PhysicalPlan plan, int fetchSize, String username) {

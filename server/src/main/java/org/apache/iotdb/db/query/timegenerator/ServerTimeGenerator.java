@@ -54,7 +54,6 @@ public class ServerTimeGenerator extends TimeGenerator {
     }
   }
 
-
   @Override
   protected IBatchReader generateNewBatchReader(SingleSeriesExpression expression)
       throws IOException {

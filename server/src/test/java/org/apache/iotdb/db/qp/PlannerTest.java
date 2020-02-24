@@ -38,8 +38,8 @@ import static org.junit.Assert.assertEquals;
 
 public class PlannerTest {
 
-  private CompressionType compressionType = CompressionType.valueOf(
-      TSFileDescriptor.getInstance().getConfig().getCompressor());
+  private CompressionType compressionType =
+      TSFileDescriptor.getInstance().getConfig().getCompressor();
   private MManager mManager = MManager.getInstance();
   private Planner processor = new Planner();
 
@@ -50,42 +50,42 @@ public class PlannerTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    mManager.setStorageGroupToMTree("root.vehicle");
-    mManager.setStorageGroupToMTree("root.vehicle1");
-    mManager.addPathToMTree("root.vehicle.device1.sensor1", TSDataType.valueOf("INT32"),
+    mManager.setStorageGroup("root.vehicle");
+    mManager.setStorageGroup("root.vehicle1");
+    mManager.createTimeseries("root.vehicle.device1.sensor1", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle.device1.sensor2", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries("root.vehicle.device1.sensor2", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle.device1.sensor3", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries("root.vehicle.device1.sensor3", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle.device2.sensor1", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries("root.vehicle.device2.sensor1", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle.device2.sensor2", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries("root.vehicle.device2.sensor2", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle.device2.sensor3", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries("root.vehicle.device2.sensor3", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle1.device1.sensor1", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries("root.vehicle1.device1.sensor1", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle1.device1.sensor2", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries("root.vehicle1.device1.sensor2", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle1.device1.sensor3", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries("root.vehicle1.device1.sensor3", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle1.device2.sensor1", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries("root.vehicle1.device2.sensor1", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle1.device2.sensor2", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries("root.vehicle1.device2.sensor2", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.addPathToMTree("root.vehicle1.device2.sensor3", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries("root.vehicle1.device2.sensor3", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
   }
@@ -112,10 +112,6 @@ public class PlannerTest {
     String insertStatement = "insert into root.vehicle.d0(timestamp,s0) values(10,100)";
     PhysicalPlan plan4 = processor.parseSQLToPhysicalPlan(insertStatement);
     assertEquals(OperatorType.INSERT, plan4.getOperatorType());
-
-    String propertyStatement = "add label label1021 to property propropro";
-    PhysicalPlan plan5 = processor.parseSQLToPhysicalPlan(propertyStatement);
-    assertEquals(OperatorType.PROPERTY, plan5.getOperatorType());
 
     String deleteStatement = "DELETE FROM root.device0.sensor0,root.device0.sensor1 WHERE time <= 5000";
     PhysicalPlan plan6 = processor.parseSQLToPhysicalPlan(deleteStatement);

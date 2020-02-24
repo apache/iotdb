@@ -495,7 +495,7 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     // using the query result as the QueryTest to verify the deletion and the new insertion
     Class.forName(Config.JDBC_DRIVER_NAME);
-    String standard = "Time\n" + "root.sg1.d1.s1\n" + "root.sg2.d1.s1\n";
+    String standard = "Time\n" + "root.sg2.d1.s1\n" + "root.sg1.d1.s1\n";
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
