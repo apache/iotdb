@@ -83,6 +83,11 @@ public class MaxValueAggrResult extends AggregateResult {
     return false;
   }
 
+  @Override
+  public void merge(AggregateResult another) {
+     this.updateResult((Comparable<Object>)another.getResult());
+  }
+
   private void updateResult(Comparable<Object> maxVal) {
     if (maxVal == null) {
       return;
