@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -29,7 +32,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public class MaxValueAggrResult extends AggregateResult {
 
   public MaxValueAggrResult(TSDataType dataType) {
-    super(dataType);
+    super(dataType, AggregationType.MAX_VALUE);
     reset();
   }
 
@@ -86,6 +89,16 @@ public class MaxValueAggrResult extends AggregateResult {
   @Override
   public void merge(AggregateResult another) {
      this.updateResult((Comparable<Object>)another.getResult());
+  }
+
+  @Override
+  protected void deserializeSpecificFields(ByteBuffer buffer) {
+
+  }
+
+  @Override
+  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
+
   }
 
   private void updateResult(Comparable<Object> maxVal) {
