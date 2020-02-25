@@ -23,18 +23,18 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.executor.EngineQueryRouter;
+import org.apache.iotdb.db.query.executor.QueryRouter;
+import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public class ClusterQueryRouter extends EngineQueryRouter {
+public class ClusterQueryRouter extends QueryRouter {
 
   private MetaGroupMember metaGroupMember;
 
   ClusterQueryRouter(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
-    executorFactory = (paths, types, expr) -> new ClusterDataQueryExecutor(paths, types, expr,
-        this.metaGroupMember);
   }
 
   @Override
@@ -48,9 +48,12 @@ public class ClusterQueryRouter extends EngineQueryRouter {
   }
 
   @Override
-  protected AggregateEngineExecutor getAggregateEngine(AggregationPlan aggregationPlan) {
-    return new ClusterAggregateExecutor(aggregationPlan, metaGroupMember);
+  public QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context) {
+    throw new UnsupportedOperationException("Aggregation not implemented");
   }
 
-
+  @Override
+  protected RawDataQueryExecutor getRawDataQueryExecutor(RawDataQueryPlan queryPlan) {
+    return new ClusterDataQueryExecutor(queryPlan,  this.metaGroupMember);
+  }
 }

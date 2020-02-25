@@ -29,7 +29,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,22 +55,18 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
   }
 
   @Override
-  public Object getValueInTimestamp(long timestamp) throws IOException {
+  public Object[] getValuesInTimestamps(long[] timestamps) throws IOException {
     DataClient client = metaGroupMember.getDataClient(source);
     synchronized (fetchResult) {
       fetchResult.set(null);
       try {
-        client.fetchSingleSeriesByTimestamp(header, readerId, timestamp, handler);
+        client.fetchSingleSeriesByTimestamp(header, readerId, SerializeUtils.serializeLongs(timestamps),
+            handler);
         fetchResult.wait(connectionTimeoutInMS);
       } catch (TException | InterruptedException e) {
         throw new IOException(e);
       }
     }
-    return SerializeUtils.deserializeObject(fetchResult.get());
-  }
-
-  @Override
-  public boolean hasNext() {
-    return true;
+    return SerializeUtils.deserializeObjects(fetchResult.get());
   }
 }

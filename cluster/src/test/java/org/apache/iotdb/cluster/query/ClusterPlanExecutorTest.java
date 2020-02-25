@@ -21,36 +21,47 @@ package org.apache.iotdb.cluster.query;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.ArrayList;
+import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.Before;
 import org.junit.Test;
 
-public class ClusterQueryParserTest extends BaseQueryTest {
+public class ClusterPlanExecutorTest extends BaseQueryTest{
 
-  private ClusterQueryParser parser;
+  private ClusterPlanExecutor queryExecutor;
 
-  @Override
   @Before
   public void setUp() throws MetadataException, QueryProcessException {
     super.setUp();
-    parser = new ClusterQueryParser(localMetaGroupMember);
+    queryExecutor = new ClusterPlanExecutor(localMetaGroupMember);
   }
 
   @Test
-  public void test() throws QueryProcessException {
-    List<String> measurements = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      measurements.add(TestUtils.getTestMeasurement(i));
+  public void testQuery()
+      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException {
+    QueryPlan queryPlan = new QueryPlan();
+    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+
+    QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, context);
+    checkDataset(dataSet, 0, 100);
+  }
+
+  @Test
+  public void testMatchPaths() throws MetadataException {
+    List<String> allMatchedPaths = queryExecutor.getAllMatchedPaths(TestUtils.getTestSg(0) + ".*");
+    for (int i = 0; i < allMatchedPaths.size(); i++) {
+      assertEquals(pathList.get(i).getFullPath(), allMatchedPaths.get(i));
     }
-    String sql = String.format("SELECT %s FROM %s", String.join(",", measurements),
-        TestUtils.getTestSg(0));
-    QueryPlan plan = (QueryPlan) parser.parseSQLToPhysicalPlan(sql);
-    assertEquals(pathList, plan.getDeduplicatedPaths());
-    assertEquals(dataTypes, plan.getDeduplicatedDataTypes());
   }
 }

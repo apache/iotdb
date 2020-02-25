@@ -24,9 +24,12 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -42,6 +45,7 @@ import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.MonitorConstants;
@@ -840,5 +844,30 @@ public class MManager {
     } finally {
       lock.readLock().unlock();
     }
+  }
+
+  public void collectSeries(MNode startingNode, Collection<MeasurementSchema> timeseriesSchemas) {
+    Deque<MNode> nodeDeque = new ArrayDeque<>();
+    nodeDeque.addLast(startingNode);
+    while (!nodeDeque.isEmpty()) {
+      MNode node = nodeDeque.removeFirst();
+      if (node instanceof LeafMNode) {
+        MeasurementSchema nodeSchema = node.getSchema();
+        timeseriesSchemas.add(new MeasurementSchema(node.getFullPath(),
+            nodeSchema.getType(), nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
+      } else if (!node.getChildren().isEmpty()) {
+        nodeDeque.addAll(node.getChildren().values());
+      }
+    }
+  }
+
+  public void collectSeries(String startingPath, List<MeasurementSchema> timeseriesSchemas) {
+    MNode mNode;
+    try {
+      mNode = getNodeByPath(startingPath);
+    } catch (MetadataException e) {
+      return;
+    }
+    collectSeries(mNode, timeseriesSchemas);
   }
 }

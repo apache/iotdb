@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.executor;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -78,7 +79,7 @@ public class RawDataQueryExecutor {
         readersOfSelectedSeries);
   }
 
-  private List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context)
+  protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context)
       throws StorageEngineException {
     Filter timeFilter = null;
     if (optimizedExpression != null) {
@@ -115,13 +116,20 @@ public class RawDataQueryExecutor {
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
       Path path = deduplicatedPaths.get(i);
-      SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path,
-          deduplicatedDataTypes.get(i), context,
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
+      IReaderByTimestamp seriesReaderByTimestamp = getReaderByTimestamp(path,
+          deduplicatedDataTypes.get(i), context);
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
     return new RawQueryDataSetWithValueFilter(deduplicatedPaths, deduplicatedDataTypes,
         timestampGenerator, readersOfSelectedSeries);
+  }
+
+  protected IReaderByTimestamp getReaderByTimestamp(Path path, TSDataType dataType,
+      QueryContext context)
+      throws StorageEngineException {
+    return new SeriesReaderByTimestamp(path,
+        dataType, context,
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
   }
 
   protected TimeGenerator getTimeGenerator(IExpression expression,

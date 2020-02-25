@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.query.manage;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -29,8 +28,8 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
+import org.apache.iotdb.db.query.reader.series.IAggregateReader;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,7 +115,6 @@ public class ClusterQueryManager {
   public long registerAggrReader(IAggregateReader aggregateReader) {
     long newReaderId = readerIdAtom.incrementAndGet();
     aggrReaderMap.put(newReaderId, aggregateReader);
-    seriesReaderMap.put(newReaderId, aggregateReader);
     return newReaderId;
   }
 }

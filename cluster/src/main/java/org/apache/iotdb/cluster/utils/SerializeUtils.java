@@ -27,9 +27,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -315,5 +315,32 @@ public class SerializeUtils {
       return null;
     }
     return ReadWriteIOUtils.readObject(buffer);
+  }
+
+  public static Object[] deserializeObjects(ByteBuffer buffer) {
+    if (buffer == null || buffer.limit() == 0) {
+      return null;
+    }
+    int size = buffer.getInt();
+    Object[] ret = new Object[size];
+    for (int i = 0; i < ret.length; i++) {
+      ret[i] = ReadWriteIOUtils.readObject(buffer);
+    }
+    return ret;
+  }
+
+  public static ByteBuffer serializeLongs(long[] longs) {
+    //TODO-Cluster: replace with a no-copy method
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      dataOutputStream.writeInt(longs.length);
+      for (long aLong : longs) {
+        dataOutputStream.writeLong(aLong);
+      }
+    } catch (IOException e) {
+      // ignore
+    }
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 }

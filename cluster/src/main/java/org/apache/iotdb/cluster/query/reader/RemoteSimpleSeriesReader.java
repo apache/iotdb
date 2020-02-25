@@ -30,9 +30,10 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
-import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -41,7 +42,7 @@ import org.slf4j.LoggerFactory;
 /**
  * RemoteSimpleSeriesReader is a reader without value filter that reads points from a remote side.
  */
-public class RemoteSimpleSeriesReader implements ManagedSeriesReader {
+public class RemoteSimpleSeriesReader implements IPointReader {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteSimpleSeriesReader.class);
   long readerId;
@@ -50,104 +51,53 @@ public class RemoteSimpleSeriesReader implements ManagedSeriesReader {
   MetaGroupMember metaGroupMember;
 
   BatchData cachedBatch;
-  private TimeValuePair cachedPair;
 
   private AtomicReference<ByteBuffer> fetchResult = new AtomicReference<>();
   private GenericHandler<ByteBuffer> handler;
-
-  private volatile boolean managedByPool;
-  private volatile boolean hasRemaining;
+  private TSDataType dataType;
 
   public RemoteSimpleSeriesReader(long readerId, Node source,
-      Node header, MetaGroupMember metaGroupMember) {
+      Node header, MetaGroupMember metaGroupMember, TSDataType dataType) {
     this.readerId = readerId;
     this.source = source;
     this.header = header;
     this.metaGroupMember = metaGroupMember;
     handler = new GenericHandler<>(source, fetchResult);
+    this.dataType = dataType;
   }
 
   @Override
-  public boolean hasNextBatch() throws IOException {
-    if (cachedBatch != null) {
+  public boolean hasNextTimeValuePair() throws IOException {
+    if (cachedBatch != null && cachedBatch.hasCurrent()) {
       return true;
     }
     fetchBatch();
-    return cachedBatch != null;
+    return cachedBatch != null && cachedBatch.hasCurrent();
   }
 
   @Override
-  public BatchData nextBatch() throws IOException {
-    if (!hasNextBatch()) {
+  public TimeValuePair nextTimeValuePair() throws IOException {
+    if (!hasNextTimeValuePair()) {
       throw new NoSuchElementException();
     }
-    BatchData ret = cachedBatch;
-    cachedBatch = null;
-    return ret;
-  }
-
-
-  @Override
-  public boolean hasNext() throws IOException {
-    if (cachedPair != null) {
-      return true;
-    }
-    fetchPoint();
-    return cachedPair != null;
-  }
-
-  private void fetchPoint() throws IOException {
-    if ((cachedBatch == null || !cachedBatch.hasCurrent()) && hasNextBatch()) {
-      cachedBatch = nextBatch();
-    }
-    if (cachedBatch != null && cachedBatch.hasCurrent()) {
-      cachedPair = new TimeValuePair(cachedBatch.currentTime(),
-          TsPrimitiveType.getByType(cachedBatch.getDataType(), cachedBatch.currentValue()));
-      cachedBatch.next();
-    }
+    TimeValuePair timeValuePair = new TimeValuePair(cachedBatch.currentTime(),
+        TsPrimitiveType.getByType(dataType, cachedBatch.currentValue()));
+    cachedBatch.next();
+    return timeValuePair;
   }
 
   @Override
-  public TimeValuePair next() throws IOException {
-    if (!hasNext()) {
+  public TimeValuePair currentTimeValuePair() throws IOException {
+    if (!hasNextTimeValuePair()) {
       throw new NoSuchElementException();
     }
-    TimeValuePair ret = cachedPair;
-    cachedPair = null;
-    return ret;
-  }
-
-  @Override
-  public TimeValuePair current() throws IOException {
-    if (!hasNext()) {
-      throw new NoSuchElementException();
-    }
-    return cachedPair;
+    return new TimeValuePair(cachedBatch.currentTime(),
+        TsPrimitiveType.getByType(dataType, cachedBatch.currentValue()));
   }
 
   @Override
   public void close() {
-    // close by Resource manager
-  }
-
-  @Override
-  public boolean isManagedByQueryManager() {
-    return managedByPool;
-  }
-
-  @Override
-  public void setManagedByQueryManager(boolean managedByQueryManager) {
-    managedByPool = managedByQueryManager;
-  }
-
-  @Override
-  public boolean hasRemaining() {
-    return hasRemaining;
-  }
-
-  @Override
-  public void setHasRemaining(boolean hasRemaining) {
-    this.hasRemaining = hasRemaining;
+    // closed by Resource manager
   }
 
   void fetchBatch() throws IOException {

@@ -19,14 +19,23 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
+import java.io.IOException;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.timegenerator.EngineNodeConstructor;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
-public class ClusterTimeGenerator extends EngineTimeGenerator {
+public class ClusterTimeGenerator extends ServerTimeGenerator {
 
   private MetaGroupMember metaGroupMember;
 
@@ -35,14 +44,22 @@ public class ClusterTimeGenerator extends EngineTimeGenerator {
    */
   public ClusterTimeGenerator(IExpression expression,
       QueryContext context, MetaGroupMember metaGroupMember) throws StorageEngineException {
-    super(expression);
+    super(expression, context);
     this.metaGroupMember = metaGroupMember;
-    initNode(context);
   }
 
   @Override
-  protected void initNode(QueryContext context) throws StorageEngineException {
-    EngineNodeConstructor engineNodeConstructor = new ClusterNodeConstructor(metaGroupMember);
-    this.operatorNode = engineNodeConstructor.construct(expression, context);
+  protected IBatchReader generateNewBatchReader(SingleSeriesExpression expression)
+      throws IOException {
+    Filter filter = expression.getFilter();
+    Path path = expression.getSeriesPath();
+    TSDataType dataType;
+    QueryDataSource queryDataSource;
+    try {
+      dataType = metaGroupMember.getSeriesType(path.getFullPath());
+      return metaGroupMember.getSeriesReader(path, dataType, filter, context);
+    } catch (Exception e) {
+      throw new IOException(e);
+    }
   }
 }

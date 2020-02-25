@@ -24,47 +24,45 @@ import java.util.List;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.EngineExecutor;
+import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
-public class ClusterDataQueryExecutor extends EngineExecutor {
+public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
 
   private MetaGroupMember metaGroupMember;
 
-
-  ClusterDataQueryExecutor(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
-      IExpression optimizedExpression, MetaGroupMember metaGroupMember) {
-    super(deduplicatedPaths, deduplicatedDataTypes, optimizedExpression);
+  ClusterDataQueryExecutor(RawDataQueryPlan plan, MetaGroupMember metaGroupMember) {
+    super(plan);
     this.metaGroupMember = metaGroupMember;
   }
 
   @Override
-  protected ManagedSeriesReader getSeriesReaderWithoutValueFilter(Path path,
-      TSDataType dataType, Filter timeFilter,
-      QueryContext context, boolean pushdownUnseq, TsFileFilter fileFilter) throws IOException,
-      StorageEngineException {
-    //TODO-Cluster: high-level fileFilter is currently always null, add an AndFileFilter when it
-    // is used in IoTDB
-    return metaGroupMember.getSeriesReader(path, dataType, timeFilter, context, pushdownUnseq,
-        false);
+  protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context)
+      throws StorageEngineException {
+    return super.initManagedSeriesReader(context);
   }
 
   @Override
-  protected IReaderByTimestamp getReaderByTimestamp(Path path, QueryContext context)
-      throws IOException, StorageEngineException {
+  protected IReaderByTimestamp getReaderByTimestamp(Path path, TSDataType dataType,
+      QueryContext context)
+      throws StorageEngineException {
     return metaGroupMember.getReaderByTimestamp(path, context);
   }
 
   @Override
-  protected EngineTimeGenerator getTimeGenerator(IExpression queryExpression,
+  protected TimeGenerator getTimeGenerator(IExpression queryExpression,
       QueryContext context) throws StorageEngineException {
     return new ClusterTimeGenerator(queryExpression, context, metaGroupMember);
   }

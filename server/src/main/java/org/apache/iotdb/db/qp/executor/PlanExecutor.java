@@ -125,7 +125,7 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 public class PlanExecutor implements IPlanExecutor {
 
   // for data query
-  private IQueryRouter queryRouter;
+  protected IQueryRouter queryRouter;
   // for insert
   private StorageEngine storageEngine;
   // for system schema

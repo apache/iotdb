@@ -2,11 +2,11 @@ package org.apache.iotdb.cluster.query.reader;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 public class BatchedPointReader implements ManagedSeriesReader {
 
@@ -73,19 +73,16 @@ public class BatchedPointReader implements ManagedSeriesReader {
     return ret;
   }
 
-  @Override
   public boolean hasNext() throws IOException {
-    return innerReader.hasNext();
+    return innerReader.hasNextTimeValuePair();
   }
 
-  @Override
   public TimeValuePair next() throws IOException {
-    return innerReader.next();
+    return innerReader.nextTimeValuePair();
   }
 
-  @Override
   public TimeValuePair current() throws IOException {
-    return innerReader.current();
+    return innerReader.currentTimeValuePair();
   }
 
   @Override

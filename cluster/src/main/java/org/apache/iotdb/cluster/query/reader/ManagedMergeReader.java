@@ -2,10 +2,10 @@ package org.apache.iotdb.cluster.query.reader;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;
-import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
+import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public class ManagedMergeReader extends PriorityMergeReader implements ManagedSeriesReader {
@@ -52,10 +52,10 @@ public class ManagedMergeReader extends PriorityMergeReader implements ManagedSe
   }
 
   private void constructBatch() throws IOException {
-    if (hasNext()) {
+    if (hasNextTimeValuePair()) {
       batchData = new BatchData(dataType);
-      while (hasNext() && batchData.length() < BATCH_SIZE) {
-        TimeValuePair next = next();
+      while (hasNextBatch() && batchData.length() < BATCH_SIZE) {
+        TimeValuePair next = nextTimeValuePair();
         batchData.putAnObject(next.getTimestamp(), next.getValue().getValue());
       }
     }

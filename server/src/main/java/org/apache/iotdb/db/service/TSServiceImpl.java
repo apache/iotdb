@@ -139,8 +139,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       "meet error while parsing SQL to physical plan: {}";
   public static Vector<SqlArgument> sqlArgumentsList = new Vector<>();
 
-  private Planner processor;
-  private IPlanExecutor executor;
+  protected Planner processor;
+  protected IPlanExecutor executor;
 
   // Record the username for every rpc connection (session).
   private Map<Long, String> sessionIdUsernameMap = new ConcurrentHashMap<>();

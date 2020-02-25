@@ -47,6 +47,6 @@ public class ClusterAggregateExecutor extends AggregateEngineExecutor {
   @Override
   protected IReaderByTimestamp getReaderByTime(Path path, QueryContext context)
       throws IOException, StorageEngineException {
-    return metaMember.getReaderByTimestamp(path, context);
+    return metaMember.getReaderByTimestamp(path);
   }
 }

@@ -32,7 +32,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -43,12 +43,13 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class ClusterQueryExecutor extends QueryProcessExecutor {
+class ClusterPlanExecutor extends PlanExecutor {
 
-  private static final Logger logger = LoggerFactory.getLogger(ClusterQueryExecutor.class);
+  private static final Logger logger = LoggerFactory.getLogger(ClusterPlanExecutor.class);
   private MetaGroupMember metaGroupMember;
 
-  ClusterQueryExecutor(MetaGroupMember metaGroupMember) {
+  ClusterPlanExecutor(MetaGroupMember metaGroupMember) throws QueryProcessException {
+    super();
     this.metaGroupMember = metaGroupMember;
     this.queryRouter = new ClusterQueryRouter(metaGroupMember);
   }

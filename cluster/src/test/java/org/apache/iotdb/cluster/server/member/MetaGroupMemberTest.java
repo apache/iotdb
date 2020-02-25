@@ -690,7 +690,7 @@ public class MetaGroupMemberTest extends MemberTest {
     try {
       for (int i = 0; i < 10; i++) {
         IReaderByTimestamp readerByTimestamp = metaGroupMember
-            .getReaderByTimestamp(new Path(TestUtils.getTestSeries(i, 0)), context);
+            .getReaderByTimestamp(new Path(TestUtils.getTestSeries(i, 0)));
         for (int j = 0; j < 10; j++) {
           assertEquals(j * 1.0, (double) readerByTimestamp.getValueInTimestamp(j), 0.00001);
         }

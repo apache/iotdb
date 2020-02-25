@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.query.ClusterQueryParser;
+import org.apache.iotdb.cluster.query.ClusterPlanner;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
@@ -43,10 +43,10 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.TSServiceImpl;
-import org.apache.iotdb.service.rpc.thrift.TSIService.AsyncClient;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -75,9 +75,11 @@ public class ClientServer extends TSServiceImpl {
   private TServer poolServer;
   private Map<Long, RemoteQueryContext> queryContextMap = new HashMap<>();
 
-  public ClientServer(MetaGroupMember metaGroupMember) {
+  public ClientServer(MetaGroupMember metaGroupMember) throws QueryProcessException {
+    super();
     this.metaGroupMember = metaGroupMember;
-    this.processor = new ClusterQueryParser(metaGroupMember);
+    this.processor = new ClusterPlanner(metaGroupMember);
+    this.executor = new ClusterPlanExecutor()
   }
 
   public void start() throws TTransportException {

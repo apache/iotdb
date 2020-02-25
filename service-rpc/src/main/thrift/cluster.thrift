@@ -139,23 +139,23 @@ struct PullSchemaResp {
 
 struct SingleSeriesQueryRequest {
   1: required string path
-  2: optional binary filterBytes
-  3: required long queryId
-  4: required Node requester
-  5: optional bool pushdownUnseq
+  2: optional binary timeFilterBytes
+  3: optional binary valueFilterBytes
+  4: required long queryId
+  5: required Node requester
   6: required Node header
-  7: optional bool withValueFilter
-  8: required int dataTypeOrdinal
+  7: required int dataTypeOrdinal
 }
 
 struct GetAggregateReaderRequest {
   1: required string path
-  2: optional binary filterBytes
-  3: required long queryId
-  4: required Node requester
-  5: required Node header
-  6: required bool reverse
-  7: required int dataTypeOrdinal
+  2: optional binary timeFilterBytes
+  3: optional binary valueFilterBytes
+  4: required long queryId
+  5: required Node requester
+  6: required Node header
+  7: required bool reverse
+  8: required int dataTypeOrdinal
 }
 
 struct GetAggregateReaderResp {
@@ -264,7 +264,7 @@ service TSDataService extends RaftService {
    * are not more results.
    * TODO-Cluster: make this a batched interface
    **/
-   binary fetchSingleSeriesByTimestamp(1:Node header, 2:long readerId, 3:long timestamp)
+   binary fetchSingleSeriesByTimestamp(1:Node header, 2:long readerId, 3:binary timeBytes)
 
   /**
   * Find the local query established for the remote query and release all its resource.
@@ -277,12 +277,6 @@ service TSDataService extends RaftService {
   list<string> getAllPaths(1:Node header, 2:string path)
 
   PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
-
-  GetAggregateReaderResp getAggregateReader(1:GetAggregateReaderRequest request)
-
-  binary fetchPageHeader(1:Node header, 2:long readerId)
-
-  void skipPageData(1:Node header, 2:long readerId)
 }
 
 service TSMetaService extends RaftService {
