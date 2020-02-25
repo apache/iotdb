@@ -95,10 +95,10 @@ public class LastValueAggrResult extends AggregateResult {
 
   @Override
   public void merge(AggregateResult another) {
-    LastValueAggrResult anotherFirst = (LastValueAggrResult) another;
-    if(this.getValue() == null || this.timestamp < anotherFirst.timestamp){
-      this.setValue( anotherFirst.getValue() );
-      this.timestamp = anotherFirst.timestamp;
+    LastValueAggrResult anotherLast = (LastValueAggrResult) another;
+    if(this.getValue() == null || this.timestamp < anotherLast.timestamp){
+      this.setValue( anotherLast.getValue() );
+      this.timestamp = anotherLast.timestamp;
     }
   }
 

@@ -99,19 +99,21 @@ public class AggregateResultTest {
 
   @Test
   public void minTimeAggrResultTest() throws QueryProcessException {
+    AggregateResult finalResult = AggreResultFactory.getAggrResultByName(SQLConstant.MIN_TIME, TSDataType.DOUBLE);
     AggregateResult minTimeAggrResult1 = AggreResultFactory.getAggrResultByName(SQLConstant.MIN_TIME, TSDataType.DOUBLE);
     AggregateResult minTimeAggrResult2 = AggreResultFactory.getAggrResultByName(SQLConstant.MIN_TIME, TSDataType.DOUBLE);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
-    statistics1.update(1l, 1d);
+    statistics1.update(10l, 1d);
     statistics2.update(2l,1d);
 
     minTimeAggrResult1.updateResultFromStatistics(statistics1);
     minTimeAggrResult2.updateResultFromStatistics(statistics2);
-    minTimeAggrResult1.merge(minTimeAggrResult2);
+    finalResult.merge(minTimeAggrResult1);
+    finalResult.merge(minTimeAggrResult2);
 
-    Assert.assertEquals(1l, (long)minTimeAggrResult1.getResult(), 0.01);
+    Assert.assertEquals(2l, (long)finalResult.getResult(), 0.01);
   }
 
   @Test
