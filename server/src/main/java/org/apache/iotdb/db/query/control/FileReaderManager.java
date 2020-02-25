@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -34,6 +28,13 @@ import org.apache.iotdb.tsfile.read.UnClosedTsFileReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * FileReaderManager is a singleton, which is used to manage
  * all file readers(opened file streams) to ensure that each file is opened at most once.
@@ -41,6 +42,7 @@ import org.slf4j.LoggerFactory;
 public class FileReaderManager implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(FileReaderManager.class);
+  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
 
   /**
    * max number of file streams being cached, must be lower than 65535.
@@ -160,6 +162,7 @@ public class FileReaderManager implements IService {
     return readerMap.get(tsFile);
   }
 
+
   /**
    * Increase the reference count of the reader specified by filePath. Only when the reference count
    * of a reader equals zero, the reader can be closed and removed.
@@ -198,11 +201,17 @@ public class FileReaderManager implements IService {
   public synchronized void closeAndRemoveAllOpenedReaders() throws IOException {
     for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : closedFileReaderMap.entrySet()) {
       entry.getValue().close();
+      if (resourceLogger.isInfoEnabled()) {
+        resourceLogger.info("{} closedTsFileReader is closed.", entry.getValue().getFileName());
+      }
       closedReferenceMap.remove(entry.getKey());
       closedFileReaderMap.remove(entry.getKey());
     }
     for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : unclosedFileReaderMap.entrySet()) {
       entry.getValue().close();
+      if (resourceLogger.isInfoEnabled()) {
+        resourceLogger.info("{} unclosedTsFileReader is closed.", entry.getValue().getFileName());
+      }
       unclosedReferenceMap.remove(entry.getKey());
       unclosedFileReaderMap.remove(entry.getKey());
     }

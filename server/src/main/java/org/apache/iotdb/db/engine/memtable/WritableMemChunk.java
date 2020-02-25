@@ -18,28 +18,15 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBoolean;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class WritableMemChunk implements IWritableMemChunk {
 
-  private static final Logger logger = LoggerFactory.getLogger(WritableMemChunk.class);
   private TSDataType dataType;
   private TVList list;
-  private List<TimeValuePair> sortedList;
 
   public WritableMemChunk(TSDataType dataType, TVList list) {
     this.dataType = dataType;
@@ -70,7 +57,6 @@ public class WritableMemChunk implements IWritableMemChunk {
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
-    sortedList = null;
   }
 
   @Override
@@ -103,7 +89,6 @@ public class WritableMemChunk implements IWritableMemChunk {
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
-    sortedList = null;
   }
 
 
@@ -224,51 +209,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized List<TimeValuePair> getSortedTimeValuePairList() {
-    if (sortedList != null) {
-      return sortedList;
-    }
-    sortedList = new ArrayList<>();
-    list.sort();
-    for (int i = 0; i < list.size(); i++) {
-      long time = list.getTime(i);
-      if (time < list.getTimeOffset() ||
-          (i + 1 < list.size() && (time == list.getTime(i + 1)))) {
-        continue;
-      }
-      switch (dataType) {
-        case BOOLEAN:
-          sortedList.add(new TimeValuePair(time, new TsBoolean(list.getBoolean(i))));
-          break;
-        case INT32:
-          sortedList.add(new TimeValuePair(time, new TsInt(list.getInt(i))));
-          break;
-        case INT64:
-          sortedList.add(new TimeValuePair(time, new TsLong(list.getLong(i))));
-          break;
-        case FLOAT:
-          sortedList.add(new TimeValuePair(time, new TsFloat(list.getFloat(i))));
-          break;
-        case DOUBLE:
-          sortedList.add(new TimeValuePair(time, new TsDouble(list.getDouble(i))));
-          break;
-        case TEXT:
-          sortedList.add(new TimeValuePair(time, new TsBinary(list.getBinary(i))));
-          break;
-        default:
-          logger.error("Unsupported data type: {}", dataType);
-          break;
-      }
-    }
-    return this.sortedList;
-  }
-
-  @Override
-  public boolean isEmpty() {
-    return list.size() == 0;
-  }
-
-  @Override
   public long getMinTime() {
     return list.getMinTime();
   }
@@ -280,13 +220,13 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public String toString() {
-    int size = getSortedTimeValuePairList().size();
+    int size = getSortedTVList().size();
     StringBuilder out = new StringBuilder("MemChunk Size: " + size + System.lineSeparator());
     if (size != 0) {
       out.append("Data type:").append(dataType).append(System.lineSeparator());
-      out.append("First value:").append(getSortedTimeValuePairList().get(0))
+      out.append("First point:").append(getSortedTVList().getTimeValuePair(0))
           .append(System.lineSeparator());
-      out.append("Last value:").append(getSortedTimeValuePairList().get(size - 1))
+      out.append("Last point:").append(getSortedTVList().getTimeValuePair(size - 1))
           .append(System.lineSeparator());
       ;
     }

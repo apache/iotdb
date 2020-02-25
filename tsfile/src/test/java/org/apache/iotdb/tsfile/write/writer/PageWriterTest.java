@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.encoding.decoder.PlainDecoder;
@@ -36,12 +31,18 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 public class PageWriterTest {
 
   @Test
   public void testWriteInt() {
     PageWriter writer = new PageWriter();
-    writer.setTimeEncoder(new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.INT64, 0));
+    writer.setTimeEncoder(new PlainEncoder(EndianType.LITTLE_ENDIAN, TSDataType.INT64, 0));
     writer.setValueEncoder(new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.INT32, 0));
     writer.initStatistics(TSDataType.INT32);
     int value = 1;
@@ -57,16 +58,17 @@ public class PageWriterTest {
       byte[] timeBytes = new byte[timeSize];
       buffer.get(timeBytes);
       ByteBuffer buffer2 = ByteBuffer.wrap(timeBytes);
-      PlainDecoder decoder = new PlainDecoder(EndianType.BIG_ENDIAN);
+      PlainDecoder decoder = new PlainDecoder(EndianType.LITTLE_ENDIAN);
       for (int i = 0; i < timeCount; i++) {
         assertEquals(i, decoder.readLong(buffer2));
       }
+      decoder.reset();
+      decoder.setEndianType(EndianType.BIG_ENDIAN);
       assertEquals(value, decoder.readInt(buffer));
     } catch (IOException e) {
       fail();
     }
   }
-
 
   @Test
   public void testWriteLong() {
