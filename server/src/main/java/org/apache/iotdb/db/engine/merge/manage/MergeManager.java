@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.merge.manage;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -104,12 +105,51 @@ public class MergeManager implements IService {
       mergeTaskPool.shutdownNow();
       mergeChunkSubTaskPool.shutdownNow();
       logger.info("Waiting for task pool to shut down");
+      long startTime = System.currentTimeMillis();
       while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated() ) {
         // wait
+        long time = System.currentTimeMillis() - startTime;
+        if (time % 60_000 == 0) {
+          logger.warn("MergeManager has wait for {} seconds to stop", time/1000);
+        }
       }
       mergeTaskPool = null;
       logger.info("MergeManager stopped");
     }
+  }
+
+  @Override
+  public void waitAndStop(long millseconds) {
+    if (mergeTaskPool != null) {
+      if (timedMergeThreadPool != null) {
+        awaitTermination(timedMergeThreadPool, millseconds);
+        timedMergeThreadPool = null;
+      }
+      awaitTermination(mergeTaskPool, millseconds);
+      awaitTermination(mergeChunkSubTaskPool, millseconds);
+      logger.info("Waiting for task pool to shut down");
+      long startTime = System.currentTimeMillis();
+      while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated() ) {
+        // wait
+        long time = System.currentTimeMillis() - startTime;
+        if (time % 60_000 == 0) {
+          logger.warn("MergeManager has wait for {} seconds to stop", time/1000);
+        }
+      }
+      mergeTaskPool = null;
+      logger.info("MergeManager stopped");
+    }
+  }
+
+  private void awaitTermination(ExecutorService service, long millseconds) {
+    try {
+      service.shutdown();
+      service.awaitTermination(millseconds, TimeUnit.MILLISECONDS);
+    } catch (InterruptedException e) {
+      logger.warn("MergeThreadPool can not be closed in {} ms", millseconds);
+      Thread.currentThread().interrupt();
+    }
+    service.shutdownNow();
   }
 
   @Override

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,15 +19,6 @@
 
 package org.apache.iotdb.tsfile.write;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.Arrays;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -49,6 +40,13 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Arrays;
+
+import static org.junit.Assert.*;
 
 public class TsFileWriterTest {
   TsFileWriter writer = null;
@@ -225,6 +223,14 @@ public class TsFileWriterTest {
   public void flushForTest() throws IOException {
     //The interface is just for test
     writer.flushForTest();
+    closeFile();
+    readNothing();
+  }
+
+  @Test
+  public void flushForTestWithVersion() throws IOException {
+    //The interface is just for test
+    writer.flushForTest(10L);
     closeFile();
     readNothing();
   }

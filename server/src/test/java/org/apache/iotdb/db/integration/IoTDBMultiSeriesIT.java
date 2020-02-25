@@ -426,7 +426,7 @@ public class IoTDBMultiSeriesIT {
     } catch (SQLException e) {
       e.printStackTrace();
       assertEquals(
-          "Statement format is not right: Path: [root.vehicle.d0.s10] doesn't correspond to any known time series",
+          "Statement format is not right: Path [root.vehicle.d0.s10] does not exist",
           e.getMessage());
     }
   }

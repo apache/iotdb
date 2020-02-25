@@ -99,7 +99,7 @@ public class LogAnalyzer {
 
         analyzeUnseqFiles(bufferedReader);
 
-        List<String> storageGroupPaths = MManager.getInstance().getPaths(storageGroupName + ".*");
+        List<String> storageGroupPaths = MManager.getInstance().getAllTimeseriesName(storageGroupName + ".*");
         unmergedPaths = new ArrayList<>();
         for (String path : storageGroupPaths) {
           unmergedPaths.add(new Path(path));
