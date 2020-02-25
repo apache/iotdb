@@ -317,7 +317,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return new TSStatus(statusCodeAndMessage);
   }
 
-  protected TSDataType getSeriesType(String path) throws QueryProcessException {
+  protected TSDataType getSeriesType(String path) throws QueryProcessException, MetadataException {
     try {
       return SchemaUtils.getSeriesType(path);
     } catch (MetadataException e) {
@@ -762,7 +762,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     for (String column : respColumns) {
-      columnTypes.add(getSeriesType(column).toString());
+      try {
+        columnTypes.add(getSeriesType(column).toString());
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
+      }
     }
   }
 

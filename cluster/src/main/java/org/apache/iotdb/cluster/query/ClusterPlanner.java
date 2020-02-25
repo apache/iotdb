@@ -23,7 +23,6 @@ import java.time.ZoneId;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -33,7 +32,6 @@ public class ClusterPlanner extends Planner {
   private MetaGroupMember metaGroupMember;
 
   public ClusterPlanner(MetaGroupMember metaGroupMember) {
-    super(new ClusterPlanExecutor(metaGroupMember));
     this.metaGroupMember = metaGroupMember;
   }
 
@@ -41,9 +39,8 @@ public class ClusterPlanner extends Planner {
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
       throws QueryProcessException {
     Operator operator = parseDriver.parse(sqlStr, zoneId);
-    // TODO-Cluster: support wildcard
-    operator = logicalOptimize(operator, executor);
-    PhysicalGenerator physicalGenerator = new ClusterPhysicalGenerator(executor, metaGroupMember);
+    operator = logicalOptimize(operator);
+    PhysicalGenerator physicalGenerator = new ClusterPhysicalGenerator(metaGroupMember);
     return physicalGenerator.transformToPhysicalPlan(operator);
   }
 }

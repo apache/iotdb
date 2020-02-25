@@ -310,6 +310,17 @@ public class SerializeUtils {
     ReadWriteIOUtils.writeObject(object, dataOutputStream);
   }
 
+  public static void serializeObjects(Object[] object, DataOutputStream dataOutputStream) {
+    try {
+      dataOutputStream.writeInt(object.length);
+      for (Object o : object) {
+        ReadWriteIOUtils.writeObject(o, dataOutputStream);
+      }
+    } catch (IOException e) {
+      // ignore
+    }
+  }
+
   public static Object deserializeObject(ByteBuffer buffer) {
     if (buffer == null || buffer.limit() == 0) {
       return null;
@@ -342,5 +353,14 @@ public class SerializeUtils {
       // ignore
     }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public static long[] deserializeLongs(ByteBuffer buffer) {
+    int size = buffer.getInt();
+    long[] ret = new long[size];
+    for (int i = 0; i < size; i++) {
+      ret[i] = buffer.getLong();
+    }
+    return ret;
   }
 }

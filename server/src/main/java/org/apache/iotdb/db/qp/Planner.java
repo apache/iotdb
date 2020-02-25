@@ -41,7 +41,7 @@ import org.apache.iotdb.db.utils.TestOnly;
  */
 public class Planner {
 
-  private ParseDriver parseDriver;
+  protected ParseDriver parseDriver;
 
   public Planner() {
     this.parseDriver = new ParseDriver();
@@ -70,7 +70,7 @@ public class Planner {
    * @return optimized logical operator
    * @throws LogicalOptimizeException exception in logical optimizing
    */
-  private Operator logicalOptimize(Operator operator)
+  protected Operator logicalOptimize(Operator operator)
       throws LogicalOperatorException {
     switch (operator.getType()) {
       case AUTHOR:
@@ -127,7 +127,7 @@ public class Planner {
     return root;
   }
 
-  private ConcatPathOptimizer getConcatPathOptimizer() {
+  protected ConcatPathOptimizer getConcatPathOptimizer() {
     return new ConcatPathOptimizer();
   }
 }

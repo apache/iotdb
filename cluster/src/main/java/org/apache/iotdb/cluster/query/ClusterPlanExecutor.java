@@ -43,12 +43,12 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class ClusterPlanExecutor extends PlanExecutor {
+public class ClusterPlanExecutor extends PlanExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterPlanExecutor.class);
   private MetaGroupMember metaGroupMember;
 
-  ClusterPlanExecutor(MetaGroupMember metaGroupMember) throws QueryProcessException {
+  public ClusterPlanExecutor(MetaGroupMember metaGroupMember) throws QueryProcessException {
     super();
     this.metaGroupMember = metaGroupMember;
     this.queryRouter = new ClusterQueryRouter(metaGroupMember);

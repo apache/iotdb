@@ -1114,12 +1114,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           context.getQueryId());
       return dataGroupMember.getReaderByTimestamp(path, dataType, context);
     } else {
-      return getRemoteReaderByTimestamp(path, partitionGroup, context);
+      return getRemoteReaderByTimestamp(path, dataType, partitionGroup, context);
     }
   }
 
   private IReaderByTimestamp getRemoteReaderByTimestamp(
-      Path path, PartitionGroup partitionGroup,
+      Path path, TSDataType dataType, PartitionGroup partitionGroup,
       QueryContext context) throws StorageEngineException {
     // query a remote node
     AtomicReference<Long> result = new AtomicReference<>();
@@ -1128,6 +1128,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     request.setHeader(partitionGroup.getHeader());
     request.setQueryId(context.getQueryId());
     request.setRequester(thisNode);
+    request.setDataTypeOrdinal(dataType.ordinal());
 
     for (Node node : partitionGroup) {
       logger.debug("{}: querying {} from {}", name, path, node);

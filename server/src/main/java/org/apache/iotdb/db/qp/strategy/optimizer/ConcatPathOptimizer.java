@@ -275,7 +275,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     LinkedHashMap<String, Integer> pathMap = new LinkedHashMap<>();
     try {
       for (Path path : paths) {
-        List<String> all = MManager.getInstance().getAllTimeseriesName(path.getFullPath());
+        List<String> all = removeWildcard(path.getFullPath());
         for (String subPath : all) {
           if (!pathMap.containsKey(subPath)) {
             pathMap.put(subPath, 1);
@@ -297,7 +297,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<String> newAggregations = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       try {
-        List<String> actualPaths = MManager.getInstance().getAllTimeseriesName(paths.get(i).getFullPath());
+        List<String> actualPaths = removeWildcard(paths.get(i).getFullPath());
         for (String actualPath : actualPaths) {
           retPaths.add(new Path(actualPath));
           if (afterConcatAggregations != null && !afterConcatAggregations.isEmpty()) {
@@ -310,5 +310,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
     selectOperator.setSuffixPathList(retPaths);
     selectOperator.setAggregations(newAggregations);
+  }
+
+  protected List<String> removeWildcard(String path) throws MetadataException {
+    return MManager.getInstance().getAllTimeseriesName(path);
   }
 }

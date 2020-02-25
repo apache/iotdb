@@ -50,14 +50,10 @@ import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
 import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.query.ClusterPlanner;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
-import org.apache.iotdb.cluster.query.reader.BatchedPointReader;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
-import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderRequest;
-import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderResp;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
@@ -86,18 +82,14 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -105,7 +97,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -140,7 +131,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     super.logManager = logManager;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
-    planExecutor = new ClusterPlanner(metaGroupMember);
     setQueryManager(new ClusterQueryManager());
   }
 
@@ -704,19 +694,21 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
 
     Path path = new Path(request.getPath());
+    TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
+
     RemoteQueryContext queryContext = getQueryManager().getQueryContext(request.getRequester(),
         request.getQueryId());
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
     try {
-      IReaderByTimestamp readerByTimestamp = getReaderByTimestamp(path, queryContext);
+      IReaderByTimestamp readerByTimestamp = getReaderByTimestamp(path, dataType, queryContext);
       long readerId = getQueryManager().registerReaderByTime(readerByTimestamp);
       queryContext.registerLocalReader(readerId);
 
       logger.debug("{}: Build a readerByTimestamp of {} for {}, readerId: {}", name, path,
           request.getRequester(), readerId);
       resultHandler.onComplete(readerId);
-    } catch (IOException | StorageEngineException e) {
+    } catch (StorageEngineException e) {
       resultHandler.onError(e);
     }
   }
@@ -733,7 +725,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   @Override
-  public void fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp,
+  public void fetchSingleSeriesByTimestamp(Node header, long readerId, ByteBuffer timeBuffer,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     IReaderByTimestamp reader = getQueryManager().getReaderByTimestamp(readerId);
     if (reader == null) {
@@ -741,12 +733,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       return;
     }
     try {
-      Object value = reader.getValueInTimestamp(timestamp);
-      if (value != null) {
+      long[] timestamps = SerializeUtils.deserializeLongs(timeBuffer);
+      Object[] values = reader.getValuesInTimestamps(timestamps);
+      if (values != null) {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
-        SerializeUtils.serializeObject(value, dataOutputStream);
+        SerializeUtils.serializeObjects(values, dataOutputStream);
         resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       } else {
         resultHandler.onComplete(ByteBuffer.allocate(0));
@@ -785,7 +778,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void getAllPaths(Node header, String path, AsyncMethodCallback<List<String>> resultHandler) {
     try {
-      resultHandler.onComplete(MManager.getInstance().getPaths(path));
+      resultHandler.onComplete(MManager.getInstance().getAllTimeseriesName(path));
     } catch (MetadataException e) {
       resultHandler.onError(e);
     }

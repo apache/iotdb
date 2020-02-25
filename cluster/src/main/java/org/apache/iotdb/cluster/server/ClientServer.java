@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.query.ClusterPlanner;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -79,7 +80,7 @@ public class ClientServer extends TSServiceImpl {
     super();
     this.metaGroupMember = metaGroupMember;
     this.processor = new ClusterPlanner(metaGroupMember);
-    this.executor = new ClusterPlanExecutor()
+    this.executor = new ClusterPlanExecutor(metaGroupMember);
   }
 
   public void start() throws TTransportException {
