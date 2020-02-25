@@ -25,7 +25,7 @@
 
 ## 存储组
 
-存储组由用户显示指定，使用语句"SET STORAGE GROUP TO"来指定存储组，每一个存储组有一个对应的StoragetGroupProcessor
+存储组由用户显示指定，使用语句"SET STORAGE GROUP TO"来指定存储组，每一个存储组有一个对应的 StorageGroupProcessor
 
 其拥有的主要字段为：
 
