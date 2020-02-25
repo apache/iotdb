@@ -29,7 +29,6 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.rest.util.RestUtil;
 import org.eclipse.jetty.server.Server;
 import org.slf4j.Logger;

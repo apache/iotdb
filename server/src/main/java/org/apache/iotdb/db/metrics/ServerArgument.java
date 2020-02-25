@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metrics;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
 import java.lang.management.ManagementFactory;
@@ -217,14 +218,14 @@ public class ServerArgument {
   /**
    * read cpu info(windows)
    */
-  private long[] readWinCpu(final Process proc) throws Exception {
+  private long[] readWinCpu(final Process proc) throws IOException {
     long[] retn = new long[2];
     proc.getOutputStream().close();
     InputStreamReader ir = new InputStreamReader(proc.getInputStream());
     LineNumberReader input = new LineNumberReader(ir);
     String line = input.readLine();
     if (line == null || line.length() < 10) {
-      return null;
+      return retn;
     }
     int capidx = line.indexOf("Caption");
     int cmdidx = line.indexOf("CommandLine");
@@ -283,7 +284,7 @@ public class ServerArgument {
   /**
    * read cpu info(linux)
    */
-  private long[] readLinuxCpu() throws Exception {
+  private long[] readLinuxCpu() throws IOException {
     long[] retn = new long[2];
     long idleCpuTime = 0;
     long totalCpuTime = 0;
