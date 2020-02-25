@@ -104,7 +104,7 @@ public class AvgAggrResult extends AggregateResult {
         throw new IOException(
             String.format("Unsupported data type in aggregation AVG : %s", type));
     }
-    avg = avg * ((double) cnt / (cnt + 1)) + (1.0 / (cnt + 1)) * val;
+    avg = avg * ((double) cnt / (cnt + 1)) + val * (1.0 / (cnt + 1));
     cnt++;
   }
 
@@ -116,6 +116,6 @@ public class AvgAggrResult extends AggregateResult {
   @Override
   public void merge(AggregateResult another) {
     AvgAggrResult anotherAvg = (AvgAggrResult) another;
-    avg = (avg * cnt + anotherAvg.avg * anotherAvg.cnt) / (cnt + anotherAvg.cnt);
+    avg = avg * ((double) cnt / (cnt + anotherAvg.cnt)) + anotherAvg.avg * ((double) anotherAvg.cnt / (cnt + anotherAvg.cnt));
   }
 }

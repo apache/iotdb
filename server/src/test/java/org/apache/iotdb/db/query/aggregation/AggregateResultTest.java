@@ -34,13 +34,16 @@ public class AggregateResultTest {
     AggregateResult avgAggrResult1 = AggreResultFactory.getAggrResultByName(SQLConstant.AVG, TSDataType.DOUBLE);
     AggregateResult avgAggrResult2 = AggreResultFactory.getAggrResultByName(SQLConstant.AVG, TSDataType.DOUBLE);
 
-    Statistics statistics = Statistics.getStatsByType(TSDataType.DOUBLE);
-    statistics.update(1l,1d);
+    Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
+    Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
+    statistics1.update(1l,1d);
+    statistics1.update(2l,1d);
+    statistics2.update(1l,2d);
 
-    avgAggrResult1.updateResultFromStatistics(statistics);
-    avgAggrResult2.updateResultFromStatistics(statistics);
+    avgAggrResult1.updateResultFromStatistics(statistics1);
+    avgAggrResult2.updateResultFromStatistics(statistics2);
     avgAggrResult1.merge(avgAggrResult2);
-    Assert.assertEquals(1d, (double)avgAggrResult1.getResult(), 0.01);
+    Assert.assertEquals(1.333d, (double)avgAggrResult1.getResult(), 0.01);
   }
 
   @Test
