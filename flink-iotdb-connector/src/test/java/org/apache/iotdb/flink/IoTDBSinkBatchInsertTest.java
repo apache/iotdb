@@ -23,15 +23,15 @@ import org.apache.iotdb.session.Session;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
-public class IoTDBSinkTest {
+public class IoTDBSinkBatchInsertTest {
 
     private IoTDBSink ioTDBSink;
     private Session session;
@@ -41,26 +41,64 @@ public class IoTDBSinkTest {
         IoTDBOptions options = new IoTDBOptions();
         options.setTimeseriesOptionList(Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
         ioTDBSink = new IoTDBSink(options, new DefaultIoTSerializationSchema(options));
+        ioTDBSink.withBatchSize(3);
 
         session = mock(Session.class);
         ioTDBSink.setSession(session);
+        ioTDBSink.setBatchList(new ArrayList<>());
     }
 
     @Test
-    public void testSink() throws Exception {
+    public void testBatchInsert() throws Exception {
         Map tuple = new HashMap();
         tuple.put("device", "root.sg.D01");
         tuple.put("timestamp", "1581861293000");
         tuple.put("measurements", "temperature");
         tuple.put("values", "36.5");
-
         ioTDBSink.invoke(tuple, null);
-        verify(session).insert(any(String.class), any(Long.class), any(List.class), any(List.class));
+
+        verifyZeroInteractions(session);
+
+        tuple = new HashMap();
+        tuple.put("device", "root.sg.D01");
+        tuple.put("timestamp", "1581861293001");
+        tuple.put("measurements", "temperature");
+        tuple.put("values", "37.2");
+        ioTDBSink.invoke(tuple, null);
+
+        verifyZeroInteractions(session);
+
+        tuple = new HashMap();
+        tuple.put("device", "root.sg.D01");
+        tuple.put("timestamp", "1581861293003");
+        tuple.put("measurements", "temperature");
+        tuple.put("values", "37.1");
+        ioTDBSink.invoke(tuple, null);
+
+        verify(session).insertInBatch(any(List.class), any(List.class), any(List.class), any(List.class));
+
+        tuple = new HashMap();
+        tuple.put("device", "root.sg.D01");
+        tuple.put("timestamp", "1581861293005");
+        tuple.put("measurements", "temperature");
+        tuple.put("values", "36.5");
+        ioTDBSink.invoke(tuple, null);
+
+        verifyZeroInteractions(session);
     }
 
     @Test
     public void close() throws Exception {
+        Map tuple = new HashMap();
+        tuple.put("device", "root.sg.D01");
+        tuple.put("timestamp", "1581861293005");
+        tuple.put("measurements", "temperature");
+        tuple.put("values", "36.5");
+        ioTDBSink.invoke(tuple, null);
+        verifyZeroInteractions(session);
+
         ioTDBSink.close();
+        verify(session).insertInBatch(any(List.class), any(List.class), any(List.class), any(List.class));
         verify(session).close();
     }
 

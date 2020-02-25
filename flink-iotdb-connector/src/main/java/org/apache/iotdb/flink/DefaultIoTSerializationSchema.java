@@ -25,6 +25,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * @inheritDoc
+ * The default implementation of IoTSerializationSchema. Gets info from a map struct.
+ */
 public class DefaultIoTSerializationSchema implements IoTSerializationSchema<Map<String,String>> {
     public static final String FIELD_DEVICE = "device";
     public static final String FIELD_TIMESTAMP = "timestamp";

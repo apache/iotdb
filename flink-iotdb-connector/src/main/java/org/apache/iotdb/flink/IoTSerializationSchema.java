@@ -20,6 +20,10 @@ package org.apache.iotdb.flink;
 
 import java.io.Serializable;
 
+/**
+ * IoTSerializationSchema serializes the input tuple data into events for inserting into IoTDB server.
+ * @param <T>
+ */
 public interface IoTSerializationSchema<T> extends Serializable {
 
     Event serialize(T tuple);

@@ -95,6 +95,7 @@
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
         <!-- By default, the argLine is empty-->
+        <guava.version>21.0</guava.version>
         <argLine/>
     </properties>
     <!--
@@ -151,7 +152,7 @@
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
-                <version>21.0</version>
+                <version>${guava.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.sun.istack</groupId>

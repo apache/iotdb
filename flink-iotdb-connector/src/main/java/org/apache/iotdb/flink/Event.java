@@ -20,6 +20,9 @@ package org.apache.iotdb.flink;
 
 import java.util.List;
 
+/**
+ * Event serializes the device/sensor related data, such as time, measurements etc.
+ */
 public class Event {
     private String device;
     private Long timestamp;

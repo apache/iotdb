@@ -20,13 +20,20 @@ package org.apache.iotdb.flink;
 import com.google.common.collect.Lists;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
+import org.apache.iotdb.db.service.IoTDB;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
-public class Example {
-    public static void main(String[] args) {
+public class FlinkIoTDBSink {
+    public static void main(String[] args) throws Exception {
+        // launch the local iotDB server at default port: 6667
+        IoTDB.main(args);
+
+        Thread.sleep(3000);
+
+        // run the flink job on local mini cluster
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.enableCheckpointing(3000);
 
@@ -41,9 +48,7 @@ public class Example {
         IoTSerializationSchema serializationSchema = new DefaultIoTSerializationSchema(options);
         IoTDBSink ioTDBSink = new IoTDBSink(options, serializationSchema)
                 // enable batching
-                .withBatchFlushOnCheckpoint(true)
-                .withBatchSize(10)
-                ;
+                .withBatchSize(10);
 
         env.addSource(new SensorSource())
                 .name("sensor-source")
@@ -51,14 +56,9 @@ public class Example {
 
                 .addSink(ioTDBSink)
                 .name("iotdb-sink")
-                .setParallelism(1)
-        ;
+                .setParallelism(1);
 
-        try {
-            env.execute("iotdb-flink-example");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        env.execute("iotdb-flink-example");
     }
 
     private static class SensorSource implements SourceFunction<Map<String,String>> {
