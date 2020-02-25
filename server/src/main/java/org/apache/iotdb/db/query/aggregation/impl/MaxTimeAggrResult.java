@@ -20,17 +20,19 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-//TODO Consider how to reverse order in SeriesReader
 public class MaxTimeAggrResult extends AggregateResult {
 
   public MaxTimeAggrResult() {
-    super(TSDataType.INT64);
+    super(TSDataType.INT64, AggregationType.MAX_TIME);
     reset();
   }
 
@@ -91,6 +93,16 @@ public class MaxTimeAggrResult extends AggregateResult {
     if (anotherMaxTime.getResult() != null) {
       this.updateMaxTimeResult(anotherMaxTime.getResult());
     }
+  }
+
+  @Override
+  protected void deserializeSpecificFields(ByteBuffer buffer) {
+
+  }
+
+  @Override
+  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
+
   }
 
   private void updateMaxTimeResult(long value) {
