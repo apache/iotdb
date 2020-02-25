@@ -25,15 +25,15 @@
 
 ## 存储组
 
-存储组由用户显示指定，使用语句"SET STORAGE GROUP TO"来指定存储组，每一个存储组有一个对应的StoragetGroupProcessor
+存储组由用户显示指定，使用语句"SET STORAGE GROUP TO"来指定存储组，每一个存储组有一个对应的 StorageGroupProcessor
 
 其拥有的主要字段为：
 
 * 一个读写锁: insertLock
 
-* 每个时间分区所对应的未关闭的顺序文件树: workSequenceTsFileProcessors
+* 每个时间分区所对应的未关闭的顺序文件处理器: workSequenceTsFileProcessors
 
-* 每个时间分区所对应的未关闭的乱序文件列表: workUnsequenceTsFileProcessors
+* 每个时间分区所对应的未关闭的乱序文件处理器: workUnsequenceTsFileProcessors
 
 * 该存储组的全部顺序文件列表（按照时间排序）: sequenceFileTreeSet
 
