@@ -33,7 +33,7 @@
 
 * 每个时间分区所对应的未关闭的顺序文件处理器: workSequenceTsFileProcessors
 
-* 每个时间分区所对应的未关闭的乱序文件列表: workUnsequenceTsFileProcessors
+* 每个时间分区所对应的未关闭的乱序文件处理器: workUnsequenceTsFileProcessors
 
 * 该存储组的全部顺序文件列表（按照时间排序）: sequenceFileTreeSet
 
