@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class CountAggrResult extends AggregateResult {
+          public class CountAggrResult extends AggregateResult {
 
   public CountAggrResult() {
     super(TSDataType.INT64);
@@ -85,5 +85,11 @@ public class CountAggrResult extends AggregateResult {
   @Override
   public boolean isCalculatedAggregationResult() {
     return false;
+  }
+
+  @Override
+  public void merge(AggregateResult another) {
+    CountAggrResult anotherCount = (CountAggrResult) another;
+    setLongValue(anotherCount.getResult() + this.getResult());
   }
 }

@@ -25,7 +25,7 @@
 
 TsFile 的写入流程如下图所示：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/73625238-efba2980-467e-11ea-927e-a7021f8153af.png">
+< img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/73625238-efba2980-467e-11ea-927e-a7021f8153af.png">
 
 其中，每个设备对应一个 ChunkGroupWriter，每个传感器对应一个 ChunkWriter。
 
@@ -41,11 +41,11 @@ TsFile 文件层的写入接口有两种
 
 * TsFileWriter.write(TSRecord record)
 
-	写入一个设备一个时间戳多个测点。
+ 写入一个设备一个时间戳多个测点。
 
 * TsFileWriter.write(RowBatch rowBatch)
 
-	写入一个设备多个时间戳多个测点。
+ 写入一个设备多个时间戳多个测点。
 
 当调用 write 接口时，这个设备的数据会交给对应的 ChunkGroupWriter，其中的每个测点会交给对应的 ChunkWriter 进行写入。ChunkWriter 完成编码和打包（生成 Page）。
 
