@@ -92,7 +92,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertColumnSpecContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertValuesSpecContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LimitClauseContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LastFunctionCallContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LastClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllRoleOfUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllUserOfRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListPrivilegesRoleContext;
@@ -988,10 +988,15 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterLastElement(SqlBaseParser.LastElementContext ctx) {
     super.enterLastElement(ctx);
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    LastFunctionCallContext functionCallContext = ctx.lastFunctionCall();
-    Path path = parseSuffixPath(functionCallContext.suffixPath());
-    selectOp.addLastPath(path, functionCallContext.LAST().getText());
+    LastClauseContext lastClauseContext = ctx.lastClause();
+    List<SuffixPathContext> suffixPaths = lastClauseContext.suffixPath();
+    for (SuffixPathContext suffixPath : suffixPaths) {
+      Path path = parseSuffixPath(suffixPath);
+      selectOp.addLastPath(path);
+    }
     queryOp.setSelectOperator(selectOp);
+    queryOp.setAlignByTime(false);
+    queryOp.setAlignByDevice(false);
   }
 
   @Override

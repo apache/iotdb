@@ -98,7 +98,7 @@ selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
     | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
-    | lastFunctionCall #lastElement
+    | lastClause #lastElement
     ;
 
 functionCall
@@ -117,8 +117,8 @@ functionName
     | LAST_VALUE
     ;
 
-lastFunctionCall
-    : LAST LR_BRACKET suffixPath RR_BRACKET
+lastClause
+    : LAST suffixPath (COMMA suffixPath)*
     ;
 
 attributeClauses
@@ -159,6 +159,7 @@ specialClause
     : specialLimit
     | groupByClause specialLimit?
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
+    | alignByDeviceClauseOrDisableAlign?
     ;
 
 specialLimit
