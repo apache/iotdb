@@ -46,7 +46,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   private ICompressor compressor;
 
   /**
-   * all pages of this column.
+   * all pages of this chunk.
    */
   private PublicBAOS pageBuffer;
 
@@ -172,13 +172,13 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   /**
-   * check occupied memory size, if it exceeds the PageSize threshold, flush them to given
-   * OutputStream.
+   * check occupied memory size, if it exceeds the PageSize threshold, construct a page and 
+   * put it to pageBuffer
    */
   private void checkPageSizeAndMayOpenANewPage() {
     if (pageWriter.getPointNumber() == maxNumberOfPointsInPage) {
       logger.debug("current line count reaches the upper bound, write page {}", measurementSchema);
-      writePage();
+      writePageToPageBuffer();
     } else if (pageWriter.getPointNumber()
         >= valueCountInOnePageForNextCheck) { // need to check memory size
       // not checking the memory used for every value
@@ -189,7 +189,7 @@ public class ChunkWriterImpl implements IChunkWriter {
             "enough size, write page {}, pageSizeThreshold:{}, currentPateSize:{}, valueCountInOnePage:{}",
             measurementSchema.getMeasurementId(), pageSizeThreshold, currentPageSize,
             pageWriter.getPointNumber());
-        writePage();
+        writePageToPageBuffer();
         valueCountInOnePageForNextCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
       } else {
         // reset the valueCountInOnePageForNextCheck for the next page
@@ -199,7 +199,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     }
   }
 
-  private void writePage() {
+  private void writePageToPageBuffer() {
     try {
       pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer);
 
@@ -241,7 +241,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public void sealCurrentPage() {
     if (pageWriter.getPointNumber() > 0) {
-      writePage();
+      writePageToPageBuffer();
     }
   }
 
