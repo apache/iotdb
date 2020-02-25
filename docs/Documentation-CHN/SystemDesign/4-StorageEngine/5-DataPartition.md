@@ -31,7 +31,7 @@
 
 * 一个读写锁: insertLock
 
-* 每个时间分区所对应的未关闭的顺序文件树: workSequenceTsFileProcessors
+* 每个时间分区所对应的未关闭的顺序文件处理器: workSequenceTsFileProcessors
 
 * 每个时间分区所对应的未关闭的乱序文件列表: workUnsequenceTsFileProcessors
 
