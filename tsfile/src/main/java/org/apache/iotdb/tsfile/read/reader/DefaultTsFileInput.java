@@ -37,11 +37,11 @@ public class DefaultTsFileInput implements TsFileInput {
 
   FileChannel channel;
 
-  private String path;
+  private Path path;
 
   public DefaultTsFileInput(Path file) throws IOException {
     channel = FileChannel.open(file, StandardOpenOption.READ);
-    path = file.toString();
+    path = file;
   }
 
   @Override
@@ -67,10 +67,13 @@ public class DefaultTsFileInput implements TsFileInput {
 
   @Override
   public int read(ByteBuffer dst, long position) throws IOException {
+    if (!channel.isOpen()) {
+      channel = FileChannel.open(path, StandardOpenOption.READ);
+    }
     try {
       return channel.read(dst, position);
     } catch (ClosedChannelException e) {
-      LOGGER.error("File is closed while reading {}", path);
+      LOGGER.error("File is closed while reading {}", path.toString());
       throw e;
     }
   }
