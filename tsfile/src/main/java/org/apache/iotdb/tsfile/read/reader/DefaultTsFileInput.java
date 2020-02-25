@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -68,14 +67,10 @@ public class DefaultTsFileInput implements TsFileInput {
   @Override
   public int read(ByteBuffer dst, long position) throws IOException {
     if (!channel.isOpen()) {
+      LOGGER.error("File is closed while reading {}", path.toString());
       channel = FileChannel.open(path, StandardOpenOption.READ);
     }
-    try {
-      return channel.read(dst, position);
-    } catch (ClosedChannelException e) {
-      LOGGER.error("File is closed while reading {}", path.toString());
-      throw e;
-    }
+    return channel.read(dst, position);
   }
 
   @Override
