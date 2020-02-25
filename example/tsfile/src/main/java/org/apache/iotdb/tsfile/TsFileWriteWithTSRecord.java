@@ -34,7 +34,7 @@ import java.io.File;
 /**
  * An example of writing data with TSRecord to TsFile
  * It uses the interface:
- * public void addMeasurement(MeasurementSchema MeasurementSchema) throws WriteProcessException
+ * public void addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
  */
 public class TsFileWriteWithTSRecord {
 

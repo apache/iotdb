@@ -69,12 +69,12 @@ public class RecordUtils {
     for (int i = 2; i < items.length - 1; i += 2) {
       // get measurementId and value
       measurementId = items[i].trim();
-      MeasurementSchema MeasurementSchema = schema.getSeriesSchema(new Path(deviceId, measurementId));
-      if (MeasurementSchema == null) {
+      MeasurementSchema measurementSchema = schema.getSeriesSchema(new Path(deviceId, measurementId));
+      if (measurementSchema == null) {
         LOG.warn("measurementId:{},type not found, pass", measurementId);
         continue;
       }
-      type = MeasurementSchema.getType();
+      type = measurementSchema.getType();
       String value = items[i + 1].trim();
       // if value is not null, wrap it with corresponding DataPoint and add to
       // TSRecord

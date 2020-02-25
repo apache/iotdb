@@ -203,9 +203,9 @@ public class Session {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
-    for (MeasurementSchema MeasurementSchema : rowBatch.timeseries) {
-      request.addToMeasurements(MeasurementSchema.getMeasurementId());
-      request.addToTypes(MeasurementSchema.getType().ordinal());
+    for (MeasurementSchema measurementSchema : rowBatch.timeseries) {
+      request.addToMeasurements(measurementSchema.getMeasurementId());
+      request.addToTypes(measurementSchema.getType().ordinal());
     }
     request.setTimestamps(SessionUtils.getTimeBuffer(rowBatch));
     request.setValues(SessionUtils.getValueBuffer(rowBatch));
@@ -393,9 +393,9 @@ public class Session {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
-    for (MeasurementSchema MeasurementSchema : rowBatch.timeseries) {
-      request.addToMeasurements(MeasurementSchema.getMeasurementId());
-      request.addToTypes(MeasurementSchema.getType().ordinal());
+    for (MeasurementSchema measurementSchema : rowBatch.timeseries) {
+      request.addToMeasurements(measurementSchema.getMeasurementId());
+      request.addToTypes(measurementSchema.getType().ordinal());
     }
     request.setTimestamps(SessionUtils.getTimeBuffer(rowBatch));
     request.setValues(SessionUtils.getValueBuffer(rowBatch));

@@ -168,22 +168,22 @@ public class TsFileIOWriter {
    * @param dataSize             - the serialized size of all pages
    * @throws IOException if I/O error occurs
    */
-  public void startFlushChunk(MeasurementSchema MeasurementSchema,
+  public void startFlushChunk(MeasurementSchema measurementSchema,
       CompressionType compressionCodecName,
       TSDataType tsDataType, TSEncoding encodingType, Statistics<?> statistics, int dataSize,
       int numOfPages)
       throws IOException {
 
-    currentChunkMetaData = new ChunkMetaData(MeasurementSchema.getMeasurementId(), tsDataType,
+    currentChunkMetaData = new ChunkMetaData(measurementSchema.getMeasurementId(), tsDataType,
         out.getPosition(),
         statistics);
 
     // flush ChunkHeader to TsFileIOWriter
     if (logger.isDebugEnabled()) {
-      logger.debug("start series chunk:{}, file position {}", MeasurementSchema, out.getPosition());
+      logger.debug("start series chunk:{}, file position {}", measurementSchema, out.getPosition());
     }
 
-    ChunkHeader header = new ChunkHeader(MeasurementSchema.getMeasurementId(), dataSize, tsDataType,
+    ChunkHeader header = new ChunkHeader(measurementSchema.getMeasurementId(), dataSize, tsDataType,
         compressionCodecName, encodingType, numOfPages);
     header.serializeTo(out.wrapAsStream());
 

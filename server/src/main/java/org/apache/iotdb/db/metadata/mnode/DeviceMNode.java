@@ -43,4 +43,8 @@ public class DeviceMNode extends InternalMNode {
     this.schemaMap.put(child.getName(), child.getSchema());
   }
 
+  public void addMeasurementSchema(MeasurementSchema schema) {
+    this.schemaMap.put(schema.getMeasurementId(), schema);
+  }
+
 }

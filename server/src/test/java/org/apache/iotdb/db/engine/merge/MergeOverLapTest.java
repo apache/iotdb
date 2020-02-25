@@ -112,9 +112,9 @@ public class MergeOverLapTest extends MergeTest {
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
     for (String deviceId : deviceIds) {
-      for (MeasurementSchema MeasurementSchema : measurementSchemas) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.addTimeseries(
-            new Path(deviceId, MeasurementSchema.getMeasurementId()), MeasurementSchema);
+            new Path(deviceId, measurementSchema.getMeasurementId()), measurementSchema);
       }
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {

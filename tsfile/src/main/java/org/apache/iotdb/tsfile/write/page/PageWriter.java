@@ -64,10 +64,10 @@ public class PageWriter {
     this(null, null);
   }
 
-  public PageWriter(MeasurementSchema MeasurementSchema) {
-    this(MeasurementSchema.getTimeEncoder(), MeasurementSchema.getValueEncoder());
-    this.statistics = Statistics.getStatsByType(MeasurementSchema.getType());
-    this.compressor = ICompressor.getCompressor(MeasurementSchema.getCompressor());
+  public PageWriter(MeasurementSchema measurementSchema) {
+    this(measurementSchema.getTimeEncoder(), measurementSchema.getValueEncoder());
+    this.statistics = Statistics.getStatsByType(measurementSchema.getType());
+    this.compressor = ICompressor.getCompressor(measurementSchema.getCompressor());
   }
 
   private PageWriter(Encoder timeEncoder, Encoder valueEncoder) {

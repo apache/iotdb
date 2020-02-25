@@ -52,10 +52,10 @@ public class TimeSeriesMetadataTest {
 
   @Test
   public void testWriteIntoFile() throws IOException {
-    TimeseriesMetaData MeasurementSchema = TestHelper.createSimpleTimseriesMetaData(measurementUID);
-    serialized(MeasurementSchema);
+    TimeseriesMetaData timeseriesMetadata = TestHelper.createSimpleTimseriesMetaData(measurementUID);
+    serialized(timeseriesMetadata);
     TimeseriesMetaData readMetadata = deSerialized();
-    MeasurementSchema.equals(readMetadata);
+    timeseriesMetadata.equals(readMetadata);
     serialized(readMetadata);
   }
 

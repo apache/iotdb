@@ -657,6 +657,12 @@ public class MTree implements Serializable {
     }
   }
 
+
+  void addSchemaToDevice(String device, MeasurementSchema schema) throws MetadataException {
+    DeviceMNode deviceMNode = getDeviceNode(device);
+    deviceMNode.addMeasurementSchema(schema);
+  }
+
   /**
    * Get all ColumnSchemas for the device path.
    *

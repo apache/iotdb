@@ -628,7 +628,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     boolean goon = true;
     byte marker;
     int chunkCnt = 0;
-    List<MeasurementSchema> MeasurementSchemaList = new ArrayList<>();
+    List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
     try {
       while (goon && (marker = this.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
@@ -645,10 +645,10 @@ public class TsFileSequenceReader implements AutoCloseable {
             // insertion is not tolerable
             ChunkHeader header = this.readChunkHeader();
             measurementID = header.getMeasurementID();
-            MeasurementSchema MeasurementSchema = new MeasurementSchema(measurementID,
+            MeasurementSchema measurementSchema = new MeasurementSchema(measurementID,
                 header.getDataType(),
                 header.getEncodingType(), header.getCompressionType());
-            MeasurementSchemaList.add(MeasurementSchema);
+            measurementSchemaList.add(measurementSchema);
             dataType = header.getDataType();
             Statistics<?> chunkStatistics = Statistics.getStatsByType(dataType);
             if (header.getNumOfPages() > 0) {
@@ -680,7 +680,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
             deviceID = chunkGroupFooter.getDeviceID();
             if (newSchema != null) {
-              for (MeasurementSchema tsSchema : MeasurementSchemaList) {
+              for (MeasurementSchema tsSchema : measurementSchemaList) {
                 newSchema.putIfAbsent(new Path(deviceID, tsSchema.getMeasurementId()), tsSchema);
               }
             }
@@ -699,7 +699,7 @@ public class TsFileSequenceReader implements AutoCloseable {
 
             totalChunkNum += chunkCnt;
             chunkCnt = 0;
-            MeasurementSchemaList = new ArrayList<>();
+            measurementSchemaList = new ArrayList<>();
             break;
           default:
             // the disk file is corrupted, using this file may be dangerous

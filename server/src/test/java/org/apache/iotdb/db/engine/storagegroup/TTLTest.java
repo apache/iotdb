@@ -71,6 +71,7 @@ public class TTLTest {
   private String sg2 = "root.TTL_SG2";
   private long ttl = 12345;
   private StorageGroupProcessor storageGroupProcessor;
+  private String d1 = "d1";
   private String s1 = "s1";
   private String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
 

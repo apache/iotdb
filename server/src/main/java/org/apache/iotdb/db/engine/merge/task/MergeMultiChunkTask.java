@@ -275,8 +275,8 @@ class MergeMultiChunkTask {
       int pathIdx = metaListEntry.getPathId();
       boolean isLastChunk = !metaListEntry.hasNext();
       Path path = currMergingPaths.get(pathIdx);
-      MeasurementSchema MeasurementSchema = resource.getSchema(path);
-      IChunkWriter chunkWriter = resource.getChunkWriter(MeasurementSchema);
+      MeasurementSchema measurementSchema = resource.getSchema(path);
+      IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
 
       boolean chunkOverflowed = MergeUtils.isChunkOverflowed(currTimeValuePairs[pathIdx], currMeta);
       boolean chunkTooSmall = MergeUtils

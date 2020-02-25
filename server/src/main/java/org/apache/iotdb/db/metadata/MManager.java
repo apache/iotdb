@@ -300,7 +300,7 @@ public class MManager {
       createTimeseriesWithMemoryCheckAndLog(path, dataType, encoding, compressor, props);
       // register schema in this device
       if (isNewMeasurement) {
-        schemaMap.put(measurement,
+        mtree.addSchemaToDevice(device,
             new MeasurementSchema(measurement, dataType, encoding, compressor, props));
       }
       // update statistics

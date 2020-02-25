@@ -50,19 +50,19 @@ public class TsFileIOWriterTest {
     TsFileIOWriter writer = new TsFileIOWriter(new File(tsfile));
 
     // file schema
-    MeasurementSchema MeasurementSchema = TestHelper.createSimpleMeasurementSchema("sensor01");
+    MeasurementSchema measurementSchema = TestHelper.createSimpleMeasurementSchema("sensor01");
     Schema schema = new Schema();
-    schema.registerTimeseries(new Path(deviceId, "sensor01"), MeasurementSchema);
+    schema.registerTimeseries(new Path(deviceId, "sensor01"), measurementSchema);
 
     // chunk statistics
-    Statistics statistics = Statistics.getStatsByType(MeasurementSchema.getType());
+    Statistics statistics = Statistics.getStatsByType(measurementSchema.getType());
     statistics.updateStats(0L, 0L);
 
     // chunk group 1
     writer.startChunkGroup(deviceId);
-    writer.startFlushChunk(MeasurementSchema, MeasurementSchema.getCompressor(),
-        MeasurementSchema.getType(),
-        MeasurementSchema.getEncodingType(), statistics, 0, 0);
+    writer.startFlushChunk(measurementSchema, measurementSchema.getCompressor(),
+        measurementSchema.getType(),
+        measurementSchema.getEncodingType(), statistics, 0, 0);
     writer.endCurrentChunk();
     writer.endChunkGroup(0);
 

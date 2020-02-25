@@ -63,7 +63,7 @@ public class MManagerBasicTest {
     assertFalse(manager.isPathExist("root.laptop"));
 
     try {
-      manager.setStorageGroup("root.laptop.d1");
+      manager.setStorageGroup("root.laptop");
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -102,7 +102,7 @@ public class MManagerBasicTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    // just delete s0, and don't delete root.laptop.d1??
+    // just delete s0, and don't delete root.laptop??
     // delete storage group or not
     assertFalse(manager.isPathExist("root.laptop.d1.s1"));
     try {
@@ -112,7 +112,7 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
     assertFalse(manager.isPathExist("root.laptop.d1.s0"));
-    assertTrue(manager.isPathExist("root.laptop.d1"));
+    assertFalse(manager.isPathExist("root.laptop.d1"));
     assertTrue(manager.isPathExist("root.laptop"));
     assertTrue(manager.isPathExist("root"));
 
@@ -132,8 +132,8 @@ public class MManagerBasicTest {
       fail(e1.getMessage());
     }
 
-    assertFalse(manager.isPathExist("root.laptop.d2"));
-    assertFalse(manager.checkStorageGroupByPath("root.laptop.d2"));
+    assertFalse(manager.isPathExist("root.laptop1.d2"));
+    assertFalse(manager.checkStorageGroupByPath("root.laptop1.d2"));
 
     try {
       manager.deleteTimeseries("root.laptop.d1.s0");
@@ -149,11 +149,11 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.setStorageGroup("root.laptop.d2");
+      manager.setStorageGroup("root.laptop1");
     } catch (MetadataException e) {
       Assert.assertEquals(
           String.format("The seriesPath of %s already exist, it can't be set to the storage group",
-              "root.laptop.d2"),
+              "root.laptop1"),
           e.getMessage());
     }
   }
@@ -189,8 +189,7 @@ public class MManagerBasicTest {
 
     MManager manager = MManager.getInstance();
     try {
-      manager.setStorageGroup("root.laptop.d1");
-      manager.setStorageGroup("root.laptop.d2");
+      manager.setStorageGroup("root.laptop");
       manager.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
       manager.createTimeseries("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.PLAIN,
@@ -198,11 +197,10 @@ public class MManagerBasicTest {
 
       List<String> list = new ArrayList<>();
 
-      list.add("root.laptop.d1");
+      list.add("root.laptop");
       assertEquals(list, manager.getStorageGroupByPath("root.laptop.d1.s1"));
       assertEquals(list, manager.getStorageGroupByPath("root.laptop.d1"));
 
-      list.add("root.laptop.d2");
       assertEquals(list, manager.getStorageGroupByPath("root.laptop"));
       assertEquals(list, manager.getStorageGroupByPath("root"));
     } catch (MetadataException e) {

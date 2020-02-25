@@ -200,6 +200,7 @@ public class EnvironmentUtils {
     try {
       EnvironmentUtils.daemon.active();
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 

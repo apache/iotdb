@@ -39,7 +39,7 @@ public class IoTDBTimeZoneIT {
   private static String[] insertSqls = new String[]{"SET STORAGE GROUP TO root.timezone",
       "CREATE TIMESERIES root.timezone.d0.tz1 WITH DATATYPE = INT32, ENCODING = PLAIN",};
   private final String TIMESTAMP_STR = "Time";
-  private final String tz1 = "root.timezone.tz1";
+  private final String tz1 = "root.timezone.d0.tz1";
 
   // private boolean testFlag = TestUtils.testFlag;
   private String[] retArray = new String[]{"1514775603000,4", "1514779200000,1", "1514779201000,2",

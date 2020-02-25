@@ -59,7 +59,7 @@ public class IoTDBAggregationIT {
       "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN"
   };
   private static String[] dataSet2 = new String[]{
-      "SET STORAGE GROUP TO root.ln.wf01.wt01",
+      "SET STORAGE GROUP TO root.ln.wf01",
       "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
       "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN",
       "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",

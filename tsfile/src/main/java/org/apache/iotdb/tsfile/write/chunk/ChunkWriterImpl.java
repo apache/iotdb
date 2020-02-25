@@ -41,7 +41,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkWriterImpl.class);
 
-  private MeasurementSchema MeasurementSchema;
+  private MeasurementSchema measurementSchema;
 
   private ICompressor compressor;
 
@@ -81,7 +81,7 @@ public class ChunkWriterImpl implements IChunkWriter {
    * @param schema schema of this measurement
    */
   public ChunkWriterImpl(MeasurementSchema schema) {
-    this.MeasurementSchema = schema;
+    this.measurementSchema = schema;
     this.compressor = ICompressor.getCompressor(schema.getCompressor());
     this.pageBuffer = new PublicBAOS();
 
@@ -92,11 +92,11 @@ public class ChunkWriterImpl implements IChunkWriter {
     this.valueCountInOnePageForNextCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
 
     // init statistics for this chunk and page
-    this.statistics = Statistics.getStatsByType(MeasurementSchema.getType());
+    this.statistics = Statistics.getStatsByType(measurementSchema.getType());
 
-    this.pageWriter = new PageWriter(MeasurementSchema);
-    this.pageWriter.setTimeEncoder(MeasurementSchema.getTimeEncoder());
-    this.pageWriter.setValueEncoder(MeasurementSchema.getValueEncoder());
+    this.pageWriter = new PageWriter(measurementSchema);
+    this.pageWriter.setTimeEncoder(measurementSchema.getTimeEncoder());
+    this.pageWriter.setValueEncoder(measurementSchema.getValueEncoder());
   }
 
   @Override
@@ -177,7 +177,7 @@ public class ChunkWriterImpl implements IChunkWriter {
    */
   private void checkPageSizeAndMayOpenANewPage() {
     if (pageWriter.getPointNumber() == maxNumberOfPointsInPage) {
-      logger.debug("current line count reaches the upper bound, write page {}", MeasurementSchema);
+      logger.debug("current line count reaches the upper bound, write page {}", measurementSchema);
       writePage();
     } else if (pageWriter.getPointNumber()
         >= valueCountInOnePageForNextCheck) { // need to check memory size
@@ -187,7 +187,7 @@ public class ChunkWriterImpl implements IChunkWriter {
         // we will write the current page
         logger.debug(
             "enough size, write page {}, pageSizeThreshold:{}, currentPateSize:{}, valueCountInOnePage:{}",
-            MeasurementSchema.getMeasurementId(), pageSizeThreshold, currentPageSize,
+            measurementSchema.getMeasurementId(), pageSizeThreshold, currentPageSize,
             pageWriter.getPointNumber());
         writePage();
         valueCountInOnePageForNextCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
@@ -210,7 +210,7 @@ public class ChunkWriterImpl implements IChunkWriter {
       logger.error("meet error in pageWriter.writePageHeaderAndDataIntoBuff,ignore this page:", e);
     } finally {
       // clear start time stamp for next initializing
-      pageWriter.reset(MeasurementSchema);
+      pageWriter.reset(measurementSchema);
     }
   }
 
@@ -221,7 +221,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
     // reinit this chunk writer
     pageBuffer.reset();
-    this.statistics = Statistics.getStatsByType(MeasurementSchema.getType());
+    this.statistics = Statistics.getStatsByType(measurementSchema.getType());
   }
 
   @Override
@@ -235,7 +235,7 @@ public class ChunkWriterImpl implements IChunkWriter {
       return 0;
     }
     // return the serialized size of the chunk header + all pages
-    return ChunkHeader.getSerializedSize(MeasurementSchema.getMeasurementId()) + (long) pageBuffer.size();
+    return ChunkHeader.getSerializedSize(measurementSchema.getMeasurementId()) + (long) pageBuffer.size();
   }
 
   @Override
@@ -252,7 +252,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public TSDataType getDataType() {
-    return MeasurementSchema.getType();
+    return measurementSchema.getType();
   }
 
   /**
@@ -269,7 +269,7 @@ public class ChunkWriterImpl implements IChunkWriter {
       logger.debug("start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
       header.serializeTo(pageBuffer);
       logger.debug("finish to flush a page header {} of {} into buffer, buffer position {} ", header,
-          MeasurementSchema.getMeasurementId(), pageBuffer.size());
+          measurementSchema.getMeasurementId(), pageBuffer.size());
 
       statistics.mergeStatistics(header.getStatistics());
 
@@ -300,8 +300,8 @@ public class ChunkWriterImpl implements IChunkWriter {
     }
 
     // start to write this column chunk
-    writer.startFlushChunk(MeasurementSchema, compressor.getType(), MeasurementSchema.getType(),
-        MeasurementSchema.getEncodingType(), statistics, pageBuffer.size(), numOfPages);
+    writer.startFlushChunk(measurementSchema, compressor.getType(), measurementSchema.getType(),
+        measurementSchema.getEncodingType(), statistics, pageBuffer.size(), numOfPages);
 
     long dataOffset = writer.getPos();
 
