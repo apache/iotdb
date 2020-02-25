@@ -36,8 +36,8 @@ AlignByDevicePlan 即按设备对齐查询对应的表结构为：
 首先解释一下 AlignByDevicePlan 中一些重要字段的含义：
 
 - dataTypeMapping: 该变量继承自基类 QueryPlan，其主要作用是在计算每个设备的执行路径时，提供此次查询的 paths 对应的数据类型。在按设备对齐查询中，基类中的 paths 字段除了有验证的额外作用外，和 dataTypes 字段主要都是为这个字段服务。
-- deviceToMeasurementsMap, deviceToFilterMap: 这两个字段分别用来存储设备对应的映射值和过滤条件。
-- dataTypeConsistencyChecker：该字段主要用来验证不同设备的同名 sensor 的数据类型是否一致。如 `root.sg.d1.s1` 和 `root.sg.d2.s1` 应该是同一数据类型。
+- deviceToMeasurementsMap, deviceToFilterMap: 这两个字段分别用来存储设备对应的测点和过滤条件。
+- dataTypeConsistencyChecker：AlignByDevicePlan 要求不同设备的同名 sensor 数据类型一致，该字段是一个 `measurementName -> dataType` 的 Map 结构，用来验证同名 sensor 的数据类型一致性。如 `root.sg.d1.s1` 和 `root.sg.d2.s1` 应该是同一数据类型。
 - groupByPlan, fillQueryPlan, aggregationPlan：为了避免冗余，这三个执行计划被设定为 RawDataQueryPlan 的子类，而在 AlignByDevicePlan 中被设置为变量。如果查询计划属于这三个计划中的一种，则该字段会被赋值并保存。
 
 在进行具体实现过程的讲解前，先给出一个覆盖较为完整的例子，下面的解释过程中将结合该示例进行说明。
@@ -72,9 +72,9 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
 
 Measurement 共有三种类型，常量 Measurement，不存在的 Measurement 以及存在且非常量的 Measurement，下面将结合具体字段进行解释。
 
-- `loc`：标记当前 Measurement 在 SELECT 后缀路径中的位置，如示例中常量`1`的位置为 1，而 `s5` 的位置为 5.
+- `loc`：标记当前 Measurement 在 SELECT 中的位置，如示例中常量`1`的位置为 1，而 `s5` 的位置为 5（因为 `loc` 代表 Measurement 的位置而非后缀路径的位置，通配符 \* 在该示例中占两个 Measurement，所以 `s5` 的位置为 5 而非 4）。
 - `measurements`：存储实际存在且非常量的 Measurement，示例中为 `[s1,s1,s2,s2]`;
-- `nonExistMeasurement`：存储不存在的 Measurement，注意其定义位置在第一层 suffixPaths 循环，且为 Set 类型，目的是不对同一个 suffix 下的重复 Measurement 添加重复记录，但可以对多次出现的同名 suffix 增加记录。其将在一个 suffix 循环结束后将 Set 集合内的元素一起添加到 AlignByDevicePlan 中; 示例中不存在的 Measurement 为 `s5`。
+- `nonExistMeasurement`：存储不存在的 Measurement，注意其定义位置在第一层 suffixPaths 循环，且为 Set 类型，目的是不对同一个 suffix 下的重复 Measurement 添加重复记录，但可以对多次出现的同名 suffix 增加记录。比如： `s5` 对于 d1 和 d2 都不存在，所以后缀 `s5` 只会添加一次。但是如果在 SELECT 语句最后再加入一个 `s5`，那么 `nonExistMeasurement` 中将包含两个 s5, 其位置分别为 5 和 6。此外，对于示例中中的 `s2`，d1 中存在而 d2 中不存在的，这种情况将先将 `s2` 暂时加入不存在的数组，最后通过 `nonExistMeasurement.removeAll(measurementSetOfGivenSuffix)`去除。
 - `constMeasurement`：存储常量 Measurement。示例中为 `"1"`。
 
 该阶段的主要工作包括：
