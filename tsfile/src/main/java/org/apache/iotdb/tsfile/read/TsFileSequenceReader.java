@@ -467,12 +467,20 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (resourceLogger.isInfoEnabled()) {
       resourceLogger.info("{} reader is closed.", file);
     }
+    Throwable ex = new Throwable();
+    StackTraceElement[] stackElements = ex.getStackTrace();
+    logger.error("{} reader is closed.", file);
+    if (stackElements != null) {
+      for (StackTraceElement stackElement : stackElements) {
+        logger.error("Class Name: {}, Function Name: {}, Line: {}", stackElement.getClassName(), stackElement.getMethodName(), stackElement.getLineNumber());
+      }
+    }
     this.tsFileInput.close();
     deviceMetadataMap = null;
   }
 
   public void close(String reason) throws IOException {
-    resourceLogger.debug("{} reader is closed by {}", file, reason);
+    logger.error("{} reader is closed by {}", file, reason);
     this.tsFileInput.close();
     deviceMetadataMap = null;
   }
