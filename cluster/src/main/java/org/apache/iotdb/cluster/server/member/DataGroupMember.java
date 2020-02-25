@@ -784,6 +784,15 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
+  @Override
+  public void getAllDevices(Node header, String path, AsyncMethodCallback<List<String>> resultHandler) {
+    try {
+      resultHandler.onComplete(MManager.getInstance().getDevices(path));
+    } catch (MetadataException e) {
+      resultHandler.onError(e);
+    }
+  }
+
   /**
    * When the node does not play a member in a group any more, the corresponding local data should
    * be removed.

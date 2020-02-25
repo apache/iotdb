@@ -20,22 +20,20 @@
 package org.apache.iotdb.cluster.query;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.executor.EngineExecutor;
 import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
-import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
@@ -51,14 +49,33 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
   @Override
   protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context)
       throws StorageEngineException {
-    return super.initManagedSeriesReader(context);
+    Filter timeFilter = null;
+    if (optimizedExpression != null) {
+      timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
+    }
+
+    List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
+    for (int i = 0; i < deduplicatedPaths.size(); i++) {
+      Path path = deduplicatedPaths.get(i);
+      TSDataType dataType = deduplicatedDataTypes.get(i);
+
+      ManagedSeriesReader reader;
+      try {
+        reader = metaGroupMember.getSeriesReader(path, dataType, timeFilter,
+            null, context);
+      } catch (IOException e) {
+        throw new StorageEngineException(e);
+      }
+      readersOfSelectedSeries.add(reader);
+    }
+    return readersOfSelectedSeries;
   }
 
   @Override
   protected IReaderByTimestamp getReaderByTimestamp(Path path, TSDataType dataType,
       QueryContext context)
       throws StorageEngineException {
-    return metaGroupMember.getReaderByTimestamp(path, context);
+    return metaGroupMember.getReaderByTimestamp(path, dataType, context);
   }
 
   @Override

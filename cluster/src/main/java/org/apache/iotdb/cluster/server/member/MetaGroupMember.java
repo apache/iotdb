@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.server.member;
 
 import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -84,6 +85,7 @@ import org.apache.iotdb.cluster.query.reader.RemoteSeriesReaderByTimestamp;
 import org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -124,6 +126,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -1162,7 +1165,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     syncLeader();
     List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: Sending query of {} to {} groups", name, path, partitionGroups.size());
+      logger.debug("{}: Sending data query of {} to {} groups", name, path, partitionGroups.size());
     }
     ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
     for (PartitionGroup partitionGroup : partitionGroups) {
@@ -1170,6 +1173,68 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           dataType), 0);
     }
     return mergeReader;
+  }
+
+  public List<AggregateResult> getAggregateResult(Path path, List<String> aggregations,
+      TSDataType dataType, Filter timeFilter) throws StorageEngineException {
+    // make sure the partition table is new
+    syncLeader();
+    List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: Sending aggregation query of {} to {} groups", name, path,
+          partitionGroups.size());
+    }
+    List<AggregateResult> results = null;
+    // get the aggregation result of each group and merge them
+    for (PartitionGroup partitionGroup : partitionGroups) {
+      List<AggregateResult> groupResult = getAggregateResult(path, aggregations, dataType,
+          timeFilter, partitionGroup);
+      if (results == null) {
+        results = groupResult;
+      } else {
+        for (int i = 0; i < results.size(); i++) {
+          results.get(i).merge(groupResult.get(i));
+        }
+      }
+    }
+    return results;
+  }
+
+  private List<AggregateResult> getAggregateResult(Path path, List<String> aggregations,
+      TSDataType dataType, Filter timeFilter, PartitionGroup partitionGroup) throws StorageEngineException {
+    AtomicReference<List<ByteBuffer>> resultReference = new AtomicReference<>();
+    GetAggrResultRequest request = new GetAggrResultRequest();
+    request.setPath(path.getFullPath());
+    request.setAggregations(aggregations);
+    request.setDataTypeOrdinal(dataType.ordinal());
+    if (timeFilter != null) {
+      request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
+    }
+
+    for (Node node : partitionGroup) {
+      logger.debug("{}: querying aggregation {} of {} from {}", name, aggregations, path, node);
+      GenericHandler<List<ByteBuffer>> handler = new GenericHandler<>(node, resultReference);
+      try {
+        DataClient client = getDataClient(node);
+        synchronized (resultReference) {
+          resultReference.set(null);
+          client.getAggrResult(request, handler);
+          resultReference.wait(connectionTimeoutInMS);
+        }
+        List<ByteBuffer> resultBuffers = resultReference.get();
+        if (resultBuffers != null) {
+          List<AggregateResult> results = new ArrayList<>(resultBuffers.size());
+          for (ByteBuffer resultBuffer : resultBuffers) {
+            // TODO-Cluster deserialize results
+          }
+          return results;
+        }
+      } catch (TException | InterruptedException | IOException e) {
+        logger.error("{}: Cannot query {} from {}", name, path, node, e);
+      }
+    }
+    throw new StorageEngineException(
+        new RequestTimeOutException("Query " + path + " in " + partitionGroup));
   }
 
   private List<PartitionGroup> routeFilter(Filter filter, Path path) throws StorageEngineException {
@@ -1281,14 +1346,56 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     return dataClientPool;
   }
 
+
   /**
    * Get all paths after removing wildcards in the path
    *
-   * @param storageGroupName the storage group of this path
-   * @param path             a path with wildcard
+   * @param originPath       a path potentially with wildcard
    * @return all paths after removing wildcards in the path
    */
-  public List<String> getMatchedPaths(String storageGroupName, String path)
+  public List<String> getMatchedPaths(String originPath) throws MetadataException {
+    if (!originPath.contains(PATH_WILDCARD)) {
+      // path without wildcards does not need to be processed
+      return Collections.singletonList(originPath);
+    }
+    // make sure this node knows all storage groups
+    syncLeader();
+    // get all storage groups this path may belong to
+    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(originPath);
+    List<String> ret = new ArrayList<>();
+    for (Entry<String, String> entry : sgPathMap.entrySet()) {
+      String storageGroupName = entry.getKey();
+      String fullPath = entry.getValue();
+      ret.addAll(getMatchedPaths(storageGroupName, fullPath));
+    }
+    logger.debug("The paths of path {} are {}", originPath, ret);
+
+    return ret;
+  }
+
+  /**
+   * Get all devices after removing wildcards in the path
+   *
+   * @param originPath       a path potentially with wildcard
+   * @return all paths after removing wildcards in the path
+   */
+  public List<String> getMatchedDevices(String originPath) throws MetadataException {
+    // make sure this node knows all storage groups
+    syncLeader();
+    // get all storage groups this path may belong to
+    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(originPath);
+    List<String> ret = new ArrayList<>();
+    for (Entry<String, String> entry : sgPathMap.entrySet()) {
+      String storageGroupName = entry.getKey();
+      String fullPath = entry.getValue();
+      ret.addAll(getMatchedDevices(storageGroupName, fullPath));
+    }
+    logger.debug("The devices of path {} are {}", originPath, ret);
+
+    return ret;
+  }
+
+  private List<String> getMatchedPaths(String storageGroupName, String path)
       throws MetadataException {
     // find the data group that should hold the timeseries schemas of the storage group
     PartitionGroup partitionGroup = partitionTable.route(storageGroupName, 0);
@@ -1309,6 +1416,41 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           result.set(null);
           synchronized (result) {
             client.getAllPaths(partitionGroup.getHeader(), path, handler);
+            result.wait(connectionTimeoutInMS);
+          }
+          List<String> paths = result.get();
+          if (paths != null) {
+            return paths;
+          }
+        } catch (IOException | TException | InterruptedException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
+    return Collections.emptyList();
+  }
+
+  private List<String> getMatchedDevices(String storageGroupName, String path)
+      throws MetadataException {
+    // find the data group that should hold the timeseries schemas of the storage group
+    PartitionGroup partitionGroup = partitionTable.route(storageGroupName, 0);
+    if (partitionGroup.contains(thisNode)) {
+      // this node is a member of the group, perform a local query after synchronizing with the
+      // leader
+      getLocalDataMember(partitionGroup.getHeader(), null, "Get devices of " + path)
+          .syncLeader();
+      return MManager.getInstance().getDevices(path);
+    } else {
+      AtomicReference<List<String>> result = new AtomicReference<>();
+
+      List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+      for (Node node : coordinatedNodes) {
+        try {
+          DataClient client = getDataClient(node);
+          GenericHandler<List<String>> handler = new GenericHandler<>(node, result);
+          result.set(null);
+          synchronized (result) {
+            client.getAllDevices(partitionGroup.getHeader(), path, handler);
             result.wait(connectionTimeoutInMS);
           }
           List<String> paths = result.get();

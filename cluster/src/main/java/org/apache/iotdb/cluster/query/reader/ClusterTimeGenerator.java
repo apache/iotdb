@@ -54,10 +54,9 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
     Filter filter = expression.getFilter();
     Path path = expression.getSeriesPath();
     TSDataType dataType;
-    QueryDataSource queryDataSource;
     try {
       dataType = metaGroupMember.getSeriesType(path.getFullPath());
-      return metaGroupMember.getSeriesReader(path, dataType, filter, context);
+      return metaGroupMember.getSeriesReader(path, dataType, null, filter, context);
     } catch (Exception e) {
       throw new IOException(e);
     }

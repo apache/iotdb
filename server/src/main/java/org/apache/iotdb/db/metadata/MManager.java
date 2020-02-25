@@ -42,6 +42,7 @@ import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -869,5 +870,43 @@ public class MManager {
       return;
     }
     collectSeries(mNode, timeseriesSchemas);
+  }
+
+  /**
+   * For a path, infer all storage groups it may belong to.
+   * The path can have wildcards.
+   * Consider the path into two parts: (1) the sub path which can not contain a storage group name and
+   * (2) the sub path which is substring that begin after the storage group name.
+   * (1) Suppose the part of the path can not contain a storage group name (e.g.,
+   * "root".contains("root.sg") == false), then:
+   * If the wildcard is not at the tail, then for each wildcard, only one level will be inferred
+   * and the wildcard will be removed.
+   * If the wildcard is at the tail, then the inference will go on until the storage groups are found
+   * and the wildcard will be kept.
+   * (2) Suppose the path of the path is a substring that begin after the storage group name. (e.g.,
+   *  For "root.*.sg1.a.*.b.*" and "root.x.sg1" is a storage group, then this part is "a.*.b.*").
+   *  For this part, keep what it is.
+   *
+   * Assuming we have three SGs: root.group1, root.group2, root.area1.group3
+   * Eg1:
+   *  for input "root.*", returns ("root.group1", "root.group1.*"), ("root.group2", "root.group2.*")
+   *  ("root.area1.group3", "root.area1.group3.*")
+   * Eg2:
+   *  for input "root.*.s1", returns ("root.group1", "root.group1.s1"), ("root.group2", "root.group2.s1")
+   *
+   * Eg3:
+   *  for input "root.area1.*", returns ("root.area1.group3", "root.area1.group3.*")
+   *
+   *
+   * @param path can be a prefix or a full path.
+   * @return StorageGroupName-FullPath pairs
+   */
+  public Map<String, String> determineStorageGroup(String path) throws IllegalPathException {
+    lock.readLock().lock();
+    try {
+      return mtree.determineStorageGroup(path);
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 }

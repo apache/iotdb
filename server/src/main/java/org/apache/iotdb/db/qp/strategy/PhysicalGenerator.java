@@ -284,8 +284,8 @@ public class PhysicalGenerator {
         for (String device : devices) { // per device in FROM after deduplication
           Path fullPath = Path.addPrefixPath(suffixPath, device);
           try {
-            List<String> actualPaths = MManager.getInstance()
-                .getAllTimeseriesName(fullPath.getFullPath());  // remove stars in SELECT to get actual paths
+            List<String> actualPaths = getMatchedTimeseries(fullPath.getFullPath());  // remove stars in SELECT to
+            // get actual paths
 
             // for actual non exist path
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
@@ -430,7 +430,7 @@ public class PhysicalGenerator {
     try {
       for (Path path : paths) {
         List<String> tempDS;
-        tempDS = MManager.getInstance().getDevices(path.getFullPath());
+        tempDS = getMatchedDevices(path.getFullPath());
 
         deviceSet.addAll(tempDS);
       }
@@ -464,7 +464,7 @@ public class PhysicalGenerator {
     List<Path> paths = queryPlan.getPaths();
     List<TSDataType> dataTypes = new ArrayList<>(paths.size());
     for (Path path : paths) {
-      TSDataType seriesType = MManager.getInstance().getSeriesType(path.toString());
+      TSDataType seriesType = getSeriesType(path.toString());
       dataTypes.add(seriesType);
       queryPlan.addTypeMapping(path, seriesType);
     }
@@ -531,6 +531,14 @@ public class PhysicalGenerator {
         columnSet.add(column);
       }
     }
+  }
+
+  protected List<String> getMatchedTimeseries(String path) throws MetadataException {
+    return MManager.getInstance().getAllTimeseriesName(path);
+  }
+
+  protected List<String> getMatchedDevices(String path) throws MetadataException {
+    return MManager.getInstance().getDevices(path);
   }
 }
 

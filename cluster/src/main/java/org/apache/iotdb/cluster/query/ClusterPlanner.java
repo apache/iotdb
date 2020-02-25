@@ -26,6 +26,7 @@ import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 
 public class ClusterPlanner extends Planner {
 
@@ -42,5 +43,10 @@ public class ClusterPlanner extends Planner {
     operator = logicalOptimize(operator);
     PhysicalGenerator physicalGenerator = new ClusterPhysicalGenerator(metaGroupMember);
     return physicalGenerator.transformToPhysicalPlan(operator);
+  }
+
+  @Override
+  protected ConcatPathOptimizer getConcatPathOptimizer() {
+    return new ClusterConcatPathOptimizer(metaGroupMember);
   }
 }

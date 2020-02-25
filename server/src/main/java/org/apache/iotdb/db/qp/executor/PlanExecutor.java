@@ -220,7 +220,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
+  protected QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
       IOException {
     QueryDataSet queryDataSet;
@@ -311,7 +311,7 @@ public class PlanExecutor implements IPlanExecutor {
     return MManager.getInstance().getAllTimeseriesName(path);
   }
 
-  private List<String> getNodesList(String schemaPattern, int level) throws MetadataException {
+  protected List<String> getNodesList(String schemaPattern, int level) throws MetadataException {
     return MManager.getInstance().getNodesList(schemaPattern, level);
   }
 
@@ -333,7 +333,7 @@ public class PlanExecutor implements IPlanExecutor {
     ListDataSet listDataSet = new ListDataSet(Collections.singletonList(new Path(COLUMN_DEVICES)),
         Collections.singletonList(TSDataType.TEXT));
     List<String> devices;
-    devices = MManager.getInstance().getDevices(showDevicesPlan.getPath().toString());
+    devices = getDevices(showDevicesPlan.getPath().toString());
     for (String s : devices) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
@@ -344,10 +344,13 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
+  protected List<String> getDevices(String path) throws MetadataException {
+    return MManager.getInstance().getDevices(path);
+  }
+
   private QueryDataSet processShowChildPaths(ShowChildPathsPlan showChildPathsPlan)
       throws MetadataException {
-    Set<String> childPathsList = MManager.getInstance()
-        .getChildNodePathInNextLevel(showChildPathsPlan.getPath().toString());
+    Set<String> childPathsList = getPathNextChildren(showChildPathsPlan.getPath().toString());
     ListDataSet listDataSet = new ListDataSet(
         Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
         Collections.singletonList(TSDataType.TEXT));
@@ -359,6 +362,10 @@ public class PlanExecutor implements IPlanExecutor {
       listDataSet.putRecord(record);
     }
     return listDataSet;
+  }
+
+  protected Set<String> getPathNextChildren(String path) throws MetadataException {
+     return MManager.getInstance().getChildNodePathInNextLevel(path);
   }
 
   private QueryDataSet processShowStorageGroup() {
@@ -386,8 +393,7 @@ public class PlanExecutor implements IPlanExecutor {
         new Path(COLUMN_TIMESERIES_COMPRESSION)),
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
             TSDataType.TEXT));
-    List<String[]> timeseriesList = MManager.getInstance()
-        .getAllTimeseriesSchema(timeSeriesPlan.getPath().toString());
+    List<String[]> timeseriesList = getTimeseriesSchemas(timeSeriesPlan.getPath().toString());
     for (String[] list : timeseriesList) {
       RowRecord record = new RowRecord(0);
       for (String s : list) {
@@ -398,6 +404,10 @@ public class PlanExecutor implements IPlanExecutor {
       listDataSet.putRecord(record);
     }
     return listDataSet;
+  }
+
+  protected List<String[]> getTimeseriesSchemas(String path) throws MetadataException {
+    return MManager.getInstance().getAllTimeseriesSchema(path);
   }
 
   private QueryDataSet processShowTTLQuery(ShowTTLPlan showTTLPlan) {
@@ -499,17 +509,11 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       Set<String> existingPaths = new HashSet<>();
       for (Path p : deletePlan.getPaths()) {
-        existingPaths.addAll(mManager.getAllTimeseriesName(p.getFullPath()));
+        existingPaths.addAll(getPaths(p.getFullPath()));
       }
       if (existingPaths.isEmpty()) {
         throw new QueryProcessException(
             "TimeSeries does not exist and its data cannot be deleted");
-      }
-      for (String onePath : existingPaths) {
-        if (!mManager.isPathExist(onePath)) {
-          throw new QueryProcessException(String
-              .format("TimeSeries %s does not exist and its data cannot be deleted", onePath));
-        }
       }
       for (String path : existingPaths) {
         delete(new Path(path), deletePlan.getDeleteTime());

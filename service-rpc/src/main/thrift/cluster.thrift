@@ -147,25 +147,16 @@ struct SingleSeriesQueryRequest {
   7: required int dataTypeOrdinal
 }
 
-struct GetAggregateReaderRequest {
-  1: required string path
-  2: optional binary timeFilterBytes
-  3: optional binary valueFilterBytes
-  4: required long queryId
-  5: required Node requester
-  6: required Node header
-  7: required bool reverse
-  8: required int dataTypeOrdinal
-}
-
-struct GetAggregateReaderResp {
-  1: required long seqReaderId
-  2: required long unseqReaderId
-}
-
 // the spec and load of a node, for query coordinating
 struct TNodeStatus {
 
+}
+
+struct GetAggrResultRequest {
+  1: required string path
+  2: required list<string> aggregations
+  3: required int dataTypeOrdinal
+  4: optional binary timeFilterBytes
 }
 
 service RaftService {
@@ -275,6 +266,15 @@ service TSDataService extends RaftService {
   * Given a path pattern (path with wildcard), return all paths it matches.
   **/
   list<string> getAllPaths(1:Node header, 2:string path)
+
+  /**
+   * Given a path pattern (path with wildcard), return all devices it matches.
+   **/
+  list<string> getAllDevices(1:Node header, 2:string path)
+
+  list<string> getNodeList(1:Node header, 2:string path, 3:int nodeLevel)
+
+  list<binary> getAggrResult(1:GetAggrResultRequest request)
 
   PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
 }

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.cluster.query;
 
+import java.util.List;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -29,13 +29,22 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
 
   private MetaGroupMember metaGroupMember;
 
-  ClusterPhysicalGenerator(IQueryProcessExecutor executor, MetaGroupMember metaGroupMember) {
-    super(executor);
+  ClusterPhysicalGenerator(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
   }
 
   @Override
   protected TSDataType getSeriesType(String path) throws MetadataException {
     return metaGroupMember.getSeriesType(path);
+  }
+
+  @Override
+  protected List<String> getMatchedTimeseries(String path) throws MetadataException {
+    return metaGroupMember.getMatchedPaths(path);
+  }
+
+  @Override
+  protected List<String> getMatchedDevices(String path) throws MetadataException {
+    return metaGroupMember.getMatchedDevices(path);
   }
 }

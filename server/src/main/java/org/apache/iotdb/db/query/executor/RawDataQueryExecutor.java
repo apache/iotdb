@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.executor;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -47,9 +46,9 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
  */
 public class RawDataQueryExecutor {
 
-  private List<Path> deduplicatedPaths;
-  private List<TSDataType> deduplicatedDataTypes;
-  private IExpression optimizedExpression;
+  protected List<Path> deduplicatedPaths;
+  protected List<TSDataType> deduplicatedDataTypes;
+  protected IExpression optimizedExpression;
 
   public RawDataQueryExecutor(RawDataQueryPlan queryPlan) {
     this.deduplicatedPaths = queryPlan.getDeduplicatedPaths();
