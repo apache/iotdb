@@ -19,34 +19,19 @@
 
 -->
 
-# TsFile 读流程
-
-本章节介绍 TsFile 的读取流程，内容总体上分为两部分，对过滤条件和时间表达式的介绍，以及对查询流程的详细介绍。
-
-* 1 过滤条件和查询表达式
-    * 1.1 Filter
-    * 1.2 Expression表达式
-        * 1.2.1 SingleSeriesExpression 表达式
-        * 1.2.2 GlobalTimeExpression 表达式
-        * 1.2.3 IExpression 表达式
-        * 1.2.4 可执行表达式
-        * 1.2.5 IExpression 转化为可执行表达式的优化算法
-* 2 TsFile 查询执行过程
-    * 2.1 设计原理
-    * 2.2 三大查询组件
-        * 2.2.1 FileSeriesReader 组件
-        * 2.2.2 FileSeriesReaderByTimestamp 组件
-        * 2.2.3 TimeGeneratorImpl 组件
-    * 2.3 归并查询
-    * 2.4 连接查询
-    * 2.5 查询入口
-    * 2.6 相关代码介绍
-
-## 1 过滤条件和查询表达式
+# 过滤条件和查询表达式
 
 本章节首先介绍 Tsfile 文件读取时需要用到的过滤条件和查询表达式的相关定义；其次介绍如何将用户输入的过滤条件转化为系统可以执行的查询条件。
 
-### 1.1 Filter
+* 1 Filter
+* 2 Expression表达式
+    * 2.1 SingleSeriesExpression 表达式
+    * 2.2 GlobalTimeExpression 表达式
+    * 2.3 IExpression 表达式
+    * 2.4 可执行表达式
+    * 2.5 IExpression 转化为可执行表达式的优化算法
+
+## 1 Filter
 
 Filter 表示基本的过滤条件。用户可以在时间戳上、或某一列的值上给出具体的过滤条件。将时间戳和列值的过滤条件加以区分后，设 t 表示某一时间戳常量，Filter 有以下12种基本类型，在实现上是继承关系。
 
@@ -101,11 +86,11 @@ ValueNotEq| value != v| value != true，表示 value 的值不能为true
 AndFilter| \<Filter> && \<Filter>| 1. value > 100 && value < 200,表示 value大于100且小于200； <br>2. (value >= 100 && value <= 200) && time > 14152176545,表示“value 大于等于100 且 value 小于等于200” 且 “时间戳大于 14152176545”
 OrFilter| \<Filter> &#124;&#124; \<Filter>| 1. value > 100 &#124;&#124; time >  14152176545，表示value大于100或时间戳大于14152176545；<br>2. (value > 100 && value < 200)&#124;&#124; time > 14152176545，表示“value大于100且value小于200”或“时间戳大于14152176545”
 
-### 1.2 Expression表达式
+## 2 Expression表达式
 
 当一个过滤条件作用到一个时间序列上，就成为一个表达式。例如，“数值大于10” 是一个过滤条件；而 “序列 d1.s1 的数值大于10” 就是一条表达式。特殊地，对时间的过滤条件也是一个表达式，称为 GlobalTimeExpression。以下章节将对表达式进行展开介绍。
 
-#### 1.2.1 SingleSeriesExpression表达式
+### 2.1 SingleSeriesExpression表达式
 
 SingleSeriesExpression 表示针对某一指定时间序列的过滤条件，一个 SingleSeriesExpression 包含一个 Path 和一个 Filter。Path 表示该时间序列的路径；Filter 即为2.1章节中介绍的 Filter，表示相应的过滤条件。
 
@@ -138,7 +123,7 @@ SingleSeriesExpression 的结构如下：
     
 其符号化表达方式为：SingleSeriesExpression(“d1.s1”, (value > 100 && value < 200) && time > 14152176545)
 
-#### 1.2.2 GlobalTimeExpression 表达式
+### 2.2 GlobalTimeExpression 表达式
 GlobalTimeExpression 表示全局的时间过滤条件，一个 GlobalTimeExpression 包含一个 Filter，且该 Filter 中包含的子 Filter 必须全为时间过滤条件。在一次查询中，一个 GlobalTimeExpression 表示查询返回数据点必须满足该表达式中 Filter 所表示的过滤条件。GlobalTimeExpression 的结构如下：
 
 
@@ -153,7 +138,7 @@ GlobalTimeExpression 表示全局的时间过滤条件，一个 GlobalTimeExpres
 1. GlobalTimeExpression(time > 14152176545 && time < 14152176645)表示所有被选择的列的时间戳必须满足“大于14152176545且小于14152176645”
 2. GlobalTimeExpression((time > 100 && time < 200) || (time > 400 && time < 500))表示所有被选择列的时间戳必须满足“大于100且小于200”或“大于400且小于500”
 
-#### 1.2.3 IExpression 表达式
+### 2.3 IExpression 表达式
 IExpression 为查询过滤条件。一个 IExpression 可以是一个 SingleSeriesExpression 或者一个 GlobalTimeExpression，这种情况下，IExpression 也称为一元表达式，即 UnaryExpression。一个 IExpression 也可以由两个 IExpression 通过逻辑关系“与”、“或”进行连接得到 “AndExpression” 或 “OrExpression” 二元表达式，即 BinaryExpression。
 
 下面给出 IExpression 的形式化定义。
@@ -194,7 +179,7 @@ IExpression 为查询过滤条件。一个 IExpression 可以是一个 SingleSer
     **解释**：该 IExpression 为一个 AndExpression，其要求"d1.s1"和"d1.s2"必须同时满足其对应的 Filter，且时间列必须满足 GlobalTimeExpression 定义的 Filter 条件。
 
 
-#### 1.2.4 可执行表达式
+### 2.4 可执行表达式
 
 便于理解执行过程，定义可执行表达式的概念。可执行表达式是带有一定限制条件的 IExpression。用户输入的查询条件或构造的 IExpression 将经过特定的优化算法（该算法将在后面章节中介绍）转化为可执行表达式。满足下面任意条件的 IExpression 即为可执行表达式。
 
@@ -274,7 +259,7 @@ IExpression 为查询过滤条件。一个 IExpression 可以是一个 SingleSer
 
 **解释**：该 IExpression 为一个 AndExpression，但其叶子结点中包含了 GlobalTimeExpression，不满足条件3
 
-#### 1.2.5 IExpression转化为可执行表达式的优化算法
+### 2.5 IExpression转化为可执行表达式的优化算法
 
 本章节介绍将 IExpression 转化为一个可执行表达式的算法。
 
@@ -433,134 +418,3 @@ IExpression 为查询过滤条件。一个 IExpression 可以是一个 SingleSer
    c. 如果 LeftIExpression 不是 GlobalTimeExpression，而 RightIExpression 是 GlobalTimeExpression，则调用 handleOneGlobalTimeExpressionr()方法进行合并。
 
    d. 如果 LeftIExpression 和 RightIExpression 均不是 GlobalTimeExpression，则对 LeftIExpression 递归调用 optimize() 方法得到左可执行表达式；对 RightIExpression 递归调用 optimize() 方法得到右可执行表达式。使用 MergeIExpression 方法，根据 type 的值将左可执行表达式和右可执行表达式合并为一个 IExpression。
-
-## 2 TsFile 查询执行过程
-
-### 2.1 设计原理
-
-TsFile 文件层查询接口只包含原始数据查询，根据是否包含值过滤条件，可以将查询分为两类“无过滤条件或仅包含时间过滤条件查询”和“包含值过滤条件的查询”
-
-为了执行以上两类查询，有两套查询流程
-
-* 归并查询
-
-	生成多个 reader，按照 time 对齐，返回结果集。
-
-* 连接查询
-
-	根据查询条件生成满足过滤条件的时间戳，通过满足条件的时间戳查询投影列的值，返回结果集。
-
-### 2.2 三大查询组件
-
-#### 2.2.1 FileSeriesReader 组件
-org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader
-
-**功能**：该组件用于查询一个文件中单个时间序列满足过滤条件的数据点。根据给定的查询路径和被查询的文件，按照时间戳递增的顺序查询出该时间序列在文件中的所有数据点。其中过滤条件可为空。
-
-**实现**：该组件首先获取给定的路径查询出所有 Chunk 的信息，然后按照起始时间戳从小到大的顺序遍历每个 Chunk，并从中读取出满足条件的数据点。
-
-#### 2.2.2 FileSeriesReaderByTimestamp 组件
-
-org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp
-
-**功能**：该组件主要用于查询一个文件中单个时间序列在指定时间戳上的数据点。
-
-**实现**：该组件提供一个接口，getValueInTimestamp(long timestamp)，通过接口依次传入递增的时间戳，返回时间序列上与该时间戳相对应的数据点。如果满足该时间戳的数据点不存在，则返回 null。
-
-#### 2.2.3 TsFileTimeGenerator 组件
-org.apache.iotdb.tsfile.read.query.timegenerator.TsFileTimeGenerator
-
-**功能**：根据“选择条件”，计算出满足该“选择条件”的时间戳，先将“选择条件”转化为一棵二叉树，然后递归地计算满足“选择条件”的时间戳。主要用于连接查询。
-
-一个可执行的过滤条件由一个或多个 SingleSeriesExpression 构成，且 SingleSeriesExpression 之间具有相应的与或关系。所以，一个可执行的过滤条件可以转为一棵表示“查询条件”的二叉树，二叉树的叶子节点（ LeafNode ）为 FileSeriesReader，中间节点为 AndNode 或 OrNode。特殊地，当可执行的过滤条件仅由一个 SingleSeriesExpression 构成时，该二叉树仅包含一个节点。得到由“选择条件”转化后的二叉树后，便可以计算“满足该选择条件”的时间戳。
-该组件提供两个基本的功能：
-
-1. 判断是否还有下一个满足“选择条件”的时间戳
-
-2. 返回下一个满足“选择条件”的时间戳
-
-
-### 2.3 归并查询
-org.apache.iotdb.tsfile.read.query.dataset.DataSetWithoutTimeGenerator
-
-设当查询 n 个时间序列，为每个时间序列构建一个 FileSeriesReader，如果有 GlobalTimeExpression，则将其中的 Filter 传入 FileSeriesReader。
-
-根据所有的 FileSeriesReader 生成一个 DataSetWithoutTimeGenerator，由于每个 FileSeriesReader 会按照时间戳从小到大的顺序迭代地返回数据点，所以可以采用“多路归并”对所有 FileSeriesReader 的结果进行按时间戳对齐。
-
-数据合并的步骤为：
-
-（1） 创建一个最小堆，堆里面存储“时间戳”，该堆将按照每个时间戳的大小进行组织。
-
-（2） 初始化堆，依次访问每一个 FileSeriesReader，如果该 FileSeriesReader 中还有数据点，则获取数据点的时间戳并放入堆中。此时每个时间序列最多有1个时间戳被放入到堆中，即该序列最小的时间戳。
-
-（3） 如果堆的 size > 0，获取堆顶的时间戳，记为t，并将其在堆中删除，进入步骤（4）；如果堆的 size 等于0，则跳到步骤（5），结束数据合并过程。
-
-（4） 创建新的 RowRecord。依次遍历每一条时间序列。在处理其中一条时间序列时，如果该序列没有更多的数据点，则将该列标记为 null 并添加在 RowRecord 中；否则，判断最小的时间戳是否与 t 相同，若不相同，则将该列标记为 null 并添加在 RowRecord 中。若相同，将该数据点添加在 RowRecord 中，同时判断该时间序列是否有新的数据点，若存在，则将下一个时间戳 t' 添加在堆中，并将 t' 设为当前时间序列的最小时间戳。最后，返回步骤（3）。
-
-（5） 结束数据合并过程。
-
-### 2.4 连接查询
-
-org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator
-
-连接查询生成满足“选择条件”的时间戳、查询被投影列在对应时间戳下的数据点、合成 RowRecord。主要流程如下：
-
-（1）	根据 QueryExpression，初始化时间戳计算模块 TimeGeneratorImpl
-
-（2）	为每个被投影的时间序列创建 FileSeriesReaderByTimestamp
-
-（3）	如果“时间戳计算模块”中还有下一个时间戳，则计算出下一个时间戳 t ，进入步骤（4）；否则，结束查询。
-
-（4）	根据 t，在每个时间序列上使用 FileSeriesReaderByTimestamp 组件获取在时间戳 t 下的数据点；如果在该时间戳下没有对应的数据点，则用 null 表示。
-
-（5）	将步骤（4）中得到的所有数据点合并成一个 RowRecord，此时得到一条查询结果，返回步骤（3）计算下一个查询结果。
-
-
-### 2.5 查询入口
-
- org.apache.iotdb.tsfile.read.query.executor.TsFileExecutor
-
-TsFileExecutor 接收一个 QueryExpression ，执行该查询并返回相应的 QueryDataSet。基本工作流程如下：
-
-（1）接收一个 QueryExpression
-
-（2）如果无过滤条件，执行归并查询。如果该 QueryExpression 包含 Filter（过滤条件），则通过 ExpressionOptimizer 对该 QueryExpression 的 Filter 进行优化。如果是 GlobalTimeExpression，执行归并查询。如果包含值过滤，交给 ExecutorWithTimeGenerator 执行连接查询。
-
-（3） 生成对应的 QueryDataSet，迭代地生成 RowRecord，将查询结果返回。
-
-
-
-### 2.6 相关代码介绍
-
-* Chunk：一段时间序列的内存结构，可供 IChunkReader 进行读取。
-
-* ChunkMetaData：记录对应 Chunk 在文件中的偏移量及数据类型和编码方式，便于对 Chunk 进行读取。
-
-* IMetadataQuerier：一个 TsFile 的元数据加载器。可以加载整个文件的元数据和一个序列的所有 ChunkMetaData。
-
-* IChunkLoader： IChunkLoader 为 Chunk 的加载器，主要功能为，给定一个 ChunkMetaData，返回对应的 Chunk。
-
-* IChunkReader：对一个 Chunk 中的数据进行读取，其接收一个 Chunk，根据其中 ChunkHeader 中的相关信息，对该 Chunk 进行解析。其提供两套接口：
-
-	* hasNextSatisfiedPage & nextPageData：迭代式的返回一个一个的 Page
-	* getPageReaderList：一次返回所有 PageReader
-
-* IPageReader：对一个 Page 中的数据进行读取，提供两个基本的接口：
-
-	* getAllSatisfiedPageData()：一次返回所有满足条件的值
-	* getStatistics()：返回 Page 的统计信息
-
-* QueryExpression
-
-	QueryExpression 为查询表达式，包含投影的时间序列和过滤条件。
-
-* QueryDataSet
-
-	一次查询所返回的结果，具有相同时间戳的数据点合并为一个 RowRecord。 QueryDataSet 提供两个基本的功能：
-
-	* 判断是否还有下一个 RowRecord
-	* 返回下一个 RowRecord
-
-
-
-
