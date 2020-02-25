@@ -60,6 +60,9 @@ public class RestService implements RestServiceMBean, IService {
 
   @Override
   public void start() {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableMetricsWebService()) {
+      return;
+    }
     try {
       startService();
       JMXService.registerMBean(getInstance(), mbeanName);
@@ -70,6 +73,9 @@ public class RestService implements RestServiceMBean, IService {
 
   @Override
   public void stop() {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableMetricsWebService()) {
+      return;
+    }
     stopService();
     JMXService.deregisterMBean(mbeanName);
   }
@@ -108,6 +114,9 @@ public class RestService implements RestServiceMBean, IService {
 
   @Override
   public void stopService() {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableMetricsWebService()) {
+      return;
+    }
     logger.info("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     try {
       if (server != null) {
