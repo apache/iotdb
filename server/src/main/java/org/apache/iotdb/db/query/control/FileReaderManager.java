@@ -189,18 +189,9 @@ public class FileReaderManager implements IService {
   void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     synchronized (this) {
       if (!isClosed && unclosedReferenceMap.containsKey(tsFile)) {
-        int count = closedReferenceMap.get(tsFile).decrementAndGet();
-        logger.error("Unclosed file {} remain {} references", tsFile.getFile().getName(), count);
+        closedReferenceMap.get(tsFile).decrementAndGet();
       } else if (closedReferenceMap.containsKey(tsFile)){
-        int count = closedReferenceMap.get(tsFile).decrementAndGet();
-        logger.error("Closed file {} remain {} references", tsFile.getFile().getName(), count);
-      }
-      Throwable ex = new Throwable();
-      StackTraceElement[] stackElements = ex.getStackTrace();
-      if (stackElements != null) {
-        for (StackTraceElement stackElement : stackElements) {
-          logger.error("Class Name: {}, Function Name: {}, Line: {}", stackElement.getClassName(), stackElement.getMethodName(), stackElement.getLineNumber());
-        }
+        closedReferenceMap.get(tsFile).decrementAndGet();
       }
     }
     tsFile.getWriteQueryLock().readLock().unlock();

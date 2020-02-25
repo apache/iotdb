@@ -97,6 +97,14 @@ public class DefaultTsFileInput implements TsFileInput {
 
   @Override
   public void close() throws IOException {
+    LOGGER.error("{} FileChannel is closed", path);
+    Throwable ex = new Throwable();
+    StackTraceElement[] stackElements = ex.getStackTrace();
+    if (stackElements != null) {
+      for (StackTraceElement stackElement : stackElements) {
+        LOGGER.error("Class Name: {}, Function Name: {}, Line: {}", stackElement.getClassName(), stackElement.getMethodName(), stackElement.getLineNumber());
+      }
+    }
     channel.close();
   }
 
