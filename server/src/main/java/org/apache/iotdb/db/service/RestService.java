@@ -146,23 +146,17 @@ public class RestService implements RestServiceMBean, IService {
     SocketAddress socketAddress = new InetSocketAddress("localhost", getRestPort());
     @SuppressWarnings("squid:S2095")
     Socket socket = new Socket();
-    int timeout = 1;
-    int count = 10000; // 10 seconds
-    while (count > 0) {
+    try {
+      socket.connect(socketAddress, 1000);
+    } catch (IOException e) {
+      logger.error(e.getMessage());
+    } finally {
       try {
-        socket.connect(socketAddress, timeout);
-        count--;
+        socket.close();
       } catch (IOException e) {
-        logger.error(e.getMessage());
-      } finally {
-        try {
-          socket.close();
-        } catch (IOException e) {
-          //do nothing
-        }
+        logger.error("Port {} can not be closed.", getRestPort());
       }
     }
-    logger.error("Port {} can not be closed.", getRestPort());
   }
 
   private static class RestServiceHolder {
