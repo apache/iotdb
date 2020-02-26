@@ -261,7 +261,7 @@ Detailed descriptions of all parameters are given in Table 3-4.
 |path, prefixPath|query path; mandatory field|
 |T|query timestamp (only one can be specified); mandatory field|
 |data\_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
-|before\_range|represents the valid time range of the previous method. The previous method works when there are values in the [T-before\_range, T] range. When before\_range is not specified, before\_range takes the default value T; optional field|
+|before\_range|represents the valid time range of the previous method. The previous method works when there are values in the [T-before\_range, T] range. When before\_range is not specified, before\_range takes the default value default\_fill\_interval; -1 represents infinit; optional field|
 </center>
 
 Here we give an example of filling null values using the previous method. The SQL statement is as follows:
@@ -295,7 +295,7 @@ Detailed descriptions of all parameters are given in Table 3-5.
 |path, prefixPath|query path; mandatory field|
 |T|query timestamp (only one can be specified); mandatory field|
 |data_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
-|before\_range, after\_range|represents the valid time range of the linear method. The previous method works when there are values in the [T-before\_range, T+after\_range] range. When before\_range and after\_range are not explicitly specified, both before\_range and after\_range default to infinity; optional field|
+|before\_range, after\_range|represents the valid time range of the linear method. The previous method works when there are values in the [T-before\_range, T+after\_range] range. When before\_range and after\_range are not explicitly specified, default\_fill\_interval is used. -1 represents infinity; optional field|
 </center>
 
 Here we give an example of filling null values using the linear method. The SQL statement is as follows:
@@ -335,12 +335,12 @@ When the fill method is not specified, each data type bears its own default fill
 
 |Data Type|Default Fill Methods and Parameters|
 |:---|:---|
-|boolean|previous, 0|
-|int32|linear, 0, 0|
-|int64|linear, 0, 0|
-|float|linear, 0, 0|
-|double|linear, 0, 0|
-|text|previous, 0|
+|boolean|previous, 600000|
+|int32|linear, 600000, 600000|
+|int64|linear, 600000, 600000|
+|float|linear, 600000, 600000|
+|double|linear, 600000, 600000|
+|text|previous, 600000|
 </center>
 
 > Note: In version 0.7.0, at least one fill method should be specified in the Fill statement.
@@ -514,9 +514,9 @@ The result is shown below:
 
 #### Other ResultSet Format
 
-In addition, IoTDB supports two another resultset format: 'group by device' and 'disable align'.
+In addition, IoTDB supports two another resultset format: 'align by device' and 'disable align'.
 
-The 'group by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
+The 'align by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
 
 The SQL statement is:
 

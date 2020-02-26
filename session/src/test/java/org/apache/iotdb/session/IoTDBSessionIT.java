@@ -1,15 +1,19 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
- * agreements.  See the NOTICE file distributed with this work for additional information regarding
- * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with the License.  You may obtain
- * a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied.  See the License for the specific language governing permissions and limitations
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.session;
@@ -43,6 +47,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBSessionIT {
 
@@ -62,7 +68,7 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void testGroupByDevice()
+  public void testAlignByDevice()
       throws IoTDBSessionException, SQLException, ClassNotFoundException, TException, IoTDBRPCException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
@@ -73,8 +79,8 @@ public class IoTDBSessionIT {
 
     insertRowBatchTest2("root.sg1.d1");
 
-    queryForGroupBy();
-    queryForGroupBy2();
+    queryForAlignByDevice();
+    queryForAlignByDevice2();
   }
 
   // it's will output too much to travis, so ignore it
@@ -203,10 +209,12 @@ public class IoTDBSessionIT {
     session.setStorageGroup("root.sg1");
 
     createTimeseries();
+
     insert();
 
     // sql test
     insert_via_sql();
+
     query3();
 
 //    insertRowBatchTest1();
@@ -221,7 +229,6 @@ public class IoTDBSessionIT {
     insertInBatch();
 
     query4();
-
     // Add another storage group to test the deletion of storage group
     session.setStorageGroup("root.sg2");
     session.createTimeseries("root.sg2.d1.s1", TSDataType.INT64, TSEncoding.RLE,
@@ -411,9 +418,9 @@ public class IoTDBSessionIT {
     }
   }
 
-  private void queryForGroupBy()
+  private void queryForAlignByDevice()
       throws  SQLException, TException, IoTDBRPCException {
-    SessionDataSet sessionDataSet = session.executeQueryStatement("select '11', s1, '11' from root.sg1.d1 group by device");
+    SessionDataSet sessionDataSet = session.executeQueryStatement("select '11', s1, '11' from root.sg1.d1 align by device");
     sessionDataSet.setBatchSize(1024);
     int count = 0;
     while (sessionDataSet.hasNext()) {
@@ -429,9 +436,9 @@ public class IoTDBSessionIT {
     sessionDataSet.closeOperationHandle();
   }
 
-  private void queryForGroupBy2()
+  private void queryForAlignByDevice2()
       throws  SQLException, TException, IoTDBRPCException {
-    SessionDataSet sessionDataSet = session.executeQueryStatement("select '11', s1, '11', s5, s1, s5 from root.sg1.d1 group by device");
+    SessionDataSet sessionDataSet = session.executeQueryStatement("select '11', s1, '11', s5, s1, s5 from root.sg1.d1 align by device");
     sessionDataSet.setBatchSize(1024);
     int count = 0;
     while (sessionDataSet.hasNext()) {
@@ -488,7 +495,7 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     // using the query result as the QueryTest to verify the deletion and the new insertion
     Class.forName(Config.JDBC_DRIVER_NAME);
-    String standard = "Time\n" + "root.sg1.d1.s1\n" + "root.sg2.d1.s1\n";
+    String standard = "Time\n" + "root.sg2.d1.s1\n" + "root.sg1.d1.s1\n";
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -553,8 +560,7 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void checkPathTest()
-      throws ClassNotFoundException, SQLException, IoTDBSessionException, TException, IoTDBRPCException {
+  public void checkPathTest() throws IoTDBSessionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -696,7 +702,6 @@ public class IoTDBSessionIT {
         long start = System.currentTimeMillis();
         session.insertBatch(rowBatch);
         long val = System.currentTimeMillis() - start;
-        // System.out.println("!!! " + val);
         countTime += val;
         rowBatch.reset();
       }
@@ -709,7 +714,6 @@ public class IoTDBSessionIT {
       rowBatch.reset();
     }
 
-    System.out.println("???" + countTime + " " + countTime / (count / 1000));
   }
 
   private void queryForBatch() throws ClassNotFoundException, SQLException {
@@ -741,7 +745,6 @@ public class IoTDBSessionIT {
   }
 
   public void queryForBatchCheckOrder() throws ClassNotFoundException, SQLException {
-    System.out.println("here");
     Class.forName(Config.JDBC_DRIVER_NAME);
     String standard =
         "Time\n" + "root.sg1.d1.s1\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n" +
@@ -749,7 +752,6 @@ public class IoTDBSessionIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "192.168.130.18:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      System.out.println("here");
       ResultSet resultSet = statement.executeQuery("select s_0 from root.group_0.d_0 limit 10000");
       final ResultSetMetaData metaData = resultSet.getMetaData();
       final int colCount = metaData.getColumnCount();
@@ -757,19 +759,16 @@ public class IoTDBSessionIT {
       for (int i = 0; i < colCount; i++) {
         resultStr.append(metaData.getColumnLabel(i + 1) + "\n");
       }
-      System.out.println("her2");
 
       int count = 0;
       long beforeTime = 0;
       int errorCount = 0;
       while (resultSet.next()) {
         long curTime = resultSet.getLong(1);
-        System.out.println(curTime);
         if (beforeTime < curTime) {
           beforeTime = curTime;
         } else {
           errorCount++;
-          System.out.println("error");
           if (errorCount > 10) {
             System.exit(-1);
           }
@@ -804,9 +803,6 @@ public class IoTDBSessionIT {
       int count = 0;
       while (resultSet.next()) {
         for (int i = 1; i <= colCount; i++) {
-          if (i == 1) {
-            System.out.println(resultSet.getString("Time"));
-          }
           count++;
         }
       }

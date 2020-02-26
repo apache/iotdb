@@ -19,19 +19,27 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 
 public class AndNode implements Node {
+
+  private final int fetchSize = TSFileDescriptor.getInstance().getConfig().getBatchSize();
 
   private Node leftChild;
   private Node rightChild;
 
-  private long cachedValue;
+  private TimeColumn cachedTimeColumn;
   private boolean hasCachedValue;
+
+  private TimeColumn leftTimeColumn;
+  private TimeColumn rightTimeColumn;
+
 
   /**
    * Constructor of AndNode.
    *
-   * @param leftChild left child
+   * @param leftChild  left child
    * @param rightChild right child
    */
   public AndNode(Node leftChild, Node rightChild) {
@@ -41,46 +49,66 @@ public class AndNode implements Node {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNextTimeColumn() throws IOException {
     if (hasCachedValue) {
       return true;
     }
-    if (leftChild.hasNext() && rightChild.hasNext()) {
-      long leftValue = leftChild.next();
-      long rightValue = rightChild.next();
-      while (true) {
-        if (leftValue == rightValue) {
-          this.hasCachedValue = true;
-          this.cachedValue = leftValue;
-          return true;
-        } else if (leftValue > rightValue) {
-          if (rightChild.hasNext()) {
-            rightValue = rightChild.next();
-          } else {
-            return false;
-          }
-        } else { // leftValue < rightValue
-          if (leftChild.hasNext()) {
-            leftValue = leftChild.next();
-          } else {
-            return false;
-          }
-        }
+    cachedTimeColumn = new TimeColumn(fetchSize);
+    //fill data
+    fillLeftCache();
+    fillRightCache();
+
+    while (leftTimeColumn.hasCurrent() && rightTimeColumn.hasCurrent()) {
+      long leftValue = leftTimeColumn.currentTime();
+      long rightValue = rightTimeColumn.currentTime();
+
+      if (leftValue == rightValue) {
+        this.hasCachedValue = true;
+        this.cachedTimeColumn.add(leftValue);
+        leftTimeColumn.next();
+        rightTimeColumn.next();
+      } else if (leftValue > rightValue) {
+        rightTimeColumn.next();
+      } else { // leftValue < rightValue
+        leftTimeColumn.next();
       }
+
+      if (cachedTimeColumn.size() >= fetchSize) {
+        break;
+      }
+      fillLeftCache();
+      fillRightCache();
     }
-    return false;
+    return hasCachedValue;
+  }
+
+  private void fillRightCache() throws IOException {
+    if (couldFillCache(rightTimeColumn, rightChild)) {
+      rightTimeColumn = rightChild.nextTimeColumn();
+    }
+  }
+
+  private void fillLeftCache() throws IOException {
+    if (couldFillCache(leftTimeColumn, leftChild)) {
+      leftTimeColumn = leftChild.nextTimeColumn();
+    }
+  }
+
+  //no more data in cache and has more data in child
+  private boolean couldFillCache(TimeColumn timeSeries, Node child) throws IOException {
+    return (timeSeries == null || !timeSeries.hasCurrent()) && child.hasNextTimeColumn();
   }
 
   /**
    * If there is no value in current Node, -1 will be returned if {@code next()} is invoked.
    */
   @Override
-  public long next() throws IOException {
-    if (hasNext()) {
+  public TimeColumn nextTimeColumn() throws IOException {
+    if (hasCachedValue || hasNextTimeColumn()) {
       hasCachedValue = false;
-      return cachedValue;
+      return cachedTimeColumn;
     }
-    return -1;
+    throw new IOException("no more data");
   }
 
   @Override
