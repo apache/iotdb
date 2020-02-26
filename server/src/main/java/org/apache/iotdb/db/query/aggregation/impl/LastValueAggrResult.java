@@ -20,16 +20,23 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class LastValueAggrResult extends AggregateResult {
 
+  //timestamp of current value
+  private long timestamp = Long.MIN_VALUE;
+
   public LastValueAggrResult(TSDataType dataType) {
-    super(dataType);
+    super(dataType, AggregationType.LAST_VALUE);
     reset();
   }
 
@@ -42,6 +49,7 @@ public class LastValueAggrResult extends AggregateResult {
   public void updateResultFromStatistics(Statistics statistics) {
     Object lastVal = statistics.getLastValue();
     setValue(lastVal);
+    timestamp = statistics.getEndTime();
   }
 
   @Override
@@ -51,7 +59,7 @@ public class LastValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
-    long time = -1;
+    long time = Long.MIN_VALUE;
     Object lastVal = null;
     while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       time = dataInThisPage.currentTime();
@@ -59,8 +67,9 @@ public class LastValueAggrResult extends AggregateResult {
       dataInThisPage.next();
     }
 
-    if (time != -1) {
+    if (time != Long.MIN_VALUE) {
       setValue(lastVal);
+      timestamp = time;
     }
   }
 
@@ -68,7 +77,7 @@ public class LastValueAggrResult extends AggregateResult {
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
 
-    long time = -1;
+    long time = Long.MIN_VALUE;
     Object lastVal = null;
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
@@ -77,8 +86,9 @@ public class LastValueAggrResult extends AggregateResult {
         lastVal = value;
       }
     }
-    if (time != -1) {
+    if (time != Long.MIN_VALUE) {
       setValue(lastVal);
+      timestamp = time;
     }
   }
 
@@ -87,4 +97,22 @@ public class LastValueAggrResult extends AggregateResult {
     return false;
   }
 
+  @Override
+  public void merge(AggregateResult another) {
+    LastValueAggrResult anotherLast = (LastValueAggrResult) another;
+    if(this.getValue() == null || this.timestamp < anotherLast.timestamp){
+      this.setValue( anotherLast.getValue() );
+      this.timestamp = anotherLast.timestamp;
+    }
+  }
+
+  @Override
+  protected void deserializeSpecificFields(ByteBuffer buffer) {
+    timestamp = buffer.getLong();
+  }
+
+  @Override
+  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(timestamp, outputStream);
+  }
 }

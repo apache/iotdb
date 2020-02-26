@@ -284,8 +284,9 @@ public class PhysicalGenerator {
         for (String device : devices) { // per device in FROM after deduplication
           Path fullPath = Path.addPrefixPath(suffixPath, device);
           try {
+            // remove stars in SELECT to get actual paths
             List<String> actualPaths = MManager.getInstance()
-                .getAllTimeseriesName(fullPath.getFullPath());  // remove stars in SELECT to get actual paths
+                .getAllTimeseriesName(fullPath.getFullPath());
 
             // for actual non exist path
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
@@ -429,9 +430,7 @@ public class PhysicalGenerator {
     Set<String> deviceSet = new LinkedHashSet<>();
     try {
       for (Path path : paths) {
-        List<String> tempDS;
-        tempDS = MManager.getInstance().getDevices(path.getFullPath());
-
+        Set<String> tempDS = MManager.getInstance().getDevices(path.getFullPath());
         deviceSet.addAll(tempDS);
       }
       retDevices = new ArrayList<>(deviceSet);

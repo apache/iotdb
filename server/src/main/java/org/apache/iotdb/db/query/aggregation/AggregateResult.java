@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.query.aggregation;
 
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -28,10 +31,12 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public abstract class AggregateResult {
 
-  protected TSDataType dataType;
+  private final AggregationType aggregationType;
+  private TSDataType resultDataType;
 
   private boolean booleanValue;
   private int intValue;
@@ -45,10 +50,11 @@ public abstract class AggregateResult {
   /**
    * construct.
    *
-   * @param dataType result data type.
+   * @param resultDataType result data type.
    */
-  public AggregateResult(TSDataType dataType) {
-    this.dataType = dataType;
+  public AggregateResult(TSDataType resultDataType, AggregationType aggregationType) {
+    this.aggregationType = aggregationType;
+    this.resultDataType = resultDataType;
     this.hasResult = false;
   }
 
@@ -94,12 +100,80 @@ public abstract class AggregateResult {
    */
   public abstract boolean isCalculatedAggregationResult();
 
+  /**
+   * Merge another aggregateResult into this
+   */
+  public abstract void merge(AggregateResult another);
+
+  public static AggregateResult deserializeFrom(ByteBuffer buffer) {
+    AggregationType aggregationType = AggregationType.deserialize(buffer);
+    TSDataType dataType = TSDataType.deserialize(buffer.getShort());
+    AggregateResult aggregateResult = AggregateResultFactory
+        .getAggrResultByType(aggregationType, dataType);
+    switch (dataType) {
+      case BOOLEAN:
+        aggregateResult.setBooleanValue(ReadWriteIOUtils.readBool(buffer));
+        break;
+      case INT32:
+        aggregateResult.setIntValue(buffer.getInt());
+        break;
+      case INT64:
+        aggregateResult.setLongValue(buffer.getLong());
+        break;
+      case FLOAT:
+        aggregateResult.setFloatValue(buffer.getFloat());
+        break;
+      case DOUBLE:
+        aggregateResult.setDoubleValue(buffer.getDouble());
+        break;
+      case TEXT:
+        aggregateResult.setBinaryValue(ReadWriteIOUtils.readBinary(buffer));
+        break;
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation Type: " + dataType.name());
+    }
+    aggregateResult.deserializeSpecificFields(buffer);
+    return aggregateResult;
+  }
+
+  protected abstract void deserializeSpecificFields(ByteBuffer buffer);
+
+  public void serializeTo(OutputStream outputStream) throws IOException {
+    aggregationType.serializeTo(outputStream);
+    ReadWriteIOUtils.write(resultDataType, outputStream);
+    switch (resultDataType) {
+      case BOOLEAN:
+        ReadWriteIOUtils.write(booleanValue, outputStream);
+        break;
+      case INT32:
+        ReadWriteIOUtils.write(intValue, outputStream);
+        break;
+      case INT64:
+        ReadWriteIOUtils.write(longValue, outputStream);
+        break;
+      case FLOAT:
+        ReadWriteIOUtils.write(floatValue, outputStream);
+        break;
+      case DOUBLE:
+        ReadWriteIOUtils.write(doubleValue, outputStream);
+        break;
+      case TEXT:
+        ReadWriteIOUtils.write(binaryValue, outputStream);
+        break;
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation Type: " + resultDataType.name());
+    }
+    serializeSpecificFields(outputStream);
+  }
+
+  protected abstract void serializeSpecificFields(OutputStream outputStream) throws IOException;
+
   public void reset() {
     hasResult = false;
   }
 
   protected Object getValue() {
-    switch (dataType) {
+    switch (resultDataType) {
       case BOOLEAN:
         return booleanValue;
       case DOUBLE:
@@ -113,7 +187,7 @@ public abstract class AggregateResult {
       case INT64:
         return longValue;
       default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+        throw new UnSupportedDataTypeException(String.valueOf(resultDataType));
     }
   }
 
@@ -124,7 +198,7 @@ public abstract class AggregateResult {
    */
   protected void setValue(Object v) {
     hasResult = true;
-    switch (dataType) {
+    switch (resultDataType) {
       case BOOLEAN:
         booleanValue = (Boolean) v;
         break;
@@ -144,12 +218,12 @@ public abstract class AggregateResult {
         longValue = (Long) v;
         break;
       default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+        throw new UnSupportedDataTypeException(String.valueOf(resultDataType));
     }
   }
 
-  public TSDataType getDataType() {
-    return dataType;
+  public TSDataType getResultDataType() {
+    return resultDataType;
   }
 
   protected boolean getBooleanValue() {
@@ -209,4 +283,5 @@ public abstract class AggregateResult {
   protected boolean hasResult() {
     return hasResult;
   }
+
 }

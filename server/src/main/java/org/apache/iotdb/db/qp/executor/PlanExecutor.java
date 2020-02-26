@@ -336,8 +336,7 @@ public class PlanExecutor implements IPlanExecutor {
       throws MetadataException {
     ListDataSet listDataSet = new ListDataSet(Collections.singletonList(new Path(COLUMN_DEVICES)),
         Collections.singletonList(TSDataType.TEXT));
-    List<String> devices;
-    devices = MManager.getInstance().getDevices(showDevicesPlan.getPath().toString());
+    Set<String> devices = MManager.getInstance().getDevices(showDevicesPlan.getPath().toString());
     for (String s : devices) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
