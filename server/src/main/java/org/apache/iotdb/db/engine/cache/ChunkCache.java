@@ -100,16 +100,13 @@ public class ChunkCache {
         Chunk chunk = lruCache.get(chunkMetaData);
         return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
       }
+      printCacheLog(false);
+      Chunk chunk = reader.readMemChunk(chunkMetaData);
+      lruCache.put(chunkMetaData, chunk);
+      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
     } finally {
       cacheLock.unlock();
     }
-
-
-    printCacheLog(false);
-    Chunk chunk = reader.readMemChunk(chunkMetaData);
-    lruCache.put(chunkMetaData, chunk);
-    lock.writeLock().unlock();
-    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
 
   }
 
