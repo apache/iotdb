@@ -31,11 +31,6 @@ statement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
     | SET STORAGE GROUP TO prefixPath #setStorageGroup
     | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
-    | CREATE PROPERTY ID #createProperty
-    | ADD LABEL label=ID TO PROPERTY propertyName=ID #addLabel
-    | DELETE LABEL label=ID FROM PROPERTY propertyName=ID #deleteLabel
-    | LINK prefixPath TO propertyLabelPair #linkPath
-    | UNLINK prefixPath FROM propertyLabelPair #unlinkPath
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
     | CREATE INDEX ON timeseriesPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
@@ -292,6 +287,7 @@ nodeName
     : ID
     | INT
     | STAR
+    | ID STAR
     | STRING_LITERAL
     ;
 
