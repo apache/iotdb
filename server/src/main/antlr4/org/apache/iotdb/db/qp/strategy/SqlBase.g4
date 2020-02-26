@@ -210,7 +210,7 @@ groupByFillClause
       timeInterval
       COMMA DURATION
       RR_BRACKET
-      fillClause
+      FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
      ;
 
 typeClause
@@ -228,7 +228,7 @@ previousClause
     ;
 
 previousUntilLastClause
-    : PREVIOUSUNTILLAST
+    : PREVIOUSUNTILLAST (COMMA DURATION)?
     ;
 
 indexWithClause

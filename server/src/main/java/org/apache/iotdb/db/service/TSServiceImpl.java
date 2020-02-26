@@ -784,6 +784,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         break;
       case AGGREGATION:
       case GROUPBY:
+      case GROUP_BY_FILL:
         List<String> aggregations = plan.getAggregations();
         if (aggregations.size() != paths.size()) {
           for (int i = 1; i < paths.size(); i++) {

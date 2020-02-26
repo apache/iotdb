@@ -176,6 +176,11 @@ public class PhysicalGenerator {
       ((GroupByFillPlan) queryPlan).setEndTime(queryOperator.getEndTime());
       ((GroupByFillPlan) queryPlan)
               .setAggregations(queryOperator.getSelectOperator().getAggregations());
+      for (String aggregation : queryPlan.getAggregations()) {
+        if (!SQLConstant.LAST_VALUE.equals(aggregation)) {
+          throw new QueryProcessException("Group By Fill only support last_value function");
+        }
+      }
       ((GroupByFillPlan) queryPlan).setFillType(queryOperator.getFillTypes());
     } else if (queryOperator.isGroupBy()) {
       queryPlan = new GroupByPlan();

@@ -570,9 +570,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
     parseTimeInterval(ctx.timeInterval());
 
-    FillClauseContext fillClauseContext = ctx.fillClause();
-    super.enterFillClause(fillClauseContext);
-    List<TypeClauseContext> list = fillClauseContext.typeClause();
+    List<TypeClauseContext> list = ctx.typeClause();
     Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
     for (TypeClauseContext typeClause : list) {
       // group by fill doesn't support linear fill
@@ -580,8 +578,16 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         throw new SQLParserException("group by fill doesn't support linear fill");
       }
       // all type use the same fill way
-      if (SQLConstant.ALL.equals(typeClause.dataType().getText())) {
-
+      if (SQLConstant.ALL.equals(typeClause.dataType().getText().toLowerCase())) {
+        IFill fill;
+        if (typeClause.previousUntilLastClause() != null) {
+          fill = new PreviousFill(-1, true);
+        } else {
+          fill = new PreviousFill(-1);
+        }
+        for (TSDataType tsDataType : TSDataType.values()) {
+          fillTypes.put(tsDataType, fill.copy());
+        }
         break;
       } else {
         parseTypeClause(typeClause, fillTypes);
@@ -670,7 +676,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         fillTypes.put(dataType, new PreviousFill(defaultFillInterval));
       }
     } else { // previous until last
-      if (ctx.previousClause().DURATION() != null) {
+      if (ctx.previousUntilLastClause().DURATION() != null) {
         long preRange = parseDuration(ctx.previousClause().DURATION().getText());
         fillTypes.put(dataType, new PreviousFill(preRange, true));
       } else {

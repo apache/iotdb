@@ -55,7 +55,7 @@ public class PreviousFill extends IFill {
 
   @Override
   public IFill copy() {
-    return new PreviousFill(dataType, queryTime, beforeRange);
+    return new PreviousFill(dataType, queryTime, beforeRange, untilLast);
   }
 
   @Override
@@ -97,5 +97,9 @@ public class PreviousFill extends IFill {
 
   public boolean isUntilLast() {
     return untilLast;
+  }
+
+  public void setUntilLast(boolean untilLast) {
+    this.untilLast = untilLast;
   }
 }

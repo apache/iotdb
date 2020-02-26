@@ -72,14 +72,14 @@ public class GroupByFillDataSet extends QueryDataSet {
       if (field.getDataType() == null) {
         // the previous value is not null and (fill type is not previous until last or now time is before last time)
         if (previousValue[i] != null
-                && (!((PreviousFill)fillTypes.get(field.getDataType())).isUntilLast() || rowRecord.getTimestamp() <= lastTimeArray[i])) {
-          rowRecord.getFields().set(i, Field.getField(previousValue, field.getDataType()));
+                && (!((PreviousFill)fillTypes.get(dataTypes.get(i))).isUntilLast() || rowRecord.getTimestamp() <= lastTimeArray[i])) {
+          rowRecord.getFields().set(i, Field.getField(previousValue[i], dataTypes.get(i)));
         }
       } else {
         // use now value update previous value
         previousValue[i] = field.getObjectValue(field.getDataType());
       }
     }
-    return null;
+    return rowRecord;
   }
 }
