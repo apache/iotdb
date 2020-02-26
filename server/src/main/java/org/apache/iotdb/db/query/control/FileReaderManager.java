@@ -123,11 +123,11 @@ public class FileReaderManager implements IService {
       AtomicInteger refAtom = refMap.get(entry.getKey());
 
       if (refAtom != null && refAtom.get() == 0) {
-//        try {
-//          reader.close("no reference");
-//        } catch (IOException e) {
-//          logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
-//        }
+        try {
+          reader.close("no reference");
+        } catch (IOException e) {
+          logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
+        }
         iterator.remove();
         refMap.remove(entry.getKey());
       }
@@ -189,9 +189,11 @@ public class FileReaderManager implements IService {
   void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     synchronized (this) {
       if (!isClosed && unclosedReferenceMap.containsKey(tsFile)) {
-        closedReferenceMap.get(tsFile).decrementAndGet();
+        unclosedReferenceMap.get(tsFile).decrementAndGet();
+        logger.error("closed file {} after decrementing, the count is {}", tsFile.getFile().getName(), closedReferenceMap.get(tsFile).get());
       } else if (closedReferenceMap.containsKey(tsFile)){
         closedReferenceMap.get(tsFile).decrementAndGet();
+        logger.error("closed file {} after decrementing, the count is {}", tsFile.getFile().getName(), closedReferenceMap.get(tsFile).get());
       }
     }
     tsFile.getWriteQueryLock().readLock().unlock();
