@@ -332,7 +332,7 @@ public class MManagerBasicTest {
         "[root.laptop.b1, root.laptop.b2, root.vehicle.b1, root.vehicle.b2]",
         "[root.laptop.b1.d1, root.laptop.b1.d2, root.vehicle.b1.d0, root.vehicle.b1.d2, root.vehicle.b1.d3]",
         "[root.laptop.b1.d1, root.laptop.b1.d2]",
-        "[root.laptop.b1.d1, root.laptop.b1.d2, root.laptop.b2.d1, root.laptop.b2.d2]",
+        "[root.vehicle.b1.d0, root.vehicle.b1.d2, root.vehicle.b1.d3, root.vehicle.b2.d0]",
         "[root.laptop.b1.d1.s0, root.laptop.b1.d1.s1, root.laptop.b1.d2.s0, root.laptop.b2.d1.s1, root.laptop.b2.d1.s3, root.laptop.b2.d2.s2]"
     };
 
@@ -354,11 +354,11 @@ public class MManagerBasicTest {
           CompressionType.GZIP, null);
       manager.createTimeseries("root.vehicle.b1.d0.s0", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.createTimeseries("root.vehicle.b2.d0.s1", TSDataType.INT32, TSEncoding.PLAIN,
-          CompressionType.GZIP, null);
       manager.createTimeseries("root.vehicle.b1.d2.s2", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
       manager.createTimeseries("root.vehicle.b1.d3.s3", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null);
+      manager.createTimeseries("root.vehicle.b2.d0.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
 
       assertEquals(res[0], manager.getChildNodePathInNextLevel("root").toString());
@@ -367,7 +367,7 @@ public class MManagerBasicTest {
       assertEquals(res[3], manager.getChildNodePathInNextLevel("root.*").toString());
       assertEquals(res[4], manager.getChildNodePathInNextLevel("root.*.b1").toString());
       assertEquals(res[5], manager.getChildNodePathInNextLevel("root.l*.b1").toString());
-      assertEquals(res[6], manager.getChildNodePathInNextLevel("root.l*.*").toString());
+      assertEquals(res[6], manager.getChildNodePathInNextLevel("root.v*.*").toString());
       assertEquals(res[7], manager.getChildNodePathInNextLevel("root.l*.b*.*").toString());
     } catch (MetadataException e) {
       e.printStackTrace();
