@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -125,7 +124,7 @@ public class IoTDBResultMetadataTest {
     } catch (Exception e) {
       flag = true;
     }
-    assertEquals(flag, true);
+    assertTrue(flag);
 
     List<String> columnInfoList = new ArrayList<>();
     metadata = new IoTDBResultMetadata(columnInfoList, null, false);
