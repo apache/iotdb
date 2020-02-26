@@ -148,8 +148,7 @@ public class IOTDBGroupByIT {
         "120,0,0.0,null",
         "130,0,0.0,null",
         "140,0,0.0,null",
-        "150,1,200.2,200.2",
-        "160,0,0.0,null"
+        "150,1,200.2,200.2"
     };
     String[] retArray3 = new String[]{
         "25,2,70.7,35.35",
@@ -174,7 +173,7 @@ public class IOTDBGroupByIT {
       boolean hasResultSet = statement.execute(
           "select count(temperature), sum(temperature), avg(temperature) from "
               + "root.ln.wf01.wt01 where time > 3 "
-              + "GROUP BY ([5, 160], 20ms)");
+              + "GROUP BY ([5, 160), 20ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -194,7 +193,7 @@ public class IOTDBGroupByIT {
       hasResultSet = statement.execute(
           "select count(temperature), sum(temperature), avg(temperature) from "
               + "root.ln.wf01.wt01 where temperature > 3 "
-              + "GROUP BY ([50, 160], 10ms)");
+              + "GROUP BY ([50, 160), 10ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -213,7 +212,7 @@ public class IOTDBGroupByIT {
       hasResultSet = statement.execute(
           "select count(temperature), sum(temperature), avg(temperature) from "
               + "root.ln.wf01.wt01 where temperature > 3 "
-              + "GROUP BY ([25, 314], 20ms)");
+              + "GROUP BY ([25, 314), 20ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -251,8 +250,7 @@ public class IOTDBGroupByIT {
         "22,null,null,null,null",
         "24,null,null,null,null",
         "26,null,null,null,null",
-        "28,null,null,null,null",
-        "30,30.3,30.3,30,30"
+        "28,null,null,null,null"
     };
     String[] retArray2 = new String[]{
         "2,20.2,3.3,20,3",
@@ -269,7 +267,7 @@ public class IOTDBGroupByIT {
         "222,null,null,null,null",
         "242,400.4,400.4,250,250",
         "262,null,null,null,null",
-        "282,500.5,500.5,300,300",
+        "282,null,null,null,null",
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -278,7 +276,7 @@ public class IOTDBGroupByIT {
       boolean hasResultSet = statement.execute(
           "select max_value(temperature), min_value(temperature), max_time(temperature), "
               + "min_time(temperature) from root.ln.wf01.wt01 where time > 3 "
-              + "GROUP BY ([2,30], 2ms)");
+              + "GROUP BY ([2,30), 2ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -299,7 +297,7 @@ public class IOTDBGroupByIT {
       hasResultSet = statement.execute(
           "select max_value(temperature), min_value(temperature), max_time(temperature), "
               + "min_time(temperature) from root.ln.wf01.wt01 where temperature > 3 "
-              + "GROUP BY ([2,300], 20ms)");
+              + "GROUP BY ([2,300), 20ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -330,8 +328,7 @@ public class IOTDBGroupByIT {
         "14,null,null",
         "18,20.2,20.2",
         "22,null,null",
-        "26,null,null",
-        "30,30.3,30.3"
+        "26,null,null"
     };
     String[] retArray2 = new String[]{
         "2,20.2,3.3",
@@ -348,15 +345,14 @@ public class IOTDBGroupByIT {
         "222,null,null",
         "242,400.4,400.4",
         "262,null,null",
-        "282,500.5,500.5"
+        "282,null,null"
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
           "select last_value(temperature), first_value(temperature) from root.ln.wf01.wt01 where time > 3 "
-              + "GROUP BY ([2,30], 4ms)");
-
+              + "GROUP BY ([2,30), 4ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -375,7 +371,7 @@ public class IOTDBGroupByIT {
       hasResultSet = statement.execute(
           "select first_value(temperature), last_value(temperature) from root.ln.wf01.wt01 "
               + "where temperature > 3 "
-              + "GROUP BY ([2,300], 20ms)");
+              + "GROUP BY ([2,300), 20ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -400,13 +396,11 @@ public class IOTDBGroupByIT {
   public void largeIntervalTest() throws SQLException {
     String[] retArray1 = new String[]{
         "0,4.4,12,300,4",
-        "340,100.1,10,620,500",
-        "680,null,0,null,null"
+        "340,100.1,10,620,500"
     };
     String[] retArray2 = new String[]{
         "0,3.3,13,300,3",
-        "340,100.1,10,620,500",
-        "680,null,0,null,null"
+        "340,100.1,10,620,500"
     };
 
     try (Connection connection = DriverManager.
@@ -415,7 +409,7 @@ public class IOTDBGroupByIT {
       boolean hasResultSet = statement.execute(
           "select min_value(temperature), count(temperature), max_time(temperature), "
               + "min_time(temperature) from root.ln.wf01.wt01 where time > 3 GROUP BY "
-              + "([0, 680], 340ms)");
+              + "([0, 680), 340ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -436,7 +430,7 @@ public class IOTDBGroupByIT {
       hasResultSet = statement.execute(
           "select min_value(temperature), count (temperature), max_time(temperature), "
               + "min_time(temperature) from root.ln.wf01.wt01 where temperature > 3 GROUP BY "
-              + "([0, 680], 340ms)");
+              + "([0, 680), 340ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -481,8 +475,7 @@ public class IOTDBGroupByIT {
         "480,0,0.0,null",
         "510,1,200.2,200.2",
         "540,1,500.5,500.5",
-        "570,0,0.0,null",
-        "600,1,300.3,300.3"
+        "570,0,0.0,null"
     };
 
     try (Connection connection = DriverManager.
@@ -491,7 +484,7 @@ public class IOTDBGroupByIT {
       boolean hasResultSet = statement.execute(
           "select count(temperature), sum(temperature), avg(temperature) from "
               + "root.ln.wf01.wt01 where temperature > 3 "
-              + "GROUP BY ([0, 600], 5ms, 30ms)");
+              + "GROUP BY ([0, 600), 5ms, 30ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;

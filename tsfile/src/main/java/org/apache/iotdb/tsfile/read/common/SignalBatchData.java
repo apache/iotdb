@@ -37,4 +37,9 @@ public class SignalBatchData extends BatchData {
 
     private static SignalBatchData instance = new SignalBatchData();
   }
+
+  @Override
+  public boolean hasCurrent() {
+    throw new UnsupportedOperationException("hasCurrent is not supported for SignalBatchData");
+  }
 }

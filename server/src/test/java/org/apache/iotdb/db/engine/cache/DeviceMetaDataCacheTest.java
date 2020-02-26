@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -49,8 +50,7 @@ public class DeviceMetaDataCacheTest {
 
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
-  private String storageGroup = "root.vehicle";
-  private String deviceId0 = "root.vehicle.d0";
+  private String storageGroup = "root.vehicle.d0";
   private String measurementId0 = "s0";
   private String measurementId1 = "s1";
   private String measurementId2 = "s2";
@@ -76,13 +76,14 @@ public class DeviceMetaDataCacheTest {
 
   @After
   public void tearDown() throws Exception {
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     storageGroupProcessor.syncDeleteDataFiles();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(systemDir);
   }
 
   private void insertOneRecord(long time, int num) throws QueryProcessException {
-    TSRecord record = new TSRecord(time, deviceId0);
+    TSRecord record = new TSRecord(time, storageGroup);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId0, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT64, measurementId1, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.FLOAT, measurementId2, String.valueOf(num)));
@@ -124,7 +125,7 @@ public class DeviceMetaDataCacheTest {
   public void test1() throws IOException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(false);
     QueryDataSource queryDataSource = storageGroupProcessor
-        .query(deviceId0, measurementId5, context, null);
+        .query(storageGroup, measurementId5, context, null, null);
 
     List<TsFileResource> seqResources = queryDataSource.getSeqResources();
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
@@ -138,7 +139,7 @@ public class DeviceMetaDataCacheTest {
     Assert.assertFalse(unseqResources.get(3).isClosed());
 
     List<ChunkMetaData> metaDataList = DeviceMetaDataCache.getInstance()
-        .get(seqResources.get(0), new Path(deviceId0, measurementId5));
+        .get(seqResources.get(0), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }
 
@@ -146,7 +147,7 @@ public class DeviceMetaDataCacheTest {
   public void test2() throws IOException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(true);
     QueryDataSource queryDataSource = storageGroupProcessor
-        .query(deviceId0, measurementId5, context, null);
+        .query(storageGroup, measurementId5, context, null, null);
 
     List<TsFileResource> seqResources = queryDataSource.getSeqResources();
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
@@ -160,7 +161,7 @@ public class DeviceMetaDataCacheTest {
     Assert.assertFalse(unseqResources.get(3).isClosed());
 
     List<ChunkMetaData> metaDataList = DeviceMetaDataCache.getInstance()
-        .get(seqResources.get(0), new Path(deviceId0, measurementId5));
+        .get(seqResources.get(0), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }
 

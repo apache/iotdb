@@ -33,9 +33,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
@@ -259,7 +258,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         while ((metadataOperation = br.readLine()) != null) {
           try {
             MManager.getInstance().operation(metadataOperation);
-          } catch (IOException | MetadataException | PathException e) {
+          } catch (IOException | MetadataException e) {
             logger.error("Can not operate metadata operation {} ", metadataOperation, e);
           }
         }

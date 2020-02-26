@@ -93,7 +93,7 @@ public abstract class AbstractClient {
   static int maxTimeLength = ISO_DATETIME_LEN;
   static int maxValueLength = 15;
   static String TIMESTAMP_PRECISION = "ms";
-  static int lineCount = 0;
+  private static int lineCount = 0;
 
   private static boolean isReachEnd = false;
 
@@ -129,7 +129,12 @@ public abstract class AbstractClient {
   }
 
   private static void printCount(int cnt) {
+    if(cnt == 0){
+      println("Empty set.");
+    }
+    else {
       println("Total line number = " + cnt);
+    }
   }
 
   static Options createOptions() {
@@ -516,41 +521,41 @@ public abstract class AbstractClient {
 
   private static void executeQuery(IoTDBConnection connection, String cmd) {
     long startTime = System.currentTimeMillis();
-    ResultSet resultSet;
-    ZoneId zoneId;
     try (Statement statement = connection.createStatement()) {
-      zoneId = ZoneId.of(connection.getTimeZone());
+      ZoneId zoneId = ZoneId.of(connection.getTimeZone());
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
       if (hasResultSet) {
-        resultSet = statement.getResultSet();
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        int columnLength = resultSetMetaData.getColumnCount();
-        List<Integer> maxSizeList = new ArrayList<>(columnLength);
-        List<List<String>> lists = cacheResult(resultSet, maxSizeList, columnLength,
-                resultSetMetaData, zoneId);
-        output(lists, maxSizeList);
-        long costTime = System.currentTimeMillis() - startTime;
-        println(String.format("It costs %.3fs", costTime / 1000.0));
-        while(!isReachEnd){
-          println(String.format("Reach the max_display_num = %s. Press ENTER to show more, input 'q' to quit.", maxPrintRowCount));
-          BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-          try{
-            if(br.readLine().equals("")){
-              maxSizeList = new ArrayList<>(columnLength);
-              lists = cacheResult(resultSet, maxSizeList, columnLength,
-                      resultSetMetaData, zoneId);
-              output(lists, maxSizeList);
-            }
-            else {
-              break;
+        // print the result
+        try (ResultSet resultSet = statement.getResultSet()) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          int columnLength = resultSetMetaData.getColumnCount();
+          List<Integer> maxSizeList = new ArrayList<>(columnLength);
+          List<List<String>> lists = cacheResult(resultSet, maxSizeList, columnLength,
+              resultSetMetaData, zoneId);
+          output(lists, maxSizeList);
+          long costTime = System.currentTimeMillis() - startTime;
+          println(String.format("It costs %.3fs", costTime / 1000.0));
+          while (!isReachEnd) {
+            println(String.format(
+                "Reach the max_display_num = %s. Press ENTER to show more, input 'q' to quit.",
+                maxPrintRowCount));
+            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+            try {
+              if (br.readLine().equals("")) {
+                maxSizeList = new ArrayList<>(columnLength);
+                lists = cacheResult(resultSet, maxSizeList, columnLength,
+                    resultSetMetaData, zoneId);
+                output(lists, maxSizeList);
+              } else {
+                break;
+              }
+            } catch (IOException e) {
+              e.printStackTrace();
             }
           }
-          catch(IOException e){
-            e.printStackTrace();
-          }
+          resetArgs();
         }
-        resetArgs();
       }
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
@@ -559,46 +564,45 @@ public abstract class AbstractClient {
 
   /**
    * cache all results
+   *
    * @param resultSet jdbc resultSet
    * @param maxSizeList the longest result of every column
    * @param columnCount the number of column
    * @param resultSetMetaData jdbc resultSetMetaData
    * @param zoneId your time zone
-   * @return List<List<String>> result
+   * @return List<List < String>> result
    * @throws SQLException throw exception
    */
   private static List<List<String>> cacheResult(ResultSet resultSet, List<Integer> maxSizeList,
-                                                int columnCount, ResultSetMetaData resultSetMetaData,
-                                                ZoneId zoneId)
-          throws SQLException {
+      int columnCount, ResultSetMetaData resultSetMetaData, ZoneId zoneId) throws SQLException {
 
     boolean printTimestamp = !((IoTDBQueryResultSet) resultSet).isIgnoreTimeStamp();
     List<List<String>> lists = new ArrayList<>(columnCount);
-    for(int i = 1; i <= columnCount; i++) {
-      List<String> list = new ArrayList<>(1001);
+    for (int i = 1; i <= columnCount; i++) {
+      List<String> list = new ArrayList<>(maxPrintRowCount + 1);
       list.add(resultSetMetaData.getColumnLabel(i));
       lists.add(list);
       maxSizeList.add(resultSetMetaData.getColumnLabel(i).length());
     }
     int j = 0;
-    if(cursorBeforeFirst){
-      resultSet.next();
+    if (cursorBeforeFirst) {
+      isReachEnd = !resultSet.next();
       cursorBeforeFirst = false;
     }
     while (j < maxPrintRowCount && !isReachEnd) {
-      for(int i = 1; i <= columnCount; i++) {
+      for (int i = 1; i <= columnCount; i++) {
         String tmp;
-        if(printTimestamp && i == 1) {
+        if (printTimestamp && i == 1) {
           tmp = formatDatetime(resultSet.getLong(TIMESTAMP_STR), zoneId);
         } else {
           tmp = resultSet.getString(i);
         }
-        if(tmp == null) {
+        if (tmp == null) {
           tmp = NULL;
         }
-        lists.get(i-1).add(tmp);
-        if(maxSizeList.get(i-1) < tmp.length()) {
-          maxSizeList.set(i-1 , tmp.length());
+        lists.get(i - 1).add(tmp);
+        if (maxSizeList.get(i - 1) < tmp.length()) {
+          maxSizeList.set(i - 1, tmp.length());
         }
       }
       j++;
@@ -609,20 +613,18 @@ public abstract class AbstractClient {
 
   private static void output(List<List<String>> lists, List<Integer> maxSizeList) {
     printBlockLine(maxSizeList);
-    printRow(lists,0, maxSizeList);
+    printRow(lists, 0, maxSizeList);
     printBlockLine(maxSizeList);
-    for(int i = 1; i < lists.get(0).size(); i++) {
+    for (int i = 1; i < lists.get(0).size(); i++) {
       printRow(lists, i, maxSizeList);
     }
     printBlockLine(maxSizeList);
-    if(isReachEnd) {
-      lineCount += lists.get(0).size()-1;
+    if (isReachEnd) {
+      lineCount += lists.get(0).size() - 1;
       printCount(lineCount);
-    }
-    else {
+    } else {
       lineCount += maxPrintRowCount;
     }
-
   }
 
   private static void resetArgs() {
@@ -643,7 +645,7 @@ public abstract class AbstractClient {
   private static void printRow(List<List<String>> lists, int i, List<Integer> maxSizeList) {
     printf("|");
     for (int j = 0; j < maxSizeList.size(); j++) {
-      printf("%"+ maxSizeList.get(j) + "s|", lists.get(j).get(i));
+      printf("%" + maxSizeList.get(j) + "s|", lists.get(j).get(i));
     }
     println();
   }

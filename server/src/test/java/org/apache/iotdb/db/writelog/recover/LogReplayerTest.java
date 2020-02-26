@@ -26,7 +26,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Iterator;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
@@ -36,14 +35,16 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -52,7 +53,7 @@ import org.junit.Test;
 public class LogReplayerTest {
 
   @Test
-  public void test() throws IOException, StorageGroupProcessorException {
+  public void test() throws IOException, StorageGroupProcessorException, QueryProcessException {
     String logNodePrefix = "testLogNode";
     File tsFile = SystemFileFactory.INSTANCE.getFile("temp", "1-1-1.tsfile");
     File modF = SystemFileFactory.INSTANCE.getFile("test.mod");
@@ -95,17 +96,17 @@ public class LogReplayerTest {
       replayer.replayLogs();
 
       for (int i = 0; i < 5; i++) {
-        ReadOnlyMemChunk chunk = memTable.query("device" + i, "sensor" + i, TSDataType.INT64,
-            Collections.emptyMap(), Long.MIN_VALUE);
-        Iterator<TimeValuePair> iterator = chunk.getIterator();
+        ReadOnlyMemChunk memChunk = memTable.query("device" + i, "sensor" + i, TSDataType.INT64,
+            TSEncoding.RLE, Collections.emptyMap(), Long.MIN_VALUE);
+        IPointReader iterator = memChunk.getPointReader();
         if (i == 0) {
-          assertFalse(iterator.hasNext());
+          assertFalse(iterator.hasNextTimeValuePair());
         } else {
-          assertTrue(iterator.hasNext());
-          TimeValuePair timeValuePair = iterator.next();
+          assertTrue(iterator.hasNextTimeValuePair());
+          TimeValuePair timeValuePair = iterator.nextTimeValuePair();
           assertEquals(i, timeValuePair.getTimestamp());
           assertEquals(i, timeValuePair.getValue().getLong());
-          assertFalse(iterator.hasNext());
+          assertFalse(iterator.hasNextTimeValuePair());
         }
       }
 

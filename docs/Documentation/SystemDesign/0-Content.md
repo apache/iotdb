@@ -38,9 +38,17 @@
 * 2-WAL
 * 3-FlushManager
 * 4-MergeManager
+* 5-DataPartition
+* 6-DataManipulation
 # Chapter 5: DataQuery
 * 1-DataQuery
+* 2-SeriesReader
+* 3-RawDataQuery
+* 4-AggregationQuery
+* 5-GroupByQuery
 # Chapter 6: Tools
 * 1-Sync
 # Chapter 7: Connector
 * 2-Hive-TsFile
+* 3-Spark-TsFile
+* 4-Spark-IOTDB
