@@ -46,9 +46,13 @@ module.exports = {
                 use: ['style-loader', 'css-loader']
             },
             {
-                // 转换文件png|svg|jpg|gif
                 test: /\.(png|svg|jpg|gif)$/,
-                use: ['file-loader']
+                use: {
+                    loader: 'file-loader',
+                    options: {
+                        outputPath: 'dist/'
+                    }
+                }
             }
         ]
     }

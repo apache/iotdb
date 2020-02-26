@@ -522,6 +522,7 @@
                             <exclude>LICENSE-binary</exclude>
                             <exclude>**/dist/**</exclude>
                             <exclude>**/node_modules/**</exclude>
+                            <exclude>**/*.json</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
