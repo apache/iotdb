@@ -226,13 +226,13 @@ public class PlanExecutor implements IPlanExecutor {
       throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
       IOException {
     QueryDataSet queryDataSet;
-    if (queryPlan.getPaths().isEmpty()) {
-      // no time series are selected, return EmptyDataSet
-      queryDataSet = new EmptyDataSet();
-    } else if (queryPlan instanceof AlignByDevicePlan) {
+    if (queryPlan instanceof AlignByDevicePlan) {
       queryDataSet = new AlignByDeviceDataSet((AlignByDevicePlan) queryPlan, context, queryRouter);
     } else {
-      if (queryPlan instanceof GroupByPlan) {
+      if (queryPlan.getPaths() == null || queryPlan.getPaths().isEmpty()) {
+        // no time series are selected, return EmptyDataSet
+        queryDataSet = new EmptyDataSet();
+      } else if (queryPlan instanceof GroupByPlan) {
         GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
         return queryRouter.groupBy(groupByPlan, context);
       } else if (queryPlan instanceof AggregationPlan) {
