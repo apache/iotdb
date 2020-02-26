@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.reader;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -31,16 +28,10 @@ import java.nio.file.StandardOpenOption;
 
 public class DefaultTsFileInput implements TsFileInput {
 
-  private static final Logger LOGGER = LoggerFactory
-          .getLogger(DefaultTsFileInput.class);
-
-  FileChannel channel;
-
-  private Path path;
+  private FileChannel channel;
 
   public DefaultTsFileInput(Path file) throws IOException {
     channel = FileChannel.open(file, StandardOpenOption.READ);
-    path = file;
   }
 
   @Override
@@ -66,10 +57,6 @@ public class DefaultTsFileInput implements TsFileInput {
 
   @Override
   public int read(ByteBuffer dst, long position) throws IOException {
-//    if (!channel.isOpen()) {
-//      LOGGER.error("File is closed while reading {}", path.toString());
-//      channel = FileChannel.open(path, StandardOpenOption.READ);
-//    }
     return channel.read(dst, position);
   }
 
@@ -95,14 +82,6 @@ public class DefaultTsFileInput implements TsFileInput {
 
   @Override
   public void close() throws IOException {
-    LOGGER.error("{} FileChannel is closed", path);
-//    Throwable ex = new Throwable();
-//    StackTraceElement[] stackElements = ex.getStackTrace();
-//    if (stackElements != null) {
-//      for (StackTraceElement stackElement : stackElements) {
-//        LOGGER.error("Class Name: {}, Function Name: {}, Line: {}", stackElement.getClassName(), stackElement.getMethodName(), stackElement.getLineNumber());
-//      }
-//    }
     channel.close();
   }
 

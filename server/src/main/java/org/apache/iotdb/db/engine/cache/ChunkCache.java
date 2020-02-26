@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -84,16 +85,26 @@ public class ChunkCache {
       lock.readLock().unlock();
     }
 
-    lock.writeLock().lock();
-    if (lruCache.containsKey(chunkMetaData)) {
-      lock.readLock().lock();
-      lock.writeLock().unlock();
-      cacheHitNum.incrementAndGet();
-      printCacheLog(true);
-      Chunk chunk = lruCache.get(chunkMetaData);
-      lock.readLock().unlock();
-      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
+    Lock cacheLock = lock.writeLock();
+    try {
+      cacheLock.lock();
+      if (lruCache.containsKey(chunkMetaData)) {
+        try {
+          cacheLock = lock.readLock();
+          cacheLock.lock();
+        } finally {
+          lock.writeLock().unlock();
+        }
+        cacheHitNum.incrementAndGet();
+        printCacheLog(true);
+        Chunk chunk = lruCache.get(chunkMetaData);
+        return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
+      }
+    } finally {
+      cacheLock.unlock();
     }
+
+
     printCacheLog(false);
     Chunk chunk = reader.readMemChunk(chunkMetaData);
     lruCache.put(chunkMetaData, chunk);

@@ -93,12 +93,12 @@ public class FileReaderManager implements IService {
     closedReferenceMap.remove(seqFile);
     TsFileSequenceReader reader = closedFileReaderMap.remove(seqFile);
     if (reader != null) {
-      reader.close("Merge");
+      reader.close();
     }
     unclosedReferenceMap.remove(seqFile);
     reader = unclosedFileReaderMap.remove(seqFile);
     if (reader != null) {
-      reader.close("Merge");
+      reader.close();
     }
   }
 
@@ -124,7 +124,7 @@ public class FileReaderManager implements IService {
 
       if (refAtom != null && refAtom.get() == 0) {
         try {
-          reader.close("no reference");
+          reader.close();
         } catch (IOException e) {
           logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
         }
@@ -204,6 +204,26 @@ public class FileReaderManager implements IService {
    * integration tests will not conflict with each other.
    */
   public synchronized void closeAndRemoveAllOpenedReaders() throws IOException {
+    Iterator<Map.Entry<TsFileResource, TsFileSequenceReader>> iterator = closedFileReaderMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<TsFileResource, TsFileSequenceReader> entry = iterator.next();
+      entry.getValue().close();
+      if (resourceLogger.isInfoEnabled()) {
+        resourceLogger.info("{} closedTsFileReader is closed.", entry.getValue().getFileName());
+      }
+      closedReferenceMap.remove(entry.getKey());
+      iterator.remove();
+    }
+    iterator = unclosedFileReaderMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<TsFileResource, TsFileSequenceReader> entry = iterator.next();
+      entry.getValue().close();
+      if (resourceLogger.isInfoEnabled()) {
+        resourceLogger.info("{} unclosedTsFileReader is closed.", entry.getValue().getFileName());
+      }
+      unclosedReferenceMap.remove(entry.getKey());
+      iterator.remove();
+    }
     for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : closedFileReaderMap.entrySet()) {
       entry.getValue().close();
       if (resourceLogger.isInfoEnabled()) {

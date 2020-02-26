@@ -471,12 +471,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     deviceMetadataMap = null;
   }
 
-  public void close(String reason) throws IOException {
-    logger.error("{} reader is closed by {}", file, reason);
-    this.tsFileInput.close();
-    deviceMetadataMap = null;
-  }
-
   public String getFileName() {
     return this.file;
   }
