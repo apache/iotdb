@@ -117,6 +117,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.EmptyDataSet;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -225,7 +226,10 @@ public class PlanExecutor implements IPlanExecutor {
       throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
       IOException {
     QueryDataSet queryDataSet;
-    if (queryPlan instanceof AlignByDevicePlan) {
+    if (queryPlan.getPaths().isEmpty()) {
+      // no time series are selected, return EmptyDataSet
+      queryDataSet = new EmptyDataSet();
+    } else if (queryPlan instanceof AlignByDevicePlan) {
       queryDataSet = new AlignByDeviceDataSet((AlignByDevicePlan) queryPlan, context, queryRouter);
     } else {
       if (queryPlan instanceof GroupByPlan) {
