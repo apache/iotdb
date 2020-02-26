@@ -33,7 +33,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.factory.AggreResultFactory;
+import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -71,7 +71,7 @@ public class SeriesAggregateReaderTest {
       QueryDataSource queryDataSource = new QueryDataSource(path, seqResources, unseqResources);
       SeriesAggregateReader seriesReader = new SeriesAggregateReader(path, TSDataType.INT32,
           new QueryContext(), queryDataSource, null, null, null);
-      AggregateResult aggregateResult = AggreResultFactory
+      AggregateResult aggregateResult = AggregateResultFactory
           .getAggrResultByName("count", TSDataType.INT32);
       int loopTime = 0;
       while (seriesReader.hasNextChunk()) {

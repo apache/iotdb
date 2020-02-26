@@ -20,11 +20,15 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class LastValueAggrResult extends AggregateResult {
 
@@ -32,7 +36,7 @@ public class LastValueAggrResult extends AggregateResult {
   private long timestamp = Long.MIN_VALUE;
 
   public LastValueAggrResult(TSDataType dataType) {
-    super(dataType);
+    super(dataType, AggregationType.LAST_VALUE);
     reset();
   }
 
@@ -95,11 +99,20 @@ public class LastValueAggrResult extends AggregateResult {
 
   @Override
   public void merge(AggregateResult another) {
-    LastValueAggrResult anotherFirst = (LastValueAggrResult) another;
-    if(this.getValue() == null || this.timestamp < anotherFirst.timestamp){
-      this.setValue( anotherFirst.getValue() );
-      this.timestamp = anotherFirst.timestamp;
+    LastValueAggrResult anotherLast = (LastValueAggrResult) another;
+    if(this.getValue() == null || this.timestamp < anotherLast.timestamp){
+      this.setValue( anotherLast.getValue() );
+      this.timestamp = anotherLast.timestamp;
     }
   }
 
+  @Override
+  protected void deserializeSpecificFields(ByteBuffer buffer) {
+    timestamp = buffer.getLong();
+  }
+
+  @Override
+  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(timestamp, outputStream);
+  }
 }

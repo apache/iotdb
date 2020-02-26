@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.query.factory;
 
-import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.aggregation.impl.AvgAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.CountAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrResult;
@@ -36,9 +36,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 /**
  * Easy factory pattern to build AggregateFunction.
  */
-public class AggreResultFactory {
+public class AggregateResultFactory {
 
-  private AggreResultFactory() {
+  private AggregateResultFactory() {
   }
 
   /**
@@ -47,10 +47,9 @@ public class AggreResultFactory {
    * @param aggrFuncName function name.
    * @param dataType data type.
    */
-  public static AggregateResult getAggrResultByName(String aggrFuncName, TSDataType dataType)
-      throws PathException {
+  public static AggregateResult getAggrResultByName(String aggrFuncName, TSDataType dataType) {
     if (aggrFuncName == null) {
-      throw new PathException("AggregateFunction Name must not be null");
+      throw new IllegalArgumentException("AggregateFunction Name must not be null");
     }
 
     switch (aggrFuncName.toLowerCase()) {
@@ -73,8 +72,33 @@ public class AggreResultFactory {
       case SQLConstant.LAST_VALUE:
         return new LastValueAggrResult(dataType);
       default:
-        throw new PathException(
-            "aggregate does not support " + aggrFuncName + " function.");
+        throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
+    }
+  }
+
+  public static AggregateResult getAggrResultByType(AggregationType aggregationType,
+      TSDataType dataType) {
+    switch (aggregationType) {
+      case AVG:
+        return new AvgAggrResult(dataType);
+      case COUNT:
+        return new CountAggrResult();
+      case SUM:
+        return new SumAggrResult(dataType);
+      case FIRST_VALUE:
+        return new FirstValueAggrResult(dataType);
+      case LAST_VALUE:
+        return new LastValueAggrResult(dataType);
+      case MAX_TIME:
+        return new MaxTimeAggrResult();
+      case MIN_TIME:
+        return new MinTimeAggrResult();
+      case MAX_VALUE:
+        return new MaxValueAggrResult(dataType);
+      case MIN_VALUE:
+        return new MinValueAggrResult(dataType);
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType.name());
     }
   }
 }

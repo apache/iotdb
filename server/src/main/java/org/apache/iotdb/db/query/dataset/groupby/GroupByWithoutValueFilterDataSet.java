@@ -27,7 +27,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.factory.AggreResultFactory;
+import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -133,7 +133,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       record.addField(new Field(null));
     } else {
       for (AggregateResult res : aggregateResultList) {
-        record.addField(res.getResult(), res.getDataType());
+        record.addField(res.getResult(), res.getResultDataType());
       }
     }
     return record;
@@ -154,7 +154,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     TSDataType tsDataType = groupByPlan.getDeduplicatedDataTypes().get(indexList.get(0));
 
     for (int index : indexList) {
-      AggregateResult result = AggreResultFactory
+      AggregateResult result = AggregateResultFactory
           .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(index), tsDataType);
       aggregateResultList.add(result);
 

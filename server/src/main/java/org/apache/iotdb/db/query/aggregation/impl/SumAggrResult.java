@@ -20,18 +20,22 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class SumAggrResult extends AggregateResult {
 
   private TSDataType seriesDataType;
 
   public SumAggrResult(TSDataType seriesDataType) {
-    super(TSDataType.DOUBLE);
+    super(TSDataType.DOUBLE, AggregationType.SUM);
     this.seriesDataType = seriesDataType;
     reset();
     setDoubleValue(0.0);
@@ -60,7 +64,7 @@ public class SumAggrResult extends AggregateResult {
       if (dataInThisPage.currentTime() >= bound) {
         break;
       }
-      updateSum(seriesDataType, dataInThisPage.currentValue());
+      updateSum(dataInThisPage.currentValue());
       dataInThisPage.next();
     }
   }
@@ -71,14 +75,14 @@ public class SumAggrResult extends AggregateResult {
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
-        updateSum(seriesDataType, value);
+        updateSum(value);
       }
     }
   }
 
-  private void updateSum(TSDataType type, Object sumVal) throws IOException {
+  private void updateSum(Object sumVal) throws IOException {
     double preValue = getDoubleValue();
-    switch (type) {
+    switch (seriesDataType) {
       case INT32:
         preValue += (int) sumVal;
         break;
@@ -95,7 +99,7 @@ public class SumAggrResult extends AggregateResult {
       case BOOLEAN:
       default:
         throw new IOException(
-            String.format("Unsupported data type in aggregation SUM : %s", type));
+            String.format("Unsupported data type in aggregation SUM : %s", seriesDataType));
     }
     setDoubleValue(preValue);
   }
@@ -109,5 +113,15 @@ public class SumAggrResult extends AggregateResult {
   public void merge(AggregateResult another) {
     SumAggrResult anotherSum = (SumAggrResult) another;
     setDoubleValue(getDoubleValue() + anotherSum.getDoubleValue());
+  }
+
+  @Override
+  protected void deserializeSpecificFields(ByteBuffer buffer) {
+    seriesDataType = TSDataType.deserialize(buffer.getShort());
+  }
+
+  @Override
+  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(seriesDataType, outputStream);
   }
 }

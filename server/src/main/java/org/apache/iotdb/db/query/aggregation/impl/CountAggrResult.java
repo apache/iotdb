@@ -20,16 +20,19 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-          public class CountAggrResult extends AggregateResult {
+public class CountAggrResult extends AggregateResult {
 
   public CountAggrResult() {
-    super(TSDataType.INT64);
+    super(TSDataType.INT64, AggregationType.COUNT);
     reset();
     setLongValue(0);
   }
@@ -91,5 +94,13 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
   public void merge(AggregateResult another) {
     CountAggrResult anotherCount = (CountAggrResult) another;
     setLongValue(anotherCount.getResult() + this.getResult());
+  }
+
+  @Override
+  protected void deserializeSpecificFields(ByteBuffer buffer) {
+  }
+
+  @Override
+  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
   }
 }

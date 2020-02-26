@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -29,7 +32,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public class MinValueAggrResult extends AggregateResult {
 
   public MinValueAggrResult(TSDataType dataType) {
-    super(dataType);
+    super(dataType, AggregationType.MIN_VALUE);
     reset();
   }
 
@@ -84,6 +87,14 @@ public class MinValueAggrResult extends AggregateResult {
       Object value = another.getResult();
       this.updateResult((Comparable<Object>) value);
     }
+  }
+
+  @Override
+  protected void deserializeSpecificFields(ByteBuffer buffer) {
+  }
+
+  @Override
+  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
   }
 
   private void updateResult(Comparable<Object> minVal) {

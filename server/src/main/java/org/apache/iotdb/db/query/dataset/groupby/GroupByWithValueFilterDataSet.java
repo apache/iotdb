@@ -27,7 +27,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.factory.AggreResultFactory;
+import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
@@ -98,13 +98,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     hasCachedTimeInterval = false;
     List<AggregateResult> aggregateResultList = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
-      try {
-        aggregateResultList.add(AggreResultFactory.getAggrResultByName(
-            groupByPlan.getDeduplicatedAggregations().get(i),
-            groupByPlan.getDeduplicatedDataTypes().get(i)));
-      } catch (PathException e) {
-        throw new IOException(e);
-      }
+      aggregateResultList.add(AggregateResultFactory.getAggrResultByName(
+          groupByPlan.getDeduplicatedAggregations().get(i),
+          groupByPlan.getDeduplicatedDataTypes().get(i)));
     }
 
     long[] timestampArray = new long[timeStampFetchSize];
@@ -172,7 +168,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     RowRecord record = new RowRecord(curStartTime);
     for (int i = 0; i < paths.size(); i++) {
       AggregateResult aggregateResult = aggregateResultList.get(i);
-      record.addField(aggregateResult.getResult(), aggregateResult.getDataType());
+      record.addField(aggregateResult.getResult(), aggregateResult.getResultDataType());
     }
     return record;
   }
