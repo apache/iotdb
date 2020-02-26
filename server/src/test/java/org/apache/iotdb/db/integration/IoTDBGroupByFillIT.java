@@ -244,6 +244,192 @@ public class IoTDBGroupByFillIT {
     }
   }
 
+  @Test
+  public void previousUntilLastTest1() {
+    String[] retArray = new String[] {
+            "17,25",
+            "22,25",
+            "27,26",
+            "32,29",
+            "37,40",
+            "42,null",
+            "47,null",
+    };
+
+    try (Connection connection = DriverManager.
+            getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+              "select last_value(temperature) from "
+                      + "root.ln.wf01.wt01 "
+                      + "GROUP BY ([17, 48), 5ms) FILL(int32[previousUntilLast])");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
+                  .getString(last_value("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+  }
+
+  @Test
+  public void previousUntilLastTest2() {
+    try (Connection connection = DriverManager.
+            getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      statement.execute(
+              "select count(temperature) from "
+                      + "root.ln.wf01.wt01 "
+                      + "GROUP BY ([17, 48), 5ms) FILL(int32[previousUntilLast])");
+    } catch (IoTDBSQLException e) {
+      assertEquals("Statement format is not right: Group By Fill only support last_value function", e.getMessage());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+  }
+
+  @Test
+  public void previousUntilLastTest3() {
+    String[] retArray = new String[] {
+            "2,null",
+            "7,21",
+            "12,25",
+            "17,25",
+            "22,25",
+            "27,26",
+            "32,29",
+            "37,40",
+            "42,null",
+            "47,null",
+    };
+
+    try (Connection connection = DriverManager.
+            getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+              "select last_value(temperature) from "
+                      + "root.ln.wf01.wt01 "
+                      + "GROUP BY ([2, 48), 5ms) FILL(int32[previousUntilLast])");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
+                  .getString(last_value("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void previousUntilLastTest4() {
+    String[] retArray = new String[] {
+            "2,null,null",
+            "7,21,11.1",
+            "12,25,33.5",
+            "17,25,33.5",
+            "22,25,33.5",
+            "27,26,33.2",
+            "32,29,44.7",
+            "37,40,33.0",
+            "42,null,null",
+            "47,null,null",
+    };
+
+    try (Connection connection = DriverManager.
+            getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+              "select last_value(temperature), last_value(hardware) from "
+                      + "root.ln.wf01.wt01 "
+                      + "GROUP BY ([2, 48), 5ms) FILL(int32[previousUntilLast], double[previousUntilLast])");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
+                  .getString(last_value("root.ln.wf01.wt01.temperature")) + "," +
+                  resultSet.getString(last_value("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void previousUntilLastAllTest() {
+    String[] retArray = new String[] {
+            "2,null,null",
+            "7,21,11.1",
+            "12,25,33.5",
+            "17,25,33.5",
+            "22,25,33.5",
+            "27,26,33.2",
+            "32,29,44.7",
+            "37,40,33.0",
+            "42,null,null",
+            "47,null,null",
+    };
+
+    try (Connection connection = DriverManager.
+            getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+              "select last_value(temperature), last_value(hardware) from "
+                      + "root.ln.wf01.wt01 "
+                      + "GROUP BY ([2, 48), 5ms) FILL(ALL[previousUntilLast])");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
+                  .getString(last_value("root.ln.wf01.wt01.temperature")) + "," +
+                  resultSet.getString(last_value("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   private void prepareData() {
     try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
