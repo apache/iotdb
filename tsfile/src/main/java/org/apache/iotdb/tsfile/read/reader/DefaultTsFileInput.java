@@ -66,10 +66,10 @@ public class DefaultTsFileInput implements TsFileInput {
 
   @Override
   public int read(ByteBuffer dst, long position) throws IOException {
-    if (!channel.isOpen()) {
-      LOGGER.error("File is closed while reading {}", path.toString());
-      channel = FileChannel.open(path, StandardOpenOption.READ);
-    }
+//    if (!channel.isOpen()) {
+//      LOGGER.error("File is closed while reading {}", path.toString());
+//      channel = FileChannel.open(path, StandardOpenOption.READ);
+//    }
     return channel.read(dst, position);
   }
 
@@ -96,13 +96,13 @@ public class DefaultTsFileInput implements TsFileInput {
   @Override
   public void close() throws IOException {
     LOGGER.error("{} FileChannel is closed", path);
-    Throwable ex = new Throwable();
-    StackTraceElement[] stackElements = ex.getStackTrace();
-    if (stackElements != null) {
-      for (StackTraceElement stackElement : stackElements) {
-        LOGGER.error("Class Name: {}, Function Name: {}, Line: {}", stackElement.getClassName(), stackElement.getMethodName(), stackElement.getLineNumber());
-      }
-    }
+//    Throwable ex = new Throwable();
+//    StackTraceElement[] stackElements = ex.getStackTrace();
+//    if (stackElements != null) {
+//      for (StackTraceElement stackElement : stackElements) {
+//        LOGGER.error("Class Name: {}, Function Name: {}, Line: {}", stackElement.getClassName(), stackElement.getMethodName(), stackElement.getLineNumber());
+//      }
+//    }
     channel.close();
   }
 

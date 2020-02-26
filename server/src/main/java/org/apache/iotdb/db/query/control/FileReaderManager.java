@@ -123,11 +123,11 @@ public class FileReaderManager implements IService {
       AtomicInteger refAtom = refMap.get(entry.getKey());
 
       if (refAtom != null && refAtom.get() == 0) {
-        try {
-          reader.close("no reference");
-        } catch (IOException e) {
-          logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
-        }
+//        try {
+//          reader.close("no reference");
+//        } catch (IOException e) {
+//          logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
+//        }
         iterator.remove();
         refMap.remove(entry.getKey());
       }
