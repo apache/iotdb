@@ -81,7 +81,7 @@ public class IoTDBSeriesReaderIT {
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
 
     // test result of IBatchReader should not cross partition
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(6);
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(2);
 
     EnvironmentUtils.envSetUp();
 

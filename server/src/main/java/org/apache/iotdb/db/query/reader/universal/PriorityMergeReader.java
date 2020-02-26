@@ -34,7 +34,7 @@ public class PriorityMergeReader implements IPointReader {
   // largest end time of all added readers
   private long currentLargestEndTime;
 
-  private final static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
     int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
@@ -75,7 +75,7 @@ public class PriorityMergeReader implements IPointReader {
     }
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
-      int partition = Math.round(reader.currentTimeValuePair().getTimestamp() / partitionInterval);
+      long partition = reader.currentTimeValuePair().getTimestamp() / partitionInterval;
       // set end time before current partition ends
       currentLargestEndTime = Math.min((partition + 1) * partitionInterval - 1,
           Math.max(currentLargestEndTime, endTime));
