@@ -292,16 +292,12 @@ public class BatchInsertPlan extends PhysicalPlan {
   }
 
   public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
-    long maxTime = Long.MIN_VALUE;
-    int maxIndex = 0;
-    for (int i = 0; i < times.length; i++) {
-      if (times[i] > maxTime) {
-        maxTime = times[i];
-        maxIndex = i;
-      }
-    }
+    if (measurementIndex >= columns.length) return null;
+
     Object[] column = (Object[]) columns[measurementIndex];
-    return new TimeValuePair(maxTime, TsPrimitiveType.getByType(dataTypes[measurementIndex], column[maxIndex]));
+    // Use [end - 1] as the max time index as the time in BatchInsertPlan is in ascending order
+    TsPrimitiveType value = TsPrimitiveType.getByType(dataTypes[measurementIndex], column[end - 1]);
+    return new TimeValuePair(times[end - 1], value);
   }
 
   public long[] getTimes() {

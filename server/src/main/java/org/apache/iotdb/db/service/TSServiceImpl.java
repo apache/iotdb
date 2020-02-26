@@ -23,6 +23,8 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -65,11 +67,7 @@ import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -631,7 +629,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       resp.setOperationType(plan.getOperatorType().toString());
       // generate the queryId for the operation
       long queryId = generateQueryId(true);
-      // put it into the corresponding Set
+      // put it into the corresponding SetO
 
       statementId2QueryId.computeIfAbsent(statementId, k -> new HashSet<>()).add(queryId);
 
@@ -757,14 +755,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     QueryPlan plan = (QueryPlan) physicalPlan;
     if (plan instanceof AlignByDevicePlan) {
       getAlignByDeviceQueryHeaders((AlignByDevicePlan) plan, respColumns, columnsTypes);
-      // set dataTypeList in TSExecuteStatementResp. Note this is without deduplication.
-      resp.setColumns(respColumns);
-      resp.setDataTypeList(columnsTypes);
+    } else if (plan instanceof LastQueryPlan) {
+      getLastQueryHeaders(plan, respColumns, columnsTypes);
     } else {
       getWideQueryHeaders(plan, respColumns, columnsTypes);
-      resp.setColumns(respColumns);
-      resp.setDataTypeList(columnsTypes);
     }
+    resp.setColumns(respColumns);
+    resp.setDataTypeList(columnsTypes);
     return resp;
   }
 
@@ -778,7 +775,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     switch (plan.getOperatorType()) {
       case QUERY:
       case FILL:
-      case LAST:
         for (Path p : paths) {
           respColumns.add(p.getFullPath());
         }
@@ -900,6 +896,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     // set these null since they are never used henceforth in ALIGN_BY_DEVICE query processing.
     plan.setPaths(null);
     plan.setDataTypeConsistencyChecker(null);
+  }
+
+  private void getLastQueryHeaders(
+          QueryPlan plan, List<String> respColumns, List<String> columnTypes)
+          throws TException, QueryProcessException {
+    respColumns.add(COLUMN_TIMESERIES);
+    respColumns.add(COLUMN_VALUE);
+    columnTypes.add(TSDataType.TEXT.toString());
+    columnTypes.add(TSDataType.TEXT.toString());
   }
 
   @Override

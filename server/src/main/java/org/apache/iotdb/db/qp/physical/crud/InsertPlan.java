@@ -192,6 +192,7 @@ public class InsertPlan extends PhysicalPlan {
   }
 
   public TimeValuePair composeTimeValuePair(int measurementIndex) throws QueryProcessException {
+    if (measurementIndex >= values.length) return null;
     Object value = CommonUtils.parseValue(dataTypes[measurementIndex], values[measurementIndex]);
     return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[measurementIndex], value));
   }

@@ -995,8 +995,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       selectOp.addLastPath(path);
     }
     queryOp.setSelectOperator(selectOp);
-    queryOp.setAlignByTime(false);
-    queryOp.setAlignByDevice(false);
   }
 
   @Override
