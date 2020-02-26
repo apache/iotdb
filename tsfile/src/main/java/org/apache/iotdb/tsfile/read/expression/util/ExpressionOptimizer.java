@@ -131,7 +131,7 @@ public class ExpressionOptimizer {
       SingleSeriesExpression leaf = (SingleSeriesExpression) rightExpression;
       updateFilterWithOr(leftExpression, leaf.getFilter(), leaf.getSeriesPath());
       return leftExpression;
-    } else if (rightExpression.getType() == ExpressionType.SERIES) {
+    } else if (rightExpression.getType() == ExpressionType.OR) {
       IExpression leftChild = ((BinaryExpression) rightExpression).getLeft();
       IExpression rightChild = ((BinaryExpression) rightExpression).getRight();
       leftExpression = mergeSecondTreeToFirstTree(leftExpression, leftChild);
@@ -146,19 +146,17 @@ public class ExpressionOptimizer {
    * This method search  the node in the input expression, whose path is identical to the input
    * path, then merges its filter and the input filter with relation OR.
    *
-   * @return an expression, some of whose node contains the input filter.
+   * @return true if the input filter is merged.
    */
   private boolean updateFilterWithOr(IExpression expression, Filter filter, Path path) {
-    if (expression.getType() == ExpressionType.SERIES) {
-      Path nodePath = ((SingleSeriesExpression) expression).getSeriesPath();
-      if (nodePath.equals(path)) {
-        Filter nodeFilter = ((SingleSeriesExpression) expression).getFilter();
-        nodeFilter = FilterFactory.or(nodeFilter, filter);
-        ((SingleSeriesExpression) expression).setFilter(nodeFilter);
-        return true;
-      }
-      return false;
+    if (expression.getType() == ExpressionType.SERIES && ((SingleSeriesExpression) expression)
+        .getSeriesPath().equals(path)) {
+      Filter nodeFilter = ((SingleSeriesExpression) expression).getFilter();
+      nodeFilter = FilterFactory.or(nodeFilter, filter);
+      ((SingleSeriesExpression) expression).setFilter(nodeFilter);
+      return true;
     } else if (expression.getType() == ExpressionType.OR) {
+      assert expression instanceof BinaryExpression;
       IExpression left = ((BinaryExpression) expression).getLeft();
       IExpression right = ((BinaryExpression) expression).getRight();
       return updateFilterWithOr(left, filter, path) || updateFilterWithOr(right, filter, path);
