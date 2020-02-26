@@ -143,8 +143,8 @@ public class StorageGroupProcessor {
   // includes sealed and unsealed sequence TsFiles
   private TreeSet<TsFileResource> sequenceFileTreeSet = new TreeSet<>(
       (o1, o2) -> {
-        int rangeCompare = o1.getFile().getParentFile().getName()
-            .compareTo(o2.getFile().getParentFile().getName());
+        int rangeCompare = Long.compare(Long.parseLong(o1.getFile().getParentFile().getName()),
+            Long.parseLong(o2.getFile().getParentFile().getName()));
         return rangeCompare == 0 ? compareFileName(o1.getFile(), o2.getFile()) : rangeCompare;
       });
 
