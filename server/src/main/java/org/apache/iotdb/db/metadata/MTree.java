@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -511,11 +512,7 @@ public class MTree implements Serializable {
       }
     } else {
       for (MNode child : node.getChildren().values()) {
-        String prefix = "";
-        if (!nodeReg.equals(PATH_WILDCARD)) {
-          prefix = nodeReg.split("\\*")[0];
-        }
-        if (!child.getName().startsWith(prefix)) {
+        if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
           return;
         }
         findPath(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
@@ -565,11 +562,7 @@ public class MTree implements Serializable {
     } else {
       if (node instanceof InternalMNode) {
         for (MNode child : node.getChildren().values()) {
-          String prefix = "";
-          if (!nodeReg.equals(PATH_WILDCARD)) {
-            prefix = nodeReg.split("\\*")[0];
-          }
-          if (!child.getName().startsWith(prefix)) {
+          if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
             return;
           }
           if (idx == length) {
