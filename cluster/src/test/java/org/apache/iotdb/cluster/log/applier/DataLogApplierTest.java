@@ -34,7 +34,6 @@ import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -47,7 +46,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.junit.Before;
 import org.junit.Test;
 
 public class DataLogApplierTest extends IoTDBTest {
@@ -74,7 +72,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyInsert()
-      throws QueryProcessException, IOException, QueryFilterOptimizationException, StorageEngineException, MetadataException, SQLException {
+      throws QueryProcessException, IOException, QueryFilterOptimizationException, StorageEngineException, MetadataException {
     InsertPlan insertPlan = new InsertPlan();
     PhysicalPlanLog log = new PhysicalPlanLog();
     log.setPlan(insertPlan);
@@ -126,7 +124,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyDeletion()
-      throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException, SQLException {
+      throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException {
     DeletePlan deletePlan = new DeletePlan();
     deletePlan.setPaths(Collections.singletonList(new Path(TestUtils.getTestSeries(0, 0))));
     deletePlan.setDeleteTime(50);

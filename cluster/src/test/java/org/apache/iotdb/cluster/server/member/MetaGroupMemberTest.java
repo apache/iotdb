@@ -36,7 +36,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -55,7 +54,6 @@ import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
-import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -83,23 +81,15 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.factory.AggreFuncFactory;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithValueFilter;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -107,9 +97,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
-import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
@@ -163,7 +150,7 @@ public class MetaGroupMemberTest extends MemberTest {
       @Override
       TSStatus executeNonQuery(PhysicalPlan plan) {
         try {
-          queryProcessExecutor.processNonQuery(plan);
+          planExecutor.processNonQuery(plan);
           return StatusUtils.OK;
         } catch (QueryProcessException e) {
           TSStatus status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
@@ -186,28 +173,6 @@ public class MetaGroupMemberTest extends MemberTest {
       public void pullTimeSeriesSchema(PullSchemaRequest request,
           AsyncMethodCallback<PullSchemaResp> resultHandler) {
         mockedPullTimeSeriesSchema(request, resultHandler);
-      }
-
-      @Override
-      IReaderByTimestamp getReaderByTimestamp(Path path, QueryContext context)
-          throws StorageEngineException, IOException {
-        return new SeriesReaderByTimestamp(path, context);
-      }
-
-      @Override
-      ManagedSeriesReader getSeriesReaderWithoutValueFilter(Path path, TSDataType dataType,
-          Filter timeFilter, QueryContext context, boolean pushdownUnseq)
-          throws IOException, StorageEngineException {
-        List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
-        return new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context,
-            pushdownUnseq, new SlotTsFileFilter(nodeSlots));
-      }
-
-      @Override
-      ManagedSeriesReader getSeriesReaderWithValueFilter(Path path, TSDataType dataType,
-          Filter timeFilter, QueryContext context) throws IOException, StorageEngineException {
-        List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
-        return new SeriesReaderWithValueFilter(path, dataType, timeFilter, context, new SlotTsFileFilter(nodeSlots));
       }
     };
   }
@@ -242,7 +207,7 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
 
-  private MetaGroupMember getMetaGroupMember(Node node) throws IOException {
+  private MetaGroupMember getMetaGroupMember(Node node) throws QueryProcessException {
     return new MetaGroupMember(new Factory(), node) {
 
       @Override
@@ -277,10 +242,11 @@ public class MetaGroupMemberTest extends MemberTest {
           }
 
           @Override
-          public void fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp,
+          public void fetchSingleSeriesByTimestamp(Node header, long readerId,
+              ByteBuffer timeBuffer,
               AsyncMethodCallback<ByteBuffer> resultHandler) {
             new Thread(
-                () -> dataGroupMember.fetchSingleSeriesByTimestamp(header, readerId, timestamp,
+                () -> dataGroupMember.fetchSingleSeriesByTimestamp(header, readerId, timeBuffer,
                     resultHandler)).start();
           }
 
@@ -289,7 +255,7 @@ public class MetaGroupMemberTest extends MemberTest {
               AsyncMethodCallback<List<String>> resultHandler) {
             new Thread(() -> {
               try {
-                resultHandler.onComplete(MManager.getInstance().getPaths(path));
+                resultHandler.onComplete(MManager.getInstance().getAllTimeseriesName(path));
               } catch (MetadataException e) {
                 resultHandler.onError(e);
               }
@@ -302,7 +268,7 @@ public class MetaGroupMemberTest extends MemberTest {
             new Thread(() -> {
               try {
                 PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
-                queryProcessExecutor.processNonQuery(plan);
+                planExecutor.processNonQuery(plan);
                 resultHandler.onComplete(StatusUtils.OK);
               } catch (IOException | QueryProcessException e) {
                 resultHandler.onError(e);
@@ -374,7 +340,7 @@ public class MetaGroupMemberTest extends MemberTest {
               new Thread(() -> {
                 try {
                   PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
-                  queryProcessExecutor.processNonQuery(plan);
+                  planExecutor.processNonQuery(plan);
                   resultHandler.onComplete(StatusUtils.OK);
                 } catch (IOException | QueryProcessException e) {
                   resultHandler.onError(e);
@@ -435,8 +401,8 @@ public class MetaGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new String[]{String.valueOf(i)});
-      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
-      queryProcessExecutor.processNonQuery(insertPlan);
+      PlanExecutor planExecutor = new PlanExecutor();
+      planExecutor.processNonQuery(insertPlan);
     }
     metaGroupMember.closePartition(TestUtils.getTestSg(0), true);
 
@@ -452,8 +418,8 @@ public class MetaGroupMemberTest extends MemberTest {
       for (int i = 20; i < 30; i++) {
         insertPlan.setTime(i);
         insertPlan.setValues(new String[]{String.valueOf(i)});
-        QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
-        queryProcessExecutor.processNonQuery(insertPlan);
+        PlanExecutor planExecutor = new PlanExecutor();
+        planExecutor.processNonQuery(insertPlan);
       }
       metaGroupMember.closePartition(TestUtils.getTestSg(0), true);
       assertFalse(processor.getWorkSequenceTsFileProcessors().isEmpty());
@@ -495,7 +461,7 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testJoinCluster() throws TTransportException, IOException {
+  public void testJoinCluster() throws TTransportException, QueryProcessException {
     MetaGroupMember newMember = getMetaGroupMember(TestUtils.getNode(10));
     newMember.start();
     try {
@@ -516,7 +482,7 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testJoinClusterFailed() throws IOException {
+  public void testJoinClusterFailed() throws QueryProcessException {
     long prevInterval = RaftServer.heartBeatIntervalMs;
     RaftServer.heartBeatIntervalMs = 10;
     try {
@@ -554,7 +520,7 @@ public class MetaGroupMemberTest extends MemberTest {
     }
 
     for (int i = 0; i < 10; i++) {
-      assertTrue(MManager.getInstance().pathExist(TestUtils.getTestSeries(10, i)));
+      assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSeries(10, i)));
     }
   }
 
@@ -569,7 +535,7 @@ public class MetaGroupMemberTest extends MemberTest {
           new SetStorageGroupPlan(new Path(TestUtils.getTestSg(i)));
       TSStatus status = metaGroupMember.executeNonQuery(setStorageGroupPlan);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.statusType.code);
-      assertTrue(MManager.getInstance().pathExist(TestUtils.getTestSg(i)));
+      assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSg(i)));
 
       // process a partitioned plan
       MeasurementSchema schema = TestUtils.getTestSchema(i, 0);
@@ -578,7 +544,7 @@ public class MetaGroupMemberTest extends MemberTest {
           schema.getEncodingType(), schema.getCompressor(), schema.getProps());
       status = metaGroupMember.executeNonQuery(createTimeSeriesPlan);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.statusType.code);
-      assertTrue(MManager.getInstance().pathExist(TestUtils.getTestSeries(i, 0)));
+      assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSeries(i, 0)));
     }
   }
 
@@ -587,7 +553,7 @@ public class MetaGroupMemberTest extends MemberTest {
     for (int i = 1; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         MeasurementSchema schema = TestUtils.getTestSchema(i, j);
-        MManager.getInstance().addPathToMTree(schema.getMeasurementId(), schema.getType(),
+        MManager.getInstance().createTimeseries(schema.getMeasurementId(), schema.getType(),
             schema.getEncodingType(), schema.getCompressor(), schema.getProps());
       }
     }
@@ -608,7 +574,7 @@ public class MetaGroupMemberTest extends MemberTest {
     for (int i = 1; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         MeasurementSchema schema = TestUtils.getTestSchema(i, j);
-        MManager.getInstance().addPathToMTree(schema.getMeasurementId(), schema.getType(),
+        MManager.getInstance().createTimeseries(schema.getMeasurementId(), schema.getType(),
             schema.getEncodingType(), schema.getCompressor(), schema.getProps());
       }
     }
@@ -644,7 +610,7 @@ public class MetaGroupMemberTest extends MemberTest {
     // a local series
     assertEquals(TSDataType.DOUBLE, metaGroupMember.getSeriesType(TestUtils.getTestSeries(0, 0)));
     // a remote series that can be fetched
-    MManager.getInstance().setStorageGroupToMTree(TestUtils.getTestSg(10));
+    MManager.getInstance().setStorageGroup(TestUtils.getTestSg(10));
     assertEquals(TSDataType.DOUBLE, metaGroupMember.getSeriesType(TestUtils.getTestSeries(10, 0)));
     // a non-existent series
     try {
@@ -672,7 +638,7 @@ public class MetaGroupMemberTest extends MemberTest {
       insertPlan.setDeviceId(TestUtils.getTestSg(i));
       MeasurementSchema schema = TestUtils.getTestSchema(i, 0);
       try {
-        MManager.getInstance().addPathToMTree(new Path(schema.getMeasurementId()), schema.getType()
+        MManager.getInstance().createTimeseries(schema.getMeasurementId(), schema.getType()
             , schema.getEncodingType(), schema.getCompressor(), schema.getProps());
       } catch (MetadataException e) {
         // ignore
@@ -680,7 +646,7 @@ public class MetaGroupMemberTest extends MemberTest {
       for (int j = 0; j < 10; j++) {
         insertPlan.setTime(j);
         insertPlan.setValues(new String[]{String.valueOf(j)});
-        queryProcessExecutor.processNonQuery(insertPlan);
+        planExecutor.processNonQuery(insertPlan);
       }
     }
 
@@ -690,7 +656,8 @@ public class MetaGroupMemberTest extends MemberTest {
     try {
       for (int i = 0; i < 10; i++) {
         IReaderByTimestamp readerByTimestamp = metaGroupMember
-            .getReaderByTimestamp(new Path(TestUtils.getTestSeries(i, 0)));
+            .getReaderByTimestamp(new Path(TestUtils.getTestSeries(i, 0)), TSDataType.DOUBLE,
+                context);
         for (int j = 0; j < 10; j++) {
           assertEquals(j * 1.0, (double) readerByTimestamp.getValueInTimestamp(j), 0.00001);
         }
@@ -710,7 +677,7 @@ public class MetaGroupMemberTest extends MemberTest {
       insertPlan.setDeviceId(TestUtils.getTestSg(i));
       MeasurementSchema schema = TestUtils.getTestSchema(i, 0);
       try {
-        MManager.getInstance().addPathToMTree(new Path(schema.getMeasurementId()), schema.getType()
+        MManager.getInstance().createTimeseries(schema.getMeasurementId(), schema.getType()
             , schema.getEncodingType(), schema.getCompressor(), schema.getProps());
       } catch (MetadataException e) {
         // ignore
@@ -718,7 +685,7 @@ public class MetaGroupMemberTest extends MemberTest {
       for (int j = 0; j < 10; j++) {
         insertPlan.setTime(j);
         insertPlan.setValues(new String[]{String.valueOf(j)});
-        queryProcessExecutor.processNonQuery(insertPlan);
+        planExecutor.processNonQuery(insertPlan);
       }
     }
 
@@ -726,18 +693,20 @@ public class MetaGroupMemberTest extends MemberTest {
         QueryResourceManager.getInstance().assignQueryId(true));
 
     try {
-      Filter filter = new AndFilter(TimeFilter.gtEq(5), ValueFilter.ltEq(8.0));
       for (int i = 0; i < 10; i++) {
         ManagedSeriesReader reader = metaGroupMember
-            .getSeriesReader(new Path(TestUtils.getTestSeries(i, 0)), TSDataType.DOUBLE, filter,
-                context, true, true);
+            .getSeriesReader(new Path(TestUtils.getTestSeries(i, 0)), TSDataType.DOUBLE, TimeFilter.gtEq(5),
+                ValueFilter.ltEq(8.0), context);
+        assertTrue(reader.hasNextBatch());
+        BatchData batchData = reader.nextBatch();
         for (int j = 5; j < 9; j++) {
-          assertTrue(reader.hasNext());
-          TimeValuePair pair = reader.next();
-          assertEquals(j, pair.getTimestamp());
-          assertEquals(j * 1.0, pair.getValue().getDouble(), 0.00001);
+          assertTrue(batchData.hasCurrent());
+          assertEquals(j, batchData.currentTime());
+          assertEquals(j * 1.0, batchData.getDouble(), 0.00001);
+          batchData.next();
         }
-        assertFalse(reader.hasNext());
+        assertFalse(batchData.hasCurrent());
+        assertFalse(reader.hasNextBatch());
       }
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
@@ -747,18 +716,18 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testGetMatchedPaths() throws MetadataException {
     List<String> matchedPaths = metaGroupMember
-        .getMatchedPaths(TestUtils.getTestSg(0), TestUtils.getTestSg(0));
+        .getMatchedPaths(TestUtils.getTestSg(0));
     assertEquals(10, matchedPaths.size());
     for (int j = 0; j < 10; j++) {
       assertEquals(TestUtils.getTestSeries(0, j), matchedPaths.get(j));
     }
     matchedPaths = metaGroupMember
-        .getMatchedPaths(TestUtils.getTestSg(10), TestUtils.getTestSg(10));
+        .getMatchedPaths(TestUtils.getTestSg(10));
     assertTrue(matchedPaths.isEmpty());
   }
 
   @Test
-  public void testProcessValidHeartBeatReq() throws IOException {
+  public void testProcessValidHeartBeatReq() throws QueryProcessException {
     MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(10));
     try {
       HeartBeatRequest request = new HeartBeatRequest();
@@ -781,7 +750,8 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testProcessValidHeartBeatResp() throws IOException, TTransportException {
+  public void testProcessValidHeartBeatResp()
+      throws TTransportException, QueryProcessException {
     MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(10));
     metaGroupMember.start();
     metaGroupMember.onElectionWins();
@@ -933,7 +903,7 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testLoadIdentifier() throws IOException {
+  public void testLoadIdentifier() throws IOException, QueryProcessException {
     try (RandomAccessFile raf = new RandomAccessFile(MetaGroupMember.NODE_IDENTIFIER_FILE_NAME,
         "rw")) {
       raf.writeBytes("100");
@@ -1086,54 +1056,6 @@ public class MetaGroupMemberTest extends MemberTest {
         }
       });
       resultRef.wait(500);
-    }
-  }
-
-  @Test
-  public void testGetAggregateReaders()
-      throws MetadataException, IOException, StorageEngineException, QueryProcessException {
-    TestUtils.prepareAggregateData();
-
-    List<Path> selectedPaths = Arrays.asList(new Path(TestUtils.getTestSeries(0, 0)),
-        new Path(TestUtils.getTestSeries(0, 0)), new Path(TestUtils.getTestSeries(0, 0)),
-        new Path(TestUtils.getTestSeries(0, 0)), new Path(TestUtils.getTestSeries(0, 0)));
-    Filter filter = new AndFilter(TimeFilter.gtEq(5), TimeFilter.lt(15));
-    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
-    List<IAggregateReader> seqReaders = new ArrayList<>();
-    List<IPointReader> unseqReaders = new ArrayList<>();
-    List<AggregateFunction> aggregateFunctions =
-        Arrays.asList(AggreFuncFactory.getAggrFuncByName(SQLConstant.FIRST_VALUE,
-            TSDataType.DOUBLE), AggreFuncFactory.getAggrFuncByName(SQLConstant.LAST_VALUE,
-            TSDataType.DOUBLE), AggreFuncFactory.getAggrFuncByName(SQLConstant.SUM,
-            TSDataType.DOUBLE), AggreFuncFactory.getAggrFuncByName(SQLConstant.COUNT,
-            TSDataType.DOUBLE),AggreFuncFactory.getAggrFuncByName(SQLConstant.AVG,
-            TSDataType.DOUBLE));
-    List<TSDataType> dataTypes = Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE,
-        TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE);
-
-    metaGroupMember.getAggregateReader(selectedPaths, filter, context, seqReaders, unseqReaders,
-        aggregateFunctions, dataTypes);
-    assertEquals(5, seqReaders.size());
-    assertEquals(5, unseqReaders.size());
-    for (IAggregateReader seqReader : seqReaders) {
-      assertTrue(seqReader.hasNextBatch());
-      BatchData batchData = seqReader.nextBatch();
-      for (int i = 10; i < 15; i++) {
-        assertTrue(batchData.hasCurrent());
-        assertEquals(i, batchData.currentTime());
-        assertEquals(i * 1.0, batchData.getDouble(), 0.00001);
-      }
-      assertFalse(batchData.hasCurrent());
-    }
-
-    for (IPointReader unseqReader : unseqReaders) {
-      for (int i = 10; i < 15; i++) {
-        assertTrue(unseqReader.hasNext());
-        TimeValuePair next = unseqReader.next();
-        assertEquals(i, next.getTimestamp());
-        assertEquals(i * 1.0, next.getValue().getDouble(), 0.00001);
-      }
-      assertFalse(unseqReader.hasNext());
     }
   }
 }

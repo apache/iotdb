@@ -28,7 +28,7 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,7 +40,7 @@ public class ClusterPhysicalGeneratorTest extends BaseQueryTest{
   @Before
   public void setUp() throws MetadataException, QueryProcessException {
     super.setUp();
-    physicalGenerator = new ClusterPhysicalGenerator(queryProcessExecutor, localMetaGroupMember);
+    physicalGenerator = new ClusterPhysicalGenerator(localMetaGroupMember);
   }
 
   @Test
@@ -54,7 +54,7 @@ public class ClusterPhysicalGeneratorTest extends BaseQueryTest{
 
     operator.setSelectOperator(selectOperator);
     operator.setFromOperator(fromOperator);
-    QueryPlan plan = (QueryPlan) physicalGenerator.transformToPhysicalPlan(operator);
+    RawDataQueryPlan plan = (RawDataQueryPlan) physicalGenerator.transformToPhysicalPlan(operator);
 
     assertEquals(pathList, plan.getDeduplicatedPaths());
     assertEquals(dataTypes, plan.getDeduplicatedDataTypes());

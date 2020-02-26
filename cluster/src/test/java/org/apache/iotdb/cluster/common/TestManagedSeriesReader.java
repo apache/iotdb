@@ -33,14 +33,9 @@ public class TestManagedSeriesReader implements ManagedSeriesReader, IReaderByTi
   private boolean batchUsed = false;
   private boolean managedByQueryManager = false;
   private boolean hasRemaining = false;
-  private TimeValuePair pairCache;
-  private Filter timeFilter;
-  private Filter valueFilter;
 
-  public TestManagedSeriesReader(BatchData batchData, Filter timeFilter, Filter valueFilter) {
+  public TestManagedSeriesReader(BatchData batchData) {
     this.batchData = batchData;
-    this.timeFilter = timeFilter;
-    this.valueFilter = valueFilter;
   }
 
   @Override
@@ -86,36 +81,6 @@ public class TestManagedSeriesReader implements ManagedSeriesReader, IReaderByTi
     return rst;
   }
 
-  public boolean hasNext() {
-    if (pairCache != null) {
-      return true;
-    }
-    fetchPair();
-    return pairCache != null;
-  }
-
-  private void fetchPair() {
-    while (batchData.hasCurrent()) {
-      long time = batchData.currentTime();
-      Object value = batchData.currentValue();
-      if ((timeFilter == null || timeFilter.satisfy(time, value))
-          && (valueFilter == null || valueFilter.satisfy(time, value))) {
-        pairCache = new TimeValuePair(time, TsPrimitiveType.getByType(batchData.getDataType(), value));
-        batchData.next();
-        break;
-      }
-      batchData.next();
-    }
-  }
-
-  public TimeValuePair next() {
-    if (!hasNext()) {
-      throw new NoSuchElementException();
-    }
-    TimeValuePair ret = pairCache;
-    pairCache = null;
-    return ret;
-  }
 
   @Override
   public boolean hasNextBatch() {

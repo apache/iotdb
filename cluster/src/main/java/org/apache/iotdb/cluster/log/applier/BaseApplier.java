@@ -21,11 +21,12 @@ package org.apache.iotdb.cluster.log.applier;
 
 import java.util.List;
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -34,14 +35,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * BaseApplier use QueryProcessExecutor to execute PhysicalPlans.
+ * BaseApplier use PlanExecutor to execute PhysicalPlans.
  */
 abstract class BaseApplier implements LogApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(BaseApplier.class);
 
   private MetaGroupMember metaGroupMember;
-  private QueryProcessExecutor queryExecutor;
+  private PlanExecutor queryExecutor;
 
   BaseApplier(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
@@ -71,7 +72,7 @@ abstract class BaseApplier implements LogApplier {
           for (MeasurementSchema schema : schemas) {
             registerMeasurement(schema);
           }
-        } catch (StorageGroupNotSetException e1) {
+        } catch (MetadataException e1) {
           throw new QueryProcessException(e1);
         }
         getQueryExecutor().processNonQuery(plan);
@@ -85,9 +86,9 @@ abstract class BaseApplier implements LogApplier {
     SchemaUtils.registerTimeseries(schema);
   }
 
-  protected QueryProcessExecutor getQueryExecutor() {
+  protected PlanExecutor getQueryExecutor() throws QueryProcessException {
     if (queryExecutor == null) {
-      queryExecutor = new QueryProcessExecutor();
+      queryExecutor = new ClusterPlanExecutor(metaGroupMember);
     }
     return queryExecutor;
   }

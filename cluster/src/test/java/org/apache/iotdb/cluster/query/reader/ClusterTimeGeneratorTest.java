@@ -30,7 +30,7 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
+import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -44,11 +44,12 @@ import org.junit.Test;
 public class ClusterTimeGeneratorTest {
 
   private MetaGroupMember metaGroupMember = new TestMetaGroupMember() {
+
     @Override
-    public ManagedSeriesReader getSeriesReader(Path path, TSDataType dataType, Filter filter,
-        QueryContext context, boolean pushDownUnseq, boolean withValueFilter) {
+    public ManagedSeriesReader getSeriesReader(Path path, TSDataType dataType, Filter timeFilter,
+        Filter valueFilter, QueryContext context) {
       BatchData batchData = TestUtils.genBatchData(dataType, 0, 100);
-      return new TestManagedSeriesReader(batchData, filter);
+      return new TestManagedSeriesReader(batchData);
     }
 
     @Override
@@ -56,7 +57,6 @@ public class ClusterTimeGeneratorTest {
       return TSDataType.DOUBLE;
     }
   };
-  private ClusterTimeGenerator timeGenerator;
 
   @Test
   public void test() throws StorageEngineException, IOException {
@@ -67,7 +67,8 @@ public class ClusterTimeGeneratorTest {
                 ValueFilter.gtEq(3.0)),
             new SingleSeriesExpression(new Path(TestUtils.getTestSeries(1, 1)),
                 ValueFilter.ltEq(8.0)));
-    timeGenerator = new ClusterTimeGenerator(expression, context, metaGroupMember);
+    ClusterTimeGenerator timeGenerator = new ClusterTimeGenerator(expression, context,
+        metaGroupMember);
     for (int i = 3; i < 8; i++) {
       assertTrue(timeGenerator.hasNext());
       assertEquals(i, timeGenerator.next());

@@ -32,9 +32,10 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -56,17 +57,18 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
 
   @Test
   public void test() throws StorageEngineException, IOException {
-    QueryPlan queryPlan = new QueryPlan();
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPaths(pathList);
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
 
-    QueryDataSet dataSet = clusterQueryRouter.query(queryPlan, context);
+    QueryDataSet dataSet = clusterQueryRouter.rawDataQuery(queryPlan, context);
     checkDataset(dataSet, 0, 100);
   }
 
   @Test
-  public void testAggregation() throws StorageEngineException, IOException {
+  public void testAggregation()
+      throws StorageEngineException, IOException, QueryProcessException, QueryFilterOptimizationException {
     AggregationPlan plan = new AggregationPlan();
     List<Path> paths = Arrays.asList(
         new Path(TestUtils.getTestSeries(0, 0)),
@@ -86,7 +88,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
     plan.setDeduplicatedAggregations(aggregations);
 
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
-    QueryDataSet queryDataSet = clusterQueryRouter.query(plan, context);
+    QueryDataSet queryDataSet = clusterQueryRouter.aggregate(plan, context);
     assertTrue(queryDataSet.hasNext());
     RowRecord record = queryDataSet.next();
     List<Field> fields = record.getFields();

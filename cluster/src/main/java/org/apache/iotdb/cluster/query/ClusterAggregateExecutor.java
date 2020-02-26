@@ -40,7 +40,7 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
     for (int i : pathToAggrIndexes.getValue()) {
       aggregationNames.add(aggregations.get(i));
     }
-    return metaMember.getAggregateResult(seriesPath, aggregationNames, tsDataType, timeFilter);
+    return metaMember.getAggregateResult(seriesPath, aggregationNames, tsDataType, timeFilter, context);
   }
 
   @Override

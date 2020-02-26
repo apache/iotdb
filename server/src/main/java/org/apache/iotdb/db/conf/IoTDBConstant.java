@@ -20,8 +20,6 @@ package org.apache.iotdb.db.conf;
 
 public class IoTDBConstant {
 
-  public static final String PATH_WILDCARD = "*";
-
   private IoTDBConstant() {
   }
 

@@ -345,7 +345,6 @@ public class SerializeUtils {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
-      dataOutputStream.writeInt(longs.length);
       for (long aLong : longs) {
         dataOutputStream.writeLong(aLong);
       }
@@ -356,7 +355,7 @@ public class SerializeUtils {
   }
 
   public static long[] deserializeLongs(ByteBuffer buffer) {
-    int size = buffer.getInt();
+    int size = buffer.limit() / Long.BYTES;
     long[] ret = new long[size];
     for (int i = 0; i < size; i++) {
       ret[i] = buffer.getLong();

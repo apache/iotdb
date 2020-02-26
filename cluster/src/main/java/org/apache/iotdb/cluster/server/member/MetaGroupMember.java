@@ -118,7 +118,6 @@ import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
@@ -937,10 +936,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     Map<PhysicalPlan, PartitionGroup> planGroupMap = null;
     try {
       planGroupMap = partitionTable.splitAndRoutePlan(plan);
-    } catch (StorageGroupNotSetException e) {
-      logger.debug("Storage group is not found for plan {}", plan);
-    } catch (IllegalPathException e) {
-      logger.error("Rceive an IllegalPath in plan {}", plan, e);
+    } catch (MetadataException e) {
+      logger.debug("Cannot route plan {}", plan, e);
     }
     // the storage group is not found locally, forward it to the leader
     if (planGroupMap == null || planGroupMap.isEmpty()) {
@@ -1011,7 +1008,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * Pull the all timeseries schemas of a given prefixPath from a remote node.
    */
   public List<MeasurementSchema> pullTimeSeriesSchemas(String prefixPath)
-      throws StorageGroupNotSetException {
+      throws MetadataException {
     logger.debug("{}: Pulling timeseries schemas of {}", name, prefixPath);
     PartitionGroup partitionGroup;
     try {
@@ -1176,7 +1173,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   public List<AggregateResult> getAggregateResult(Path path, List<String> aggregations,
-      TSDataType dataType, Filter timeFilter) throws StorageEngineException {
+      TSDataType dataType, Filter timeFilter,
+      QueryContext context) throws StorageEngineException {
     // make sure the partition table is new
     syncLeader();
     List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
@@ -1188,7 +1186,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     // get the aggregation result of each group and merge them
     for (PartitionGroup partitionGroup : partitionGroups) {
       List<AggregateResult> groupResult = getAggregateResult(path, aggregations, dataType,
-          timeFilter, partitionGroup);
+          timeFilter, partitionGroup, context);
       if (results == null) {
         results = groupResult;
       } else {
@@ -1201,12 +1199,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   private List<AggregateResult> getAggregateResult(Path path, List<String> aggregations,
-      TSDataType dataType, Filter timeFilter, PartitionGroup partitionGroup) throws StorageEngineException {
+      TSDataType dataType, Filter timeFilter, PartitionGroup partitionGroup,
+      QueryContext context) throws StorageEngineException {
     AtomicReference<List<ByteBuffer>> resultReference = new AtomicReference<>();
     GetAggrResultRequest request = new GetAggrResultRequest();
     request.setPath(path.getFullPath());
     request.setAggregations(aggregations);
     request.setDataTypeOrdinal(dataType.ordinal());
+    request.setQueryId(context.getQueryId());
+    request.setRequestor(thisNode);
     if (timeFilter != null) {
       request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
     }
@@ -1225,8 +1226,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         if (resultBuffers != null) {
           List<AggregateResult> results = new ArrayList<>(resultBuffers.size());
           for (ByteBuffer resultBuffer : resultBuffers) {
-            // TODO-Cluster deserialize results
+            AggregateResult result = AggregateResult.deserializeFrom(resultBuffer);
+            results.add(result);
           }
+          ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
           return results;
         }
       } catch (TException | InterruptedException | IOException e) {

@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.query;
 import java.io.IOException;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -37,7 +38,10 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
 
   @Test
   public void testNoFilter() throws IOException, StorageEngineException {
-    queryExecutor = new ClusterDataQueryExecutor(pathList, dataTypes, null, localMetaGroupMember);
+    RawDataQueryPlan plan = new RawDataQueryPlan();
+    plan.setDeduplicatedPaths(pathList);
+    plan.setDeduplicatedDataTypes(dataTypes);
+    queryExecutor = new ClusterDataQueryExecutor(plan, localMetaGroupMember);
     QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(
         new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
     checkDataset(dataSet, 0, 100);
@@ -47,8 +51,11 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
   public void testFilter() throws IOException, StorageEngineException {
     IExpression expression = new SingleSeriesExpression(new Path(TestUtils.getTestSeries(0, 0)),
         ValueFilter.gtEq(50.0));
-    queryExecutor = new ClusterDataQueryExecutor(pathList, dataTypes, expression,
-        localMetaGroupMember);
+    RawDataQueryPlan plan = new RawDataQueryPlan();
+    plan.setDeduplicatedPaths(pathList);
+    plan.setDeduplicatedDataTypes(dataTypes);
+    plan.setExpression(expression);
+    queryExecutor = new ClusterDataQueryExecutor(plan, localMetaGroupMember);
     QueryDataSet dataSet = queryExecutor.executeWithValueFilter(
         new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
     checkDataset(dataSet, 50, 50);

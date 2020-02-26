@@ -54,6 +54,7 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
@@ -78,10 +79,14 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.executor.AggregationExecutor;
+import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
@@ -836,6 +841,55 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @TestOnly
   public void setMetaGroupMember(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
+  }
+
+  @Override
+  public void getNodeList(Node header, String path, int nodeLevel,
+      AsyncMethodCallback<List<String>> resultHandler) {
+    if (!syncLeader()) {
+      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+      return;
+    }
+    try {
+      resultHandler.onComplete(MManager.getInstance().getNodesList(path, nodeLevel));
+    } catch (MetadataException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void getAggrResult(GetAggrResultRequest request,
+      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+    List<String> aggregations = request.getAggregations();
+    TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
+    String path = request.getPath();
+    Filter timeFilter = null;
+    if (request.isSetTimeFilterBytes()) {
+      timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
+    }
+    RemoteQueryContext queryContext = queryManager
+        .getQueryContext(request.getRequestor(), request.queryId);
+    List<AggregateResult> results = new ArrayList<>();
+    for (String aggregation : aggregations) {
+      results.add(AggregateResultFactory.getAggrResultByName(aggregation, dataType));
+    }
+    try {
+      AggregationExecutor.aggregateOneSeries(new Path(path), queryContext, timeFilter, dataType, results);
+    } catch (StorageEngineException | IOException | QueryProcessException e) {
+      resultHandler.onError(e);
+    }
+    List<ByteBuffer> resultBuffers = new ArrayList<>();
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    for (AggregateResult result : results) {
+      try {
+        result.serializeTo(byteArrayOutputStream);
+      } catch (IOException e) {
+        // ignore
+      }
+      resultBuffers.add(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+      byteArrayOutputStream.reset();
+    }
+    resultHandler.onComplete(resultBuffers);
   }
 }
 

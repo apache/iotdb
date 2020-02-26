@@ -46,7 +46,6 @@ import org.junit.Test;
 public class HeartBeatThreadTest {
 
   RaftMember member;
-  private HeartBeatThread heartBeatThread;
   TestLogManager logManager;
   Thread testThread;
   boolean respondToElection;
@@ -120,7 +119,7 @@ public class HeartBeatThreadTest {
   public void setUp() {
     logManager = new TestLogManager();
     member = getMember();
-    heartBeatThread = getHeartBeatThread(member);
+    HeartBeatThread heartBeatThread = getHeartBeatThread(member);
     testThread = new Thread(heartBeatThread);
     member.getTerm().set(10);
     logManager.setLastLogId(9);

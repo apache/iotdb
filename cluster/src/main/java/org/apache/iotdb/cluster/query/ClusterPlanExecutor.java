@@ -70,10 +70,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<String> getDevices(String path) {
-    // TODO-Cluster: enable meta queries
-    throw new UnsupportedOperationException("Not implemented");
-    //return metaGroupMember.getMatchedDevices(path);
+  protected List<String> getDevices(String path) throws MetadataException {
+    return metaGroupMember.getMatchedDevices(path);
   }
 
   @Override

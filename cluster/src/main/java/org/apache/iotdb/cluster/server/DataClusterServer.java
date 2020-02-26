@@ -37,8 +37,7 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
-import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderRequest;
-import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderResp;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -273,12 +272,12 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp,
+  public void fetchSingleSeriesByTimestamp(Node header, long readerId, ByteBuffer timeBuffer,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     DataGroupMember member = getDataMember(header, resultHandler,
-        "Fetch by timestamp:" + readerId + "@" + timestamp);
+        "Fetch by timestamp:" + readerId);
     if (member != null) {
-      member.fetchSingleSeriesByTimestamp(header, readerId, timestamp, resultHandler);
+      member.fetchSingleSeriesByTimestamp(header, readerId, timeBuffer, resultHandler);
     }
   }
 
@@ -385,29 +384,23 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void getAggregateReader(GetAggregateReaderRequest request,
-      AsyncMethodCallback<GetAggregateReaderResp> resultHandler) {
-    Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header, resultHandler, request);
-    if (member != null) {
-      member.getAggregateReader(request, resultHandler);
-    }
+  public void getAllDevices(Node header, String path,
+      AsyncMethodCallback<List<String>> resultHandler) {
+    DataGroupMember dataMember = getDataMember(header, resultHandler, "Get all devices");
+    dataMember.getAllDevices(header, path, resultHandler);
   }
 
   @Override
-  public void fetchPageHeader(Node header, long readerId,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
-    DataGroupMember member = getDataMember(header, resultHandler, "Fetch PageHeader of " + readerId);
-    if (member != null) {
-      member.fetchPageHeader(header, readerId, resultHandler);
-    }
+  public void getNodeList(Node header, String path, int nodeLevel,
+      AsyncMethodCallback<List<String>> resultHandler) {
+    DataGroupMember dataMember = getDataMember(header, resultHandler, "Get node list");
+    dataMember.getNodeList(header, path, nodeLevel, resultHandler);
   }
 
   @Override
-  public void skipPageData(Node header, long readerId, AsyncMethodCallback<Void> resultHandler) {
-    DataGroupMember member = getDataMember(header, resultHandler, "Skip page data of " + readerId);
-    if (member != null) {
-      member.skipPageData(header, readerId, resultHandler);
-    }
+  public void getAggrResult(GetAggrResultRequest request,
+      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+    DataGroupMember dataMember = getDataMember(request.getHeader(), resultHandler, request);
+    dataMember.getAggrResult(request, resultHandler);
   }
 }

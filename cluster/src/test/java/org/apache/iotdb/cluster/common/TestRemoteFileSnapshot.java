@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.common;
 
-import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;

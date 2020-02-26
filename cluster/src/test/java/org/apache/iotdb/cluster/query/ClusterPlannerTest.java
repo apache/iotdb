@@ -26,7 +26,7 @@ import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -49,7 +49,7 @@ public class ClusterPlannerTest extends BaseQueryTest {
     }
     String sql = String.format("SELECT %s FROM %s", String.join(",", measurements),
         TestUtils.getTestSg(0));
-    QueryPlan plan = (QueryPlan) parser.parseSQLToPhysicalPlan(sql);
+    RawDataQueryPlan plan = (RawDataQueryPlan) parser.parseSQLToPhysicalPlan(sql);
     assertEquals(pathList, plan.getDeduplicatedPaths());
     assertEquals(dataTypes, plan.getDeduplicatedDataTypes());
   }

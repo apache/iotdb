@@ -33,7 +33,7 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -43,7 +43,7 @@ public class MemberTest {
   MetaGroupMember testMetaMember;
   LogManager metaLogManager;
   PartitionTable partitionTable;
-  QueryProcessExecutor queryProcessExecutor;
+  PlanExecutor planExecutor;
 
   private List<String> prevUrls;
   PartitionGroup allNodes;
@@ -73,10 +73,10 @@ public class MemberTest {
     partitionTable = new SlotPartitionTable(allNodes, TestUtils.getNode(0), 100);
     EnvironmentUtils.envSetUp();
     for (int i = 0; i < 10; i++) {
-      MManager.getInstance().setStorageGroupToMTree(TestUtils.getTestSg(i));
+      MManager.getInstance().setStorageGroup(TestUtils.getTestSg(i));
       SchemaUtils.registerTimeseries(TestUtils.getTestSchema(0, i));
     }
-    queryProcessExecutor = new QueryProcessExecutor();
+    planExecutor = new PlanExecutor();
     testMetaMember.setPartitionTable(partitionTable);
   }
 

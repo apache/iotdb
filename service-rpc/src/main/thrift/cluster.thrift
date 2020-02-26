@@ -157,6 +157,9 @@ struct GetAggrResultRequest {
   2: required list<string> aggregations
   3: required int dataTypeOrdinal
   4: optional binary timeFilterBytes
+  5: required Node header
+  6: required long queryId
+  7: required Node requestor
 }
 
 service RaftService {

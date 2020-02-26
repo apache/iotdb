@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
@@ -75,7 +76,7 @@ public class ClusterMain {
       } else {
         logger.error("Unrecognized mode {}", mode);
       }
-    } catch (IOException | TTransportException | StartupException e) {
+    } catch (IOException | TTransportException | StartupException | QueryProcessException e) {
       logger.error("Fail to start meta server", e);
     }
   }

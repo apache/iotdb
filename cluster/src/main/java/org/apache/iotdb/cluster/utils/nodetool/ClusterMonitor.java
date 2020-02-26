@@ -28,14 +28,12 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,7 +74,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
     }
     try {
       return partitionTable.partitionByPathRangeTime(path, startTime, endTime);
-    } catch (StorageGroupNotSetException e) {
+    } catch (MetadataException e) {
       LOGGER.error("The storage group of path {} doesn't exist.", path, e);
       return new MultiKeyMap<>();
     }
@@ -90,7 +88,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
     }
     try {
       return partitionTable.partitionByPathTime(path, 0);
-    } catch (StorageGroupNotSetException e) {
+    } catch (MetadataException e) {
       LOGGER.error("The storage group of path {} doesn't exist.", path, e);
       return new PartitionGroup();
     }

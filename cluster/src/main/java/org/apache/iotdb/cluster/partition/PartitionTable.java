@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -40,7 +41,6 @@ import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
@@ -147,15 +147,13 @@ public interface PartitionTable {
   // TODO-Cluster: abstract these as QueryRouter
   //==============================================================================================//
   default PartitionGroup routePlan(PhysicalPlan plan)
-      throws UnsupportedPlanException, StorageGroupNotSetException {
+      throws UnsupportedPlanException, MetadataException {
     if (plan instanceof InsertPlan) {
       return routePlan((InsertPlan) plan);
     } else if (plan instanceof CreateTimeSeriesPlan) {
       return routePlan((CreateTimeSeriesPlan) plan);
     } else if (plan instanceof ShowChildPathsPlan) {
       return routePlan((ShowChildPathsPlan) plan);
-    } else if (plan instanceof PropertyPlan) {
-      return routePlan((PropertyPlan) plan);
     }
     //the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalPlan(plan)) {
@@ -170,33 +168,27 @@ public interface PartitionTable {
   }
 
   default PartitionGroup routePlan(InsertPlan plan)
-      throws StorageGroupNotSetException {
+      throws MetadataException {
     return partitionByPathTime(plan.getDeviceId(), plan.getTime());
   }
 
   default PartitionGroup routePlan(CreateTimeSeriesPlan plan)
-      throws StorageGroupNotSetException {
+      throws MetadataException {
     return partitionByPathTime(plan.getPath().getFullPath(), 0);
   }
 
   default PartitionGroup routePlan(ShowChildPathsPlan plan) {
     try {
-      return route(getMManager().getStorageGroupNameByPath(plan.getPath().getFullPath()), 0);
-    } catch (StorageGroupNotSetException e) {
+      return route(getMManager().getStorageGroupName(plan.getPath().getFullPath()), 0);
+    } catch (MetadataException e) {
       //the path is too short to have no a storage group name, e.g., "root"
       //so we can do it locally.
       return getLocalGroups().get(0);
     }
   }
 
-  default PartitionGroup routePlan(PropertyPlan plan)
-      throws UnsupportedPlanException {
-    logger.error("PropertyPlan is not implemented");
-    throw new UnsupportedPlanException(plan);
-  }
-
   default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(PhysicalPlan plan)
-      throws UnsupportedPlanException, StorageGroupNotSetException , IllegalPathException {
+      throws UnsupportedPlanException, MetadataException {
     if (plan instanceof BatchInsertPlan) {
       return splitAndRoutePlan((BatchInsertPlan) plan);
     } else if (plan instanceof ShowTimeSeriesPlan) {
@@ -227,21 +219,21 @@ public interface PartitionTable {
   }
 
   default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertPlan plan)
-      throws StorageGroupNotSetException {
+      throws MetadataException {
     PartitionGroup partitionGroup = partitionByPathTime(plan.getDeviceId(), plan.getTime());
     return Collections.singletonMap(plan, partitionGroup);
   }
 
   default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CreateTimeSeriesPlan plan)
-      throws StorageGroupNotSetException {
+      throws MetadataException {
     PartitionGroup partitionGroup = partitionByPathTime(plan.getPath().getFullPath(), 0);
     return Collections.singletonMap(plan, partitionGroup);
   }
 
   @SuppressWarnings("SuspiciousSystemArraycopy")
   default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(BatchInsertPlan plan)
-      throws StorageGroupNotSetException {
-    String storageGroup = getMManager().getStorageGroupNameByPath(plan.getDeviceId());
+      throws MetadataException {
+    String storageGroup = getMManager().getStorageGroupName(plan.getDeviceId());
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
     long[] times = plan.getTimes();
     if(times.length == 0) {
@@ -412,8 +404,8 @@ public interface PartitionTable {
    * @throws StorageGroupNotSetException
    */
   default PartitionGroup partitionByPathTime(String path, long timestamp)
-      throws StorageGroupNotSetException {
-    String storageGroup = getMManager().getStorageGroupNameByPath(path);
+      throws MetadataException {
+    String storageGroup = getMManager().getStorageGroupName(path);
     return this.route(storageGroup, timestamp);
   }
 
@@ -424,9 +416,9 @@ public interface PartitionTable {
    * @return (startTime, endTime) - partitionGroup pair
    */
   default  MultiKeyMap<Long, PartitionGroup> partitionByPathRangeTime(String path,
-      long startTime, long endTime) throws StorageGroupNotSetException {
+      long startTime, long endTime) throws MetadataException {
     MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = new MultiKeyMap<>();
-    String storageGroup = getMManager().getStorageGroupNameByPath(path);
+    String storageGroup = getMManager().getStorageGroupName(path);
     while (startTime <= endTime) {
       long nextTime = (startTime / PARTITION_INTERVAL + 1) * PARTITION_INTERVAL; //FIXME considering the time unit
       timeRangeMapRaftGroup.put(startTime, Math.min(nextTime - 1, endTime),

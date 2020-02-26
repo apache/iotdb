@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.cluster.server;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -36,6 +35,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -55,7 +55,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   private IoTDB ioTDB;
   private RegisterManager registerManager = new RegisterManager();
 
-  public MetaClusterServer() throws IOException {
+  public MetaClusterServer() throws QueryProcessException {
     super();
     member = new MetaGroupMember(protocolFactory, thisNode);
     // TODO-Cluster#355: check the initial cluster size and refuse to start when the size <

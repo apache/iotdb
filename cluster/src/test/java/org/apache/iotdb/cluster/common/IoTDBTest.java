@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.common;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -29,9 +30,11 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -52,8 +55,7 @@ import org.junit.Before;
 public class IoTDBTest {
 
   private static IoTDB daemon = IoTDB.getInstance();
-  private QueryProcessExecutor queryProcessExecutor;
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private PlanExecutor planExecutor;
   private boolean prevEnableAutoSchema;
 
   @Before
@@ -63,7 +65,7 @@ public class IoTDBTest {
     EnvironmentUtils.closeStatMonitor();
     daemon.active();
     EnvironmentUtils.envSetUp();
-    queryProcessExecutor = new QueryProcessExecutor();
+    planExecutor = new PlanExecutor();
     prepareSchema();
     prepareData(0, 0, 100);
   }
@@ -99,37 +101,33 @@ public class IoTDBTest {
       measurements[i] = TestUtils.getTestMeasurement(i);
     }
     TSDataType[] dataTypes = new TSDataType[10];
-    for (int i = 0; i < dataTypes.length; i++) {
-      dataTypes[i] = TSDataType.DOUBLE;
-    }
+    Arrays.fill(dataTypes, TSDataType.DOUBLE);
     insertPlan.setMeasurements(measurements);
     insertPlan.setDataTypes(dataTypes);
 
     String[] values = new String[10];
     for (int i = timeOffset; i < timeOffset + size; i++) {
       insertPlan.setTime(i);
-      for (int j = 0; j < values.length; j++) {
-        values[j] = String.valueOf(i * 1.0);
-      }
+      Arrays.fill(values, String.valueOf(i * 1.0));
       insertPlan.setValues(values);
-      queryProcessExecutor.insert(insertPlan);
+      planExecutor.insert(insertPlan);
     }
   }
 
   protected void setStorageGroup(String storageGroupName) throws QueryProcessException {
-    queryProcessExecutor.setStorageGroup(new SetStorageGroupPlan(new Path(storageGroupName)));
+    planExecutor.setStorageGroup(new SetStorageGroupPlan(new Path(storageGroupName)));
   }
 
   private void createTimeSeries(int sgNum, int seriesNum) throws QueryProcessException {
     MeasurementSchema schema = TestUtils.getTestSchema(sgNum, seriesNum);
-    queryProcessExecutor.processNonQuery(new CreateTimeSeriesPlan(new Path(schema.getMeasurementId()),
+    planExecutor.processNonQuery(new CreateTimeSeriesPlan(new Path(schema.getMeasurementId()),
         schema.getType(), schema.getEncodingType(), schema.getCompressor(), schema.getProps()));
   }
 
   protected QueryDataSet query(List<String> pathStrs, IExpression expression)
-      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException, SQLException {
+      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException {
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
-    QueryPlan queryPlan = new QueryPlan();
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setExpression(expression);
     List<Path> paths = new ArrayList<>();
     for (String pathStr : pathStrs) {
@@ -138,12 +136,12 @@ public class IoTDBTest {
     queryPlan.setDeduplicatedPaths(paths);
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : paths) {
-      dataTypes.add(queryProcessExecutor.getSeriesType(path));
+      dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
     }
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setExpression(expression);
 
-    return queryProcessExecutor.processQuery(queryPlan, context);
+    return planExecutor.processQuery(queryPlan, context);
   }
 
 }

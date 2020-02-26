@@ -47,7 +47,4 @@ public class TestClient extends AsyncClient {
     return serialNum;
   }
 
-  public void setSerialNum(int serialNum) {
-    this.serialNum = serialNum;
-  }
 }

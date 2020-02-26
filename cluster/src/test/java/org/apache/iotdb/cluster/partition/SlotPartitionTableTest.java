@@ -48,7 +48,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
-import org.apache.iotdb.db.qp.logical.sys.PropertyOperator.PropertyType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
@@ -56,16 +55,14 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
-import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
@@ -133,13 +130,13 @@ public class SlotPartitionTableTest {
   private void initMockMManager(int id, MManager mmanager, String[] storageGroups, List<String> ownedSGs)
       throws MetadataException {
     for (String sg : storageGroups) {
-      mmanager.setStorageGroupToMTree(sg);
+      mmanager.setStorageGroup(sg);
     }
     for (String sg : ownedSGs) {
       //register 4 series;
       for (int i = 0; i < 4; i ++) {
         try {
-          mmanager.addPathToMTree(String.format(sg + ".ld.l1.d%d.s%d", i/2, i%2), "INT32", "RLE");
+          mmanager.createTimeseries(String.format(sg + ".ld.l1.d%d.s%d", i/2, i%2), "INT32", "RLE");
         } catch (Exception e) {
           e.printStackTrace();
         }
@@ -299,7 +296,7 @@ public class SlotPartitionTableTest {
     assertTrue(PartitionUtils.isLocalPlan(fillQueryPlan));
     PhysicalPlan groupByPlan = new GroupByPlan();
     assertTrue(PartitionUtils.isLocalPlan(groupByPlan));
-    PhysicalPlan queryPlan = new QueryPlan();
+    PhysicalPlan queryPlan = new RawDataQueryPlan();
     assertTrue(PartitionUtils.isLocalPlan(queryPlan));
     PhysicalPlan updatePlan = new UpdatePlan();
     try {
@@ -308,6 +305,8 @@ public class SlotPartitionTableTest {
       //success
     } catch (StorageGroupNotSetException e) {
       fail(e.getMessage());
+    } catch (MetadataException e) {
+      e.printStackTrace();
     }
     try {
       PhysicalPlan authorPlan = new AuthorPlan(AuthorType.CREATE_ROLE, "test", "test", "test", "test", new String[]{},  new Path("root.sg.l2.l3.l4.28.ld.l1.d0"));
@@ -322,14 +321,7 @@ public class SlotPartitionTableTest {
     assertTrue(PartitionUtils.isGlobalPlan(loadConfigPlan));
     PhysicalPlan operateFilePlan = new OperateFilePlan(new File(""), OperatorType.TABLESCAN);
     assertTrue(PartitionUtils.isLocalPlan(operateFilePlan));
-    PhysicalPlan propertyPlan = new PropertyPlan(PropertyType.ADD_TREE, new Path(""), new Path(""));
-    try {
-      localTable.routePlan(propertyPlan);
-    } catch (UnsupportedPlanException e) {
-      //success
-    } catch (StorageGroupNotSetException e) {
-      fail(e.getMessage());
-    }
+
     PhysicalPlan setStorageGroupPlan = new SetStorageGroupPlan();
     assertTrue(PartitionUtils.isGlobalPlan(setStorageGroupPlan));
     PhysicalPlan setTTLPlan = new SetTTLPlan("");

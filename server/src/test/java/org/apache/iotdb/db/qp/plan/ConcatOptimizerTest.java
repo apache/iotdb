@@ -48,7 +48,7 @@ public class ConcatOptimizerTest {
   private Planner processor;
 
   @Before
-  public void before() throws MetadataException, PathException {
+  public void before() throws MetadataException {
     processor = new Planner();
     MManager.getInstance().init();
     MManager.getInstance().setStorageGroup("root.laptop");

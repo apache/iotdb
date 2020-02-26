@@ -79,7 +79,7 @@ public class HeartBeatHandlerTest {
     response.setTerm(10);
     synchronized (metaGroupMember.getTerm()) {
       new Thread(() -> handler.onComplete(response)).start();
-      metaGroupMember.getTerm().wait(1 * 1000);
+      metaGroupMember.getTerm().wait(1000);
     }
     assertEquals(10, metaGroupMember.getTerm().get());
   }

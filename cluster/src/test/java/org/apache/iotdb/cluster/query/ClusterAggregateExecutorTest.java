@@ -10,6 +10,7 @@ import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -41,7 +42,7 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
 
   @Test
   public void testNoFilter()
-      throws MetadataException, QueryProcessException, StorageEngineException, IOException {
+      throws QueryProcessException, StorageEngineException, IOException {
     AggregationPlan plan = new AggregationPlan();
     List<Path> paths = Arrays.asList(
         new Path(TestUtils.getTestSeries(0, 0)),
@@ -76,7 +77,7 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
 
   @Test
   public void testFilter()
-      throws MetadataException, StorageEngineException, IOException {
+      throws StorageEngineException, IOException, PathException {
     AggregationPlan plan = new AggregationPlan();
     List<Path> paths = Arrays.asList(
         new Path(TestUtils.getTestSeries(0, 0)),

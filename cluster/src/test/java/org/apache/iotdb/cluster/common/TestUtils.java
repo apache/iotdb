@@ -30,12 +30,12 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -201,24 +201,24 @@ public class TestUtils {
       insertPlan.setTime(i);
       insertPlan.setValues(new String[] {String.valueOf(i), String.valueOf(i), String.valueOf(i),
           String.valueOf(i), String.valueOf(i)});
-      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
-      queryProcessExecutor.processNonQuery(insertPlan);
+      PlanExecutor planExecutor = new PlanExecutor();
+      planExecutor.processNonQuery(insertPlan);
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new String[] {String.valueOf(i), String.valueOf(i), String.valueOf(i),
           String.valueOf(i), String.valueOf(i)});
-      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
-      queryProcessExecutor.processNonQuery(insertPlan);
+      PlanExecutor planExecutor = new PlanExecutor();
+      planExecutor.processNonQuery(insertPlan);
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
     for (int i = 10; i < 20; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new String[] {String.valueOf(i), String.valueOf(i), String.valueOf(i),
           String.valueOf(i), String.valueOf(i)});
-      QueryProcessExecutor queryProcessExecutor = new QueryProcessExecutor();
-      queryProcessExecutor.processNonQuery(insertPlan);
+      PlanExecutor planExecutor = new PlanExecutor();
+      planExecutor.processNonQuery(insertPlan);
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
   }

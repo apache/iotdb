@@ -37,7 +37,6 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.MetricsService;
@@ -65,7 +64,6 @@ public class EnvironmentUtils {
   private static DirectoryManager directoryManager = DirectoryManager.getInstance();
 
   private static long testQueryId = 1;
-  private static QueryContext testQueryContext = new QueryContext(testQueryId);
 
   private static long oldTsFileThreshold = config.getTsFileSizeThreshold();
 
@@ -171,7 +169,6 @@ public class EnvironmentUtils {
     FlushManager.getInstance().start();
     MergeManager.getINSTANCE().start();
     testQueryId = QueryResourceManager.getInstance().assignQueryId(true);
-    testQueryContext = new QueryContext(testQueryId);
   }
 
   private static void createAllDir() {

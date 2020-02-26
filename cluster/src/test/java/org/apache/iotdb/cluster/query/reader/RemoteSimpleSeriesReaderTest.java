@@ -33,8 +33,8 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
@@ -76,26 +76,20 @@ public class RemoteSimpleSeriesReaderTest {
       }
     };
     reader = new RemoteSimpleSeriesReader(0, TestUtils.getNode(1), TestUtils.getNode(0),
-        metaGroupMember);
+        metaGroupMember, TSDataType.DOUBLE);
   }
 
-  @Test
-  public void testBatch() throws IOException {
-    assertTrue(reader.hasNextBatch());
-    assertTrue(TestUtils.batchEquals(batchData, reader.nextBatch()));
-    assertFalse(reader.hasNextBatch());
-  }
 
   @Test
   public void testSingle() throws IOException {
     for (int i = 0; i < 100; i++) {
-      assertTrue(reader.hasNext());
-      TimeValuePair curr = reader.current();
-      TimeValuePair pair = reader.next();
+      assertTrue(reader.hasNextTimeValuePair());
+      TimeValuePair curr = reader.currentTimeValuePair();
+      TimeValuePair pair = reader.nextTimeValuePair();
       assertEquals(pair, curr);
       assertEquals(i, pair.getTimestamp());
       assertEquals(i * 1.0, pair.getValue().getDouble(), 0.00001);
     }
-    assertFalse(reader.hasNext());
+    assertFalse(reader.hasNextTimeValuePair());
   }
 }

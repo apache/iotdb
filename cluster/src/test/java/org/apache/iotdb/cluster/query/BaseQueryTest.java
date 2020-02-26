@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.xml.crypto.Data;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestDataClient;
@@ -41,8 +40,6 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
-import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderRequest;
-import org.apache.iotdb.cluster.rpc.thrift.GetAggregateReaderResp;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
@@ -52,18 +49,16 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
@@ -80,7 +75,7 @@ public class BaseQueryTest {
   Map<Node, MetaGroupMember> metaGroupMemberMap;
   List<Path> pathList;
   List<TSDataType> dataTypes;
-  IQueryProcessExecutor queryProcessExecutor;
+  PlanExecutor planExecutor;
   PartitionTable partitionTable;
   List<Node> allNodes;
 
@@ -104,28 +99,14 @@ public class BaseQueryTest {
       dataTypes.add(TSDataType.DOUBLE);
     }
 
-    queryProcessExecutor = new QueryProcessExecutor() {
-      @Override
-      public List<String> getAllMatchedPaths(String originPath) throws MetadataException {
-        return MManager.getInstance().getPaths(originPath);
-      }
-
-      @Override
-      public TSDataType getSeriesType(Path path) {
-        try {
-          return localMetaGroupMember.getSeriesType(path.getFullPath());
-        } catch (MetadataException e) {
-          return null;
-        }
-      }
-    };
+    planExecutor = new PlanExecutor();
 
     MManager.getInstance().init();
     for (int i = 0; i < 10; i++) {
       try {
-        MManager.getInstance().setStorageGroupToMTree(TestUtils.getTestSg(i));
+        MManager.getInstance().setStorageGroup(TestUtils.getTestSg(i));
         MeasurementSchema schema = TestUtils.getTestSchema(0, i);
-        MManager.getInstance().addPathToMTree(schema.getMeasurementId(), schema.getType(),
+        MManager.getInstance().createTimeseries(schema.getMeasurementId(), schema.getType(),
             schema.getEncodingType(), schema.getCompressor(), schema.getProps());
       } catch (PathAlreadyExistException e) {
         // ignore
@@ -167,31 +148,31 @@ public class BaseQueryTest {
       }
 
       @Override
-      public ManagedSeriesReader getSeriesReader(Path path, TSDataType dataType, Filter filter,
-          QueryContext context, boolean pushDownUnseq, boolean withValueFilter) {
+      public ManagedSeriesReader getSeriesReader(Path path, TSDataType dataType, Filter timeFilter,
+          Filter valueFilter, QueryContext context) {
         int pathIndex = pathList.indexOf(path);
         if (pathIndex == -1) {
           return null;
         }
         return new TestManagedSeriesReader(TestUtils.genBatchData(dataTypes.get(pathIndex), 0,
-            100), filter);
+            100));
       }
 
       @Override
-      public IReaderByTimestamp getReaderByTimestamp(Path path, QueryContext context) {
+      public IReaderByTimestamp getReaderByTimestamp(Path path, TSDataType dataType,
+          QueryContext context) {
         for (int i = 0; i < pathList.size(); i++) {
           if (pathList.get(i).equals(path)) {
             return new TestManagedSeriesReader(TestUtils.genBatchData(dataTypes.get(i), 0,
-                100), null);
+                100));
           }
         }
         return null;
       }
 
       @Override
-      public List<String> getMatchedPaths(String storageGroupName, String pathPattern)
-          throws MetadataException {
-        return MManager.getInstance().getPaths(pathPattern);
+      public List<String> getMatchedPaths(String pathPattern) throws MetadataException {
+        return MManager.getInstance().getAllTimeseriesName(pathPattern);
       }
 
       @Override
@@ -217,25 +198,6 @@ public class BaseQueryTest {
       @Override
       public DataClient getDataClient(Node node) throws IOException {
         return new TestDataClient(node) {
-          @Override
-          public void getAggregateReader(GetAggregateReaderRequest request,
-              AsyncMethodCallback<GetAggregateReaderResp> resultHandler) {
-            new Thread(() -> getDataGroupMember(request.getHeader()).getAggregateReader(request,
-                resultHandler)).start();
-          }
-
-          @Override
-          public void fetchPageHeader(Node header, long readerId,
-              AsyncMethodCallback<ByteBuffer> resultHandler) {
-            new Thread(() -> getDataGroupMember(header).fetchPageHeader(header, readerId,
-                resultHandler)).start();
-          }
-
-          @Override
-          public void skipPageData(Node header, long readerId,
-              AsyncMethodCallback<Void> resultHandler) {
-            new Thread(() -> getDataGroupMember(header).skipPageData(header, readerId, resultHandler)).start();
-          }
 
           @Override
           public void fetchSingleSeries(Node header, long readerId,

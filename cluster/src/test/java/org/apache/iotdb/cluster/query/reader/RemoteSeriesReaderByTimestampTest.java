@@ -45,27 +45,38 @@ public class RemoteSeriesReaderByTimestampTest {
     public DataClient getDataClient(Node node) throws IOException {
       return new DataClient(null, null, node, null) {
         @Override
-        public void fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp,
+        public void fetchSingleSeriesByTimestamp(Node header, long readerId, ByteBuffer timeBytes,
             AsyncMethodCallback<ByteBuffer> resultHandler) {
           new Thread(() -> {
-            while (batchData.hasCurrent()) {
-              long time = batchData.currentTime();
-              Object value = batchData.currentValue();
-              if (time == timestamp) {
-                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-                SerializeUtils.serializeObject(value, dataOutputStream);
-                resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-                batchData.next();
-                return;
-              } else if (time > timestamp) {
-                resultHandler.onComplete(ByteBuffer.allocate(0));
-                break;
+            try {
+              long[] timestamps = SerializeUtils.deserializeLongs(timeBytes);
+              ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+              DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+              dataOutputStream.writeInt(timestamps.length);
+              for (long timestamp : timestamps) {
+                boolean isNull = true;
+                while (batchData.hasCurrent()) {
+                  long time = batchData.currentTime();
+                  Object value = batchData.currentValue();
+                  if (time == timestamp) {
+                    SerializeUtils.serializeObject(value, dataOutputStream);
+                    batchData.next();
+                    isNull = false;
+                    break;
+                  } else if (time > timestamp) {
+                    break;
+                  }
+                  // time < timestamp, continue
+                  batchData.next();
+                }
+                if (isNull) {
+                  SerializeUtils.serializeObject(null, dataOutputStream);
+                }
               }
-              // time < timestamp, continue
-              batchData.next();
+              resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+            } catch (IOException e) {
+              resultHandler.onError(e);
             }
-            resultHandler.onComplete(ByteBuffer.allocate(0));
           }).start();
         }
       };

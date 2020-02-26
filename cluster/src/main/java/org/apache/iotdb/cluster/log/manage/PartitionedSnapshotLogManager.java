@@ -33,6 +33,8 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,7 +84,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
     // TODO-Cluster#349: the collection is re-collected each time to prevent inconsistency when some of
     //  them are removed during two snapshots. Incremental addition or removal may be used to
     //  optimize
-    List<MNode> allSgNodes = MManager.getInstance().getAllStorageGroups();
+    List<StorageGroupMNode> allSgNodes = MManager.getInstance().getAllStorageGroupNodes();
     for (MNode sgNode : allSgNodes) {
       String storageGroupName = sgNode.getFullPath();
       int slot = PartitionUtils.calculateStorageGroupSlot(storageGroupName, 0,

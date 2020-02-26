@@ -29,7 +29,6 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
@@ -85,7 +84,7 @@ public class ClusterQueryManagerTest {
       }
 
       @Override
-      public Object[] getValuesInTimestamps(long[] timestamps) throws IOException {
+      public Object[] getValuesInTimestamps(long[] timestamps) {
         return new Object[0];
       }
     };
@@ -97,7 +96,7 @@ public class ClusterQueryManagerTest {
   public void testRegisterAggregateReader() {
     IAggregateReader reader = new IAggregateReader() {
       @Override
-      public boolean hasNextChunk() throws IOException {
+      public boolean hasNextChunk() {
         return false;
       }
 
@@ -117,17 +116,17 @@ public class ClusterQueryManagerTest {
       }
 
       @Override
-      public boolean hasNextPage() throws IOException {
+      public boolean hasNextPage() {
         return false;
       }
 
       @Override
-      public boolean canUseCurrentPageStatistics() throws IOException {
+      public boolean canUseCurrentPageStatistics() {
         return false;
       }
 
       @Override
-      public Statistics currentPageStatistics() throws IOException {
+      public Statistics currentPageStatistics() {
         return null;
       }
 
@@ -137,12 +136,12 @@ public class ClusterQueryManagerTest {
       }
 
       @Override
-      public boolean hasNextOverlappedPage() throws IOException {
+      public boolean hasNextOverlappedPage() {
         return false;
       }
 
       @Override
-      public BatchData nextOverlappedPage() throws IOException {
+      public BatchData nextOverlappedPage() {
         return null;
       }
     };
