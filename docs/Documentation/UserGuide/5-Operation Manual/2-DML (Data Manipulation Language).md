@@ -232,6 +232,33 @@ Then the system will use the time and value filtering condition in the WHERE cla
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116088-001e2780-0ac6-11ea-9a01-dc45271d1dad.png"></center>
 
+#### Down-Frequency Aggregate Query with Fill Clause
+
+In group by fill, sliding step is not supported in group by clause
+
+Now, only last_value aggregation function is supported in group by fill.
+
+There is no limit about time in group by fill.
+
+Linear fill is not supported in group by fill.
+
+
+##### Difference Between PREVIOUSUNTILLAST And PREVIOUS
+
+* PREVIOUS will fill any null value as long as there exist value is not null before it.
+* PREVIOUSUNTILLAST won't fill the result whose time is after the last time of that time series.
+
+The SQL statement is:
+
+```
+SELECT last_value(temperature) as last_temperature FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL (int32[PREVIOUSUNTILLAST])
+```
+which means:
+
+using PREVIOUSUNTILLAST Fill way to fill the origin down-frequency aggregate query result.
+
+
+
 The path after SELECT in GROUP BY statement must be aggregate function, otherwise the system will give the corresponding error prompt, as shown below:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116099-0b715300-0ac6-11ea-8074-84e04797b8c7.png"></center>

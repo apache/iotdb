@@ -312,6 +312,30 @@ Note: the statement needs to satisfy this constraint: <PrefixPath>(FromClause) +
 Note: Integer in <TimeUnit> needs to be greater than 0
 ```
 
+* Group By Fill Statement
+
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByClause> (FILL <GROUPBYFillClause>)?
+GroupByClause : LPAREN <TimeInterval> COMMA <TimeUnit> RPAREN
+GROUPBYFillClause : LPAREN <TypeClause> RPAREN
+TypeClause : <AllClause> | <Int32Clause> | <Int64Clause> | <FloatClause> | <DoubleClause> | <BoolClause> | <TextClause> 
+AllClause: ALL LBRACKET (<PreviousUntilLastClause> | <PreviousClause>)  RBRACKET
+Int32Clause: INT32 LBRACKET (<PreviousUntilLastClause> | <PreviousClause>)  RBRACKET
+Int64Clause: INT64 LBRACKET (<PreviousUntilLastClause> | <PreviousClause>)  RBRACKET
+FloatClause: FLOAT LBRACKET (<PreviousUntilLastClause> | <PreviousClause>)  RBRACKET
+DoubleClause: DOUBLE LBRACKET (<PreviousUntilLastClause> | <PreviousClause>)  RBRACKET
+BoolClause: BOOLEAN LBRACKET (<PreviousUntilLastClause> | <PreviousClause>)  RBRACKET
+TextClause: TEXT LBRACKET (<PreviousUntilLastClause> | <PreviousClause>)  RBRACKET
+PreviousClause : PREVIOUS
+PreviousUntilLastClause : PREVIOUSUNTILLAST
+Eg: SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([20, 100), 5m) FILL (float[PREVIOUS])
+Eg: SELECT last_value(power) FROM root.ln.wf01.wt01 GROUP BY([20, 100), 5m) FILL (int32[PREVIOUSUNTILLAST])
+Eg: SELECT last_value(temperature), last_value(power) FROM root.ln.wf01.wt01 GROUP BY([20, 100), 5m) FILL (ALL[PREVIOUS])
+Note: In group by fill, sliding step is not supported in group by clause
+Note: Now, only last_value aggregation function is supported in group by fill.
+Note: Linear fill is not supported in group by fill.
+```
+
 * Limit Statement
 
 ```

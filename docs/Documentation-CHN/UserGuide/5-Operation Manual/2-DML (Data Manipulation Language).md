@@ -253,6 +253,30 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 where time >
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116088-001e2780-0ac6-11ea-9a01-dc45271d1dad.png"></center>
 
+#### 带Fill子句的降频聚合查询
+
+带Fill子句的降频聚合查询中，Group by子句不支持滑动步长
+
+Fill子句中仅能使用Previous和PREVIOUSUNTILLAST这两种插值方式，Linear不支持
+
+Previous和PREVIOUSUNTILLAST对fill的时间不做限制
+
+填充只针对last_value这一聚合函数，其他的函数不支持，如果其他函数的聚合值查询结果为null，依旧为null，不进行填充
+
+##### PREVIOUSUNTILLAST与PREVIOUS填充的区别
+
+* Previous填充方式的语意没有变，只要前面有值，就可以拿过来填充；
+* PREVIOUSUNTILLAST考虑到在某些业务场景下，所填充的值的时间不能大于该时间序列last的时间戳（从业务角度考虑，取历史数据不能取未来历史数据）
+
+对应的SQL语句是
+
+```
+SELECT last_value(temperature) as last_temperature FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL (int32[PREVIOUSUNTILLAST])
+```
+这条查询的含义是用PREVIOUSUNTILLAST的Fill方式填充原来的聚合查询结果
+
+
+
 GROUP BY的SELECT子句里的查询路径必须是聚合函数，否则系统将会抛出如下对应的错误。
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116099-0b715300-0ac6-11ea-8074-84e04797b8c7.png"></center>
