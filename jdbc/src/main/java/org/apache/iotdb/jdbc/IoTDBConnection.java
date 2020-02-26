@@ -53,7 +53,7 @@ import org.slf4j.LoggerFactory;
 public class IoTDBConnection implements Connection {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
-  private static final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1;
+  private static final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2;
   private TSIService.Iface client = null;
   private long sessionId = -1;
   private IoTDBConnectionParams params;
@@ -410,7 +410,7 @@ public class IoTDBConnection implements Connection {
   }
 
   private void openSession() throws SQLException {
-    TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1);
+    TSOpenSessionReq openReq = new TSOpenSessionReq();
 
     openReq.setUsername(params.getUsername());
     openReq.setPassword(params.getPassword());
@@ -423,11 +423,14 @@ public class IoTDBConnection implements Connection {
       RpcUtils.verifySuccess(openResp.getStatus());
 
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
-        throw new TException(String
-            .format("Protocol not supported, Client version is %d, but Server version is %d",
-                protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
+        logger.warn("Protocol differ, Client version is {}}, but Server version is {}",
+            protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue());
+        if (openResp.getServerProtocolVersion().getValue() == 0) {// less than 0.10
+          throw new TException(String
+              .format("Protocol not supported, Client version is %s, but Server version is %s",
+                  protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
+        }
       }
-      setProtocol(openResp.getServerProtocolVersion());
 
       if (zoneId != null) {
         setTimeZone(zoneId.toString());
@@ -437,8 +440,14 @@ public class IoTDBConnection implements Connection {
 
     } catch (TException e) {
       transport.close();
-      throw new SQLException(String.format("Can not establish connection with %s.",
-          params.getJdbcUriString()), e);
+      if (e.getMessage().contains("Required field 'client_protocol' was not present!")) {
+        // the server is an old version (less than 0.10)
+        throw new SQLException(String.format(
+            "Can not establish connection with %s : You may try to connect an old version IoTDB instance using a client with new version: %s. ",
+            params.getJdbcUriString(), e.getMessage()), e);
+      }
+      throw new SQLException(String.format("Can not establish connection with %s : %s. ",
+          params.getJdbcUriString(), e.getMessage()), e);
     } catch (IoTDBRPCException e) {
       // failed to connect, disconnect from the server
       transport.close();
@@ -505,7 +514,5 @@ public class IoTDBConnection implements Connection {
     return getClient().getProperties();
   }
 
-  private void setProtocol(TSProtocolVersion protocol) {
-  }
 
 }
