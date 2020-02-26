@@ -26,7 +26,8 @@
 * 1-TsFile
 * 2-Format
 * 3-Write
-* 4-Read
+* 4-Filter
+* 5-QueryExecution
 # Chapter 2: QueryEngine
 * 1-QueryEngine
 * 2-Planner

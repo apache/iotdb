@@ -19,32 +19,21 @@
 
 -->
 
-# TsFile Read Process
+# Filters and Query Expressions
 
-This chapter introduces how to read TsFile. The content is mainly divided into two parts, the introduction of Filters and Expressions , and the detailed illustration of query process in TsFile.
+This chapter introduces Filters and Expressions, which will be used in execution.
 
-- [TsFile Read Process](#TsFile-Read-Process)
-  - [1 Filters and Expressions](#1-Filters-and-Expressions)
-    - [1.1 Filter](#11-Filter)
-    - [1.2 Expression](#12-Expression)
-      - [1.2.1 SingleSeriesExpression](#121-SingleSeriesExpression)
-      - [1.2.2 GlobalTimeExpression](#122-GlobalTimeExpression)
-      - [1.2.3 IExpression](#123-IExpression)
-      - [1.2.4 Executable Expression](#124-Executable-Expression)
-      - [1.2.5 The Algorithm Transforming IExpression to an Executable Expression](#125-The-Algorithm-Transforming-IExpression-to-an-Executable-Expression)
-  - [2 Query Execution of TsFile](#2-Query-Execution-of-TsFile)
-    - [2.1 Design](#21-Design)
-    - [2.2 Three Components](#22-Three-Components)
-      - [2.2.1 FileSeriesReader](#221-FileSeriesReader)
-      - [2.2.2 FileSeriesReaderByTimestamp](#222-FileSeriesReaderByTimestamp)
-      - [2.2.3 TimeGeneratorImpl](#223-TimeGeneratorImpl)
-    - [2.3 Merge Query](#23-Merge-Query)
-    - [2.4 Join Query](#24-Join-Query)
-    - [2.5 Query of TsFile](#25-Query-of-TsFile)
-    - [2.6 Related Concepts](#26-Related-Concepts)
-## 1 Filters and Expressions
 
-### 1.1 Filter
+- [1 Filter](#1-Filter)
+- [2 Expression](#2-Expression)
+    - [2.1 SingleSeriesExpression](#21-SingleSeriesExpression)
+    - [2.2 GlobalTimeExpression](#22-GlobalTimeExpression)
+    - [2.3 IExpression](#23-IExpression)
+    - [2.4 Executable Expression](#24-Executable-Expression)
+    - [2.5 The Algorithm Transforming IExpression to an Executable Expression](#25-The-Algorithm-Transforming-IExpression-to-an-Executable-Expression)
+
+
+## 1 Filter
 
 In this document, the term Filter means filter conditions. Users can customize filter conditions on timestamp, or the value of time series. We distinguish the filters which are on timestamp from those on column values. Assume t to be a timestamp constant, there are 12 basic types of Filters. In implementation, they all inherit from the super class Filter.
 
@@ -100,11 +89,11 @@ ValueNotEq| value != v| value != true means value should not be true
 AndFilter| \<Filter> && \<Filter>| 1. value > 100 && value < 200 means value should be greanter than 100 and less than 200; <br>2. (value >= 100 && value <= 200) && time > 14152176545 means "value should be greater than or equal to 100 and value should be less than or equal to" and "timestamp should be greater than 14152176545"
 OrFilter| \<Filter> &#124;&#124; \<Filter>| 1. value > 100 &#124;&#124; time >  14152176545, means value should be greater than 100 or timestamp should be greater than 14152176545;<br>2. (value > 100 && value < 200)&#124;&#124; time > 14152176545, means "value should be greater than 100 and value should be less than 200" or "timestamp should be greater than 14152176545"
 
-### 1.2 Expression
+## 2 Expression
 
 When we assign a particular time series (including the timestamp) to a Filter, it becomes an expression. For example, "value > 10" can only describe a Filter, without the taste of a query. However, "the value of time series 'd1.s1' should be greater than 10" is an expression. Specifically, if the Filter only works on timestamp, it can be seen as an expression, which is called GlobalTimeExpression. The following sections introduces Expression in detail,
 
-#### 1.2.1 SingleSeriesExpression
+### 2.1 SingleSeriesExpression
 
 SingleSeriesExpression is an expression on a time series (excluding the timestamp column) with a Filter. A SingleSeriesExpression contains a Path and a Filter. The Path is the path of the time series, and the Filter indicate the filter condition, as is introduced in section 1.1.
 
@@ -139,7 +128,7 @@ The SingleSeriesExpression claims that time series "d1.s1" should satisfy that "
     
 We formalize the rule as SingleSeriesExpression("d1.s1", (value > 100 && value < 200) && time > 14152176545)
 
-#### 1.2.2 GlobalTimeExpression
+### 2.2 GlobalTimeExpression
 GlobalTimeExpression means a global time filter. A GlobalTimeExpression contains a Filter, which is only composed of time filters (value filters not allowed). When querying, a GlobalTimeExpression claims that data points of all selected time series should satisfy the constraints in the Filter. The structure of GlobalTimeExpression is shown below: 
 
     GlobalTimeExpression
@@ -153,7 +142,7 @@ Some formalized examples of GlobalTimeExpression are shown below:
 1. GlobalTimeExpression(time > 14152176545 && time < 14152176645) claims that the all selected time series should satisfy that the timestamp should be "greater than 14152176545 and less than 14152176645"
 2. GlobalTimeExpression((time > 100 && time < 200) || (time > 400 && time < 500)) claims that all selected time series should satisfy that the timestamp should be "greater than 100 and less than 200" or "greater than 400 and less than 500"
 
-#### 1.2.3 IExpression
+### 2.3 IExpression
 IExpression indicates the all filters with the corresponding columns in a query. 
 An IExpression can be a SingleSeriesExpression or a GlobalTimeExpression. In this case, the IExpression is a UnaryExpression. An IExpression can also contains two IExpressions, connected with relation AND or OR. Two IExpressions joined with AND relation is termed as AndExpression. Likewise, two IExpressions joined with OR relation is termed as OrExpression. An IExpression containing two children is termed BinaryExpression. UnaryExpression and BinaryExpression are both IExpression.
 
@@ -195,7 +184,7 @@ We use a tree-like structure to formalize an IExpression. Here are some examples
 
     **Note**: The IExpression is an AndExpression, where the time series "d1.s1" and "d1.s2" should not only satisfy the constraints in corresponding Filters in SingleSeriesExpression, but also the constraints of the GlobalTimeExpression.
 
-#### 1.2.4 Executable Expression
+### 2.4 Executable Expression
 
 To make the query execution more comprehensible, we give the concept of executable expression. An executable expression is a particular kinds of IExpression. The IExpression customized by system user can be transformed to an executable expression by some algorithm, which will be introduced in the following sections. An executable expression is an IExpression satisfying one of the following constraints:
 1. The IExpression is a single GlobalTimeExpression
@@ -274,7 +263,7 @@ Is an executable expression? No
 
 **Hint**: The IExpression is an AndExpression, but one of the leaf nodes is a GlobalTimeExpression, which is against constraint 3.
 
-#### 1.2.5 The Algorithm Transforming IExpression to an Executable Expression
+### 2.5 The Algorithm Transforming IExpression to an Executable Expression
 
 In this section, we introduce how to transform an IExpression to be executable.
 
@@ -431,129 +420,3 @@ Using the above four combination methods, the steps of optimize() include:
    c. If LeftIExpression is not a GlobalTimeExpression, while RightIExpression is, call handleOneGlobalExpression() to combine them.
 
    d. If neither LeftIExpression nor RightIExpression is a GlobalTimeExpression, recursively call optimize() method on both LeftIExpression  and RightIExpression to get the left executable expression and the right executable expression. Then use mergeIExpression method to generate a final IExpression which is executable.
-
-## 2 Query Execution of TsFile
-
-### 2.1 Design
-
-The interface of TsFile on file level is intended only for queries on original data. According to the existence of value filter, the query can be divided into two groups: those without filters or only with a time filter, and those containing value filters.
-
-To execute the two kinds of queries, we design two query execution methods:
-
-* merge query
-
-    It generates multiple readers, aligns the result in time, and returns the result set.
-
-* join query
-
-    According to the query conditions, it generates satisfying timestamp, which is used for generating result set.
-
-### 2.2 Three Components 
-
-#### 2.2.1 FileSeriesReader
-org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader
-
-**Functions**: FileSeriesReader queries the data points of a time series in a file, which satisfies the filter conditions. It outputs the data points of the given time series in the given file in timestamp ascending order. There can be no filters at all.
-
-**Implementation**: FileSeriesReader retrieves the Chunk information of the given time series according to the Path, it then traverses each Chunk in timestamp ascending order, and outputs the satisfying data points. 
-
-#### 2.2.2 FileSeriesReaderByTimestamp
-
-org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp
-
-**Functions**: FileSeriesReaderByTimestamp queries the data points of a time series in a file, whose timestamp satisfies the timestamp constraints.
-
-**Implementation**: This component provides an interface, getValueInTimestamp(long timestamp), which receives increasing timestamp value,  and outputs the data points on the time series whose timestamp is identical. If there's no such data point, the result is null.
-
-#### 2.2.3 TsFileTimeGenerator
-org.apache.iotdb.tsfile.read.query.timegenerator.TsFileTimeGenerator
-
-**Functions**: According to the filter condition, TimeGeneratorImpl generates the satisfying timestamp. It first transforms the filter conditions to be a binary tree, and recursively generate the satisfying timestamp. This component is used in executing join query.
-
-An executable expression contains one or nultiple SingleSeriesExpressions. The relation between two SingleSeriesExpressions is either AND or OR. Therefore, the filter in an executable expression can be transformed to a binary tree, where the leaf nodes are FileSeriesReader, and the non-leaf nodes are AndNode or OrNode. Particularly, when the expression only contains a single SingleSeriesExpression, the binary tree only has one node. The satisfying timestamp can be generated using the binary tree. 
-
-This component provides two basic functions: 
-
-1. check if there exists a next satisfying timestamp
-
-2. get the next satisfying timestamp
-
-### 2.3 Merge Query
-org.apache.iotdb.tsfile.read.query.dataset.DataSetWithoutTimeGenerator
-
-Suppose there are n time series. For each one of them, a FileSeriesReader will be generated. If there's a GlobalTimeExpression, the filter in it will be input to the FileSeriesReaders.
-
-A DataSetWithoutTimeGenerator will be generated using these FileSeriesReaders. Since each FileSeriesReader outputs data points in time stamp ascending order, we can use the idea of k-way merge to align the result data points. 
-
-The steps include: 
-
-(1) Create a min-heap, which stores timestamps. The min-heap is organized according to the value of the timestamp.
-
-(2) Initialize the min-heap. Access each FileSeriesReader once. If there's a next data point in the FileSeriesReader, add its timestamp to the min-heap. Till now, the heap contains at most one timestamp of each time series, which is the minimum in its corresponding time series.
-
-(3) If the size of the heap is greater than 0, take the timestamp on the top of the heap, denote it as t, and remove it from the heap, then go to step (4). If the number of the heap is 0, go to step (5).
-
-(4) Create a new RowRecord. In turns access each time series. When dealing with a time series, first check if there's a next data point, if it fails, set the result data point to be null. Otherwise, check if minimum timestamp in the time series is identical to t. If it is not, set the result data point to be null. Otherwise, get the data point and set it to be the result data point. If there exists a next data point after that. If it has, then set timestamp of the next data point in the time series to be its minimum timestamp. After accessing all time series, combine the result data points to form a RowRecord. Finally, go to step (3).
-
-(5) Terminate the process.
-
-### 2.4 Join Query
-
-org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator
-
-Join query execution generates timestamp according to the filter conditions, and retrieves the data point on the projected time series to form a RowRecord. Main steps include;
-
-(1) According to QueryExpression, initialize the timestamp generation module, TimeGeneratorImpl
-
-(2) Generate FileSeriesReaderByTimestamp for each projected time series.
-
-(3) If there exists a next timestamp in the "timestamp generation module", denote the timestamp t, go to step (4).Otherwise, terminate the query execution.
-
-(4) According to t, utilize FileSeriesReaderByTimestamp on each time series to retrieve the data point whose corresponding timestamp is t. If there's no such data point, use null to represent it.
-
-(5) Combine the data points in step (4) to form a RowRecord, then go to step (3) to generate another row of records.
-
-### 2.5 Query of TsFile
-
- org.apache.iotdb.tsfile.read.query.executor.TsFileExecutor
-
-TsFileExecutor receives a QueryExpression, execute the query and outputs the QueryDataSet。The work flow includes the following steps: 
-
-(1) Receive a QueryExpression.
-
-(2) If the QueryExpression contains no filter conditions, execute merge query. If it contains any Filters, use ExpressionOptimizer to optimize the IExpression in QueryExpression. If the optimized IExpression is a GlobalTimeExpression, execute merge query. If it contains value filters, it sends a message to ExecutorWithTimeGenerator to execute join query.
-
-(3) Generate the QueryDataSet. It iteratively generates RowRecord and returns the results.
-
-
-### 2.6 Related Concepts
-
-* Chunk: Chunk is the storage structure of a chunk of time series. IChunkReader is for reading the content。
-
-* ChunkMetaData: ChunkMetaData records the offset, data type and encoding info of the Chunk in the File. 
-  
-* IMetadataQuerier: IMetadataQuerier is a querier for TsFile metadata. It queries the metadata of a file, and the ChunkMetaData of a time series.
-
-* IChunkLoader:  IChunkLoader is the loader for Chunk, whose main function is getting the corresponding Chunk of the given the ChunkMetaData.
-
-* IChunkReader: IChunkReader reads the data in a Chunk. It receives a Chunk and parse it according to the info in the ChunkHeader. It provides two interface: 
-
-    * hasNextSatisfiedPage & nextPageData: iteratively returns a Page
-    * getPageReaderList: return all PageReader
-
-* IPageReader: IPageReader reads the data in a Page. It provides two interface:
-
-    * getAllSatisfiedPageData(): return all satisfying values
-    * getStatistics(): return the statistic information of the Page
-
-* QueryExpression
-
-    QueryExpression is the query expression, which contains the time series to project, and filter constraints.
-
-* QueryDataSet
-
-    The result of a query. It contains one or multiple RowRecord, which combines data points having identical time stamp together. QueryDataSet provides two interface: 
-
-    * check if there's a next RowRecord.
-    * return the next RowRecord.
-
