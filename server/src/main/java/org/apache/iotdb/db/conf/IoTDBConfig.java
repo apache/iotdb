@@ -117,27 +117,27 @@ public class IoTDBConfig {
   /**
    * System directory, including version file for each storage group and metadata
    */
-  private String systemDir = "data/system";
+  private String systemDir = "data" + File.separator + "system";
 
   /**
    * Schema directory, including storage set of values.
    */
-  private String schemaDir = "data/system/schema";
+  private String schemaDir = "data" + File.separator + "system" + File.separator + "schema";
 
   /**
    * Sync directory, including the lock file, uuid file, device owner map
    */
-  private String syncDir = "data/system/sync";
+  private String syncDir = "data" + File.separator + "system" + File.separator + "sync";
 
   /**
    * Query directory, stores temporary files of query
    */
-  private String queryDir = "data/query";
+  private String queryDir = "data" + File.separator + "query";
 
   /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
    */
-  private String[] dataDirs = {"data/data"};
+  private String[] dataDirs = {"data" + File.separator + "data"};
 
   /**
    * Strategy of multiple directories.
@@ -147,7 +147,7 @@ public class IoTDBConfig {
   /**
    * Wal directory.
    */
-  private String walFolder = "data/wal";
+  private String walFolder = "data" + File.separator + "wal";
 
   /**
    * Maximum MemTable number in MemTable pool.
