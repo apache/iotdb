@@ -563,7 +563,7 @@ public class MTree implements Serializable {
       if (node instanceof InternalMNode) {
         for (MNode child : node.getChildren().values()) {
           if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
-            return;
+            continue;
           }
           if (idx == length) {
             res.add(parent + node.getName());
