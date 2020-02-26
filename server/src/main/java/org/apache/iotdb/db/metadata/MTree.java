@@ -513,7 +513,7 @@ public class MTree implements Serializable {
     } else {
       for (MNode child : node.getChildren().values()) {
         if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
-          return;
+          continue;
         }
         findPath(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
             timeseriesSchemaList);
@@ -563,7 +563,7 @@ public class MTree implements Serializable {
       if (node instanceof InternalMNode) {
         for (MNode child : node.getChildren().values()) {
           if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
-            return;
+            continue;
           }
           if (idx == length) {
             res.add(parent + node.getName());
