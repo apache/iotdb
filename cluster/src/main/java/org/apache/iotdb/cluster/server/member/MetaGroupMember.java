@@ -1284,12 +1284,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           context.getQueryId());
       return dataGroupMember.getSeriesPointReader(path, dataType, timeFilter, valueFilter, context);
     } else {
-      return getRemoteSeriesReader(timeFilter, valueFilter, dataType, path, partitionGroup,
+      return getRemoteSeriesPointReader(timeFilter, valueFilter, dataType, path, partitionGroup,
           context);
     }
   }
 
-  private IPointReader getRemoteSeriesReader(Filter timeFilter,
+  private IPointReader getRemoteSeriesPointReader(Filter timeFilter,
       Filter valueFilter, TSDataType dataType, Path path,
       PartitionGroup partitionGroup,
       QueryContext context)

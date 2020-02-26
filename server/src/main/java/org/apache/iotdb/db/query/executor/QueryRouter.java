@@ -98,7 +98,7 @@ public class QueryRouter implements IQueryRouter {
 
     aggregationPlan.setExpression(optimizedExpression);
 
-    AggregationExecutor engineExecutor = new AggregationExecutor(aggregationPlan);
+    AggregationExecutor engineExecutor = getAggregationExecutor(aggregationPlan);
 
     if (optimizedExpression != null
         && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME) {
@@ -108,6 +108,9 @@ public class QueryRouter implements IQueryRouter {
     return engineExecutor.executeWithoutValueFilter(context);
   }
 
+  protected AggregationExecutor getAggregationExecutor(AggregationPlan aggregationPlan) {
+    return new AggregationExecutor(aggregationPlan);
+  }
 
   @Override
   public QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)

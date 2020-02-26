@@ -32,7 +32,7 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
 
   @Override
   protected List<AggregateResult> aggregateOneSeries(Entry<Path, List<Integer>> pathToAggrIndexes,
-      Filter timeFilter, QueryContext context) {
+      Filter timeFilter, QueryContext context) throws StorageEngineException {
     Path seriesPath = pathToAggrIndexes.getKey();
     TSDataType tsDataType = dataTypes.get(pathToAggrIndexes.getValue().get(0));
     List<String> aggregationNames = new ArrayList<>();

@@ -20,9 +20,9 @@
 package org.apache.iotdb.cluster.common;
 
 import java.util.NoSuchElementException;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -34,11 +34,13 @@ public class TestManagedSeriesReader implements ManagedSeriesReader, IReaderByTi
   private boolean managedByQueryManager = false;
   private boolean hasRemaining = false;
   private TimeValuePair pairCache;
-  private Filter filter;
+  private Filter timeFilter;
+  private Filter valueFilter;
 
-  public TestManagedSeriesReader(BatchData batchData, Filter filter) {
+  public TestManagedSeriesReader(BatchData batchData, Filter timeFilter, Filter valueFilter) {
     this.batchData = batchData;
-    this.filter = filter;
+    this.timeFilter = timeFilter;
+    this.valueFilter = valueFilter;
   }
 
   @Override
@@ -76,6 +78,14 @@ public class TestManagedSeriesReader implements ManagedSeriesReader, IReaderByTi
   }
 
   @Override
+  public Object[] getValuesInTimestamps(long[] timestamps) {
+    Object[] rst = new Object[timestamps.length];
+    for (int i = 0; i < timestamps.length; i++) {
+      rst[i] = getValueInTimestamp(timestamps[i]);
+    }
+    return rst;
+  }
+
   public boolean hasNext() {
     if (pairCache != null) {
       return true;
@@ -88,7 +98,8 @@ public class TestManagedSeriesReader implements ManagedSeriesReader, IReaderByTi
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();
       Object value = batchData.currentValue();
-      if (filter == null || filter.satisfy(time, value)) {
+      if ((timeFilter == null || timeFilter.satisfy(time, value))
+          && (valueFilter == null || valueFilter.satisfy(time, value))) {
         pairCache = new TimeValuePair(time, TsPrimitiveType.getByType(batchData.getDataType(), value));
         batchData.next();
         break;
@@ -97,7 +108,6 @@ public class TestManagedSeriesReader implements ManagedSeriesReader, IReaderByTi
     }
   }
 
-  @Override
   public TimeValuePair next() {
     if (!hasNext()) {
       throw new NoSuchElementException();
@@ -105,14 +115,6 @@ public class TestManagedSeriesReader implements ManagedSeriesReader, IReaderByTi
     TimeValuePair ret = pairCache;
     pairCache = null;
     return ret;
-  }
-
-  @Override
-  public TimeValuePair current() {
-    if (!hasNext()) {
-      throw new NoSuchElementException();
-    }
-    return pairCache;
   }
 
   @Override

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -48,8 +49,8 @@ public class ClusterQueryRouter extends QueryRouter {
   }
 
   @Override
-  public QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context) {
-    throw new UnsupportedOperationException("Aggregation not implemented");
+  protected AggregationExecutor getAggregationExecutor(AggregationPlan aggregationPlan) {
+    return new ClusterAggregateExecutor(aggregationPlan, metaGroupMember);
   }
 
   @Override
