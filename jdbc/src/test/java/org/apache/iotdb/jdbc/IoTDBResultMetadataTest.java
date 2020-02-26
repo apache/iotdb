@@ -19,13 +19,17 @@
 package org.apache.iotdb.jdbc;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -42,7 +46,7 @@ public class IoTDBResultMetadataTest {
   }
 
   @Test
-  public void testGetColumnCount() throws SQLException {
+  public void testGetColumnCount() {
     metadata = new IoTDBResultMetadata(null, null, false);
     boolean flag = false;
     try {
@@ -50,19 +54,20 @@ public class IoTDBResultMetadataTest {
     } catch (Exception e) {
       flag = true;
     }
-    assertEquals(flag, true);
+    assertTrue(flag);
 
-    List<String> columnInfoList = new ArrayList<>();
     flag = false;
     try {
-      metadata = new IoTDBResultMetadata(columnInfoList, null, false);
+      metadata = new IoTDBResultMetadata(Collections.emptyList(), null, false);
       metadata.getColumnCount();
     } catch (Exception e) {
       flag = true;
     }
-    assertEquals(flag, true);
+    assertFalse(flag);
 
+    List<String> columnInfoList = new ArrayList<>();
     columnInfoList.add("root.a.b.c");
+    metadata = new IoTDBResultMetadata(columnInfoList, null, false);
     assertEquals(metadata.getColumnCount(), 1);
   }
 
@@ -75,7 +80,7 @@ public class IoTDBResultMetadataTest {
     } catch (Exception e) {
       flag = true;
     }
-    assertEquals(flag, true);
+    assertTrue(flag);
 
     List<String> columnInfoList = new ArrayList<>();
     metadata = new IoTDBResultMetadata(columnInfoList, null, false);
@@ -85,7 +90,7 @@ public class IoTDBResultMetadataTest {
     } catch (Exception e) {
       flag = true;
     }
-    assertEquals(flag, true);
+    assertTrue(flag);
 
     String[] colums = {"root.a.b.c1", "root.a.b.c2", "root.a.b.c3"};
     metadata = new IoTDBResultMetadata(Arrays.asList(colums), null, false);
@@ -95,7 +100,7 @@ public class IoTDBResultMetadataTest {
     } catch (Exception e) {
       flag = true;
     }
-    assertEquals(flag, true);
+    assertTrue(flag);
 
     flag = false;
     try {
@@ -103,7 +108,7 @@ public class IoTDBResultMetadataTest {
     } catch (Exception e) {
       flag = true;
     }
-    assertEquals(flag, true);
+    assertTrue(flag);
 
     for (int i = 1; i <= colums.length; i++) {
       assertEquals(metadata.getColumnLabel(i), colums[i - 1]);
@@ -130,7 +135,7 @@ public class IoTDBResultMetadataTest {
     } catch (Exception e) {
       flag = true;
     }
-    assertEquals(flag, true);
+    assertTrue(flag);
 
     String[] columns = {"timestamp", "root.a.b.boolean", "root.a.b.int32", "root.a.b.int64",
         "root.a.b.float",
@@ -145,7 +150,7 @@ public class IoTDBResultMetadataTest {
     } catch (Exception e) {
       flag = true;
     }
-    assertEquals(flag, true);
+    assertTrue(flag);
 
     flag = false;
     try {
@@ -153,7 +158,7 @@ public class IoTDBResultMetadataTest {
     } catch (Exception e) {
       flag = true;
     }
-    assertEquals(flag, true);
+    assertTrue(flag);
 
     assertEquals(metadata.getColumnType(1), Types.TIMESTAMP);
     for (int i = 1; i <= types.length; i++) {
