@@ -97,12 +97,6 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
       } catch (IOException e) {
         LOGGER.error(String.format("Something gets wrong while reading from the series reader %s: ", pathName), e);
         reader.setHasRemaining(false);
-        try {
-          blockingQueue.put(SignalBatchData.getInstance());
-        } catch (InterruptedException ex) {
-          LOGGER.error("Interrupted while putting into the blocking queue: ", e);
-          Thread.currentThread().interrupt();
-        }
       } catch (Exception e) {
         LOGGER.error("Something gets wrong: ", e);
         reader.setHasRemaining(false);
