@@ -104,6 +104,9 @@ public class ChunkCache {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       lruCache.put(chunkMetaData, chunk);
       return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
+    } catch (IOException e) {
+      logger.error("something wrong happened while reading {}", reader.getFileName());
+      throw e;
     } finally {
       cacheLock.unlock();
     }
