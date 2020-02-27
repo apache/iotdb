@@ -23,9 +23,12 @@ class Table extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            lists: []
+          lists: [],
+          active: false
         };
         this.getMachineAction = this.getMachineAction.bind(this);
+        this.toggleClass = this.toggleClass.bind(this);
+        this.toggleContent = this.toggleContent.bind(this);
     }
 
     async getMachineAction() {
@@ -61,6 +64,21 @@ class Table extends React.Component {
         clearInterval(this.timerID);
     }
 
+    toggleClass() {
+      const currentState = this.state.active;
+      this.setState({ active: !currentState });
+    };
+
+    toggleContent(json) {
+      return(
+          <div className="dropdown-content">
+            <p>Physical Plan: {json.physicalPlan}</p>
+            <p>OperatorType: {json.operatorType}</p>
+            <p>Path: {json.path}</p>
+          </div>
+      )
+    }
+
     render() {
         const rows = [];
         for (let i = 0; i < this.state.lists.length; i++) {
@@ -73,29 +91,33 @@ class Table extends React.Component {
             }
             rows.push(
                 <tr className="tableHeader">
-                    <td>{" "}{json.operatorType}</td>
-                    <td>{" "}{json.startTime}</td>
-                    <td>{" "}{json.endTime}</td>
-                    <td>{" "}{json.time}</td>
-                    <td>{" "}{json.sql}</td>
-                    <td>{" "}{json.status}</td>
-                    <td>{" "}{json.physicalPlan}</td>
+                    <td>{json.operatorType}</td>
+                    <td>{json.startTime}</td>
+                    <td>{json.endTime}</td>
+                    <td>{json.time}</td>
+                    <td>{json.sql}</td>
+                    <td>{json.status}</td>
+                  <td>=={" "}Parsed Physical Plan{" "}==
+                    <span className="detail" onClick={this.toggleClass}> +detail
+                      {this.state.active ? this.toggleContent(json) : null}
+                    </span>
+                  </td>
                 </tr>
             );
         }
         return (
             <div className="sql">
-                <p>Execute sql</p>
+                <p className="word">Execute sql</p>
                 <table>
                 <tbody>
                     <tr className="tableHeader">
-                        <td>{" "}Operation Type</td>
-                        <td>{" "}Start Time</td>
-                        <td>{" "}Finish Time</td>
-                        <td>{" "}Duration</td>
-                        <td>{" "}Statement</td>
-                        <td>{" "}State</td>
-                        <td>{" "}Physical Plan</td>
+                        <td>Operation Type</td>
+                        <td>Start Time</td>
+                        <td>Finish Time</td>
+                        <td>Duration</td>
+                        <td>Statement</td>
+                        <td>State</td>
+                        <td>Detail</td>
                     </tr>
                     {rows}
                 </tbody>

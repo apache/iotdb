@@ -34,6 +34,15 @@
     font-weight: 500;
 }
 
-.sql p {
+.sql > .word {
     color: deepskyblue;
+}
+
+.tableHeader td {
+    padding-right: 50px;
+}
+
+.detail {
+    font-size: smaller;
+    color: rgb(100, 100, 100);
 }
