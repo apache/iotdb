@@ -18,6 +18,7 @@
 
 import sys, struct
 
+# If you generate IoTDB python library manually, add it to your python path
 sys.path.append("../target")
 
 from thrift.protocol import TBinaryProtocol
@@ -251,6 +252,7 @@ if __name__ == '__main__':
                               bytes('\'text2\'', encoding),
                               len(bytes('\'text3\'', encoding)),
                               bytes('\'text3\'', encoding)))
+    # warning: the data in batch must be sorted by time
     times.extend(struct.pack(time_pack_str, 2, 3, 4))
     resp = client.insertBatch(TSBatchInsertionReq(sessionId,deviceId,
                                                   measurements, values,

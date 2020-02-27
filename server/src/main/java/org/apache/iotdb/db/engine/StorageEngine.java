@@ -18,21 +18,6 @@
  */
 package org.apache.iotdb.db.engine;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.ConcurrentModificationException;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -42,6 +27,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -68,6 +54,11 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.*;
 
 public class StorageEngine implements IService {
 
@@ -274,9 +265,22 @@ public class StorageEngine implements IService {
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupName);
     if (processor != null) {
+      logger.info("async closing sg processor is called for closing {}, seq = {}", storageGroupName,
+          isSeq);
       processor.writeLock();
       try {
-        processor.moveOneWorkProcessorToClosingList(isSeq);
+        if(isSeq) {
+          // to avoid concurrent modification problem, we need a new array list
+          for (TsFileProcessor tsfileProcessor : new ArrayList<>(processor.getWorkSequenceTsFileProcessors())) {
+            processor.moveOneWorkProcessorToClosingList(true, tsfileProcessor);
+          }
+        }
+        else {
+          // to avoid concurrent modification problem, we need a new array list
+          for (TsFileProcessor tsfileProcessor : new ArrayList<>(processor.getWorkUnsequenceTsFileProcessor())) {
+            processor.moveOneWorkProcessorToClosingList(false, tsfileProcessor);
+          }
+        }
       } finally {
         processor.writeUnlock();
       }
@@ -316,7 +320,7 @@ public class StorageEngine implements IService {
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.query(deviceId, measurementId, context, filePathsManager);
+    return storageGroupProcessor.query(deviceId, measurementId, context, filePathsManager, seriesExpression.getFilter());
   }
 
   /**
@@ -439,14 +443,29 @@ public class StorageEngine implements IService {
     getProcessor(storageGroupName).loadNewTsFile(newTsFileResource);
   }
 
-  public boolean deleteTsfile(File deletedTsfile) throws StorageEngineException {
+  public boolean deleteTsfileForSync(File deletedTsfile)
+      throws StorageEngineException {
     return getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
+  }
+
+  public boolean deleteTsfile(File deletedTsfile) throws StorageEngineException {
+    return getProcessor(getSgByEngineFile(deletedTsfile)).deleteTsfile(deletedTsfile);
   }
 
   public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
       throws StorageEngineException, IOException {
-    return getProcessor(tsfileToBeMoved.getParentFile().getName())
-        .moveTsfile(tsfileToBeMoved, targetDir);
+    return getProcessor(getSgByEngineFile(tsfileToBeMoved)).moveTsfile(tsfileToBeMoved, targetDir);
+  }
+
+  /**
+   * The internal file means that the file is in the engine, which is different from those external
+   * files which are not loaded.
+   *
+   * @param file internal file
+   * @return sg name
+   */
+  private String getSgByEngineFile(File file) {
+    return file.getParentFile().getParentFile().getName();
   }
 
 }

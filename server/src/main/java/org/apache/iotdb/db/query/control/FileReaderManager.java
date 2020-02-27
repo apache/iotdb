@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -31,8 +25,18 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.UnClosedTsFileReader;
+import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * FileReaderManager is a singleton, which is used to manage
@@ -69,6 +73,8 @@ public class FileReaderManager implements IService {
    */
   private Map<TsFileResource, AtomicInteger> unclosedReferenceMap;
 
+  private final Map<TsFileSequenceReader, IChunkLoader> chunkLoaderMap;
+
   private ScheduledExecutorService executorService;
 
   private FileReaderManager() {
@@ -76,6 +82,7 @@ public class FileReaderManager implements IService {
     unclosedFileReaderMap = new ConcurrentHashMap<>();
     closedReferenceMap = new ConcurrentHashMap<>();
     unclosedReferenceMap = new ConcurrentHashMap<>();
+    chunkLoaderMap = new HashMap<>();
     executorService = IoTDBThreadPoolFactory.newScheduledThreadPool(1,
         "open-files-manager");
 
@@ -119,6 +126,9 @@ public class FileReaderManager implements IService {
 
       if (refAtom != null && refAtom.get() == 0) {
         try {
+          synchronized (chunkLoaderMap) {
+            chunkLoaderMap.remove(reader);
+          }
           reader.close();
         } catch (IOException e) {
           logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
@@ -158,6 +168,13 @@ public class FileReaderManager implements IService {
     }
 
     return readerMap.get(tsFile);
+  }
+
+
+  public IChunkLoader get(TsFileSequenceReader reader) {
+    synchronized (chunkLoaderMap) {
+      return chunkLoaderMap.computeIfAbsent(reader, ChunkLoaderImpl::new);
+    }
   }
 
   /**

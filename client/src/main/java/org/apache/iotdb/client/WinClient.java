@@ -42,7 +42,7 @@ public class WinClient extends AbstractClient {
    *
    * @param args -console args
    */
-  public static void main(String[] args) throws ClassNotFoundException, SQLException {
+  public static void main(String[] args) throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
@@ -92,7 +92,7 @@ public class WinClient extends AbstractClient {
         setTimeFormat("long");
       }
       if (commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)) {
-        maxPrintRowCount = Integer.valueOf(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
+        maxPrintRowCount = Integer.parseInt(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
         if (maxPrintRowCount < 0) {
           maxPrintRowCount = Integer.MAX_VALUE;
         }
@@ -100,12 +100,10 @@ public class WinClient extends AbstractClient {
     } catch (ParseException e) {
       println("Require more params input, please check the following hint.");
       hf.printHelp(IOTDB_CLI_PREFIX, options, true);
-      handleException(e);
       return false;
     } catch (NumberFormatException e) {
       println(
           IOTDB_CLI_PREFIX + "> error format of max print row count, it should be number");
-      handleException(e);
       return false;
     }
     return true;
@@ -123,10 +121,8 @@ public class WinClient extends AbstractClient {
       receiveCommands(scanner);
     } catch (ArgsErrorException e) {
       println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
-      handleException(e);
     } catch (Exception e) {
       println(IOTDB_CLI_PREFIX + "> exit client with error " + e.getMessage());
-      handleException(e);
     }
   }
 
@@ -151,29 +147,6 @@ public class WinClient extends AbstractClient {
       println(String
           .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host,
               port));
-      handleException(e);
     }
-  }
-
-  private static boolean processCommand(String s, IoTDBConnection connection) {
-    if (s == null) {
-      return true;
-    }
-    String[] cmds = s.trim().split(";");
-    for (int i = 0; i < cmds.length; i++) {
-      String cmd = cmds[i];
-      if (cmd != null && !"".equals(cmd.trim())) {
-        OperationResult result = handleInputCmd(cmd, connection);
-        switch (result) {
-          case STOP_OPER:
-            return false;
-          case CONTINUE_OPER:
-            continue;
-          default:
-            break;
-        }
-      }
-    }
-    return true;
   }
 }

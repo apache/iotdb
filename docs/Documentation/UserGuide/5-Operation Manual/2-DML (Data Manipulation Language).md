@@ -24,7 +24,7 @@
 ## INSERT
 ### Insert Real-time Data
 
-IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](/#/Documents/progress/chap5/sec4) in [Client/Shell tools](/#/Tools/Client), or using [Java JDBC](/#/Documents/progress/chap4/sec2) to perform single or batch execution of [INSERT SQL statement](/#/Documents/progress/chap5/sec4).
+IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](/#/Documents/progress/chap5/sec4) in [Client/Shell tools](/#/Documents/progress/chap4/sec1), or using [Java JDBC](/#/Documents/progress/chap4/sec2) to perform single or batch execution of [INSERT SQL statement](/#/Documents/progress/chap5/sec4).
 
 This section mainly introduces the use of [INSERT SQL statement](/#/Documents/progress/chap5/sec4) for real-time data import in the scenario. See Section 5.4 for a detailed syntax of [INSERT SQL statement](/#/Documents/progress/chap5/sec4).
 
@@ -261,7 +261,7 @@ Detailed descriptions of all parameters are given in Table 3-4.
 |path, prefixPath|query path; mandatory field|
 |T|query timestamp (only one can be specified); mandatory field|
 |data\_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
-|before\_range|represents the valid time range of the previous method. The previous method works when there are values in the [T-before\_range, T] range. When before\_range is not specified, before\_range takes the default value T; optional field|
+|before\_range|represents the valid time range of the previous method. The previous method works when there are values in the [T-before\_range, T] range. When before\_range is not specified, before\_range takes the default value default\_fill\_interval; -1 represents infinit; optional field|
 </center>
 
 Here we give an example of filling null values using the previous method. The SQL statement is as follows:
@@ -271,7 +271,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 ```
 which means:
 
-Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp of 2017-11-01T16:37:50.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
+Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
 
 On the [sample data](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt), the execution result of this statement is shown below:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577616-67df0280-1ef5-11e9-9dff-2eb8342074eb.jpg"></center>
@@ -295,7 +295,7 @@ Detailed descriptions of all parameters are given in Table 3-5.
 |path, prefixPath|query path; mandatory field|
 |T|query timestamp (only one can be specified); mandatory field|
 |data_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
-|before\_range, after\_range|represents the valid time range of the linear method. The previous method works when there are values in the [T-before\_range, T+after\_range] range. When before\_range and after\_range are not explicitly specified, both before\_range and after\_range default to infinity; optional field|
+|before\_range, after\_range|represents the valid time range of the linear method. The previous method works when there are values in the [T-before\_range, T+after\_range] range. When before\_range and after\_range are not explicitly specified, default\_fill\_interval is used. -1 represents infinity; optional field|
 </center>
 
 Here we give an example of filling null values using the linear method. The SQL statement is as follows:
@@ -305,7 +305,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 ```
 which means:
 
-Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 21.927326, the next timestamp 2017-11-01T16:39:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 25.311783 to perform linear fitting calculation: 21.927326 + (25.311783-21.927326)/60s * 50s = 24.747707
+Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 21.927326, the next timestamp 2017-11-01T16:38:00.000 (and the timestamp is in the [2017-11-01T16:37:50.000, 2017-11-01T16:38:50.000] time range) and its value 25.311783 to perform linear fitting calculation: 21.927326 + (25.311783-21.927326)/60s * 50s = 24.747707
 
 On the [sample data](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt), the execution result of this statement is shown below:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577727-d4f29800-1ef5-11e9-8ff3-3bb519da3993.jpg"></center>
@@ -335,12 +335,12 @@ When the fill method is not specified, each data type bears its own default fill
 
 |Data Type|Default Fill Methods and Parameters|
 |:---|:---|
-|boolean|previous, 0|
-|int32|linear, 0, 0|
-|int64|linear, 0, 0|
-|float|linear, 0, 0|
-|double|linear, 0, 0|
-|text|previous, 0|
+|boolean|previous, 600000|
+|int32|linear, 600000, 600000|
+|int64|linear, 600000, 600000|
+|float|linear, 600000, 600000|
+|double|linear, 600000, 600000|
+|text|previous, 600000|
 </center>
 
 > Note: In version 0.7.0, at least one fill method should be specified in the Fill statement.
@@ -511,6 +511,22 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 The result is shown below:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577879-64984680-1ef6-11e9-9d7b-57dd60fab60e.jpg"></center>
+
+#### Other ResultSet Format
+
+In addition, IoTDB supports two another resultset format: 'group by device' and 'disable align'.
+
+The 'group by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
+
+The SQL statement is:
+
+```
+select s1,s2 from root.sg1.* GROUP BY DEVICE
+```
+
+For more syntax description, please read SQL REFERENCE.
+
+The 'disable align' indicaes that there are 3 columns for each time series in the resultset. For more syntax description, please read SQL REFERENCE.
 
 ####  Error Handling
 

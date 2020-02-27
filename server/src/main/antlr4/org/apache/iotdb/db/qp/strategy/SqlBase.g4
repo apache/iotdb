@@ -42,7 +42,7 @@ statement
     | DROP INDEX function=ID ON timeseriesPath #dropIndex //not support yet
     | MERGE #merge //not support yet
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
-    | ALTER USER userName=ID SET PASSWORD password=STRING_LITERAL #alterUser
+    | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
     | DROP USER userName=ID #dropUser
     | CREATE ROLE roleName=ID #createRole
     | DROP ROLE roleName=ID #dropRole
@@ -97,6 +97,7 @@ statement
 selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
+    | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
     ;
 
 functionCall
@@ -116,7 +117,7 @@ functionName
     ;
 
 attributeClauses
-    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding (COMMA COMPRESSOR OPERATOR_EQ compressor=propertyValue)? (COMMA property)*
+    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)? (COMMA property)*
     ;
 
 setClause
@@ -136,10 +137,14 @@ andExpression
     ;
 
 predicate
-    : (suffixPath | prefixPath) comparisonOperator constant
+    : (TIME | TIMESTAMP | suffixPath | prefixPath) comparisonOperator constant
+    | (TIME | TIMESTAMP | suffixPath | prefixPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
     ;
 
+inClause
+    : OPERATOR_NOT? OPERATOR_IN LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    ;
 
 fromClause
     : FROM prefixPath (COMMA prefixPath)*
@@ -148,13 +153,13 @@ fromClause
 specialClause
     : specialLimit
     | groupByClause specialLimit?
-    | fillClause slimitClause? groupByDeviceClauseOrDisableAlign?
+    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     ;
 
 specialLimit
-    : limitClause slimitClause? groupByDeviceClauseOrDisableAlign?
-    | slimitClause limitClause? groupByDeviceClauseOrDisableAlign?
-    | groupByDeviceClauseOrDisableAlign
+    : limitClause slimitClause? alignByDeviceClauseOrDisableAlign?
+    | slimitClause limitClause? alignByDeviceClauseOrDisableAlign?
+    | alignByDeviceClauseOrDisableAlign
     ;
 
 limitClause
@@ -173,17 +178,17 @@ soffsetClause
     : SOFFSET INT
     ;
 
-groupByDeviceClause
+alignByDeviceClause
     :
-    GROUP BY DEVICE
+    ALIGN BY DEVICE
     ;
 
 disableAlign
     : DISABLE ALIGN
     ;
 
-groupByDeviceClauseOrDisableAlign
-    : groupByDeviceClause
+alignByDeviceClauseOrDisableAlign
+    : alignByDeviceClause
     | disableAlign
     ;
 
@@ -231,7 +236,7 @@ comparisonOperator
     ;
 
 insertColumnSpec
-    : LR_BRACKET TIMESTAMP (COMMA nodeNameWithoutStar)* RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)* RR_BRACKET
     ;
 
 insertValuesSpec
@@ -253,7 +258,7 @@ rootOrId
     ;
 
 timeInterval
-    : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
+    : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RR_BRACKET
     ;
 
 timeValue
@@ -723,6 +728,14 @@ DISABLE
 ALIGN
     : A L I G N
     ;
+
+COMPRESSION
+    : C O M P R E S S I O N
+    ;
+
+TIME
+    : T I M E
+    ;
 //============================
 // End of the keywords list
 //============================
@@ -741,6 +754,8 @@ OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 
 OPERATOR_NEQ : '!=' | '<>';
+
+OPERATOR_IN : I N;
 
 OPERATOR_AND
     : A N D

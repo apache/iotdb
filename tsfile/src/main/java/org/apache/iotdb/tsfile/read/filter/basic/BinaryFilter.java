@@ -57,7 +57,7 @@ public abstract class BinaryFilter implements Filter, Serializable {
   }
 
   @Override
-  public abstract Filter clone();
+  public abstract Filter copy();
 
   @Override
   public void serialize(DataOutputStream outputStream) {

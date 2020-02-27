@@ -119,7 +119,7 @@ public class JMXService implements IService {
 
     if (jmxPort == null) {
       localOnly = true;
-      jmxPort = System.getProperty(IoTDBConstant.IOTDB_LOCAL_JMX_PORT_NAME);
+      jmxPort = System.getProperty(IoTDBConstant.IOTDB_LOCAL_JMX_PORT_NAME, "31999");
     }
 
     if (jmxPort == null) {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,12 +33,14 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class AbstractMemTable implements IMemTable {
 
-  private long version;
+  private long version = Long.MAX_VALUE;
 
   private List<Modification> modifications = new ArrayList<>();
 
@@ -104,12 +107,11 @@ public abstract class AbstractMemTable implements IMemTable {
           value = value.toLowerCase();
           if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEN_FALSE.equals(value)) {
             return false;
-          } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEN_TRUE.equals(value)) {
-            return true;
-          } else {
-            throw new QueryProcessException(
-                "The BOOLEAN data type should be true/TRUE, false/FALSE or 0/1");
           }
+          if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEN_TRUE.equals(value)) {
+            return true;
+          }
+          throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
         case INT32:
           return Integer.parseInt(value);
         case INT64:
@@ -126,9 +128,8 @@ public abstract class AbstractMemTable implements IMemTable {
             } else {
               return new Binary(value.substring(1, value.length() - 1));
             }
-          } else {
-            throw new QueryProcessException("The TEXT data type should be covered by \" or '");
           }
+          throw new QueryProcessException("The TEXT data type should be covered by \" or '");
         default:
           throw new QueryProcessException("Unsupported data type:" + dataType);
       }
@@ -138,9 +139,10 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) throws QueryProcessException {
+  public void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end)
+      throws QueryProcessException {
     try {
-      write(batchInsertPlan, indexes);
+      write(batchInsertPlan, start, end);
       long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan);
       memSize += recordSizeInByte;
     } catch (RuntimeException e) {
@@ -157,11 +159,12 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void write(BatchInsertPlan batchInsertPlan, List<Integer> indexes) {
+  public void write(BatchInsertPlan batchInsertPlan, int start, int end) {
     for (int i = 0; i < batchInsertPlan.getMeasurements().length; i++) {
       IWritableMemChunk memSeries = createIfNotExistAndGet(batchInsertPlan.getDeviceId(),
           batchInsertPlan.getMeasurements()[i], batchInsertPlan.getDataTypes()[i]);
-      memSeries.write(batchInsertPlan.getTimes(), batchInsertPlan.getColumns()[i], batchInsertPlan.getDataTypes()[i], indexes);
+      memSeries.write(batchInsertPlan.getTimes(), batchInsertPlan.getColumns()[i],
+          batchInsertPlan.getDataTypes()[i], start, end);
     }
   }
 
@@ -196,18 +199,17 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      Map<String, String> props, long timeLowerBound) {
-    TimeValuePairSorter sorter;
+      TSEncoding encoding, Map<String, String> props, long timeLowerBound)
+      throws IOException, QueryProcessException {
     if (!checkPath(deviceId, measurement)) {
       return null;
-    } else {
-      long undeletedTime = findUndeletedTime(deviceId, measurement, timeLowerBound);
-      IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
-      IWritableMemChunk chunkCopy = new WritableMemChunk(dataType, memChunk.getTVList().clone());
-      chunkCopy.setTimeOffset(undeletedTime);
-      sorter = chunkCopy;
     }
-    return new ReadOnlyMemChunk(dataType, sorter, props);
+    long undeletedTime = findUndeletedTime(deviceId, measurement, timeLowerBound);
+    IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
+    TVList chunkCopy = memChunk.getTVList().clone();
+
+    chunkCopy.setTimeOffset(undeletedTime);
+    return new ReadOnlyMemChunk(measurement, dataType, encoding, chunkCopy, props, getVersion());
   }
 
 
@@ -252,8 +254,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void release() {
-    for (Entry<String, Map<String, IWritableMemChunk>> entry: memTableMap.entrySet()) {
-      for (Entry<String, IWritableMemChunk> subEntry: entry.getValue().entrySet()) {
+    for (Entry<String, Map<String, IWritableMemChunk>> entry : memTableMap.entrySet()) {
+      for (Entry<String, IWritableMemChunk> subEntry : entry.getValue().entrySet()) {
         TVListAllocator.getInstance().release(subEntry.getValue().getTVList());
       }
     }

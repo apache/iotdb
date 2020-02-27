@@ -64,10 +64,9 @@ public class QueryDataSource {
   }
 
   /**
-   *
    * @return an updated time filter concerning TTL
    */
-  public Filter updateTimeFilter(Filter timeFilter) {
+  public Filter updateTimeFilterUsingTTL(Filter timeFilter) {
     if (dataTTL != Long.MAX_VALUE) {
       if (timeFilter != null) {
         timeFilter = new AndFilter(timeFilter, TimeFilter.gtEq(System.currentTimeMillis() -

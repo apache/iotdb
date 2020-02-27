@@ -125,7 +125,7 @@ public class IOTDBGroupByInnerIntervalIT {
       boolean hasResultSet = statement.execute(
               "select count(temperature), sum(temperature), avg(temperature) from "
                       + "root.ln.wf01.wt01 "
-                      + "GROUP BY ([1, 30], 3ms, 5ms)");
+                      + "GROUP BY ([1, 30), 3ms, 5ms)");
 
       assertTrue(hasResultSet);
       int cnt;
@@ -165,7 +165,7 @@ public class IOTDBGroupByInnerIntervalIT {
       boolean hasResultSet = statement.execute(
               "select count(temperature), sum(temperature), avg(temperature) from "
                       + "root.ln.wf01.wt01 where temperature > 3"
-                      + "GROUP BY ([1, 30], 3ms, 5ms)");
+                      + "GROUP BY ([1, 30), 3ms, 5ms)");
 
       assertTrue(hasResultSet);
       int cnt;
@@ -205,7 +205,7 @@ public class IOTDBGroupByInnerIntervalIT {
       boolean hasResultSet = statement.execute(
               "select count(temperature), sum(temperature), avg(temperature) from "
                       + "root.ln.wf01.wt01 where time > 3"
-                      + "GROUP BY ([1, 30], 3ms, 5ms)");
+                      + "GROUP BY ([1, 30), 3ms, 5ms)");
 
       assertTrue(hasResultSet);
       int cnt;
@@ -237,7 +237,7 @@ public class IOTDBGroupByInnerIntervalIT {
       boolean hasResultSet = statement.execute(
               "select count(temperature), sum(temperature), avg(temperature) from "
                       + "root.ln.wf01.wt01 where time > 3"
-                      + "GROUP BY ([1, 30], 0ms)");
+                      + "GROUP BY ([1, 30), 0ms)");
       fail();
     } catch (Exception e) {
       assertTrue(e instanceof IoTDBSQLException);
@@ -249,7 +249,7 @@ public class IOTDBGroupByInnerIntervalIT {
       boolean hasResultSet = statement.execute(
               "select count(temperature), sum(temperature), avg(temperature) from "
                       + "root.ln.wf01.wt01 where time > 3"
-                      + "GROUP BY ([1, 30], -1ms)");
+                      + "GROUP BY ([1, 30), -1ms)");
       fail();
     } catch (Exception e) {
       assertTrue(e instanceof SQLException);
@@ -265,7 +265,7 @@ public class IOTDBGroupByInnerIntervalIT {
       boolean hasResultSet = statement.execute(
               "select count(temperature), sum(temperature), avg(temperature) from "
                       + "root.ln.wf01.wt01 where time > 3"
-                      + "GROUP BY ([1, 30], 2ms, 1ms)");
+                      + "GROUP BY ([1, 30), 2ms, 1ms)");
       fail();
     } catch (Exception e) {
       assertTrue(e instanceof IoTDBSQLException);

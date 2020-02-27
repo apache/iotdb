@@ -25,6 +25,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Locale;
+
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -57,6 +59,7 @@ public class IoTDBFlushQueryMergeTest {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    Locale.setDefault(Locale.ENGLISH);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     insertData();

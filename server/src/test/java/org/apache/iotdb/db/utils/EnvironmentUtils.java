@@ -73,7 +73,6 @@ public class EnvironmentUtils {
     }
 
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
-
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
@@ -158,6 +157,18 @@ public class EnvironmentUtils {
     config.setEnableStatMonitor(false);
     TEST_QUERY_JOB_ID  = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+  }
+
+  public static void stopDaemon() {
+    if(daemon != null) {
+      daemon.stop();
+    }
+  }
+
+  public static void activeDaemon() {
+    if(daemon != null) {
+      daemon.active();
+    }
   }
 
   private static void createAllDir() {

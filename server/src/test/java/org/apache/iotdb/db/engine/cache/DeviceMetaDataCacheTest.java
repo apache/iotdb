@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -75,7 +76,7 @@ public class DeviceMetaDataCacheTest {
 
   @After
   public void tearDown() throws Exception {
-    storageGroupProcessor.syncDeleteDataFiles();
+    storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(systemDir);
   }
@@ -94,7 +95,9 @@ public class DeviceMetaDataCacheTest {
     for (int j = 1; j <= 100; j++) {
       insertOneRecord(j, j);
     }
-    storageGroupProcessor.getWorkSequenceTsFileProcessor().syncFlush();
+    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessors()){
+      tsFileProcessor.syncFlush();
+    }
 
     for (int j = 10; j >= 1; j--) {
       insertOneRecord(j, j);
@@ -121,7 +124,7 @@ public class DeviceMetaDataCacheTest {
   public void test1() throws IOException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(false);
     QueryDataSource queryDataSource = storageGroupProcessor
-        .query(deviceId0, measurementId5, context, null);
+        .query(deviceId0, measurementId5, context, null, null);
 
     List<TsFileResource> seqResources = queryDataSource.getSeqResources();
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
@@ -143,7 +146,7 @@ public class DeviceMetaDataCacheTest {
   public void test2() throws IOException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(true);
     QueryDataSource queryDataSource = storageGroupProcessor
-        .query(deviceId0, measurementId5, context, null);
+        .query(deviceId0, measurementId5, context, null, null);
 
     List<TsFileResource> seqResources = queryDataSource.getSeqResources();
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
