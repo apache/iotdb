@@ -249,7 +249,7 @@ Note: In Version 0.7.0, if <WhereClause> includes `OR`, time filter can not be u
 Note: There must be a space on both sides of the plus and minus operator appearing in the time expression 
 ```
 
-* Group By语句
+* Group By 语句
 
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByClause>
@@ -278,7 +278,7 @@ Note: <TimeUnit> needs to be greater than 0
 Note: Third <TimeUnit> if set shouldn't be smaller than second <TimeUnit>
 ```
 
-* Fill语句
+* Fill 语句
 
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE <WhereClause> FILL <FillClause>
@@ -307,7 +307,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath>(FromClause) +
 Note: Integer in <TimeUnit> needs to be greater than 0
 ```
 
-* Limit语句
+* Limit & SLimit 语句
 
 ```
 SELECT <SelectClause> FROM <FromClause> [WHERE <WhereClause>] [<LIMITClause>] [<SLIMITClause>]
@@ -336,14 +336,15 @@ Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammati
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
 
-* Group by device语句
+* Align by device语句
+
 ```
-GroupbyDeviceClause : GROUP BY DEVICE
+AlignbyDeviceClause : ALIGN BY DEVICE
 
 规则:  
 1. 大小写不敏感.  
-正例: select * from root.sg1 align by device  
-正例: select * from root.sg1 GROUP BY DEVICE  
+正例: select * from root.sg1 align by device
+正例: select * from root.sg1 ALIGN BY DEVICE
 
 2. AlignbyDeviceClause 只能放在末尾.  
 正例: select * from root.sg1 where time > 10 align by device  
@@ -407,7 +408,8 @@ root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT.
    - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) align by device
 ```
 
-* Disable align语句
+* Disable align 语句
+
 ```
 规则:  
 1. 大小写均可.  
@@ -441,7 +443,6 @@ root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT.
    - select s0,s1 from root.vehicle.* limit 10 offset 1 disable align
    - select * from root.vehicle slimit 10 soffset 2 disable align
    - select * from root.vehicle where time > 10 disable align
-
 
 ```
 

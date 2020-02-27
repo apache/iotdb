@@ -343,9 +343,10 @@ Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammati
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
 
-* Group By Device Statement
+* Align By Device Statement
+
 ```
-GroupbyDeviceClause : GROUP BY DEVICE
+AlignbyDeviceClause : ALIGN BY DEVICE
 
 Rules:  
 1. Both uppercase and lowercase are ok.  
@@ -417,6 +418,7 @@ For example, "select s0,s0,s1 from root.sg.* align by device" is not equal to "s
    - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) align by device
 ```
 * Disable Align Statement
+
 ```
 Disable Align Clause: DISABLE ALIGN
 
