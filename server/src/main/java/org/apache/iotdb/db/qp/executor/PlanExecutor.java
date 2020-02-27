@@ -234,7 +234,7 @@ public class PlanExecutor implements IPlanExecutor {
         return new EmptyDataSet();
       } else if (queryPlan instanceof GroupByPlan) {
         GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
-        queryDataSet =  queryRouter.groupBy(groupByPlan, context);
+        return queryRouter.groupBy(groupByPlan, context);
       } else if (queryPlan instanceof AggregationPlan) {
         AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
         queryDataSet = queryRouter.aggregate(aggregationPlan, context);

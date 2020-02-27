@@ -90,7 +90,7 @@ public class IoTDBSimpleQueryTest {
       resultSet = statement.executeQuery(
           "select count(*) from root where time >= 1 and time <= 100 "
               + "group by ([0, 100), 20ms, 20ms) align by device");
-      // has an empty time column
+      // has time and device columns
       Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
       while (resultSet.next()) {
         fail();

@@ -60,7 +60,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
 
   @Override
   public int getColumnCount() {
-    return columnInfoList.size();
+    return columnInfoList == null ? 0 : columnInfoList.size();
   }
 
   @Override

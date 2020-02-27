@@ -53,7 +53,7 @@ public class IoTDBResultMetadataTest {
     } catch (Exception e) {
       flag = true;
     }
-    assertTrue(flag);
+    assertFalse(flag);
 
     flag = false;
     try {
