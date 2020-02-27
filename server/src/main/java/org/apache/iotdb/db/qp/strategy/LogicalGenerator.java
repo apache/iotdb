@@ -80,6 +80,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DropRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DropUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FillClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FromClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FullPathContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionCallContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleContext;
@@ -135,7 +136,6 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SlimitClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeIntervalContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeseriesPathContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TypeClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnsetTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UpdateStatementContext;
@@ -298,7 +298,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterCreateTimeseries(ctx);
     createTimeSeriesOperator = new CreateTimeSeriesOperator(SQLConstant.TOK_METADATA_CREATE);
     operatorType = SQLConstant.TOK_METADATA_CREATE;
-    createTimeSeriesOperator.setPath(parseTimeseriesPath(ctx.timeseriesPath()));
+    createTimeSeriesOperator.setPath(parseFullPath(ctx.fullPath()));
   }
 
   @Override
@@ -624,7 +624,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterSetStorageGroup(ctx);
     SetStorageGroupOperator setStorageGroupOperator = new SetStorageGroupOperator(
         SQLConstant.TOK_METADATA_SET_FILE_LEVEL);
-    Path path = parsePrefixPath(ctx.prefixPath());
+    Path path = parseFullPath(ctx.fullPath());
     setStorageGroupOperator.setPath(path);
     initializedOperator = setStorageGroupOperator;
     operatorType = SQLConstant.TOK_METADATA_SET_FILE_LEVEL;
@@ -870,7 +870,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     initializedOperator = insertOp;
   }
 
-  private Path parseTimeseriesPath(TimeseriesPathContext ctx) {
+  private Path parseFullPath(FullPathContext ctx) {
     List<NodeNameWithoutStarContext> nodeNamesWithoutStar = ctx.nodeNameWithoutStar();
     List<String> path = new ArrayList<>();
     if (ctx.ROOT() != null) {
@@ -916,7 +916,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     insertOp = new InsertOperator(SQLConstant.TOK_INSERT);
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
     operatorType = SQLConstant.TOK_INSERT;
-    selectOp.addSelectPath(parseTimeseriesPath(ctx.timeseriesPath()));
+    selectOp.addSelectPath(parseFullPath(ctx.fullPath()));
     insertOp.setSelectOperator(selectOp);
   }
 
