@@ -474,7 +474,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("Unsupported data type in aggregation AVG : TEXT", e.getMessage());
+        Assert.assertEquals("500: Unsupported data type in aggregation AVG : TEXT", e.getMessage());
       }
       try {
         statement.execute("SELECT sum(s3)" +
@@ -483,7 +483,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("Unsupported data type in aggregation SUM : TEXT", e.getMessage());
+        Assert.assertEquals("500: Unsupported data type in aggregation SUM : TEXT", e.getMessage());
       }
       try {
         statement.execute("SELECT avg(s4)" +
@@ -492,7 +492,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("Unsupported data type in aggregation AVG : BOOLEAN", e.getMessage());
+        Assert.assertEquals("500: Unsupported data type in aggregation AVG : BOOLEAN", e.getMessage());
       }
       try {
         statement.execute("SELECT sum(s4)" +
@@ -501,7 +501,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("Unsupported data type in aggregation SUM : BOOLEAN", e.getMessage());
+        Assert.assertEquals("500: Unsupported data type in aggregation SUM : BOOLEAN", e.getMessage());
       }
     } catch (Exception e) {
       e.printStackTrace();

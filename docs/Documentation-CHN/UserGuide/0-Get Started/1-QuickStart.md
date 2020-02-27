@@ -57,7 +57,7 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
 
 * 二进制可运行程序：请从Download页面下载最新的安装包，解压后即完成安装。
 
-* 使用Docker镜像： dockerfile文件位于 https://github.com/apache/incubator-iotdb/blob/master/docker/Dockerfile
+* 使用Docker镜像：dockerfile 文件位于 https://github.com/apache/incubator-iotdb/blob/master/docker/src/main
 
 ### IoTDB下载
 

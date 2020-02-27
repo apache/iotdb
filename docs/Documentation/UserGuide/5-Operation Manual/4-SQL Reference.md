@@ -183,8 +183,9 @@ Note: This statement can be used in IoTDB Client and JDBC.
 SHOW CHILD PATHS <Path>
 Eg: IoTDB > SHOW CHILD PATHS root
 Eg: IoTDB > SHOW CHILD PATHS root.ln
-Eg: IoTDB > SHOW CHILD PATHS root.ln.wf01
-Note: The path can only be prefix path.
+Eg: IoTDB > SHOW CHILD PATHS root.*.wf01
+Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
+Note: The path can be prefix path or star path, the nodes can be in a "prefix + star" format. 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 ### Data Management Statement
@@ -243,6 +244,7 @@ SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
 Eg. IoTDB > SELECT * FROM root
 Eg. IoTDB > SELECT * FROM root where time > now() - 5m
+Eg. IoTDB > SELECT * FROM root.ln.*.wf*
 Eg. IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MAX_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature > 24

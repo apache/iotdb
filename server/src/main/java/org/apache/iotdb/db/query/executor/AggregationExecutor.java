@@ -35,7 +35,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
-import org.apache.iotdb.db.query.factory.AggreResultFactory;
+import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
@@ -127,7 +127,7 @@ public class AggregationExecutor {
 
     for (int i : pathToAggrIndexes.getValue()) {
       // construct AggregateResult
-      AggregateResult aggregateResult = AggreResultFactory
+      AggregateResult aggregateResult = AggregateResultFactory
           .getAggrResultByName(aggregations.get(i), tsDataType);
       aggregateResultList.add(aggregateResult);
       isCalculatedList.add(false);
@@ -218,7 +218,7 @@ public class AggregationExecutor {
     List<AggregateResult> aggregateResults = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       TSDataType type = dataTypes.get(i);
-      AggregateResult result = AggreResultFactory.getAggrResultByName(aggregations.get(i), type);
+      AggregateResult result = AggregateResultFactory.getAggrResultByName(aggregations.get(i), type);
       aggregateResults.add(result);
     }
     aggregateWithValueFilter(aggregateResults, timestampGenerator, readersOfSelectedSeries);
@@ -260,7 +260,7 @@ public class AggregationExecutor {
   private QueryDataSet constructDataSet(List<AggregateResult> aggregateResultList) {
     RowRecord record = new RowRecord(0);
     for (AggregateResult resultData : aggregateResultList) {
-      TSDataType dataType = resultData.getDataType();
+      TSDataType dataType = resultData.getResultDataType();
       record.addField(resultData.getResult(), dataType);
     }
 
