@@ -24,17 +24,17 @@ singleStatement
     ;
 
 statement
-    : CREATE TIMESERIES timeseriesPath WITH attributeClauses #createTimeseries
+    : CREATE TIMESERIES fullPath WITH attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
-    | INSERT INTO timeseriesPath insertColumnSpec VALUES insertValuesSpec #insertStatement
+    | INSERT INTO fullPath insertColumnSpec VALUES insertValuesSpec #insertStatement
     | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
-    | SET STORAGE GROUP TO prefixPath #setStorageGroup
+    | SET STORAGE GROUP TO fullPath #setStorageGroup
     | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
-    | CREATE INDEX ON timeseriesPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
-    | DROP INDEX function=ID ON timeseriesPath #dropIndex //not support yet
+    | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
+    | DROP INDEX function=ID ON fullPath #dropIndex //not support yet
     | MERGE #merge //not support yet
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
     | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
@@ -77,7 +77,7 @@ statement
     | MOVE FILE FILE #moveFile
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
-    p1=timeseriesPath COMMA p2=timeseriesPath COMMA n1=timeValue COMMA n2=timeValue COMMA
+    p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA
     epsilon=constant (COMMA alpha=constant COMMA beta=constant)?
     RR_BRACKET
     fromClause
@@ -271,7 +271,7 @@ propertyLabelPair
     : propertyName=ID DOT labelName=ID
     ;
 
-timeseriesPath
+fullPath
     : ROOT (DOT nodeNameWithoutStar)*
     ;
 
