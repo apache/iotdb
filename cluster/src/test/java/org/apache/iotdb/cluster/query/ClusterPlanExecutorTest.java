@@ -40,9 +40,9 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
   private ClusterPlanExecutor queryExecutor;
 
   @Before
-  public void setUp() throws MetadataException, QueryProcessException {
+  public void setUp() throws Exception {
     super.setUp();
-    queryExecutor = new ClusterPlanExecutor(localMetaGroupMember);
+    queryExecutor = new ClusterPlanExecutor(testMetaMember);
   }
 
   @Test
@@ -51,15 +51,15 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPaths(pathList);
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
 
     QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, context);
-    checkDataset(dataSet, 0, 100);
+    checkDataset(dataSet, 0, 20);
   }
 
   @Test
   public void testMatchPaths() throws MetadataException {
-    List<String> allMatchedPaths = queryExecutor.getPaths(TestUtils.getTestSg(0) + ".*");
+    List<String> allMatchedPaths = queryExecutor.getPaths("root.*.s0");
     for (int i = 0; i < allMatchedPaths.size(); i++) {
       assertEquals(pathList.get(i).getFullPath(), allMatchedPaths.get(i));
     }

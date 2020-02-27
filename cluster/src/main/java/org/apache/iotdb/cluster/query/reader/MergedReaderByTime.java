@@ -24,8 +24,8 @@ public class MergedReaderByTime implements IReaderByTimestamp {
     forTime:
     for (int i = 0; i < rst.length; i++) {
       for (int j = 0; j < innerReaders.size(); j++) {
-        if (valueCaches[i][j] != null) {
-          rst[i] = valueCaches[i][j];
+        if (valueCaches[j][i] != null) {
+          rst[i] = valueCaches[j][i];
           continue forTime;
         }
       }

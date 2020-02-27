@@ -36,11 +36,13 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -123,12 +125,12 @@ public class AggregationExecutor {
           .getAggrResultByName(aggregations.get(i), tsDataType);
       aggregateResultList.add(aggregateResult);
     }
-    aggregateOneSeries(seriesPath, context, timeFilter, tsDataType, aggregateResultList);
+    aggregateOneSeries(seriesPath, context, timeFilter, tsDataType, aggregateResultList, null);
     return aggregateResultList;
   }
 
   public static void aggregateOneSeries(Path seriesPath, QueryContext context, Filter timeFilter,
-      TSDataType tsDataType, List<AggregateResult> aggregateResultList)
+      TSDataType tsDataType, List<AggregateResult> aggregateResultList, TsFileFilter fileFilter)
       throws StorageEngineException, IOException, QueryProcessException {
     List<Boolean> isCalculatedList = new ArrayList<>();
     for (int i = 0; i < aggregateResultList.size(); i++) {
@@ -137,6 +139,9 @@ public class AggregationExecutor {
     // construct series reader without value filter
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(seriesPath, context, timeFilter);
+    if (fileFilter != null) {
+      QueryUtils.filterQueryDataSource(queryDataSource, fileFilter);
+    }
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
@@ -213,7 +218,7 @@ public class AggregationExecutor {
    * @param context query context.
    */
   public QueryDataSet executeWithValueFilter(QueryContext context)
-      throws StorageEngineException, PathException, IOException {
+      throws StorageEngineException, IOException {
 
     TimeGenerator timestampGenerator = getTimeGenerator(context);
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();

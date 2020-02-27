@@ -20,12 +20,15 @@
 package org.apache.iotdb.cluster.query.reader;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import org.apache.iotdb.cluster.common.TestManagedSeriesReader;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.query.BaseQueryTest;
+import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -41,26 +44,11 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.junit.Test;
 
-public class ClusterTimeGeneratorTest {
-
-  private MetaGroupMember metaGroupMember = new TestMetaGroupMember() {
-
-    @Override
-    public ManagedSeriesReader getSeriesReader(Path path, TSDataType dataType, Filter timeFilter,
-        Filter valueFilter, QueryContext context) {
-      BatchData batchData = TestUtils.genBatchData(dataType, 0, 100);
-      return new TestManagedSeriesReader(batchData);
-    }
-
-    @Override
-    public TSDataType getSeriesType(String pathStr) {
-      return TSDataType.DOUBLE;
-    }
-  };
+public class ClusterTimeGeneratorTest extends BaseQueryTest {
 
   @Test
   public void test() throws StorageEngineException, IOException {
-    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     IExpression expression =
         BinaryExpression.and(
             new SingleSeriesExpression(new Path(TestUtils.getTestSeries(0, 0)),
@@ -68,11 +56,12 @@ public class ClusterTimeGeneratorTest {
             new SingleSeriesExpression(new Path(TestUtils.getTestSeries(1, 1)),
                 ValueFilter.ltEq(8.0)));
     ClusterTimeGenerator timeGenerator = new ClusterTimeGenerator(expression, context,
-        metaGroupMember);
-    for (int i = 3; i < 8; i++) {
+        testMetaMember);
+    for (int i = 3; i <= 8; i++) {
       assertTrue(timeGenerator.hasNext());
       assertEquals(i, timeGenerator.next());
     }
+    assertFalse(timeGenerator.hasNext());
   }
 
 }

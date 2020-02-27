@@ -151,6 +151,10 @@ public class SlotPartitionTable implements PartitionTable {
 
     // assuming the nodes are [1,2,3,4,5]
     int nodeIndex = nodeRing.indexOf(node);
+    if (nodeIndex == -1) {
+      logger.error("Node {} is not in the cluster", node);
+      return null;
+    }
     int endIndex = nodeIndex + replicationNum;
     if (endIndex > nodeRing.size()) {
       // for startIndex = 4, we concat [4, 5] and [1] to generate the group

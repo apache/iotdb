@@ -188,38 +188,53 @@ public class TestUtils {
     return true;
   }
 
-  public static void prepareAggregateData()
+  public static void prepareData()
       throws QueryProcessException {
     InsertPlan insertPlan = new InsertPlan();
-    insertPlan.setDeviceId(getTestSg(0));
-    insertPlan.setDataTypes(new TSDataType[] {TSDataType.DOUBLE, TSDataType.DOUBLE,
-        TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE});
-    insertPlan.setMeasurements(new String[] {getTestMeasurement(0),
-        getTestMeasurement(1), getTestMeasurement(2),
-        getTestMeasurement(3), getTestMeasurement(4)});
-    for (int i = 10; i < 20; i++) {
-      insertPlan.setTime(i);
-      insertPlan.setValues(new String[] {String.valueOf(i), String.valueOf(i), String.valueOf(i),
-          String.valueOf(i), String.valueOf(i)});
-      PlanExecutor planExecutor = new PlanExecutor();
-      planExecutor.processNonQuery(insertPlan);
+    for (int j = 0; j < 10; j++) {
+      insertPlan.setDeviceId(getTestSg(j));
+      String[] measurements = new String[10];
+      TSDataType[] tsDataTypes = new TSDataType[10];
+      for (int i = 0; i < 10; i++) {
+        measurements[i] = getTestMeasurement(i);
+        tsDataTypes[i] = TSDataType.DOUBLE;
+      }
+      insertPlan.setMeasurements(measurements);
+      insertPlan.setDataTypes(tsDataTypes);
+      for (int i = 10; i < 20; i++) {
+        insertPlan.setTime(i);
+        String[] values = new String[10];
+        for (int k = 0; k < 10; k++) {
+          values[k] = String.valueOf(i);
+        }
+        insertPlan.setValues(values);
+        PlanExecutor planExecutor = new PlanExecutor();
+        planExecutor.processNonQuery(insertPlan);
+      }
+      StorageEngine.getInstance().syncCloseAllProcessor();
+      for (int i = 0; i < 10; i++) {
+        insertPlan.setTime(i);
+        String[] values = new String[10];
+        for (int k = 0; k < 10; k++) {
+          values[k] = String.valueOf(i);
+        }
+        insertPlan.setValues(values);
+        PlanExecutor planExecutor = new PlanExecutor();
+        planExecutor.processNonQuery(insertPlan);
+      }
+      StorageEngine.getInstance().syncCloseAllProcessor();
+      for (int i = 10; i < 20; i++) {
+        insertPlan.setTime(i);
+        String[] values = new String[10];
+        for (int k = 0; k < 10; k++) {
+          values[k] = String.valueOf(i);
+        }
+        insertPlan.setValues(values);
+        PlanExecutor planExecutor = new PlanExecutor();
+        planExecutor.processNonQuery(insertPlan);
+      }
+      StorageEngine.getInstance().syncCloseAllProcessor();
     }
-    StorageEngine.getInstance().syncCloseAllProcessor();
-    for (int i = 0; i < 10; i++) {
-      insertPlan.setTime(i);
-      insertPlan.setValues(new String[] {String.valueOf(i), String.valueOf(i), String.valueOf(i),
-          String.valueOf(i), String.valueOf(i)});
-      PlanExecutor planExecutor = new PlanExecutor();
-      planExecutor.processNonQuery(insertPlan);
-    }
-    StorageEngine.getInstance().syncCloseAllProcessor();
-    for (int i = 10; i < 20; i++) {
-      insertPlan.setTime(i);
-      insertPlan.setValues(new String[] {String.valueOf(i), String.valueOf(i), String.valueOf(i),
-          String.valueOf(i), String.valueOf(i)});
-      PlanExecutor planExecutor = new PlanExecutor();
-      planExecutor.processNonQuery(insertPlan);
-    }
-    StorageEngine.getInstance().syncCloseAllProcessor();
+
   }
 }

@@ -66,7 +66,6 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
-import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.RaftServer;
@@ -107,7 +106,6 @@ import org.junit.Test;
 public class MetaGroupMemberTest extends MemberTest {
 
   private MetaGroupMember metaGroupMember;
-  private DataGroupMember dataGroupMember;
   private DataClusterServer dataClusterServer;
   private AtomicLong dummyResponse;
   private boolean mockDataClusterServer;
@@ -120,7 +118,7 @@ public class MetaGroupMemberTest extends MemberTest {
     metaGroupMember = getMetaGroupMember(TestUtils.getNode(0));
     metaGroupMember.setAllNodes(allNodes);
     // a faked data member to respond requests
-    dataGroupMember = getDataGroupMember(allNodes, TestUtils.getNode(0));
+    DataGroupMember dataGroupMember = getDataGroupMember(allNodes, TestUtils.getNode(0));
     dataGroupMember.setCharacter(LEADER);
     dataClusterServer = new DataClusterServer(TestUtils.getNode(0),
         new DataGroupMember.Factory(null, metaGroupMember, null) {
@@ -207,7 +205,7 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
 
-  private MetaGroupMember getMetaGroupMember(Node node) throws QueryProcessException {
+  protected MetaGroupMember getMetaGroupMember(Node node) throws QueryProcessException {
     return new MetaGroupMember(new Factory(), node) {
 
       @Override
@@ -218,64 +216,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
       @Override
       public DataClient getDataClient(Node node) throws IOException {
-        return new TestDataClient(node) {
-
-          @Override
-          public void querySingleSeries(SingleSeriesQueryRequest request,
-              AsyncMethodCallback<Long> resultHandler) {
-            new Thread(() -> dataGroupMember.querySingleSeries(request, resultHandler)).start();
-          }
-
-          @Override
-          public void fetchSingleSeries(Node header, long readerId,
-              AsyncMethodCallback<ByteBuffer> resultHandler) {
-            new Thread(() -> dataGroupMember.fetchSingleSeries(header, readerId, resultHandler))
-                .start();
-          }
-
-          @Override
-          public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
-              AsyncMethodCallback<Long> resultHandler) {
-            new Thread(
-                () -> dataGroupMember.querySingleSeriesByTimestamp(request, resultHandler))
-                .start();
-          }
-
-          @Override
-          public void fetchSingleSeriesByTimestamp(Node header, long readerId,
-              ByteBuffer timeBuffer,
-              AsyncMethodCallback<ByteBuffer> resultHandler) {
-            new Thread(
-                () -> dataGroupMember.fetchSingleSeriesByTimestamp(header, readerId, timeBuffer,
-                    resultHandler)).start();
-          }
-
-          @Override
-          public void getAllPaths(Node header, String path,
-              AsyncMethodCallback<List<String>> resultHandler) {
-            new Thread(() -> {
-              try {
-                resultHandler.onComplete(MManager.getInstance().getAllTimeseriesName(path));
-              } catch (MetadataException e) {
-                resultHandler.onError(e);
-              }
-            }).start();
-          }
-
-          @Override
-          public void executeNonQueryPlan(ExecutNonQueryReq request,
-              AsyncMethodCallback<TSStatus> resultHandler) {
-            new Thread(() -> {
-              try {
-                PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
-                planExecutor.processNonQuery(plan);
-                resultHandler.onComplete(StatusUtils.OK);
-              } catch (IOException | QueryProcessException e) {
-                resultHandler.onError(e);
-              }
-            }).start();
-          }
-        };
+        return new TestDataClient(node, dataGroupMemberMap);
       }
 
       @Override

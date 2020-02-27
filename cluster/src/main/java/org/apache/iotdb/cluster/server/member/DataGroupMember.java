@@ -98,6 +98,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
@@ -635,7 +636,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   IReaderByTimestamp getReaderByTimestamp(Path path, TSDataType dataType, QueryContext context)
       throws StorageEngineException {
     if (syncLeader()) {
-      return new SeriesReaderByTimestamp(getSeriesReader(path, dataType, null,
+      return new SeriesReaderByTimestamp(getSeriesReader(path, dataType, TimeFilter.gtEq(Long.MIN_VALUE),
           null, context));
     } else {
       throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
@@ -873,8 +874,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     for (String aggregation : aggregations) {
       results.add(AggregateResultFactory.getAggrResultByName(aggregation, dataType));
     }
+    List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
     try {
-      AggregationExecutor.aggregateOneSeries(new Path(path), queryContext, timeFilter, dataType, results);
+      AggregationExecutor.aggregateOneSeries(new Path(path), queryContext, timeFilter, dataType,
+          results, new SlotTsFileFilter(nodeSlots));
     } catch (StorageEngineException | IOException | QueryProcessException e) {
       resultHandler.onError(e);
     }

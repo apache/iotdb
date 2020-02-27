@@ -1166,8 +1166,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
     for (PartitionGroup partitionGroup : partitionGroups) {
-      mergeReader.addReader(getSeriesReader(partitionGroup, path, timeFilter, valueFilter, context,
-          dataType), 0);
+      IPointReader seriesReader = getSeriesReader(partitionGroup, path, timeFilter, valueFilter,
+          context, dataType);
+      if (seriesReader.hasNextTimeValuePair()) {
+        mergeReader.addReader(seriesReader, 0);
+      }
     }
     return mergeReader;
   }
@@ -1208,6 +1211,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     request.setDataTypeOrdinal(dataType.ordinal());
     request.setQueryId(context.getQueryId());
     request.setRequestor(thisNode);
+    request.setHeader(partitionGroup.getHeader());
     if (timeFilter != null) {
       request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
     }

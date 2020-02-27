@@ -44,8 +44,13 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
    */
   public ClusterTimeGenerator(IExpression expression,
       QueryContext context, MetaGroupMember metaGroupMember) throws StorageEngineException {
-    super(expression, context);
+    super(context);
     this.metaGroupMember = metaGroupMember;
+    try {
+      constructNode(expression);
+    } catch (IOException e) {
+      throw new StorageEngineException(e);
+    }
   }
 
   @Override

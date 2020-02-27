@@ -50,9 +50,9 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
 
   @Override
   @Before
-  public void setUp() throws MetadataException, QueryProcessException {
+  public void setUp() throws Exception {
     super.setUp();
-    clusterQueryRouter = new ClusterQueryRouter(localMetaGroupMember);
+    clusterQueryRouter = new ClusterQueryRouter(testMetaMember);
   }
 
   @Test
@@ -60,10 +60,10 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPaths(pathList);
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
 
     QueryDataSet dataSet = clusterQueryRouter.rawDataQuery(queryPlan, context);
-    checkDataset(dataSet, 0, 100);
+    checkDataset(dataSet, 0, 20);
   }
 
   @Test
@@ -87,15 +87,16 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
     plan.setAggregations(aggregations);
     plan.setDeduplicatedAggregations(aggregations);
 
-    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     QueryDataSet queryDataSet = clusterQueryRouter.aggregate(plan, context);
     assertTrue(queryDataSet.hasNext());
     RowRecord record = queryDataSet.next();
     List<Field> fields = record.getFields();
     assertEquals(5, fields.size());
-    Object[] answers = new Object[] {0,0,0,0,0};
+    Object[] answers = new Object[]{0.0, 19.0, 9.5, 20.0, 190.0};
     for (int i = 0; i < 5; i++) {
-      assertEquals(answers[i], fields.get(i));
+      assertEquals((double) answers[i], Double.parseDouble(fields.get(i).getStringValue()),
+          0.000001);
     }
     assertFalse(queryDataSet.hasNext());
   }

@@ -41,6 +41,10 @@ public class ServerTimeGenerator extends TimeGenerator {
 
   protected QueryContext context;
 
+  public ServerTimeGenerator(QueryContext context) {
+    this.context = context;
+  }
+
   /**
    * Constructor of EngineTimeGenerator.
    */

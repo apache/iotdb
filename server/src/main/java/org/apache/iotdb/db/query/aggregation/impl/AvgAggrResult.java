@@ -122,6 +122,7 @@ public class AvgAggrResult extends AggregateResult {
     AvgAggrResult anotherAvg = (AvgAggrResult) another;
     avg = avg * ((double) cnt / (cnt + anotherAvg.cnt)) +
         anotherAvg.avg * ((double) anotherAvg.cnt / (cnt + anotherAvg.cnt));
+    cnt += anotherAvg.cnt;
   }
 
   @Override

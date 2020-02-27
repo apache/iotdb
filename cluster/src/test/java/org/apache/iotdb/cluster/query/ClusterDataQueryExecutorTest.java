@@ -41,24 +41,24 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
     RawDataQueryPlan plan = new RawDataQueryPlan();
     plan.setDeduplicatedPaths(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
-    queryExecutor = new ClusterDataQueryExecutor(plan, localMetaGroupMember);
+    queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(
-        new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
-    checkDataset(dataSet, 0, 100);
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
+    checkDataset(dataSet, 0, 20);
   }
 
   @Test
   public void testFilter() throws IOException, StorageEngineException {
     IExpression expression = new SingleSeriesExpression(new Path(TestUtils.getTestSeries(0, 0)),
-        ValueFilter.gtEq(50.0));
+        ValueFilter.gtEq(5.0));
     RawDataQueryPlan plan = new RawDataQueryPlan();
     plan.setDeduplicatedPaths(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
     plan.setExpression(expression);
-    queryExecutor = new ClusterDataQueryExecutor(plan, localMetaGroupMember);
+    queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     QueryDataSet dataSet = queryExecutor.executeWithValueFilter(
-        new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
-    checkDataset(dataSet, 50, 50);
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
+    checkDataset(dataSet, 5, 15);
   }
 
 }

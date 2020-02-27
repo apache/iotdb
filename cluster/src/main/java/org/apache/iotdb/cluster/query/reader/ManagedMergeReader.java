@@ -54,7 +54,7 @@ public class ManagedMergeReader extends PriorityMergeReader implements ManagedSe
   private void constructBatch() throws IOException {
     if (hasNextTimeValuePair()) {
       batchData = new BatchData(dataType);
-      while (hasNextBatch() && batchData.length() < BATCH_SIZE) {
+      while (hasNextTimeValuePair() && batchData.length() < BATCH_SIZE) {
         TimeValuePair next = nextTimeValuePair();
         batchData.putAnObject(next.getTimestamp(), next.getValue().getValue());
       }

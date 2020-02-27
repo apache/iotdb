@@ -9,8 +9,6 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -21,24 +19,15 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.junit.Before;
 import org.junit.Test;
 
 public class ClusterAggregateExecutorTest extends BaseQueryTest {
 
   private ClusterAggregateExecutor executor;
-
-  @Override
-  @Before
-  public void setUp() throws MetadataException, QueryProcessException {
-    super.setUp();
-    TestUtils.prepareAggregateData();
-  }
 
   @Test
   public void testNoFilter()
@@ -61,23 +50,23 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
     plan.setAggregations(aggregations);
     plan.setDeduplicatedAggregations(aggregations);
 
-    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
-    executor = new ClusterAggregateExecutor(plan, localMetaGroupMember);
+    QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    executor = new ClusterAggregateExecutor(plan, testMetaMember);
     QueryDataSet queryDataSet = executor.executeWithoutValueFilter(context);
     assertTrue(queryDataSet.hasNext());
     RowRecord record = queryDataSet.next();
     List<Field> fields = record.getFields();
     assertEquals(5, fields.size());
-    Object[] answers = new Object[] {0, 19.0, 9.5, 20, 190};
+    Object[] answers = new Object[] {0.0, 19.0, 9.5, 20.0, 190.0};
     for (int i = 0; i < 5; i++) {
-      assertEquals(answers[i].toString(), fields.get(i).toString());
+      assertEquals((double)answers[i], Double.parseDouble(fields.get(i).toString()), 0.00001);
     }
     assertFalse(queryDataSet.hasNext());
   }
 
   @Test
   public void testFilter()
-      throws StorageEngineException, IOException, PathException {
+      throws StorageEngineException, IOException {
     AggregationPlan plan = new AggregationPlan();
     List<Path> paths = Arrays.asList(
         new Path(TestUtils.getTestSeries(0, 0)),
@@ -98,18 +87,19 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
     plan.setExpression(BinaryExpression.and(
         new SingleSeriesExpression(new Path(TestUtils.getTestSeries(0, 0)),
         ValueFilter.ltEq(8.0)),
-        new GlobalTimeExpression(TimeFilter.gtEq(3))));
+        new SingleSeriesExpression(new Path(TestUtils.getTestSeries(0, 0)),
+            TimeFilter.gtEq(3))));
 
-    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
-    executor = new ClusterAggregateExecutor(plan, localMetaGroupMember);
+    QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    executor = new ClusterAggregateExecutor(plan, testMetaMember);
     QueryDataSet queryDataSet = executor.executeWithValueFilter(context);
     assertTrue(queryDataSet.hasNext());
     RowRecord record = queryDataSet.next();
     List<Field> fields = record.getFields();
     assertEquals(5, fields.size());
-    Object[] answers = new Object[] {0,0,0,0,0};
+    Object[] answers = new Object[] {3.0, 8.0, 5.5, 6.0, 33.0};
     for (int i = 0; i < 5; i++) {
-      assertEquals(answers[i], fields.get(i));
+      assertEquals((double)answers[i], Double.parseDouble(fields.get(i).toString()), 0.00001);
     }
     assertFalse(queryDataSet.hasNext());
   }

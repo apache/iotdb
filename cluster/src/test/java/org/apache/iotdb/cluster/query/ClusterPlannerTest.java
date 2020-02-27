@@ -36,19 +36,18 @@ public class ClusterPlannerTest extends BaseQueryTest {
 
   @Override
   @Before
-  public void setUp() throws MetadataException, QueryProcessException {
+  public void setUp() throws Exception {
     super.setUp();
-    parser = new ClusterPlanner(localMetaGroupMember);
+    parser = new ClusterPlanner(testMetaMember);
   }
 
   @Test
   public void test() throws QueryProcessException {
-    List<String> measurements = new ArrayList<>();
+    List<String> sgs = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      measurements.add(TestUtils.getTestMeasurement(i));
+      sgs.add(TestUtils.getTestSg(i));
     }
-    String sql = String.format("SELECT %s FROM %s", String.join(",", measurements),
-        TestUtils.getTestSg(0));
+    String sql = String.format("SELECT s0 FROM %s", String.join(",", sgs));
     RawDataQueryPlan plan = (RawDataQueryPlan) parser.parseSQLToPhysicalPlan(sql);
     assertEquals(pathList, plan.getDeduplicatedPaths());
     assertEquals(dataTypes, plan.getDeduplicatedDataTypes());

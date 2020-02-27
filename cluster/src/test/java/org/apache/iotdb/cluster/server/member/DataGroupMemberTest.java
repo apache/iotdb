@@ -54,12 +54,9 @@ import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
-import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
@@ -72,7 +69,6 @@ import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
-import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -81,10 +77,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -165,24 +159,7 @@ public class DataGroupMemberTest extends MemberTest {
       @Override
       public AsyncClient connectNode(Node node) {
         try {
-          return new TestDataClient(node) {
-            @Override
-            public void readFile(String filePath, long offset, int length, Node header,
-                AsyncMethodCallback<ByteBuffer> resultHandler) {
-              new Thread(() -> {
-                if (offset == 0) {
-                  resultHandler.onComplete(
-                          ByteBuffer.wrap((filePath + "@" + offset + "#" + length).getBytes()));
-                } else {
-                  resultHandler.onComplete(ByteBuffer.allocate(0));
-                }
-              }).start();
-            }
-
-            @Override
-            public void startElection(ElectionRequest request,
-                AsyncMethodCallback<Long> resultHandler) {
-            }
+          return new TestDataClient(node, dataGroupMemberMap) {
 
             @Override
             public void pullSnapshot(PullSnapshotRequest request,
@@ -208,53 +185,12 @@ public class DataGroupMemberTest extends MemberTest {
             }
 
             @Override
-            public void executeNonQueryPlan(ExecutNonQueryReq request,
-                AsyncMethodCallback<TSStatus> resultHandler) {
-              new Thread(() -> {
-                try {
-                  PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
-                  new PlanExecutor().processNonQuery(plan);
-                  resultHandler.onComplete(StatusUtils.OK);
-                } catch (IOException | QueryProcessException e) {
-                  resultHandler.onError(e);
-                }
-              }).start();
-            }
-
-            @Override
-            public void appendEntry(AppendEntryRequest request,
-                AsyncMethodCallback<Long> resultHandler) {
-              new Thread(() -> resultHandler.onComplete(Response.RESPONSE_AGREE)).start();
-            }
-
-            @Override
             public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
               new Thread(() -> {
                 if (enableSyncLeader) {
                   resultHandler.onComplete(-1L);
                 } else {
                   resultHandler.onError(new TestException());
-                }
-              }).start();
-            }
-
-            @Override
-            public void pullTimeSeriesSchema(PullSchemaRequest request,
-                AsyncMethodCallback<PullSchemaResp> resultHandler) {
-              new Thread(() -> {
-                PullSchemaResp resp;
-                try {
-                  resp = new PullSchemaResp();
-                  ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                  DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-                  dataOutputStream.writeInt(10);
-                  for (int i = 0; i < 10; i++) {
-                    TestUtils.getTestSchema(0, i).serializeTo(dataOutputStream);
-                  }
-                  resp.setSchemaBytes(byteArrayOutputStream.toByteArray());
-                  resultHandler.onComplete(resp);
-                } catch (IOException e) {
-                  resultHandler.onError(e);
                 }
               }).start();
             }
