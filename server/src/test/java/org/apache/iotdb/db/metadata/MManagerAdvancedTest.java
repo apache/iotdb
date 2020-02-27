@@ -129,8 +129,8 @@ public class MManagerAdvancedTest {
     TimeValuePair tv2 = new TimeValuePair(2000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 0));
     TimeValuePair tv3 = new TimeValuePair(1500, TsPrimitiveType.getByType(TSDataType.DOUBLE, 0));
     MNode node = mmanager.getNodeByPath("root.vehicle.d2.s0");
-    node.setCachedLast(tv1);
-    node.updateCachedLast(tv2);
+    node.updateCachedLast(tv1, true);
+    node.updateCachedLast(tv2, true);
     Assert.assertEquals(tv2.getTimestamp(), node.getCachedLast().getTimestamp());
     node.updateCachedLast(tv3);
     Assert.assertEquals(tv2.getTimestamp(), node.getCachedLast().getTimestamp());
