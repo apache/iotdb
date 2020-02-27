@@ -130,6 +130,9 @@ public class FileReaderManager implements IService {
         }
         iterator.remove();
         refMap.remove(entry.getKey());
+        if (resourceLogger.isDebugEnabled()) {
+          resourceLogger.debug("{} TsFileReader is closed because of no reference.", entry.getValue().getFileName());
+        }
       }
     }
   }
@@ -206,8 +209,8 @@ public class FileReaderManager implements IService {
     while (iterator.hasNext()) {
       Map.Entry<TsFileResource, TsFileSequenceReader> entry = iterator.next();
       entry.getValue().close();
-      if (resourceLogger.isInfoEnabled()) {
-        resourceLogger.info("{} closedTsFileReader is closed.", entry.getValue().getFileName());
+      if (resourceLogger.isDebugEnabled()) {
+        resourceLogger.debug("{} closedTsFileReader is closed.", entry.getValue().getFileName());
       }
       closedReferenceMap.remove(entry.getKey());
       iterator.remove();
@@ -216,27 +219,11 @@ public class FileReaderManager implements IService {
     while (iterator.hasNext()) {
       Map.Entry<TsFileResource, TsFileSequenceReader> entry = iterator.next();
       entry.getValue().close();
-      if (resourceLogger.isInfoEnabled()) {
-        resourceLogger.info("{} unclosedTsFileReader is closed.", entry.getValue().getFileName());
+      if (resourceLogger.isDebugEnabled()) {
+        resourceLogger.debug("{} unclosedTsFileReader is closed.", entry.getValue().getFileName());
       }
       unclosedReferenceMap.remove(entry.getKey());
       iterator.remove();
-    }
-    for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : closedFileReaderMap.entrySet()) {
-      entry.getValue().close();
-      if (resourceLogger.isInfoEnabled()) {
-        resourceLogger.info("{} closedTsFileReader is closed.", entry.getValue().getFileName());
-      }
-      closedReferenceMap.remove(entry.getKey());
-      closedFileReaderMap.remove(entry.getKey());
-    }
-    for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : unclosedFileReaderMap.entrySet()) {
-      entry.getValue().close();
-      if (resourceLogger.isInfoEnabled()) {
-        resourceLogger.info("{} unclosedTsFileReader is closed.", entry.getValue().getFileName());
-      }
-      unclosedReferenceMap.remove(entry.getKey());
-      unclosedFileReaderMap.remove(entry.getKey());
     }
   }
 

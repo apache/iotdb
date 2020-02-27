@@ -74,6 +74,7 @@ public class QueryFileManager {
       // this file may be deleted just before we lock it
       if (tsFileResource.isDeleted()) {
         Map<Long, Set<TsFileResource>> pathMap = !isClosed ? unsealedFilePathsMap : sealedFilePathsMap;
+        // This resource may be removed by other threads of this query.
         if (pathMap.get(queryId).remove(tsFileResource)) {
           FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
         }
