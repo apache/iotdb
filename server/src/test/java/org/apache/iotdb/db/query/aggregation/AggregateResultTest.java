@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.query.aggregation.impl.AvgAggrResult;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -49,6 +50,7 @@ public class AggregateResultTest {
     avgAggrResult2.updateResultFromStatistics(statistics2);
     avgAggrResult1.merge(avgAggrResult2);
     Assert.assertEquals(1.333d, (double)avgAggrResult1.getResult(), 0.01);
+    Assert.assertEquals(3, ((AvgAggrResult) avgAggrResult1).getCnt());
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     avgAggrResult1.serializeTo(outputStream);
