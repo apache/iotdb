@@ -644,7 +644,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       resp.setOperationType(plan.getOperatorType().toString());
       // generate the queryId for the operation
       long queryId = generateQueryId(true);
-      // put it into the corresponding SetO
+      // put it into the corresponding Set
 
       statementId2QueryId.computeIfAbsent(statementId, k -> new HashSet<>()).add(queryId);
 

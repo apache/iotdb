@@ -20,6 +20,8 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class InternalMNode extends MNode {
@@ -70,5 +72,15 @@ public class InternalMNode extends MNode {
   @Override
   public Map<String, MNode> getChildren() {
     return children;
+  }
+
+  @Override
+  public TimeValuePair getCachedLast() {
+    return null;
+  }
+
+  @Override
+  public void updateCachedLast(TimeValuePair timeValuePair, boolean highPriorityUpdate) {
+    return;
   }
 }

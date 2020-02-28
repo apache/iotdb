@@ -30,7 +30,7 @@ public final class SelectOperator extends Operator {
 
   private List<Path> suffixList;
   private List<String> aggregations;
-  private boolean hasLast;
+  private boolean lastQuery;
 
   /**
    * init with tokenIntType, default operatorType is <code>OperatorType.SELECT</code>.
@@ -40,7 +40,7 @@ public final class SelectOperator extends Operator {
     operatorType = OperatorType.SELECT;
     suffixList = new ArrayList<>();
     aggregations = new ArrayList<>();
-    hasLast = false;
+    lastQuery = false;
   }
 
   public void addSelectPath(Path suffixPath) {
@@ -54,7 +54,7 @@ public final class SelectOperator extends Operator {
 
   public void addLastPath(Path suffixPath) {
     suffixList.add(suffixPath);
-    hasLast = true;
+    lastQuery = true;
   }
 
   public List<String> getAggregations() {
@@ -73,5 +73,5 @@ public final class SelectOperator extends Operator {
     return suffixList;
   }
 
-  public boolean isLastQuery() {return this.hasLast; }
+  public boolean isLastQuery() {return this.lastQuery; }
 }

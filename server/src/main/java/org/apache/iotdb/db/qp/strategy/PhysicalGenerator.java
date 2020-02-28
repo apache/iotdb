@@ -237,7 +237,7 @@ public class PhysicalGenerator {
       queryPlan = new AggregationPlan();
       ((AggregationPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
-    } else if (queryOperator.hasLast()) {
+    } else if (queryOperator.isLastQuery()) {
       queryPlan = new LastQueryPlan();
     } else {
       queryPlan = new RawDataQueryPlan();

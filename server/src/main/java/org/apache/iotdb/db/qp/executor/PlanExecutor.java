@@ -729,6 +729,7 @@ public class PlanExecutor implements IPlanExecutor {
       insertPlan.setDataTypes(dataTypes);
       storageEngine.insert(insertPlan);
       for (int i = 0; i < measurementList.length; i++) {
+        // Update cached last value with high priority
         MNode measurementNode = node.getChild(measurementList[i]);
         measurementNode.updateCachedLast(insertPlan.composeTimeValuePair(i), true);
       }
@@ -805,6 +806,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
       Integer[] results = storageEngine.insertBatch(batchInsertPlan);
       for (int i = 0; i < measurementList.length; i++) {
+        // Update cached last value with high priority
         MNode measurementNode = node.getChild(measurementList[i]);
         measurementNode.updateCachedLast(batchInsertPlan.composeLastTimeValuePair(i), true);
       }

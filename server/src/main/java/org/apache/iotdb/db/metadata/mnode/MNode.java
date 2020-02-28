@@ -117,21 +117,7 @@ public abstract class MNode implements Serializable {
     this.name = name;
   }
 
-  public TimeValuePair getCachedLast() {
-    return cachedLastValuePair;
-  }
+  public abstract TimeValuePair getCachedLast();
 
-  public synchronized void updateCachedLast(
-      TimeValuePair timeValuePair, boolean highPriorityUpdate) {
-    if (timeValuePair == null) return;
-    if (cachedLastValuePair == null) {
-      cachedLastValuePair =
-          new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
-    } else if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
-        || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
-            && highPriorityUpdate)) {
-      cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
-      cachedLastValuePair.setValue(timeValuePair.getValue());
-    }
-  }
+  public abstract void updateCachedLast(TimeValuePair timeValuePair, boolean highPriorityUpdate);
 }

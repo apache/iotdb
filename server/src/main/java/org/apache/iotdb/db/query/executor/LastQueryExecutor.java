@@ -22,6 +22,11 @@ package org.apache.iotdb.db.query.executor;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 
+import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -29,14 +34,16 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.query.reader.series.IAggregateReader;
-import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
+import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
+import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -64,10 +71,10 @@ public class LastQueryExecutor {
   public QueryDataSet execute(QueryContext context)
       throws StorageEngineException, IOException, QueryProcessException {
 
-    ListDataSet dataSet =
-            new ListDataSet(
-                    Arrays.asList(new Path(COLUMN_TIMESERIES), new Path(COLUMN_VALUE)),
-                    Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
+    ListDataSet dataSet = new ListDataSet(
+            Arrays.asList(new Path(COLUMN_TIMESERIES), new Path(COLUMN_VALUE)),
+            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
+
     for (int i = 0; i < selectedSeries.size(); i++) {
       TimeValuePair lastTimeValuePair =
           calculateLastPairForOneSeries(selectedSeries.get(i), dataTypes.get(i), context);
@@ -89,10 +96,10 @@ public class LastQueryExecutor {
   }
 
   /**
-   * get aggregation result for one series
+   * get last result for one series
    *
    * @param context query context
-   * @return AggregateResult list
+   * @return TimeValuePair
    */
   private TimeValuePair calculateLastPairForOneSeries(
       Path seriesPath, TSDataType tsDataType, QueryContext context)
@@ -100,73 +107,91 @@ public class LastQueryExecutor {
 
     // Retrieve last value from MNode
     MNode node = null;
-     try {
-       node = MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(seriesPath.toString());
-     } catch (MetadataException e) {
-       throw new QueryProcessException(e);
-     }
-     if (node.getCachedLast() != null) {
-       return node.getCachedLast();
-     }
+    try {
+      node = MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(seriesPath.toString());
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    if (node.getCachedLast() != null) {
+      return node.getCachedLast();
+    }
 
-    // construct series reader without value filter
-    IAggregateReader seriesReader =
-        new SeriesAggregateReader(
-            seriesPath,
-            tsDataType,
-            context,
-            QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, null),
-            null,
-            null,
-            null);
+    QueryDataSource dataSource =
+        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, null);
 
-    TimeValuePair resultPair = new TimeValuePair(0, null);
-    long maxTime = Long.MIN_VALUE;
-    while (seriesReader.hasNextChunk()) {
-      // cal by chunk statistics
-      if (seriesReader.canUseCurrentChunkStatistics()) {
-        Statistics chunkStatistics = seriesReader.currentChunkStatistics();
-        if (chunkStatistics.getEndTime() > maxTime) {
-          maxTime = chunkStatistics.getEndTime();
-          resultPair.setTimestamp(maxTime);
-          resultPair.setValue(TsPrimitiveType.getByType(tsDataType, chunkStatistics.getLastValue()));
-        }
-        seriesReader.skipCurrentChunk();
-        continue;
+    List<TsFileResource> seqFileResources = dataSource.getSeqResources();
+    List<TsFileResource> unseqFileResources = dataSource.getUnseqResources();
+
+    TimeValuePair resultPair = new TimeValuePair(Long.MIN_VALUE, null);
+
+    for (int i = seqFileResources.size() - 1; i >= 0; i--) {
+      List<ChunkMetaData> chunkMetadata = loadSatisfiedChunkMetadata(seqFileResources.get(i), seriesPath, context);
+      if (!chunkMetadata.isEmpty()) {
+        ChunkMetaData lastChunkMetaData = chunkMetadata.get(chunkMetadata.size() - 1);
+        Statistics chunkStatistics = lastChunkMetaData.getStatistics();
+        resultPair = constructLastPair(chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+        break;
       }
-      while (seriesReader.hasNextPage()) {
-        // cal by page statistics
-        if (seriesReader.canUseCurrentPageStatistics()) {
-          Statistics pageStatistic = seriesReader.currentPageStatistics();
-          if (pageStatistic.getEndTime() > maxTime) {
-            maxTime = pageStatistic.getEndTime();
-            resultPair.setTimestamp(maxTime);
-            resultPair.setValue(TsPrimitiveType.getByType(tsDataType, pageStatistic.getLastValue()));
-          }
-          seriesReader.skipCurrentPage();
-          continue;
-        }
-        // cal by page data
-        while (seriesReader.hasNextOverlappedPage()) {
-          BatchData nextOverlappedPageData = seriesReader.nextOverlappedPage();
-          int maxIndex = nextOverlappedPageData.length() - 1;
-          if (maxIndex < 0) {
-            continue;
-          }
-          long time = nextOverlappedPageData.getTimeByIndex(maxIndex);
-          if (time > maxTime) {
-            maxTime = time;
-            resultPair.setTimestamp(maxTime);
-            resultPair.setValue(TsPrimitiveType.getByType(tsDataType, nextOverlappedPageData.getValueInTimestamp(maxTime)));
-          }
-          nextOverlappedPageData.resetBatchData();
+    }
+
+    long version = 0;
+    for (TsFileResource resource: unseqFileResources) {
+      if (resource.getEndTimeMap().get(seriesPath.getDevice()) < resultPair.getTimestamp()) {
+        break;
+      }
+      List<ChunkMetaData> chunkMetadata = loadSatisfiedChunkMetadata(resource, seriesPath, context);
+      for (ChunkMetaData chunkMetaData: chunkMetadata) {
+        if (chunkMetaData.getEndTime() == resultPair.getTimestamp() && chunkMetaData.getVersion() > version) {
+          Statistics chunkStatistics = chunkMetaData.getStatistics();
+          resultPair = constructLastPair(chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+          version = chunkMetaData.getVersion();
         }
       }
     }
-    // Update cached last value
-    if (resultPair.getValue() != null)
-      node.updateCachedLast(resultPair, false);
+
+    // Update cached last value with low priority
+    node.updateCachedLast(resultPair, false);
     return resultPair;
   }
 
+  private List<ChunkMetaData> loadSatisfiedChunkMetadata(TsFileResource resource, Path seriesPath, QueryContext context)
+          throws IOException {
+    List<ChunkMetaData> currentChunkMetaDataList;
+    if (resource == null) {
+      return new ArrayList<>();
+    }
+    if (resource.isClosed()) {
+      currentChunkMetaDataList = DeviceMetaDataCache.getInstance().get(resource, seriesPath);
+    } else {
+      currentChunkMetaDataList = resource.getChunkMetaDataList();
+    }
+    List<Modification> pathModifications =
+            context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
+
+    if (!pathModifications.isEmpty()) {
+      QueryUtils.modifyChunkMetaData(currentChunkMetaDataList, pathModifications);
+    }
+
+    for (ChunkMetaData data : currentChunkMetaDataList) {
+      if (data.getChunkLoader() == null) {
+        TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
+                .get(resource, resource.isClosed());
+        data.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
+      }
+    }
+    List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
+    if (memChunks != null) {
+      for (ReadOnlyMemChunk readOnlyMemChunk : memChunks) {
+        if (!memChunks.isEmpty()) {
+          currentChunkMetaDataList.add(readOnlyMemChunk.getChunkMetaData());
+        }
+      }
+    }
+    return currentChunkMetaDataList;
+  }
+
+  private TimeValuePair constructLastPair(long timestamp, Object value, TSDataType dataType) {
+    TimeValuePair lastPair = new TimeValuePair(timestamp, TsPrimitiveType.getByType(dataType, value));
+    return lastPair;
+  }
 }

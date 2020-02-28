@@ -270,7 +270,7 @@ select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <
 
 下面的例子中查询时间序列root.ln.wf01.wt01.status最近时间戳的数据:
 ```
-select last(status) from root.ln.wf01.wt01 disable align
+select last status from root.ln.wf01.wt01 disable align
 ```
 结果集为以下的形式返回：
 ```

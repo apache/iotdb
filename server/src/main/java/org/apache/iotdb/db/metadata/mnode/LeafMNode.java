@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class LeafMNode extends MNode {
@@ -33,6 +34,8 @@ public class LeafMNode extends MNode {
    * measurement's Schema for one timeseries represented by current leaf node
    */
   private MeasurementSchema schema;
+
+  private TimeValuePair cachedLastValuePair = null;
 
   public LeafMNode(MNode parent, String name, TSDataType dataType, TSEncoding encoding,
       CompressionType type, Map<String, String> props) {
@@ -73,5 +76,24 @@ public class LeafMNode extends MNode {
   @Override
   public MeasurementSchema getSchema() {
     return schema;
+  }
+
+  @Override
+  public TimeValuePair getCachedLast() {
+    return cachedLastValuePair;
+  }
+
+  @Override
+  public synchronized void updateCachedLast(
+          TimeValuePair timeValuePair, boolean highPriorityUpdate) {
+    if (timeValuePair == null || timeValuePair.getValue() == null) return;
+    // TODO: update last with latestFlushedTimeForEachDevice when cache miss
+    if (cachedLastValuePair == null) return;
+    if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
+            || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
+            && highPriorityUpdate)) {
+      cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
+      cachedLastValuePair.setValue(timeValuePair.getValue());
+    }
   }
 }
