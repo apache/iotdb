@@ -265,6 +265,7 @@ public class SeriesReader {
       while (mergeReader.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = mergeReader.currentTimeValuePair();
         if (timeValuePair.getTimestamp() > currentPageEndTime) {
+          tryToInitFirstChunk();
           break;
         }
         // unpack all overlapped chunks
@@ -298,7 +299,7 @@ public class SeriesReader {
 
         timeValuePair = mergeReader.nextTimeValuePair();
         if (valueFilter == null || valueFilter
-                .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+            .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
           cachedBatchData.putAnObject(
               timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
         }
@@ -442,8 +443,8 @@ public class SeriesReader {
       unseqChunkMetadatas.addAll(loadSatisfiedChunkMetadatas(unseqFileResource.poll()));
     }
     while (!unseqChunkMetadatas.isEmpty() && !unseqFileResource.isEmpty()
-            && unseqChunkMetadatas.peek().getEndTime() >=
-            unseqFileResource.peek().getStartTimeMap().get(seriesPath.getDevice())) {
+        && unseqChunkMetadatas.peek().getEndTime() >=
+        unseqFileResource.peek().getStartTimeMap().get(seriesPath.getDevice())) {
       unseqChunkMetadatas.addAll(loadSatisfiedChunkMetadatas(unseqFileResource.poll()));
     }
   }
