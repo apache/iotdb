@@ -93,6 +93,7 @@ public class ClientMain {
     executeQuery(client, sessionId, "SELECT count(s1) FROM root.*.* where time <= 691200000",
         statementId);
     executeQuery(client, sessionId, "SELECT count(s1) FROM root.*.* where s1 <= 0.7", statementId);
+    executeQuery(client, sessionId,"SELECT * FROM root GROUP BY DEVICE", statementId);
 
 
     TSCloseOperationReq tsCloseOperationReq = new TSCloseOperationReq(sessionId);

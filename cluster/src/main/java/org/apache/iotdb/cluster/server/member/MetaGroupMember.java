@@ -1419,6 +1419,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     // get all storage groups this path may belong to
     Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(originPath);
     Set<String> ret = new HashSet<>();
+    logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
     for (Entry<String, String> entry : sgPathMap.entrySet()) {
       String storageGroupName = entry.getKey();
       String fullPath = entry.getValue();
@@ -1439,7 +1440,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       getLocalDataMember(partitionGroup.getHeader(), null, "Get paths of " + path)
           .syncLeader();
       List<String> allTimeseriesName = MManager.getInstance().getAllTimeseriesName(path);
-      logger.debug("{}: get matched paths of {} from local, result {}", name, partitionGroup,
+      logger.debug("{}: get matched paths of {} locally, result {}", name, partitionGroup,
           allTimeseriesName);
       return allTimeseriesName;
     } else {
@@ -1478,7 +1479,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       // leader
       getLocalDataMember(partitionGroup.getHeader(), null, "Get devices of " + path)
           .syncLeader();
-      return MManager.getInstance().getDevices(path);
+      Set<String> devices = MManager.getInstance().getDevices(path);
+      logger.debug("{}: get matched devices of {} locally, result {}", name, path,
+          devices);
+      return devices;
     } else {
       AtomicReference<Set<String>> result = new AtomicReference<>();
 
@@ -1493,6 +1497,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             result.wait(connectionTimeoutInMS);
           }
           Set<String> paths = result.get();
+          logger.debug("{}: get matched devices of {} from {}, result {}", name, partitionGroup,
+              node, paths);
           if (paths != null) {
             return paths;
           }

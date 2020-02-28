@@ -782,11 +782,13 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Try determining the storage group using the children of a mNode.
+   * Try determining the storage group using the children of a mNode. If one child is a storage
+   * group node, put a storageGroupName-fullPath pair into paths. Otherwise put the children that
+   * match the path into the queue and discard other children.
    */
   private void determineStorageGroup(int depth, String[] nodes, MNode mNode,
       Map<String, String> paths, Deque<MNode> nodeStack, Deque<Integer> depthStack) {
-    String currNode = depth >= nodes.length ? nodes[nodes.length - 1] : nodes[depth];
+    String currNode = depth >= nodes.length ? PATH_WILDCARD : nodes[depth];
     for (Entry<String, MNode> entry : mNode.getChildren().entrySet()) {
       if (!currNode.equals(PATH_WILDCARD) && !currNode.equals(entry.getKey())) {
         continue;
