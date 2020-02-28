@@ -78,7 +78,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
         } else {
           batchData = seriesReader.nextOverlappedPage();
         }
-        if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
+        if (batchData.getMaxTimestamp() >= timestamp) {
           return true;
         }
       }

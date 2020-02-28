@@ -100,11 +100,12 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
           Object[] values = readerByTimestamp.getValuesInTimestamps(columnTimes);
           for (Object value : values) {
             if (value == null) {
-              fields.add(new Field(null));
+              fields.add(null);
             } else {
               fields.add(Field.getField(value, tsDataType));
             }
           }
+          values = null;
           return fields;
         });
       }
@@ -124,7 +125,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
         boolean hasField = false;
         for (List<Field> result : results) {
           rowRecord.addField(result.get(i));
-          if (result.get(i).getDataType() != null) {
+          if (result.get(i) != null) {
             hasField = true;
           }
         }

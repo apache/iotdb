@@ -87,7 +87,7 @@ public class QueryDataSetUtils {
         for (int k = 0; k < fields.size(); k++) {
           Field field = fields.get(k);
           DataOutputStream dataOutputStream = dataOutputStreams[2*k + 1]; // DO NOT FORGET +1
-          if (field.getDataType() == null) {
+          if (field == null) {
             bitmap[k] =  (bitmap[k] << 1);
           } else {
             bitmap[k] =  (bitmap[k] << 1) | flag;
