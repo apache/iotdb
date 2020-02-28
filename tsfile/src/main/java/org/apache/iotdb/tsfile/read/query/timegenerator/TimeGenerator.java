@@ -43,37 +43,8 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
  */
 public abstract class TimeGenerator {
 
-
-  private boolean hasCache;
-  private TimeColumn cacheTimes;
-
   private HashMap<Path, List<LeafNode>> leafCache = new HashMap<>();
   private Node operatorNode;
-
-  public boolean hasNext() throws IOException {
-    if (hasCache) {
-      return true;
-    }
-
-    while (operatorNode.hasNextTimeColumn()) {
-      cacheTimes = operatorNode.nextTimeColumn();
-      if (cacheTimes.hasCurrent()) {
-        hasCache = true;
-        break;
-      }
-    }
-    return hasCache;
-  }
-
-  public long next() throws IOException {
-    if (hasCache || hasNext()) {
-      long currentTime = cacheTimes.currentTime();
-      cacheTimes.next();
-      hasCache = cacheTimes.hasCurrent();
-      return currentTime;
-    }
-    throw new IOException("no more data");
-  }
 
   public boolean hasNextTimeColumn() throws IOException {
     return operatorNode.hasNextTimeColumn();

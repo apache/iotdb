@@ -98,6 +98,23 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
+  public void updateResultUsingTimestamps(long[] timestamps, IReaderByTimestamp dataReader)
+      throws IOException {
+    if (hasResult()) {
+      return;
+    }
+
+    Object[] value = dataReader.getValuesInTimestamps(timestamps);
+    for (int i = 0; i < value.length; i++) {
+      if (value[i] != null) {
+        setValue(value[i]);
+        timestamp = timestamps[i];
+        break;
+      }
+    }
+  }
+
+  @Override
   public boolean isCalculatedAggregationResult() {
     return hasResult();
   }
@@ -105,7 +122,7 @@ public class FirstValueAggrResult extends AggregateResult {
   @Override
   public void merge(AggregateResult another) {
     FirstValueAggrResult anotherFirst = (FirstValueAggrResult) another;
-    if(this.getValue() == null || this.timestamp > anotherFirst.timestamp){
+    if (this.getValue() == null || this.timestamp > anotherFirst.timestamp) {
       setValue(anotherFirst.getValue());
       timestamp = anotherFirst.timestamp;
     }

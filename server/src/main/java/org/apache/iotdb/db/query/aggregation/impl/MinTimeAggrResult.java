@@ -81,6 +81,21 @@ public class MinTimeAggrResult extends AggregateResult {
   }
 
   @Override
+  public void updateResultUsingTimestamps(long[] timestamps, IReaderByTimestamp dataReader)
+      throws IOException {
+    if (hasResult()) {
+      return;
+    }
+    Object[] value = dataReader.getValuesInTimestamps(timestamps);
+    for (int i = 0; i < value.length; i++) {
+      if (value[i] != null) {
+        setLongValue(timestamps[i]);
+        return;
+      }
+    }
+  }
+
+  @Override
   public boolean isCalculatedAggregationResult() {
     return hasResult();
   }

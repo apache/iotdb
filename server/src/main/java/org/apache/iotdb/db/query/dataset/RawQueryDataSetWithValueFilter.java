@@ -76,7 +76,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
       return null;
     }
     RowRecord result = cachedRecords.remove(0);
-    hasCachedRowRecord = cachedRecords.isEmpty();
+    hasCachedRowRecord = !cachedRecords.isEmpty();
     return result;
   }
 
@@ -119,39 +119,22 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
         }
       }
 
-      long[] times = timeColumn.getTimes();
-      for (int i = 0; i < times.length; i++) {
-        RowRecord rowRecord = new RowRecord(times[i]);
+      for (int i = 0; i < columnTimes.length; i++) {
+        RowRecord rowRecord = new RowRecord(columnTimes[i]);
+        boolean hasField = false;
         for (List<Field> result : results) {
           rowRecord.addField(result.get(i));
+          if (result.get(i).getDataType() != null) {
+            hasField = true;
+          }
         }
-        cachedRecords.add(rowRecord);
+        if (hasField) {
+          cachedRecords.add(rowRecord);
+        }
       }
     }
 
-    hasCachedRowRecord = cachedRecords.isEmpty();
+    hasCachedRowRecord = !cachedRecords.isEmpty();
     return hasCachedRowRecord;
-//    while (timeGenerator.hasNext()) {
-//      boolean hasField = false;
-//      long timestamp = timeGenerator.next();
-//      RowRecord rowRecord = new RowRecord(timestamp);
-//      for (int i = 0; i < seriesNum; i++) {
-//        IReaderByTimestamp reader = seriesReaderByTimestampList.get(i);
-//        Object value = reader.getValueInTimestamp(timestamp);
-//        if (value == null) {
-//          rowRecord.addField(new Field(null));
-//        } else {
-//          hasField = true;
-//          rowRecord.addField(value, dataTypes.get(i));
-//        }
-//      }
-//      if (hasField) {
-//        hasCachedRowRecord = true;
-//        cachedRowRecord = rowRecord;
-//        break;
-//      }
-//    }
-//    return hasCachedRowRecord;
-//  }
   }
 }

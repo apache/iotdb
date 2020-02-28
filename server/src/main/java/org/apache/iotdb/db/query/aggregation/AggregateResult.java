@@ -93,6 +93,15 @@ public abstract class AggregateResult {
       IReaderByTimestamp dataReader) throws IOException;
 
   /**
+   * <p> This method calculates the aggregation using common timestamps of the cross series
+   * filter. </p>
+   *
+   * @throws IOException TsFile data read error
+   */
+  public abstract void updateResultUsingTimestamps(long[] timestamps,
+      IReaderByTimestamp dataReader) throws IOException;
+
+  /**
    * Judge if aggregation results have been calculated. In other words, if the aggregated result
    * does not need to compute the remaining data, it returns true.
    *

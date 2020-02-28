@@ -87,6 +87,17 @@ public class AvgAggrResult extends AggregateResult {
     }
   }
 
+  @Override
+  public void updateResultUsingTimestamps(long[] timestamps, IReaderByTimestamp dataReader)
+      throws IOException {
+    Object[] value = dataReader.getValuesInTimestamps(timestamps);
+    for (int i = 0; i < value.length; i++) {
+      if (value[i] != null) {
+        updateAvg(seriesDataType, value[i]);
+      }
+    }
+  }
+
   private void updateAvg(TSDataType type, Object sumVal) throws IOException {
     double val;
     switch (type) {

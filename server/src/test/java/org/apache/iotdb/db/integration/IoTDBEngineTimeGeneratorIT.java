@@ -36,6 +36,7 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
@@ -189,10 +190,13 @@ public class IoTDBEngineTimeGeneratorIT {
         TEST_QUERY_CONTEXT);
 
     int cnt = 0;
-    while (timeGenerator.hasNext()) {
-      long time = timeGenerator.next();
-      assertTrue(satisfyTimeFilter1(time));
-      cnt++;
+    while (timeGenerator.hasNextTimeColumn()) {
+      TimeColumn timeColumn = timeGenerator.nextTimeColumn();
+      while (timeColumn.hasCurrent()) {
+        assertTrue(satisfyTimeFilter1(timeColumn.currentTime()));
+        cnt++;
+        timeColumn.next();
+      }
       // System.out.println("cnt =" + cnt + "; time = " + time);
     }
     assertEquals(count, cnt);
@@ -213,8 +217,12 @@ public class IoTDBEngineTimeGeneratorIT {
         TEST_QUERY_CONTEXT);
 
     int cnt = 0;
-    while (timeGenerator.hasNext()) {
-      cnt++;
+    while (timeGenerator.hasNextTimeColumn()) {
+      TimeColumn timeColumn = timeGenerator.nextTimeColumn();
+      while (timeColumn.hasCurrent()) {
+        cnt++;
+        timeColumn.next();
+      }
     }
     assertEquals(0, cnt);
   }
@@ -245,10 +253,13 @@ public class IoTDBEngineTimeGeneratorIT {
     ServerTimeGenerator timeGenerator = new ServerTimeGenerator(andExpression,
         TEST_QUERY_CONTEXT);
     int cnt = 0;
-    while (timeGenerator.hasNext()) {
-      long time = timeGenerator.next();
-      assertTrue(satisfyTimeFilter2(time));
-      cnt++;
+    while (timeGenerator.hasNextTimeColumn()) {
+      TimeColumn time = timeGenerator.nextTimeColumn();
+      while (time.hasCurrent()) {
+        assertTrue(satisfyTimeFilter2(time.currentTime()));
+        cnt++;
+        time.next();
+      }
 //       System.out.println("cnt =" + cnt + "; time = " + time);
     }
     assertEquals(count2, cnt);

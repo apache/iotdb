@@ -86,6 +86,22 @@ public class CountAggrResult extends AggregateResult {
   }
 
   @Override
+  public void updateResultUsingTimestamps(long[] timestamps, IReaderByTimestamp dataReader)
+      throws IOException {
+    int cnt = 0;
+    Object[] values = dataReader.getValuesInTimestamps(timestamps);
+    for (Object v : values) {
+      if (v != null) {
+        cnt++;
+      }
+    }
+    long preValue = getLongValue();
+    preValue += cnt;
+
+    setLongValue(preValue);
+  }
+
+  @Override
   public boolean isCalculatedAggregationResult() {
     return false;
   }

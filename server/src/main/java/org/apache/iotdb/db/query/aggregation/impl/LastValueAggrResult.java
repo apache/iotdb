@@ -93,6 +93,25 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   @Override
+  public void updateResultUsingTimestamps(long[] timestamps, IReaderByTimestamp dataReader)
+      throws IOException {
+    long time = Long.MIN_VALUE;
+    Object lastVal = null;
+    Object[] value = dataReader.getValuesInTimestamps(timestamps);
+    for (int i = value.length - 1; i >= 0; i--) {
+      if (value[i] != null) {
+        time = timestamps[i];
+        lastVal = value[i];
+        break;
+      }
+    }
+    if (time != Long.MIN_VALUE) {
+      setValue(lastVal);
+      timestamp = time;
+    }
+  }
+
+  @Override
   public boolean isCalculatedAggregationResult() {
     return false;
   }
@@ -100,8 +119,8 @@ public class LastValueAggrResult extends AggregateResult {
   @Override
   public void merge(AggregateResult another) {
     LastValueAggrResult anotherLast = (LastValueAggrResult) another;
-    if(this.getValue() == null || this.timestamp < anotherLast.timestamp){
-      this.setValue( anotherLast.getValue() );
+    if (this.getValue() == null || this.timestamp < anotherLast.timestamp) {
+      this.setValue(anotherLast.getValue());
       this.timestamp = anotherLast.timestamp;
     }
   }

@@ -55,8 +55,8 @@ public class TimeColumn {
   }
 
   public long[] getTimes() {
-    long[] d = new long[size];
-    System.arraycopy(times, 0, d, 0, size);
+    long[] d = new long[size - cur];
+    System.arraycopy(times, cur, d, 0, size - cur);
     return d;
   }
 

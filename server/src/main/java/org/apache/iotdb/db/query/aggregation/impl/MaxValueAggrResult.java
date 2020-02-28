@@ -82,13 +82,29 @@ public class MaxValueAggrResult extends AggregateResult {
   }
 
   @Override
+  public void updateResultUsingTimestamps(long[] timestamps, IReaderByTimestamp dataReader)
+      throws IOException {
+    Comparable<Object> maxVal = null;
+    Object[] value = dataReader.getValuesInTimestamps(timestamps);
+    for (int i = value.length - 1; i >= 0; i--) {
+      if (value[i] == null) {
+        continue;
+      }
+      if (maxVal == null || maxVal.compareTo(value[i]) < 0) {
+        maxVal = (Comparable<Object>) value[i];
+      }
+    }
+    updateResult(maxVal);
+  }
+
+  @Override
   public boolean isCalculatedAggregationResult() {
     return false;
   }
 
   @Override
   public void merge(AggregateResult another) {
-     this.updateResult((Comparable<Object>)another.getResult());
+    this.updateResult((Comparable<Object>) another.getResult());
   }
 
   @Override

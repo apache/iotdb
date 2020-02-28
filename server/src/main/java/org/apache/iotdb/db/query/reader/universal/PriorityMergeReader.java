@@ -79,6 +79,7 @@ public class PriorityMergeReader implements IPointReader {
       // set end time before current partition ends
       currentLargestEndTime = Math.min((partition + 1) * partitionInterval - 1,
           Math.max(currentLargestEndTime, endTime));
+      System.out.println();
     } else {
       reader.close();
     }

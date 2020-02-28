@@ -46,6 +46,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -103,8 +104,8 @@ public class AggregationExecutor {
    * get aggregation result for one series
    *
    * @param pathToAggrIndexes entry of path to aggregation indexes map
-   * @param timeFilter time filter
-   * @param context query context
+   * @param timeFilter        time filter
+   * @param context           query context
    * @return AggregateResult list
    */
   private List<AggregateResult> aggregateOneSeries(
@@ -218,7 +219,8 @@ public class AggregationExecutor {
     List<AggregateResult> aggregateResults = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       TSDataType type = dataTypes.get(i);
-      AggregateResult result = AggregateResultFactory.getAggrResultByName(aggregations.get(i), type);
+      AggregateResult result = AggregateResultFactory
+          .getAggrResultByName(aggregations.get(i), type);
       aggregateResults.add(result);
     }
     aggregateWithValueFilter(aggregateResults, timestampGenerator, readersOfSelectedSeries);
@@ -232,22 +234,12 @@ public class AggregationExecutor {
       ServerTimeGenerator timestampGenerator, List<IReaderByTimestamp> readersOfSelectedSeries)
       throws IOException {
 
-    while (timestampGenerator.hasNext()) {
-
-      // generate timestamps for aggregate
-      long[] timeArray = new long[aggregateFetchSize];
-      int timeArrayLength = 0;
-      for (int cnt = 0; cnt < aggregateFetchSize; cnt++) {
-        if (!timestampGenerator.hasNext()) {
-          break;
-        }
-        timeArray[timeArrayLength++] = timestampGenerator.next();
-      }
-
+    while (timestampGenerator.hasNextTimeColumn()) {
+      TimeColumn timeColumn = timestampGenerator.nextTimeColumn();
       // cal part of aggregate result
       for (int i = 0; i < readersOfSelectedSeries.size(); i++) {
-        aggregateResults.get(i).updateResultUsingTimestamps(timeArray, timeArrayLength,
-            readersOfSelectedSeries.get(i));
+        aggregateResults.get(i)
+            .updateResultUsingTimestamps(timeColumn.getTimes(), readersOfSelectedSeries.get(i));
       }
     }
   }

@@ -46,7 +46,7 @@ public class OrNode implements Node {
     if (hasCachedValue) {
       return true;
     }
-
+    cachedTimeColumn = new TimeColumn(fetchSize);
     if (!hasLeftValue() && leftChild.hasNextTimeColumn()) {
       leftTimeColumn = leftChild.nextTimeColumn();
     }
@@ -55,16 +55,20 @@ public class OrNode implements Node {
     }
 
     if (hasLeftValue() && !hasRightValue()) {
-      cachedTimeColumn = leftTimeColumn;
+      while (leftTimeColumn.hasCurrent()) {
+        cachedTimeColumn.add(leftTimeColumn.currentTime());
+        leftTimeColumn.next();
+      }
       hasCachedValue = true;
       return true;
     } else if (!hasLeftValue() && hasRightValue()) {
-      cachedTimeColumn = rightTimeColumn;
+      while (rightTimeColumn.hasCurrent()) {
+        cachedTimeColumn.add(rightTimeColumn.currentTime());
+        rightTimeColumn.next();
+      }
       hasCachedValue = true;
       return true;
     }
-
-    cachedTimeColumn = new TimeColumn(fetchSize);
 
     while (hasLeftValue() && hasRightValue()) {
       long leftValue = leftTimeColumn.currentTime();

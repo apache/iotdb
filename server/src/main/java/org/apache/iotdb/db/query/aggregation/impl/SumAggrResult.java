@@ -80,6 +80,17 @@ public class SumAggrResult extends AggregateResult {
     }
   }
 
+  @Override
+  public void updateResultUsingTimestamps(long[] timestamps, IReaderByTimestamp dataReader)
+      throws IOException {
+    Object[] value = dataReader.getValuesInTimestamps(timestamps);
+    for (int i = 0; i < value.length; i++) {
+      if (value[i] != null) {
+        updateSum(value[i]);
+      }
+    }
+  }
+
   private void updateSum(Object sumVal) throws IOException {
     double preValue = getDoubleValue();
     switch (seriesDataType) {

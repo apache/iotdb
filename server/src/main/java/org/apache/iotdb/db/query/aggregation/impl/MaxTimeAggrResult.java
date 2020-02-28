@@ -83,6 +83,24 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   @Override
+  public void updateResultUsingTimestamps(long[] timestamps, IReaderByTimestamp dataReader)
+      throws IOException {
+    long time = -1;
+    Object[] value = dataReader.getValuesInTimestamps(timestamps);
+    for (int i = value.length - 1; i >= 0; i--) {
+      if (value[i] != null) {
+        time = timestamps[i];
+        break;
+      }
+    }
+
+    if (time == -1) {
+      return;
+    }
+    updateMaxTimeResult(time);
+  }
+
+  @Override
   public boolean isCalculatedAggregationResult() {
     return false;
   }
