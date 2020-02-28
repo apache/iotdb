@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
@@ -113,7 +114,7 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logFiles(resource);
 
-    List<String> devices = MManager.getInstance().getDevices(storageGroupName);
+    Set<String> devices = MManager.getInstance().getDevices(storageGroupName);
     Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>();
     for (String device : devices) {
       Map<String, MeasurementSchema> schema = MManager.getInstance().getDeviceSchemaMap(device);

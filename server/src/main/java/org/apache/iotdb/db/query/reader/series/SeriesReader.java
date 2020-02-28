@@ -390,11 +390,9 @@ public class SeriesReader {
     }
 
     for (ChunkMetaData data : currentChunkMetaDataList) {
-      if (data.getChunkLoader() == null) {
-        TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
-            .get(resource, resource.isClosed());
-        data.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
-      }
+      TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
+          .get(resource, resource.isClosed());
+      data.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
     }
     List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
     if (memChunks != null) {

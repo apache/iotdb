@@ -165,7 +165,7 @@ public class IOTDBGroupByInnerIntervalIT {
       boolean hasResultSet = statement.execute(
               "select count(temperature), sum(temperature), avg(temperature) from "
                       + "root.ln.wf01.wt01 where temperature > 3"
-                      + "GROUP BY ([1, 30), 3ms, 5ms)");
+                      + " GROUP BY ([1, 30), 3ms, 5ms)");
 
       assertTrue(hasResultSet);
       int cnt;
@@ -205,7 +205,7 @@ public class IOTDBGroupByInnerIntervalIT {
       boolean hasResultSet = statement.execute(
               "select count(temperature), sum(temperature), avg(temperature) from "
                       + "root.ln.wf01.wt01 where time > 3"
-                      + "GROUP BY ([1, 30), 3ms, 5ms)");
+                      + " GROUP BY ([1, 30), 3ms, 5ms)");
 
       assertTrue(hasResultSet);
       int cnt;

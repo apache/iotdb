@@ -560,7 +560,7 @@ public class MManager {
    * wildcard can only match one level, otherwise it can match to the tail.
    * @return A HashSet instance which stores devices names with given prefixPath.
    */
-  public List<String> getDevices(String prefixPath) throws MetadataException {
+  public Set<String> getDevices(String prefixPath) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getDevices(prefixPath);

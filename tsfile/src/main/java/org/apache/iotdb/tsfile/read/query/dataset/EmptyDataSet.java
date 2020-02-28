@@ -16,28 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.read.query.dataset;
 
-package org.apache.iotdb.spark.db
+import java.util.Collections;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-import org.apache.spark.sql.SQLContext
-import org.apache.spark.sql.sources.{BaseRelation, DataSourceRegister, RelationProvider}
-import org.slf4j.LoggerFactory
+public class EmptyDataSet extends QueryDataSet {
 
-private[iotdb] class DefaultSource extends RelationProvider with DataSourceRegister {
-  private final val logger = LoggerFactory.getLogger(classOf[DefaultSource])
+  public EmptyDataSet() {
+    super(Collections.emptyList(), Collections.emptyList());
+  }
 
-  override def shortName(): String = "tsfile"
+  @Override
+  protected boolean hasNextWithoutConstraint() {
+    return false;
+  }
 
-  override def createRelation(
-                               sqlContext: SQLContext,
-                               parameters: Map[String, String]): BaseRelation = {
-
-    val iotdbOptions = new IoTDBOptions(parameters)
-
-    if (iotdbOptions.url == null || iotdbOptions.sql == null) {
-      sys.error("IoTDB url or sql not specified")
-    }
-    new IoTDBRelation(iotdbOptions)(sqlContext.sparkSession)
-
+  @Override
+  protected RowRecord nextWithoutConstraint() {
+    return null;
   }
 }

@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-          public class CountAggrResult extends AggregateResult {
+public class CountAggrResult extends AggregateResult {
 
   public CountAggrResult() {
     super(TSDataType.INT64, AggregationType.COUNT);

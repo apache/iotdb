@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -42,7 +43,7 @@ public class SchemaUtils {
    * @return the schema of the FileNode named processorName.
    */
   public static Schema constructSchema(String processorName) throws MetadataException {
-    List<String> devices = MManager.getInstance().getDevices(processorName);
+    Set<String> devices = MManager.getInstance().getDevices(processorName);
     Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>();
     for (String device : devices) {
       Map<String, MeasurementSchema> schema = MManager.getInstance().getDeviceSchemaMap(device);

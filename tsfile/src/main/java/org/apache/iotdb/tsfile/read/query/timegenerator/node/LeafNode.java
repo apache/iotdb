@@ -40,10 +40,13 @@ public class LeafNode implements Node {
     if (hasCached) {
       return true;
     }
-    if (reader.hasNextBatch()) {
-      hasCached = true;
+    while (reader.hasNextBatch()) {
       cacheData = reader.nextBatch();
-      cachedTimeSeries = cacheData.getTimeColumn();
+      if (cacheData.hasCurrent()) {
+        hasCached = true;
+        cachedTimeSeries = cacheData.getTimeColumn();
+        break;
+      }
     }
     return hasCached;
   }

@@ -31,11 +31,6 @@ statement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
     | SET STORAGE GROUP TO prefixPath #setStorageGroup
     | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
-    | CREATE PROPERTY ID #createProperty
-    | ADD LABEL label=ID TO PROPERTY propertyName=ID #addLabel
-    | DELETE LABEL label=ID FROM PROPERTY propertyName=ID #deleteLabel
-    | LINK prefixPath TO propertyLabelPair #linkPath
-    | UNLINK prefixPath FROM propertyLabelPair #unlinkPath
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
     | CREATE INDEX ON timeseriesPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
@@ -292,13 +287,16 @@ nodeName
     : ID
     | INT
     | STAR
+    | ID STAR
     | STRING_LITERAL
+    | DURATION
     ;
 
 nodeNameWithoutStar
     : INT
     | ID
     | STRING_LITERAL
+    | DURATION
     ;
 
 dataType
@@ -814,7 +812,7 @@ DATETIME
       (('+' | '-') INT ':' INT)?
     ;
 /** Allow unicode rule/token names */
-ID			:	NameStartChar NameChar*;
+ID	:	NameChar NameChar*;
 
 FILE
     :  (('a'..'z'| 'A'..'Z')(':')?)* (('\\' | '/')+ PATH_FRAGMENT) +
@@ -822,30 +820,11 @@ FILE
 
 fragment
 NameChar
-	:   NameStartChar
-	|   '0'..'9'
-	|   '_'
-	|   '\u00B7'
-	|   '\u0300'..'\u036F'
-	|   '\u203F'..'\u2040'
-	;
-
-fragment
-NameStartChar
 	:   'A'..'Z'
 	|   'a'..'z'
-	|   '\u00C0'..'\u00D6'
-	|   '\u00D8'..'\u00F6'
-	|   '\u00F8'..'\u02FF'
-	|   '\u0370'..'\u037D'
-	|   '\u037F'..'\u1FFF'
-	|   '\u200C'..'\u200D'
-	|   '\u2070'..'\u218F'
-	|   '\u2C00'..'\u2FEF'
-	|   '\u3001'..'\uD7FF'
-	|   '\uF900'..'\uFDCF'
-	|   '\uFDF0'..'\uFFFD'
-	; // ignores | ['\u10000-'\uEFFFF] ;
+	|   '0'..'9'
+	|   '_'
+	;
 
 fragment DOUBLE_QUOTE_STRING_LITERAL
 	:	'"' ('\\' . | ~'"' )*? '"'
