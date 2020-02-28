@@ -21,6 +21,7 @@ package org.apache.iotdb.calcite;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.calcite.jdbc.CalciteConnection;
@@ -37,8 +38,11 @@ public class IoTDBClient {
     rootSchema.add("IoTDBSchema",
         new IoTDBSchema("127.0.0.1", 6667, "root", "root", rootSchema, "IoTDBSchema"));
     calciteConnection.setSchema("IoTDBSchema");*/
+
     Statement statement = calciteConnection.createStatement();
-    String sql = "SELECT \"temperature\" FROM \"root.ln\" WHERE \"time\" = 100";
+    String sql = "SELECT \"root.ln\".\"device\", \"root.ln\".\"temperature\", \"root.sg\".\"device\", \"root.sg\".\"temperature\" "
+        + "FROM \"root.ln\" "
+        + "JOIN \"root.sg\" ON \"root.sg\".\"time\" = \"root.ln\".\"time\"";
 
     IoTDBClient ioTDBClient = new IoTDBClient();
     ioTDBClient.query(statement, sql);
@@ -49,12 +53,29 @@ public class IoTDBClient {
   }
 
   public void query(Statement statement, String sql) throws SQLException {
-    long startTime = System.currentTimeMillis();
     ResultSet resultSet = statement.executeQuery(sql);
-    while(resultSet.next()){
+
+    if (resultSet != null) {
+      System.out.println("--------------------------");
+      final ResultSetMetaData metaData = resultSet.getMetaData();
+      final int columnCount = metaData.getColumnCount();
+      for (int i = 0; i < columnCount; i++) {
+        System.out.print(metaData.getColumnLabel(i + 1) + " ");
+      }
+      System.out.println();
+      while (resultSet.next()) {
+        for (int i = 1; ; i++) {
+          System.out.print(resultSet.getString(i));
+          if (i < columnCount) {
+            System.out.print(", ");
+          } else {
+            System.out.println();
+            break;
+          }
+        }
+      }
+      System.out.println("--------------------------\n");
     }
-    long endTime = System.currentTimeMillis();
-    System.out.println(endTime - startTime);
 
     resultSet.close();
   }

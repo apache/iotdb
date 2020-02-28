@@ -25,7 +25,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -145,36 +144,22 @@ public class IoTDBTable extends AbstractQueryableTable
     if (selectFields.isEmpty()) {
       selectString = "*";
     } else {
-      // delete the 'Device' string in query
+      // delete the 'time', 'device' string in select list
       // this has to be here rather than init "selectFields" otherwise the resultRowType will be wrong
-      selectString = Util.toString(() -> {
-        final Iterator<String> selectIterator =
-            selectFields.iterator();
-
-        return new Iterator<String>() {
-          boolean cancelFlag = false;
-
-          @Override
-          public boolean hasNext() {
-            return selectIterator.hasNext();
+      StringBuilder selectBuilder = new StringBuilder();
+      for (int i = 0; i < selectFields.size(); i++) {
+        String selectField = selectFields.get(i);
+        if (selectField.equals(IoTDBConstant.DeviceColumn) || selectField
+            .equals(IoTDBConstant.TimeColumn)) {
+          continue;
+        } else {
+          selectBuilder.append(selectField);
+          if (i < selectFields.size() - 1) {
+            selectBuilder.append(", ");
           }
-
-          @Override
-          public String next() {
-            String selectField = selectIterator.next();
-            if (!cancelFlag && selectField.equals(IoTDBConstant.DeviceColumn)) {
-              selectField = selectIterator.next();
-              cancelFlag = true;
-            }
-            return selectField;
-          }
-
-          @Override
-          public void remove() {
-            throw new UnsupportedOperationException();
-          }
-        };
-      }, "", ", ", "");
+        }
+      }
+      selectString = selectBuilder.toString();
     }
 
     List<String> queryList = new ArrayList<>();
@@ -206,8 +191,8 @@ public class IoTDBTable extends AbstractQueryableTable
           queryBuilder.append(" OFFSET " + offset);
         }
 
-        // append group by device
-        queryBuilder.append(IoTDBConstant.AlignByDevice);
+        // append align by device
+        queryBuilder.append(" " + IoTDBConstant.AlignByDevice);
         queryList.add(queryBuilder.toString());
       }
     }
@@ -247,7 +232,7 @@ public class IoTDBTable extends AbstractQueryableTable
         queryBuilder.append(" OFFSET " + offset);
       }
 
-      // append group by device
+      // append align by device
       queryBuilder.append(" " + IoTDBConstant.AlignByDevice);
       queryList.add(queryBuilder.toString());
 
@@ -259,14 +244,9 @@ public class IoTDBTable extends AbstractQueryableTable
         try {
           Statement statement = connection.createStatement();
           List<ResultSet> resultList = new ArrayList<>();
-
-          long startTime = System.currentTimeMillis();
           for (String query : queryList) {
             resultList.add(statement.executeQuery(query));
           }
-          long endTime = System.currentTimeMillis();
-          System.out.println(endTime - startTime);
-
           enumerator = new IoTDBEnumerator(resultList, resultRowType);
           return enumerator;
         } catch (SQLException e) {
