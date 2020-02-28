@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -32,11 +34,8 @@ import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -47,6 +46,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    * cached timestamp for next group by partition.
    */
   private long timestamp;
+
+  private TimeColumn timeColumn;
   /**
    * if this object has cached timestamp for next group by partition.
    */
@@ -114,10 +115,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
         return constructRowRecord(aggregateResultList);
       }
     }
-    while (timestampGenerator.hasNext()) {
-      // construct timestamp array
+    while (timestampGenerator.hasNextTimeColumn() || timeColumn.hasCurrent()) {
       timeArrayLength = constructTimeArrayForOneCal(timestampArray, timeArrayLength);
-
       // cal result using timestamp array
       for (int i = 0; i < paths.size(); i++) {
         aggregateResultList.get(i).updateResultUsingTimestamps(
@@ -151,8 +150,13 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    */
   private int constructTimeArrayForOneCal(long[] timestampArray, int timeArrayLength)
       throws IOException {
-    for (int cnt = 1; cnt < timeStampFetchSize && timestampGenerator.hasNext(); cnt++) {
-      timestamp = timestampGenerator.next();
+    for (int cnt = 1; cnt < timeStampFetchSize
+        && (timestampGenerator.hasNextTimeColumn() || timeColumn.hasCurrent()); cnt++) {
+      if (timeColumn == null || !timeColumn.hasCurrent()) {
+        timeColumn = timestampGenerator.nextTimeColumn();
+      }
+      timestamp = timeColumn.currentTime();
+      timeColumn.next();
       if (timestamp < curEndTime) {
         timestampArray[timeArrayLength++] = timestamp;
       } else {

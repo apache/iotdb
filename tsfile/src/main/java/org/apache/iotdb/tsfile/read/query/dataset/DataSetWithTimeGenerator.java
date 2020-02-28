@@ -23,6 +23,7 @@ import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
@@ -35,15 +36,17 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
   private TimeGenerator timeGenerator;
   private List<FileSeriesReaderByTimestamp> readers;
   private List<Boolean> cached;
+  private TimeColumn timeColumn;
+  private boolean hasCache;
 
   /**
    * constructor of DataSetWithTimeGenerator.
    *
-   * @param paths paths in List structure
-   * @param cached cached boolean in List(boolean) structure
-   * @param dataTypes TSDataTypes in List structure
+   * @param paths         paths in List structure
+   * @param cached        cached boolean in List(boolean) structure
+   * @param dataTypes     TSDataTypes in List structure
    * @param timeGenerator TimeGenerator object
-   * @param readers readers in List(FileSeriesReaderByTimestamp) structure
+   * @param readers       readers in List(FileSeriesReaderByTimestamp) structure
    */
   public DataSetWithTimeGenerator(List<Path> paths, List<Boolean> cached,
       List<TSDataType> dataTypes,
@@ -56,12 +59,23 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
 
   @Override
   protected boolean hasNextWithoutConstraint() throws IOException {
-    return timeGenerator.hasNext();
+    if (hasCache) {
+      return true;
+    }
+
+    while (timeGenerator.hasNextTimeColumn()) {
+      timeColumn = timeGenerator.nextTimeColumn();
+      if (timeColumn.hasCurrent()) {
+        hasCache = true;
+        break;
+      }
+    }
+    return hasCache;
   }
 
   @Override
   protected RowRecord nextWithoutConstraint() throws IOException {
-    long timestamp = timeGenerator.next();
+    long timestamp = timeColumn.currentTime();
     RowRecord rowRecord = new RowRecord(timestamp);
 
     for (int i = 0; i < paths.size(); i++) {
@@ -79,6 +93,7 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
       rowRecord.addField(value, dataTypes.get(i));
     }
 
+    timeColumn.next();
     return rowRecord;
   }
 }

@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.CachedChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
@@ -76,10 +77,13 @@ public class TimeGeneratorTest {
 
     TsFileTimeGenerator timestampGenerator = new TsFileTimeGenerator(IExpression, chunkLoader,
         metadataQuerierByFile);
-    while (timestampGenerator.hasNext()) {
-      // System.out.println(timestampGenerator.next());
-      Assert.assertEquals(startTimestamp, timestampGenerator.next());
-      startTimestamp += 1;
+    while (timestampGenerator.hasNextTimeColumn()) {
+      TimeColumn timeColumn = timestampGenerator.nextTimeColumn();
+      while (timeColumn.hasCurrent()) {
+        // System.out.println(timestampGenerator.next());
+        Assert.assertEquals(startTimestamp, timeColumn.currentTime());
+        startTimestamp += 1;
+      }
     }
     Assert.assertEquals(1480562618101L, startTimestamp);
   }

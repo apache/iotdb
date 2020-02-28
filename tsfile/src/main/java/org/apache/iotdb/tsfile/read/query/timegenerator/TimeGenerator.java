@@ -75,6 +75,15 @@ public abstract class TimeGenerator {
     throw new IOException("no more data");
   }
 
+  public boolean hasNextTimeColumn() throws IOException {
+    return operatorNode.hasNextTimeColumn();
+  }
+
+  public TimeColumn nextTimeColumn() throws IOException {
+    return operatorNode.nextTimeColumn();
+  }
+
+
   public Object getValue(Path path, long time) {
     for (LeafNode leafNode : leafCache.get(path)) {
       if (!leafNode.currentTimeIs(time)) {

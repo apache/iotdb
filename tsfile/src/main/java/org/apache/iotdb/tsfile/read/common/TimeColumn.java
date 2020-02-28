@@ -19,6 +19,8 @@
 package org.apache.iotdb.tsfile.read.common;
 
 
+import java.util.Arrays;
+
 public class TimeColumn {
 
   private static final int DEFAULT_INIT_SIZE = 1000;
@@ -53,7 +55,9 @@ public class TimeColumn {
   }
 
   public long[] getTimes() {
-    return times;
+    long[] d = new long[size];
+    System.arraycopy(times, 0, d, 0, size);
+    return d;
   }
 
   public boolean hasCurrent() {
