@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.rest;
 
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -181,9 +182,39 @@ public class RestTest {
   public void testMetrics() {
     Response response1 = client.target(METRICS1).request(MediaType.APPLICATION_JSON).get();
     String result1 = response1.readEntity(String.class);
-    System.out.println(result1);
+    JSONArray sqlArray = (JSONArray) JSONArray.parse(result1);
+    JSONObject sql = sqlArray.getJSONObject(0);
+    Assert.assertEquals("[root.vehicle.d0.s0, "
+        + "root.vehicle.d0.s1, "
+        + "root.vehicle.d0.s2, "
+        + "root.vehicle.d0.s3, "
+        + "root.vehicle.d0.s4, "
+        + "root.ln.wf01.wt01.status, "
+        + "root.ln.wf01.wt01.temperature, "
+        + "root.ln.wf01.wt01.hardware]", sql.get("path"));
+    Assert.assertEquals("RawDataQueryPlan", sql.get("physicalPlan"));
+    if((int)sql.get("time") < 0) {
+      Assert.fail();
+    }
+    Assert.assertEquals("QUERY", sql.get("operatorType"));
+    Assert.assertEquals("select * from root", sql.get("sql"));
+    Assert.assertEquals("FINISHED", sql.get("status"));
+    System.out.println(sql);
     Response response2 = client.target(METRICS2).request(MediaType.APPLICATION_JSON).get();
     String result2 = response2.readEntity(String.class);
     System.out.println(result2);
+    JSONObject serverInfo = (JSONObject) JSONObject.parse(result2);
+    if((int) serverInfo.get("cpu_ratio") < 0 ||
+        (int) serverInfo.get("cores") < 0 ||
+        (int) serverInfo.get("total_memory") < 0 ||
+        (int) serverInfo.get("port") < 0 ||
+        Integer.parseInt((String) serverInfo.get("totalPhysical_memory")) < 0 ||
+        (int) serverInfo.get("free_memory") < 0 ||
+        Integer.parseInt((String) serverInfo.get("freePhysical_memory")) < 0 ||
+        Integer.parseInt((String) serverInfo.get("usedPhysical_memory")) < 0 ||
+        (int) serverInfo.get("max_memory") < 0) {
+      Assert.fail();
+    }
+
   }
 }
