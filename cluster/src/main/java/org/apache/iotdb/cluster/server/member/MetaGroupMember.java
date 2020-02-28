@@ -127,6 +127,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -1204,6 +1205,28 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private List<AggregateResult> getAggregateResult(Path path, List<String> aggregations,
       TSDataType dataType, Filter timeFilter, PartitionGroup partitionGroup,
       QueryContext context) throws StorageEngineException {
+    if (!partitionGroup.contains(thisNode)) {
+      return getRemoteAggregateResult(path, aggregations, dataType, timeFilter, partitionGroup,
+          context);
+    } else {
+      DataGroupMember dataMember = getLocalDataMember(partitionGroup.getHeader());
+      try {
+        logger.debug("{}: querying aggregation {} of {} in {} locally", name, aggregations, path,
+            partitionGroup.getHeader());
+        List<AggregateResult> aggrResult = dataMember
+            .getAggrResult(aggregations, dataType, path.getFullPath(), timeFilter, context);
+        logger.debug("{}: queried aggregation {} of {} in {} locally are {}", name, aggregations,
+            path, partitionGroup.getHeader(), aggrResult);
+        return aggrResult;
+      } catch (IOException | QueryProcessException | LeaderUnknownException e) {
+        throw new StorageEngineException(e);
+      }
+    }
+  }
+
+  private List<AggregateResult> getRemoteAggregateResult(Path path, List<String> aggregations,
+      TSDataType dataType, Filter timeFilter, PartitionGroup partitionGroup,
+      QueryContext context) throws StorageEngineException {
     AtomicReference<List<ByteBuffer>> resultReference = new AtomicReference<>();
     GetAggrResultRequest request = new GetAggrResultRequest();
     request.setPath(path.getFullPath());
@@ -1217,7 +1240,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
 
     for (Node node : partitionGroup) {
-      logger.debug("{}: querying aggregation {} of {} from {}", name, aggregations, path, node);
+      logger.debug("{}: querying aggregation {} of {} from {} of {}", name, aggregations, path,
+          node, partitionGroup.getHeader());
       GenericHandler<List<ByteBuffer>> handler = new GenericHandler<>(node, resultReference);
       try {
         DataClient client = getDataClient(node);
@@ -1234,6 +1258,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             results.add(result);
           }
           ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
+          logger.debug("{}: queried aggregation {} of {} from {} of {} are {}", name, aggregations,
+              path, node, partitionGroup.getHeader(), results);
           return results;
         }
       } catch (TException | InterruptedException | IOException e) {
@@ -1369,6 +1395,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     syncLeader();
     // get all storage groups this path may belong to
     Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(originPath);
+    logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
     List<String> ret = new ArrayList<>();
     for (Entry<String, String> entry : sgPathMap.entrySet()) {
       String storageGroupName = entry.getKey();
@@ -1411,7 +1438,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       // leader
       getLocalDataMember(partitionGroup.getHeader(), null, "Get paths of " + path)
           .syncLeader();
-      return MManager.getInstance().getAllTimeseriesName(path);
+      List<String> allTimeseriesName = MManager.getInstance().getAllTimeseriesName(path);
+      logger.debug("{}: get matched paths of {} from local, result {}", name, partitionGroup,
+          allTimeseriesName);
+      return allTimeseriesName;
     } else {
       AtomicReference<List<String>> result = new AtomicReference<>();
 
@@ -1426,6 +1456,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             result.wait(connectionTimeoutInMS);
           }
           List<String> paths = result.get();
+          logger.debug("{}: get matched paths of {} from {}, result {}", name, partitionGroup,
+              node, paths);
           if (paths != null) {
             return paths;
           }
@@ -1437,7 +1469,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     return Collections.emptyList();
   }
 
-  private List<String> getMatchedDevices(String storageGroupName, String path)
+  private Set<String> getMatchedDevices(String storageGroupName, String path)
       throws MetadataException {
     // find the data group that should hold the timeseries schemas of the storage group
     PartitionGroup partitionGroup = partitionTable.route(storageGroupName, 0);
@@ -1448,19 +1480,19 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           .syncLeader();
       return MManager.getInstance().getDevices(path);
     } else {
-      AtomicReference<List<String>> result = new AtomicReference<>();
+      AtomicReference<Set<String>> result = new AtomicReference<>();
 
       List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
       for (Node node : coordinatedNodes) {
         try {
           DataClient client = getDataClient(node);
-          GenericHandler<List<String>> handler = new GenericHandler<>(node, result);
+          GenericHandler<Set<String>> handler = new GenericHandler<>(node, result);
           result.set(null);
           synchronized (result) {
             client.getAllDevices(partitionGroup.getHeader(), path, handler);
             result.wait(connectionTimeoutInMS);
           }
-          List<String> paths = result.get();
+          Set<String> paths = result.get();
           if (paths != null) {
             return paths;
           }
@@ -1469,7 +1501,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         }
       }
     }
-    return Collections.emptyList();
+    return Collections.emptySet();
   }
 
   public Map<Node, Boolean> getAllNodeStatus() {
@@ -1686,6 +1718,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   protected DataGroupMember getLocalDataMember(Node header,
       AsyncMethodCallback resultHandler, Object request) {
     return dataClusterServer.getDataMember(header, resultHandler, request);
+  }
+
+  protected DataGroupMember getLocalDataMember(Node header) {
+    return dataClusterServer.getDataMember(header, null, "Internal call");
   }
 
   public DataClient getDataClient(Node node) throws IOException {

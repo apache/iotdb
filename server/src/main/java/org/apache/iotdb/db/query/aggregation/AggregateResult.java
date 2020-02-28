@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.aggregation;
 
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -284,4 +285,8 @@ public abstract class AggregateResult {
     return hasResult;
   }
 
+  @Override
+  public String toString() {
+    return String.valueOf(getResult());
+  }
 }

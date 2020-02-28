@@ -273,7 +273,7 @@ service TSDataService extends RaftService {
   /**
    * Given a path pattern (path with wildcard), return all devices it matches.
    **/
-  list<string> getAllDevices(1:Node header, 2:string path)
+  set<string> getAllDevices(1:Node header, 2:string path)
 
   list<string> getNodeList(1:Node header, 2:string path, 3:int nodeLevel)
 

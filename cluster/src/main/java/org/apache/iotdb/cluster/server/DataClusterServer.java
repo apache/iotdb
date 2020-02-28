@@ -26,6 +26,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.exception.NoHeaderNodeException;
 import org.apache.iotdb.cluster.exception.NotInSameGroupException;
@@ -385,7 +386,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public void getAllDevices(Node header, String path,
-      AsyncMethodCallback<List<String>> resultHandler) {
+      AsyncMethodCallback<Set<String>> resultHandler) {
     DataGroupMember dataMember = getDataMember(header, resultHandler, "Get all devices");
     dataMember.getAllDevices(header, path, resultHandler);
   }

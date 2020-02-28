@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -792,7 +793,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   @Override
-  public void getAllDevices(Node header, String path, AsyncMethodCallback<List<String>> resultHandler) {
+  public void getAllDevices(Node header, String path,
+      AsyncMethodCallback<Set<String>> resultHandler) {
     try {
       resultHandler.onComplete(MManager.getInstance().getDevices(path));
     } catch (MetadataException e) {
@@ -862,6 +864,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void getAggrResult(GetAggrResultRequest request,
       AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+    logger.debug("{}: {} is querying {} by aggregation, queryId: {}", name, request.getRequestor(),
+        request.getPath(), request.getQueryId());
+
     List<String> aggregations = request.getAggregations();
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     String path = request.getPath();
@@ -871,16 +876,15 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
     RemoteQueryContext queryContext = queryManager
         .getQueryContext(request.getRequestor(), request.queryId);
-    List<AggregateResult> results = new ArrayList<>();
-    for (String aggregation : aggregations) {
-      results.add(AggregateResultFactory.getAggrResultByName(aggregation, dataType));
-    }
-    List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
+
+    List<AggregateResult> results;
     try {
-      AggregationExecutor.aggregateOneSeries(new Path(path), queryContext, timeFilter, dataType,
-          results, new SlotTsFileFilter(nodeSlots));
-    } catch (StorageEngineException | IOException | QueryProcessException e) {
+       results = getAggrResult(aggregations, dataType, path, timeFilter,
+          queryContext);
+      logger.debug("{}: aggregation results {}, queryId: {}", name, results, request.getQueryId());
+    } catch (StorageEngineException | IOException | QueryProcessException | LeaderUnknownException e) {
       resultHandler.onError(e);
+      return;
     }
     List<ByteBuffer> resultBuffers = new ArrayList<>();
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -894,6 +898,22 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       byteArrayOutputStream.reset();
     }
     resultHandler.onComplete(resultBuffers);
+  }
+
+  public List<AggregateResult> getAggrResult(List<String> aggregations, TSDataType dataType, String path,
+      Filter timeFilter, QueryContext context)
+      throws IOException, StorageEngineException, QueryProcessException, LeaderUnknownException {
+    if (!syncLeader()) {
+      throw new LeaderUnknownException(getAllNodes());
+    }
+    List<AggregateResult> results = new ArrayList<>();
+    for (String aggregation : aggregations) {
+      results.add(AggregateResultFactory.getAggrResultByName(aggregation, dataType));
+    }
+    List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
+    AggregationExecutor.aggregateOneSeries(new Path(path), context, timeFilter, dataType,
+        results, new SlotTsFileFilter(nodeSlots));
+    return results;
   }
 
   @TestOnly

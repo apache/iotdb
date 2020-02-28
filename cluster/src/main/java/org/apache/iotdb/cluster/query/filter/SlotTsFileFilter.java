@@ -5,9 +5,12 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SlotTsFileFilter implements TsFileFilter {
 
+  private static final Logger logger = LoggerFactory.getLogger(SlotTsFileFilter.class);
   private List<Integer> slots;
 
   public SlotTsFileFilter(List<Integer> slots) {
@@ -26,6 +29,7 @@ public class SlotTsFileFilter implements TsFileFilter {
     int partitionNum = Integer.parseInt(pathSegments[pathSegments.length - 2]);
     int slot = PartitionUtils.calculateStorageGroupSlot(storageGroupName, partitionNum,
         ClusterConstant.SLOT_NUM);
+    logger.debug("The slot of {} is {}", res.getFile().getPath(), slot);
     return !nodeSlots.contains(slot);
   }
 }

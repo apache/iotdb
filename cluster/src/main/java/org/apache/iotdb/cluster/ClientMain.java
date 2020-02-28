@@ -60,7 +60,7 @@ public class ClientMain {
 
     Client client = factory.getClient(new TCompactProtocol(transport));
 
-    TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1);
+    TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
 
     openReq.setUsername("root");
     openReq.setPassword("root");
@@ -86,12 +86,13 @@ public class ClientMain {
     executeQuery(client, sessionId, "SELECT s1 FROM root.shanghai.d1", statementId);
     executeQuery(client, sessionId, "SELECT s1 FROM root.guangzhou.d1", statementId);
     executeQuery(client, sessionId, "SELECT s1 FROM root.shenzhen.d1", statementId);
-    executeQuery(client, sessionId, "SELECT count(s1) FROM root.*", statementId);
-    executeQuery(client, sessionId, "SELECT avg(s1) FROM root.*", statementId);
-    executeQuery(client, sessionId, "SELECT sum(s1) FROM root.*", statementId);
-    executeQuery(client, sessionId, "SELECT max_value(s1) FROM root.*", statementId);
-    executeQuery(client, sessionId, "SELECT count(s1) FROM root.* where time <= 691200000", statementId);
-    executeQuery(client, sessionId, "SELECT count(s1) FROM root.* where s1 <= 0.7", statementId);
+    executeQuery(client, sessionId, "SELECT count(s1) FROM root.*.*", statementId);
+    executeQuery(client, sessionId, "SELECT avg(s1) FROM root.*.*", statementId);
+    executeQuery(client, sessionId, "SELECT sum(s1) FROM root.*.*", statementId);
+    executeQuery(client, sessionId, "SELECT max_value(s1) FROM root.*.*", statementId);
+    executeQuery(client, sessionId, "SELECT count(s1) FROM root.*.* where time <= 691200000",
+        statementId);
+    executeQuery(client, sessionId, "SELECT count(s1) FROM root.*.* where s1 <= 0.7", statementId);
 
 
     TSCloseOperationReq tsCloseOperationReq = new TSCloseOperationReq(sessionId);

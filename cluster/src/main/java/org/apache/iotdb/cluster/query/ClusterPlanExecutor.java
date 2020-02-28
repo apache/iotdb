@@ -50,6 +50,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException {
     if (queryPlan instanceof QueryPlan) {
+      logger.debug("Executing a query: {}", queryPlan);
       return processDataQuery((QueryPlan) queryPlan, context);
     } else {
       //TODO-Cluster: support more queries
