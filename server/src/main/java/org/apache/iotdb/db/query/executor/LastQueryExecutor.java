@@ -125,37 +125,41 @@ public class LastQueryExecutor {
     TimeValuePair resultPair = new TimeValuePair(Long.MIN_VALUE, null);
 
     for (int i = seqFileResources.size() - 1; i >= 0; i--) {
-      List<ChunkMetaData> chunkMetadata = loadSatisfiedChunkMetadata(seqFileResources.get(i), seriesPath, context);
+      List<ChunkMetaData> chunkMetadata =
+          loadSatisfiedChunkMetadata(seqFileResources.get(i), seriesPath, context);
       if (!chunkMetadata.isEmpty()) {
         ChunkMetaData lastChunkMetaData = chunkMetadata.get(chunkMetadata.size() - 1);
         Statistics chunkStatistics = lastChunkMetaData.getStatistics();
-        resultPair = constructLastPair(chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+        resultPair = constructLastPair(
+                chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
         break;
       }
     }
 
     long version = 0;
-    for (TsFileResource resource: unseqFileResources) {
+    for (TsFileResource resource : unseqFileResources) {
       if (resource.getEndTimeMap().get(seriesPath.getDevice()) < resultPair.getTimestamp()) {
         break;
       }
       List<ChunkMetaData> chunkMetadata = loadSatisfiedChunkMetadata(resource, seriesPath, context);
-      for (ChunkMetaData chunkMetaData: chunkMetadata) {
-        if (chunkMetaData.getEndTime() == resultPair.getTimestamp() && chunkMetaData.getVersion() > version) {
+      for (ChunkMetaData chunkMetaData : chunkMetadata) {
+        if (chunkMetaData.getEndTime() == resultPair.getTimestamp()
+            && chunkMetaData.getVersion() > version) {
           Statistics chunkStatistics = chunkMetaData.getStatistics();
-          resultPair = constructLastPair(chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+          resultPair = constructLastPair(
+                  chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
           version = chunkMetaData.getVersion();
         }
       }
     }
 
     // Update cached last value with low priority
-    node.updateCachedLast(resultPair, false);
+    node.updateCachedLast(resultPair, false, Long.MIN_VALUE);
     return resultPair;
   }
 
-  private List<ChunkMetaData> loadSatisfiedChunkMetadata(TsFileResource resource, Path seriesPath, QueryContext context)
-          throws IOException {
+  private List<ChunkMetaData> loadSatisfiedChunkMetadata(
+      TsFileResource resource, Path seriesPath, QueryContext context) throws IOException {
     List<ChunkMetaData> currentChunkMetaDataList;
     if (resource == null) {
       return new ArrayList<>();

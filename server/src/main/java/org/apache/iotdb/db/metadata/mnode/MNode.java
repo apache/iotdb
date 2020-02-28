@@ -119,5 +119,6 @@ public abstract class MNode implements Serializable {
 
   public abstract TimeValuePair getCachedLast();
 
-  public abstract void updateCachedLast(TimeValuePair timeValuePair, boolean highPriorityUpdate);
+  public abstract void updateCachedLast(TimeValuePair timeValuePair, boolean insertionUpdate,
+                                        Long latestFlushedTime);
 }

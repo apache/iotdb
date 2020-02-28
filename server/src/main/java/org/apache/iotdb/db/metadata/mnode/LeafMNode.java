@@ -84,14 +84,18 @@ public class LeafMNode extends MNode {
   }
 
   @Override
-  public synchronized void updateCachedLast(
-          TimeValuePair timeValuePair, boolean highPriorityUpdate) {
+  public synchronized void updateCachedLast(TimeValuePair timeValuePair, boolean insertionUpdate,
+                                            Long latestFlushedTime) {
     if (timeValuePair == null || timeValuePair.getValue() == null) return;
-    // TODO: update last with latestFlushedTimeForEachDevice when cache miss
-    if (cachedLastValuePair == null) return;
-    if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
+
+    if (cachedLastValuePair == null){
+      // If no cached last, a last read or an insertion to a sequenceTsFile will update cache.
+      if (!insertionUpdate || latestFlushedTime < timeValuePair.getTimestamp()) {
+        cachedLastValuePair = new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
+      }
+    } else if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
             || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
-            && highPriorityUpdate)) {
+            && insertionUpdate)) {
       cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
       cachedLastValuePair.setValue(timeValuePair.getValue());
     }

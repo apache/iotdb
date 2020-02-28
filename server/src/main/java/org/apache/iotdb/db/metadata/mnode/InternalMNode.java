@@ -80,7 +80,8 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public void updateCachedLast(TimeValuePair timeValuePair, boolean highPriorityUpdate) {
+  public void updateCachedLast(TimeValuePair timeValuePair, boolean insertionUpdate,
+                               Long latestFlushedTime) {
     return;
   }
 }

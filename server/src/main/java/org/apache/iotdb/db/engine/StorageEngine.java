@@ -53,6 +53,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -230,8 +231,27 @@ public class StorageEngine implements IService {
 
     // TODO monitor: update statistics
     try {
+      Long latestFlushedTime = storageGroupProcessor.getGlobalLatestFlushedTimeForEachDevice().
+              get(insertPlan.getDeviceId());
       storageGroupProcessor.insert(insertPlan);
+      updateInsertPlanLast(insertPlan, latestFlushedTime);
     } catch (QueryProcessException e) {
+      throw new QueryProcessException(e);
+    }
+  }
+
+  public void updateInsertPlanLast(InsertPlan plan, Long latestFlushedTime)
+      throws QueryProcessException {
+    try {
+      MNode node =
+          MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(plan.getDeviceId());
+      String[] measurementList = plan.getMeasurements();
+      for (int i = 0; i < measurementList.length; i++) {
+        // Update cached last value with high priority
+        MNode measurementNode = node.getChild(measurementList[i]);
+        measurementNode.updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
+      }
+    } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
   }
@@ -254,9 +274,29 @@ public class StorageEngine implements IService {
 
     // TODO monitor: update statistics
     try {
-      return storageGroupProcessor.insertBatch(batchInsertPlan);
+      Long latestFlushedTime = storageGroupProcessor.getGlobalLatestFlushedTimeForEachDevice().
+              get(batchInsertPlan.getDeviceId());
+      Integer[] results = storageGroupProcessor.insertBatch(batchInsertPlan);
+      updateBatchInsertPlanLast(batchInsertPlan, latestFlushedTime);
+      return results;
     } catch (QueryProcessException e) {
       throw new StorageEngineException(e);
+    }
+  }
+
+  public void updateBatchInsertPlanLast(BatchInsertPlan plan, Long latestFlushedTime)
+      throws QueryProcessException {
+    try {
+      MNode node =
+          MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(plan.getDeviceId());
+      String[] measurementList = plan.getMeasurements();
+      for (int i = 0; i < measurementList.length; i++) {
+        // Update cached last value with high priority
+        MNode measurementNode = node.getChild(measurementList[i]);
+        measurementNode.updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
+      }
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
     }
   }
 

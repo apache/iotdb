@@ -178,6 +178,12 @@ public class StorageGroupProcessor {
    * file.
    */
   private Map<Long, Map<String, Long>> latestFlushedTimeForEachDevice = new HashMap<>();
+  /**
+   * global mapping of device -> largest timestamp of the latest memtable to * be submitted to
+   * asyncTryToFlush, globalLatestFlushedTimeForEachDevice is utilized to maintain global
+   * latestFlushedTime of devices and will be updated along with latestFlushedTimeForEachDevice
+   */
+  private Map<String, Long> globalLatestFlushedTimeForEachDevice = new HashMap<>();
   private String storageGroupName;
   private File storageGroupSysDir;
   /**
@@ -306,6 +312,13 @@ public class StorageGroupProcessor {
             .putAll(resource.getEndTimeMap());
         latestFlushedTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>())
             .putAll(resource.getEndTimeMap());
+
+        for (Map.Entry<String, Long> mapEntry : resource.getEndTimeMap().entrySet()) {
+          if (!globalLatestFlushedTimeForEachDevice.containsKey(mapEntry.getKey())
+                  || globalLatestFlushedTimeForEachDevice.get(mapEntry.getKey()) < mapEntry.getValue()) {
+            globalLatestFlushedTimeForEachDevice.put(mapEntry.getKey(), mapEntry.getValue());
+          }
+        }
       }
     }
   }
@@ -495,6 +508,10 @@ public class StorageGroupProcessor {
           .putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
       latestFlushedTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>())
           .putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
+      if (!globalLatestFlushedTimeForEachDevice.containsKey(insertPlan.getDeviceId())
+              || globalLatestFlushedTimeForEachDevice.get(insertPlan.getDeviceId()) < insertPlan.getTime()) {
+        globalLatestFlushedTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
+      }
 
       // insert to sequence or unSequence file
       insertToTsFileProcessor(insertPlan,
@@ -1268,6 +1285,10 @@ public class StorageGroupProcessor {
       latestFlushedTimeForEachDevice
           .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
           .put(entry.getKey(), entry.getValue());
+      if (!globalLatestFlushedTimeForEachDevice.containsKey(entry.getKey())
+              || globalLatestFlushedTimeForEachDevice.get(entry.getKey()) < entry.getValue()) {
+        globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
+      }
     }
     return true;
   }
@@ -1695,6 +1716,10 @@ public class StorageGroupProcessor {
             .computeIfAbsent(timePartitionId, id -> new HashMap<String, Long>())
             .put(device, endTime);
       }
+      if (!globalLatestFlushedTimeForEachDevice.containsKey(device)
+              || globalLatestFlushedTimeForEachDevice.get(device) < endTime) {
+        globalLatestFlushedTimeForEachDevice.put(device, endTime);
+      }
     }
   }
 
@@ -1913,6 +1938,10 @@ public class StorageGroupProcessor {
   public interface UpdateEndTimeCallBack {
 
     boolean call(TsFileProcessor caller);
+  }
+
+  public Map<String, Long> getGlobalLatestFlushedTimeForEachDevice() {
+    return globalLatestFlushedTimeForEachDevice;
   }
 
 }
