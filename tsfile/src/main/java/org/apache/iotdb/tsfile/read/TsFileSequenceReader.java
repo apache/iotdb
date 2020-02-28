@@ -45,6 +45,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -804,7 +805,8 @@ public class TsFileSequenceReader implements AutoCloseable {
       TsFileMetaData tsFileMetaData = readFileMetadata();
       for (Map.Entry<String, Pair<Long, Integer>> entry : tsFileMetaData.getDeviceMetaDataMap()
           .entrySet()) {
-        LocateStatus mode = checkLocateStatus(entry.getValue().left, entry.getValue().right, start,
+        List<ChunkMetaData> chunkMetaDataInOneDevices = readChunkMetadataInDevice(entry.getKey());
+        LocateStatus mode = checkLocateStatus(chunkMetaDataInOneDevices, start,
             end);
         if (mode == LocateStatus.in) {
           res.add(entry.getKey());
@@ -841,16 +843,21 @@ public class TsFileSequenceReader implements AutoCloseable {
   /**
    * Check the location of a given chunkGroupMetaData with respect to a space partition constraint.
    *
-   * @param chunkGroupMetaData     the given chunkGroupMetaData
+   * @param chunkMetaDataList     the given chunkMetaDataList In one device
    * @param spacePartitionStartPos the start position of the space partition
    * @param spacePartitionEndPos   the end position of the space partition
    * @return LocateStatus
    */
-  // TODO: This function is not correct. 
-  private LocateStatus checkLocateStatus(long deviceMetadataOffset, int deviceMetadataLength,
+  private LocateStatus checkLocateStatus(List<ChunkMetaData> chunkMetaDataList,
       long spacePartitionStartPos, long spacePartitionEndPos) {
-    long middleOffset = deviceMetadataOffset + deviceMetadataLength / 2;
-
+    Collections.sort(chunkMetaDataList, new Comparator<ChunkMetaData>(){
+      @Override
+      public int compare(ChunkMetaData chunkMetaData1, ChunkMetaData chunkMetaData2) {
+        return (int) (chunkMetaData1.getOffsetOfChunkHeader() - chunkMetaData2.getOffsetOfChunkHeader());
+      }
+    });
+    long middleOffset = chunkMetaDataList.get(chunkMetaDataList.size() / 2)
+        .getOffsetOfChunkHeader();
     if (spacePartitionStartPos <= middleOffset && middleOffset < spacePartitionEndPos) {
       return LocateStatus.in;
     } else if (middleOffset < spacePartitionStartPos) {
