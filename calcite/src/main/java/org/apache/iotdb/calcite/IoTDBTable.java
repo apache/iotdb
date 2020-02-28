@@ -108,7 +108,6 @@ public class IoTDBTable extends AbstractQueryableTable
    *
    * @param connection IoTDB connection
    * @param fields     List of fields to project
-   * @param predicates A list of predicates which should be used in the query
    * @return Enumerator of results
    */
   public Enumerable<Object> query(final Connection connection,
@@ -208,7 +207,7 @@ public class IoTDBTable extends AbstractQueryableTable
         }
 
         // append group by device
-        queryBuilder.append(IoTDBConstant.GroupByDevice);
+        queryBuilder.append(IoTDBConstant.AlignByDevice);
         queryList.add(queryBuilder.toString());
       }
     }
@@ -249,7 +248,7 @@ public class IoTDBTable extends AbstractQueryableTable
       }
 
       // append group by device
-      queryBuilder.append(IoTDBConstant.GroupByDevice);
+      queryBuilder.append(" " + IoTDBConstant.AlignByDevice);
       queryList.add(queryBuilder.toString());
 
     }
@@ -260,9 +259,14 @@ public class IoTDBTable extends AbstractQueryableTable
         try {
           Statement statement = connection.createStatement();
           List<ResultSet> resultList = new ArrayList<>();
+
+          long startTime = System.currentTimeMillis();
           for (String query : queryList) {
             resultList.add(statement.executeQuery(query));
           }
+          long endTime = System.currentTimeMillis();
+          System.out.println(endTime - startTime);
+
           enumerator = new IoTDBEnumerator(resultList, resultRowType);
           return enumerator;
         } catch (SQLException e) {

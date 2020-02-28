@@ -101,8 +101,8 @@ public class IoTDBRules {
   }
 
   /**
-   * Rule to convert a {@link org.apache.calcite.rel.logical.LogicalFilter} to a {@link
-   * IoTDBFilter}.
+   * Rule to convert a {@link org.apache.calcite.rel.logical.LogicalProject} to a {@link
+   * IoTDBProject}.
    */
   private static class IoTDBProjectRule extends ConverterRule {
 

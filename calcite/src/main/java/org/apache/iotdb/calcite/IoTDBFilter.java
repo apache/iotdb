@@ -127,7 +127,7 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
     if (operator != null) {
       return operator;
     }
-    throw new AssertionError("cannnot translate basic operator: " + call);
+    throw new AssertionError("cannot translate basic operator: " + call);
   }
 
   private FilterOperator getBasicOperator2(int tokenIntType, RexNode left, RexNode right) {
@@ -203,7 +203,7 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
   }
 
   private String translateLeaf(BasicFunctionOperator operator) {
-    if (operator.getPath().equals(IoTDBConstant.DeviceColumn)) {
+    if (operator.getSinglePath().equals(IoTDBConstant.DeviceColumn)) {
       // If the device doesn't exist, add it. Otherwise do nothing.
       if (!this.deviceToFilterMap.containsKey(operator.getValue())) {
         this.deviceToFilterMap.put(operator.getValue(), null);
@@ -227,7 +227,7 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
     }
     List<String> predicates = new ArrayList<>();
     String deviceName = null;
-    // e.g. Device = d1 AND Time > 15 AND s0 > 5
+    // e.g. device = d1 AND time > 15 AND s0 > 5
     List<FilterOperator> children = operator.getChildren();
     Iterator<FilterOperator> iter = children.iterator();
 
@@ -235,10 +235,10 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
     while (iter.hasNext()) {
       FilterOperator child = iter.next();
       if (child instanceof BasicFunctionOperator
-          && ((BasicFunctionOperator) child).getPath().equals(IoTDBConstant.DeviceColumn)) {
+          && child.getSinglePath().equals(IoTDBConstant.DeviceColumn)) {
 
         String device = ((BasicFunctionOperator) child).getValue();
-        // e.g. Device = d1 AND Device = d2
+        // e.g. device = d1 AND device = d2
         if (deviceName != null && !deviceName.equals(device)) {
           throw new AssertionError(
               "Wrong restrictions to device: " + deviceName + " AND " + device);
@@ -275,10 +275,10 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
 
   private String translateBasicOperator(String device, BasicFunctionOperator operator) {
     StringBuilder buf = new StringBuilder();
-    if (device != null && !operator.getPath().equals(IoTDBConstant.TimeColumn)) {
+    if (device != null && !operator.getSinglePath().equals(IoTDBConstant.TimeColumn)) {
       buf.append(device + IoTDBConstant.PATH_SEPARATOR);
     }
-    buf.append(operator.getPath());
+    buf.append(operator.getSinglePath());
 
     switch (operator.getTokenIntType()) {
       case SQLConstant.EQUAL:

@@ -70,6 +70,11 @@ public class IoTDBSchema extends AbstractSchema {
     this.name = name;
   }
 
+  /**
+   * Generate the columns' names and data types in the given table.
+   * @param storageGroup the table name
+   * @return the columns' names and data types
+   */
   RelProtoDataType getRelDataType(String storageGroup) throws SQLException, QueryProcessException {
     final RelDataTypeFactory typeFactory =
         new SqlTypeFactoryImpl(RelDataTypeSystem.DEFAULT);
@@ -110,7 +115,7 @@ public class IoTDBSchema extends AbstractSchema {
           if (!tmpMeasurementMap.get(sensorName).equals(sensorType)) {
             throw new QueryProcessException(
                 "The data types of the same measurement column should be the same across "
-                    + "devices in GROUP_BY_DEVICE sql. For more details please refer to the "
+                    + "devices in ALIGN_BY_DEVICE sql. For more details please refer to the "
                     + "SQL document.");
           }
         }
@@ -120,6 +125,10 @@ public class IoTDBSchema extends AbstractSchema {
     return RelDataTypeImpl.proto(fieldInfo.build());
   }
 
+  /**
+   * Generate a map whose key is table name and value is table instance. The implementations of
+   * AbstractSchema.getTableNames() and AbstractSchema.getTable(String) depend on this map.
+   */
   @Override
   protected Map<String, Table> getTableMap() {
     try {

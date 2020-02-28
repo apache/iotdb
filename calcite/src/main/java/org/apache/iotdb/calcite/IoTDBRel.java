@@ -51,7 +51,7 @@ public interface IoTDBRel extends RelNode {
     IoTDBTable ioTDBTable;
 
     /**
-     * Adds newly projected fields and .
+     * Adds newly projected fields.
      *
      * @param fields New fields to be projected from a query
      */

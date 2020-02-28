@@ -59,6 +59,7 @@ public class IoTDBProject extends Project implements IoTDBRel {
 
   public void implement(Implementor implementor) {
     implementor.visitChild(0, getInput());
+
     final IoTDBRules.RexToIoTDBTranslator translator =
         new IoTDBRules.RexToIoTDBTranslator(
             (JavaTypeFactory) getCluster().getTypeFactory(),
@@ -68,6 +69,7 @@ public class IoTDBProject extends Project implements IoTDBRel {
       final String originalName = pair.left.accept(translator);
       selectFields.add(originalName);
     }
+
     implementor.addFields(selectFields);
   }
 }

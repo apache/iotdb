@@ -38,7 +38,6 @@ public class IoTDBEnumerator implements Enumerator<Object> {
   private ResultSet currentResultSet;
   private Iterator<ResultSet> iterator;
   private List<Integer> indexInResultSet = new ArrayList<>();
-  private Row current;
   private List<RelDataTypeField> fieldTypes;
 
   /**
@@ -52,7 +51,6 @@ public class IoTDBEnumerator implements Enumerator<Object> {
     if (iterator.hasNext()) {
       this.currentResultSet = iterator.next();
     }
-    this.current = null;
 
     final RelDataTypeFactory typeFactory =
         new SqlTypeFactoryImpl(RelDataTypeSystem.DEFAULT);
@@ -133,7 +131,7 @@ public class IoTDBEnumerator implements Enumerator<Object> {
   /**
    * Advances the enumerator to the next element of the collection.
    *
-   * @return whether the resultset has next element
+   * @return whether the resultSet has next element
    */
   @Override
   public boolean moveNext() {

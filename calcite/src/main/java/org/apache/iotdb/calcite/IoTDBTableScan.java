@@ -41,9 +41,6 @@ public class IoTDBTableScan extends TableScan implements IoTDBRel {
   /**
    * Creates a IoTDBTableScan.
    *
-   * @param cluster        Cluster
-   * @param traitSet       Traits
-   * @param table          Table
    * @param ioTDBTable     IoTDB table
    * @param projectRowType Fields and types to project; null to project raw row
    */
@@ -75,6 +72,10 @@ public class IoTDBTableScan extends TableScan implements IoTDBRel {
     return super.computeSelfCost(planner, mq).multiplyBy(.1 * f);
   }
 
+  /**
+   * Register rules defined in IoTDBRules.
+   * @param planner optimization planner used in query
+   */
   @Override
   public void register(RelOptPlanner planner) {
     planner.addRule(IoTDBToEnumerableConverterRule.INSTANCE);
