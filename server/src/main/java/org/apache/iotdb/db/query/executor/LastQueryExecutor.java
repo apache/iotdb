@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -112,8 +113,8 @@ public class LastQueryExecutor {
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
-    if (node.getCachedLast() != null) {
-      return node.getCachedLast();
+    if (((LeafMNode)node).getCachedLast() != null) {
+      return ((LeafMNode)node).getCachedLast();
     }
 
     QueryDataSource dataSource =
@@ -154,7 +155,7 @@ public class LastQueryExecutor {
     }
 
     // Update cached last value with low priority
-    node.updateCachedLast(resultPair, false, Long.MIN_VALUE);
+    ((LeafMNode)node).updateCachedLast(resultPair, false, Long.MIN_VALUE);
     return resultPair;
   }
 

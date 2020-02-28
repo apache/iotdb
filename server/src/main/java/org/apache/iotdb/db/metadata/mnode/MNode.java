@@ -116,9 +116,4 @@ public abstract class MNode implements Serializable {
   public void setName(String name) {
     this.name = name;
   }
-
-  public abstract TimeValuePair getCachedLast();
-
-  public abstract void updateCachedLast(TimeValuePair timeValuePair, boolean insertionUpdate,
-                                        Long latestFlushedTime);
 }

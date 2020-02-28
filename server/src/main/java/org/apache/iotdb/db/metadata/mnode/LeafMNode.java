@@ -78,12 +78,10 @@ public class LeafMNode extends MNode {
     return schema;
   }
 
-  @Override
   public TimeValuePair getCachedLast() {
     return cachedLastValuePair;
   }
 
-  @Override
   public synchronized void updateCachedLast(TimeValuePair timeValuePair, boolean insertionUpdate,
                                             Long latestFlushedTime) {
     if (timeValuePair == null || timeValuePair.getValue() == null) return;

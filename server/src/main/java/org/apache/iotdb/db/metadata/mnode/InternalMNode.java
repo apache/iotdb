@@ -73,15 +73,4 @@ public class InternalMNode extends MNode {
   public Map<String, MNode> getChildren() {
     return children;
   }
-
-  @Override
-  public TimeValuePair getCachedLast() {
-    return null;
-  }
-
-  @Override
-  public void updateCachedLast(TimeValuePair timeValuePair, boolean insertionUpdate,
-                               Long latestFlushedTime) {
-    return;
-  }
 }

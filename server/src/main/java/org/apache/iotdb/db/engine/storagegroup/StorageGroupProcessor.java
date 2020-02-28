@@ -69,6 +69,8 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.LeafMNode;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -508,17 +510,36 @@ public class StorageGroupProcessor {
           .putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
       latestFlushedTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>())
           .putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
-      if (!globalLatestFlushedTimeForEachDevice.containsKey(insertPlan.getDeviceId())
-              || globalLatestFlushedTimeForEachDevice.get(insertPlan.getDeviceId()) < insertPlan.getTime()) {
-        globalLatestFlushedTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
-      }
 
+      long latestFlushedTime = globalLatestFlushedTimeForEachDevice.computeIfAbsent(
+              insertPlan.getDeviceId(), k -> Long.MIN_VALUE);
       // insert to sequence or unSequence file
       insertToTsFileProcessor(insertPlan,
           insertPlan.getTime() > latestFlushedTimeForEachDevice.get(timePartitionId)
               .get(insertPlan.getDeviceId()));
+
+      updateInsertPlanLast(insertPlan, latestFlushedTime);
+      if (latestFlushedTime < insertPlan.getTime())
+        globalLatestFlushedTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
     } finally {
       writeUnlock();
+    }
+  }
+
+  public void updateInsertPlanLast(InsertPlan plan, Long latestFlushedTime)
+          throws QueryProcessException {
+    try {
+      MNode node =
+              MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(plan.getDeviceId());
+      String[] measurementList = plan.getMeasurements();
+      for (int i = 0; i < measurementList.length; i++) {
+        // Update cached last value with high priority
+        MNode measurementNode = node.getChild(measurementList[i]);
+        ((LeafMNode)measurementNode).updateCachedLast(
+                plan.composeTimeValuePair(i), true, latestFlushedTime);
+      }
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
     }
   }
 
@@ -586,15 +607,37 @@ public class StorageGroupProcessor {
         }
       }
 
+      long latestFlushedTime = globalLatestFlushedTimeForEachDevice.computeIfAbsent(
+              batchInsertPlan.getDeviceId(), k -> Long.MIN_VALUE);
       // do not forget last part
       if (before < loc) {
         insertBatchToTsFileProcessor(batchInsertPlan, before, loc, isSequence, results,
             beforeTimePartition);
       }
+      updateBatchInsertPlanLast(batchInsertPlan, latestFlushedTime);
+      if (latestFlushedTime < batchInsertPlan.getMaxTime())
+        globalLatestFlushedTimeForEachDevice.put(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
 
       return results;
     } finally {
       writeUnlock();
+    }
+  }
+
+  public void updateBatchInsertPlanLast(BatchInsertPlan plan, Long latestFlushedTime)
+          throws QueryProcessException {
+    try {
+      MNode node =
+              MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(plan.getDeviceId());
+      String[] measurementList = plan.getMeasurements();
+      for (int i = 0; i < measurementList.length; i++) {
+        // Update cached last value with high priority
+        MNode measurementNode = node.getChild(measurementList[i]);
+        ((LeafMNode)measurementNode).updateCachedLast(
+                plan.composeLastTimeValuePair(i), true, latestFlushedTime);
+      }
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
     }
   }
 
@@ -1939,9 +1982,4 @@ public class StorageGroupProcessor {
 
     boolean call(TsFileProcessor caller);
   }
-
-  public Map<String, Long> getGlobalLatestFlushedTimeForEachDevice() {
-    return globalLatestFlushedTimeForEachDevice;
-  }
-
 }
