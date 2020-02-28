@@ -28,7 +28,7 @@ import java.nio.file.StandardOpenOption;
 
 public class DefaultTsFileInput implements TsFileInput {
 
-  FileChannel channel;
+  private FileChannel channel;
 
   public DefaultTsFileInput(Path file) throws IOException {
     channel = FileChannel.open(file, StandardOpenOption.READ);

@@ -20,17 +20,24 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class FirstValueAggrResult extends AggregateResult {
 
+  // timestamp of current value
+  private long timestamp = Long.MAX_VALUE;
+
   public FirstValueAggrResult(TSDataType dataType) {
-    super(dataType);
+    super(dataType, AggregationType.FIRST_VALUE);
     reset();
   }
 
@@ -40,17 +47,14 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics)
-      throws QueryProcessException {
+  public void updateResultFromStatistics(Statistics statistics) {
     if (hasResult()) {
       return;
     }
 
     Object firstVal = statistics.getFirstValue();
-    if (firstVal == null) {
-      throw new QueryProcessException("ChunkMetaData contains no FIRST value");
-    }
     setValue(firstVal);
+    timestamp = statistics.getStartTime();
   }
 
   @Override
@@ -60,6 +64,7 @@ public class FirstValueAggrResult extends AggregateResult {
     }
     if (dataInThisPage.hasCurrent()) {
       setValue(dataInThisPage.currentValue());
+      timestamp = dataInThisPage.currentTime();
     }
   }
 
@@ -70,6 +75,7 @@ public class FirstValueAggrResult extends AggregateResult {
     }
     if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       setValue(dataInThisPage.currentValue());
+      timestamp = dataInThisPage.currentTime();
       dataInThisPage.next();
     }
   }
@@ -85,6 +91,7 @@ public class FirstValueAggrResult extends AggregateResult {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
         setValue(value);
+        timestamp = timestamps[i];
         break;
       }
     }
@@ -93,5 +100,24 @@ public class FirstValueAggrResult extends AggregateResult {
   @Override
   public boolean isCalculatedAggregationResult() {
     return hasResult();
+  }
+
+  @Override
+  public void merge(AggregateResult another) {
+    FirstValueAggrResult anotherFirst = (FirstValueAggrResult) another;
+    if(this.getValue() == null || this.timestamp > anotherFirst.timestamp){
+      setValue(anotherFirst.getValue());
+      timestamp = anotherFirst.timestamp;
+    }
+  }
+
+  @Override
+  protected void deserializeSpecificFields(ByteBuffer buffer) {
+    timestamp = buffer.getLong();
+  }
+
+  @Override
+  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(timestamp, outputStream);
   }
 }
