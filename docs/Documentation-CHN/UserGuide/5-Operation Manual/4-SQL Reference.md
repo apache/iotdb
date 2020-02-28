@@ -43,23 +43,23 @@ It costs 0.417s
 * 设置存储组
 
 ``` SQL
-SET STORAGE GROUP TO <PrefixPath>
+SET STORAGE GROUP TO <FullPath>
 Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
-Note: PrefixPath can not include `*`
+Note: FullPath can not include `*`
 ```
 * 删除存储组
 
 ```
-DELETE STORAGE GROUP <PrefixPath> [COMMA <PrefixPath>]*
+DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Note: PrefixPath can not include `*`
+Note: FullPath can not include `*`
 ```
 
 * 创建时间序列语句
 
 ```
-CREATE TIMESERIES <Timeseries> WITH <AttributeClauses>
+CREATE TIMESERIES <FullPath> WITH <AttributeClauses>
 AttributeClauses : DATATYPE=<DataTypeValue> COMMA ENCODING=<EncodingValue> [COMMA <ExtraAttributeClause>]*
 DataTypeValue: BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
 EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF | REGULAR
