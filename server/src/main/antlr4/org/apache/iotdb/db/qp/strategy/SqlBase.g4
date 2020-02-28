@@ -820,124 +820,124 @@ FILE
 
 fragment
 NameChar
- :   'A'..'Z'
- |   'a'..'z'
- |   '0'..'9'
- |   '_'
- ;
+    :   'A'..'Z'
+    |   'a'..'z'
+    |   '0'..'9'
+    |   '_'
+    ;
 
 fragment DOUBLE_QUOTE_STRING_LITERAL
- : '"' ('\\' . | ~'"' )*? '"'
- ;
+    : '"' ('\\' . | ~'"' )*? '"'
+    ;
 
 fragment SINGLE_QUOTE_STRING_LITERAL
-  : '\'' ('\\' . | ~'\'' )*? '\''
-  ;
+    : '\'' ('\\' . | ~'\'' )*? '\''
+    ;
 
 //Characters and write it this way for case sensitivity
 fragment A
-  : 'a' | 'A'
-  ;
+    : 'a' | 'A'
+    ;
 
 fragment B
-  : 'b' | 'B'
-  ;
+    : 'b' | 'B'
+    ;
 
 fragment C
- : 'c' | 'C'
- ;
+    : 'c' | 'C'
+    ;
 
 fragment D
- : 'd' | 'D'
- ;
+    : 'd' | 'D'
+    ;
 
 fragment E
- : 'e' | 'E'
- ;
+    : 'e' | 'E'
+    ;
 
 fragment F
- : 'f' | 'F'
- ;
+    : 'f' | 'F'
+    ;
 
 fragment G
- : 'g' | 'G'
- ;
+    : 'g' | 'G'
+    ;
 
 fragment H
- : 'h' | 'H'
- ;
+    : 'h' | 'H'
+    ;
 
 fragment I
- : 'i' | 'I'
- ;
+    : 'i' | 'I'
+    ;
 
 fragment J
- : 'j' | 'J'
- ;
+    : 'j' | 'J'
+    ;
 
 fragment K
- : 'k' | 'K'
- ;
+    : 'k' | 'K'
+    ;
 
 fragment L
- : 'l' | 'L'
- ;
+    : 'l' | 'L'
+    ;
 
 fragment M
- : 'm' | 'M'
- ;
+    : 'm' | 'M'
+    ;
 
 fragment N
- : 'n' | 'N'
- ;
+    : 'n' | 'N'
+    ;
 
 fragment O
- : 'o' | 'O'
- ;
+    : 'o' | 'O'
+    ;
 
 fragment P
- : 'p' | 'P'
- ;
+    : 'p' | 'P'
+    ;
 
 fragment Q
- : 'q' | 'Q'
- ;
+    : 'q' | 'Q'
+    ;
 
 fragment R
- : 'r' | 'R'
- ;
+    : 'r' | 'R'
+    ;
 
 fragment S
- : 's' | 'S'
- ;
+    : 's' | 'S'
+    ;
 
 fragment T
- : 't' | 'T'
- ;
+    : 't' | 'T'
+    ;
 
 fragment U
- : 'u' | 'U'
- ;
+    : 'u' | 'U'
+    ;
 
 fragment V
- : 'v' | 'V'
- ;
+    : 'v' | 'V'
+    ;
 
 fragment W
- : 'w' | 'W'
- ;
+    : 'w' | 'W'
+    ;
 
 fragment X
- : 'x' | 'X'
- ;
+    : 'x' | 'X'
+    ;
 
 fragment Y
- : 'y' | 'Y'
- ;
+    : 'y' | 'Y'
+    ;
 
 fragment Z
- : 'z' | 'Z'
- ;
+    : 'z' | 'Z'
+    ;
 
 fragment PATH_FRAGMENT
     : ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'-'|'.')*
