@@ -108,6 +108,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.EmptyDataSet;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -219,7 +220,11 @@ public class PlanExecutor implements IPlanExecutor {
     if (queryPlan instanceof AlignByDevicePlan) {
       queryDataSet = new AlignByDeviceDataSet((AlignByDevicePlan) queryPlan, context, queryRouter);
     } else {
-      if (queryPlan instanceof GroupByFillPlan) {
+
+      if (queryPlan.getPaths() == null || queryPlan.getPaths().isEmpty()) {
+        // no time series are selected, return EmptyDataSet
+        return new EmptyDataSet();
+      } else if (queryPlan instanceof GroupByFillPlan) {
         GroupByFillPlan groupByFillPlan = (GroupByFillPlan) queryPlan;
         return queryRouter.groupByFill(groupByFillPlan, context);
       } else if (queryPlan instanceof GroupByPlan) {
@@ -327,8 +332,7 @@ public class PlanExecutor implements IPlanExecutor {
       throws MetadataException {
     ListDataSet listDataSet = new ListDataSet(Collections.singletonList(new Path(COLUMN_DEVICES)),
         Collections.singletonList(TSDataType.TEXT));
-    List<String> devices;
-    devices = MManager.getInstance().getDevices(showDevicesPlan.getPath().toString());
+    Set<String> devices = MManager.getInstance().getDevices(showDevicesPlan.getPath().toString());
     for (String s : devices) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);

@@ -16,28 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.read.reader;
 
-package org.apache.iotdb.spark.db
+import java.io.IOException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 
-import org.apache.spark.sql.SQLContext
-import org.apache.spark.sql.sources.{BaseRelation, DataSourceRegister, RelationProvider}
-import org.slf4j.LoggerFactory
+public class FakedBatchReader implements IBatchReader {
 
-private[iotdb] class DefaultSource extends RelationProvider with DataSourceRegister {
-  private final val logger = LoggerFactory.getLogger(classOf[DefaultSource])
+  private BatchData data;
+  private boolean hasCached = false;
 
-  override def shortName(): String = "tsfile"
-
-  override def createRelation(
-                               sqlContext: SQLContext,
-                               parameters: Map[String, String]): BaseRelation = {
-
-    val iotdbOptions = new IoTDBOptions(parameters)
-
-    if (iotdbOptions.url == null || iotdbOptions.sql == null) {
-      sys.error("IoTDB url or sql not specified")
+  public FakedBatchReader(long[] timestamps) {
+    data = new BatchData(TSDataType.INT32);
+    for (long time : timestamps) {
+      data.putInt(time, 1);
+      hasCached = true;
     }
-    new IoTDBRelation(iotdbOptions)(sqlContext.sparkSession)
+  }
 
+  @Override
+  public boolean hasNextBatch() {
+    return hasCached;
+  }
+
+  @Override
+  public BatchData nextBatch() throws IOException {
+    if (data == null || !data.hasCurrent()) {
+      throw new IOException("no next batch");
+    }
+    hasCached = false;
+    return data;
+  }
+
+  @Override
+  public void close() {
   }
 }

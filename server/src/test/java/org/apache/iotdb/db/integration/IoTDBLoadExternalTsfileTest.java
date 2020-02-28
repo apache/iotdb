@@ -417,7 +417,7 @@ public class IoTDBLoadExternalTsfileTest {
       } catch (Exception e) {
         hasError = true;
         Assert.assertEquals(
-            "Statement format is not right: Please check the statement: load [FILE] true/false [storage group level]",
+            "401: Statement format is not right: Please check the statement: load [FILE] true/false [storage group level]",
             e.getMessage());
       }
       Assert.assertTrue(hasError);

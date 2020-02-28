@@ -176,8 +176,9 @@ Note: This statement can be used in IoTDB Client and JDBC.
 SHOW CHILD PATHS <Path>
 Eg: IoTDB > SHOW CHILD PATHS root
 Eg: IoTDB > SHOW CHILD PATHS root.ln
-Eg: IoTDB > SHOW CHILD PATHS root.ln.wf01
-Note: The path can only be prefix path.
+Eg: IoTDB > SHOW CHILD PATHS root.*.wf01
+Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
+Note: The path can be prefix path or star path, the nodes can be in a "prefix + star" format. 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 ### 数据管理语句
@@ -236,6 +237,7 @@ SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
 Eg. IoTDB > SELECT * FROM root
 Eg. IoTDB > SELECT * FROM root where time > now() - 5m
+Eg. IoTDB > SELECT * FROM root.ln.*.wf*
 Eg. IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MAX_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature > 24
@@ -247,7 +249,7 @@ Note: In Version 0.7.0, if <WhereClause> includes `OR`, time filter can not be u
 Note: There must be a space on both sides of the plus and minus operator appearing in the time expression 
 ```
 
-* Group By语句
+* Group By 语句
 
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByClause>
@@ -276,7 +278,7 @@ Note: <TimeUnit> needs to be greater than 0
 Note: Third <TimeUnit> if set shouldn't be smaller than second <TimeUnit>
 ```
 
-* Fill语句
+* Fill 语句
 
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE <WhereClause> FILL <FillClause>
@@ -329,7 +331,7 @@ Note: Now, only last_value aggregation function is supported in group by fill.
 Note: Linear fill is not supported in group by fill.
 ```
 
-* Limit语句
+* Limit & SLimit 语句
 
 ```
 SELECT <SelectClause> FROM <FromClause> [WHERE <WhereClause>] [<LIMITClause>] [<SLIMITClause>]
@@ -358,14 +360,15 @@ Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammati
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
 
-* Group by device语句
+* Align by device语句
+
 ```
-GroupbyDeviceClause : GROUP BY DEVICE
+AlignbyDeviceClause : ALIGN BY DEVICE
 
 规则:  
 1. 大小写不敏感.  
-正例: select * from root.sg1 align by device  
-正例: select * from root.sg1 GROUP BY DEVICE  
+正例: select * from root.sg1 align by device
+正例: select * from root.sg1 ALIGN BY DEVICE
 
 2. AlignbyDeviceClause 只能放在末尾.  
 正例: select * from root.sg1 where time > 10 align by device  
@@ -429,7 +432,8 @@ root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT.
    - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) align by device
 ```
 
-* Disable align语句
+* Disable align 语句
+
 ```
 规则:  
 1. 大小写均可.  
@@ -463,7 +467,6 @@ root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT.
    - select s0,s1 from root.vehicle.* limit 10 offset 1 disable align
    - select * from root.vehicle slimit 10 soffset 2 disable align
    - select * from root.vehicle where time > 10 disable align
-
 
 ```
 

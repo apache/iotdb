@@ -46,6 +46,7 @@
 * 3-Programming - JDBC
 * 4-Programming - Other Languages
 * 5-Programming - TsFile API
+* 6-Status Codes
 # Chapter 5: Operation Manual
 * 1-DDL (Data Definition Language)
 * 2-DML (Data Manipulation Language)

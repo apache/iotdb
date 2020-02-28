@@ -84,10 +84,16 @@ public class MManagerAdvancedTest {
       assertEquals("root.vehicle.d0", mmanager.getStorageGroupName("root.vehicle.d0.s1"));
       List<String> pathList = mmanager.getAllTimeseriesName("root.vehicle.d1.*");
       assertEquals(6, pathList.size());
-      List<String> paths = mmanager.getAllTimeseriesName("root.vehicle.d0");
-      assertEquals(6, paths.size());
-      paths = mmanager.getAllTimeseriesName("root.vehicle.d2");
-      assertEquals(0, paths.size());
+      pathList = mmanager.getAllTimeseriesName("root.vehicle.d0");
+      assertEquals(6, pathList.size());
+      pathList = mmanager.getAllTimeseriesName("root.vehicle.d*");
+      assertEquals(12, pathList.size());
+      pathList = mmanager.getAllTimeseriesName("root.ve*.*");
+      assertEquals(12, pathList.size());
+      pathList = mmanager.getAllTimeseriesName("root.vehicle*.d*.s1");
+      assertEquals(2, pathList.size());
+      pathList = mmanager.getAllTimeseriesName("root.vehicle.d2");
+      assertEquals(0, pathList.size());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
