@@ -20,12 +20,13 @@ package org.apache.iotdb.tsfile.read.reader;
 
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-
 import java.io.IOException;
 
 public class BatchDataIterator implements IPointReader {
 
   private BatchData batchData;
+
+  private TimeValuePair currentTimeValue;
 
   public BatchDataIterator(BatchData batchData) {
     this.batchData = batchData;
@@ -39,13 +40,14 @@ public class BatchDataIterator implements IPointReader {
   @Override
   public TimeValuePair nextTimeValuePair() {
     TimeValuePair timeValuePair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
+    currentTimeValue = timeValuePair;
     batchData.next();
     return timeValuePair;
   }
 
   @Override
   public TimeValuePair currentTimeValuePair() {
-    return new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
+    return currentTimeValue;
   }
 
   @Override
