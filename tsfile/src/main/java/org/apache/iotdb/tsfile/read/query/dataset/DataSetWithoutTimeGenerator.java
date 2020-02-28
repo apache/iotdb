@@ -106,7 +106,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
       Field field = new Field(dataTypes.get(i));
 
       if (!hasDataRemaining.get(i)) {
-        //record.addField(new Field(null));
+        record.addField(new Field(null));
         continue;
       }
 

@@ -140,15 +140,14 @@ class MergeFileTask {
       newFileWriter.close();
       try (TsFileSequenceReader newFileReader =
           new TsFileSequenceReader(newFileWriter.getFile().getPath())) {
-        List<List<ChunkMetaData>> chunkMetadataListInChunkGroups = newFileWriter
-            .getChunkMetadataListInChunkGroup();
-        List<String> devices = newFileWriter.getDeviceList();
+        Map<String, List<ChunkMetaData>> chunkMetadataListInChunkGroups = 
+            newFileWriter.getDeviceChunkMetadataMap();
         if (logger.isDebugEnabled()) {
           logger.debug("{} find {} merged chunk groups", taskName, chunkMetadataListInChunkGroups.size());
         }
-        for (int i = 0; i < chunkMetadataListInChunkGroups.size(); i++) {
-          List<ChunkMetaData> chunkMetaDataList = chunkMetadataListInChunkGroups.get(i);
-          String deviceId = devices.get(i);
+        for (Map.Entry<String, List<ChunkMetaData>> entry : chunkMetadataListInChunkGroups.entrySet()) {
+          String deviceId = entry.getKey();
+          List<ChunkMetaData> chunkMetaDataList = entry.getValue();
           writeMergedChunkGroup(chunkMetaDataList, deviceId, newFileReader, oldFileWriter);
         }
       }

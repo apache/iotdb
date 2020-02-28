@@ -176,16 +176,16 @@ public class TsFileRecoverPerformer {
     tsFileResource.serialize();
   }
 
+
   private void recoverResourceFromWriter(RestorableTsFileIOWriter restorableTsFileIOWriter) {
-    List<String> deviceList = restorableTsFileIOWriter.getDeviceList();
-    List<List<ChunkMetaData>> chunkMetaDataListInChunkGroup = 
-        restorableTsFileIOWriter.getChunkMetadataListInChunkGroup();
-    for (int i = 0; i < deviceList.size(); i++) {
-      List<ChunkMetaData> chunkMetaDataList = chunkMetaDataListInChunkGroup.get(i);
+    Map<String, List<ChunkMetaData>> deviceChunkMetaDataMap =
+        restorableTsFileIOWriter.getDeviceChunkMetadataMap();
+    for (Map.Entry<String, List<ChunkMetaData>> entry : deviceChunkMetaDataMap.entrySet()) {
+      String deviceId = entry.getKey();
+      List<ChunkMetaData> chunkMetaDataList = entry.getValue();
       for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
-        tsFileResource
-            .updateStartTime(deviceList.get(i), chunkMetaData.getStartTime());
-        tsFileResource.updateEndTime(deviceList.get(i), chunkMetaData.getEndTime());
+        tsFileResource.updateStartTime(deviceId, chunkMetaData.getStartTime());
+        tsFileResource.updateEndTime(deviceId, chunkMetaData.getEndTime());
       }
     }
     long fileVersion =

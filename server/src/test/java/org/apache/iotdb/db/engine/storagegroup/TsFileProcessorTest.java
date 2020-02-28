@@ -179,20 +179,24 @@ public class TsFileProcessorTest {
     assertEquals(dataType, right.get(0).getDataType());
 
     RestorableTsFileIOWriter tsFileIOWriter = processor.getWriter();
-    List<List<ChunkMetaData>> chunkMetaDataListInChunkGroups = 
-        tsFileIOWriter.getChunkMetadataListInChunkGroup();
+    Map<String, List<ChunkMetaData>> chunkMetaDataListInChunkGroups = 
+        tsFileIOWriter.getDeviceChunkMetadataMap();
     RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(
         SystemFileFactory.INSTANCE.getFile(filePath));
-    List<List<ChunkMetaData>> restoredChunkMetaDataListInChunkGroups = restorableTsFileIOWriter
-        .getChunkMetadataListInChunkGroup();
+    Map<String, List<ChunkMetaData>> restoredChunkMetaDataListInChunkGroups = restorableTsFileIOWriter
+        .getDeviceChunkMetadataMap();
     assertEquals(chunkMetaDataListInChunkGroups.size(), restoredChunkMetaDataListInChunkGroups.size());
-    for (int i = 0; i < chunkMetaDataListInChunkGroups.size(); i++) {
-      List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkMetaDataListInChunkGroups.get(i);
-      List<ChunkMetaData> chunkMetaDataListInOneChunkGroupRestore = restoredChunkMetaDataListInChunkGroups.get(i);
-      for (int j = 0; j < chunkMetaDataListInOneChunkGroup.size(); j++) {
-        ChunkMetaData chunkMetaData = chunkMetaDataListInOneChunkGroup.get(j);
-        ChunkMetaData chunkMetaDataRestore = chunkMetaDataListInOneChunkGroupRestore.get(j);
-        assertEquals(chunkMetaData, chunkMetaDataRestore);
+    for (Map.Entry<String, List<ChunkMetaData>> entry1 
+        : chunkMetaDataListInChunkGroups.entrySet()) {
+      for (Map.Entry<String, List<ChunkMetaData>> entry2 
+          : restoredChunkMetaDataListInChunkGroups.entrySet()) {
+        assertEquals(entry1.getKey(), entry2.getKey());
+        assertEquals(entry1.getValue().size(), entry2.getValue().size());
+        for (int i = 0; i < entry1.getValue().size(); i++) {
+          ChunkMetaData chunkMetaData = entry1.getValue().get(i);
+          ChunkMetaData chunkMetaDataRestore = entry2.getValue().get(i);
+          assertEquals(chunkMetaData, chunkMetaDataRestore);
+        }
       }
     }
     restorableTsFileIOWriter.close();

@@ -48,6 +48,8 @@ public class TsFileMetaData {
   private BloomFilter bloomFilter;
 
   private Map<String, Pair<Long, Integer>> deviceMetaDataMap;
+  
+  private Map<Long, Long> versionInfo;
 
   public TsFileMetaData() {
   }
@@ -173,6 +175,10 @@ public class TsFileMetaData {
 
   public void setDeviceMetaDataMap(Map<String, Pair<Long, Integer>> deviceMetaDataMap) {
     this.deviceMetaDataMap = deviceMetaDataMap;
+  }
+
+  public void setVersionInfo(Map<Long, Long> versionInfo) {
+    this.versionInfo = versionInfo;
   }
 
 }

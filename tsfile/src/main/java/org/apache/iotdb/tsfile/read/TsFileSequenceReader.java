@@ -687,10 +687,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             if (chunkMetadataListMap != null) {
               for (ChunkMetaData chunk : chunks) {
                 Path path = new Path(deviceID, chunk.getMeasurementUid());
-                List<ChunkMetaData> chunkMetaDataList = chunkMetadataListMap
-                    .getOrDefault(path, new ArrayList<>());
-                chunkMetaDataList.add(chunk);
-                chunkMetadataListMap.put(path, chunkMetaDataList);
+                chunkMetadataListMap.computeIfAbsent(path, k -> new ArrayList<>()).add(chunk);
               }
             }
             endOffsetOfChunkGroup = this.position();
@@ -714,6 +711,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       // complete.
       truncatedPosition = this.position() - 1;
     } catch (Exception e2) {
+      e2.printStackTrace();
       logger.info("TsFile {} self-check cannot proceed at position {} " + "recovered, because : {}",
           file,
           this.position(), e2.getMessage());
@@ -847,7 +845,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param spacePartitionEndPos   the end position of the space partition
    * @return LocateStatus
    */
-
+  // TODO: This function is not correct. 
   private LocateStatus checkLocateStatus(long deviceMetadataOffset, int deviceMetadataLength,
       long spacePartitionStartPos, long spacePartitionEndPos) {
     long middleOffset = deviceMetadataOffset + deviceMetadataLength / 2;

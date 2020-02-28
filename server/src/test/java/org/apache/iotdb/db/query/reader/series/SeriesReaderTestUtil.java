@@ -50,10 +50,10 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class SeriesReaderTestUtil {
 
-  private static int seqFileNum = 5;
-  private static int unseqFileNum = 5;
-  private static int measurementNum = 10;
-  private static int deviceNum = 10;
+  private static int seqFileNum = 1;
+  private static int unseqFileNum = 1;
+  private static int measurementNum = 1;
+  private static int deviceNum = 1;
   private static long ptNum = 100;
   private static long flushInterval = 20;
   private static TSEncoding encoding = TSEncoding.PLAIN;

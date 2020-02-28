@@ -57,6 +57,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   private boolean crashed;
 
   /**
+   * 
    * all chunk group metadata which have been serialized on disk.
    */
   private Map<String, Map<String, List<ChunkMetaData>>> metadatas = new HashMap<>();
@@ -181,19 +182,17 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   }
 
   /**
-   * add all appendChunkGroupMetadatas into memory. After calling this method, other classes can
+   * add all appendChunkMetadatas into memory. After calling this method, other classes can
    * read these metadata.
    */
 
   public void makeMetadataVisible() {
-    Pair<List<String>, List<List<ChunkMetaData>>> append = getAppendedRowGroupMetadata();
-    List<String> newlyFlushedDeviceList = append.left;
-    List<List<ChunkMetaData>> newlyFlushedMetadataList = append.right;
+    List<Pair<String, List<ChunkMetaData>>> newlyFlushedMetadataList = getAppendedRowMetadata();
     if (!newlyFlushedMetadataList.isEmpty()) {
-      for (int i = 0; i < newlyFlushedMetadataList.size(); i++) {
-        List<ChunkMetaData> rowGroupMetaData = newlyFlushedMetadataList.get(i);
-        String deviceId = newlyFlushedDeviceList.get(i);
-        for (ChunkMetaData chunkMetaData : rowGroupMetaData) {
+      for (Pair<String, List<ChunkMetaData>> pair : newlyFlushedMetadataList) {
+        List<ChunkMetaData> rowMetaDataList = pair.right;
+        String deviceId = pair.left;
+        for (ChunkMetaData chunkMetaData : rowMetaDataList) {
           String measurementId = chunkMetaData.getMeasurementUid();
           if (!metadatas.containsKey(deviceId)) {
             metadatas.put(deviceId, new HashMap<>());
@@ -212,24 +211,18 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   }
 
   /**
-   * get all the chunkGroups' metadata which are appended after the last calling of this method, or
+   * get all the chunk's metadata which are appended after the last calling of this method, or
    * after the class instance is initialized if this is the first time to call the method.
    *
-   * @return a list of ChunkMetadataList
+   * @return a list of Device ChunkMetadataList Pair
    */
-  private Pair<List<String>, List<List<ChunkMetaData>>> getAppendedRowGroupMetadata() {
-    List<String> appendDevices = new ArrayList<>();
-    List<List<ChunkMetaData>> appendChunkGroupMetaDataList = new ArrayList<>();
-    if (lastFlushedChunkGroupIndex < chunkGroupMetaDataList.size()) {
-      appendDevices
-          .addAll(deviceList.subList(lastFlushedChunkGroupIndex, chunkGroupMetaDataList.size()));
-      appendChunkGroupMetaDataList.addAll(chunkGroupMetaDataList
-          .subList(lastFlushedChunkGroupIndex, chunkGroupMetaDataList.size()));
-      lastFlushedChunkGroupIndex = chunkGroupMetaDataList.size();
+  private List<Pair<String, List<ChunkMetaData>>> getAppendedRowMetadata() {
+    List<Pair<String, List<ChunkMetaData>>> append = new ArrayList<>();
+    if (lastFlushedChunkGroupIndex < chunkGroupInfoList.size()) {
+      append.addAll(chunkGroupInfoList
+          .subList(lastFlushedChunkGroupIndex, chunkGroupInfoList.size()));
+      lastFlushedChunkGroupIndex = chunkGroupInfoList.size();
     }
-    Pair<List<String>, List<List<ChunkMetaData>>> append =
-        new Pair<List<String>, List<List<ChunkMetaData>>>(appendDevices,
-            appendChunkGroupMetaDataList);
     return append;
   }
 
