@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.LogManager;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
@@ -52,6 +53,7 @@ public class HeartBeatThreadTest {
   boolean testHeartBeat;
 
   Set<Integer> receivedNodes = new HashSet<>();
+  PartitionGroup partitionGroup;
 
   RaftMember getMember() {
     return new TestMetaGroupMember() {
@@ -119,6 +121,7 @@ public class HeartBeatThreadTest {
   public void setUp() {
     logManager = new TestLogManager();
     member = getMember();
+
     HeartBeatThread heartBeatThread = getHeartBeatThread(member);
     testThread = new Thread(heartBeatThread);
     member.getTerm().set(10);
@@ -128,12 +131,20 @@ public class HeartBeatThreadTest {
 
     respondToElection = false;
     testHeartBeat = false;
+    partitionGroup = new PartitionGroup();
+    for (int i = 0; i < 10; i++) {
+      partitionGroup.add(TestUtils.getNode(i));
+    }
+    member.setAllNodes(partitionGroup);
+    member.setThisNode(TestUtils.getNode(0));
+    receivedNodes.clear();
   }
 
   @Test
   public void testAsLeader() throws InterruptedException {
     testHeartBeat = true;
     member.setCharacter(NodeCharacter.LEADER);
+    member.setLeader(member.getThisNode());
     synchronized (receivedNodes) {
       testThread.start();
     }

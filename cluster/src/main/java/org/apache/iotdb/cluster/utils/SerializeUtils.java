@@ -355,7 +355,7 @@ public class SerializeUtils {
   }
 
   public static long[] deserializeLongs(ByteBuffer buffer) {
-    int size = buffer.limit() / Long.BYTES;
+    int size = (buffer.limit() - buffer.position()) / Long.BYTES;
     long[] ret = new long[size];
     for (int i = 0; i < size; i++) {
       ret[i] = buffer.getLong();

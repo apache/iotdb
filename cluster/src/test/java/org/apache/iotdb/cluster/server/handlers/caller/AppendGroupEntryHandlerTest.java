@@ -140,7 +140,7 @@ public class AppendGroupEntryHandlerTest {
       AppendGroupEntryHandler handler = new AppendGroupEntryHandler(groupReceivedCounter, 0,
           TestUtils.getNode(0), leadershipStale, testLog, newLeaderTerm);
       new Thread(() -> handler.onError(new TestException())).start();
-      groupReceivedCounter.wait(10 * 1000);
+      groupReceivedCounter.wait(100);
     }
     for (int i = 0; i < 10; i++) {
       assertEquals(REPLICATION_NUM / 2, groupReceivedCounter[i]);

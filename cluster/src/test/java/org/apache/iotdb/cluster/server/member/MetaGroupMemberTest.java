@@ -220,6 +220,12 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
+      protected DataGroupMember getLocalDataMember(Node header, AsyncMethodCallback resultHandler,
+          Object request) {
+        return getDataGroupMember(header);
+      }
+
+      @Override
       public AsyncClient connectNode(Node node) {
         if (node.equals(thisNode)) {
           return null;
@@ -657,13 +663,13 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testGetMatchedPaths() throws MetadataException {
     List<String> matchedPaths = metaGroupMember
-        .getMatchedPaths(TestUtils.getTestSg(0));
+        .getMatchedPaths(TestUtils.getTestSg(0) + ".*");
     assertEquals(10, matchedPaths.size());
     for (int j = 0; j < 10; j++) {
       assertEquals(TestUtils.getTestSeries(0, j), matchedPaths.get(j));
     }
     matchedPaths = metaGroupMember
-        .getMatchedPaths(TestUtils.getTestSg(10));
+        .getMatchedPaths(TestUtils.getTestSg(10) + ".*");
     assertTrue(matchedPaths.isEmpty());
   }
 

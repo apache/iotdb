@@ -79,11 +79,20 @@ public class ClientMain {
     long statementId = client.requestStatementId(sessionId);
     executeQuery(client, sessionId,"SELECT * FROM root", statementId);
     executeQuery(client, sessionId, "SELECT * FROM root WHERE time <= 691200000", statementId);
+    executeQuery(client, sessionId, "SELECT * FROM root WHERE time >= 391200000 and time <= "
+            + "691200000", statementId);
     executeQuery(client, sessionId, "SELECT * FROM root.*.* WHERE s1 <= 0.7", statementId);
     executeQuery(client, sessionId, "SELECT s1 FROM root.beijing.d1", statementId);
     executeQuery(client, sessionId, "SELECT s1 FROM root.shanghai.d1", statementId);
     executeQuery(client, sessionId, "SELECT s1 FROM root.guangzhou.d1", statementId);
     executeQuery(client, sessionId, "SELECT s1 FROM root.shenzhen.d1", statementId);
+    executeQuery(client, sessionId, "SELECT count(s1) FROM root.*", statementId);
+    executeQuery(client, sessionId, "SELECT avg(s1) FROM root.*", statementId);
+    executeQuery(client, sessionId, "SELECT sum(s1) FROM root.*", statementId);
+    executeQuery(client, sessionId, "SELECT max_value(s1) FROM root.*", statementId);
+    executeQuery(client, sessionId, "SELECT count(s1) FROM root.* where time <= 691200000", statementId);
+    executeQuery(client, sessionId, "SELECT count(s1) FROM root.* where s1 <= 0.7", statementId);
+
 
     TSCloseOperationReq tsCloseOperationReq = new TSCloseOperationReq(sessionId);
     tsCloseOperationReq.setStatementId(statementId);

@@ -32,15 +32,19 @@ import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
+import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.LogManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
+import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -65,6 +69,7 @@ public class MemberTest {
 
   @Before
   public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
     prevUrls = ClusterDescriptor.getINSTANCE().getConfig().getSeedNodeUrls();
     List<String> testUrls = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
@@ -89,7 +94,6 @@ public class MemberTest {
       getDataGroupMember(node);
     }
 
-    EnvironmentUtils.envSetUp();
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().setStorageGroup(TestUtils.getTestSg(i));
       for (int j = 0; j < 10; j++) {
@@ -108,7 +112,7 @@ public class MemberTest {
     new File(MetaGroupMember.NODE_IDENTIFIER_FILE_NAME).delete();
   }
 
-  private DataGroupMember getDataGroupMember(Node node) {
+  DataGroupMember getDataGroupMember(Node node) {
     return dataGroupMemberMap.computeIfAbsent(node, this::newDataGroupMember);
   }
 
@@ -118,9 +122,26 @@ public class MemberTest {
       public boolean syncLeader() {
         return true;
       }
+
+      @Override
+      public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
+        new Thread(() -> resultHandler.onComplete(Response.RESPONSE_AGREE)).start();
+      }
+
+      @Override
+      public AsyncClient connectNode(Node node) {
+        try {
+          return new TestDataClient(node, dataGroupMemberMap);
+        } catch (IOException e) {
+          return null;
+        }
+      }
     };
     newMember.setThisNode(node);
     newMember.setMetaGroupMember(testMetaMember);
+    newMember.setLeader(node);
+    newMember.setCharacter(NodeCharacter.LEADER);
+    newMember.setLogManager(new TestPartitionedLogManager());
     return newMember;
   }
 

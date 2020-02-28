@@ -739,6 +739,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       return;
     }
     try {
+      logger.debug("{}: deserialize time from buffer {}", name, timeBuffer);
       long[] timestamps = SerializeUtils.deserializeLongs(timeBuffer);
       Object[] values = reader.getValuesInTimestamps(timestamps);
       if (values != null) {
@@ -893,6 +894,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       byteArrayOutputStream.reset();
     }
     resultHandler.onComplete(resultBuffers);
+  }
+
+  @TestOnly
+  public void setLogManager(PartitionedSnapshotLogManager logManager) {
+    this.logManager = logManager;
+    super.logManager = logManager;
   }
 }
 

@@ -21,11 +21,24 @@ package org.apache.iotdb.cluster.common;
 
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 public class TestLogApplier implements LogApplier {
 
-  @Override
-  public void apply(Log log) {
+  private PlanExecutor planExecutor;
 
+  @Override
+  public void apply(Log log) throws QueryProcessException {
+    if (log instanceof PhysicalPlanLog) {
+      PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
+      getPlanExecutor().processNonQuery(physicalPlanLog.getPlan());
+    }
+  }
+
+  public PlanExecutor getPlanExecutor() throws QueryProcessException {
+    return planExecutor == null ? planExecutor = new PlanExecutor() : planExecutor;
   }
 }

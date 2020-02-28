@@ -128,8 +128,6 @@ public class PlanExecutor implements IPlanExecutor {
 
   // for data query
   protected IQueryRouter queryRouter;
-  // for insert
-  private StorageEngine storageEngine;
   // for system schema
   private MManager mManager;
   // for administration
@@ -137,7 +135,6 @@ public class PlanExecutor implements IPlanExecutor {
 
   public PlanExecutor() throws QueryProcessException {
     queryRouter = new QueryRouter();
-    storageEngine = StorageEngine.getInstance();
     mManager = MManager.getInstance();
     try {
       authorizer = LocalFileAuthorizer.getInstance();
@@ -613,7 +610,7 @@ public class PlanExecutor implements IPlanExecutor {
                 .createTimeseries(fullPath, schema.getType(), schema.getEncodingType(),
                     schema.getCompressor(), Collections.emptyMap());
             if (result) {
-              storageEngine
+              StorageEngine.getInstance()
                   .addTimeSeries(new Path(fullPath), schema.getType(), schema.getEncodingType(),
                       schema.getCompressor(), Collections.emptyMap());
             }
@@ -686,7 +683,7 @@ public class PlanExecutor implements IPlanExecutor {
             String.format("Time series %s does not exist.", path.getFullPath()));
       }
       mManager.getStorageGroupName(path.getFullPath());
-      storageEngine.delete(deviceId, measurementId, timestamp);
+      StorageEngine.getInstance().delete(deviceId, measurementId, timestamp);
     } catch (MetadataException | StorageEngineException e) {
       throw new QueryProcessException(e);
     }
@@ -716,7 +713,7 @@ public class PlanExecutor implements IPlanExecutor {
                   TSFileDescriptor.getInstance().getConfig().getCompressor(),
                   Collections.emptyMap());
           if (result) {
-            storageEngine.addTimeSeries(path, dataType, getDefaultEncoding(dataType));
+            StorageEngine.getInstance().addTimeSeries(path, dataType, getDefaultEncoding(dataType));
           }
         }
         MNode measurementNode = node.getChild(measurement);
@@ -782,7 +779,7 @@ public class PlanExecutor implements IPlanExecutor {
                   TSFileDescriptor.getInstance().getConfig().getCompressor(),
                   Collections.emptyMap());
           if (result) {
-            storageEngine
+            StorageEngine.getInstance()
                 .addTimeSeries(path, dataType, getDefaultEncoding(dataType));
           }
         }
@@ -800,7 +797,7 @@ public class PlanExecutor implements IPlanExecutor {
                   measurementNode.getSchema().getType()));
         }
       }
-      return storageEngine.insertBatch(batchInsertPlan);
+      return StorageEngine.getInstance().insertBatch(batchInsertPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -931,7 +928,7 @@ public class PlanExecutor implements IPlanExecutor {
     List<String> deletePathList = new ArrayList<>();
     try {
       for (Path storageGroupPath : deleteStorageGroupPlan.getPaths()) {
-        storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
+        StorageEngine.getInstance().deleteStorageGroup(storageGroupPath.getFullPath());
         deletePathList.add(storageGroupPath.getFullPath());
       }
       mManager.deleteStorageGroups(deletePathList);

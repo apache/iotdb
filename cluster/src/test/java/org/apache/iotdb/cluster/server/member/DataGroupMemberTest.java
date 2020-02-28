@@ -44,6 +44,7 @@ import org.apache.iotdb.cluster.common.TestDataClient;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -102,7 +103,6 @@ public class DataGroupMemberTest extends MemberTest {
   private Set<Integer> pulledSnapshots;
   private boolean hasInitialSnapshots;
   private boolean enableSyncLeader;
-  private int numSlotsToPull = 2;
   private int prevReplicationNum;
 
   @Before
@@ -112,7 +112,7 @@ public class DataGroupMemberTest extends MemberTest {
     super.setUp();
     dataGroupMember = getDataGroupMember(TestUtils.getNode(0));
     snapshotMap = new HashMap<>();
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < ClusterConstant.SLOT_NUM; i++) {
       FileSnapshot fileSnapshot = new FileSnapshot();
       fileSnapshot.setTimeseriesSchemas(Collections.singleton(TestUtils.getTestSchema(1, i)));
       snapshotMap.put(i, fileSnapshot);
@@ -148,7 +148,7 @@ public class DataGroupMemberTest extends MemberTest {
     };
   }
 
-  private DataGroupMember getDataGroupMember(Node node) {
+  DataGroupMember getDataGroupMember(Node node) {
     PartitionGroup nodes = partitionTable.getHeaderGroup(node);
     return getDataGroupMember(node, nodes);
   }
@@ -174,9 +174,6 @@ public class DataGroupMemberTest extends MemberTest {
                   }
                   synchronized (dataGroupMember) {
                     pulledSnapshots.add(requiredSlot);
-                    if (pulledSnapshots.size() == numSlotsToPull) {
-                      dataGroupMember.notifyAll();
-                    }
                   }
                 }
                 resp.setSnapshotBytes(snapshotBufferMap);
@@ -387,7 +384,8 @@ public class DataGroupMemberTest extends MemberTest {
     try {
       hasInitialSnapshots = false;
       partitionTable.addNode(TestUtils.getNode(100));
-      List<Integer> requiredSlots = Arrays.asList(19, 39, 59, 79, 99);
+      List<Integer> requiredSlots =
+          new ArrayList<>(partitionTable.getPreviousNodeMap(TestUtils.getNode(100)).keySet());
       dataGroupMember.pullNodeAdditionSnapshots(requiredSlots, TestUtils.getNode(100));
       assertEquals(requiredSlots.size(), receivedSnapshots.size());
       for (Integer requiredSlot : requiredSlots) {
@@ -481,6 +479,9 @@ public class DataGroupMemberTest extends MemberTest {
       PlanExecutor.processNonQuery(insertPlan);
     }
 
+    // node1 manages the data above
+    dataGroupMember.setThisNode(TestUtils.getNode(10));
+    dataGroupMember.setAllNodes(partitionTable.getHeaderGroup(TestUtils.getNode(10)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     request.setPath(TestUtils.getTestSeries(0, 0));
@@ -537,6 +538,9 @@ public class DataGroupMemberTest extends MemberTest {
       PlanExecutor.processNonQuery(insertPlan);
     }
 
+    // node1 manages the data above
+    dataGroupMember.setThisNode(TestUtils.getNode(10));
+    dataGroupMember.setAllNodes(partitionTable.getHeaderGroup(TestUtils.getNode(10)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     request.setPath(TestUtils.getTestSeries(0, 0));
@@ -592,6 +596,9 @@ public class DataGroupMemberTest extends MemberTest {
       PlanExecutor.processNonQuery(insertPlan);
     }
 
+    // node1 manages the data above
+    dataGroupMember.setThisNode(TestUtils.getNode(10));
+    dataGroupMember.setAllNodes(partitionTable.getHeaderGroup(TestUtils.getNode(10)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     request.setPath(TestUtils.getTestSeries(0, 0));
@@ -618,10 +625,10 @@ public class DataGroupMemberTest extends MemberTest {
         dataResult);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES + Long.BYTES * 5);
-    byteBuffer.putLong(5);
     for (int i = 5; i < 10; i++) {
       byteBuffer.putLong(i);
     }
+    byteBuffer.flip();
     synchronized (dataResult) {
       dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, byteBuffer,
           dataHandler);
@@ -651,11 +658,14 @@ public class DataGroupMemberTest extends MemberTest {
       PlanExecutor.processNonQuery(insertPlan);
     }
 
+    // node1 manages the data above
+    dataGroupMember.setThisNode(TestUtils.getNode(10));
+    dataGroupMember.setAllNodes(partitionTable.getHeaderGroup(TestUtils.getNode(10)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     request.setPath(TestUtils.getTestSeries(0, 0));
     request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
-    request.setRequester(TestUtils.getNode(1));
+    request.setRequester(TestUtils.getNode(10));
     request.setQueryId(0);
     Filter filter = new AndFilter(TimeFilter.gtEq(5), ValueFilter.ltEq(8.0));
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -675,11 +685,11 @@ public class DataGroupMemberTest extends MemberTest {
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0),
         dataResult);
-    ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES + Long.BYTES * 4);
-    byteBuffer.putLong(4);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(Long.BYTES * 4);
     for (int i = 5; i < 9; i++) {
       byteBuffer.putLong(i);
     }
+    byteBuffer.flip();
     synchronized (dataResult) {
       dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, byteBuffer,
           dataHandler);
@@ -773,7 +783,7 @@ public class DataGroupMemberTest extends MemberTest {
   private TsFileResource prepareResource(int serialNum, boolean withModification)
       throws IOException {
     TsFileResource resource = new RemoteTsFileResource();
-    File file = new File("target" + File.separator + TestUtils.getTestSg(0),
+    File file = new File("target" + File.separator + TestUtils.getTestSg(0) + File.separator + "0",
         "0-" + (serialNum + 101L) + "-0.tsfile");
     file.getParentFile().mkdirs();
     file.createNewFile();
@@ -797,7 +807,6 @@ public class DataGroupMemberTest extends MemberTest {
         .removeNode(nodeToRemove);
     dataGroupMember.setLeader(nodeToRemove);
     dataGroupMember.start();
-    numSlotsToPull = 2;
 
     try {
       synchronized (dataGroupMember) {
@@ -826,7 +835,6 @@ public class DataGroupMemberTest extends MemberTest {
         .removeNode(nodeToRemove);
     dataGroupMember.setLeader(TestUtils.getNode(20));
     dataGroupMember.start();
-    numSlotsToPull = 2;
 
     try {
       synchronized (dataGroupMember) {

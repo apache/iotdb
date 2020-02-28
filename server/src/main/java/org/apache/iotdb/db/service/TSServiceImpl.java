@@ -999,7 +999,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
       IOException, MetadataException, SQLException {
 
-    QueryContext context = new QueryContext(queryId);
+    QueryContext context = genQueryContext(queryId);
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryId2DataSet.put(queryId, queryDataSet);
     return queryDataSet;
