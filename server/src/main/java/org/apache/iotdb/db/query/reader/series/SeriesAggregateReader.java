@@ -93,6 +93,11 @@ public class SeriesAggregateReader implements IAggregateReader {
     return seriesReader.nextOverlappedPage();
   }
 
+  @Override
+  public TSDataType getSeriesDataType() {
+    return seriesReader.getSeriesDataType();
+  }
+
 
   private boolean containedByTimeFilter(Statistics statistics) {
     Filter timeFilter = seriesReader.getTimeFilter();

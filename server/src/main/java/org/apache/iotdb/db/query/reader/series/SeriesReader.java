@@ -53,6 +53,7 @@ import java.util.*;
 public class SeriesReader {
 
   private final Path seriesPath;
+
   private final TSDataType dataType;
   private final QueryContext context;
   private final Filter timeFilter;
@@ -454,6 +455,10 @@ public class SeriesReader {
 
   public Filter getTimeFilter() {
     return timeFilter;
+  }
+
+  public TSDataType getSeriesDataType() {
+    return dataType;
   }
 
   private class VersionPair<T> {

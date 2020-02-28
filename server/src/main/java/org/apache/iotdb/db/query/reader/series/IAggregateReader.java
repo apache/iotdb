@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
@@ -50,4 +51,6 @@ public interface IAggregateReader {
   boolean hasNextOverlappedPage() throws IOException;
 
   BatchData nextOverlappedPage() throws IOException;
+
+  TSDataType getSeriesDataType();
 }
