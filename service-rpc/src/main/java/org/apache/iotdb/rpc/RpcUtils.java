@@ -36,7 +36,7 @@ public class RpcUtils {
    */
   public static void verifySuccess(TSStatus status) throws IoTDBRPCException {
     if (status.getStatusType().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new IoTDBRPCException(status.getStatusType().getMessage());
+      throw new IoTDBRPCException(String.format("%d: %s", status.getStatusType().getCode(), status.getStatusType().getMessage()));
     }
   }
 

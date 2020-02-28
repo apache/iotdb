@@ -68,8 +68,10 @@ public enum TSStatusCode {
   TIME_OUT(701),
   NO_LEADER(702),
   UNSUPPORTED_OPERATION(703),
-  NODE_READ_ONLY(704);
-
+  NODE_READ_ONLY(704),
+  
+  INCOMPATIBLE_VERSION(203)
+  ;
 
   private int statusCode;
 

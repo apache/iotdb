@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.query;
 
 import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -44,7 +45,7 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  protected List<String> getMatchedDevices(String path) throws MetadataException {
+  protected Set<String> getMatchedDevices(String path) throws MetadataException {
     return metaGroupMember.getMatchedDevices(path);
   }
 }

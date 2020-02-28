@@ -1386,12 +1386,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @param originPath       a path potentially with wildcard
    * @return all paths after removing wildcards in the path
    */
-  public List<String> getMatchedDevices(String originPath) throws MetadataException {
+  public Set<String> getMatchedDevices(String originPath) throws MetadataException {
     // make sure this node knows all storage groups
     syncLeader();
     // get all storage groups this path may belong to
     Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(originPath);
-    List<String> ret = new ArrayList<>();
+    Set<String> ret = new HashSet<>();
     for (Entry<String, String> entry : sgPathMap.entrySet()) {
       String storageGroupName = entry.getKey();
       String fullPath = entry.getValue();

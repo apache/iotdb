@@ -138,4 +138,9 @@ public class AvgAggrResult extends AggregateResult {
     ReadWriteIOUtils.write(avg, outputStream);
     ReadWriteIOUtils.write(cnt, outputStream);
   }
+
+  public long getCnt() {
+    return cnt;
+  }
+
 }

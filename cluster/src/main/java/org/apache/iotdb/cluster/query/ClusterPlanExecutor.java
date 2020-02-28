@@ -63,7 +63,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<String> getDevices(String path) throws MetadataException {
+  protected Set<String> getDevices(String path) throws MetadataException {
     return metaGroupMember.getMatchedDevices(path);
   }
 

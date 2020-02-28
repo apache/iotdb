@@ -284,6 +284,7 @@ public class PhysicalGenerator {
         for (String device : devices) { // per device in FROM after deduplication
           Path fullPath = Path.addPrefixPath(suffixPath, device);
           try {
+            // remove stars in SELECT to get actual paths
             List<String> actualPaths = getMatchedTimeseries(fullPath.getFullPath());  // remove stars in SELECT to
             // get actual paths
 
@@ -352,12 +353,6 @@ public class PhysicalGenerator {
         // for suffix s1, measurementSetOfGivenSuffix = {s1}
         // therefore the final measurements is [s1,s2,s3,s1].
         measurements.addAll(measurementSetOfGivenSuffix);
-      }
-
-      if (measurements.isEmpty()
-          && alignByDevicePlan.getConstMeasurements().isEmpty()
-          && alignByDevicePlan.getNotExistMeasurements().isEmpty()) {
-        throw new QueryProcessException("do not select any existing series");
       }
 
       // slimit trim on the measurementColumnList
@@ -429,9 +424,7 @@ public class PhysicalGenerator {
     Set<String> deviceSet = new LinkedHashSet<>();
     try {
       for (Path path : paths) {
-        List<String> tempDS;
-        tempDS = getMatchedDevices(path.getFullPath());
-
+        Set<String> tempDS = getMatchedDevices(path.getFullPath());
         deviceSet.addAll(tempDS);
       }
       retDevices = new ArrayList<>(deviceSet);
@@ -537,7 +530,7 @@ public class PhysicalGenerator {
     return MManager.getInstance().getAllTimeseriesName(path);
   }
 
-  protected List<String> getMatchedDevices(String path) throws MetadataException {
+  protected Set<String> getMatchedDevices(String path) throws MetadataException {
     return MManager.getInstance().getDevices(path);
   }
 }
