@@ -37,6 +37,7 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
   private List<FileSeriesReaderByTimestamp> readers;
   private List<Boolean> cached;
   private TimeColumn timeColumn;
+  private long cacheTime;
   private boolean hasCache;
 
   /**
@@ -63,10 +64,19 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
       return true;
     }
 
+    if (timeColumn != null && timeColumn.hasCurrent()) {
+      cacheTime = timeColumn.currentTime();
+      timeColumn.next();
+      hasCache = true;
+      return true;
+    }
+
     while (timeGenerator.hasNextTimeColumn()) {
       timeColumn = timeGenerator.nextTimeColumn();
       if (timeColumn.hasCurrent()) {
         hasCache = true;
+        cacheTime = timeColumn.currentTime();
+        timeColumn.next();
         break;
       }
     }
@@ -75,7 +85,8 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
 
   @Override
   protected RowRecord nextWithoutConstraint() throws IOException {
-    long timestamp = timeColumn.currentTime();
+    hasCache = false;
+    long timestamp = cacheTime;
     RowRecord rowRecord = new RowRecord(timestamp);
 
     for (int i = 0; i < paths.size(); i++) {
@@ -92,8 +103,6 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
       Object value = fileSeriesReaderByTimestamp.getValueInTimestamp(timestamp);
       rowRecord.addField(value, dataTypes.get(i));
     }
-
-    timeColumn.next();
     return rowRecord;
   }
 }

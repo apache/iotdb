@@ -83,6 +83,7 @@ public class TimeGeneratorTest {
         // System.out.println(timestampGenerator.next());
         Assert.assertEquals(startTimestamp, timeColumn.currentTime());
         startTimestamp += 1;
+        timeColumn.next();
       }
     }
     Assert.assertEquals(1480562618101L, startTimestamp);

@@ -61,25 +61,9 @@ public class PriorityMergeReader implements IPointReader {
   }
 
   public void addReader(IPointReader reader, long priority, long endTime) throws IOException {
-    long partitionInterval = config.getPartitionInterval();
-    switch (config.getTimestampPrecision()) {
-      case "ns":
-        partitionInterval *= 1000_000_000L;
-        break;
-      case "us":
-        partitionInterval *= 1000_000L;
-        break;
-      default:
-        partitionInterval *= 1000;
-        break;
-    }
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
-      long partition = reader.currentTimeValuePair().getTimestamp() / partitionInterval;
-      // set end time before current partition ends
-      currentLargestEndTime = Math.min((partition + 1) * partitionInterval - 1,
-          Math.max(currentLargestEndTime, endTime));
-      System.out.println();
+      currentLargestEndTime = Math.max(currentLargestEndTime, endTime);
     } else {
       reader.close();
     }
