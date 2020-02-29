@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.rest.util;
 
+import org.apache.iotdb.db.rest.filter.AuthenticationFilter;
 import org.apache.iotdb.db.rest.filter.CORSFilter;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ErrorHandler;
@@ -36,6 +37,7 @@ public class RestUtil {
         new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
     ResourceConfig resourceConfig = new ResourceConfig();
     resourceConfig.register(CORSFilter.class);
+    resourceConfig.register(AuthenticationFilter.class);
     ctx.setContextPath("/");
     resourceConfig.packages("org.apache.iotdb.db.rest.controller");
     ServletHolder servletHolder = new ServletHolder(new ServletContainer(resourceConfig));

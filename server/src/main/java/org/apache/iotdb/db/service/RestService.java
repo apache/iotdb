@@ -149,7 +149,7 @@ public class RestService implements RestServiceMBean, IService {
     try {
       socket.connect(socketAddress, 1000);
     } catch (IOException e) {
-      logger.error(e.getMessage());
+      logger.debug("Close post successfully.");
     } finally {
       try {
         socket.close();

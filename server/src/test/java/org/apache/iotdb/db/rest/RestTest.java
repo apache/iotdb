@@ -23,6 +23,7 @@ import com.alibaba.fastjson.JSONObject;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.util.Base64;
 import java.util.Locale;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -170,8 +171,10 @@ public class RestTest {
     client.target(LOGIN)
         .request(MediaType.APPLICATION_JSON)
         .post(Entity.entity(JSONObject.parse(json2), MediaType.APPLICATION_JSON));
+    String userAndPassword = "root:root";
+    String encodedUserPassword = new String(Base64.getEncoder().encode(userAndPassword.getBytes()));
     Response response = client.target(REST_URI)
-        .request(MediaType.APPLICATION_JSON)
+        .request(MediaType.APPLICATION_JSON).header("Authorization", "Basic " + encodedUserPassword)
         .post(Entity.entity(JSONObject.parse(json1), MediaType.APPLICATION_JSON));
     String result = response.readEntity(String.class);
     Assert.assertEquals("[{\"datapoints\":[[1,\"1.1\"],[2,\"2.2\"],[3,\"3.3\"],[4,\"4.4\"],[5,\"5.5\"]],\"target\":\"root.ln.wf01.wt01.temperature\"}]"

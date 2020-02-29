@@ -21,6 +21,7 @@ package org.apache.iotdb.db.rest.controller;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import javax.annotation.security.PermitAll;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -29,9 +30,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metrics.MetricsSystem;
 import org.apache.iotdb.db.rest.service.RestService;
@@ -49,30 +47,6 @@ public class RestController {
   private static final Logger logger = LoggerFactory.getLogger(RestController.class);
   private RestService restService = RestService.getInstance();
   private MetricsSystem metricsSystem = new MetricsSystem();
-
-  /**
-   * http request to login IoTDB
-   */
-
-  @Path("/login")
-  @POST
-  @Consumes(MediaType.APPLICATION_JSON)
-  public void login(@Context HttpServletRequest request)
-      throws AuthException {
-    JSONObject jsonObject = restService.getRequestBodyJson(request);
-    String username = (String)jsonObject.get("username");
-    String password = (String)jsonObject.get("password");
-    logger.info("{}: receive http request from username {}", IoTDBConstant.GLOBAL_DB_NAME,
-        username);
-    IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
-    boolean status = authorizer.login(username, password);
-    if (status) {
-      restService.setUsername(username);
-      logger.info("{}: Login successfully. User : {}", IoTDBConstant.GLOBAL_DB_NAME, username);
-    } else {
-      throw new AuthException("Wrong login password");
-    }
-  }
 
   /**
    *
@@ -120,6 +94,7 @@ public class RestController {
   /**
    * get metrics in json format
    */
+  @PermitAll
   @Path("/metrics_information")
   @GET
   @Produces(MediaType.APPLICATION_JSON)
@@ -127,6 +102,7 @@ public class RestController {
     return metricsSystem.metricsJson();
   }
 
+  @PermitAll
   @Path("/server_information")
   @GET
   @Produces(MediaType.APPLICATION_JSON)
@@ -137,6 +113,7 @@ public class RestController {
   /**
    * get sql argument
    */
+  @PermitAll
   @Path("/sql_arguments")
   @GET
   @Produces(MediaType.APPLICATION_JSON)
@@ -144,6 +121,7 @@ public class RestController {
     return metricsSystem.sqlJson();
   }
 
+  @PermitAll
   @Path("/version")
   @GET
   @Produces(MediaType.TEXT_PLAIN)
