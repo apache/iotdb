@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.mnode;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class InternalMNode extends MNode {

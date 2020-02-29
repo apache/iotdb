@@ -22,7 +22,6 @@ import java.io.Serializable;
 import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -43,8 +42,6 @@ public abstract class MNode implements Serializable {
    * from root to this node, only be set when used once
    */
   protected String fullPath;
-
-  private TimeValuePair cachedLastValuePair = null;
 
   /**
    * Constructor of MNode.

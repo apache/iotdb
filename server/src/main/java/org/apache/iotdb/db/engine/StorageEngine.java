@@ -235,6 +235,7 @@ public class StorageEngine implements IService {
       throw new QueryProcessException(e);
     }
   }
+
   /**
    * insert a BatchInsertPlan to a storage group
    *

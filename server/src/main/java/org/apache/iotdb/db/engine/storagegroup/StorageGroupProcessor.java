@@ -317,7 +317,8 @@ public class StorageGroupProcessor {
 
         for (Map.Entry<String, Long> mapEntry : resource.getEndTimeMap().entrySet()) {
           if (!globalLatestFlushedTimeForEachDevice.containsKey(mapEntry.getKey())
-                  || globalLatestFlushedTimeForEachDevice.get(mapEntry.getKey()) < mapEntry.getValue()) {
+              || globalLatestFlushedTimeForEachDevice.get(mapEntry.getKey())
+                  < mapEntry.getValue()) {
             globalLatestFlushedTimeForEachDevice.put(mapEntry.getKey(), mapEntry.getValue());
           }
         }
@@ -511,35 +512,12 @@ public class StorageGroupProcessor {
       latestFlushedTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>())
           .putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
 
-      long latestFlushedTime = globalLatestFlushedTimeForEachDevice.computeIfAbsent(
-              insertPlan.getDeviceId(), k -> Long.MIN_VALUE);
       // insert to sequence or unSequence file
       insertToTsFileProcessor(insertPlan,
           insertPlan.getTime() > latestFlushedTimeForEachDevice.get(timePartitionId)
               .get(insertPlan.getDeviceId()));
-
-      updateInsertPlanLast(insertPlan, latestFlushedTime);
-      if (latestFlushedTime < insertPlan.getTime())
-        globalLatestFlushedTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
     } finally {
       writeUnlock();
-    }
-  }
-
-  public void updateInsertPlanLast(InsertPlan plan, Long latestFlushedTime)
-          throws QueryProcessException {
-    try {
-      MNode node =
-              MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(plan.getDeviceId());
-      String[] measurementList = plan.getMeasurements();
-      for (int i = 0; i < measurementList.length; i++) {
-        // Update cached last value with high priority
-        MNode measurementNode = node.getChild(measurementList[i]);
-        ((LeafMNode)measurementNode).updateCachedLast(
-                plan.composeTimeValuePair(i), true, latestFlushedTime);
-      }
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
     }
   }
 
@@ -607,37 +585,15 @@ public class StorageGroupProcessor {
         }
       }
 
-      long latestFlushedTime = globalLatestFlushedTimeForEachDevice.computeIfAbsent(
-              batchInsertPlan.getDeviceId(), k -> Long.MIN_VALUE);
       // do not forget last part
       if (before < loc) {
         insertBatchToTsFileProcessor(batchInsertPlan, before, loc, isSequence, results,
             beforeTimePartition);
       }
-      updateBatchInsertPlanLast(batchInsertPlan, latestFlushedTime);
-      if (latestFlushedTime < batchInsertPlan.getMaxTime())
-        globalLatestFlushedTimeForEachDevice.put(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
 
       return results;
     } finally {
       writeUnlock();
-    }
-  }
-
-  public void updateBatchInsertPlanLast(BatchInsertPlan plan, Long latestFlushedTime)
-          throws QueryProcessException {
-    try {
-      MNode node =
-              MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(plan.getDeviceId());
-      String[] measurementList = plan.getMeasurements();
-      for (int i = 0; i < measurementList.length; i++) {
-        // Update cached last value with high priority
-        MNode measurementNode = node.getChild(measurementList[i]);
-        ((LeafMNode)measurementNode).updateCachedLast(
-                plan.composeLastTimeValuePair(i), true, latestFlushedTime);
-      }
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
     }
   }
 
@@ -684,6 +640,13 @@ public class StorageGroupProcessor {
       latestTimeForEachDevice.get(timePartitionId)
           .put(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
     }
+    long globalLatestFlushedTime =
+        globalLatestFlushedTimeForEachDevice.computeIfAbsent(
+            batchInsertPlan.getDeviceId(), k -> Long.MIN_VALUE);
+    updateBatchInsertPlanLast(batchInsertPlan, globalLatestFlushedTime);
+    if (globalLatestFlushedTime < batchInsertPlan.getMaxTime())
+      globalLatestFlushedTimeForEachDevice.put(
+          batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
 
     // check memtable size and may async try to flush the work memtable
     if (tsFileProcessor.shouldFlush()) {
@@ -691,6 +654,22 @@ public class StorageGroupProcessor {
     }
   }
 
+  public void updateBatchInsertPlanLast(BatchInsertPlan plan, Long latestFlushedTime)
+      throws QueryProcessException {
+    try {
+      MNode node =
+          MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(plan.getDeviceId());
+      String[] measurementList = plan.getMeasurements();
+      for (int i = 0; i < measurementList.length; i++) {
+        // Update cached last value with high priority
+        MNode measurementNode = node.getChild(measurementList[i]);
+        ((LeafMNode) measurementNode)
+            .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
+      }
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+  }
 
   private void insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
       throws QueryProcessException {
@@ -714,10 +693,34 @@ public class StorageGroupProcessor {
       latestTimeForEachDevice.get(timePartitionId)
           .put(insertPlan.getDeviceId(), insertPlan.getTime());
     }
+    long latestFlushedTime =
+        globalLatestFlushedTimeForEachDevice.computeIfAbsent(
+            insertPlan.getDeviceId(), k -> Long.MIN_VALUE);
+    updateInsertPlanLast(insertPlan, latestFlushedTime);
+    if (latestFlushedTime < insertPlan.getTime()) {
+      globalLatestFlushedTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
+    }
 
     // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
+    }
+  }
+
+  public void updateInsertPlanLast(InsertPlan plan, Long latestFlushedTime)
+      throws QueryProcessException {
+    try {
+      MNode node =
+          MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(plan.getDeviceId());
+      String[] measurementList = plan.getMeasurements();
+      for (int i = 0; i < measurementList.length; i++) {
+        // Update cached last value with high priority
+        MNode measurementNode = node.getChild(measurementList[i]);
+        ((LeafMNode) measurementNode)
+            .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
+      }
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
     }
   }
 
@@ -1329,7 +1332,7 @@ public class StorageGroupProcessor {
           .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
           .put(entry.getKey(), entry.getValue());
       if (!globalLatestFlushedTimeForEachDevice.containsKey(entry.getKey())
-              || globalLatestFlushedTimeForEachDevice.get(entry.getKey()) < entry.getValue()) {
+          || globalLatestFlushedTimeForEachDevice.get(entry.getKey()) < entry.getValue()) {
         globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
       }
     }
@@ -1760,7 +1763,7 @@ public class StorageGroupProcessor {
             .put(device, endTime);
       }
       if (!globalLatestFlushedTimeForEachDevice.containsKey(device)
-              || globalLatestFlushedTimeForEachDevice.get(device) < endTime) {
+          || globalLatestFlushedTimeForEachDevice.get(device) < endTime) {
         globalLatestFlushedTimeForEachDevice.put(device, endTime);
       }
     }

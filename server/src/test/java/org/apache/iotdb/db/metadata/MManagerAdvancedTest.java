@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
+import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -129,11 +130,11 @@ public class MManagerAdvancedTest {
     TimeValuePair tv2 = new TimeValuePair(2000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 3.0));
     TimeValuePair tv3 = new TimeValuePair(1500, TsPrimitiveType.getByType(TSDataType.DOUBLE, 2.5));
     MNode node = mmanager.getNodeByPath("root.vehicle.d2.s0");
-    node.updateCachedLast(tv1, true);
-    node.updateCachedLast(tv2, true);
-    Assert.assertEquals(tv2.getTimestamp(), node.getCachedLast().getTimestamp());
-    node.updateCachedLast(tv3, true);
-    Assert.assertEquals(tv2.getTimestamp(), node.getCachedLast().getTimestamp());
+    ((LeafMNode)node).updateCachedLast(tv1, true, Long.MIN_VALUE);
+    ((LeafMNode)node).updateCachedLast(tv2, true, Long.MIN_VALUE);
+    Assert.assertEquals(tv2.getTimestamp(), ((LeafMNode)node).getCachedLast().getTimestamp());
+    ((LeafMNode)node).updateCachedLast(tv3, true, Long.MIN_VALUE);
+    Assert.assertEquals(tv2.getTimestamp(), ((LeafMNode)node).getCachedLast().getTimestamp());
   }
 
 }

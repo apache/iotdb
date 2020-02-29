@@ -82,17 +82,18 @@ public class LeafMNode extends MNode {
     return cachedLastValuePair;
   }
 
-  public synchronized void updateCachedLast(TimeValuePair timeValuePair, boolean insertionUpdate,
-                                            Long latestFlushedTime) {
+  public synchronized void updateCachedLast(
+      TimeValuePair timeValuePair, boolean insertionUpdate, Long latestFlushedTime) {
     if (timeValuePair == null || timeValuePair.getValue() == null) return;
 
-    if (cachedLastValuePair == null){
-      // If no cached last, a last read or an insertion to a sequenceTsFile will update cache.
-      if (!insertionUpdate || latestFlushedTime < timeValuePair.getTimestamp()) {
-        cachedLastValuePair = new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
+    if (cachedLastValuePair == null) {
+      // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will update cache.
+      if (!insertionUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
+        cachedLastValuePair =
+            new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
       }
     } else if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
-            || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
+        || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
             && insertionUpdate)) {
       cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
       cachedLastValuePair.setValue(timeValuePair.getValue());
