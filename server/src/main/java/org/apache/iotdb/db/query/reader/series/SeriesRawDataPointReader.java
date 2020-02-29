@@ -43,7 +43,7 @@ public class SeriesRawDataPointReader implements IPointReader {
       return true;
     }
 
-    if (batchData != null) {
+    if (batchData != null && batchData.hasCurrent()) {
       timeValuePair = new TimeValuePair(batchData.currentTime(),
           batchData.currentTsPrimitiveType());
       hasCachedTimeValuePair = true;
