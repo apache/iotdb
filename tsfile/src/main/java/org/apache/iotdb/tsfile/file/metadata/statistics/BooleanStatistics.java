@@ -186,6 +186,6 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public String toString() {
-    return "[firstValue:" + firstValue + ",lastValue:" + lastValue + "]";
+    return super.toString() + " [firstValue:" + firstValue + ",lastValue:" + lastValue + "]";
   }
 }

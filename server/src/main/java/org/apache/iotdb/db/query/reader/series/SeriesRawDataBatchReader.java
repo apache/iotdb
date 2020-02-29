@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import java.util.LinkedList;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -41,6 +42,7 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
 
   private BatchData batchData;
   private boolean hasCachedBatchData = false;
+
 
   public SeriesRawDataBatchReader(SeriesReader seriesReader) {
     this.seriesReader = seriesReader;
@@ -71,28 +73,45 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
       return true;
     }
 
-    while (seriesReader.hasNextChunk()) {
-      while (seriesReader.hasNextPage()) {
+    /*
+     * consume overlapped data firstly
+     */
+    if (seriesReader.hasNextOverlappedPage()) {
+      batchData = seriesReader.nextOverlappedPage();
+      hasCachedBatchData = true;
+      return true;
+    }
+
+
+    /*
+     * consume pages secondly
+     */
+    if (seriesReader.hasNextPage()) {
+      if (!seriesReader.isPageOverlapped()) {
+        batchData = seriesReader.nextPage();
+      } else if (seriesReader.hasNextOverlappedPage()) {
+        batchData = seriesReader.nextOverlappedPage();
+      }
+      hasCachedBatchData = true;
+      return true;
+    }
+
+    /*
+     * consume next chunk finally
+     */
+    if (seriesReader.hasNextChunk()) {
+      if (seriesReader.hasNextPage()) {
         if (!seriesReader.isPageOverlapped()) {
           batchData = seriesReader.nextPage();
-          if (!batchData.hasCurrent()) {
-            continue;
-          }
-          hasCachedBatchData = true;
-          return true;
-        }
-        if (seriesReader.hasNextOverlappedPage()) {
+        } else if (seriesReader.hasNextOverlappedPage()) {
           batchData = seriesReader.nextOverlappedPage();
-          if (!batchData.hasCurrent()) {
-            continue;
-          }
-          hasCachedBatchData = true;
-          return true;
         }
+        hasCachedBatchData = true;
       }
     }
-    return false;
+    return hasCachedBatchData;
   }
+
 
   @Override
   public BatchData nextBatch() throws IOException {
