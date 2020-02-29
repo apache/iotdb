@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import java.util.LinkedList;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -28,10 +27,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
 import java.io.IOException;
 import java.util.List;
-
 
 public class SeriesRawDataBatchReader implements ManagedSeriesReader {
 

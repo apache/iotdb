@@ -157,6 +157,13 @@ public class SeriesReader {
       throw new IOException("all overlapped pages should be consumed first");
     }
 
+    /*
+     * consume cached pages firstly
+     */
+    if (firstChunkMetaData == null && firstPageReader == null && cachedPageReaders.isEmpty()) {
+      tryToUnpackAllOverlappedFilesToChunkMetadatas();
+    }
+
     if (firstChunkMetaData != null) {
       /*
        * try to unpack all overlapped ChunkMetadata to cachedPageReaders
@@ -166,7 +173,7 @@ public class SeriesReader {
       /*
        * first chunk metadata is already unpacked
        */
-      if (firstPageReader == null && !cachedPageReaders.isEmpty()) {
+      if (!cachedPageReaders.isEmpty()) {
         firstPageReader = cachedPageReaders.poll();
       }
     }
