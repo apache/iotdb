@@ -78,7 +78,7 @@ BatchData nextBatch() throws IOException;
 #### 一般使用流程
 
 ```
-while (batchReader. hasNextBatch()) {
+while (batchReader.hasNextBatch()) {
 	BatchData batchData = batchReader.nextBatch();
 	
 	// use batchData to do some work
