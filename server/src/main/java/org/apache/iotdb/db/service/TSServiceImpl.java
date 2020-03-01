@@ -132,7 +132,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
-  private static final int MAX_SIZE = 200;
+  private static final int MAX_SIZE =
+      IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
   private static final int DELETE_SIZE = 50;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
