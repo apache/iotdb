@@ -25,6 +25,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -33,6 +35,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
+import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -46,8 +49,13 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
+
+  private static final Logger logger = LoggerFactory
+      .getLogger(GroupByWithoutValueFilterDataSet.class);
 
   private Map<Path, GroupByExecutor> pathAggregationsMap = new HashMap<>();
   private TimeRange timeRange;
@@ -99,16 +107,26 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     RowRecord record = new RowRecord(curStartTime);
     timeRange = new TimeRange(curStartTime, curEndTime - 1);
 
-    AggregateResult[] fields = new AggregateResult[paths.size()];
+    final AggregateResult[] fields = new AggregateResult[paths.size()];
+    final List<Future> asyncResult = new ArrayList(pathAggregationsMap.size());
+
     for (Entry<Path, GroupByExecutor> pathAggregations : pathAggregationsMap.entrySet()) {
-      pathAggregations.getValue().resetAggregateResults();
-      try {
+      asyncResult.add(QueryTaskPoolManager.getInstance().submit((Callable<?>) () -> {
+        pathAggregations.getValue().resetAggregateResults();
         List<Pair<AggregateResult, Integer>> aggregations = pathAggregations.getValue()
             .calcResult();
         for (int i = 0; i < aggregations.size(); i++) {
           fields[aggregations.get(i).right] = aggregations.get(i).left;
         }
-      } catch (QueryProcessException e) {
+        return null;
+      }));
+    }
+    //waiting for data
+    for (Future future : asyncResult) {
+      try {
+        future.get();
+      } catch (Exception e) {
+        logger.error("GroupByWithoutValueFilterDataSet execute has error,{}", e);
         throw new IOException(e);
       }
     }
@@ -181,7 +199,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         //lazy reset batch data for calculation
         batchData.resetBatchData();
         //skip points that cannot be calculated
-        while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
+        while (batchData.currentTime() < curStartTime && batchData.hasCurrent()) {
           batchData.next();
         }
         if (batchData.hasCurrent()) {
@@ -212,7 +230,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
 
       //read overlapped data firstly
-      if (readAndCalcOverlappedPage()) {
+      if (readAndCalcFromPage()) {
         return results;
       }
 
@@ -222,13 +240,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         if (chunkStatistics.getStartTime() >= curEndTime) {
           return results;
         }
+        //calc from chunkMetaData
         if (reader.canUseCurrentChunkStatistics() && timeRange.contains(
             new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
           calcFromStatistics(chunkStatistics);
           reader.skipCurrentChunk();
           continue;
         }
-        if (readAndCalcOverlappedPage()) {
+        if (readAndCalcFromPage()) {
           return results;
         }
       }
@@ -243,14 +262,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
 
 
-    private boolean readAndCalcOverlappedPage() throws IOException, QueryProcessException {
+    private boolean readAndCalcFromPage() throws IOException, QueryProcessException {
       while (reader.hasNextPage()) {
         Statistics pageStatistics = reader.currentPageStatistics();
         //current page max than time range
         if (pageStatistics.getStartTime() >= curEndTime) {
           return true;
         }
-        //can use page header
+        //can use pageHeader
         if (reader.canUseCurrentPageStatistics() && timeRange.contains(
             new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
           calcFromStatistics(pageStatistics);
