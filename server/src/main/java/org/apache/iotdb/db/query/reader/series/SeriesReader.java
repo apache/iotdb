@@ -125,7 +125,6 @@ public class SeriesReader {
         .hasNextTimeValuePair()) {
       throw new IOException("all cached pages should be consumed first");
     }
-    firstChunkMetaData = null;
 
     // init first chunk metadata whose startTime is minimum
     tryToUnpackAllOverlappedFilesToChunkMetadatas();
@@ -237,6 +236,7 @@ public class SeriesReader {
 
     BatchData pageData = firstPageReader.data.getAllSatisfiedPageData();
     firstPageReader = null;
+
     /*
      * no value filter
      * only need to consider valueFilter because timeFilter has been set into the page reader
@@ -400,10 +400,10 @@ public class SeriesReader {
       QueryUtils.modifyChunkMetaData(currentChunkMetaDataList, pathModifications);
     }
 
-    for (ChunkMetaData data : currentChunkMetaDataList) {
+    for (ChunkMetaData chunkMetaData : currentChunkMetaDataList) {
       TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
           .get(resource, resource.isClosed());
-      data.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
+      chunkMetaData.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
     }
     List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
     if (memChunks != null) {
@@ -414,10 +414,12 @@ public class SeriesReader {
       }
     }
 
-    if (timeFilter != null) {
-      currentChunkMetaDataList.removeIf(
-          a -> !timeFilter.satisfyStartEndTime(a.getStartTime(), a.getEndTime()));
-    }
+    /*
+     * remove empty and not satisfied ChunkMetaData
+     */
+    currentChunkMetaDataList.removeIf(chunkMetaData -> (timeFilter != null && !timeFilter
+        .satisfyStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
+        || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
     return currentChunkMetaDataList;
   }
 
