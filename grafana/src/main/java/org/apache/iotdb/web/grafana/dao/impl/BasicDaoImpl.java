@@ -18,20 +18,6 @@
  */
 package org.apache.iotdb.web.grafana.dao.impl;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.web.grafana.bean.TimeValues;
 import org.apache.iotdb.web.grafana.dao.BasicDao;
@@ -42,6 +28,19 @@ import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
 
 /**
  * Created by dell on 2017/7/17.
@@ -86,7 +85,7 @@ public class BasicDaoImpl implements BasicDao {
     ConnectionCallback<Object> connectionCallback = new ConnectionCallback<Object>() {
       public Object doInConnection(Connection connection) throws SQLException {
         Statement statement = connection.createStatement();
-        statement.execute("show timeseries" + "root *");
+        statement.execute("show timeseries root.*");
         ResultSet resultSet = statement.getResultSet();
         logger.info("Start to get timeseries");
         List<String> columnsName = new ArrayList<>();
@@ -104,9 +103,10 @@ public class BasicDaoImpl implements BasicDao {
   public List<TimeValues> querySeries(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange) {
     Long from = zonedCovertToLong(timeRange.left);
     Long to = zonedCovertToLong(timeRange.right);
-    String sql = "SELECT " + s.substring(s.lastIndexOf('.') + 1) + " FROM root."
-        + s.substring(0, s.lastIndexOf('.')) + " WHERE time > " + from * TIMESTAMP_RADIX
-        + " and time < " + to * TIMESTAMP_RADIX;
+    // How many rows will the result have?
+    String sql = String.format("SELECT %s FROM root.%s WHERE time > %d and time < %d",
+        s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')),
+        from * TIMESTAMP_RADIX, to * TIMESTAMP_RADIX);
     logger.info(sql);
     List<TimeValues> rows = null;
     try {
