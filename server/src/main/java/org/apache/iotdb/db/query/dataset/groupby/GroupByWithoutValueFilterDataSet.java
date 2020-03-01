@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -31,31 +37,23 @@ import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.*;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
-  /**
-   * Merges same series to one map. For example: Given: paths: s1, s2, s3, s1 and aggregations:
-   * count, sum, count, sum seriesMap: s1 -> 0, 3; s2 -> 1; s3 -> 2
-   */
-  private Map<Path, List<Integer>> pathToAggrIndexesMap;
+  private Map<Path, Aggregations> pathAggregationsMap = new HashMap<>();
 
-  /**
-   * Maps path and its aggregate reader
-   */
-  private Map<Path, IAggregateReader> aggregateReaders;
-  private List<BatchData> cachedBatchDataList;
   private GroupByPlan groupByPlan;
+
+  private TimeRange timeRange;
 
   /**
    * constructor.
@@ -64,14 +62,102 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       throws StorageEngineException {
     super(context, groupByPlan);
 
-    this.pathToAggrIndexesMap = new HashMap<>();
-    this.aggregateReaders = new HashMap<>();
-    this.cachedBatchDataList = new ArrayList<>();
-    for (int i = 0; i < paths.size(); i++) {
-      cachedBatchDataList.add(null);
-    }
     initGroupBy(context, groupByPlan);
   }
+
+  private class Aggregations {
+
+    private IAggregateReader reader;
+    private BatchData preCachedData;
+    private List<Pair<AggregateResult, Integer>> results = new ArrayList<>();
+
+    public Aggregations(Path path, TSDataType dataType, QueryContext context,
+        QueryDataSource dataSource, Filter timeFilter) {
+      this.reader = new SeriesAggregateReader(path, dataType, context,
+          dataSource, timeFilter, null, null);
+      this.preCachedData = null;
+    }
+
+    public IAggregateReader getReader() {
+      return reader;
+    }
+
+    public void addAggregateResult(AggregateResult aggrResult, int index) {
+      results.add(new Pair<>(aggrResult, index));
+    }
+
+    public List<Pair<AggregateResult, Integer>> getResults() {
+      return results;
+    }
+
+    public boolean isEndCalc() {
+      for (Pair<AggregateResult, Integer> result : results) {
+        if (result.left.isCalculatedAggregationResult() == false) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    public boolean calcFromCacheData() throws IOException {
+      calcFromBatch(preCachedData);
+      if ((preCachedData != null && preCachedData.getMaxTimestamp() >= curEndTime) || isEndCalc()) {
+        return true;
+      }
+      return false;
+    }
+
+    public void calcFromBatch(BatchData batchData) throws IOException {
+      if (batchData == null
+          || !batchData.hasCurrent()
+          || batchData.getMaxTimestamp() < curStartTime) {
+        return;
+      }
+      System.out
+          .println("batch 间隔[" + batchData.currentTime() + "-" + batchData.getMaxTimestamp() + "]");
+      // timeout
+      if (batchData.currentTime() >= curEndTime) {
+        return;
+      }
+
+      for (Pair<AggregateResult, Integer> result : results) {
+        //cacl is compile
+        if (result.left.isCalculatedAggregationResult()) {
+          continue;
+        }
+        //lazy reset batch data for next calculation
+        batchData.resetBatchData();
+
+        while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
+          batchData.next();
+        }
+        if (batchData.hasCurrent()) {
+          result.left.updateResultFromPageData(batchData, curEndTime);
+        }
+      }
+      if (batchData.getMaxTimestamp() >= curEndTime) {
+        preCachedData = batchData;
+      }
+    }
+
+    public void calcFromStatistics(Statistics pageStatistics)
+        throws QueryProcessException {
+      for (Pair<AggregateResult, Integer> result : results) {
+        //cacl is compile
+        if (result.left.isCalculatedAggregationResult()) {
+          continue;
+        }
+        result.left.updateResultFromStatistics(pageStatistics);
+      }
+    }
+
+    public void initAggregateResults() {
+      for (Pair<AggregateResult, Integer> result : results) {
+        result.left.reset();
+      }
+    }
+  }
+
 
   /**
    * init reader and aggregate function.
@@ -89,20 +175,19 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-      List<Integer> indexList = pathToAggrIndexesMap
-          .computeIfAbsent(path, key -> new ArrayList<>());
-      indexList.add(i);
-      if (!aggregateReaders.containsKey(path)) {
 
-        QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-            .getQueryDataSource(path, context, timeFilter);
-        // update filter by TTL
-        timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+          .getQueryDataSource(path, context, timeFilter);
+      // update filter by TTL
+      timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
-        IAggregateReader seriesReader = new SeriesAggregateReader(path, dataTypes.get(i), context,
-            queryDataSource, timeFilter, null, null);
-        aggregateReaders.put(path, seriesReader);
-      }
+      pathAggregationsMap.putIfAbsent(path,
+          new Aggregations(path, dataTypes.get(i), context, queryDataSource, timeFilter));
+
+      AggregateResult aggrResult = AggregateResultFactory
+          .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(i),
+              dataTypes.get(i));
+      pathAggregationsMap.get(path).addAggregateResult(aggrResult, i);
     }
   }
 
@@ -114,157 +199,94 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
     hasCachedTimeInterval = false;
     RowRecord record = new RowRecord(curStartTime);
-    AggregateResult[] aggregateResultList = new AggregateResult[paths.size()];
-    for (Map.Entry<Path, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
-      List<AggregateResult> aggregateResults;
+    timeRange = new TimeRange(curStartTime, curEndTime - 1);
+
+    AggregateResult[] fields = new AggregateResult[paths.size()];
+    for (Entry<Path, Aggregations> pathAggregations : pathAggregationsMap.entrySet()) {
+      pathAggregations.getValue().initAggregateResults();
       try {
-        aggregateResults = nextIntervalAggregation(entry);
+        Aggregations aggregations = aggregateOneSeries(pathAggregations);
+        for (int i = 0; i < aggregations.getResults().size(); i++) {
+          fields[aggregations.getResults().get(i).right] = aggregations.getResults().get(i).left;
+        }
       } catch (QueryProcessException e) {
         throw new IOException(e);
       }
-      int index = 0;
-      for (int i : entry.getValue()) {
-        aggregateResultList[i] = aggregateResults.get(index);
-        index++;
-      }
     }
-    if (aggregateResultList.length == 0) {
-      record.addField(new Field(null));
-    } else {
-      for (AggregateResult res : aggregateResultList) {
-        record.addField(res.getResult(), res.getResultDataType());
+
+    for (AggregateResult res : fields) {
+      if (res == null) {
+        record.addField(new Field(null));
+        continue;
       }
+      record.addField(res.getResult(), res.getResultDataType());
     }
     return record;
   }
 
-  /**
-   * calculate the group by result of one series
-   *
-   * @param pathToAggrIndexes entry of path to aggregation indexes map
-   */
-  private List<AggregateResult> nextIntervalAggregation(Map.Entry<Path,
-      List<Integer>> pathToAggrIndexes) throws IOException, QueryProcessException {
-    List<AggregateResult> aggregateResultList = new ArrayList<>();
-    List<Boolean> isCalculatedList = new ArrayList<>();
-    List<Integer> indexList = pathToAggrIndexes.getValue();
-
-    int remainingToCalculate = indexList.size();
-    TSDataType tsDataType = groupByPlan.getDeduplicatedDataTypes().get(indexList.get(0));
-
-    for (int index : indexList) {
-      AggregateResult result = AggregateResultFactory
-          .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(index), tsDataType);
-      aggregateResultList.add(result);
-
-      BatchData lastBatch = cachedBatchDataList.get(index);
-
-      calcBatchData(result, lastBatch);
-      if (isEndCalc(result, lastBatch)) {
-        isCalculatedList.add(true);
-        remainingToCalculate--;
-        if (remainingToCalculate == 0) {
-          return aggregateResultList;
-        }
-      } else {
-        isCalculatedList.add(false);
-      }
+  private Aggregations aggregateOneSeries(Entry<Path, Aggregations> pathAggregations)
+      throws IOException, QueryProcessException {
+    Aggregations aggregations = pathAggregations.getValue();
+    if (aggregations.calcFromCacheData()) {
+      return aggregations;
     }
-    TimeRange timeRange = new TimeRange(curStartTime, curEndTime - 1);
-    IAggregateReader reader = aggregateReaders.get(pathToAggrIndexes.getKey());
 
+    IAggregateReader reader = aggregations.getReader();
+    //read overlapped data firstly
+    if (readAndCalcOverlappedPage(aggregations, reader)) {
+      return aggregations;
+    }
+
+    //read chunk finally
     while (reader.hasNextChunk()) {
-      // cal by chunk statistics
       Statistics chunkStatistics = reader.currentChunkStatistics();
       if (chunkStatistics.getStartTime() >= curEndTime) {
-        return aggregateResultList;
+        return aggregations;
       }
       if (reader.canUseCurrentChunkStatistics() && timeRange.contains(
           new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
-        for (int i = 0; i < aggregateResultList.size(); i++) {
-          if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-            AggregateResult result = aggregateResultList.get(i);
-            result.updateResultFromStatistics(chunkStatistics);
-            if (result.isCalculatedAggregationResult()) {
-              isCalculatedList.set(i, true);
-              remainingToCalculate--;
-              if (remainingToCalculate == 0) {
-                return aggregateResultList;
-              }
-            }
-          }
-        }
+        aggregations.calcFromStatistics(chunkStatistics);
         reader.skipCurrentChunk();
         continue;
       }
-
-      while (reader.hasNextPage()) {
-        //cal by page statistics
-        Statistics pageStatistics = reader.currentPageStatistics();
-        if (pageStatistics.getStartTime() >= curEndTime) {
-          return aggregateResultList;
-        }
-        if (reader.canUseCurrentPageStatistics() && timeRange.contains(
-            new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
-          for (int i = 0; i < aggregateResultList.size(); i++) {
-            if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-              AggregateResult result = aggregateResultList.get(i);
-              result.updateResultFromStatistics(pageStatistics);
-              if (result.isCalculatedAggregationResult()) {
-                isCalculatedList.set(i, true);
-                remainingToCalculate--;
-                if (remainingToCalculate == 0) {
-                  return aggregateResultList;
-                }
-              }
-            }
-          }
-          reader.skipCurrentPage();
-          continue;
-        } else {
-          BatchData batchData = reader.nextPage();
-          for (int i = 0; i < aggregateResultList.size(); i++) {
-            if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-              AggregateResult result = aggregateResultList.get(i);
-              calcBatchData(result, batchData);
-              int idx = pathToAggrIndexes.getValue().get(i);
-              if (batchData.hasCurrent()) {
-                cachedBatchDataList.set(idx, batchData);
-              }
-              if (isEndCalc(result, null)) {
-                isCalculatedList.set(i, true);
-                remainingToCalculate--;
-                if (remainingToCalculate == 0) {
-                  break;
-                }
-              }
-            }
-          }
-        }
+      if (readAndCalcOverlappedPage(aggregations, reader)) {
+        return aggregations;
       }
     }
-    return aggregateResultList;
+    return aggregations;
   }
 
-  private boolean isEndCalc(AggregateResult function, BatchData lastBatch) {
-    return (lastBatch != null && lastBatch.hasCurrent() && lastBatch.currentTime() >= curEndTime)
-        || function.isCalculatedAggregationResult();
-  }
+  private boolean readAndCalcOverlappedPage(Aggregations aggregations, IAggregateReader reader)
+      throws IOException, QueryProcessException {
+    while (reader.hasNextPage()) {
+      Statistics pageStatistics = reader.currentPageStatistics();
+      if (pageStatistics.getStartTime() >= curEndTime) {
+        return true;
+      }
+      if (reader.canUseCurrentPageStatistics() && timeRange.contains(
+          new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
+        aggregations.calcFromStatistics(pageStatistics);
+        reader.skipCurrentPage();
+        if (aggregations.isEndCalc()) {
+          return true;
+        }
+        continue;
+      }
+      BatchData batchData = reader.nextPage();
+      if (batchData == null || !batchData.hasCurrent()) {
+        continue;
+      }
+      // stop calc
+      if (batchData.currentTime() >= curEndTime) {
+        aggregations.preCachedData = batchData;
+        return true;
+      }
 
-  /**
-   * this batchData >= curEndTime
-   */
-  private void calcBatchData(AggregateResult result, BatchData batchData) throws IOException {
-    if (batchData == null || !batchData.hasCurrent()) {
-      return;
+      aggregations.calcFromBatch(batchData);
+      if (aggregations.isEndCalc() || batchData.currentTime() >= curEndTime) {
+        return true;
+      }
     }
-    while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
-      batchData.next();
-    }
-    if (batchData.hasCurrent()) {
-      result.updateResultFromPageData(batchData, curEndTime);
-      // reset batch data for next calculation
-      batchData.resetBatchData();
-    }
+    return false;
   }
 }
