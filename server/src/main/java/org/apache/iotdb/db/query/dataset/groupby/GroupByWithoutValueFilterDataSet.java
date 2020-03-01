@@ -49,10 +49,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
-  private Map<Path, Aggregations> pathAggregationsMap = new HashMap<>();
-
-  private GroupByPlan groupByPlan;
-
+  private Map<Path, GroupByExecutor> pathAggregationsMap = new HashMap<>();
   private TimeRange timeRange;
 
   /**
@@ -65,110 +62,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     initGroupBy(context, groupByPlan);
   }
 
-  private class Aggregations {
-
-    private IAggregateReader reader;
-    private BatchData preCachedData;
-    private List<Pair<AggregateResult, Integer>> results = new ArrayList<>();
-
-    public Aggregations(Path path, TSDataType dataType, QueryContext context,
-        QueryDataSource dataSource, Filter timeFilter) {
-      this.reader = new SeriesAggregateReader(path, dataType, context,
-          dataSource, timeFilter, null, null);
-      this.preCachedData = null;
-    }
-
-    public IAggregateReader getReader() {
-      return reader;
-    }
-
-    public void addAggregateResult(AggregateResult aggrResult, int index) {
-      results.add(new Pair<>(aggrResult, index));
-    }
-
-    public List<Pair<AggregateResult, Integer>> getResults() {
-      return results;
-    }
-
-    public boolean isEndCalc() {
-      for (Pair<AggregateResult, Integer> result : results) {
-        if (result.left.isCalculatedAggregationResult() == false) {
-          return false;
-        }
-      }
-      return true;
-    }
-
-    public boolean calcFromCacheData() throws IOException {
-      calcFromBatch(preCachedData);
-      if ((preCachedData != null && preCachedData.getMaxTimestamp() >= curEndTime) || isEndCalc()) {
-        return true;
-      }
-      return false;
-    }
-
-    public void calcFromBatch(BatchData batchData) throws IOException {
-      if (batchData == null
-          || !batchData.hasCurrent()
-          || batchData.getMaxTimestamp() < curStartTime) {
-        return;
-      }
-      System.out
-          .println("batch 间隔[" + batchData.currentTime() + "-" + batchData.getMaxTimestamp() + "]");
-      // timeout
-      if (batchData.currentTime() >= curEndTime) {
-        return;
-      }
-
-      for (Pair<AggregateResult, Integer> result : results) {
-        //cacl is compile
-        if (result.left.isCalculatedAggregationResult()) {
-          continue;
-        }
-        //lazy reset batch data for next calculation
-        batchData.resetBatchData();
-
-        while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
-          batchData.next();
-        }
-        if (batchData.hasCurrent()) {
-          result.left.updateResultFromPageData(batchData, curEndTime);
-        }
-      }
-      if (batchData.getMaxTimestamp() >= curEndTime) {
-        preCachedData = batchData;
-      }
-    }
-
-    public void calcFromStatistics(Statistics pageStatistics)
-        throws QueryProcessException {
-      for (Pair<AggregateResult, Integer> result : results) {
-        //cacl is compile
-        if (result.left.isCalculatedAggregationResult()) {
-          continue;
-        }
-        result.left.updateResultFromStatistics(pageStatistics);
-      }
-    }
-
-    public void initAggregateResults() {
-      for (Pair<AggregateResult, Integer> result : results) {
-        result.left.reset();
-      }
-    }
-  }
-
-
-  /**
-   * init reader and aggregate function.
-   */
   private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
       throws StorageEngineException {
     IExpression expression = groupByPlan.getExpression();
-    this.groupByPlan = groupByPlan;
 
     Filter timeFilter = null;
-    // init reader
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
@@ -180,9 +78,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           .getQueryDataSource(path, context, timeFilter);
       // update filter by TTL
       timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
-
+      //init reader
       pathAggregationsMap.putIfAbsent(path,
-          new Aggregations(path, dataTypes.get(i), context, queryDataSource, timeFilter));
+          new GroupByExecutor(path, dataTypes.get(i), context, queryDataSource, timeFilter));
 
       AggregateResult aggrResult = AggregateResultFactory
           .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(i),
@@ -202,12 +100,13 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     timeRange = new TimeRange(curStartTime, curEndTime - 1);
 
     AggregateResult[] fields = new AggregateResult[paths.size()];
-    for (Entry<Path, Aggregations> pathAggregations : pathAggregationsMap.entrySet()) {
-      pathAggregations.getValue().initAggregateResults();
+    for (Entry<Path, GroupByExecutor> pathAggregations : pathAggregationsMap.entrySet()) {
+      pathAggregations.getValue().resetAggregateResults();
       try {
-        Aggregations aggregations = aggregateOneSeries(pathAggregations);
-        for (int i = 0; i < aggregations.getResults().size(); i++) {
-          fields[aggregations.getResults().get(i).right] = aggregations.getResults().get(i).left;
+        List<Pair<AggregateResult, Integer>> aggregations = pathAggregations.getValue()
+            .calcResult();
+        for (int i = 0; i < aggregations.size(); i++) {
+          fields[aggregations.get(i).right] = aggregations.get(i).left;
         }
       } catch (QueryProcessException e) {
         throw new IOException(e);
@@ -224,69 +123,161 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     return record;
   }
 
-  private Aggregations aggregateOneSeries(Entry<Path, Aggregations> pathAggregations)
-      throws IOException, QueryProcessException {
-    Aggregations aggregations = pathAggregations.getValue();
-    if (aggregations.calcFromCacheData()) {
-      return aggregations;
+
+  private class GroupByExecutor {
+
+    private IAggregateReader reader;
+    private BatchData preCachedData;
+    //<aggFunction - indexForRecord> of path
+    private List<Pair<AggregateResult, Integer>> results = new ArrayList<>();
+
+    public GroupByExecutor(Path path, TSDataType dataType, QueryContext context,
+        QueryDataSource dataSource, Filter timeFilter) {
+      this.reader = new SeriesAggregateReader(path, dataType, context,
+          dataSource, timeFilter, null, null);
+      this.preCachedData = null;
     }
 
-    IAggregateReader reader = aggregations.getReader();
-    //read overlapped data firstly
-    if (readAndCalcOverlappedPage(aggregations, reader)) {
-      return aggregations;
+    public IAggregateReader getReader() {
+      return reader;
     }
 
-    //read chunk finally
-    while (reader.hasNextChunk()) {
-      Statistics chunkStatistics = reader.currentChunkStatistics();
-      if (chunkStatistics.getStartTime() >= curEndTime) {
-        return aggregations;
-      }
-      if (reader.canUseCurrentChunkStatistics() && timeRange.contains(
-          new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
-        aggregations.calcFromStatistics(chunkStatistics);
-        reader.skipCurrentChunk();
-        continue;
-      }
-      if (readAndCalcOverlappedPage(aggregations, reader)) {
-        return aggregations;
-      }
+    public void addAggregateResult(AggregateResult aggrResult, int index) {
+      results.add(new Pair<>(aggrResult, index));
     }
-    return aggregations;
-  }
 
-  private boolean readAndCalcOverlappedPage(Aggregations aggregations, IAggregateReader reader)
-      throws IOException, QueryProcessException {
-    while (reader.hasNextPage()) {
-      Statistics pageStatistics = reader.currentPageStatistics();
-      if (pageStatistics.getStartTime() >= curEndTime) {
+    public boolean isEndCalc() {
+      for (Pair<AggregateResult, Integer> result : results) {
+        if (result.left.isCalculatedAggregationResult() == false) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    public boolean calcFromCacheData() throws IOException {
+      calcFromBatch(preCachedData);
+      // The result is calculated from the cache
+      if ((preCachedData != null && preCachedData.getMaxTimestamp() >= curEndTime) || isEndCalc()) {
         return true;
       }
-      if (reader.canUseCurrentPageStatistics() && timeRange.contains(
-          new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
-        aggregations.calcFromStatistics(pageStatistics);
-        reader.skipCurrentPage();
-        if (aggregations.isEndCalc()) {
+      return false;
+    }
+
+    public void calcFromBatch(BatchData batchData) throws IOException {
+      // is error data
+      if (batchData == null
+          || !batchData.hasCurrent()
+          || batchData.getMaxTimestamp() < curStartTime
+          || batchData.currentTime() >= curEndTime) {
+        return;
+      }
+
+      for (Pair<AggregateResult, Integer> result : results) {
+        //current agg method has been calculated
+        if (result.left.isCalculatedAggregationResult()) {
+          continue;
+        }
+        //lazy reset batch data for calculation
+        batchData.resetBatchData();
+        //skip points that cannot be calculated
+        while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
+          batchData.next();
+        }
+        if (batchData.hasCurrent()) {
+          result.left.updateResultFromPageData(batchData, curEndTime);
+        }
+      }
+      //can calc for next interval
+      if (batchData.getMaxTimestamp() >= curEndTime) {
+        preCachedData = batchData;
+      }
+    }
+
+    public void calcFromStatistics(Statistics pageStatistics)
+        throws QueryProcessException {
+      for (Pair<AggregateResult, Integer> result : results) {
+        //cacl is compile
+        if (result.left.isCalculatedAggregationResult()) {
+          continue;
+        }
+        result.left.updateResultFromStatistics(pageStatistics);
+      }
+    }
+
+    private List<Pair<AggregateResult, Integer>> calcResult()
+        throws IOException, QueryProcessException {
+      if (calcFromCacheData()) {
+        return results;
+      }
+
+      //read overlapped data firstly
+      if (readAndCalcOverlappedPage()) {
+        return results;
+      }
+
+      //read chunk finally
+      while (reader.hasNextChunk()) {
+        Statistics chunkStatistics = reader.currentChunkStatistics();
+        if (chunkStatistics.getStartTime() >= curEndTime) {
+          return results;
+        }
+        if (reader.canUseCurrentChunkStatistics() && timeRange.contains(
+            new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
+          calcFromStatistics(chunkStatistics);
+          reader.skipCurrentChunk();
+          continue;
+        }
+        if (readAndCalcOverlappedPage()) {
+          return results;
+        }
+      }
+      return results;
+    }
+
+    // clear all results
+    public void resetAggregateResults() {
+      for (Pair<AggregateResult, Integer> result : results) {
+        result.left.reset();
+      }
+    }
+
+
+    private boolean readAndCalcOverlappedPage() throws IOException, QueryProcessException {
+      while (reader.hasNextPage()) {
+        Statistics pageStatistics = reader.currentPageStatistics();
+        //current page max than time range
+        if (pageStatistics.getStartTime() >= curEndTime) {
           return true;
         }
-        continue;
-      }
-      BatchData batchData = reader.nextPage();
-      if (batchData == null || !batchData.hasCurrent()) {
-        continue;
-      }
-      // stop calc
-      if (batchData.currentTime() >= curEndTime) {
-        aggregations.preCachedData = batchData;
-        return true;
-      }
+        //can use page header
+        if (reader.canUseCurrentPageStatistics() && timeRange.contains(
+            new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
+          calcFromStatistics(pageStatistics);
+          reader.skipCurrentPage();
+          if (isEndCalc()) {
+            return true;
+          }
+          continue;
+        }
+        // calc from page data
+        BatchData batchData = reader.nextPage();
+        if (batchData == null || !batchData.hasCurrent()) {
+          continue;
+        }
+        // stop calc and cached current batchData
+        if (batchData.currentTime() >= curEndTime) {
+          preCachedData = batchData;
+          return true;
+        }
 
-      aggregations.calcFromBatch(batchData);
-      if (aggregations.isEndCalc() || batchData.currentTime() >= curEndTime) {
-        return true;
+        calcFromBatch(batchData);
+        if (isEndCalc() || batchData.currentTime() >= curEndTime) {
+          return true;
+        }
       }
+      return false;
     }
-    return false;
   }
+
 }
