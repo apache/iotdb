@@ -63,7 +63,14 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   private boolean hasNext(long timestamp) throws IOException {
 
     /*
-     * consume page data firstly
+     * consume overlapped data firstly
+     */
+    if (readOverlappedPage(timestamp)) {
+      return true;
+    }
+
+    /*
+     * consume pages secondly
      */
     if (readPageData(timestamp)) {
       return true;
@@ -73,7 +80,9 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
      * consume next chunk
      */
     while (seriesReader.hasNextChunk()) {
-      return readPageData(timestamp);
+      if (readPageData(timestamp)) {
+        return true;
+      }
     }
     return false;
   }
@@ -84,9 +93,26 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
         if (!satisfyTimeFilter(seriesReader.currentPageStatistics())) {
           seriesReader.skipCurrentPage();
           continue;
+        } else {
+          batchData = seriesReader.nextPage();
+          if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
+            return true;
+          }
         }
       }
-      batchData = seriesReader.nextPage();
+      if (readOverlappedPage(timestamp)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean readOverlappedPage(long timestamp) throws IOException {
+    while (seriesReader.hasNextOverlappedPage()) {
+      batchData = seriesReader.nextOverlappedPage();
+      if (isEmpty(batchData)) {
+        continue;
+      }
       if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
         return true;
       }
@@ -98,4 +124,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     return seriesReader.getTimeFilter().satisfy(statistics);
   }
 
+  private boolean isEmpty(BatchData batchData) {
+    return batchData == null || !batchData.hasCurrent();
+  }
 }

@@ -84,19 +84,14 @@ public class SeriesAggregateReader implements IAggregateReader {
   }
 
   @Override
-  public BatchData nextPage() throws IOException {
-    return seriesReader.nextPage();
+  public boolean hasNextOverlappedPage() throws IOException {
+    return seriesReader.hasNextOverlappedPage();
   }
 
-//  @Override
-//  public boolean hasNextOverlappedPage() throws IOException {
-//    return seriesReader.hasNextPage();
-//  }
-
-//  @Override
-//  public BatchData nextOverlappedPage() throws IOException {
-//    return seriesReader.nextPage();
-//  }
+  @Override
+  public BatchData nextOverlappedPage() throws IOException {
+    return seriesReader.nextOverlappedPage();
+  }
 
 
   private boolean containedByTimeFilter(Statistics statistics) {

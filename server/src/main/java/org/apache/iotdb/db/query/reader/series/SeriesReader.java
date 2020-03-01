@@ -125,6 +125,7 @@ public class SeriesReader {
         .hasNextTimeValuePair()) {
       throw new IOException("all cached pages should be consumed first");
     }
+    firstChunkMetaData = null;
 
     // init first chunk metadata whose startTime is minimum
     tryToUnpackAllOverlappedFilesToChunkMetadatas();
@@ -214,7 +215,7 @@ public class SeriesReader {
   /**
    * This method should be called after calling hasNextPage.
    */
-  public boolean isPageOverlapped() throws IOException {
+  protected boolean isPageOverlapped() throws IOException {
     if (firstPageReader == null) {
       throw new IOException("no next page, make sure hasNextPage() is true");
     }
@@ -226,26 +227,16 @@ public class SeriesReader {
             .getStartTime();
   }
 
-
-  public BatchData nextPage() throws IOException {
-    if (!isPageOverlapped()) {
-      return nextDirectlyPage();
-    }
-    return nextOverlappedPage();
-  }
-
-
   /**
    * This method should only be used when the method isPageOverlapped() return true.
    */
-  private BatchData nextDirectlyPage() throws IOException {
+  protected BatchData nextPage() throws IOException {
     if (isPageOverlapped()) {
       throw new IOException("next page is overlapped, make sure isPageOverlapped is false");
     }
 
     BatchData pageData = firstPageReader.data.getAllSatisfiedPageData();
     firstPageReader = null;
-
     /*
      * no value filter
      * only need to consider valueFilter because timeFilter has been set into the page reader
@@ -281,7 +272,7 @@ public class SeriesReader {
   /**
    * This method should be called after hasNextChunk and hasNextPage methods.
    */
-  private boolean hasNextOverlappedPage() throws IOException {
+  public boolean hasNextOverlappedPage() throws IOException {
 
     if (hasCachedNextBatch) {
       return true;
@@ -310,6 +301,7 @@ public class SeriesReader {
           cachedBatchData.putAnObject(
               timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
         }
+
         mergeReader.nextTimeValuePair();
 
       }
@@ -365,7 +357,7 @@ public class SeriesReader {
         pageReader.version, pageReader.data.getStatistics().getEndTime());
   }
 
-  private BatchData nextOverlappedPage() throws IOException {
+  public BatchData nextOverlappedPage() throws IOException {
     if (hasCachedNextBatch || hasNextOverlappedPage()) {
       hasCachedNextBatch = false;
       return cachedBatchData;
