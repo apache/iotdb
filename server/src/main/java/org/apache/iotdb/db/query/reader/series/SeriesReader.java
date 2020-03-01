@@ -305,9 +305,11 @@ public class SeriesReader {
         unpackAllOverlappedChunkMetadataToCachedPageReaders(timeValuePair.getTimestamp());
         unpackAllOverlappedCachedPageReadersToMergeReader(timeValuePair.getTimestamp());
 
-        cachedBatchData.putAnObject(
-            timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
-
+        if (valueFilter == null || valueFilter
+            .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+          cachedBatchData.putAnObject(
+              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
+        }
         mergeReader.nextTimeValuePair();
 
       }
