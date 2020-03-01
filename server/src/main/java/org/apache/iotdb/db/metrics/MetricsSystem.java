@@ -60,17 +60,17 @@ public class MetricsSystem {
   private SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss:SSS");
   private ServerArgument serverArgument = new ServerArgument(IoTDBDescriptor.getInstance().getConfig().getRestPort());
 
-  public MetricsSystem() {
+  public JSONObject metricsJson() throws JsonProcessingException {
     String sourceName = "iot-metrics";
     metricRegistry.register(MetricRegistry.name(sourceName, HOST),
         (Gauge<String>) () -> serverArgument.getHost());
-    
+
     metricRegistry.register(MetricRegistry.name(sourceName, PORT),
         (Gauge<Integer>) () -> serverArgument.getPort());
-    
+
     metricRegistry.register(MetricRegistry.name(sourceName, CORES),
         (Gauge<Integer>) () -> serverArgument.getCores());
-    
+
     metricRegistry.register(MetricRegistry.name(sourceName, CPU_RATIO),
         (Gauge<Integer>) () -> serverArgument.getCpuRatio());
 
@@ -91,9 +91,6 @@ public class MetricsSystem {
 
     metricRegistry.register(MetricRegistry.name(sourceName, USED_PHYSICAL_MEMORY),
         (Gauge<Long>) () -> serverArgument.getUsedPhysicalMemory());
-  }
-
-  public JSONObject metricsJson() throws JsonProcessingException {
     return (JSONObject) JSONObject.parse(om.writeValueAsString(metricRegistry));
   }
 
@@ -114,6 +111,7 @@ public class MetricsSystem {
 
   public JSONArray sqlJson() {
     JSONArray jsonArray = new JSONArray();
+    System.out.println(sqlArgumentsList.get(0).getStatement());
     for (SqlArgument sqlArgument : sqlArgumentsList) {
       JSONObject sql = new JSONObject();
       TSExecuteStatementResp resp = sqlArgument.getTSExecuteStatementResp();

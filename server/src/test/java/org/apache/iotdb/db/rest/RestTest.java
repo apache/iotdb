@@ -30,7 +30,9 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -53,6 +55,9 @@ public class RestTest {
 
   private static final String METRICS2
       = "http://localhost:8181/rest/server_information";
+
+  private static final String METRICS3
+      = "http://localhost:8181/rest/version";
 
   private static String[] creationSqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",
@@ -88,6 +93,7 @@ public class RestTest {
     EnvironmentUtils.envSetUp();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
     Class.forName(Config.JDBC_DRIVER_NAME);
+    TSServiceImpl.clearSqlArgumentsList();
     prepareData();
   }
 
@@ -182,9 +188,17 @@ public class RestTest {
   }
 
   @Test
-  public void testMetrics() {
+  public void testVersion() {
+    Response response = client.target(METRICS3).request(MediaType.TEXT_PLAIN).get();
+    String result = response.readEntity(String.class);
+    Assert.assertEquals(IoTDBConstant.VERSION, result);
+  }
+
+  @Test
+  public void testSql() {
     Response response1 = client.target(METRICS1).request(MediaType.APPLICATION_JSON).get();
     String result1 = response1.readEntity(String.class);
+    System.out.println(result1);
     JSONArray sqlArray = (JSONArray) JSONArray.parse(result1);
     JSONObject sql = sqlArray.getJSONObject(0);
     Assert.assertEquals("[root.vehicle.d0.s0, "
@@ -196,13 +210,16 @@ public class RestTest {
         + "root.ln.wf01.wt01.temperature, "
         + "root.ln.wf01.wt01.hardware]", sql.get("path"));
     Assert.assertEquals("RawDataQueryPlan", sql.get("physicalPlan"));
-    if((int)sql.get("time") < 0) {
+    if ((int) sql.get("time") < 0) {
       Assert.fail();
     }
     Assert.assertEquals("QUERY", sql.get("operatorType"));
     Assert.assertEquals("select * from root", sql.get("sql"));
     Assert.assertEquals("FINISHED", sql.get("status"));
-    System.out.println(sql);
+  }
+
+  @Test
+  public void testServerInfo() {
     Response response2 = client.target(METRICS2).request(MediaType.APPLICATION_JSON).get();
     String result2 = response2.readEntity(String.class);
     System.out.println(result2);
@@ -218,6 +235,5 @@ public class RestTest {
         (int) serverInfo.get("max_memory") < 0) {
       Assert.fail();
     }
-
   }
 }

@@ -82,6 +82,7 @@ import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
@@ -136,7 +137,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
 
-  public static final List<SqlArgument> sqlArgumentsList = new ArrayList<>();
+  public static List<SqlArgument> sqlArgumentsList = new ArrayList<>();
 
   private Planner processor;
   private IPlanExecutor executor;
@@ -1436,5 +1437,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private long generateQueryId(boolean isDataQuery) {
     return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
+  }
+
+  @TestOnly
+  public static void clearSqlArgumentsList() {
+    sqlArgumentsList = new ArrayList<>();
   }
 }
