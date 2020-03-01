@@ -65,16 +65,29 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     /*
      * consume overlapped data firstly
      */
-    while (seriesReader.hasNextOverlappedPage()) {
-      batchData = seriesReader.nextOverlappedPage();
-      if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
-        return true;
-      }
+    if (readOverlappedPage(timestamp)) {
+      return true;
     }
 
     /*
      * consume pages secondly
      */
+    if (readPageData(timestamp)) {
+      return true;
+    }
+
+    /*
+     * consume next chunk
+     */
+    while (seriesReader.hasNextChunk()) {
+      if (readPageData(timestamp)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean readPageData(long timestamp) throws IOException {
     while (seriesReader.hasNextPage()) {
       if (!seriesReader.isPageOverlapped()) {
         if (!satisfyTimeFilter(seriesReader.currentPageStatistics())) {
@@ -87,36 +100,21 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
           }
         }
       }
-      while (seriesReader.hasNextOverlappedPage()) {
-        batchData = seriesReader.nextOverlappedPage();
-        if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
-          return true;
-        }
+      if (readOverlappedPage(timestamp)) {
+        return true;
       }
     }
+    return false;
+  }
 
-    /*
-     * consume next chunk
-     */
-    while (seriesReader.hasNextChunk()) {
-      while (seriesReader.hasNextPage()) {
-        if (!seriesReader.isPageOverlapped()) {
-          if (!satisfyTimeFilter(seriesReader.currentPageStatistics())) {
-            seriesReader.skipCurrentPage();
-            continue;
-          } else {
-            batchData = seriesReader.nextPage();
-            if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
-              return true;
-            }
-          }
-        }
-        while (seriesReader.hasNextOverlappedPage()) {
-          batchData = seriesReader.nextOverlappedPage();
-          if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
-            return true;
-          }
-        }
+  private boolean readOverlappedPage(long timestamp) throws IOException {
+    while (seriesReader.hasNextOverlappedPage()) {
+      batchData = seriesReader.nextOverlappedPage();
+      if (isEmpty(batchData)) {
+        continue;
+      }
+      if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
+        return true;
       }
     }
     return false;
@@ -126,4 +124,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     return seriesReader.getTimeFilter().satisfy(statistics);
   }
 
+  private boolean isEmpty(BatchData batchData) {
+    return batchData == null || !batchData.hasCurrent();
+  }
 }

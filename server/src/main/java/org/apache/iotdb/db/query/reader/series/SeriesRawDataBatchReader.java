@@ -69,41 +69,24 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     if (hasCachedBatchData) {
       return true;
     }
-
     /*
      * consume overlapped data firstly
      */
-    if (seriesReader.hasNextOverlappedPage()) {
-      batchData = seriesReader.nextOverlappedPage();
-      hasCachedBatchData = true;
-      return true;
+    if (readOverlappedPage()) {
+      return hasCachedBatchData = true;
     }
-
-
     /*
-     * consume pages secondly
+     * consume page data secondly
      */
-    if (seriesReader.hasNextPage()) {
-      if (!seriesReader.isPageOverlapped()) {
-        batchData = seriesReader.nextPage();
-      } else if (seriesReader.hasNextOverlappedPage()) {
-        batchData = seriesReader.nextOverlappedPage();
-      }
-      hasCachedBatchData = true;
-      return true;
+    if (readPageData()) {
+      return hasCachedBatchData = true;
     }
-
     /*
      * consume next chunk finally
      */
-    if (seriesReader.hasNextChunk()) {
-      if (seriesReader.hasNextPage()) {
-        if (!seriesReader.isPageOverlapped()) {
-          batchData = seriesReader.nextPage();
-        } else if (seriesReader.hasNextOverlappedPage()) {
-          batchData = seriesReader.nextOverlappedPage();
-        }
-        hasCachedBatchData = true;
+    while (seriesReader.hasNextChunk()) {
+      if (readPageData()) {
+        return hasCachedBatchData = true;
       }
     }
     return hasCachedBatchData;
@@ -123,7 +106,6 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
   public void close() throws IOException {
     //no resources need to close
   }
-
 
   @Override
   public boolean isManagedByQueryManager() {
@@ -145,4 +127,34 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     this.hasRemaining = hasRemaining;
   }
 
+
+  private boolean readPageData() throws IOException {
+    while (seriesReader.hasNextPage()) {
+      if (!seriesReader.isPageOverlapped()) {
+        batchData = seriesReader.nextPage();
+        if (!isEmpty(batchData)) {
+          return true;
+        }
+        continue;
+      }
+      if (readOverlappedPage()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean readOverlappedPage() throws IOException {
+    while (seriesReader.hasNextOverlappedPage()) {
+      batchData = seriesReader.nextOverlappedPage();
+      if (!isEmpty(batchData)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean isEmpty(BatchData batchData) {
+    return batchData == null || !batchData.hasCurrent();
+  }
 }
