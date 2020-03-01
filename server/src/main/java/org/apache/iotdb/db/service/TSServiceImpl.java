@@ -137,7 +137,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
 
-  public static List<SqlArgument> sqlArgumentsList = new ArrayList<>();
+  public static List<SqlArgument> getSqlArgumentsList() {
+    return sqlArgumentsList;
+  }
+
+  private static List<SqlArgument> sqlArgumentsList = new ArrayList<>();
 
   private Planner processor;
   private IPlanExecutor executor;

@@ -55,7 +55,7 @@ public class MetricsSystem {
    * metricRegistry is used fro registering server information
    */
   private MetricRegistry metricRegistry = new MetricRegistry();
-  private List<SqlArgument> sqlArgumentsList = TSServiceImpl.sqlArgumentsList;
+  private List<SqlArgument> sqlArgumentsList = TSServiceImpl.getSqlArgumentsList();
 
   private SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss:SSS");
   private ServerArgument serverArgument = new ServerArgument(IoTDBDescriptor.getInstance().getConfig().getRestPort());
