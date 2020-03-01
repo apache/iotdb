@@ -57,7 +57,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   private static final Logger logger = LoggerFactory
       .getLogger(GroupByWithoutValueFilterDataSet.class);
 
-  private Map<Path, GroupByExecutor> pathAggregationsMap = new HashMap<>();
+  private Map<Path, GroupByExecutor> pathExecutors = new HashMap<>();
   private TimeRange timeRange;
 
   /**
@@ -87,13 +87,13 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       // update filter by TTL
       timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
       //init reader
-      pathAggregationsMap.putIfAbsent(path,
+      pathExecutors.putIfAbsent(path,
           new GroupByExecutor(path, dataTypes.get(i), context, queryDataSource, timeFilter));
 
       AggregateResult aggrResult = AggregateResultFactory
           .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(i),
               dataTypes.get(i));
-      pathAggregationsMap.get(path).addAggregateResult(aggrResult, i);
+      pathExecutors.get(path).addAggregateResult(aggrResult, i);
     }
   }
 
@@ -108,9 +108,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     timeRange = new TimeRange(curStartTime, curEndTime - 1);
 
     final AggregateResult[] fields = new AggregateResult[paths.size()];
-    final List<Future> asyncResult = new ArrayList(pathAggregationsMap.size());
+    final List<Future> asyncResult = new ArrayList(pathExecutors.size());
 
-    for (Entry<Path, GroupByExecutor> pathAggregations : pathAggregationsMap.entrySet()) {
+    for (Entry<Path, GroupByExecutor> pathAggregations : pathExecutors.entrySet()) {
       asyncResult.add(QueryTaskPoolManager.getInstance().submit((Callable<?>) () -> {
         pathAggregations.getValue().resetAggregateResults();
         List<Pair<AggregateResult, Integer>> aggregations = pathAggregations.getValue()
@@ -229,7 +229,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         return results;
       }
 
-      //read overlapped data firstly
+      //read page data firstly
       if (readAndCalcFromPage()) {
         return results;
       }
