@@ -266,19 +266,22 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     private boolean readAndCalcFromPage() throws IOException, QueryProcessException {
       while (reader.hasNextPage()) {
         Statistics pageStatistics = reader.currentPageStatistics();
-        //current page max than time range
-        if (pageStatistics.getStartTime() >= curEndTime) {
-          return true;
-        }
-        //can use pageHeader
-        if (reader.canUseCurrentPageStatistics() && timeRange.contains(
-            new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
-          calcFromStatistics(pageStatistics);
-          reader.skipCurrentPage();
-          if (isEndCalc()) {
+        //must be non overlapped page
+        if (pageStatistics != null) {
+          //current page max than time range
+          if (pageStatistics.getStartTime() >= curEndTime) {
             return true;
           }
-          continue;
+          //can use pageHeader
+          if (reader.canUseCurrentPageStatistics() && timeRange.contains(
+              new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
+            calcFromStatistics(pageStatistics);
+            reader.skipCurrentPage();
+            if (isEndCalc()) {
+              return true;
+            }
+            continue;
+          }
         }
         // calc from page data
         BatchData batchData = reader.nextPage();
