@@ -90,7 +90,7 @@ public class SeriesReader {
   /*
    * result cache
    */
-  private boolean hasCachedNextBatch;
+  private boolean hasCachedNextOverlappedPage;
   private BatchData cachedBatchData;
 
   public SeriesReader(Path seriesPath, TSDataType dataType, QueryContext context,
@@ -179,6 +179,18 @@ public class SeriesReader {
       }
     }
 
+    if (firstPageReader != null && isPageOverlapped()) {
+      /*
+       * next page is overlapped, read data and cache
+       */
+      while (hasNextOverlappedPage()) {
+        cachedBatchData = nextOverlappedPage();
+        if (cachedBatchData != null && cachedBatchData.hasCurrent()) {
+          return hasCachedNextOverlappedPage = true;
+        }
+      }
+    }
+
     return firstPageReader != null;
   }
 
@@ -214,9 +226,9 @@ public class SeriesReader {
   /**
    * This method should be called after calling hasNextPage.
    */
-  protected boolean isPageOverlapped() throws IOException {
-    if (firstPageReader == null) {
-      throw new IOException("no next page, make sure hasNextPage() is true");
+  protected boolean isPageOverlapped() {
+    if (hasCachedNextOverlappedPage) {
+      return true;
     }
 
     Statistics firstPageStatistics = firstPageReader.data.getStatistics();
@@ -230,37 +242,43 @@ public class SeriesReader {
    * This method should only be used when the method isPageOverlapped() return true.
    */
   protected BatchData nextPage() throws IOException {
-    if (isPageOverlapped()) {
-      throw new IOException("next page is overlapped, make sure isPageOverlapped is false");
-    }
 
-    BatchData pageData = firstPageReader.data.getAllSatisfiedPageData();
-    firstPageReader = null;
+    if (hasCachedNextOverlappedPage) {
+      hasCachedNextOverlappedPage = false;
+      return cachedBatchData;
+    } else {
+      /*
+       * next page is not overlapped
+       */
+      BatchData pageData = firstPageReader.data.getAllSatisfiedPageData();
+      firstPageReader = null;
 
-    /*
-     * no value filter
-     * only need to consider valueFilter because timeFilter has been set into the page reader
-     */
-    if (valueFilter == null) {
-      return pageData;
-    }
-
-    /*
-     * has value filter
-     */
-    BatchData batchData = new BatchData(pageData.getDataType());
-    while (pageData.hasCurrent()) {
-      if (valueFilter.satisfy(pageData.currentTime(), pageData.currentValue())) {
-        batchData.putAnObject(pageData.currentTime(), pageData.currentValue());
+      /*
+       * no value filter
+       * only need to consider valueFilter because timeFilter has been set into the page reader
+       */
+      if (valueFilter == null) {
+        return pageData;
       }
-      pageData.next();
+
+      /*
+       * has value filter
+       */
+      BatchData batchData = new BatchData(pageData.getDataType());
+      while (pageData.hasCurrent()) {
+        if (valueFilter.satisfy(pageData.currentTime(), pageData.currentValue())) {
+          batchData.putAnObject(pageData.currentTime(), pageData.currentValue());
+        }
+        pageData.next();
+      }
+      return batchData;
     }
-    return batchData;
+
   }
 
   public Statistics currentPageStatistics() throws IOException {
     if (firstPageReader == null) {
-      throw new IOException("No next page.");
+      return null;
     }
     return firstPageReader.data.getStatistics();
   }
@@ -272,9 +290,9 @@ public class SeriesReader {
   /**
    * This method should be called after hasNextChunk and hasNextPage methods.
    */
-  public boolean hasNextOverlappedPage() throws IOException {
+  private boolean hasNextOverlappedPage() throws IOException {
 
-    if (hasCachedNextBatch) {
+    if (hasCachedNextOverlappedPage) {
       return true;
     }
 
@@ -305,9 +323,9 @@ public class SeriesReader {
         mergeReader.nextTimeValuePair();
 
       }
-      hasCachedNextBatch = cachedBatchData.hasCurrent();
+      hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
     }
-    return hasCachedNextBatch;
+    return hasCachedNextOverlappedPage;
   }
 
   private void tryToPutAllDirectlyOverlappedPageReadersIntoMergeReader() throws IOException {
@@ -357,9 +375,9 @@ public class SeriesReader {
         pageReader.version, pageReader.data.getStatistics().getEndTime());
   }
 
-  public BatchData nextOverlappedPage() throws IOException {
-    if (hasCachedNextBatch || hasNextOverlappedPage()) {
-      hasCachedNextBatch = false;
+  private BatchData nextOverlappedPage() throws IOException {
+    if (hasCachedNextOverlappedPage || hasNextOverlappedPage()) {
+      hasCachedNextOverlappedPage = false;
       return cachedBatchData;
     }
     throw new IOException("No more batch data");

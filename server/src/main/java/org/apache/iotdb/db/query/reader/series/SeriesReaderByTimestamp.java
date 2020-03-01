@@ -63,21 +63,14 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   private boolean hasNext(long timestamp) throws IOException {
 
     /*
-     * consume overlapped data firstly
-     */
-    if (readOverlappedPage(timestamp)) {
-      return true;
-    }
-
-    /*
-     * consume pages secondly
+     * consume pages firstly
      */
     if (readPageData(timestamp)) {
       return true;
     }
 
     /*
-     * consume next chunk
+     * consume chunk secondly
      */
     while (seriesReader.hasNextChunk()) {
       if (readPageData(timestamp)) {
@@ -93,23 +86,9 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
         if (!satisfyTimeFilter(seriesReader.currentPageStatistics())) {
           seriesReader.skipCurrentPage();
           continue;
-        } else {
-          batchData = seriesReader.nextPage();
-          if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
-            return true;
-          }
         }
       }
-      if (readOverlappedPage(timestamp)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private boolean readOverlappedPage(long timestamp) throws IOException {
-    while (seriesReader.hasNextOverlappedPage()) {
-      batchData = seriesReader.nextOverlappedPage();
+      batchData = seriesReader.nextPage();
       if (isEmpty(batchData)) {
         continue;
       }

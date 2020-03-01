@@ -69,18 +69,14 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     if (hasCachedBatchData) {
       return true;
     }
-    /*
-     * consume overlapped data firstly
-     */
-    if (readOverlappedPage()) {
-      return hasCachedBatchData = true;
-    }
+
     /*
      * consume page data secondly
      */
     if (readPageData()) {
       return hasCachedBatchData = true;
     }
+
     /*
      * consume next chunk finally
      */
@@ -130,23 +126,7 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
 
   private boolean readPageData() throws IOException {
     while (seriesReader.hasNextPage()) {
-      if (!seriesReader.isPageOverlapped()) {
-        batchData = seriesReader.nextPage();
-        if (!isEmpty(batchData)) {
-          return true;
-        }
-        continue;
-      }
-      if (readOverlappedPage()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private boolean readOverlappedPage() throws IOException {
-    while (seriesReader.hasNextOverlappedPage()) {
-      batchData = seriesReader.nextOverlappedPage();
+      batchData = seriesReader.nextPage();
       if (!isEmpty(batchData)) {
         return true;
       }

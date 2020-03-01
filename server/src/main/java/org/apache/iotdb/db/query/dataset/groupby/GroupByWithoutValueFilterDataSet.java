@@ -221,10 +221,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           }
           reader.skipCurrentPage();
           continue;
-        }
-        while (reader.hasNextOverlappedPage()) {
-          // cal by page data
-          BatchData batchData = reader.nextOverlappedPage();
+        } else {
+          BatchData batchData = reader.nextPage();
           for (int i = 0; i < aggregateResultList.size(); i++) {
             if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
               AggregateResult result = aggregateResultList.get(i);
