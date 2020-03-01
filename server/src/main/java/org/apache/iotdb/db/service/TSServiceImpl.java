@@ -579,7 +579,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
       if (physicalPlan.isQuery()) {
         resp =
-            executeQueryStatement(
+            internalExecuteQueryStatement(
                 req.statementId,
                 physicalPlan,
                 req.fetchSize,
@@ -617,7 +617,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
    * AuthorPlan
    */
-  private TSExecuteStatementResp executeQueryStatement(
+  private TSExecuteStatementResp internalExecuteQueryStatement(
       long statementId, PhysicalPlan plan, int fetchSize, String username) {
     long t1 = System.currentTimeMillis();
     try {
@@ -673,6 +673,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
+    long startTime = System.currentTimeMillis();
+    TSExecuteStatementResp resp;
+    SqlArgument sqlArgument;
+
     if (!checkLogin(req.getSessionId())) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getTSExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
@@ -692,8 +696,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSExecuteStatementResp(
           getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement."));
     }
-    return executeQueryStatement(
+
+    resp = internalExecuteQueryStatement(
         req.statementId, physicalPlan, req.fetchSize, sessionIdUsernameMap.get(req.getSessionId()));
+    long endTime = System.currentTimeMillis();
+    sqlArgument = new SqlArgument(resp, physicalPlan, statement, startTime, endTime);
+    sqlArgumentsList.add(sqlArgument);
+    if (sqlArgumentsList.size() > MAX_SIZE) {
+      sqlArgumentsList.subList(0, DELETE_SIZE).clear();
+    }
+    return resp;
   }
 
   private TSExecuteStatementResp getShowQueryColumnHeaders(ShowPlan showPlan)
