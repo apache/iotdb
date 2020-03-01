@@ -110,11 +110,12 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     final AggregateResult[] fields = new AggregateResult[paths.size()];
     final List<Future> asyncResult = new ArrayList(pathExecutors.size());
 
-    for (Entry<Path, GroupByExecutor> pathAggregations : pathExecutors.entrySet()) {
+    for (Entry<Path, GroupByExecutor> executorEntry : pathExecutors.entrySet()) {
       asyncResult.add(QueryTaskPoolManager.getInstance().submit((Callable<?>) () -> {
-        pathAggregations.getValue().resetAggregateResults();
-        List<Pair<AggregateResult, Integer>> aggregations = pathAggregations.getValue()
-            .calcResult();
+        GroupByExecutor executor = executorEntry.getValue();
+
+        executor.resetAggregateResults();
+        List<Pair<AggregateResult, Integer>> aggregations = executor.calcResult();
         for (int i = 0; i < aggregations.size(); i++) {
           fields[aggregations.get(i).right] = aggregations.get(i).left;
         }
