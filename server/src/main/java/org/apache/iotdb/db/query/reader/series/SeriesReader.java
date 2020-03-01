@@ -150,21 +150,29 @@ public class SeriesReader {
   }
 
   /**
-   * This method should be called after hasNextChunk() make sure that all overlapped pages are
-   * consumed before
+   * This method should be called after hasNextChunk() until no next page,
+   * make sure that all overlapped pages are consumed
    */
   public boolean hasNextPage() throws IOException {
-    if (mergeReader.hasNextTimeValuePair()) {
-      throw new IOException("all overlapped pages should be consumed first");
-    }
 
     /*
-     * consume cached pages firstly
+     * has overlapped data before
      */
-    if (firstChunkMetaData == null && firstPageReader == null && cachedPageReaders.isEmpty()) {
-      tryToUnpackAllOverlappedFilesToChunkMetadatas();
+    if (hasCachedNextOverlappedPage) {
+      return true;
+    } else if (mergeReader.hasNextTimeValuePair()) {
+      while (hasNextOverlappedPage()) {
+        cachedBatchData = nextOverlappedPage();
+        if (cachedBatchData != null && cachedBatchData.hasCurrent()) {
+          return hasCachedNextOverlappedPage = true;
+        }
+      }
     }
 
+
+    /*
+     * construct first page reader
+     */
     if (firstChunkMetaData != null) {
       /*
        * try to unpack all overlapped ChunkMetadata to cachedPageReaders
@@ -172,7 +180,7 @@ public class SeriesReader {
       unpackAllOverlappedChunkMetadataToCachedPageReaders(firstChunkMetaData.getEndTime());
     } else {
       /*
-       * first chunk metadata is already unpacked
+       * first chunk metadata is already unpacked, consume cached pages
        */
       if (!cachedPageReaders.isEmpty()) {
         firstPageReader = cachedPageReaders.poll();
