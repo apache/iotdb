@@ -138,6 +138,7 @@ public class MetricsSystem {
       sql.put("physicalPlan", sqlArgument.getPlan().getClass().getSimpleName());
       sql.put("operatorType", sqlArgument.getPlan().getOperatorType());
       sql.put("path", sqlArgument.getPlan().getPaths().toString());
+      System.out.println(sql);
       jsonArray.add(sql);
     }
     return jsonArray;
