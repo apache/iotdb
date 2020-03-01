@@ -18,13 +18,12 @@
  */
 package org.apache.iotdb.db.query.reader.universal;
 
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.PriorityQueue;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 /**
  * This class implements {@link IPointReader} for data sources with different priorities.
@@ -33,8 +32,6 @@ public class PriorityMergeReader implements IPointReader {
 
   // largest end time of all added readers
   private long currentLargestEndTime;
-
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
     int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
@@ -61,24 +58,9 @@ public class PriorityMergeReader implements IPointReader {
   }
 
   public void addReader(IPointReader reader, long priority, long endTime) throws IOException {
-    long partitionInterval = config.getPartitionInterval();
-    switch (config.getTimestampPrecision()) {
-      case "ns":
-        partitionInterval *= 1000_000_000L;
-        break;
-      case "us":
-        partitionInterval *= 1000_000L;
-        break;
-      default:
-        partitionInterval *= 1000;
-        break;
-    }
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
-      long partition = reader.currentTimeValuePair().getTimestamp() / partitionInterval;
-      // set end time before current partition ends
-      currentLargestEndTime = Math.min((partition + 1) * partitionInterval - 1,
-          Math.max(currentLargestEndTime, endTime));
+      currentLargestEndTime = Math.max(currentLargestEndTime, endTime);
     } else {
       reader.close();
     }
