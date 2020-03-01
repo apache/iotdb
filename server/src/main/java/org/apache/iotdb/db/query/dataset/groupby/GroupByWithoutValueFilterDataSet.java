@@ -222,23 +222,21 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           reader.skipCurrentPage();
           continue;
         }
-        while (reader.hasNextOverlappedPage()) {
-          // cal by page data
-          BatchData batchData = reader.nextOverlappedPage();
-          for (int i = 0; i < aggregateResultList.size(); i++) {
-            if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-              AggregateResult result = aggregateResultList.get(i);
-              calcBatchData(result, batchData);
-              int idx = pathToAggrIndexes.getValue().get(i);
-              if (batchData.hasCurrent()) {
-                cachedBatchDataList.set(idx, batchData);
-              }
-              if (isEndCalc(result, null)) {
-                isCalculatedList.set(i, true);
-                remainingToCalculate--;
-                if (remainingToCalculate == 0) {
-                  break;
-                }
+        // cal by page data
+        BatchData batchData = reader.nextPage();
+        for (int i = 0; i < aggregateResultList.size(); i++) {
+          if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
+            AggregateResult result = aggregateResultList.get(i);
+            calcBatchData(result, batchData);
+            int idx = pathToAggrIndexes.getValue().get(i);
+            if (batchData.hasCurrent()) {
+              cachedBatchDataList.set(idx, batchData);
+            }
+            if (isEndCalc(result, null)) {
+              isCalculatedList.set(i, true);
+              remainingToCalculate--;
+              if (remainingToCalculate == 0) {
+                break;
               }
             }
           }

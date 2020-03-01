@@ -121,7 +121,8 @@ public class SeriesReader {
 
   public boolean hasNextChunk() throws IOException {
 
-    if (!cachedPageReaders.isEmpty() || firstPageReader != null || mergeReader.hasNextTimeValuePair()) {
+    if (!cachedPageReaders.isEmpty() || firstPageReader != null || mergeReader
+        .hasNextTimeValuePair()) {
       throw new IOException("all cached pages should be consumed first");
     }
 
@@ -149,8 +150,8 @@ public class SeriesReader {
   }
 
   /**
-   * This method should be called after hasNextChunk()
-   * make sure that all overlapped pages are consumed before
+   * This method should be called after hasNextChunk() make sure that all overlapped pages are
+   * consumed before
    */
   public boolean hasNextPage() throws IOException {
     if (mergeReader.hasNextTimeValuePair()) {
@@ -182,7 +183,8 @@ public class SeriesReader {
   }
 
 
-  private void unpackAllOverlappedChunkMetadataToCachedPageReaders(long endTime) throws IOException {
+  private void unpackAllOverlappedChunkMetadataToCachedPageReaders(long endTime)
+      throws IOException {
     while (!seqChunkMetadatas.isEmpty() && endTime >= seqChunkMetadatas.get(0).getStartTime()) {
       unpackOneChunkMetaData(seqChunkMetadatas.remove(0));
     }
@@ -212,7 +214,7 @@ public class SeriesReader {
   /**
    * This method should be called after calling hasNextPage.
    */
-  protected boolean isPageOverlapped() throws IOException {
+  public boolean isPageOverlapped() throws IOException {
     if (firstPageReader == null) {
       throw new IOException("no next page, make sure hasNextPage() is true");
     }
@@ -224,15 +226,25 @@ public class SeriesReader {
             .getStartTime();
   }
 
+
+  public BatchData nextPage() throws IOException {
+    if (!isPageOverlapped()) {
+      return nextDirectlyPage();
+    }
+    return nextOverlappedPage();
+  }
+
+
   /**
    * This method should only be used when the method isPageOverlapped() return true.
    */
-  protected BatchData nextPage() throws IOException {
+  private BatchData nextDirectlyPage() throws IOException {
     if (isPageOverlapped()) {
       throw new IOException("next page is overlapped, make sure isPageOverlapped is false");
     }
 
     BatchData pageData = firstPageReader.data.getAllSatisfiedPageData();
+    firstPageReader = null;
 
     /*
      * no value filter
@@ -269,7 +281,7 @@ public class SeriesReader {
   /**
    * This method should be called after hasNextChunk and hasNextPage methods.
    */
-  public boolean hasNextOverlappedPage() throws IOException {
+  private boolean hasNextOverlappedPage() throws IOException {
 
     if (hasCachedNextBatch) {
       return true;
@@ -351,7 +363,7 @@ public class SeriesReader {
         pageReader.version, pageReader.data.getStatistics().getEndTime());
   }
 
-  public BatchData nextOverlappedPage() throws IOException {
+  private BatchData nextOverlappedPage() throws IOException {
     if (hasCachedNextBatch || hasNextOverlappedPage()) {
       hasCachedNextBatch = false;
       return cachedBatchData;
@@ -433,9 +445,8 @@ public class SeriesReader {
 
 
   /**
-   *
    * unpack all overlapped seq/unseq files and find the first chunk metadata
-   *
+   * <p>
    * Because there may be too many files in the scenario used by the user, we cannot open all the
    * chunks at once, which may cause OOM, so we can only unpack one file at a time when needed. This
    * approach is likely to be ubiquitous, but it keeps the system running smoothly

@@ -103,8 +103,8 @@ public class AggregationExecutor {
    * get aggregation result for one series
    *
    * @param pathToAggrIndexes entry of path to aggregation indexes map
-   * @param timeFilter time filter
-   * @param context query context
+   * @param timeFilter        time filter
+   * @param context           query context
    * @return AggregateResult list
    */
   private List<AggregateResult> aggregateOneSeries(
@@ -175,19 +175,17 @@ public class AggregationExecutor {
           continue;
         }
         // cal by page data
-        while (seriesReader.hasNextOverlappedPage()) {
-          BatchData nextOverlappedPageData = seriesReader.nextOverlappedPage();
-          for (int i = 0; i < aggregateResultList.size(); i++) {
-            if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-              AggregateResult aggregateResult = aggregateResultList.get(i);
-              aggregateResult.updateResultFromPageData(nextOverlappedPageData);
-              nextOverlappedPageData.resetBatchData();
-              if (aggregateResult.isCalculatedAggregationResult()) {
-                isCalculatedList.set(i, true);
-                remainingToCalculate--;
-                if (remainingToCalculate == 0) {
-                  return aggregateResultList;
-                }
+        BatchData nextOverlappedPageData = seriesReader.nextPage();
+        for (int i = 0; i < aggregateResultList.size(); i++) {
+          if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
+            AggregateResult aggregateResult = aggregateResultList.get(i);
+            aggregateResult.updateResultFromPageData(nextOverlappedPageData);
+            nextOverlappedPageData.resetBatchData();
+            if (aggregateResult.isCalculatedAggregationResult()) {
+              isCalculatedList.set(i, true);
+              remainingToCalculate--;
+              if (remainingToCalculate == 0) {
+                return aggregateResultList;
               }
             }
           }
@@ -218,7 +216,8 @@ public class AggregationExecutor {
     List<AggregateResult> aggregateResults = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       TSDataType type = dataTypes.get(i);
-      AggregateResult result = AggregateResultFactory.getAggrResultByName(aggregations.get(i), type);
+      AggregateResult result = AggregateResultFactory
+          .getAggrResultByName(aggregations.get(i), type);
       aggregateResults.add(result);
     }
     aggregateWithValueFilter(aggregateResults, timestampGenerator, readersOfSelectedSeries);
