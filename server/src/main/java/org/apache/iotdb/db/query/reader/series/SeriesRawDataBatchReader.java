@@ -71,7 +71,7 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     }
 
     /*
-     * consume page data secondly
+     * consume page data firstly
      */
     if (readPageData()) {
       return hasCachedBatchData = true;
