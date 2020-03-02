@@ -189,6 +189,10 @@ public class SeriesReader {
       }
     }
 
+    if (firstPageReader != null) {
+      return true;
+    }
+
     /*
      * construct first page reader
      */
@@ -269,6 +273,10 @@ public class SeriesReader {
    * This method should only be used when the method isPageOverlapped() return true.
    */
   protected BatchData nextPage() throws IOException {
+
+    if (!hasNextPage()) {
+      throw new IOException("no next page, neither non-overlapped nor overlapped");
+    }
 
     if (hasCachedNextOverlappedPage) {
       hasCachedNextOverlappedPage = false;
