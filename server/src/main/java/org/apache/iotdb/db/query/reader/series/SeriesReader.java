@@ -306,9 +306,9 @@ public class SeriesReader {
       return true;
     }
 
-    while (true) {
+    tryToPutAllDirectlyOverlappedPageReadersIntoMergeReader();
 
-      tryToPutAllDirectlyOverlappedPageReadersIntoMergeReader();
+    while (true) {
 
       if (mergeReader.hasNextTimeValuePair()) {
 
@@ -331,13 +331,15 @@ public class SeriesReader {
           unpackAllOverlappedChunkMetadataToCachedPageReaders(timeValuePair.getTimestamp());
           unpackAllOverlappedCachedPageReadersToMergeReader(timeValuePair.getTimestamp());
 
+          timeValuePair = mergeReader.nextTimeValuePair();
+
           if (valueFilter == null || valueFilter
               .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
             cachedBatchData.putAnObject(
                 timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
           }
 
-          mergeReader.nextTimeValuePair();
+//          mergeReader.nextTimeValuePair();
 
         }
         hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
