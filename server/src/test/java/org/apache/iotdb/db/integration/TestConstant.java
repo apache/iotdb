@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 
 public class TestConstant {
 
+  public static final String OUTPUT_DATA_DIR = "target";
   public static final String d0s0 = "root.vehicle.d0.s0";
   public static final String d0s1 = "root.vehicle.d0.s1";
   public static final String d0s2 = "root.vehicle.d0.s2";

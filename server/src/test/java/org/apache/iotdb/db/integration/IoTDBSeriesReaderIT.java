@@ -239,7 +239,6 @@ public class IoTDBSeriesReaderIT {
     }
   }
 
-  @Test
   public void selectAllTest() throws IOException, StorageEngineException {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
@@ -279,7 +278,6 @@ public class IoTDBSeriesReaderIT {
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
-  @Test
   public void selectOneSeriesWithValueFilterTest() throws IOException, StorageEngineException {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
@@ -309,7 +307,6 @@ public class IoTDBSeriesReaderIT {
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
-  @Test
   public void seriesTimeDigestReadTest() throws IOException, StorageEngineException {
     QueryRouter queryRouter = new QueryRouter();
     Path path = new Path(TestConstant.d0s0);
@@ -394,7 +391,6 @@ public class IoTDBSeriesReaderIT {
   }
 
 
-  @Test
   public void queryEmptySeriesTest() throws SQLException {
     Statement statement = connection.createStatement();
     statement
