@@ -112,7 +112,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
     } catch (QueryProcessException e) {
       logger.error("GroupByWithoutValueFilterDataSet execute has error,{}", e);
-      throw new IOException(e);
+      throw new IOException(e.getMessage(), e);
     }
 
     for (AggregateResult res : fields) {
@@ -153,7 +153,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
     public boolean isEndCalc() {
       for (Pair<AggregateResult, Integer> result : results) {
-        if (result.left.isCalculatedAggregationResult() == false) {
+        if (!result.left.isCalculatedAggregationResult()) {
           return false;
         }
       }
@@ -163,11 +163,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     public boolean calcFromCacheData() throws IOException {
       calcFromBatch(preCachedData);
       // The result is calculated from the cache
-      if ((preCachedData != null && preCachedData.getMaxTimestamp() >= curEndTime)
-          || isEndCalc()) {
-        return true;
-      }
-      return false;
+      return (preCachedData != null && preCachedData.getMaxTimestamp() >= curEndTime)
+          || isEndCalc();
     }
 
     public void calcFromBatch(BatchData batchData) throws IOException {

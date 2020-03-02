@@ -49,12 +49,8 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
 import java.util.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SeriesReader {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(SeriesReader.class);
 
   private final Path seriesPath;
   private final TSDataType dataType;
@@ -136,7 +132,7 @@ public class SeriesReader {
       throw new IOException("all cached pages should be consumed first");
     }
 
-    if (firstPageReader != null) {
+    if (firstChunkMetaData != null) {
       return true;
     }
 
@@ -178,7 +174,8 @@ public class SeriesReader {
       if (hasNextOverlappedPage()) {
         cachedBatchData = nextOverlappedPage();
         if (cachedBatchData != null && cachedBatchData.hasCurrent()) {
-          return hasCachedNextOverlappedPage = true;
+          hasCachedNextOverlappedPage = true;
+          return true;
         }
       }
     }
@@ -213,7 +210,8 @@ public class SeriesReader {
       if (hasNextOverlappedPage()) {
         cachedBatchData = nextOverlappedPage();
         if (cachedBatchData != null && cachedBatchData.hasCurrent()) {
-          return hasCachedNextOverlappedPage = true;
+          hasCachedNextOverlappedPage = true;
+          return true;
         }
       }
     }

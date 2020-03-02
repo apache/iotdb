@@ -172,7 +172,6 @@ public class AggregationExecutor {
             }
           }
           seriesReader.skipCurrentPage();
-          continue;
         } else {
           // cal by page data
           BatchData batchData = seriesReader.nextPage();

@@ -74,7 +74,8 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
      * consume page data firstly
      */
     if (readPageData()) {
-      return hasCachedBatchData = true;
+      hasCachedBatchData = true;
+      return true;
     }
 
     /*
@@ -82,7 +83,8 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
      */
     while (seriesReader.hasNextChunk()) {
       if (readPageData()) {
-        return hasCachedBatchData = true;
+        hasCachedBatchData = true;
+        return true;
       }
     }
     return hasCachedBatchData;
