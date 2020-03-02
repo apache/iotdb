@@ -262,7 +262,7 @@ public class SeriesReader {
    * This method should be called after calling hasNextPage.
    */
   protected boolean isPageOverlapped() {
-    if (hasCachedNextOverlappedPage) {
+    if (hasCachedNextOverlappedPage || mergeReader.hasNextTimeValuePair()) {
       return true;
     }
 
