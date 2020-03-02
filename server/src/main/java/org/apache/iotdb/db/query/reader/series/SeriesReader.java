@@ -49,22 +49,32 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SeriesReader {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SeriesReader.class);
 
   private final Path seriesPath;
   private final TSDataType dataType;
   private final QueryContext context;
+
+  /*
+   * There is only one is null between timeFilter and valueFilter
+   *
+   * timeFilter is pushed down to all pages (seq, unseq) without correctness problem
+   *
+   * valueFilter is pushed down to non-overlapped page only
+   */
   private final Filter timeFilter;
   private final Filter valueFilter;
-
 
   /*
    * file cache
    */
   private final List<TsFileResource> seqFileResource;
   private final PriorityQueue<TsFileResource> unseqFileResource;
-
 
   /*
    * chunk cache
@@ -123,6 +133,16 @@ public class SeriesReader {
 
     if (!cachedPageReaders.isEmpty() || firstPageReader != null || mergeReader
         .hasNextTimeValuePair()) {
+      if (!cachedPageReaders.isEmpty()) {
+        LOGGER.warn("@++++<<<<<: {} has cachedPageReaders", seriesPath.getFullPath());
+      }
+      if (firstPageReader != null) {
+        LOGGER.warn("@++++<<<<<: {} has firstPageReader", seriesPath.getFullPath());
+      }
+      if (mergeReader.hasNextTimeValuePair()) {
+        LOGGER.warn("@++++<<<<<: {} has data in mergeReader", seriesPath.getFullPath());
+      }
+
       throw new IOException("all cached pages should be consumed first");
     }
 
@@ -168,7 +188,6 @@ public class SeriesReader {
         }
       }
     }
-
 
     /*
      * construct first page reader
@@ -251,40 +270,26 @@ public class SeriesReader {
    */
   protected BatchData nextPage() throws IOException {
 
-    if (hasCachedNextOverlappedPage) {
+    if (hasCachedNextOverlappedPage || hasNextPage()) {
       hasCachedNextOverlappedPage = false;
+      LOGGER.warn("consume an overlapped page, mergeReader has more data? " + mergeReader.hasNextTimeValuePair());
       return cachedBatchData;
     } else {
+
       /*
-       * next page is not overlapped
+       * next page is not overlapped, push down value filter if it exists
        */
-      BatchData pageData = firstPageReader.data.getAllSatisfiedPageData();
+      if (valueFilter != null) {
+        firstPageReader.data.setFilter(valueFilter);
+      }
+      BatchData batchData = firstPageReader.data.getAllSatisfiedPageData();
       firstPageReader = null;
 
-      /*
-       * no value filter
-       * only need to consider valueFilter because timeFilter has been set into the page reader
-       */
-      if (valueFilter == null) {
-        return pageData;
-      }
-
-      /*
-       * has value filter
-       */
-      BatchData batchData = new BatchData(pageData.getDataType());
-      while (pageData.hasCurrent()) {
-        if (valueFilter.satisfy(pageData.currentTime(), pageData.currentValue())) {
-          batchData.putAnObject(pageData.currentTime(), pageData.currentValue());
-        }
-        pageData.next();
-      }
       return batchData;
     }
-
   }
 
-  public Statistics currentPageStatistics() throws IOException {
+  public Statistics currentPageStatistics() {
     if (firstPageReader == null) {
       return null;
     }
