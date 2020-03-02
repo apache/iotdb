@@ -318,4 +318,5 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     sc.addTail("]");
     return sc.toString();
   }
+
 }

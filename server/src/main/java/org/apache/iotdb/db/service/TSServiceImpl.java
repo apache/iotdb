@@ -83,6 +83,7 @@ import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
@@ -138,8 +139,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       "meet error while parsing SQL to physical plan: {}";
   public static Vector<SqlArgument> sqlArgumentsList = new Vector<>();
 
-  private Planner processor;
-  private IPlanExecutor executor;
+  protected Planner processor;
+  protected IPlanExecutor executor;
 
   // Record the username for every rpc connection (session).
   private Map<Long, String> sessionIdUsernameMap = new ConcurrentHashMap<>();
@@ -166,52 +167,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSServiceImpl() throws QueryProcessException {
     processor = new Planner();
     executor = new PlanExecutor();
-  }
-
-  public static TSDataType getSeriesType(String path) throws QueryProcessException {
-    switch (path.toLowerCase()) {
-      // authorization queries
-      case COLUMN_ROLE:
-      case COLUMN_USER:
-      case COLUMN_PRIVILEGE:
-      case COLUMN_STORAGE_GROUP:
-        return TSDataType.TEXT;
-      case COLUMN_TTL:
-        return TSDataType.INT64;
-      default:
-        // do nothing
-    }
-
-    if (path.contains("(") && !path.startsWith("(") && path.endsWith(")")) {
-      // aggregation
-      int leftBracketIndex = path.indexOf('(');
-      String aggrType = path.substring(0, leftBracketIndex);
-      String innerPath = path.substring(leftBracketIndex + 1, path.length() - 1);
-      switch (aggrType.toLowerCase()) {
-        case SQLConstant.MIN_TIME:
-        case SQLConstant.MAX_TIME:
-        case SQLConstant.COUNT:
-          return TSDataType.INT64;
-        case SQLConstant.LAST_VALUE:
-        case SQLConstant.FIRST_VALUE:
-        case SQLConstant.MIN_VALUE:
-        case SQLConstant.MAX_VALUE:
-          return getSeriesType(innerPath);
-        case SQLConstant.AVG:
-        case SQLConstant.SUM:
-          return TSDataType.DOUBLE;
-        default:
-          throw new QueryProcessException("aggregate does not support " + aggrType + " function.");
-      }
-    }
-    TSDataType dataType;
-    try {
-      dataType = MManager.getInstance().getSeriesType(path);
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
-
-    return dataType;
   }
 
   @Override
@@ -350,7 +305,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * release single operation resource
    */
-  private void releaseQueryResource(long queryId) throws StorageEngineException {
+  protected void releaseQueryResource(long queryId) throws StorageEngineException {
     // remove the corresponding Physical Plan
     queryId2DataSet.remove(queryId);
     QueryResourceManager.getInstance().endQuery(queryId);
@@ -375,6 +330,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
     TSStatusType statusCodeAndMessage = new TSStatusType(statusType.getStatusCode(), appendMessage);
     return new TSStatus(statusCodeAndMessage);
+  }
+
+  protected TSDataType getSeriesType(String path) throws QueryProcessException, MetadataException {
+    try {
+      return SchemaUtils.getSeriesType(path);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
   }
 
   @Override
@@ -406,7 +369,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = getStatus(TSStatusCode.METADATA_ERROR, req.getType());
           break;
       }
-    } catch (QueryProcessException | MetadataException | OutOfMemoryError e) {
+    } catch (MetadataException | OutOfMemoryError | QueryProcessException e) {
       logger.error(
           String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()), e);
       status = getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
@@ -814,7 +777,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     for (String column : respColumns) {
-      columnTypes.add(getSeriesType(column).toString());
+      try {
+        columnTypes.add(getSeriesType(column).toString());
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
+      }
     }
   }
 
@@ -1047,10 +1014,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
       IOException, MetadataException, SQLException {
 
-    QueryContext context = new QueryContext(queryId);
+    QueryContext context = genQueryContext(queryId);
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryId2DataSet.put(queryId, queryDataSet);
     return queryDataSet;
+  }
+
+  protected QueryContext genQueryContext(long queryId) {
+    return new QueryContext(queryId);
   }
 
   @Override
@@ -1149,7 +1120,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  void handleClientExit() {
+  protected void handleClientExit() {
     Long sessionId = currSessionId.get();
     if (sessionId != null) {
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
@@ -1435,7 +1406,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return null;
   }
 
-  private TSStatus executePlan(PhysicalPlan plan) {
+  protected TSStatus executePlan(PhysicalPlan plan) {
     boolean execRet;
     try {
       execRet = executeNonQuery(plan);

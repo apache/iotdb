@@ -82,7 +82,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -210,6 +210,9 @@ public class PhysicalGenerator {
     }
   }
 
+  protected TSDataType getSeriesType(String path) throws MetadataException {
+    return SchemaUtils.getSeriesType(path);
+  }
 
   private PhysicalPlan transformQuery(QueryOperator queryOperator)
       throws QueryProcessException {
@@ -282,8 +285,8 @@ public class PhysicalGenerator {
           Path fullPath = Path.addPrefixPath(suffixPath, device);
           try {
             // remove stars in SELECT to get actual paths
-            List<String> actualPaths = MManager.getInstance()
-                .getAllTimeseriesName(fullPath.getFullPath());
+            List<String> actualPaths = getMatchedTimeseries(fullPath.getFullPath());  // remove stars in SELECT to
+            // get actual paths
 
             // for actual non exist path
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
@@ -305,7 +308,7 @@ public class PhysicalGenerator {
                 pathForDataType = path.getFullPath();
                 measurementChecked = path.getMeasurement();
               }
-              TSDataType dataType = TSServiceImpl.getSeriesType(pathForDataType);
+              TSDataType dataType = getSeriesType(pathForDataType);
               if (dataTypeConsistencyChecker.containsKey(measurementChecked)) {
                 if (!dataType.equals(dataTypeConsistencyChecker.get(measurementChecked))) {
                   throw new QueryProcessException(
@@ -421,7 +424,7 @@ public class PhysicalGenerator {
     Set<String> deviceSet = new LinkedHashSet<>();
     try {
       for (Path path : paths) {
-        Set<String> tempDS = MManager.getInstance().getDevices(path.getFullPath());
+        Set<String> tempDS = getMatchedDevices(path.getFullPath());
         deviceSet.addAll(tempDS);
       }
       retDevices = new ArrayList<>(deviceSet);
@@ -454,7 +457,7 @@ public class PhysicalGenerator {
     List<Path> paths = queryPlan.getPaths();
     List<TSDataType> dataTypes = new ArrayList<>(paths.size());
     for (Path path : paths) {
-      TSDataType seriesType = MManager.getInstance().getSeriesType(path.toString());
+      TSDataType seriesType = getSeriesType(path.toString());
       dataTypes.add(seriesType);
       queryPlan.addTypeMapping(path, seriesType);
     }
@@ -521,6 +524,14 @@ public class PhysicalGenerator {
         columnSet.add(column);
       }
     }
+  }
+
+  protected List<String> getMatchedTimeseries(String path) throws MetadataException {
+    return MManager.getInstance().getAllTimeseriesName(path);
+  }
+
+  protected Set<String> getMatchedDevices(String path) throws MetadataException {
+    return MManager.getInstance().getDevices(path);
   }
 }
 

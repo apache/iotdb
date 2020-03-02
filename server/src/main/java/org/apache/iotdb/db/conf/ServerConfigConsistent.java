@@ -17,11 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.metadata;
+package org.apache.iotdb.db.conf;
 
-public class PathNotExistException extends MetadataException {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-  public PathNotExistException(String path) {
-    super(String.format("Path [%s] does not exist", path));
-  }
+/**
+ * Configurations using this annotation should be the same across all nodes in a cluster.
+ */
+@Target({ElementType.FIELD})
+@Retention(RetentionPolicy.SOURCE)
+public @interface ServerConfigConsistent {
+  //TODO#IOTDB-436: the restarted server should check the
+  // configuration consistency as before.
+
 }
+

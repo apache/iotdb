@@ -29,6 +29,10 @@ public class MetadataException extends IoTDBException {
 
   private static final long serialVersionUID = 3415275599091623570L;
 
+  public MetadataException(Throwable cause) {
+    super(cause, TSStatusCode.METADATA_ERROR.getStatusCode());
+  }
+
   public MetadataException(Throwable cause, int errorCode) {
     super(cause, TSStatusCode.METADATA_ERROR.getStatusCode());
     this.errorCode = errorCode;

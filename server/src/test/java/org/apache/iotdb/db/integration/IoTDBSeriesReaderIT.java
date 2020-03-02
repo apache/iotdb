@@ -104,7 +104,7 @@ public class IoTDBSeriesReaderIT {
     EnvironmentUtils.cleanEnv();
   }
 
-  private static void insertData() throws ClassNotFoundException, SQLException {
+  private static void insertData() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -341,6 +341,7 @@ public class IoTDBSeriesReaderIT {
     Path path2 = new Path(Constant.d0s1);
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(path1,
         ValueFilter.lt(111));
+
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     pathList.add(path1);

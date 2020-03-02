@@ -36,11 +36,13 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -50,13 +52,14 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 public class AggregationExecutor {
 
   private List<Path> selectedSeries;
-  private List<TSDataType> dataTypes;
-  private List<String> aggregations;
-  private IExpression expression;
+  protected List<TSDataType> dataTypes;
+  protected List<String> aggregations;
+  protected IExpression expression;
 
   /**
    * aggregation batch calculation size.
@@ -107,32 +110,45 @@ public class AggregationExecutor {
    * @param context query context
    * @return AggregateResult list
    */
-  private List<AggregateResult> aggregateOneSeries(
+  protected List<AggregateResult> aggregateOneSeries(
       Map.Entry<Path, List<Integer>> pathToAggrIndexes,
       Filter timeFilter, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException {
     List<AggregateResult> aggregateResultList = new ArrayList<>();
-    List<Boolean> isCalculatedList = new ArrayList<>();
+
     Path seriesPath = pathToAggrIndexes.getKey();
     TSDataType tsDataType = dataTypes.get(pathToAggrIndexes.getValue().get(0));
-
-    // construct series reader without value filter
-    QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-        .getQueryDataSource(seriesPath, context, timeFilter);
-    // update filter by TTL
-    timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
-
-    IAggregateReader seriesReader = new SeriesAggregateReader(pathToAggrIndexes.getKey(),
-        tsDataType, context, queryDataSource, timeFilter, null, null);
 
     for (int i : pathToAggrIndexes.getValue()) {
       // construct AggregateResult
       AggregateResult aggregateResult = AggregateResultFactory
           .getAggrResultByName(aggregations.get(i), tsDataType);
       aggregateResultList.add(aggregateResult);
+    }
+    aggregateOneSeries(seriesPath, context, timeFilter, tsDataType, aggregateResultList, null);
+    return aggregateResultList;
+  }
+
+  public static void aggregateOneSeries(Path seriesPath, QueryContext context, Filter timeFilter,
+      TSDataType tsDataType, List<AggregateResult> aggregateResultList, TsFileFilter fileFilter)
+      throws StorageEngineException, IOException, QueryProcessException {
+    List<Boolean> isCalculatedList = new ArrayList<>();
+    for (int i = 0; i < aggregateResultList.size(); i++) {
       isCalculatedList.add(false);
     }
-    int remainingToCalculate = pathToAggrIndexes.getValue().size();
+    // construct series reader without value filter
+    QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+        .getQueryDataSource(seriesPath, context, timeFilter);
+    if (fileFilter != null) {
+      QueryUtils.filterQueryDataSource(queryDataSource, fileFilter);
+    }
+    // update filter by TTL
+    timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
+
+    IAggregateReader seriesReader = new SeriesAggregateReader(seriesPath,
+        tsDataType, context, queryDataSource, timeFilter, null, null);
+
+    int remainingToCalculate = aggregateResultList.size();
 
     while (seriesReader.hasNextChunk()) {
       // cal by chunk statistics
@@ -146,7 +162,7 @@ public class AggregationExecutor {
               isCalculatedList.set(i, true);
               remainingToCalculate--;
               if (remainingToCalculate == 0) {
-                return aggregateResultList;
+                return;
               }
             }
           }
@@ -166,7 +182,7 @@ public class AggregationExecutor {
                 isCalculatedList.set(i, true);
                 remainingToCalculate--;
                 if (remainingToCalculate == 0) {
-                  return aggregateResultList;
+                  return;
                 }
               }
             }
@@ -186,7 +202,7 @@ public class AggregationExecutor {
                 isCalculatedList.set(i, true);
                 remainingToCalculate--;
                 if (remainingToCalculate == 0) {
-                  return aggregateResultList;
+                  return;
                 }
               }
             }
@@ -194,7 +210,6 @@ public class AggregationExecutor {
         }
       }
     }
-    return aggregateResultList;
   }
 
   /**
@@ -203,15 +218,14 @@ public class AggregationExecutor {
    * @param context query context.
    */
   public QueryDataSet executeWithValueFilter(QueryContext context)
-      throws StorageEngineException, PathException, IOException {
+      throws StorageEngineException, IOException {
 
-    ServerTimeGenerator timestampGenerator = new ServerTimeGenerator(expression, context);
+    TimeGenerator timestampGenerator = getTimeGenerator(context);
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       Path path = selectedSeries.get(i);
-      SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path,
-          dataTypes.get(i), context,
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
+      IReaderByTimestamp seriesReaderByTimestamp = getReaderByTime(path,
+          dataTypes.get(i), context);
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
 
@@ -225,11 +239,22 @@ public class AggregationExecutor {
     return constructDataSet(aggregateResults);
   }
 
+  protected TimeGenerator getTimeGenerator(QueryContext context) throws StorageEngineException {
+    return new ServerTimeGenerator(expression, context);
+  }
+
+  protected IReaderByTimestamp getReaderByTime(Path path, TSDataType dataType,
+      QueryContext context) throws StorageEngineException {
+    return new SeriesReaderByTimestamp(path,
+        dataType, context,
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
+  }
+
   /**
    * calculate aggregation result with value filter.
    */
   private void aggregateWithValueFilter(List<AggregateResult> aggregateResults,
-      ServerTimeGenerator timestampGenerator, List<IReaderByTimestamp> readersOfSelectedSeries)
+      TimeGenerator timestampGenerator, List<IReaderByTimestamp> readersOfSelectedSeries)
       throws IOException {
 
     while (timestampGenerator.hasNext()) {

@@ -18,18 +18,25 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.crud.*;
+import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.*;
 
 /**
  * concat paths in select and from clause.
@@ -174,7 +181,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
    * @param seriesLimit is ensured to be positive integer
    * @param seriesOffset is ensured to be non-negative integer
    */
-  public void slimitTrim(SelectOperator select, int seriesLimit, int seriesOffset)
+  private void slimitTrim(SelectOperator select, int seriesLimit, int seriesOffset)
       throws LogicalOptimizeException {
     List<Path> suffixList = select.getSuffixPaths();
     List<String> aggregations = select.getAggregations();
@@ -268,7 +275,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     LinkedHashMap<String, Integer> pathMap = new LinkedHashMap<>();
     try {
       for (Path path : paths) {
-        List<String> all = MManager.getInstance().getAllTimeseriesName(path.getFullPath());
+        List<String> all = removeWildcard(path.getFullPath());
         for (String subPath : all) {
           if (!pathMap.containsKey(subPath)) {
             pathMap.put(subPath, 1);
@@ -290,7 +297,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<String> newAggregations = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       try {
-        List<String> actualPaths = MManager.getInstance().getAllTimeseriesName(paths.get(i).getFullPath());
+        List<String> actualPaths = removeWildcard(paths.get(i).getFullPath());
         for (String actualPath : actualPaths) {
           retPaths.add(new Path(actualPath));
           if (afterConcatAggregations != null && !afterConcatAggregations.isEmpty()) {
@@ -303,5 +310,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
     selectOperator.setSuffixPathList(retPaths);
     selectOperator.setAggregations(newAggregations);
+  }
+
+  protected List<String> removeWildcard(String path) throws MetadataException {
+    return MManager.getInstance().getAllTimeseriesName(path);
   }
 }

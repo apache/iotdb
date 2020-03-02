@@ -26,7 +26,6 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
@@ -98,7 +97,7 @@ public class IoTDBSequenceDataQueryIT {
     EnvironmentUtils.cleanEnv();
   }
 
-  private static void insertData() throws ClassNotFoundException, SQLException {
+  private static void insertData() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -133,7 +132,7 @@ public class IoTDBSequenceDataQueryIT {
 
       // insert data (time from 1200-1499)
       for (long time = 1200; time < 1500; time++) {
-        String sql = null;
+        String sql;
         if (time % 2 == 0) {
           sql = String
               .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 17);

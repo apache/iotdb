@@ -37,9 +37,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
-import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -76,7 +74,7 @@ public class TTLTest {
 
   @Before
   public void setUp()
-      throws MetadataException, IOException, StartupException, PathException, StorageGroupProcessorException {
+      throws MetadataException, IOException, StartupException, StorageGroupProcessorException {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
     createSchemas();

@@ -22,6 +22,9 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * CountPlan is used to count time-series and count nodes.
+ * COUNT_TIMESERIES if  using "COUNT TIMESERIES <Path>" and only this command supports wildcard.
+ * COUNT_NODE_TIMESERIES if using "COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>"
+ * COUNT_NODE if using "COUNT NODES <Path> LEVEL=<INTEGER>"
  */
 public class CountPlan extends ShowPlan {
 
