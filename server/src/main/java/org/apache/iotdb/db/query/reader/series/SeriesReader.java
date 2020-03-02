@@ -143,7 +143,11 @@ public class SeriesReader {
         LOGGER.warn("@++++<<<<<: {} has data in mergeReader", seriesPath.getFullPath());
       }
 
-      throw new IOException("all cached pages should be consumed first");
+      IOException exception = new IOException("all cached pages should be consumed first");
+      exception.printStackTrace();
+
+      throw exception;
+
     }
 
     // init first chunk metadata whose startTime is minimum
