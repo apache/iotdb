@@ -40,9 +40,12 @@ public class IoTDBClient {
     calciteConnection.setSchema("IoTDBSchema");*/
 
     Statement statement = calciteConnection.createStatement();
-    String sql = "SELECT \"root.ln\".\"device\", \"root.ln\".\"temperature\", \"root.sg\".\"device\", \"root.sg\".\"temperature\" "
+/*    String sql = "SELECT \"root.ln\".\"device\", \"root.ln\".\"temperature\", \"root.sg\".\"device\", \"root.sg\".\"temperature\" "
         + "FROM \"root.ln\" "
-        + "JOIN \"root.sg\" ON \"root.sg\".\"time\" = \"root.ln\".\"time\"";
+        + "JOIN \"root.sg\" ON \"root.sg\".\"time\" = \"root.ln\".\"time\"";*/
+    String sql = "SELECT \"root.ln\".\"device\", \"root.ln\".\"temperature\", \"root.sg\".\"device\", \"root.sg\".\"temperature\" "
+        + "FROM \"root.ln\", \"root.sg\" "
+        + "WHERE \"root.ln\".\"time\" = \"root.sg\".\"time\"";
 
     IoTDBClient ioTDBClient = new IoTDBClient();
     ioTDBClient.query(statement, sql);

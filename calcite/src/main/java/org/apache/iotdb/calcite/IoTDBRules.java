@@ -30,9 +30,11 @@ import org.apache.calcite.rel.convert.ConverterRule;
 import org.apache.calcite.rel.logical.LogicalFilter;
 import org.apache.calcite.rel.logical.LogicalProject;
 import org.apache.calcite.rel.type.RelDataType;
+import org.apache.calcite.rex.RexCall;
 import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.rex.RexVisitorImpl;
+import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.validate.SqlValidatorUtil;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 
@@ -86,6 +88,44 @@ public class IoTDBRules {
 
     private IoTDBFilterRule() {
       super(LogicalFilter.class, Convention.NONE, IoTDBRel.CONVENTION, "IoTDBFilterRule");
+    }
+
+    @Override
+    public boolean matches(RelOptRuleCall call) {
+      LogicalFilter filter = call.rel(0);
+      RexNode condition = filter.getCondition();
+
+      return compareFieldWithLiteral(condition);
+    }
+
+    /**
+     * Check if all binary operations in filter are comparing a variable with a literal or just two
+     * literals.
+     *
+     * @param node Condition node to check
+     */
+    private boolean compareFieldWithLiteral(RexNode node) {
+      RexCall call = (RexCall) node;
+      switch (call.getKind()) {
+        case AND:
+        case OR:
+          for (RexNode childOperand : call.getOperands()) {
+            if (!compareFieldWithLiteral(childOperand)) {
+              return false;
+            }
+          }
+          return true;
+        case EQUALS:
+        case NOT_EQUALS:
+        case GREATER_THAN:
+        case GREATER_THAN_OR_EQUAL:
+        case LESS_THAN:
+        case LESS_THAN_OR_EQUAL:
+          return call.getOperands().get(0).isA(SqlKind.LITERAL) || call.getOperands().get(1)
+              .isA(SqlKind.LITERAL);
+        default:
+          return false;
+      }
     }
 
     public RelNode convert(RelNode rel) {
