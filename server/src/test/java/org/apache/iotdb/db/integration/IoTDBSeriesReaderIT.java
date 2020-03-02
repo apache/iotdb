@@ -344,12 +344,12 @@ public class IoTDBSeriesReaderIT {
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
 
     List<Path> pathList = new ArrayList<>();
-    pathList.add(path1);
+//    pathList.add(path1);
     pathList.add(path2);
     queryPlan.setDeduplicatedPaths(pathList);
 
     List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.INT32);
+//    dataTypes.add(TSDataType.INT32);
     dataTypes.add(TSDataType.INT64);
     queryPlan.setDeduplicatedDataTypes(dataTypes);
 

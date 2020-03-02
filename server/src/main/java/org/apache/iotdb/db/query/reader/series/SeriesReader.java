@@ -306,9 +306,9 @@ public class SeriesReader {
       return true;
     }
 
-    tryToPutAllDirectlyOverlappedPageReadersIntoMergeReader();
-
     while (true) {
+
+      tryToPutAllDirectlyOverlappedPageReadersIntoMergeReader();
 
       if (mergeReader.hasNextTimeValuePair()) {
 
@@ -320,7 +320,7 @@ public class SeriesReader {
           TimeValuePair timeValuePair = mergeReader.currentTimeValuePair();
 
           if (timeValuePair.getTimestamp() == 100492) {
-            System.out.println("@+++++<<<<< " + timeValuePair);
+            System.out.println("@+++++<<<<< series: " + seriesPath.getFullPath() + " point: " + timeValuePair);
           }
 
           if (timeValuePair.getTimestamp() > currentPageEndTime) {
@@ -399,6 +399,7 @@ public class SeriesReader {
         && pageReader.data.getStatistics().getEndTime() >= 100492) {
       LOGGER.warn("@+++++<<<<: versino: {}, page: {}, ", pageReader.version,
           pageReader.data.getStatistics());
+      LOGGER.warn("@+++++<<<<: merge reader: {}", mergeReader.hashCode());
       new IOException("@++++<<<").printStackTrace();
     }
 
