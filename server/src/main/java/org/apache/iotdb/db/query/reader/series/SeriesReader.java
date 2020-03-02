@@ -136,6 +136,11 @@ public class SeriesReader {
       throw new IOException("all cached pages should be consumed first");
     }
 
+    // current chunk not consume
+    if (firstChunkMetaData != null) {
+      return true;
+    }
+
     // init first chunk metadata whose startTime is minimum
     tryToUnpackAllOverlappedFilesToChunkMetadatas();
 
