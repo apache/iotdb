@@ -86,7 +86,7 @@ public class IoTDBCloseIT {
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
 
-      for (String sql : org.apache.iotdb.db.constant.TestConstant.create_sql) {
+      for (String sql : TestConstant.create_sql) {
         statement.execute(sql);
       }
 
@@ -140,7 +140,7 @@ public class IoTDBCloseIT {
       int cnt1 = 0;
       while (resultSet1.next() && cnt1 < 5) {
         StringBuilder builder = new StringBuilder();
-        builder.append(resultSet1.getString(org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR))
+        builder.append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
                 .append(",")
                 .append(resultSet1.getString("root.fans.d0.s0"))
                 .append(",")
@@ -156,7 +156,7 @@ public class IoTDBCloseIT {
       int cnt2 = 0;
       while (resultSet2.next()) {
         StringBuilder builder = new StringBuilder();
-        builder.append(resultSet2.getString(org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR))
+        builder.append(resultSet2.getString(TestConstant.TIMESTAMP_STR))
                 .append(",")
                 .append(resultSet2.getString("root.fans.d0.s0"))
                 .append(",")

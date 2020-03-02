@@ -78,7 +78,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
       if (!pathExecutors.containsKey(path)) {
-        //init reader
+        //init GroupByExecutor
         pathExecutors.put(path,
             new GroupByExecutor(path, dataTypes.get(i), context, timeFilter));
       }
@@ -106,8 +106,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         GroupByExecutor executor = pathGroupByExecutorEntry.getValue();
         executor.resetAggregateResults();
         List<Pair<AggregateResult, Integer>> aggregations = executor.calcResult();
-        for (int i = 0; i < aggregations.size(); i++) {
-          fields[aggregations.get(i).right] = aggregations.get(i).left;
+        for (Pair<AggregateResult, Integer> aggregation : aggregations) {
+          fields[aggregation.right] = aggregation.left;
         }
       }
     } catch (QueryProcessException e) {
@@ -132,7 +132,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     //<aggFunction - indexForRecord> of path
     private List<Pair<AggregateResult, Integer>> results = new ArrayList<>();
 
-    public GroupByExecutor(Path path, TSDataType dataType, QueryContext context, Filter timeFilter)
+    GroupByExecutor(Path path, TSDataType dataType, QueryContext context, Filter timeFilter)
         throws StorageEngineException {
       QueryDataSource queryDataSource = QueryResourceManager.getInstance()
           .getQueryDataSource(path, context, timeFilter);
@@ -143,15 +143,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       this.preCachedData = null;
     }
 
-    public IAggregateReader getReader() {
-      return reader;
-    }
-
-    public void addAggregateResult(AggregateResult aggrResult, int index) {
+    private void addAggregateResult(AggregateResult aggrResult, int index) {
       results.add(new Pair<>(aggrResult, index));
     }
 
-    public boolean isEndCalc() {
+    private boolean isEndCalc() {
       for (Pair<AggregateResult, Integer> result : results) {
         if (!result.left.isCalculatedAggregationResult()) {
           return false;
@@ -160,14 +156,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       return true;
     }
 
-    public boolean calcFromCacheData() throws IOException {
+    private boolean calcFromCacheData() throws IOException {
       calcFromBatch(preCachedData);
       // The result is calculated from the cache
       return (preCachedData != null && preCachedData.getMaxTimestamp() >= curEndTime)
           || isEndCalc();
     }
 
-    public void calcFromBatch(BatchData batchData) throws IOException {
+    private void calcFromBatch(BatchData batchData) throws IOException {
       // is error data
       if (batchData == null
           || !batchData.hasCurrent()
@@ -197,7 +193,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
     }
 
-    public void calcFromStatistics(Statistics pageStatistics)
+    private void calcFromStatistics(Statistics pageStatistics)
         throws QueryProcessException {
       for (Pair<AggregateResult, Integer> result : results) {
         //cacl is compile
@@ -240,7 +236,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
 
     // clear all results
-    public void resetAggregateResults() {
+    private void resetAggregateResults() {
       for (Pair<AggregateResult, Integer> result : results) {
         result.left.reset();
       }
