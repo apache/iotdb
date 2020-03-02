@@ -99,4 +99,8 @@ public class LeafMNode extends MNode {
       cachedLastValuePair.setValue(timeValuePair.getValue());
     }
   }
+
+  public void resetCache() {
+    cachedLastValuePair = null;
+  }
 }
