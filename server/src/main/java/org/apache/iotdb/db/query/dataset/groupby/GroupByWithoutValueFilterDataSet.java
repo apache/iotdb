@@ -77,14 +77,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSource(path, context, timeFilter);
-      // update filter by TTL
-      timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
       //init reader
       pathExecutors.putIfAbsent(path,
-          new GroupByExecutor(path, dataTypes.get(i), context, queryDataSource, timeFilter));
+          new GroupByExecutor(path, dataTypes.get(i), context, timeFilter));
 
       AggregateResult aggrResult = AggregateResultFactory
           .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(i),
@@ -136,10 +131,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     //<aggFunction - indexForRecord> of path
     private List<Pair<AggregateResult, Integer>> results = new ArrayList<>();
 
-    public GroupByExecutor(Path path, TSDataType dataType, QueryContext context,
-        QueryDataSource dataSource, Filter timeFilter) {
-      this.reader = new SeriesAggregateReader(path, dataType, context,
-          dataSource, timeFilter, null, null);
+    public GroupByExecutor(Path path, TSDataType dataType, QueryContext context, Filter timeFilter)
+        throws StorageEngineException {
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+          .getQueryDataSource(path, context, timeFilter);
+      // update filter by TTL
+      timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
+      this.reader = new SeriesAggregateReader(path, dataType, context, queryDataSource, timeFilter,
+          null, null);
       this.preCachedData = null;
     }
 
