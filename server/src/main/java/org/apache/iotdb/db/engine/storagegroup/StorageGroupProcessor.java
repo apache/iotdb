@@ -628,7 +628,12 @@ public class StorageGroupProcessor {
     // sequence: check the size of work memtable and may asyncTryToFlush the flush memtable
     // unsequence: check the size of work memtable and may asyncTryToFlush it
     if (tsFileProcessor.shouldFlush()) {
-      tsFileProcessor.adjustMemTable();
+      long updateFLushTime = tsFileProcessor.adjustMemTable();
+      if (latestFlushedTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId()) <
+          updateFLushTime) {
+        latestFlushedTimeForEachDevice.get(timePartitionId).
+            put(batchInsertPlan.getDeviceId(), updateFLushTime);
+      }
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
   }
@@ -660,7 +665,12 @@ public class StorageGroupProcessor {
     // sequence: check the size of work memtable and may asyncTryToFlush the flush memtable
     // unsequence: check the size of work memtable and may asyncTryToFlush it
     if (tsFileProcessor.shouldFlush()) {
-      tsFileProcessor.adjustMemTable();
+      long updateFLushTime = tsFileProcessor.adjustMemTable();
+      if (latestFlushedTimeForEachDevice.get(timePartitionId).get(insertPlan.getDeviceId()) <
+          updateFLushTime) {
+        latestFlushedTimeForEachDevice.get(timePartitionId).
+            put(insertPlan.getDeviceId(), updateFLushTime);
+      }
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
   }
@@ -1268,11 +1278,14 @@ public class StorageGroupProcessor {
       return false;
     }
 
-    for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
-      latestFlushedTimeForEachDevice
-          .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
-          .put(entry.getKey(), entry.getValue());
+    if (!processor.getSequence()) {
+      for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
+        latestFlushedTimeForEachDevice
+            .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
+            .put(entry.getKey(), entry.getValue());
+      }
     }
+
     return true;
   }
 

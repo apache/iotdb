@@ -672,11 +672,12 @@ public class TsFileProcessor {
     }
   }
 
-  public void adjustMemTable() throws QueryProcessException {
+  public long adjustMemTable() throws QueryProcessException {
     if (!sequence) {
-      return;
+      return Long.MIN_VALUE;
     }
     flushQueryLock.writeLock().lock();
+    long updateFlushTime = Long.MIN_VALUE;
     try {
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       IMemTable tmpWorkMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
@@ -728,6 +729,9 @@ public class TsFileProcessor {
           workBatchInsertPlan.setColumns(workColumns);
           workBatchInsertPlan.setRowCount(tvList.size() - rowCount);
           tmpWorkMemTable.insertBatch(workBatchInsertPlan, 0, tvList.size() - rowCount);
+          if (flushTimes[rowCount - 1] > updateFlushTime) {
+            updateFlushTime = flushTimes[rowCount - 1];
+          }
         }
       }
       workMemTable.release();
@@ -736,6 +740,7 @@ public class TsFileProcessor {
     } finally {
       flushQueryLock.writeLock().unlock();
     }
+    return updateFlushTime;
   }
 
   public int getFlushingMemTableSize() {
@@ -820,6 +825,10 @@ public class TsFileProcessor {
       }
     }
     return null;
+  }
+
+  public boolean getSequence() {
+    return sequence;
   }
 
   public long getTimeRangeId() {

@@ -328,7 +328,8 @@ public class IoTDBDescriptor {
 
       // the step of sliding window
       conf.setDefaultStep(
-          Float.parseFloat(properties.getProperty("default_step_of_sliding_window", String.valueOf(conf.getDefaultStep()))));
+          Float.parseFloat(properties.getProperty("default_step_of_sliding_window",
+              String.valueOf(conf.getDefaultStep()))));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
