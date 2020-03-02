@@ -507,7 +507,7 @@ public class IOTDBGroupByIT {
   }
 
   @Test
-  public void countSumAvgRelativeTimesTest() {
+  public void countSumAvgNoDataTest() {
     String[] retArray1 = new String[]{
         ",0,0.0,null",
         ",0,0.0,null",
@@ -539,6 +539,29 @@ public class IOTDBGroupByIT {
         }
         Assert.assertEquals(retArray1.length, cnt);
       }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void usingNowFunction() {
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+          + "values(now(), 35.5, false, 650)");
+      ResultSet resultSet = statement.executeQuery(
+          "select count(temperature), sum(temperature), avg(temperature) from "
+              + "root.ln.wf01.wt01 "
+              + "GROUP BY ([now() - 1h, now()), 1h)");
+      Assert.assertTrue(resultSet.next());
+      //resultSet.getLong(1) is the timestamp
+      Assert.assertEquals(1, Integer.valueOf(resultSet.getString(2)).intValue());
+      Assert.assertEquals(35.5, Float.valueOf(resultSet.getString(3)).floatValue(), 0.01);
+      Assert.assertEquals(35.5, Double.valueOf(resultSet.getString(4)).doubleValue(), 0.01);
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
