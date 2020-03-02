@@ -140,7 +140,7 @@ matrix:
         - mvn -version
         # Output something every 10 minutes or Travis kills the job
         - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-        - travis_wait 20 mvn -B clean integration-test
+        - travis_wait 30 mvn -B clean integration-test
         # Killing background sleep loop
         - kill %1
 
