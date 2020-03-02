@@ -40,6 +40,7 @@ Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.excepti
 ```
 
 ### Show Storage Group
+
 After the storage group is created, we can use the [SHOW STORAGE GROUP](/#/Documents/progress/chap5/sec4) statement to view all the storage groups. The SQL statement is as follows:
 
 ```
@@ -51,6 +52,7 @@ The result is as follows:
 
 
 ### Create Timeseries
+
 According to the storage model selected before, we can create corresponding timeseries in the two storage groups respectively. The SQL statements for creating timeseries are as follows:
 
 ```

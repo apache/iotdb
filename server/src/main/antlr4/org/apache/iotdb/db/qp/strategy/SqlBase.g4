@@ -24,17 +24,17 @@ singleStatement
     ;
 
 statement
-    : CREATE TIMESERIES timeseriesPath WITH attributeClauses #createTimeseries
+    : CREATE TIMESERIES fullPath WITH attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
-    | INSERT INTO timeseriesPath insertColumnSpec VALUES insertValuesSpec #insertStatement
+    | INSERT INTO fullPath insertColumnSpec VALUES insertValuesSpec #insertStatement
     | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
-    | SET STORAGE GROUP TO prefixPath #setStorageGroup
-    | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
+    | SET STORAGE GROUP TO fullPath #setStorageGroup
+    | DELETE STORAGE GROUP fullPath (COMMA fullPath)* #deleteStorageGroup
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
-    | CREATE INDEX ON timeseriesPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
-    | DROP INDEX function=ID ON timeseriesPath #dropIndex //not support yet
+    | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
+    | DROP INDEX function=ID ON fullPath #dropIndex //not support yet
     | MERGE #merge //not support yet
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
     | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
@@ -77,7 +77,7 @@ statement
     | MOVE FILE FILE #moveFile
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
-    p1=timeseriesPath COMMA p2=timeseriesPath COMMA n1=timeValue COMMA n2=timeValue COMMA
+    p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA
     epsilon=constant (COMMA alpha=constant COMMA beta=constant)?
     RR_BRACKET
     fromClause
@@ -271,7 +271,7 @@ propertyLabelPair
     : propertyName=ID DOT labelName=ID
     ;
 
-timeseriesPath
+fullPath
     : ROOT (DOT nodeNameWithoutStar)*
     ;
 
@@ -812,7 +812,7 @@ DATETIME
       (('+' | '-') INT ':' INT)?
     ;
 /** Allow unicode rule/token names */
-ID	:	NameChar NameChar*;
+ID : NameChar NameChar*;
 
 FILE
     :  (('a'..'z'| 'A'..'Z')(':')?)* (('\\' | '/')+ PATH_FRAGMENT) +
@@ -820,124 +820,124 @@ FILE
 
 fragment
 NameChar
-	:   'A'..'Z'
-	|   'a'..'z'
-	|   '0'..'9'
-	|   '_'
-	;
+    :   'A'..'Z'
+    |   'a'..'z'
+    |   '0'..'9'
+    |   '_'
+    ;
 
 fragment DOUBLE_QUOTE_STRING_LITERAL
-	:	'"' ('\\' . | ~'"' )*? '"'
-	;
+    : '"' ('\\' . | ~'"' )*? '"'
+    ;
 
 fragment SINGLE_QUOTE_STRING_LITERAL
-  : '\'' ('\\' . | ~'\'' )*? '\''
-  ;
+    : '\'' ('\\' . | ~'\'' )*? '\''
+    ;
 
 //Characters and write it this way for case sensitivity
 fragment A
-  : 'a' | 'A'
-  ;
+    : 'a' | 'A'
+    ;
 
 fragment B
-  : 'b' | 'B'
-  ;
+    : 'b' | 'B'
+    ;
 
 fragment C
-	: 'c' | 'C'
-	;
+    : 'c' | 'C'
+    ;
 
 fragment D
-	: 'd' | 'D'
-	;
+    : 'd' | 'D'
+    ;
 
 fragment E
-	: 'e' | 'E'
-	;
+    : 'e' | 'E'
+    ;
 
 fragment F
-	: 'f' | 'F'
-	;
+    : 'f' | 'F'
+    ;
 
 fragment G
-	: 'g' | 'G'
-	;
+    : 'g' | 'G'
+    ;
 
 fragment H
-	: 'h' | 'H'
-	;
+    : 'h' | 'H'
+    ;
 
 fragment I
-	: 'i' | 'I'
-	;
+    : 'i' | 'I'
+    ;
 
 fragment J
-	: 'j' | 'J'
-	;
+    : 'j' | 'J'
+    ;
 
 fragment K
-	: 'k' | 'K'
-	;
+    : 'k' | 'K'
+    ;
 
 fragment L
-	: 'l' | 'L'
-	;
+    : 'l' | 'L'
+    ;
 
 fragment M
-	: 'm' | 'M'
-	;
+    : 'm' | 'M'
+    ;
 
 fragment N
-	: 'n' | 'N'
-	;
+    : 'n' | 'N'
+    ;
 
 fragment O
-	: 'o' | 'O'
-	;
+    : 'o' | 'O'
+    ;
 
 fragment P
-	: 'p' | 'P'
-	;
+    : 'p' | 'P'
+    ;
 
 fragment Q
-	: 'q' | 'Q'
-	;
+    : 'q' | 'Q'
+    ;
 
 fragment R
-	: 'r' | 'R'
-	;
+    : 'r' | 'R'
+    ;
 
 fragment S
-	: 's' | 'S'
-	;
+    : 's' | 'S'
+    ;
 
 fragment T
-	: 't' | 'T'
-	;
+    : 't' | 'T'
+    ;
 
 fragment U
-	: 'u' | 'U'
-	;
+    : 'u' | 'U'
+    ;
 
 fragment V
-	: 'v' | 'V'
-	;
+    : 'v' | 'V'
+    ;
 
 fragment W
-	: 'w' | 'W'
-	;
+    : 'w' | 'W'
+    ;
 
 fragment X
-	: 'x' | 'X'
-	;
+    : 'x' | 'X'
+    ;
 
 fragment Y
-	: 'y' | 'Y'
-	;
+    : 'y' | 'Y'
+    ;
 
 fragment Z
-	: 'z' | 'Z'
-	;
+    : 'z' | 'Z'
+    ;
 
 fragment PATH_FRAGMENT
     : ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'-'|'.')*
