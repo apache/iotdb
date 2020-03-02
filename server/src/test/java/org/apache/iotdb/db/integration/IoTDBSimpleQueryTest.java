@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.fail;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -26,6 +28,7 @@ import java.sql.Statement;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -39,6 +42,62 @@ public class IoTDBSimpleQueryTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+  }
+
+  @Test
+  public void testEmptyDataSet() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()){
+
+      ResultSet resultSet = statement.executeQuery("select * from root");
+      // has an empty time column
+      Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
+      while(resultSet.next()) {
+        fail();
+      }
+
+      resultSet = statement.executeQuery(
+          "select count(*) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
+      // has an empty time column
+      Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
+      while (resultSet.next()) {
+        fail();
+      }
+
+      resultSet = statement.executeQuery("select count(*) from root");
+      // has no column
+      Assert.assertEquals(0, resultSet.getMetaData().getColumnCount());
+      while(resultSet.next()) {
+        fail();
+      }
+
+      resultSet = statement.executeQuery("select * from root align by device");
+      // has time and device columns
+      Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
+      while(resultSet.next()) {
+        fail();
+      }
+
+      resultSet = statement.executeQuery("select count(*) from root align by device");
+      // has device column
+      Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
+      while(resultSet.next()) {
+        fail();
+      }
+
+      resultSet = statement.executeQuery(
+          "select count(*) from root where time >= 1 and time <= 100 "
+              + "group by ([0, 100), 20ms, 20ms) align by device");
+      // has time and device columns
+      Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
+      while (resultSet.next()) {
+        fail();
+      }
+
+      resultSet.close();
+    }
   }
 
   @Test

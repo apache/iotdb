@@ -355,12 +355,6 @@ public class PhysicalGenerator {
         measurements.addAll(measurementSetOfGivenSuffix);
       }
 
-      if (measurements.isEmpty()
-          && alignByDevicePlan.getConstMeasurements().isEmpty()
-          && alignByDevicePlan.getNotExistMeasurements().isEmpty()) {
-        throw new QueryProcessException("do not select any existing series");
-      }
-
       // slimit trim on the measurementColumnList
       if (queryOperator.hasSlimit()) {
         int seriesSlimit = queryOperator.getSeriesLimit();

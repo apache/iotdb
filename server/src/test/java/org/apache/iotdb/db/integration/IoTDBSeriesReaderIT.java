@@ -79,7 +79,7 @@ public class IoTDBSeriesReaderIT {
     tsFileConfig.setPageSizeInByte(1024 * 1024 * 150);
     tsFileConfig.setGroupSizeInByte(1024 * 1024 * 150);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
-
+    
     // test result of IBatchReader should not cross partition
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(2);
 

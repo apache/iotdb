@@ -106,7 +106,7 @@ public abstract class AbstractMemTable implements IMemTable {
       throws QueryProcessException {
     try {
       write(batchInsertPlan, start, end);
-      long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan);
+      long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan, start, end);
       memSize += recordSizeInByte;
     } catch (RuntimeException e) {
       throw new QueryProcessException(e.getMessage());

@@ -51,24 +51,24 @@ It costs 0.417s
 * Set Storage Group
 
 ``` SQL
-SET STORAGE GROUP TO <PrefixPath>
+SET STORAGE GROUP TO <FullPath>
 Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
-Note: PrefixPath can not include `*`
+Note: FullPath can not include `*`
 ```
 
 * Delete Storage Group
 
 ```
-DELETE STORAGE GROUP <PrefixPath> [COMMA <PrefixPath>]*
+DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Note: PrefixPath can not include `*`
+Note: FullPath can not include `*`
 ```
 
 * Create Timeseries Statement
 
 ```
-CREATE TIMESERIES <Timeseries> WITH <AttributeClauses>
+CREATE TIMESERIES <FullPath> WITH <AttributeClauses>
 AttributeClauses : DATATYPE=<DataTypeValue> COMMA ENCODING=<EncodingValue> [COMMA <ExtraAttributeClause>]*
 DataTypeValue: BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
 EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF | REGULAR
@@ -343,9 +343,10 @@ Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammati
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
 
-* Group By Device Statement
+* Align By Device Statement
+
 ```
-GroupbyDeviceClause : GROUP BY DEVICE
+AlignbyDeviceClause : ALIGN BY DEVICE
 
 Rules:  
 1. Both uppercase and lowercase are ok.  
@@ -417,6 +418,7 @@ For example, "select s0,s0,s1 from root.sg.* align by device" is not equal to "s
    - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) align by device
 ```
 * Disable Align Statement
+
 ```
 Disable Align Clause: DISABLE ALIGN
 

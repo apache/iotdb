@@ -92,6 +92,13 @@ Users can start IoTDB by the start-server script under the sbin folder.
 > sbin\start-server.bat
 ```
 
+if you want to use JMX to connect IOTDB, you may need to add 
+
+```
+-Dcom.sun.management.jmxremote.rmi.port=PORT -Djava.rmi.server.hostname=IP 
+```
+to $IOTDB_JMX_OPTS in iotdb-env.sh. or iotdb-env.bat
+
 
 ### Use IoTDB
 
