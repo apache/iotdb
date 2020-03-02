@@ -322,34 +322,41 @@ public class SeriesReader {
 
     tryToPutAllDirectlyOverlappedPageReadersIntoMergeReader();
 
-    if (mergeReader.hasNextTimeValuePair()) {
-      cachedBatchData = new BatchData(dataType);
-      long currentPageEndTime = mergeReader.getCurrentLargestEndTime();
+    while (true) {
 
-      while (mergeReader.hasNextTimeValuePair()) {
+      if (mergeReader.hasNextTimeValuePair()) {
+        cachedBatchData = new BatchData(dataType);
+        long currentPageEndTime = mergeReader.getCurrentLargestEndTime();
 
-        TimeValuePair timeValuePair = mergeReader.currentTimeValuePair();
+        while (mergeReader.hasNextTimeValuePair()) {
 
-        if (timeValuePair.getTimestamp() > currentPageEndTime) {
-          break;
+          TimeValuePair timeValuePair = mergeReader.currentTimeValuePair();
+
+          if (timeValuePair.getTimestamp() > currentPageEndTime) {
+            break;
+          }
+
+          unpackAllOverlappedTsFilesToChunkMetadatas(timeValuePair.getTimestamp());
+          unpackAllOverlappedChunkMetadataToCachedPageReaders(timeValuePair.getTimestamp());
+          unpackAllOverlappedCachedPageReadersToMergeReader(timeValuePair.getTimestamp());
+
+          if (valueFilter == null || valueFilter
+              .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+            cachedBatchData.putAnObject(
+                timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
+          }
+
+          mergeReader.nextTimeValuePair();
+
         }
-
-        unpackAllOverlappedTsFilesToChunkMetadatas(timeValuePair.getTimestamp());
-        unpackAllOverlappedChunkMetadataToCachedPageReaders(timeValuePair.getTimestamp());
-        unpackAllOverlappedCachedPageReadersToMergeReader(timeValuePair.getTimestamp());
-
-        if (valueFilter == null || valueFilter
-            .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
-          cachedBatchData.putAnObject(
-              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
+        hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
+        if (hasCachedNextOverlappedPage) {
+          return true;
         }
-
-        mergeReader.nextTimeValuePair();
-
+      } else {
+        return false;
       }
-      hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
     }
-    return hasCachedNextOverlappedPage;
   }
 
   private void tryToPutAllDirectlyOverlappedPageReadersIntoMergeReader() throws IOException {
