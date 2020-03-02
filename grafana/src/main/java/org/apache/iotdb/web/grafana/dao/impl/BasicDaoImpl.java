@@ -86,7 +86,7 @@ public class BasicDaoImpl implements BasicDao {
     ConnectionCallback<Object> connectionCallback = new ConnectionCallback<Object>() {
       public Object doInConnection(Connection connection) throws SQLException {
         Statement statement = connection.createStatement();
-        statement.execute("show timeseries" + "root *");
+        statement.execute("show timeseries");
         ResultSet resultSet = statement.getResultSet();
         logger.info("Start to get timeseries");
         List<String> columnsName = new ArrayList<>();
