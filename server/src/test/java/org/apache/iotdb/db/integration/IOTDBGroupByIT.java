@@ -555,7 +555,7 @@ public class IOTDBGroupByIT {
       ResultSet resultSet = statement.executeQuery(
           "select count(temperature), sum(temperature), avg(temperature) from "
               + "root.ln.wf01.wt01 "
-              + "GROUP BY ([now() - 1h, now()), 1h)");
+              + "GROUP BY ([now() - 1h, now() + 1h), 2h)");
       Assert.assertTrue(resultSet.next());
       //resultSet.getLong(1) is the timestamp
       Assert.assertEquals(1, Integer.valueOf(resultSet.getString(2)).intValue());
