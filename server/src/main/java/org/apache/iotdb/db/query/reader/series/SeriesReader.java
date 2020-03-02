@@ -136,6 +136,10 @@ public class SeriesReader {
       throw new IOException("all cached pages should be consumed first");
     }
 
+    if (firstPageReader != null) {
+      return true;
+    }
+
     // init first chunk metadata whose startTime is minimum
     tryToUnpackAllOverlappedFilesToChunkMetadatas();
 
@@ -171,7 +175,7 @@ public class SeriesReader {
     if (hasCachedNextOverlappedPage) {
       return true;
     } else if (mergeReader.hasNextTimeValuePair()) {
-      while (hasNextOverlappedPage()) {
+      if (hasNextOverlappedPage()) {
         cachedBatchData = nextOverlappedPage();
         if (cachedBatchData != null && cachedBatchData.hasCurrent()) {
           return hasCachedNextOverlappedPage = true;
@@ -200,11 +204,13 @@ public class SeriesReader {
       }
     }
 
-    if (firstPageReader != null && isPageOverlapped()) {
+    if (firstPageReader != null && !cachedPageReaders.isEmpty() &&
+        firstPageReader.data.getStatistics().getEndTime() >=
+            cachedPageReaders.peek().data.getStatistics().getStartTime()) {
       /*
-       * next page is overlapped, read data and cache
+       * next page is overlapped, read overlapped data and cache it
        */
-      while (hasNextOverlappedPage()) {
+      if (hasNextOverlappedPage()) {
         cachedBatchData = nextOverlappedPage();
         if (cachedBatchData != null && cachedBatchData.hasCurrent()) {
           return hasCachedNextOverlappedPage = true;
@@ -246,10 +252,25 @@ public class SeriesReader {
 
   /**
    * This method should be called after calling hasNextPage.
+   *
+   * hasNextPage may cache firstPageReader if it is not overlapped
+   * or cached a BatchData if the first page is overlapped
+   *
    */
-  protected boolean isPageOverlapped() {
-    if (hasCachedNextOverlappedPage || mergeReader.hasNextTimeValuePair()) {
+  protected boolean isPageOverlapped() throws IOException {
+
+    /*
+     * has an overlapped page
+     */
+    if (hasCachedNextOverlappedPage) {
       return true;
+    }
+
+    /*
+     * has a non-overlapped page in firstPageReader
+     */
+    if (mergeReader.hasNextTimeValuePair()) {
+      throw new IOException("overlapped data should be consumed first");
     }
 
     Statistics firstPageStatistics = firstPageReader.data.getStatistics();
@@ -298,7 +319,8 @@ public class SeriesReader {
   }
 
   /**
-   * This method should be called after hasNextChunk and hasNextPage methods.
+   * read overlapped data till currentLargestEndTime in mergeReader,
+   * if current batch does not contain data, read till next currentLargestEndTime again
    */
   private boolean hasNextOverlappedPage() throws IOException {
 

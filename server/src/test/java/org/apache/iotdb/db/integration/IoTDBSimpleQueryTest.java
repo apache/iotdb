@@ -111,19 +111,19 @@ public class IoTDBSimpleQueryTest {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
 
-      // chunk : [1,10]
+      // seq chunk : [1,10]
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (1, 1)");
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (10, 10)");
 
       statement.execute("flush");
 
-      // chunk : [13,20]
+      // seq chunk : [13,20]
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (13, 13)");
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (20, 20)");
 
       statement.execute("flush");
 
-      // chunk : [5,15]
+      // unseq chunk : [5,15]
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (5, 5)");
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (15, 15)");
 
@@ -141,6 +141,50 @@ public class IoTDBSimpleQueryTest {
     }
   }
 
+
+  @Test
+  public void testOverlappedPagesMerge() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()){
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
+
+      // seq chunk : start-end [1000, 1000]
+      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (1000, 0)");
+
+      statement.execute("flush");
+
+      // unseq chunk : [1,10]
+      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (1, 1)");
+      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (10, 10)");
+
+      statement.execute("flush");
+
+      // usneq chunk : [5,15]
+      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (15, 15)");
+
+      statement.execute("flush");
+
+      // unseq chunk : [15,15]
+      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (15, 150)");
+
+      statement.execute("flush");
+
+      ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0 where s0 < 100");
+
+      long count = 0;
+
+      while(resultSet.next()) {
+        count++;
+      }
+
+      Assert.assertEquals(4, count);
+    }
+  }
 
   @Test
   public void testUnseqUnsealedDeleteQuery() throws SQLException, ClassNotFoundException {
