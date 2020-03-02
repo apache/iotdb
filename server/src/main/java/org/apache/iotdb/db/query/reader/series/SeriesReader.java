@@ -133,16 +133,6 @@ public class SeriesReader {
 
     if (!cachedPageReaders.isEmpty() || firstPageReader != null || mergeReader
         .hasNextTimeValuePair()) {
-      if (!cachedPageReaders.isEmpty()) {
-        LOGGER.warn("@++++<<<<<: {} has cachedPageReaders", seriesPath.getFullPath());
-      }
-      if (firstPageReader != null) {
-        LOGGER.warn("@++++<<<<<: {} has firstPageReader", seriesPath.getFullPath());
-      }
-      if (mergeReader.hasNextTimeValuePair()) {
-        LOGGER.warn("@++++<<<<<: {} has data in mergeReader", seriesPath.getFullPath());
-      }
-
       throw new IOException("all cached pages should be consumed first");
     }
 
@@ -258,7 +248,7 @@ public class SeriesReader {
    * This method should be called after calling hasNextPage.
    */
   protected boolean isPageOverlapped() {
-    if (hasCachedNextOverlappedPage) {
+    if (hasCachedNextOverlappedPage || mergeReader.hasNextTimeValuePair()) {
       return true;
     }
 
@@ -318,34 +308,45 @@ public class SeriesReader {
 
     tryToPutAllDirectlyOverlappedPageReadersIntoMergeReader();
 
-    if (mergeReader.hasNextTimeValuePair()) {
-      cachedBatchData = new BatchData(dataType);
-      long currentPageEndTime = mergeReader.getCurrentLargestEndTime();
+    while (true) {
 
-      while (mergeReader.hasNextTimeValuePair()) {
+      if (mergeReader.hasNextTimeValuePair()) {
 
-        TimeValuePair timeValuePair = mergeReader.currentTimeValuePair();
+        cachedBatchData = new BatchData(dataType);
+        long currentPageEndTime = mergeReader.getCurrentLargestEndTime();
 
-        if (timeValuePair.getTimestamp() > currentPageEndTime) {
-          break;
+        while (mergeReader.hasNextTimeValuePair()) {
+
+          TimeValuePair timeValuePair = mergeReader.currentTimeValuePair();
+
+          if (timeValuePair.getTimestamp() > currentPageEndTime) {
+            break;
+          }
+
+          unpackAllOverlappedTsFilesToChunkMetadatas(timeValuePair.getTimestamp());
+          unpackAllOverlappedChunkMetadataToCachedPageReaders(timeValuePair.getTimestamp());
+          unpackAllOverlappedCachedPageReadersToMergeReader(timeValuePair.getTimestamp());
+
+          if (valueFilter == null || valueFilter
+              .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+            cachedBatchData.putAnObject(
+                timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
+          }
+
+          mergeReader.nextTimeValuePair();
+
         }
-
-        unpackAllOverlappedTsFilesToChunkMetadatas(timeValuePair.getTimestamp());
-        unpackAllOverlappedChunkMetadataToCachedPageReaders(timeValuePair.getTimestamp());
-        unpackAllOverlappedCachedPageReadersToMergeReader(timeValuePair.getTimestamp());
-
-        if (valueFilter == null || valueFilter
-            .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
-          cachedBatchData.putAnObject(
-              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
+        hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
+        /*
+         * if current overlapped page has valid data, return, otherwise read next overlapped page
+         */
+        if (hasCachedNextOverlappedPage) {
+          return true;
         }
-
-        mergeReader.nextTimeValuePair();
-
+      } else {
+        return false;
       }
-      hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
     }
-    return hasCachedNextOverlappedPage;
   }
 
   private void tryToPutAllDirectlyOverlappedPageReadersIntoMergeReader() throws IOException {
@@ -390,6 +391,13 @@ public class SeriesReader {
   }
 
   private void putPageReaderToMergeReader(VersionPair<IPageReader> pageReader) throws IOException {
+    if (pageReader.data.getStatistics().getStartTime() <= 100492
+        && pageReader.data.getStatistics().getEndTime() >= 100492) {
+      LOGGER.warn("@+++++<<<<: versino: {}, page: {}, " + pageReader.version,
+          pageReader.data.getStatistics());
+      new IOException("@++++<<<").printStackTrace();
+    }
+
     mergeReader.addReader(
         pageReader.data.getAllSatisfiedPageData().getBatchDataIterator(),
         pageReader.version, pageReader.data.getStatistics().getEndTime());

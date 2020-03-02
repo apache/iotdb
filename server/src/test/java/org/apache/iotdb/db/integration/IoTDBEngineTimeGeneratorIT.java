@@ -100,7 +100,7 @@ public class IoTDBEngineTimeGeneratorIT {
         Statement statement = connection.createStatement()) {
 
       // create storage group and measurement
-      for (String sql : Constant.create_sql) {
+      for (String sql : TestConstant.create_sql) {
         statement.execute(sql);
       }
 
@@ -116,7 +116,7 @@ public class IoTDBEngineTimeGeneratorIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 31);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            Constant.stringValue[(int) time % 5]);
+            TestConstant.stringValue[(int) time % 5]);
         statement.execute(sql);
 
         if (satisfyTimeFilter1(time)) {
@@ -148,7 +148,7 @@ public class IoTDBEngineTimeGeneratorIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 31);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            Constant.stringValue[(int) time % 5]);
+            TestConstant.stringValue[(int) time % 5]);
         statement.execute(sql);
       }
 
@@ -179,7 +179,7 @@ public class IoTDBEngineTimeGeneratorIT {
   public void testOneSeriesWithValueAndTimeFilter() throws IOException, StorageEngineException {
     //System.out.println("Test >>> root.vehicle.d0.s0 >= 14 && time > 500");
 
-    Path pd0s0 = new Path(Constant.d0s0);
+    Path pd0s0 = new Path(TestConstant.d0s0);
     ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(14);
     TimeFilter.TimeGt timeGt = TimeFilter.gt(500);
 
@@ -205,7 +205,7 @@ public class IoTDBEngineTimeGeneratorIT {
   public void testEmptySeriesWithValueFilter() throws IOException, StorageEngineException {
     //System.out.println("Test >>> root.vehicle.d1.s0 >= 5");
 
-    Path pd1s0 = new Path(Constant.d1s0);
+    Path pd1s0 = new Path(TestConstant.d1s0);
     ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(5);
 
     IExpression singleSeriesExpression = new SingleSeriesExpression(pd1s0, valueGtEq);
@@ -228,8 +228,8 @@ public class IoTDBEngineTimeGeneratorIT {
     System.out
         .println("Test >>> root.vehicle.d0.s0 >= 5 && root.vehicle.d0.s2 >= 11.5 || time > 900");
 
-    Path pd0s0 = new Path(Constant.d0s0);
-    Path pd0s2 = new Path(Constant.d0s2);
+    Path pd0s0 = new Path(TestConstant.d0s0);
+    Path pd0s2 = new Path(TestConstant.d0s2);
 
     ValueFilter.ValueGtEq valueGtEq5 = ValueFilter.gtEq(5);
     ValueFilter.ValueGtEq valueGtEq11 = ValueFilter.gtEq(11.5f);
