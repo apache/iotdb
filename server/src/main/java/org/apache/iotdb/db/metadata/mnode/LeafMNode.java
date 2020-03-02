@@ -83,18 +83,18 @@ public class LeafMNode extends MNode {
   }
 
   public synchronized void updateCachedLast(
-      TimeValuePair timeValuePair, boolean insertionUpdate, Long latestFlushedTime) {
+      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
     if (timeValuePair == null || timeValuePair.getValue() == null) return;
 
     if (cachedLastValuePair == null) {
       // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will update cache.
-      if (!insertionUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
+      if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
         cachedLastValuePair =
             new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
       }
     } else if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
         || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
-            && insertionUpdate)) {
+            && highPriorityUpdate)) {
       cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
       cachedLastValuePair.setValue(timeValuePair.getValue());
     }

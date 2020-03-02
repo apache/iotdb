@@ -52,8 +52,7 @@ public final class SelectOperator extends Operator {
     aggregations.add(aggregation);
   }
 
-  public void addLastPath(Path suffixPath) {
-    suffixList.add(suffixPath);
+  public void setLastQuery() {
     lastQuery = true;
   }
 
