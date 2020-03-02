@@ -77,10 +77,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-      //init reader
-      pathExecutors.putIfAbsent(path,
-          new GroupByExecutor(path, dataTypes.get(i), context, timeFilter));
-
+      if (!pathExecutors.containsKey(path)) {
+        //init reader
+        pathExecutors.put(path,
+            new GroupByExecutor(path, dataTypes.get(i), context, timeFilter));
+      }
       AggregateResult aggrResult = AggregateResultFactory
           .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(i),
               dataTypes.get(i));
