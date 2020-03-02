@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.integration;
 
-import static org.apache.iotdb.db.integration.TestConstant.count;
-import static org.apache.iotdb.db.integration.TestConstant.max_value;
-import static org.apache.iotdb.db.integration.TestConstant.min_time;
-import static org.apache.iotdb.db.integration.TestConstant.min_value;
+import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.max_value;
+import static org.apache.iotdb.db.constant.TestConstant.min_time;
+import static org.apache.iotdb.db.constant.TestConstant.min_value;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;

@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -45,7 +46,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
@@ -111,7 +111,7 @@ public class IoTDBSeriesReaderIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      for (String sql : TestConstant.create_sql) {
+      for (String sql : org.apache.iotdb.db.constant.TestConstant.create_sql) {
         statement.execute(sql);
       }
 
@@ -127,10 +127,10 @@ public class IoTDBSeriesReaderIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 22);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            TestConstant.stringValue[time % 5]);
+            org.apache.iotdb.db.constant.TestConstant.stringValue[time % 5]);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
-            TestConstant.booleanValue[time % 2]);
+            org.apache.iotdb.db.constant.TestConstant.booleanValue[time % 2]);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, time);
         statement.execute(sql);
@@ -196,7 +196,7 @@ public class IoTDBSeriesReaderIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time + 2);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            TestConstant.stringValue[time % 5]);
+            org.apache.iotdb.db.constant.TestConstant.stringValue[time % 5]);
         statement.execute(sql);
       }
 
@@ -227,7 +227,7 @@ public class IoTDBSeriesReaderIT {
             .format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, "goodman");
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
-            TestConstant.booleanValue[time % 2]);
+            org.apache.iotdb.db.constant.TestConstant.booleanValue[time % 2]);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, 9999);
         statement.execute(sql);
@@ -244,21 +244,21 @@ public class IoTDBSeriesReaderIT {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    pathList.add(new Path(TestConstant.d0s0));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d0s1));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s1));
     dataTypes.add(TSDataType.INT64);
-    pathList.add(new Path(TestConstant.d0s2));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s2));
     dataTypes.add(TSDataType.FLOAT);
-    pathList.add(new Path(TestConstant.d0s3));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s3));
     dataTypes.add(TSDataType.TEXT);
-    pathList.add(new Path(TestConstant.d0s4));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s4));
     dataTypes.add(TSDataType.BOOLEAN);
-    pathList.add(new Path(TestConstant.d0s5));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s5));
     dataTypes.add(TSDataType.DOUBLE);
-    pathList.add(new Path(TestConstant.d1s0));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d1s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d1s1));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d1s1));
     dataTypes.add(TSDataType.INT64);
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
@@ -284,7 +284,7 @@ public class IoTDBSeriesReaderIT {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    Path p = new Path(TestConstant.d0s0);
+    Path p = new Path(org.apache.iotdb.db.constant.TestConstant.d0s0);
     pathList.add(p);
     dataTypes.add(TSDataType.INT32);
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(p,
@@ -312,7 +312,7 @@ public class IoTDBSeriesReaderIT {
   @Test
   public void seriesTimeDigestReadTest() throws IOException, StorageEngineException {
     QueryRouter queryRouter = new QueryRouter();
-    Path path = new Path(TestConstant.d0s0);
+    Path path = new Path(org.apache.iotdb.db.constant.TestConstant.d0s0);
     List<TSDataType> dataTypes = Collections.singletonList(TSDataType.INT32);
     SingleSeriesExpression expression = new SingleSeriesExpression(path, TimeFilter.gt(22987L));
 
@@ -338,18 +338,18 @@ public class IoTDBSeriesReaderIT {
   @Test
   public void crossSeriesReadUpdateTest() throws IOException, StorageEngineException {
     QueryRouter queryRouter = new QueryRouter();
-    Path path1 = new Path(TestConstant.d0s0);
+    Path path1 = new Path(org.apache.iotdb.db.constant.TestConstant.d0s0);
     Path path2 = new Path(TestConstant.d0s1);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
 
     List<Path> pathList = new ArrayList<>();
-//    pathList.add(path1);
+    pathList.add(path1);
     pathList.add(path2);
     queryPlan.setDeduplicatedPaths(pathList);
 
     List<TSDataType> dataTypes = new ArrayList<>();
-//    dataTypes.add(TSDataType.INT32);
+    dataTypes.add(TSDataType.INT32);
     dataTypes.add(TSDataType.INT64);
     queryPlan.setDeduplicatedDataTypes(dataTypes);
 
@@ -364,10 +364,7 @@ public class IoTDBSeriesReaderIT {
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      RowRecord record = queryDataSet.next();
-      if (!timeValie(record.getTimestamp())) {
-        System.out.println("@++++++<<< invalid record " + record);
-      }
+      queryDataSet.next();
       cnt++;
     }
 
@@ -375,24 +372,6 @@ public class IoTDBSeriesReaderIT {
 
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
-
-
-  private boolean timeValie(long time) {
-    if (time >= 3000 && time < 13600) {
-      return true;
-    }
-    if (time >= 13700 && time < 24000) {
-      return true;
-    }
-    if (time >= 100500 && time < 101000) {
-      return true;
-    }
-    if (time >= 200000 && time < 200900) {
-      return true;
-    }
-    return false;
-  }
-
 
   @Test
   public void queryEmptySeriesTest() throws SQLException {

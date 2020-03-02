@@ -30,7 +30,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.integration.TestConstant;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.tools.watermark.WatermarkDetector;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;

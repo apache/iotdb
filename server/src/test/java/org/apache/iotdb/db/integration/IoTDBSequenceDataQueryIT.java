@@ -31,6 +31,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -105,7 +106,7 @@ public class IoTDBSequenceDataQueryIT {
         Statement statement = connection.createStatement()) {
 
       // create storage group and measurement
-      for (String sql : TestConstant.create_sql) {
+      for (String sql : org.apache.iotdb.db.constant.TestConstant.create_sql) {
         statement.execute(sql);
       }
 
@@ -121,7 +122,7 @@ public class IoTDBSequenceDataQueryIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 31);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            TestConstant.stringValue[(int) time % 5]);
+            org.apache.iotdb.db.constant.TestConstant.stringValue[(int) time % 5]);
         statement.execute(sql);
 
         if (time % 17 >= 14) {
@@ -149,7 +150,7 @@ public class IoTDBSequenceDataQueryIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 31);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            TestConstant.stringValue[(int) time % 5]);
+            org.apache.iotdb.db.constant.TestConstant.stringValue[(int) time % 5]);
         statement.execute(sql);
       }
 
@@ -165,19 +166,19 @@ public class IoTDBSequenceDataQueryIT {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    pathList.add(new Path(TestConstant.d0s0));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d0s1));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s1));
     dataTypes.add(TSDataType.INT64);
-    pathList.add(new Path(TestConstant.d0s2));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s2));
     dataTypes.add(TSDataType.FLOAT);
-    pathList.add(new Path(TestConstant.d0s3));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s3));
     dataTypes.add(TSDataType.TEXT);
-    pathList.add(new Path(TestConstant.d0s4));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s4));
     dataTypes.add(TSDataType.BOOLEAN);
-    pathList.add(new Path(TestConstant.d1s0));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d1s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d1s1));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d1s1));
     dataTypes.add(TSDataType.INT64);
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
@@ -203,11 +204,11 @@ public class IoTDBSequenceDataQueryIT {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    pathList.add(new Path(TestConstant.d0s0));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d1s0));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d1s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d1s1));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d1s1));
     dataTypes.add(TSDataType.INT64);
 
     GlobalTimeExpression globalTimeExpression = new GlobalTimeExpression(TimeFilter.gtEq(800L));
@@ -240,19 +241,19 @@ public class IoTDBSequenceDataQueryIT {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    pathList.add(new Path(TestConstant.d0s0));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d0s1));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s1));
     dataTypes.add(TSDataType.INT64);
-    pathList.add(new Path(TestConstant.d0s2));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s2));
     dataTypes.add(TSDataType.FLOAT);
-    pathList.add(new Path(TestConstant.d0s3));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s3));
     dataTypes.add(TSDataType.TEXT);
-    pathList.add(new Path(TestConstant.d0s4));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d0s4));
     dataTypes.add(TSDataType.BOOLEAN);
-    pathList.add(new Path(TestConstant.d1s0));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d1s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d1s1));
+    pathList.add(new Path(org.apache.iotdb.db.constant.TestConstant.d1s1));
     dataTypes.add(TSDataType.INT64);
 
     Path queryPath = new Path(TestConstant.d0s0);

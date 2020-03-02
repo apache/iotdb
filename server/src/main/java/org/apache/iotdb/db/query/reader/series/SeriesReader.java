@@ -317,11 +317,10 @@ public class SeriesReader {
 
         while (mergeReader.hasNextTimeValuePair()) {
 
+          /*
+           * get current first point in mergeReader, this maybe overlapped latter
+           */
           TimeValuePair timeValuePair = mergeReader.currentTimeValuePair();
-
-          if (timeValuePair.getTimestamp() == 100492) {
-            System.out.println("@+++++<<<<< series: " + seriesPath.getFullPath() + " point: " + timeValuePair);
-          }
 
           if (timeValuePair.getTimestamp() > currentPageEndTime) {
             break;
@@ -331,6 +330,9 @@ public class SeriesReader {
           unpackAllOverlappedChunkMetadataToCachedPageReaders(timeValuePair.getTimestamp());
           unpackAllOverlappedCachedPageReadersToMergeReader(timeValuePair.getTimestamp());
 
+          /*
+           * get the latest first point in mergeReader
+           */
           timeValuePair = mergeReader.nextTimeValuePair();
 
           if (valueFilter == null || valueFilter
@@ -338,8 +340,6 @@ public class SeriesReader {
             cachedBatchData.putAnObject(
                 timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
           }
-
-//          mergeReader.nextTimeValuePair();
 
         }
         hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
@@ -397,14 +397,6 @@ public class SeriesReader {
   }
 
   private void putPageReaderToMergeReader(VersionPair<IPageReader> pageReader) throws IOException {
-    if (pageReader.data.getStatistics().getStartTime() <= 100492
-        && pageReader.data.getStatistics().getEndTime() >= 100492) {
-      LOGGER.warn("@+++++<<<<: versino: {}, page: {}, ", pageReader.version,
-          pageReader.data.getStatistics());
-      LOGGER.warn("@+++++<<<<: merge reader: {}", mergeReader.hashCode());
-      new IOException("@++++<<<").printStackTrace();
-    }
-
     mergeReader.addReader(
         pageReader.data.getAllSatisfiedPageData().getBatchDataIterator(),
         pageReader.version, pageReader.data.getStatistics().getEndTime());
