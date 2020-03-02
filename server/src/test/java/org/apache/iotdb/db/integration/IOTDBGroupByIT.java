@@ -506,6 +506,45 @@ public class IOTDBGroupByIT {
     }
   }
 
+  @Test
+  public void countSumAvgRelativeTimesTest() {
+    String[] retArray1 = new String[]{
+        ",0,0.0,null",
+        ",0,0.0,null",
+        ",0,0.0,null",
+        ",0,0.0,null",
+        ",0,0.0,null",
+        ",0,0.0,null",
+    };
+
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select count(temperature), sum(temperature), avg(temperature) from "
+              + "root.ln.wf01.wt01 where temperature > 3 "
+              + "GROUP BY ([NOW()-30ms, NOW()), 5ms)");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = "," + resultSet
+              .getString(count("root.ln.wf01.wt01.temperature")) + "," +
+              resultSet.getString(sum("root.ln.wf01.wt01.temperature")) + "," + resultSet
+              .getString(avg("root.ln.wf01.wt01.temperature"));
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray1.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   private void prepareData() {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
