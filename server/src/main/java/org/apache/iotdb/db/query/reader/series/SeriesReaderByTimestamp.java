@@ -73,6 +73,11 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
      * consume chunk secondly
      */
     while (seriesReader.hasNextChunk()) {
+      Statistics statistics = seriesReader.currentChunkStatistics();
+      if (!satisfyTimeFilter(statistics)) {
+        seriesReader.skipCurrentChunk();
+        continue;
+      }
       if (readPageData(timestamp)) {
         return true;
       }
