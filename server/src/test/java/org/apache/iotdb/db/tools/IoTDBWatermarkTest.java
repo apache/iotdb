@@ -45,8 +45,8 @@ import org.junit.Test;
  */
 public class IoTDBWatermarkTest {
 
-  private static String filePath1 = org.apache.iotdb.db.constant.TestConstant.BASE_OUTPUT_PATH.concat("watermarked_query_result.csv");
-  private static String filePath2 = org.apache.iotdb.db.constant.TestConstant.BASE_OUTPUT_PATH.concat("notWatermarked_query_result.csv");
+  private static String filePath1 = TestConstant.BASE_OUTPUT_PATH.concat("watermarked_query_result.csv");
+  private static String filePath2 = TestConstant.BASE_OUTPUT_PATH.concat("notWatermarked_query_result.csv");
   private static PrintWriter writer1;
   private static PrintWriter writer2;
   private static String secretKey = "ASDFGHJKL";
