@@ -319,6 +319,10 @@ public class SeriesReader {
 
           TimeValuePair timeValuePair = mergeReader.currentTimeValuePair();
 
+          if (timeValuePair.getTimestamp() == 100492) {
+            System.out.println("@+++++<<<<< " + timeValuePair);
+          }
+
           if (timeValuePair.getTimestamp() > currentPageEndTime) {
             break;
           }
@@ -393,7 +397,7 @@ public class SeriesReader {
   private void putPageReaderToMergeReader(VersionPair<IPageReader> pageReader) throws IOException {
     if (pageReader.data.getStatistics().getStartTime() <= 100492
         && pageReader.data.getStatistics().getEndTime() >= 100492) {
-      LOGGER.warn("@+++++<<<<: versino: {}, page: {}, " + pageReader.version,
+      LOGGER.warn("@+++++<<<<: versino: {}, page: {}, ", pageReader.version,
           pageReader.data.getStatistics());
       new IOException("@++++<<<").printStackTrace();
     }

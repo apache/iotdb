@@ -415,7 +415,7 @@ public abstract class Statistics<T> {
 
   @Override
   public String toString() {
-    return "startTime: " + startTime + " endTime: " + endTime;
+    return "startTime: " + startTime + " endTime: " + endTime + " count: " + count;
   }
 
   @Override
