@@ -29,10 +29,13 @@ show version
 ```
 
 ```
-+---------------------------------------------------------------------------+
-|                                                             0.10.0|
-+---------------------------------------------------------------------------+
-It costs 0.001s
++---------------+
+|        version|
++---------------+
+|0.10.0-SNAPSHOT|
++---------------+
+Total line number = 1
+It costs 0.417s
 ```
 
 ### Schema语句
@@ -40,28 +43,28 @@ It costs 0.001s
 * 设置存储组
 
 ``` SQL
-SET STORAGE GROUP TO <PrefixPath>
+SET STORAGE GROUP TO <FullPath>
 Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
-Note: PrefixPath can not include `*`
+Note: FullPath can not include `*`
 ```
 * 删除存储组
 
 ```
-DELETE STORAGE GROUP <PrefixPath> [COMMA <PrefixPath>]*
+DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Note: PrefixPath can not include `*`
+Note: FullPath can not include `*`
 ```
 
 * 创建时间序列语句
 
 ```
-CREATE TIMESERIES <Timeseries> WITH <AttributeClauses>
+CREATE TIMESERIES <FullPath> WITH <AttributeClauses>
 AttributeClauses : DATATYPE=<DataTypeValue> COMMA ENCODING=<EncodingValue> [COMMA <ExtraAttributeClause>]*
 DataTypeValue: BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
 EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF | REGULAR
 ExtraAttributeClause: {
-	COMPRESSOR = <CompressorValue>
+	COMPRESSOR | COMPRESSION = <CompressorValue>
 	MAX_POINT_NUMBER = Integer
 }
 CompressorValue: UNCOMPRESSED | SNAPPY
@@ -140,11 +143,22 @@ Note: The path can be prefix path or timeseries path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
-* 显示设备语句
+* 显示所有设备语句
 
 ```
 SHOW DEVICES
 Eg: IoTDB > SHOW DEVICES
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* 显示特定设备语句
+
+```
+SHOW DEVICES <PrefixPath>
+Eg: IoTDB > SHOW DEVICES root
+Eg: IoTDB > SHOW DEVICES root.ln
+Eg: IoTDB > SHOW DEVICES root.*.wf01
+Note: The path can be prefix path or star path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -162,8 +176,9 @@ Note: This statement can be used in IoTDB Client and JDBC.
 SHOW CHILD PATHS <Path>
 Eg: IoTDB > SHOW CHILD PATHS root
 Eg: IoTDB > SHOW CHILD PATHS root.ln
-Eg: IoTDB > SHOW CHILD PATHS root.ln.wf01
-Note: The path can only be prefix path.
+Eg: IoTDB > SHOW CHILD PATHS root.*.wf01
+Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
+Note: The path can be prefix path or star path, the nodes can be in a "prefix + star" format. 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 ### 数据管理语句
@@ -222,6 +237,7 @@ SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
 Eg. IoTDB > SELECT * FROM root
 Eg. IoTDB > SELECT * FROM root where time > now() - 5m
+Eg. IoTDB > SELECT * FROM root.ln.*.wf*
 Eg. IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MAX_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature > 24
@@ -233,7 +249,7 @@ Note: In Version 0.7.0, if <WhereClause> includes `OR`, time filter can not be u
 Note: There must be a space on both sides of the plus and minus operator appearing in the time expression 
 ```
 
-* Group By语句
+* Group By 语句
 
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByClause>
@@ -262,7 +278,7 @@ Note: <TimeUnit> needs to be greater than 0
 Note: Third <TimeUnit> if set shouldn't be smaller than second <TimeUnit>
 ```
 
-* Fill语句
+* Fill 语句
 
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE <WhereClause> FILL <FillClause>
@@ -291,7 +307,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath>(FromClause) +
 Note: Integer in <TimeUnit> needs to be greater than 0
 ```
 
-* Limit语句
+* Limit & SLimit 语句
 
 ```
 SELECT <SelectClause> FROM <FromClause> [WHERE <WhereClause>] [<LIMITClause>] [<SLIMITClause>]
@@ -318,6 +334,116 @@ Eg. IoTDB > SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01
 Note: N, OFFSETValue, SN and SOFFSETValue must be greater than 0.
 Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammatical correctness.
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
+```
+
+* Align by device语句
+
+```
+AlignbyDeviceClause : ALIGN BY DEVICE
+
+规则:  
+1. 大小写不敏感.  
+正例: select * from root.sg1 align by device
+正例: select * from root.sg1 ALIGN BY DEVICE
+
+2. AlignbyDeviceClause 只能放在末尾.  
+正例: select * from root.sg1 where time > 10 align by device  
+错例: select * from root.sg1 align by device where time > 10  
+
+3. Select子句中的path只能是单层，或者通配符，不允许有path分隔符"."。
+正例: select s0,s1 from root.sg1.* align by device  
+正例: select s0,s1 from root.sg1.d0, root.sg1.d1 align by device  
+正例: select * from root.sg1.* align by device  
+正例: select * from root align by device  
+正例: select s0,s1,* from root.*.* align by device  
+错例: select d0.s1, d0.s2, d1.s0 from root.sg1 align by device  
+错例: select *.s0, *.s1 from root.* align by device  
+错例: select *.*.* from root align by device
+
+4.相同measurement的各设备的数据类型必须都相同，
+
+正例: select s0 from root.sg1.d0,root.sg1.d1 align by device   
+root.sg1.d0.s0 and root.sg1.d1.s0 are both INT32.  
+
+正例: select count(s0) from root.sg1.d0,root.sg1.d1 align by device   
+count(root.sg1.d0.s0) and count(root.sg1.d1.s0) are both INT64.  
+
+错例: select s0 from root.sg1.d0, root.sg2.d3 align by device  
+root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT. 
+
+5. 结果集的展示规则：对于select中给出的列，不论是否有数据（是否被注册），均会被显示。此外，select子句中还支持常数列（例如，'a', '123'等等）。
+例如, "select s0,s1,s2,'abc',s1,s2 from root.sg.d0, root.sg.d1, root.sg.d2 align by device". 假设只有下述三列有数据：
+- root.sg.d0.s0
+- root.sg.d0.s1
+- root.sg.d1.s0
+
+结果集形如:
+
+| Time | Device   | s0 | s1 |  s2  | 'abc' | s1 |  s2  |
+| ---  | ---      | ---| ---| null | 'abc' | ---| null |
+|  1   |root.sg.d0| 20 | 2.5| null | 'abc' | 2.5| null |
+|  2   |root.sg.d0| 23 | 3.1| null | 'abc' | 3.1| null |
+| ...  | ...      | ...| ...| null | 'abc' | ...| null |
+|  1   |root.sg.d1| 12 |null| null | 'abc' |null| null |
+|  2   |root.sg.d1| 19 |null| null | 'abc' |null| null |
+| ...  | ...      | ...| ...| null | 'abc' | ...| null |
+
+注意注意 设备'root.sg.d1'的's0'的值全为null
+
+6. 在From中重复写设备名字或者设备前缀是没有任何作用的。
+例如, "select s0,s1 from root.sg.d0,root.sg.d0,root.sg.d1 align by device" 等于 "select s0,s1 from root.sg.d0,root.sg.d1 align by device".  
+例如. "select s0,s1 from root.sg.*,root.sg.d0 align by device" 等于 "select s0,s1 from root.sg.* align by device".  
+
+7. 在Select子句中重复写列名是生效的。例如, "select s0,s0,s1 from root.sg.* align by device" 不等于 "select s0,s1 from root.sg.* align by device".
+
+8. 更多正例: 
+   - select * from root.vehicle align by device
+   - select s0,s0,s1 from root.vehicle.* align by device
+   - select s0,s1 from root.vehicle.* limit 10 offset 1 align by device
+   - select * from root.vehicle slimit 10 soffset 2 align by device
+   - select * from root.vehicle where time > 10 align by device
+   - select * from root.vehicle where root.vehicle.d0.s0>0 align by device
+   - select count(*) from root.vehicle align by device
+   - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) align by device
+   - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) align by device
+```
+
+* Disable align 语句
+
+```
+规则:  
+1. 大小写均可.  
+正例: select * from root.sg1 disable align  
+正例: select * from root.sg1 DISABLE ALIGN  
+
+2. Disable Align只能用于查询语句句尾.  
+正例: select * from root.sg1 where time > 10 disable align 
+错例: select * from root.sg1 disable align where time > 10 
+
+3. Disable Align 不能用于聚合查询、Fill语句、Group by或Group by device语句，但可用于Limit语句。
+正例: select * from root.sg1 limit 3 offset 2 disable align
+正例: select * from root.sg1 slimit 3 soffset 2 disable align
+错例: select count(s0),count(s1) from root.sg1.d1 disable align
+错例: select * from root.vehicle where root.vehicle.d0.s0>0 disable align
+错例: select * from root.vehicle align by device disable align
+
+4. 结果显示若无数据显示为空白.
+
+查询结果样式如下表:
+| Time | root.sg.d0.s1 | Time | root.sg.d0.s2 | Time | root.sg.d1.s1 |
+| ---  | ---           | ---  | ---           | ---  | ---           |
+|  1   | 100           | 20   | 300           | 400  | 600           |
+|  2   | 300           | 40   | 800           | 700  | 900           |
+|  4   | 500           |      |               | 800  | 1000          |
+|      |               |      |               | 900  | 8000          |
+
+5. 一些正确使用样例: 
+   - select * from root.vehicle disable align
+   - select s0,s0,s1 from root.vehicle.* disable align
+   - select s0,s1 from root.vehicle.* limit 10 offset 1 disable align
+   - select * from root.vehicle slimit 10 soffset 2 disable align
+   - select * from root.vehicle where time > 10 disable align
+
 ```
 
 ### 数据库管理语句

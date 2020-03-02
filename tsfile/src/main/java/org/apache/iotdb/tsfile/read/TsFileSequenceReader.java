@@ -18,16 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read;
 
-import static org.apache.iotdb.tsfile.write.writer.TsFileIOWriter.magicStringBytes;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
@@ -37,11 +27,7 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -54,9 +40,21 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static org.apache.iotdb.tsfile.write.writer.TsFileIOWriter.magicStringBytes;
+
 public class TsFileSequenceReader implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileSequenceReader.class);
+  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
   protected String file;
@@ -92,6 +90,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param loadMetadataSize -whether load meta data size
    */
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
+    if (resourceLogger.isInfoEnabled()) {
+      resourceLogger.info("{} reader is opened. {}", file, getClass().getName());
+    }
     this.file = file;
     tsFileInput = FSFactoryProducer.getFileInputFactory().getTsFileInput(file);
     // old version number of TsFile using little endian starts with "v"
@@ -113,7 +114,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     this(file, loadMetadata);
     this.cacheDeviceMetadata = cacheDeviceMetadata;
     if (cacheDeviceMetadata) {
-      deviceMetadataMap = new HashMap<>();
+      deviceMetadataMap = new ConcurrentHashMap<>();
     }
   }
 
@@ -437,16 +438,13 @@ public class TsFileSequenceReader implements AutoCloseable {
     ByteBuffer buffer = readData(position, header.getCompressedSize());
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(type);
     ByteBuffer uncompressedBuffer = ByteBuffer.allocate(header.getUncompressedSize());
-    switch (type) {
-      case UNCOMPRESSED:
-        return buffer;
-      default:
-        // FIXME if the buffer is not array-implemented.
-        unCompressor.uncompress(buffer.array(), buffer.position(), buffer.remaining(),
-            uncompressedBuffer.array(),
-            0);
-        return uncompressedBuffer;
-    }
+    if (type == CompressionType.UNCOMPRESSED) {
+      return buffer;
+    }// FIXME if the buffer is not array-implemented.
+    unCompressor.uncompress(buffer.array(), buffer.position(), buffer.remaining(),
+        uncompressedBuffer.array(),
+        0);
+    return uncompressedBuffer;
   }
 
   /**
@@ -466,6 +464,9 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   public void close() throws IOException {
+    if (resourceLogger.isInfoEnabled()) {
+      resourceLogger.info("{} reader is closed.", file);
+    }
     this.tsFileInput.close();
     deviceMetadataMap = null;
   }

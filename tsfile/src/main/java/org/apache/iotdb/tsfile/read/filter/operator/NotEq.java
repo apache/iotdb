@@ -64,10 +64,7 @@ public class NotEq<T extends Comparable<T>> extends UnaryFilter<T> {
   public boolean satisfyStartEndTime(long startTime, long endTime) {
     if (filterType == FilterType.TIME_FILTER) {
       long time = (Long) value;
-      if (time == startTime && time == endTime) {
-        return false;
-      }
-      return true;
+      return time != startTime || time != endTime;
     } else {
       return true;
     }
@@ -77,18 +74,14 @@ public class NotEq<T extends Comparable<T>> extends UnaryFilter<T> {
   public boolean containStartEndTime(long startTime, long endTime) {
     if (filterType == FilterType.TIME_FILTER) {
       long time = (Long) value;
-      if (time < startTime || time > endTime) {
-        return true;
-      } else {
-        return false;
-      }
+      return time < startTime || time > endTime;
     } else {
       return true;
     }
   }
 
   @Override
-  public Filter clone() {
+  public Filter copy() {
     return new NotEq(value, filterType);
   }
 

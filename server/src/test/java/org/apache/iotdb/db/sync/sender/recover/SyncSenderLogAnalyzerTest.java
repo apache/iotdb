@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.sync.sender.recover;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -46,6 +45,7 @@ import org.apache.iotdb.db.sync.sender.manage.ISyncFileManager;
 import org.apache.iotdb.db.sync.sender.manage.SyncFileManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.SyncUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -80,22 +80,21 @@ public class SyncSenderLogAnalyzerTest {
 
   @Test
   public void recover() throws IOException, MetadataException {
-    Map<String, Set<File>> allFileList = new HashMap<>();
+    Map<String, Map<Long, Set<File>>> allFileList = new HashMap<>();
 
     for (int i = 0; i < 3; i++) {
-      MManager.getInstance().setStorageGroupToMTree(getSgName(i));
+      MManager.getInstance().setStorageGroup(getSgName(i));
     }
     Random r = new Random(0);
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
-        if (!allFileList.containsKey(getSgName(i))) {
-          allFileList.put(getSgName(i), new HashSet<>());
-        }
+        allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>())
+            .computeIfAbsent(0L, k -> new HashSet<>());
         String rand = r.nextInt(10000) + TSFILE_SUFFIX;
         String fileName = FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
-            + File.separator + getSgName(i) + File.separator + rand;
+            + File.separator + getSgName(i) + File.separator + "0" + File.separator + rand;
         File file = new File(fileName);
-        allFileList.get(getSgName(i)).add(file);
+        allFileList.get(getSgName(i)).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
@@ -109,11 +108,13 @@ public class SyncSenderLogAnalyzerTest {
       }
     }
     manager.getValidFiles(dataDir);
-    assertTrue(isEmpty(manager.getLastLocalFilesMap()));
+    assertTrue(SyncUtils.isEmpty(manager.getLastLocalFilesMap()));
     senderLogger.startSyncTsFiles();
-    for (Set<File> newTsFiles : allFileList.values()) {
-      for (File file : newTsFiles) {
-        senderLogger.finishSyncTsfile(file);
+    for (Map<Long, Set<File>> map : allFileList.values()) {
+      for (Set<File> newTsFiles : map.values()) {
+        for (File file : newTsFiles) {
+          senderLogger.finishSyncTsfile(file);
+        }
       }
     }
     senderLogger.close();
@@ -121,37 +122,42 @@ public class SyncSenderLogAnalyzerTest {
     // recover log
     senderLogAnalyzer.recover();
     manager.getValidFiles(dataDir);
-    assertFalse(isEmpty(manager.getLastLocalFilesMap()));
-    Map<String, Set<File>> lastFilesMap = manager.getLastLocalFilesMap();
-    for (Entry<String, Set<File>> entry : allFileList.entrySet()) {
-      assertTrue(lastFilesMap.containsKey(entry.getKey()));
-      assertEquals(lastFilesMap.get(entry.getKey()).size(), entry.getValue().size());
-      assertTrue(lastFilesMap.get(entry.getKey()).containsAll(entry.getValue()));
-    }
+    assertFalse(SyncUtils.isEmpty(manager.getLastLocalFilesMap()));
+    Map<String, Map<Long, Set<File>>> lastFilesMap = manager.getLastLocalFilesMap();
+    assertFileMap(allFileList, lastFilesMap);
 
     // delete some files
     assertFalse(new File(config.getSenderFolderPath(), SyncConstant.SYNC_LOG_NAME).exists());
     senderLogger = new SyncSenderLogger(
         new File(config.getSenderFolderPath(), SyncConstant.SYNC_LOG_NAME));
     manager.getValidFiles(dataDir);
-    assertFalse(isEmpty(manager.getLastLocalFilesMap()));
+    assertFalse(SyncUtils.isEmpty(manager.getLastLocalFilesMap()));
     senderLogger.startSyncDeletedFilesName();
-    for (Set<File> newTsFiles : allFileList.values()) {
-      for (File file : newTsFiles) {
-        senderLogger.finishSyncDeletedFileName(file);
+    for (Map<Long, Set<File>> map : allFileList.values()) {
+      for (Set<File> newTsFiles : map.values()) {
+        for (File file : newTsFiles) {
+          senderLogger.finishSyncDeletedFileName(file);
+        }
       }
     }
     senderLogger.close();
     // recover log
     senderLogAnalyzer.recover();
     manager.getValidFiles(dataDir);
-    assertTrue(isEmpty(manager.getLastLocalFilesMap()));
-    assertTrue(isEmpty(manager.getDeletedFilesMap()));
-    Map<String, Set<File>> toBeSyncedFilesMap = manager.getToBeSyncedFilesMap();
-    for (Entry<String, Set<File>> entry : allFileList.entrySet()) {
-      assertTrue(toBeSyncedFilesMap.containsKey(entry.getKey()));
-      assertEquals(toBeSyncedFilesMap.get(entry.getKey()).size(), entry.getValue().size());
-      assertTrue(toBeSyncedFilesMap.get(entry.getKey()).containsAll(entry.getValue()));
+    assertTrue(SyncUtils.isEmpty(manager.getLastLocalFilesMap()));
+    assertTrue(SyncUtils.isEmpty(manager.getDeletedFilesMap()));
+    Map<String, Map<Long, Set<File>>> toBeSyncedFilesMap = manager.getToBeSyncedFilesMap();
+    assertFileMap(allFileList, toBeSyncedFilesMap);
+  }
+
+  private void assertFileMap(Map<String, Map<Long, Set<File>>> correctMap,
+      Map<String, Map<Long, Set<File>>> curMap) {
+    for (Entry<String, Map<Long, Set<File>>> entry : correctMap.entrySet()) {
+      assertTrue(curMap.containsKey(entry.getKey()));
+      for (Entry<Long, Set<File>> innerEntry : entry.getValue().entrySet()) {
+        assertTrue(
+            curMap.get(entry.getKey()).get(innerEntry.getKey()).containsAll(innerEntry.getValue()));
+      }
     }
   }
 

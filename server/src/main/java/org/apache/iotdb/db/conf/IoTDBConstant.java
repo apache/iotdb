@@ -75,10 +75,16 @@ public class IoTDBConstant {
   public static final String COLUMN_STORAGE_GROUP = "storage group";
   public static final String COLUMN_TTL = "ttl";
 
+  public static final String PATH_WILDCARD = "*";
+
   // data folder name
   public static final String SEQUENCE_FLODER_NAME = "sequence";
   public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
   public static final String TSFILE_NAME_SEPARATOR = "-";
 
-  public static final int MEMTABLE_NUM_IN_EACH_STORAGE_GROUP = 4;
+  // system folder name
+  public static final String SYSTEM_FOLDER_NAME = "system";
+  public static final String SCHEMA_FOLDER_NAME = "schema";
+  public static final String SYNC_FOLDER_NAME = "sync";
+  public static final String QUERY_FOLDER_NAME = "query";
 }

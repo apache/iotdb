@@ -24,7 +24,7 @@
 ## INSERT
 ### Insert Real-time Data
 
-IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](/#/Documents/progress/chap5/sec4) in [Client/Shell tools](/#/Tools/Client), or using [Java JDBC](/#/Documents/progress/chap4/sec2) to perform single or batch execution of [INSERT SQL statement](/#/Documents/progress/chap5/sec4).
+IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](/#/Documents/progress/chap5/sec4) in [Client/Shell tools](/#/Documents/progress/chap4/sec1), or using [Java JDBC](/#/Documents/progress/chap4/sec2) to perform single or batch execution of [INSERT SQL statement](/#/Documents/progress/chap5/sec4).
 
 This section mainly introduces the use of [INSERT SQL statement](/#/Documents/progress/chap5/sec4) for real-time data import in the scenario. See Section 5.4 for a detailed syntax of [INSERT SQL statement](/#/Documents/progress/chap5/sec4).
 
@@ -83,6 +83,7 @@ error: The TEXT data type should be covered by " or '
 ```
 
 ## SELECT
+
 ### Time Slice Query
 
 This chapter mainly introduces the relevant examples of time slice query using IoTDB SELECT statements. Detailed SQL syntax and usage specifications can be found in [SQL Documentation](/#/Documents/progress/chap5/sec4). You can also use the [Java JDBC](/#/Documents/progress/chap4/sec2) standard interface to execute related queries.
@@ -117,6 +118,7 @@ The execution result of this SQL statement is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280328-40a12800-a7ea-11e9-85b9-3b8db67673a3.png"></center>
 
 #### Select Multiple Columns of Data for the Same Device According to Multiple Time Intervals
+
 IoTDB supports specifying multiple time interval conditions in a query. Users can combine time interval conditions at will according to their needs. For example, the SQL statement is:
 
 ```
@@ -131,6 +133,7 @@ The execution result of this SQL statement is as follows:
 
 
 #### Choose Multiple Columns of Data for Different Devices According to Multiple Time Intervals
+
 The system supports the selection of data in any column in a query, i.e., the selected columns can come from different devices. For example, the SQL statement is:
 
 ```
@@ -144,6 +147,7 @@ The execution result of this SQL statement is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
 
 ### Down-Frequency Aggregate Query
+
 This section mainly introduces the related examples of down-frequency aggregation query, 
 using the [GROUP BY clause](/#/Documents/progress/chap5/sec4), 
 which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. 
@@ -168,6 +172,7 @@ and value filtering conditions specified.
 **Figure 5.2 The actual meanings of the three types of parameters**</center>
 
 #### Down-Frequency Aggregate Query without Specifying the Sliding Step Length
+
 The SQL statement is:
 
 ```
@@ -188,6 +193,7 @@ Since there is data for each time period in the result range to be displayed, th
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116068-eed51b00-0ac5-11ea-9731-b5a45c5cd224.png"></center>
 
 #### Down-Frequency Aggregate Query Specifying the Sliding Step Length
+
 The SQL statement is:
 
 ```
@@ -213,6 +219,7 @@ Since there is data for each time period in the result range to be displayed, th
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116083-f85e8300-0ac5-11ea-84f1-59d934eee96e.png"></center>
 
 #### Down-Frequency Aggregate Query Specifying the value Filtering Conditions
+
 The SQL statement is:
 
 ```
@@ -237,6 +244,7 @@ The path after SELECT in GROUP BY statement must be aggregate function, otherwis
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116099-0b715300-0ac6-11ea-8074-84e04797b8c7.png"></center>
 
 ### Automated Fill
+
 In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.
 
 Automated fill function refers to filling empty values according to the user's specified method and effective time range when performing timeseries queries for single or multiple columns. If the queried point's value is not null, the fill function will not work.
@@ -244,6 +252,7 @@ Automated fill function refers to filling empty values according to the user's s
 > Note: In the current version, IoTDB provides users with two methods: Previous and Linear. The previous method fills blanks with previous value. The linear method fills blanks through linear fitting. And the fill function can only be used when performing point-in-time queries.
 
 #### Fill Function
+
 * Previous Function
 
 When the value of the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows (see Section 7.1.3.6 for detailed syntax):
@@ -261,7 +270,7 @@ Detailed descriptions of all parameters are given in Table 3-4.
 |path, prefixPath|query path; mandatory field|
 |T|query timestamp (only one can be specified); mandatory field|
 |data\_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
-|before\_range|represents the valid time range of the previous method. The previous method works when there are values in the [T-before\_range, T] range. When before\_range is not specified, before\_range takes the default value T; optional field|
+|before\_range|represents the valid time range of the previous method. The previous method works when there are values in the [T-before\_range, T] range. When before\_range is not specified, before\_range takes the default value default\_fill\_interval; -1 represents infinit; optional field|
 </center>
 
 Here we give an example of filling null values using the previous method. The SQL statement is as follows:
@@ -271,7 +280,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 ```
 which means:
 
-Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp of 2017-11-01T16:37:50.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
+Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
 
 On the [sample data](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt), the execution result of this statement is shown below:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577616-67df0280-1ef5-11e9-9dff-2eb8342074eb.jpg"></center>
@@ -295,7 +304,7 @@ Detailed descriptions of all parameters are given in Table 3-5.
 |path, prefixPath|query path; mandatory field|
 |T|query timestamp (only one can be specified); mandatory field|
 |data_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
-|before\_range, after\_range|represents the valid time range of the linear method. The previous method works when there are values in the [T-before\_range, T+after\_range] range. When before\_range and after\_range are not explicitly specified, both before\_range and after\_range default to infinity; optional field|
+|before\_range, after\_range|represents the valid time range of the linear method. The previous method works when there are values in the [T-before\_range, T+after\_range] range. When before\_range and after\_range are not explicitly specified, default\_fill\_interval is used. -1 represents infinity; optional field|
 </center>
 
 Here we give an example of filling null values using the linear method. The SQL statement is as follows:
@@ -305,12 +314,13 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 ```
 which means:
 
-Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 21.927326, the next timestamp 2017-11-01T16:39:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 25.311783 to perform linear fitting calculation: 21.927326 + (25.311783-21.927326)/60s * 50s = 24.747707
+Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 21.927326, the next timestamp 2017-11-01T16:38:00.000 (and the timestamp is in the [2017-11-01T16:37:50.000, 2017-11-01T16:38:50.000] time range) and its value 25.311783 to perform linear fitting calculation: 21.927326 + (25.311783-21.927326)/60s * 50s = 24.747707
 
 On the [sample data](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt), the execution result of this statement is shown below:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577727-d4f29800-1ef5-11e9-8ff3-3bb519da3993.jpg"></center>
 
 #### Correspondence between Data Type and Fill Method
+
 Data types and the supported fill methods are shown in Table 3-6.
 
 <center>**Table 3-6 Data types and the supported fill methods**
@@ -335,23 +345,29 @@ When the fill method is not specified, each data type bears its own default fill
 
 |Data Type|Default Fill Methods and Parameters|
 |:---|:---|
-|boolean|previous, 0|
-|int32|linear, 0, 0|
-|int64|linear, 0, 0|
-|float|linear, 0, 0|
-|double|linear, 0, 0|
-|text|previous, 0|
+|boolean|previous, 600000|
+|int32|linear, 600000, 600000|
+|int64|linear, 600000, 600000|
+|float|linear, 600000, 600000|
+|double|linear, 600000, 600000|
+|text|previous, 600000|
 </center>
 
 > Note: In version 0.7.0, at least one fill method should be specified in the Fill statement.
 
 ### Row and Column Control over Query Results
 
-IoTDB provides [LIMIT/SLIMIT](/#/Documents/progress/chap5/sec4) clause and [OFFSET/SOFFSET](/#/Documents/progress/chap5/sec4) clause in order to make users have more control over query results. The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
+IoTDB provides [LIMIT/SLIMIT](/#/Documents/progress/chap5/sec4) clause and [OFFSET/SOFFSET](/#/Documents/progress/chap5/sec4) 
+clause in order to make users have more control over query results. 
+The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, 
+and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
+
+Note that the LIMIT and OFFSET are not supported in group by query.
 
 This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](/#/Documents/progress/chap4/sec2) standard interface to execute queries.
 
 #### Row Control over Query Results
+
 By using LIMIT and OFFSET clauses, users can control the query results in a row-related manner. We will demonstrate how to use LIMIT and OFFSET clauses through the following examples.
 
 * Example 1: basic LIMIT clause
@@ -368,7 +384,6 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 The result is shown below:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577752-efc50c80-1ef5-11e9-9071-da2bbd8b9bdd.jpg"></center>
-
 
 * Example 2: LIMIT clause with OFFSET
 
@@ -511,6 +526,22 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 The result is shown below:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577879-64984680-1ef6-11e9-9d7b-57dd60fab60e.jpg"></center>
+
+#### Other ResultSet Format
+
+In addition, IoTDB supports two another resultset format: 'align by device' and 'disable align'.
+
+The 'align by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
+
+The SQL statement is:
+
+```
+select s1,s2 from root.sg1.* GROUP BY DEVICE
+```
+
+For more syntax description, please read SQL REFERENCE.
+
+The 'disable align' indicaes that there are 3 columns for each time series in the resultset. For more syntax description, please read SQL REFERENCE.
 
 ####  Error Handling
 

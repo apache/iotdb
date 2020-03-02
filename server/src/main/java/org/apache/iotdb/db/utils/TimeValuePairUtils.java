@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBoolean;
@@ -26,10 +30,6 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 public class TimeValuePairUtils {
 
@@ -59,62 +59,6 @@ public class TimeValuePairUtils {
       case BOOLEAN:
         return new TimeValuePair(data.currentTime(),
             new TsPrimitiveType.TsBoolean(data.getBoolean()));
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(data.getDataType()));
-    }
-  }
-
-  /**
-   * get given data's current (time,value) pair.
-   *
-   * @param data -AggreResultData
-   * @return -given data's (time,value) pair
-   */
-  public static TimeValuePair getCurrentTimeValuePair(AggreResultData data) {
-    switch (data.getDataType()) {
-      case INT32:
-        return new TimeValuePair(data.getTimestamp(), new TsPrimitiveType.TsInt(data.getIntRet()));
-      case INT64:
-        return new TimeValuePair(data.getTimestamp(),
-            new TsPrimitiveType.TsLong(data.getLongRet()));
-      case FLOAT:
-        return new TimeValuePair(data.getTimestamp(),
-            new TsPrimitiveType.TsFloat(data.getFloatRet()));
-      case DOUBLE:
-        return new TimeValuePair(data.getTimestamp(),
-            new TsPrimitiveType.TsDouble(data.getDoubleRet()));
-      case TEXT:
-        return new TimeValuePair(data.getTimestamp(),
-            new TsPrimitiveType.TsBinary(data.getBinaryRet()));
-      case BOOLEAN:
-        return new TimeValuePair(data.getTimestamp(),
-            new TsPrimitiveType.TsBoolean(data.isBooleanRet()));
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(data.getDataType()));
-    }
-  }
-
-  public static void setCurrentTimeValuePair(BatchData data, TimeValuePair current) {
-    current.setTimestamp(data.currentTime());
-    switch (data.getDataType()) {
-      case INT32:
-        current.getValue().setInt(data.getInt());
-        break;
-      case INT64:
-        current.getValue().setLong(data.getLong());
-        break;
-      case FLOAT:
-        current.getValue().setFloat(data.getFloat());
-        break;
-      case DOUBLE:
-        current.getValue().setDouble(data.getDouble());
-        break;
-      case TEXT:
-        current.getValue().setBinary(data.getBinary());
-        break;
-      case BOOLEAN:
-        current.getValue().setBoolean(data.getBoolean());
-        break;
       default:
         throw new UnSupportedDataTypeException(String.valueOf(data.getDataType()));
     }

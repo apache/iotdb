@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.conf.adapter;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -175,7 +174,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    *
    * @return MemTable byte size. If the value is -1, there is no valid solution.
    */
-  private int calcMemTableSize(double ratio) {
+  private long calcMemTableSize(double ratio) {
     // when unit is byte, it's likely to cause Long type overflow.
     // so when b is larger than Integer.MAC_VALUE use the unit KB.
     double a = maxMemTableNum;
@@ -188,7 +187,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
             / magnification / magnification;
     double tempValue = b * b - 4 * a * c;
     double memTableSize = ((b + Math.sqrt(tempValue)) / (2 * a));
-    return tempValue < 0 ? -1 : (int) (memTableSize * magnification);
+    return tempValue < 0 ? -1 : (long) (memTableSize * magnification);
   }
 
   /**
@@ -218,14 +217,14 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   @Override
   public void addOrDeleteStorageGroup(int diff) throws ConfigAdjusterException {
     totalStorageGroup += diff;
-    maxMemTableNum += IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP * diff;
+    maxMemTableNum += IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() * diff;
     if(!CONFIG.isEnableParameterAdapter()){
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
       return;
     }
     if (!tryToAdaptParameters()) {
       totalStorageGroup -= diff;
-      maxMemTableNum -= IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP * diff;
+      maxMemTableNum -= IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() * diff;
       throw new ConfigAdjusterException(CREATE_STORAGE_GROUP);
     }
   }

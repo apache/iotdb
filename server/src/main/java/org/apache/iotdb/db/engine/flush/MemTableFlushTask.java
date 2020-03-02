@@ -43,6 +43,7 @@ public class MemTableFlushTask {
   private static final Logger logger = LoggerFactory.getLogger(MemTableFlushTask.class);
   private static final FlushSubTaskPoolManager subTaskPoolManager = FlushSubTaskPoolManager
       .getInstance();
+  private Future encodingTaskFuture;
   private Future ioTaskFuture;
   private RestorableTsFileIOWriter writer;
 
@@ -61,7 +62,7 @@ public class MemTableFlushTask {
     this.schema = schema;
     this.writer = writer;
     this.storageGroup = storageGroup;
-    subTaskPoolManager.submit(encodingTask);
+    this.encodingTaskFuture = subTaskPoolManager.submit(encodingTask);
     this.ioTaskFuture = subTaskPoolManager.submit(ioTask);
     logger.debug("flush task of Storage group {} memtable {} is created ",
         storageGroup, memTable.getVersion());
@@ -93,6 +94,15 @@ public class MemTableFlushTask {
     logger.debug(
         "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
         storageGroup, memTable.getVersion(), sortTime);
+
+    try {
+      encodingTaskFuture.get();
+    } catch (InterruptedException | ExecutionException e) {
+      // avoid ioTask waiting forever
+      noMoreIOTask = true;
+      ioTaskFuture.cancel(true);
+      throw e;
+    }
 
     ioTaskFuture.get();
 

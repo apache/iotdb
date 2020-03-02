@@ -34,7 +34,7 @@ import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -104,12 +104,12 @@ abstract class MergeTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = MERGE_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    MManager.getInstance().setStorageGroupToMTree(MERGE_TEST_SG);
+    MManager.getInstance().setStorageGroup(MERGE_TEST_SG);
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        MManager.getInstance().addPathToMTree(
+        MManager.getInstance().createTimeseries(
             device + PATH_SEPARATOR + measurementSchema.getMeasurementId(), measurementSchema
-            .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
+                .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
             Collections.emptyMap());
       }
     }
@@ -140,8 +140,11 @@ abstract class MergeTest {
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
-    File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(unseqFileNum + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
-        + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0 + ".tsfile"));
+
+    File file = new File(TestConstant.BASE_OUTPUT_PATH
+        .concat(unseqFileNum + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
+            + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
+            + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0 + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
     tsFileResource.setHistoricalVersions(Collections.singleton((long) (seqFileNum + unseqFileNum)));
@@ -156,6 +159,7 @@ abstract class MergeTest {
     for (TsFileResource tsFileResource : unseqResources) {
       tsFileResource.remove();
     }
+
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     FileReaderManager.getInstance().stop();
   }

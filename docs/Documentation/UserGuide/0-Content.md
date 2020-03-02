@@ -46,6 +46,7 @@
 * 3-Programming - JDBC
 * 4-Programming - Other Languages
 * 5-Programming - TsFile API
+* 6-Status Codes
 # Chapter 5: Operation Manual
 * 1-DDL (Data Definition Language)
 * 2-DML (Data Manipulation Language)
@@ -65,8 +66,7 @@
 * 3-Spark TsFile
 * 4-Spark IoTDB
 * 5-Hive TsFile
-# Chapter 8: System Design (Developer)
-* 1-Hierarchy
-* 2-Files
-* 3-Writing Data on HDFS
-* 4-Shared Nothing Cluster
+# Chapter 8: Architecture
+* 1-Files
+* 2-Writing Data on HDFS
+* 3-Shared Nothing Cluster

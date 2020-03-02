@@ -24,25 +24,20 @@ singleStatement
     ;
 
 statement
-    : CREATE TIMESERIES timeseriesPath WITH attributeClauses #createTimeseries
+    : CREATE TIMESERIES fullPath WITH attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
-    | INSERT INTO timeseriesPath insertColumnSpec VALUES insertValuesSpec #insertStatement
+    | INSERT INTO fullPath insertColumnSpec VALUES insertValuesSpec #insertStatement
     | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
-    | SET STORAGE GROUP TO prefixPath #setStorageGroup
-    | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
-    | CREATE PROPERTY ID #createProperty
-    | ADD LABEL label=ID TO PROPERTY propertyName=ID #addLabel
-    | DELETE LABEL label=ID FROM PROPERTY propertyName=ID #deleteLabel
-    | LINK prefixPath TO propertyLabelPair #linkPath
-    | UNLINK prefixPath FROM propertyLabelPair #unlinkPath
+    | SET STORAGE GROUP TO fullPath #setStorageGroup
+    | DELETE STORAGE GROUP fullPath (COMMA fullPath)* #deleteStorageGroup
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
-    | CREATE INDEX ON timeseriesPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
-    | DROP INDEX function=ID ON timeseriesPath #dropIndex //not support yet
+    | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
+    | DROP INDEX function=ID ON fullPath #dropIndex //not support yet
     | MERGE #merge //not support yet
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
-    | ALTER USER userName=ID SET PASSWORD password=STRING_LITERAL #alterUser
+    | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
     | DROP USER userName=ID #dropUser
     | CREATE ROLE roleName=ID #createRole
     | DROP ROLE roleName=ID #dropRole
@@ -82,7 +77,7 @@ statement
     | MOVE FILE FILE #moveFile
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
-    p1=timeseriesPath COMMA p2=timeseriesPath COMMA n1=timeValue COMMA n2=timeValue COMMA
+    p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA
     epsilon=constant (COMMA alpha=constant COMMA beta=constant)?
     RR_BRACKET
     fromClause
@@ -97,6 +92,7 @@ statement
 selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
+    | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
     ;
 
 functionCall
@@ -136,10 +132,14 @@ andExpression
     ;
 
 predicate
-    : (suffixPath | prefixPath) comparisonOperator constant
+    : (TIME | TIMESTAMP | suffixPath | prefixPath) comparisonOperator constant
+    | (TIME | TIMESTAMP | suffixPath | prefixPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
     ;
 
+inClause
+    : OPERATOR_NOT? OPERATOR_IN LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    ;
 
 fromClause
     : FROM prefixPath (COMMA prefixPath)*
@@ -148,13 +148,13 @@ fromClause
 specialClause
     : specialLimit
     | groupByClause specialLimit?
-    | fillClause slimitClause? groupByDeviceClauseOrDisableAlign?
+    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     ;
 
 specialLimit
-    : limitClause slimitClause? groupByDeviceClauseOrDisableAlign?
-    | slimitClause limitClause? groupByDeviceClauseOrDisableAlign?
-    | groupByDeviceClauseOrDisableAlign
+    : limitClause slimitClause? alignByDeviceClauseOrDisableAlign?
+    | slimitClause limitClause? alignByDeviceClauseOrDisableAlign?
+    | alignByDeviceClauseOrDisableAlign
     ;
 
 limitClause
@@ -173,17 +173,17 @@ soffsetClause
     : SOFFSET INT
     ;
 
-groupByDeviceClause
-    :
-    GROUP BY DEVICE
+alignByDeviceClause
+    : ALIGN BY DEVICE
+    | GROUP BY DEVICE
     ;
 
 disableAlign
     : DISABLE ALIGN
     ;
 
-groupByDeviceClauseOrDisableAlign
-    : groupByDeviceClause
+alignByDeviceClauseOrDisableAlign
+    : alignByDeviceClause
     | disableAlign
     ;
 
@@ -231,7 +231,7 @@ comparisonOperator
     ;
 
 insertColumnSpec
-    : LR_BRACKET TIMESTAMP (COMMA nodeNameWithoutStar)* RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)* RR_BRACKET
     ;
 
 insertValuesSpec
@@ -253,7 +253,7 @@ rootOrId
     ;
 
 timeInterval
-    : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
+    : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RR_BRACKET
     ;
 
 timeValue
@@ -271,7 +271,7 @@ propertyLabelPair
     : propertyName=ID DOT labelName=ID
     ;
 
-timeseriesPath
+fullPath
     : ROOT (DOT nodeNameWithoutStar)*
     ;
 
@@ -287,13 +287,16 @@ nodeName
     : ID
     | INT
     | STAR
+    | ID STAR
     | STRING_LITERAL
+    | DURATION
     ;
 
 nodeNameWithoutStar
     : INT
     | ID
     | STRING_LITERAL
+    | DURATION
     ;
 
 dataType
@@ -727,6 +730,10 @@ ALIGN
 COMPRESSION
     : C O M P R E S S I O N
     ;
+
+TIME
+    : T I M E
+    ;
 //============================
 // End of the keywords list
 //============================
@@ -745,6 +752,8 @@ OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 
 OPERATOR_NEQ : '!=' | '<>';
+
+OPERATOR_IN : I N;
 
 OPERATOR_AND
     : A N D
@@ -803,7 +812,7 @@ DATETIME
       (('+' | '-') INT ':' INT)?
     ;
 /** Allow unicode rule/token names */
-ID			:	NameStartChar NameChar*;
+ID : NameChar NameChar*;
 
 FILE
     :  (('a'..'z'| 'A'..'Z')(':')?)* (('\\' | '/')+ PATH_FRAGMENT) +
@@ -811,143 +820,124 @@ FILE
 
 fragment
 NameChar
-	:   NameStartChar
-	|   '0'..'9'
-	|   '_'
-	|   '\u00B7'
-	|   '\u0300'..'\u036F'
-	|   '\u203F'..'\u2040'
-	;
-
-fragment
-NameStartChar
-	:   'A'..'Z'
-	|   'a'..'z'
-	|   '\u00C0'..'\u00D6'
-	|   '\u00D8'..'\u00F6'
-	|   '\u00F8'..'\u02FF'
-	|   '\u0370'..'\u037D'
-	|   '\u037F'..'\u1FFF'
-	|   '\u200C'..'\u200D'
-	|   '\u2070'..'\u218F'
-	|   '\u2C00'..'\u2FEF'
-	|   '\u3001'..'\uD7FF'
-	|   '\uF900'..'\uFDCF'
-	|   '\uFDF0'..'\uFFFD'
-	; // ignores | ['\u10000-'\uEFFFF] ;
+    :   'A'..'Z'
+    |   'a'..'z'
+    |   '0'..'9'
+    |   '_'
+    ;
 
 fragment DOUBLE_QUOTE_STRING_LITERAL
-	:	'"' ('\\' . | ~'"' )*? '"'
-	;
+    : '"' ('\\' . | ~'"' )*? '"'
+    ;
 
 fragment SINGLE_QUOTE_STRING_LITERAL
-  : '\'' ('\\' . | ~'\'' )*? '\''
-  ;
+    : '\'' ('\\' . | ~'\'' )*? '\''
+    ;
 
 //Characters and write it this way for case sensitivity
 fragment A
-  : 'a' | 'A'
-  ;
+    : 'a' | 'A'
+    ;
 
 fragment B
-  : 'b' | 'B'
-  ;
+    : 'b' | 'B'
+    ;
 
 fragment C
-	: 'c' | 'C'
-	;
+    : 'c' | 'C'
+    ;
 
 fragment D
-	: 'd' | 'D'
-	;
+    : 'd' | 'D'
+    ;
 
 fragment E
-	: 'e' | 'E'
-	;
+    : 'e' | 'E'
+    ;
 
 fragment F
-	: 'f' | 'F'
-	;
+    : 'f' | 'F'
+    ;
 
 fragment G
-	: 'g' | 'G'
-	;
+    : 'g' | 'G'
+    ;
 
 fragment H
-	: 'h' | 'H'
-	;
+    : 'h' | 'H'
+    ;
 
 fragment I
-	: 'i' | 'I'
-	;
+    : 'i' | 'I'
+    ;
 
 fragment J
-	: 'j' | 'J'
-	;
+    : 'j' | 'J'
+    ;
 
 fragment K
-	: 'k' | 'K'
-	;
+    : 'k' | 'K'
+    ;
 
 fragment L
-	: 'l' | 'L'
-	;
+    : 'l' | 'L'
+    ;
 
 fragment M
-	: 'm' | 'M'
-	;
+    : 'm' | 'M'
+    ;
 
 fragment N
-	: 'n' | 'N'
-	;
+    : 'n' | 'N'
+    ;
 
 fragment O
-	: 'o' | 'O'
-	;
+    : 'o' | 'O'
+    ;
 
 fragment P
-	: 'p' | 'P'
-	;
+    : 'p' | 'P'
+    ;
 
 fragment Q
-	: 'q' | 'Q'
-	;
+    : 'q' | 'Q'
+    ;
 
 fragment R
-	: 'r' | 'R'
-	;
+    : 'r' | 'R'
+    ;
 
 fragment S
-	: 's' | 'S'
-	;
+    : 's' | 'S'
+    ;
 
 fragment T
-	: 't' | 'T'
-	;
+    : 't' | 'T'
+    ;
 
 fragment U
-	: 'u' | 'U'
-	;
+    : 'u' | 'U'
+    ;
 
 fragment V
-	: 'v' | 'V'
-	;
+    : 'v' | 'V'
+    ;
 
 fragment W
-	: 'w' | 'W'
-	;
+    : 'w' | 'W'
+    ;
 
 fragment X
-	: 'x' | 'X'
-	;
+    : 'x' | 'X'
+    ;
 
 fragment Y
-	: 'y' | 'Y'
-	;
+    : 'y' | 'Y'
+    ;
 
 fragment Z
-	: 'z' | 'Z'
-	;
+    : 'z' | 'Z'
+    ;
 
 fragment PATH_FRAGMENT
     : ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'-'|'.')*
