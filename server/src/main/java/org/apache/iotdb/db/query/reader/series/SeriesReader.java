@@ -61,7 +61,7 @@ public class SeriesReader {
   private final QueryContext context;
 
   /*
-   * There is only one is null between timeFilter and valueFilter
+   * There is at most one is not null between timeFilter and valueFilter
    *
    * timeFilter is pushed down to all pages (seq, unseq) without correctness problem
    *
@@ -270,9 +270,8 @@ public class SeriesReader {
    */
   protected BatchData nextPage() throws IOException {
 
-    if (hasCachedNextOverlappedPage || hasNextPage()) {
+    if (hasCachedNextOverlappedPage) {
       hasCachedNextOverlappedPage = false;
-      LOGGER.warn("consume an overlapped page, mergeReader has more data? " + mergeReader.hasNextTimeValuePair());
       return cachedBatchData;
     } else {
 
