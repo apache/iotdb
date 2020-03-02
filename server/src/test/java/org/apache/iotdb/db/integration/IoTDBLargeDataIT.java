@@ -89,7 +89,7 @@ public class IoTDBLargeDataIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      for (String sql : Constant.create_sql) {
+      for (String sql : TestConstant.create_sql) {
         statement.execute(sql);
       }
 
@@ -120,10 +120,10 @@ public class IoTDBLargeDataIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 22);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            Constant.stringValue[time % 5]);
+            TestConstant.stringValue[time % 5]);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
-            Constant.booleanValue[time % 2]);
+            TestConstant.booleanValue[time % 2]);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, time);
         statement.execute(sql);
@@ -175,7 +175,7 @@ public class IoTDBLargeDataIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time + 2);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            Constant.stringValue[time % 5]);
+            TestConstant.stringValue[time % 5]);
         statement.execute(sql);
       }
 
@@ -193,7 +193,7 @@ public class IoTDBLargeDataIT {
             .format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, "goodman");
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
-            Constant.booleanValue[time % 2]);
+            TestConstant.booleanValue[time % 2]);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, 9999);
         statement.execute(sql);
@@ -222,12 +222,13 @@ public class IoTDBLargeDataIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0)
-                  + "," + resultSet.getString(Constant.d0s1) + "," + resultSet
-                  .getString(Constant.d0s2) + ","
-                  + resultSet.getString(Constant.d0s3) + "," + resultSet.getString(Constant.d0s4)
+              resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet.getString(
+                  TestConstant.d0s0)
+                  + "," + resultSet.getString(TestConstant.d0s1) + "," + resultSet
+                  .getString(TestConstant.d0s2) + ","
+                  + resultSet.getString(TestConstant.d0s3) + "," + resultSet.getString(TestConstant.d0s4)
                   + ","
-                  + resultSet.getString(Constant.d0s5);
+                  + resultSet.getString(TestConstant.d0s5);
           cnt++;
         }
 
@@ -257,7 +258,8 @@ Statement statement = connection.createStatement()) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0);
+              resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet.getString(
+                  TestConstant.d0s0);
           // System.out.println("===" + ans);
           cnt++;
         }
@@ -288,7 +290,8 @@ Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.getResultSet();) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0);
+              resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet.getString(
+                  TestConstant.d0s0);
           // System.out.println(ans);
           cnt++;
         }
@@ -316,8 +319,8 @@ Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
-          long time = Long.valueOf(resultSet.getString(Constant.TIMESTAMP_STR));
-          String value = resultSet.getString(Constant.d0s1);
+          long time = Long.valueOf(resultSet.getString(TestConstant.TIMESTAMP_STR));
+          String value = resultSet.getString(TestConstant.d0s1);
           if (time > 200900) {
             assertEquals("7777", value);
           }

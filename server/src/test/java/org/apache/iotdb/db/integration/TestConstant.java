@@ -21,7 +21,7 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 
-public class Constant {
+public class TestConstant {
 
   public static final String d0s0 = "root.vehicle.d0.s0";
   public static final String d0s1 = "root.vehicle.d0.s1";

@@ -398,7 +398,7 @@ public class IoTDBNumberPathIT {
             result = "";
             while (resultSet.next()) {
               for (int i = 1; i <= count; i++) {
-                if (now_start > 0L && column[i - 1] == Constant.TIMESTAMP_STR) {
+                if (now_start > 0L && column[i - 1] == TestConstant.TIMESTAMP_STR) {
                   String timestr = resultSet.getString(i);
                   Long tn = Long.valueOf(timestr);
                   Long now = System.currentTimeMillis();
