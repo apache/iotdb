@@ -86,7 +86,7 @@ public class IoTDBCloseIT {
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
 
-      for (String sql : org.apache.iotdb.db.constant.TestConstant.create_sql) {
+      for (String sql : TestConstant.create_sql) {
         statement.execute(sql);
       }
 
