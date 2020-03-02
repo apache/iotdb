@@ -111,7 +111,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         }
       }
     } catch (QueryProcessException e) {
-      logger.error("GroupByWithoutValueFilterDataSet execute has error,{}", e);
+      logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
       throw new IOException(e.getMessage(), e);
     }
 
