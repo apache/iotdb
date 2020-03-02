@@ -133,21 +133,7 @@ public class SeriesReader {
 
     if (!cachedPageReaders.isEmpty() || firstPageReader != null || mergeReader
         .hasNextTimeValuePair()) {
-      if (!cachedPageReaders.isEmpty()) {
-        LOGGER.warn("@++++<<<<<: {} has cachedPageReaders", seriesPath.getFullPath());
-      }
-      if (firstPageReader != null) {
-        LOGGER.warn("@++++<<<<<: {} has firstPageReader", seriesPath.getFullPath());
-      }
-      if (mergeReader.hasNextTimeValuePair()) {
-        LOGGER.warn("@++++<<<<<: {} has data in mergeReader", seriesPath.getFullPath());
-      }
-
-      IOException exception = new IOException("all cached pages should be consumed first");
-      exception.printStackTrace();
-
-      throw exception;
-
+      throw new IOException("all cached pages should be consumed first");
     }
 
     // init first chunk metadata whose startTime is minimum
@@ -350,6 +336,9 @@ public class SeriesReader {
 
         }
         hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
+        /*
+         * if current overlapped page has valid data, return, otherwise read next overlapped page
+         */
         if (hasCachedNextOverlappedPage) {
           return true;
         }

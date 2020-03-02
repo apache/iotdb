@@ -365,8 +365,8 @@ public class IoTDBSeriesReaderIT {
     int cnt = 0;
     while (queryDataSet.hasNext()) {
       RowRecord record = queryDataSet.next();
-      if (record.getFields().get(0).getIntV() >= 111) {
-        System.out.println("@++++<<<< invalid record: " + record);
+      if (!timeValie(record.getTimestamp())) {
+        System.out.println("@++++++<<< invalid record " + record);
       }
       cnt++;
     }
@@ -375,6 +375,24 @@ public class IoTDBSeriesReaderIT {
 
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
+
+
+  private boolean timeValie(long time) {
+    if (time >= 3000 && time < 13600) {
+      return true;
+    }
+    if (time >= 13700 && time < 24000) {
+      return true;
+    }
+    if (time >= 100500 && time < 101000) {
+      return true;
+    }
+    if (time >= 200000 && time < 200900) {
+      return true;
+    }
+    return false;
+  }
+
 
   @Test
   public void queryEmptySeriesTest() throws SQLException {
