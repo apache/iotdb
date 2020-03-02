@@ -33,6 +33,12 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBoolean;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 
 public class BatchInsertPlan extends PhysicalPlan {
 
@@ -292,11 +298,39 @@ public class BatchInsertPlan extends PhysicalPlan {
   }
 
   public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
-    if (measurementIndex >= columns.length) return null;
-
-    Object[] column = (Object[]) columns[measurementIndex];
-    // Use [end - 1] as the max time index as the time in BatchInsertPlan is in ascending order
-    TsPrimitiveType value = TsPrimitiveType.getByType(dataTypes[measurementIndex], column[end - 1]);
+    if (measurementIndex >= columns.length) {
+      return null;
+    }
+    TsPrimitiveType value;
+    switch (dataTypes[measurementIndex]) {
+      case INT32:
+        int[] intValues = (int[]) columns[measurementIndex];
+        value = new TsInt(intValues[end - 1]);
+        break;
+      case INT64:
+        long[] longValues = (long[]) columns[measurementIndex];
+        value = new TsLong(longValues[end - 1]);
+        break;
+      case FLOAT:
+        float[] floatValues = (float[]) columns[measurementIndex];
+        value = new TsFloat(floatValues[end - 1]);
+        break;
+      case DOUBLE:
+        double[] doubleValues = (double[]) columns[measurementIndex];
+        value = new TsDouble(doubleValues[end - 1]);
+        break;
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) columns[measurementIndex];
+        value = new TsBoolean(boolValues[end - 1]);
+        break;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) columns[measurementIndex];
+        value = new TsBinary(binaryValues[end - 1]);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", dataTypes[measurementIndex]));
+    }
     return new TimeValuePair(times[end - 1], value);
   }
 

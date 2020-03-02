@@ -89,7 +89,7 @@ Last标准查询流程需要遍历所有的顺序文件和乱序文件得到查�
 
 ## Last 缓存更新策略
 
-Last缓存更新的逻辑位于`LeafNode`的`updateCachedLast`方法内，这里引入两个额外的参数`highPriorityUpdate`和`latestFlushTime`。`highPriorityUpdate`用来表示本次更新是否是高优先级的，新数据写入而导致的缓存更新都被认为是高优先级更新，而查询时更新缓存默认为低优先级更新。`latestFlushTime`用来记录当前已被写回到磁盘的数据的最大时间戳。
+Last缓存更新的逻辑位于`LeafMNode`的`updateCachedLast`方法内，这里引入两个额外的参数`highPriorityUpdate`和`latestFlushTime`。`highPriorityUpdate`用来表示本次更新是否是高优先级的，新数据写入而导致的缓存更新都被认为是高优先级更新，而查询时更新缓存默认为低优先级更新。`latestFlushTime`用来记录当前已被写回到磁盘的数据的最大时间戳。
 
 缓存更新的策略如下：
 
