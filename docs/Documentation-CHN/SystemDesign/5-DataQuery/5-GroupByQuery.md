@@ -89,6 +89,7 @@ if (aggregateResultList.length == 0) {
 ```
 while (aggregateReader.hasNextChunk()) {
   if (aggregateReader.canUseCurrentChunkStatistics()) {
+    // 可以用 chunk 统计信息
     Statistics chunkStatistics = aggregateReader.currentChunkStatistics();
     
     // do some aggregate calculation using chunk statistics
@@ -97,23 +98,19 @@ while (aggregateReader.hasNextChunk()) {
     aggregateReader.skipCurrentChunk();
     continue;
   }
-	  
+  
+  // chunk 统计信息不能用，消耗所有 page
   while (aggregateReader.hasNextPage()) {
 	 if (aggregateReader.canUseCurrentPageStatistics()) {
+	   // 可以用 page 统计信息
 	   Statistics pageStatistic = aggregateReader.currentPageStatistics();
-	   
-	   // do some aggregate calculation using page statistics
       ...
 	   
 	   aggregateReader.skipCurrentPage();
 	   continue;
-	 }
-	 
-	 // 遍历所有重叠的page
-	 while (aggregateReader.hasNextOverlappedPage()) {
-	   BatchData batchData = aggregateReader.nextOverlappedPage();
-	   
-	   // do some aggregate calculation using batch data
+	 } else {
+	 	// page 统计信息不能用，用数据计算
+	 	BatchData batchData = aggregateReader.nextPage();
       ...
 	 }
   }
