@@ -39,7 +39,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
+import org.apache.iotdb.tsfile.read.controller.CachedChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
@@ -149,7 +149,7 @@ public class UnseqTsFileRecoverTest {
   public void test() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, schema,
         versionController, resource, true, false);
-    ActiveTimeSeriesCounter.getInstance().init(logNodePrefix);
+    ActiveTimeSeriesCounter.getInstance().init(resource.getFile().getParentFile().getParentFile().getName());
     performer.recover();
 
     assertEquals(1, (long) resource.getStartTimeMap().get("device99"));
@@ -161,7 +161,7 @@ public class UnseqTsFileRecoverTest {
 
     TsFileSequenceReader fileReader = new TsFileSequenceReader(tsF.getPath(), true);
     IMetadataQuerier metadataQuerier = new MetadataQuerierByFileImpl(fileReader);
-    IChunkLoader chunkLoader = new ChunkLoaderImpl(fileReader);
+    IChunkLoader chunkLoader = new CachedChunkLoaderImpl(fileReader);
 
     Path path = new Path("device1", "sensor1");
 

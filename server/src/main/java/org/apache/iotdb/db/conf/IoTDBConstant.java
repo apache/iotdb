@@ -75,6 +75,8 @@ public class IoTDBConstant {
   public static final String COLUMN_STORAGE_GROUP = "storage group";
   public static final String COLUMN_TTL = "ttl";
 
+  public static final String PATH_WILDCARD = "*";
+
   // data folder name
   public static final String SEQUENCE_FLODER_NAME = "sequence";
   public static final String UNSEQUENCE_FLODER_NAME = "unsequence";

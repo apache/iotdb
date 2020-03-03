@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -29,7 +32,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public class MinTimeAggrResult extends AggregateResult {
 
   public MinTimeAggrResult() {
-    super(TSDataType.INT64);
+    super(TSDataType.INT64, AggregationType.MIN_TIME);
     reset();
   }
 
@@ -80,6 +83,26 @@ public class MinTimeAggrResult extends AggregateResult {
   @Override
   public boolean isCalculatedAggregationResult() {
     return hasResult();
+  }
+
+  @Override
+  public void merge(AggregateResult another) {
+    MinTimeAggrResult anotherMinTime = (MinTimeAggrResult) another;
+    if (!hasResult() && anotherMinTime.hasResult()) {
+      setLongValue(anotherMinTime.getResult());
+      return;
+    }
+    if (hasResult() && anotherMinTime.hasResult() && getResult() > anotherMinTime.getResult()) {
+      setLongValue(anotherMinTime.getResult());
+    }
+  }
+
+  @Override
+  protected void deserializeSpecificFields(ByteBuffer buffer) {
+  }
+
+  @Override
+  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
   }
 
 }

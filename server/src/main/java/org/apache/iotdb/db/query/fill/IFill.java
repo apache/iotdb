@@ -54,7 +54,7 @@ public abstract class IFill {
     Filter timeFilter = constructFilter();
     allDataReader = new SeriesRawDataBatchReader(path, dataType, context,
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
-        timeFilter, null);
+        timeFilter, null, null);
   }
 
   public abstract TimeValuePair getFillResult() throws IOException, UnSupportedFillTypeException;

@@ -48,9 +48,6 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author Yuan Tian
- */
 public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> implements IReaderSet {
 
   private static final Logger logger = LoggerFactory.getLogger(TSFRecordReader.class);

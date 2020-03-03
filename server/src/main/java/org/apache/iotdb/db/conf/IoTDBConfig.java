@@ -117,27 +117,27 @@ public class IoTDBConfig {
   /**
    * System directory, including version file for each storage group and metadata
    */
-  private String systemDir = "data/system";
+  private String systemDir = "data" + File.separator + "system";
 
   /**
    * Schema directory, including storage set of values.
    */
-  private String schemaDir = "data/system/schema";
+  private String schemaDir = "data" + File.separator + "system" + File.separator + "schema";
 
   /**
    * Sync directory, including the lock file, uuid file, device owner map
    */
-  private String syncDir = "data/system/sync";
+  private String syncDir = "data" + File.separator + "system" + File.separator + "sync";
 
   /**
    * Query directory, stores temporary files of query
    */
-  private String queryDir = "data/query";
+  private String queryDir = "data" + File.separator + "query";
 
   /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
    */
-  private String[] dataDirs = {"data/data"};
+  private String[] dataDirs = {"data" + File.separator + "data"};
 
   /**
    * Strategy of multiple directories.
@@ -147,7 +147,7 @@ public class IoTDBConfig {
   /**
    * Wal directory.
    */
-  private String walFolder = "data/wal";
+  private String walFolder = "data" + File.separator + "wal";
 
   /**
    * Maximum MemTable number in MemTable pool.
@@ -155,7 +155,7 @@ public class IoTDBConfig {
   private int maxMemtableNumber = 20;
 
   /**
-   * The amount of data that is read every time.
+   * The amount of data iterate each time in server
    */
   private int batchSize = 100000;
 
@@ -188,12 +188,17 @@ public class IoTDBConfig {
   /**
    * Memory allocated for fileMetaData cache in read process
    */
-  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 3 / 19;
+  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 3 / 39;
 
   /**
    * Memory allocated for chunkMetaData cache in read process
    */
-  private long allocateMemoryForChumkMetaDataCache = allocateMemoryForRead * 6 / 19;
+  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead * 6 / 39;
+
+  /**
+   * Memory allocated for chunk cache in read process
+   */
+  private long allocateMemoryForChunkCache = allocateMemoryForRead * 10 / 39;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
@@ -477,6 +482,10 @@ public class IoTDBConfig {
   //just for test
   //wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
+
+  private boolean enableMetricsWebService = true;
+
+  private int queryCacheSizeInMetric = 200;
 
   public IoTDBConfig() {
     // empty constructor
@@ -1047,12 +1056,20 @@ public class IoTDBConfig {
     this.allocateMemoryForFileMetaDataCache = allocateMemoryForFileMetaDataCache;
   }
 
-  public long getAllocateMemoryForChumkMetaDataCache() {
-    return allocateMemoryForChumkMetaDataCache;
+  public long getAllocateMemoryForChunkMetaDataCache() {
+    return allocateMemoryForChunkMetaDataCache;
   }
 
-  public void setAllocateMemoryForChumkMetaDataCache(long allocateMemoryForChumkMetaDataCache) {
-    this.allocateMemoryForChumkMetaDataCache = allocateMemoryForChumkMetaDataCache;
+  public void setAllocateMemoryForChunkMetaDataCache(long allocateMemoryForChunkMetaDataCache) {
+    this.allocateMemoryForChunkMetaDataCache = allocateMemoryForChunkMetaDataCache;
+  }
+
+  public long getAllocateMemoryForChunkCache() {
+    return allocateMemoryForChunkCache;
+  }
+
+  public void setAllocateMemoryForChunkCache(long allocateMemoryForChunkCache) {
+    this.allocateMemoryForChunkCache = allocateMemoryForChunkCache;
   }
 
   public boolean isEnableWatermark() {
@@ -1339,5 +1356,21 @@ public class IoTDBConfig {
 
   public void setThriftServerAwaitTimeForStopService(int thriftServerAwaitTimeForStopService) {
     this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
+  }
+
+  public boolean isEnableMetricsWebService() {
+    return enableMetricsWebService;
+  }
+
+  public void setEnableMetricsWebService(boolean enableMetricsWebService) {
+    this.enableMetricsWebService = enableMetricsWebService;
+  }
+
+  public int getQueryCacheSizeInMetric() {
+    return queryCacheSizeInMetric;
+  }
+
+  public void setQueryCacheSizeInMetric(int queryCacheSizeInMetric) {
+    this.queryCacheSizeInMetric = queryCacheSizeInMetric;
   }
 }

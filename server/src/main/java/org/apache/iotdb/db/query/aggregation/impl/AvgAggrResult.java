@@ -20,39 +20,44 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class AvgAggrResult extends AggregateResult {
 
-  private static final String AVG_AGGR_NAME = "AVG";
   private TSDataType seriesDataType;
-  protected double sum = 0.0;
-  protected int cnt = 0;
+  private double avg = 0.0;
+  private long cnt = 0;
 
   public AvgAggrResult(TSDataType seriesDataType) {
-    super(TSDataType.DOUBLE);
+    super(TSDataType.DOUBLE, AggregationType.AVG);
     this.seriesDataType = seriesDataType;
     reset();
-    sum = 0.0;
+    avg = 0.0;
     cnt = 0;
   }
 
   @Override
   public Double getResult() {
     if (cnt > 0) {
-      setDoubleValue(sum / cnt);
+      setDoubleValue(avg);
     }
     return hasResult() ? getDoubleValue() : null;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
+    long preCnt = cnt;
     cnt += statistics.getCount();
-    sum += statistics.getSumValue();
+    avg = avg * ((double) preCnt / cnt) + ((double) statistics.getCount() / cnt)
+        * statistics.getSumValue() / statistics.getCount();
   }
 
   @Override
@@ -83,25 +88,27 @@ public class AvgAggrResult extends AggregateResult {
   }
 
   private void updateAvg(TSDataType type, Object sumVal) throws IOException {
+    double val;
     switch (type) {
       case INT32:
-        sum += (int) sumVal;
+        val = (int) sumVal;
         break;
       case INT64:
-        sum += (long) sumVal;
+        val = (long) sumVal;
         break;
       case FLOAT:
-        sum += (float) sumVal;
+        val = (float) sumVal;
         break;
       case DOUBLE:
-        sum += (double) sumVal;
+        val = (double) sumVal;
         break;
       case TEXT:
       case BOOLEAN:
       default:
         throw new IOException(
-            String.format("Unsupported data type in aggregation %s : %s", getAggrTypeName(), type));
+            String.format("Unsupported data type in aggregation AVG : %s", type));
     }
+    avg = avg * ((double) cnt / (cnt + 1)) + val * (1.0 / (cnt + 1));
     cnt++;
   }
 
@@ -110,10 +117,36 @@ public class AvgAggrResult extends AggregateResult {
     return false;
   }
 
-  /**
-   * Return type name of aggregation
-   */
-  public String getAggrTypeName() {
-    return AVG_AGGR_NAME;
+  @Override
+  public void merge(AggregateResult another) {
+    AvgAggrResult anotherAvg = (AvgAggrResult) another;
+    avg = avg * ((double) cnt / (cnt + anotherAvg.cnt)) +
+        anotherAvg.avg * ((double) anotherAvg.cnt / (cnt + anotherAvg.cnt));
+    cnt += anotherAvg.cnt;
+  }
+
+  @Override
+  protected void deserializeSpecificFields(ByteBuffer buffer) {
+    this.seriesDataType = TSDataType.deserialize(buffer.getShort());
+    this.avg = buffer.getDouble();
+    this.cnt = buffer.getLong();
+  }
+
+  @Override
+  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(seriesDataType, outputStream);
+    ReadWriteIOUtils.write(avg, outputStream);
+    ReadWriteIOUtils.write(cnt, outputStream);
+  }
+
+  public long getCnt() {
+    return cnt;
+  }
+
+  @Override
+  public void reset() {
+    super.reset();
+    cnt = 0;
+    avg = 0;
   }
 }

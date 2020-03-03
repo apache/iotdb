@@ -28,19 +28,19 @@ import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
-import org.apache.iotdb.db.query.factory.AggreResultFactory;
+import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
+import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -84,7 +84,7 @@ public class AggregationExecutor {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
 
-    //TODO use multi-thread
+    // TODO use multi-thread
     Map<Path, List<Integer>> pathToAggrIndexesMap = groupAggregationsBySeries(selectedSeries);
     AggregateResult[] aggregateResultList = new AggregateResult[selectedSeries.size()];
     for (Map.Entry<Path, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
@@ -120,14 +120,14 @@ public class AggregationExecutor {
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(seriesPath, context, timeFilter);
     // update filter by TTL
-    timeFilter = queryDataSource.updateTimeFilterUsingTTL(timeFilter);
+    timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
     IAggregateReader seriesReader = new SeriesAggregateReader(pathToAggrIndexes.getKey(),
-        tsDataType, context, queryDataSource, timeFilter, null);
+        tsDataType, context, queryDataSource, timeFilter, null, null);
 
     for (int i : pathToAggrIndexes.getValue()) {
       // construct AggregateResult
-      AggregateResult aggregateResult = AggreResultFactory
+      AggregateResult aggregateResult = AggregateResultFactory
           .getAggrResultByName(aggregations.get(i), tsDataType);
       aggregateResultList.add(aggregateResult);
       isCalculatedList.add(false);
@@ -172,16 +172,14 @@ public class AggregationExecutor {
             }
           }
           seriesReader.skipCurrentPage();
-          continue;
-        }
-        // cal by page data
-        while (seriesReader.hasNextOverlappedPage()) {
-          BatchData nextOverlappedPageData = seriesReader.nextOverlappedPage();
+        } else {
+          // cal by page data
+          BatchData batchData = seriesReader.nextPage();
           for (int i = 0; i < aggregateResultList.size(); i++) {
             if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
               AggregateResult aggregateResult = aggregateResultList.get(i);
-              aggregateResult.updateResultFromPageData(nextOverlappedPageData);
-              nextOverlappedPageData.resetBatchData();
+              aggregateResult.updateResultFromPageData(batchData);
+              batchData.resetBatchData();
               if (aggregateResult.isCalculatedAggregationResult()) {
                 isCalculatedList.set(i, true);
                 remainingToCalculate--;
@@ -205,20 +203,20 @@ public class AggregationExecutor {
   public QueryDataSet executeWithValueFilter(QueryContext context)
       throws StorageEngineException, PathException, IOException {
 
-    EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
+    ServerTimeGenerator timestampGenerator = new ServerTimeGenerator(expression, context);
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       Path path = selectedSeries.get(i);
       SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path,
           dataTypes.get(i), context,
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, null));
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
 
     List<AggregateResult> aggregateResults = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       TSDataType type = dataTypes.get(i);
-      AggregateResult result = AggreResultFactory.getAggrResultByName(aggregations.get(i), type);
+      AggregateResult result = AggregateResultFactory.getAggrResultByName(aggregations.get(i), type);
       aggregateResults.add(result);
     }
     aggregateWithValueFilter(aggregateResults, timestampGenerator, readersOfSelectedSeries);
@@ -229,7 +227,7 @@ public class AggregationExecutor {
    * calculate aggregation result with value filter.
    */
   private void aggregateWithValueFilter(List<AggregateResult> aggregateResults,
-      EngineTimeGenerator timestampGenerator, List<IReaderByTimestamp> readersOfSelectedSeries)
+      ServerTimeGenerator timestampGenerator, List<IReaderByTimestamp> readersOfSelectedSeries)
       throws IOException {
 
     while (timestampGenerator.hasNext()) {
@@ -260,7 +258,7 @@ public class AggregationExecutor {
   private QueryDataSet constructDataSet(List<AggregateResult> aggregateResultList) {
     RowRecord record = new RowRecord(0);
     for (AggregateResult resultData : aggregateResultList) {
-      TSDataType dataType = resultData.getDataType();
+      TSDataType dataType = resultData.getResultDataType();
       record.addField(resultData.getResult(), dataType);
     }
 

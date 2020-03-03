@@ -95,7 +95,7 @@ IoTDB provides three installation methods, you can refer to the following sugges
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Comming Soon...)
-* Using Docker：The path to the dockerfile is https://github.com/apache/incubator-iotdb/blob/master/docker/Dockerfile
+* Using Docker：The path to the dockerfile is https://github.com/apache/incubator-iotdb/tree/master/docker/src/main
 
 
 Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to Chapter 4 of the User Guide.

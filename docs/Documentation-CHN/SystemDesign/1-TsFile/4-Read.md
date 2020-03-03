@@ -467,8 +467,8 @@ org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp
 
 **实现**：该组件提供一个接口，getValueInTimestamp(long timestamp)，通过接口依次传入递增的时间戳，返回时间序列上与该时间戳相对应的数据点。如果满足该时间戳的数据点不存在，则返回 null。
 
-#### 2.2.3 TimeGeneratorImpl 组件
-org.apache.iotdb.tsfile.read.query.timegenerator.TimeGeneratorImpl
+#### 2.2.3 TsFileTimeGenerator 组件
+org.apache.iotdb.tsfile.read.query.timegenerator.TsFileTimeGenerator
 
 **功能**：根据“选择条件”，计算出满足该“选择条件”的时间戳，先将“选择条件”转化为一棵二叉树，然后递归地计算满足“选择条件”的时间戳。主要用于连接查询。
 

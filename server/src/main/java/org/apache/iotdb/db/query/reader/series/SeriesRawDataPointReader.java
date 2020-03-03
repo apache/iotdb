@@ -18,58 +18,24 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
 
-
 public class SeriesRawDataPointReader implements IPointReader {
 
-  private final SeriesReader seriesReader;
+  private final SeriesRawDataBatchReader batchReader;
 
   private boolean hasCachedTimeValuePair;
   private BatchData batchData;
   private TimeValuePair timeValuePair;
 
-
   public SeriesRawDataPointReader(SeriesReader seriesReader) {
-    this.seriesReader = seriesReader;
+    this.batchReader = new SeriesRawDataBatchReader(seriesReader);
   }
 
-  public SeriesRawDataPointReader(Path seriesPath, TSDataType dataType, QueryContext context,
-      QueryDataSource dataSource, Filter timeFilter, Filter valueFilter) {
-    this.seriesReader = new SeriesReader(seriesPath, dataType, context, dataSource, timeFilter,
-        valueFilter);
-  }
-
-  private boolean hasNext() throws IOException {
-    while (seriesReader.hasNextChunk()) {
-      while (seriesReader.hasNextPage()) {
-        if (seriesReader.hasNextOverlappedPage()) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  private boolean hasNextSatisfiedInCurrentBatch() {
-    if (batchData != null && batchData.hasCurrent()) {
-      timeValuePair = new TimeValuePair(batchData.currentTime(),
-          batchData.currentTsPrimitiveType());
-      hasCachedTimeValuePair = true;
-      batchData.next();
-      return true;
-    }
-    return false;
-  }
 
   @Override
   public boolean hasNextTimeValuePair() throws IOException {
@@ -77,17 +43,25 @@ public class SeriesRawDataPointReader implements IPointReader {
       return true;
     }
 
-    if (hasNextSatisfiedInCurrentBatch()) {
+    if (batchData != null && batchData.hasCurrent()) {
+      timeValuePair = new TimeValuePair(batchData.currentTime(),
+          batchData.currentTsPrimitiveType());
+      hasCachedTimeValuePair = true;
+      batchData.next();
       return true;
     }
 
-    // has not cached timeValuePair
-    while (hasNext()) {
-      batchData = seriesReader.nextOverlappedPage();
-      if (hasNextSatisfiedInCurrentBatch()) {
+    while (batchReader.hasNextBatch()) {
+      batchData = batchReader.nextBatch();
+      if (batchData.hasCurrent()) {
+        timeValuePair = new TimeValuePair(batchData.currentTime(),
+            batchData.currentTsPrimitiveType());
+        hasCachedTimeValuePair = true;
+        batchData.next();
         return true;
       }
     }
+
     return false;
   }
 
@@ -102,7 +76,7 @@ public class SeriesRawDataPointReader implements IPointReader {
   }
 
   @Override
-  public TimeValuePair currentTimeValuePair() throws IOException {
+  public TimeValuePair currentTimeValuePair() {
     return timeValuePair;
   }
 

@@ -21,15 +21,15 @@ package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.factory.AggreResultFactory;
+import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
+import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
@@ -78,13 +78,13 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    */
   private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
       throws StorageEngineException {
-    this.timestampGenerator = new EngineTimeGenerator(groupByPlan.getExpression(), context);
+    this.timestampGenerator = new ServerTimeGenerator(groupByPlan.getExpression(), context);
     this.allDataReaderList = new ArrayList<>();
     this.groupByPlan = groupByPlan;
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
       allDataReaderList.add(new SeriesReaderByTimestamp(path, dataTypes.get(i), context,
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, null)));
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null));
     }
   }
 
@@ -97,13 +97,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     hasCachedTimeInterval = false;
     List<AggregateResult> aggregateResultList = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
-      try {
-        aggregateResultList.add(AggreResultFactory.getAggrResultByName(
-            groupByPlan.getDeduplicatedAggregations().get(i),
-            groupByPlan.getDeduplicatedDataTypes().get(i)));
-      } catch (PathException e) {
-        throw new IOException(e);
-      }
+      aggregateResultList.add(AggregateResultFactory.getAggrResultByName(
+          groupByPlan.getDeduplicatedAggregations().get(i),
+          groupByPlan.getDeduplicatedDataTypes().get(i)));
     }
 
     long[] timestampArray = new long[timeStampFetchSize];
@@ -171,7 +167,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     RowRecord record = new RowRecord(curStartTime);
     for (int i = 0; i < paths.size(); i++) {
       AggregateResult aggregateResult = aggregateResultList.get(i);
-      record.addField(aggregateResult.getResult(), aggregateResult.getDataType());
+      record.addField(aggregateResult.getResult(), aggregateResult.getResultDataType());
     }
     return record;
   }

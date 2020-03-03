@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
+import org.apache.iotdb.tsfile.read.controller.CachedChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
@@ -61,7 +61,7 @@ public class ReaderByTimestampTest {
 
   @Test
   public void readByTimestamp() throws IOException {
-    ChunkLoaderImpl seriesChunkLoader = new ChunkLoaderImpl(fileReader);
+    CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
     List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
         .getChunkMetaDataList(new Path("d1.s1"));
     AbstractFileSeriesReader seriesReader = new FileSeriesReader(seriesChunkLoader,

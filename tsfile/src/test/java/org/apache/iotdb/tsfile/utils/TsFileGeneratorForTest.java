@@ -52,7 +52,6 @@ import org.slf4j.LoggerFactory;
 public class TsFileGeneratorForTest {
 
   public static final long START_TIMESTAMP = 1480562618000L;
-  private static final Logger LOG = LoggerFactory.getLogger(TsFileGeneratorForTest.class);
   private static String inputDataFile;
   public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("testTsFile.tsfile");
   private static String errorOutputDataFile;
@@ -163,12 +162,11 @@ public class TsFileGeneratorForTest {
 
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
-    TsFileWriter innerWriter = new TsFileWriter(file, schema,
-        TSFileDescriptor.getInstance().getConfig());
 
     // write
-    try (Scanner in = new Scanner(fsFactory.getFile(inputDataFile))) {
-      assert in != null;
+    try (TsFileWriter innerWriter = new TsFileWriter(file, schema,
+        TSFileDescriptor.getInstance().getConfig());
+        Scanner in = new Scanner(fsFactory.getFile(inputDataFile))) {
       while (in.hasNextLine()) {
         String str = in.nextLine();
         TSRecord record = RecordUtils.parseSimpleTupleRecord(str, schema);
@@ -176,55 +174,7 @@ public class TsFileGeneratorForTest {
       }
     } catch (WriteProcessException e) {
       e.printStackTrace();
-    } finally {
-      innerWriter.close();
     }
-  }
-
-  private static JSONObject generateTestData() {
-    TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    JSONObject s1 = new JSONObject();
-    s1.put(JsonFormatConstant.MEASUREMENT_UID, "s1");
-    s1.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT32.toString());
-    s1.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.getValueEncoder());
-    JSONObject s2 = new JSONObject();
-    s2.put(JsonFormatConstant.MEASUREMENT_UID, "s2");
-    s2.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-    s2.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.getValueEncoder());
-    JSONObject s3 = new JSONObject();
-    s3.put(JsonFormatConstant.MEASUREMENT_UID, "s3");
-    s3.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-    s3.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.getValueEncoder());
-    JSONObject s4 = new JSONObject();
-    s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
-    s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
-    s4.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
-    JSONObject s5 = new JSONObject();
-    s5.put(JsonFormatConstant.MEASUREMENT_UID, "s5");
-    s5.put(JsonFormatConstant.DATA_TYPE, TSDataType.BOOLEAN.toString());
-    s5.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
-    JSONObject s6 = new JSONObject();
-    s6.put(JsonFormatConstant.MEASUREMENT_UID, "s6");
-    s6.put(JsonFormatConstant.DATA_TYPE, TSDataType.FLOAT.toString());
-    s6.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.RLE.toString());
-    JSONObject s7 = new JSONObject();
-    s7.put(JsonFormatConstant.MEASUREMENT_UID, "s7");
-    s7.put(JsonFormatConstant.DATA_TYPE, TSDataType.DOUBLE.toString());
-    s7.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.RLE.toString());
-
-    JSONArray measureGroup1 = new JSONArray();
-    measureGroup1.add(s1);
-    measureGroup1.add(s2);
-    measureGroup1.add(s3);
-    measureGroup1.add(s4);
-    measureGroup1.add(s5);
-    measureGroup1.add(s6);
-    measureGroup1.add(s7);
-
-    JSONObject jsonSchema = new JSONObject();
-    jsonSchema.put(JsonFormatConstant.DELTA_TYPE, "test_type");
-    jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, measureGroup1);
-    return jsonSchema;
   }
 
   private static Schema generateTestSchema() {

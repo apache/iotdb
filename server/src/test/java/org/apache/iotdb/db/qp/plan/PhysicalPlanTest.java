@@ -38,12 +38,12 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
-import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
@@ -71,14 +71,14 @@ public class PhysicalPlanTest {
   @Before
   public void before() throws QueryProcessException, MetadataException {
     MManager.getInstance().init();
-    MManager.getInstance().setStorageGroupToMTree("root.vehicle");
-    MManager.getInstance().addPathToMTree("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+    MManager.getInstance().setStorageGroup("root.vehicle");
+    MManager.getInstance().createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPathToMTree("root.vehicle.d2.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.vehicle.d2.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPathToMTree("root.vehicle.d3.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.vehicle.d3.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().addPathToMTree("root.vehicle.d4.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries("root.vehicle.d4.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
   }
 
@@ -116,19 +116,6 @@ public class PhysicalPlanTest {
             + "permissions: [0, 5]\n" + "nodeName: root.vehicle.d1.s1\n" + "authorType: GRANT_ROLE",
         plan.toString());
   }
-
-  @Test
-  public void testProperty() throws QueryProcessException {
-    String sql = "add label label1021 to property propropro";
-    Planner processor = new Planner();
-    PropertyPlan plan = (PropertyPlan) processor.parseSQLToPhysicalPlan(sql);
-    assertEquals(
-        "propertyPath: propropro.label1021\n" + "metadataPath: null\n"
-            + "propertyType: ADD_PROPERTY_LABEL",
-        plan.toString());
-  }
-
-  // TODO uncomment these code when implement aggregation and fill function
 
   @Test
   public void testAggregation() throws QueryProcessException {
@@ -214,8 +201,10 @@ public class PhysicalPlanTest {
     int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
     FillQueryPlan mergePlan = (FillQueryPlan) plan;
     assertEquals(5000, mergePlan.getQueryTime());
-    assertEquals(defaultFillInterval, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
-    assertEquals(defaultFillInterval, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
+    assertEquals(defaultFillInterval,
+        ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
+    assertEquals(defaultFillInterval,
+        ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
     assertEquals(defaultFillInterval,
         ((PreviousFill) mergePlan.getFillType().get(TSDataType.BOOLEAN)).getBeforeRange());
   }
@@ -618,5 +607,30 @@ public class PhysicalPlanTest {
     Assert.assertEquals(1, plan.getDeduplicatedPaths().size());
     Assert.assertEquals(1, plan.getDeduplicatedDataTypes().size());
     Assert.assertEquals(new Path("root.vehicle.d1.s1"), plan.getDeduplicatedPaths().get(0));
+  }
+
+  @Test
+  public void testLastPlanPaths() throws QueryProcessException {
+    String sqlStr1 = "SELECT last s1 FROM root.vehicle.d1";
+    String sqlStr2 = "SELECT last s1 FROM root.vehicle.d1, root.vehicle.d2";
+    PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
+    PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr2);
+    Path path1 = new Path("root.vehicle.d1.s1");
+    Path path2 = new Path("root.vehicle.d2.s1");
+    assertEquals(1, plan1.getPaths().size());
+    assertEquals(path1.toString(), plan1.getPaths().get(0).toString());
+    assertEquals(2, plan2.getPaths().size());
+    assertEquals(path1.toString(), plan2.getPaths().get(0).toString());
+    assertEquals(path2.toString(), plan2.getPaths().get(1).toString());
+  }
+
+  @Test
+  public void testLastPlanDataTypes() throws QueryProcessException {
+    String sqlStr = "SELECT last s1 FROM root.vehicle.d1";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+
+    assertEquals(1, ((LastQueryPlan) plan).getDataTypes().size());
+    TSDataType dataType = ((LastQueryPlan) plan).getDataTypes().get(0);
+    assertEquals(TSDataType.FLOAT, dataType);
   }
 }

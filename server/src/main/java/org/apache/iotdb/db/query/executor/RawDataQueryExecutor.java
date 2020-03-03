@@ -25,14 +25,14 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
+import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
+import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -91,10 +91,10 @@ public class RawDataQueryExecutor {
 
       QueryDataSource queryDataSource = QueryResourceManager.getInstance()
           .getQueryDataSource(path, context, timeFilter);
-      timeFilter = queryDataSource.updateTimeFilterUsingTTL(timeFilter);
+      timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
       ManagedSeriesReader reader = new SeriesRawDataBatchReader(path, dataType, context,
-          queryDataSource, timeFilter, null);
+          queryDataSource, timeFilter, null, null);
       readersOfSelectedSeries.add(reader);
     }
     return readersOfSelectedSeries;
@@ -108,7 +108,7 @@ public class RawDataQueryExecutor {
    */
   public QueryDataSet executeWithValueFilter(QueryContext context) throws StorageEngineException {
 
-    EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(
+    ServerTimeGenerator timestampGenerator = new ServerTimeGenerator(
         optimizedExpression, context);
 
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
@@ -116,10 +116,10 @@ public class RawDataQueryExecutor {
       Path path = deduplicatedPaths.get(i);
       SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path,
           deduplicatedDataTypes.get(i), context,
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, null));
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
-    return new EngineDataSetWithValueFilter(deduplicatedPaths, deduplicatedDataTypes,
+    return new RawQueryDataSetWithValueFilter(deduplicatedPaths, deduplicatedDataTypes,
         timestampGenerator, readersOfSelectedSeries);
   }
 

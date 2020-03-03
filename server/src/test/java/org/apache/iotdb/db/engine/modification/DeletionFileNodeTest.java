@@ -39,7 +39,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -74,18 +74,17 @@ public class DeletionFileNodeTest {
   }
 
   @Before
-  public void setup() throws MetadataException,
-      PathException, IOException, StorageEngineException, StartupException, StorageGroupException {
+  public void setup() throws MetadataException, StorageEngineException, StartupException {
     EnvironmentUtils.envSetUp();
 
-    MManager.getInstance().setStorageGroupToMTree(processorName);
+    MManager.getInstance().setStorageGroup(processorName);
     for (int i = 0; i < 10; i++) {
-      MManager.getInstance().addPathToMTree(processorName + "." + measurements[i], dataType,
+      MManager.getInstance().createTimeseries(processorName + "." + measurements[i], dataType,
           encoding);
       StorageEngine.getInstance()
           .addTimeSeries(new Path(processorName, measurements[i]), TSDataType.valueOf(dataType),
               TSEncoding.valueOf(encoding),
-              CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
+              TSFileDescriptor.getInstance().getConfig().getCompressor(),
               Collections.emptyMap());
     }
   }

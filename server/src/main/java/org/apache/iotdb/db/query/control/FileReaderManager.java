@@ -25,13 +25,11 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.UnClosedTsFileReader;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
-import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -45,6 +43,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class FileReaderManager implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(FileReaderManager.class);
+  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
 
   /**
    * max number of file streams being cached, must be lower than 65535.
@@ -73,8 +72,6 @@ public class FileReaderManager implements IService {
    */
   private Map<TsFileResource, AtomicInteger> unclosedReferenceMap;
 
-  private final Map<TsFileSequenceReader, IChunkLoader> chunkLoaderMap;
-
   private ScheduledExecutorService executorService;
 
   private FileReaderManager() {
@@ -82,7 +79,6 @@ public class FileReaderManager implements IService {
     unclosedFileReaderMap = new ConcurrentHashMap<>();
     closedReferenceMap = new ConcurrentHashMap<>();
     unclosedReferenceMap = new ConcurrentHashMap<>();
-    chunkLoaderMap = new HashMap<>();
     executorService = IoTDBThreadPoolFactory.newScheduledThreadPool(1,
         "open-files-manager");
 
@@ -120,21 +116,23 @@ public class FileReaderManager implements IService {
 
   private void clearMap(Map<TsFileResource, TsFileSequenceReader> readerMap,
       Map<TsFileResource, AtomicInteger> refMap) {
-    for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : readerMap.entrySet()) {
+    Iterator<Map.Entry<TsFileResource, TsFileSequenceReader>> iterator = readerMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<TsFileResource, TsFileSequenceReader> entry = iterator.next();
       TsFileSequenceReader reader = entry.getValue();
       AtomicInteger refAtom = refMap.get(entry.getKey());
 
       if (refAtom != null && refAtom.get() == 0) {
         try {
-          synchronized (chunkLoaderMap) {
-            chunkLoaderMap.remove(reader);
-          }
           reader.close();
         } catch (IOException e) {
           logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
         }
-        readerMap.remove(entry.getKey());
+        iterator.remove();
         refMap.remove(entry.getKey());
+        if (resourceLogger.isDebugEnabled()) {
+          resourceLogger.debug("{} TsFileReader is closed because of no reference.", entry.getValue().getFileName());
+        }
       }
     }
   }
@@ -171,12 +169,6 @@ public class FileReaderManager implements IService {
   }
 
 
-  public IChunkLoader get(TsFileSequenceReader reader) {
-    synchronized (chunkLoaderMap) {
-      return chunkLoaderMap.computeIfAbsent(reader, ChunkLoaderImpl::new);
-    }
-  }
-
   /**
    * Increase the reference count of the reader specified by filePath. Only when the reference count
    * of a reader equals zero, the reader can be closed and removed.
@@ -200,9 +192,9 @@ public class FileReaderManager implements IService {
   void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     synchronized (this) {
       if (!isClosed && unclosedReferenceMap.containsKey(tsFile)) {
-        unclosedReferenceMap.get(tsFile).getAndDecrement();
+        unclosedReferenceMap.get(tsFile).decrementAndGet();
       } else if (closedReferenceMap.containsKey(tsFile)){
-        closedReferenceMap.get(tsFile).getAndDecrement();
+        closedReferenceMap.get(tsFile).decrementAndGet();
       }
     }
     tsFile.getWriteQueryLock().readLock().unlock();
@@ -213,15 +205,25 @@ public class FileReaderManager implements IService {
    * integration tests will not conflict with each other.
    */
   public synchronized void closeAndRemoveAllOpenedReaders() throws IOException {
-    for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : closedFileReaderMap.entrySet()) {
+    Iterator<Map.Entry<TsFileResource, TsFileSequenceReader>> iterator = closedFileReaderMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<TsFileResource, TsFileSequenceReader> entry = iterator.next();
       entry.getValue().close();
+      if (resourceLogger.isDebugEnabled()) {
+        resourceLogger.debug("{} closedTsFileReader is closed.", entry.getValue().getFileName());
+      }
       closedReferenceMap.remove(entry.getKey());
-      closedFileReaderMap.remove(entry.getKey());
+      iterator.remove();
     }
-    for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : unclosedFileReaderMap.entrySet()) {
+    iterator = unclosedFileReaderMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<TsFileResource, TsFileSequenceReader> entry = iterator.next();
       entry.getValue().close();
+      if (resourceLogger.isDebugEnabled()) {
+        resourceLogger.debug("{} unclosedTsFileReader is closed.", entry.getValue().getFileName());
+      }
       unclosedReferenceMap.remove(entry.getKey());
-      unclosedFileReaderMap.remove(entry.getKey());
+      iterator.remove();
     }
   }
 

@@ -20,6 +20,14 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -28,13 +36,13 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
+import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.MNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -56,16 +64,6 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class TTLTest {
 
@@ -91,35 +89,35 @@ public class TTLTest {
   }
 
   private void createSchemas()
-      throws MetadataException, PathException, StorageGroupProcessorException {
-    MManager.getInstance().setStorageGroupToMTree(sg1);
-    MManager.getInstance().setStorageGroupToMTree(sg2);
+      throws MetadataException, StorageGroupProcessorException {
+    MManager.getInstance().setStorageGroup(sg1);
+    MManager.getInstance().setStorageGroup(sg2);
     storageGroupProcessor = new StorageGroupProcessor(IoTDBDescriptor.getInstance().getConfig()
         .getSystemDir(), sg1, new DirectFlushPolicy());
-    MManager.getInstance().addPathToMTree(g1s1, TSDataType.INT64, TSEncoding.PLAIN,
+    MManager.getInstance().createTimeseries(g1s1, TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.emptyMap());
     storageGroupProcessor.addMeasurement("s1", TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.emptyMap());
   }
 
   @Test
-  public void testSetMetaTTL() throws IOException, PathException, StorageGroupException {
+  public void testSetMetaTTL() throws IOException, MetadataException {
     // exception is expected when setting ttl to a non-exist storage group
     boolean caught = false;
     try {
       MManager.getInstance().setTTL(sg1 + ".notExist", ttl);
-    } catch (PathException e) {
+    } catch (MetadataException e) {
       caught = true;
     }
     assertTrue(caught);
 
     // normally set ttl
     MManager.getInstance().setTTL(sg1, ttl);
-    MNode mNode = MManager.getInstance().getNodeByPathWithCheck(sg1);
+    StorageGroupMNode mNode = MManager.getInstance().getStorageGroupNode(sg1);
     assertEquals(ttl, mNode.getDataTTL());
 
     // default ttl
-    mNode = MManager.getInstance().getNodeByPathWithCheck(sg2);
+    mNode = MManager.getInstance().getStorageGroupNode(sg2);
     assertEquals(Long.MAX_VALUE, mNode.getDataTTL());
   }
 
@@ -199,7 +197,7 @@ public class TTLTest {
     assertEquals(0, unseqResource.size());
     Path path = new Path(sg1, s1);
     IBatchReader reader = new SeriesRawDataBatchReader(path, TSDataType.INT64,
-        EnvironmentUtils.TEST_QUERY_CONTEXT, dataSource, null, null);
+        EnvironmentUtils.TEST_QUERY_CONTEXT, dataSource, null, null, null);
 
     int cnt = 0;
     while (reader.hasNextBatch()) {
@@ -320,19 +318,19 @@ public class TTLTest {
   @Test
   public void testShowTTL()
       throws IOException, QueryProcessException, QueryFilterOptimizationException,
-      StorageEngineException, MetadataException, SQLException {
+      StorageEngineException, MetadataException {
     MManager.getInstance().setTTL(sg1, ttl);
 
     ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());
     PlanExecutor executor = new PlanExecutor();
     QueryDataSet queryDataSet = executor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     RowRecord rowRecord = queryDataSet.next();
-    assertEquals(sg2, rowRecord.getFields().get(0).getStringValue());
-    assertEquals("null", rowRecord.getFields().get(1).getStringValue());
-
-    rowRecord = queryDataSet.next();
     assertEquals(sg1, rowRecord.getFields().get(0).getStringValue());
     assertEquals(ttl, rowRecord.getFields().get(1).getLongV());
+
+    rowRecord = queryDataSet.next();
+    assertEquals(sg2, rowRecord.getFields().get(0).getStringValue());
+    assertEquals("null", rowRecord.getFields().get(1).getStringValue());
   }
 
   @Test

@@ -48,33 +48,9 @@
 	负责一个 TsFile 文件的数据写入和访问。
 	
 	
-### 单行数据（一个设备一个时间戳多个值）写入
-
-* 对应的接口
-	* JDBC 的 execute 和 executeBatch 接口
-	* Session 的 insert 和 insertInBatch
-
-* 总入口: public void insert(InsertPlan insertPlan)
-	* 找到对应的 StorageGroupProsessor
-	* 根据写入数据的时间以及当前设备落盘的最后时间戳，找到对应的 TsFileProcessor
-	* 写入 TsFileProcessor 对应的 memtable 中
-	* 记录写前日志
-	* 根据 memtable 大小，来判断是否触发异步持久化 memtable 操作
-	* 根据当前磁盘 TsFile 的大小，判断是否触发文件关闭操作
-
-### 批量数据（一个设备多个时间戳多个值）写入
-
-* 对应的接口
-	* Session 的 insertBatch
-
-* 总入口: public Integer[] insertBatch(BatchInsertPlan batchInsertPlan)
-	* 找到对应的 StorageGroupProsessor
-	* 根据这批数据的时间以及当前设备落盘的最后时间戳，将这批数据分成小批，分别对应到一个 TsFileProcessor 中
-	* 分别将每小批写入 TsFileProcessor 对应的 memtable 中
-	* 记录写前日志
-	* 根据 memtable 大小，来判断是否触发异步持久化 memtable 操作
-	* 根据当前磁盘 TsFile 的大小，判断是否触发文件关闭操作
-
+## 数据写入
+详见：
+* [数据写入](/#/SystemDesign/progress/chap4/sec6)
 
 ## 数据访问
 
