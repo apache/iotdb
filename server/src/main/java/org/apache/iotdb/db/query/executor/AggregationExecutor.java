@@ -202,8 +202,8 @@ public class AggregationExecutor {
       throws IOException {
     // cal by page data
     int newRemainingToCalculate = remainingToCalculate;
-    while (seriesReader.hasNextOverlappedPage()) {
-      BatchData nextOverlappedPageData = seriesReader.nextOverlappedPage();
+    while (seriesReader.hasNextPage()) {
+      BatchData nextOverlappedPageData = seriesReader.nextPage();
       for (int i = 0; i < aggregateResultList.size(); i++) {
         if (!isCalculatedArray[i]) {
           AggregateResult aggregateResult = aggregateResultList.get(i);

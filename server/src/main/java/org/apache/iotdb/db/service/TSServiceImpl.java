@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.service;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
@@ -59,11 +62,7 @@ import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -127,7 +126,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
-  private static final int MAX_SIZE = 200;
+  private static final int MAX_SIZE =
+      IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
   private static final int DELETE_SIZE = 50;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
@@ -536,7 +536,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
       if (physicalPlan.isQuery()) {
         resp =
-            executeQueryStatement(
+            internalExecuteQueryStatement(
                 req.statementId,
                 physicalPlan,
                 req.fetchSize,
@@ -574,7 +574,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
    * AuthorPlan
    */
-  private TSExecuteStatementResp executeQueryStatement(
+  private TSExecuteStatementResp internalExecuteQueryStatement(
       long statementId, PhysicalPlan plan, int fetchSize, String username) {
     long t1 = System.currentTimeMillis();
     try {
@@ -634,6 +634,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
+    long startTime = System.currentTimeMillis();
+    TSExecuteStatementResp resp;
+    SqlArgument sqlArgument;
+
     if (!checkLogin(req.getSessionId())) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getTSExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
@@ -653,8 +657,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSExecuteStatementResp(
           getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement."));
     }
-    return executeQueryStatement(
+
+    resp = internalExecuteQueryStatement(
         req.statementId, physicalPlan, req.fetchSize, sessionIdUsernameMap.get(req.getSessionId()));
+    long endTime = System.currentTimeMillis();
+    sqlArgument = new SqlArgument(resp, physicalPlan, statement, startTime, endTime);
+    sqlArgumentsList.add(sqlArgument);
+    if (sqlArgumentsList.size() > MAX_SIZE) {
+      sqlArgumentsList.subList(0, DELETE_SIZE).clear();
+    }
+    return resp;
   }
 
   private TSExecuteStatementResp getShowQueryColumnHeaders(ShowPlan showPlan)
@@ -733,14 +745,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     QueryPlan plan = (QueryPlan) physicalPlan;
     if (plan instanceof AlignByDevicePlan) {
       getAlignByDeviceQueryHeaders((AlignByDevicePlan) plan, respColumns, columnsTypes);
-      // set dataTypeList in TSExecuteStatementResp. Note this is without deduplication.
-      resp.setColumns(respColumns);
-      resp.setDataTypeList(columnsTypes);
+    } else if (plan instanceof LastQueryPlan) {
+      return StaticResps.LAST_RESP;
     } else {
       getWideQueryHeaders(plan, respColumns, columnsTypes);
-      resp.setColumns(respColumns);
-      resp.setDataTypeList(columnsTypes);
     }
+    resp.setColumns(respColumns);
+    resp.setDataTypeList(columnsTypes);
     return resp;
   }
 

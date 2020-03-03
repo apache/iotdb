@@ -25,12 +25,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 
 public class InsertPlan extends PhysicalPlan {
@@ -209,5 +214,13 @@ public class InsertPlan extends PhysicalPlan {
   @Override
   public String toString() {
     return "deviceId: " + deviceId + ", time: " + time;
+  }
+
+  public TimeValuePair composeTimeValuePair(int measurementIndex) throws QueryProcessException {
+    if (measurementIndex >= values.length) {
+      return null;
+    }
+    Object value = CommonUtils.parseValue(dataTypes[measurementIndex], values[measurementIndex]);
+    return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[measurementIndex], value));
   }
 }

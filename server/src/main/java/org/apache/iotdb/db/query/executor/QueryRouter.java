@@ -28,6 +28,7 @@ import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
@@ -154,6 +155,13 @@ public class QueryRouter implements IQueryRouter {
     FillQueryExecutor fillQueryExecutor = new FillQueryExecutor(fillPaths, dataTypes, queryTime,
         fillType);
     return fillQueryExecutor.execute(context);
+  }
+
+  @Override
+  public QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
+          throws StorageEngineException, QueryProcessException, IOException {
+    LastQueryExecutor lastQueryExecutor = new LastQueryExecutor(lastQueryPlan);
+    return lastQueryExecutor.execute(context);
   }
 
 }

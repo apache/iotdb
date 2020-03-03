@@ -19,14 +19,22 @@
 package org.apache.iotdb.db.utils;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 public class FileLoaderUtils {
 
@@ -63,5 +71,39 @@ public class FileLoaderUtils {
         }
       }
     }
+  }
+
+  public static List<ChunkMetaData> loadChunkMetadataFromTsFileResource(
+      TsFileResource resource, Path seriesPath, QueryContext context) throws IOException {
+    List<ChunkMetaData> currentChunkMetaDataList;
+    if (resource == null) {
+      return new ArrayList<>();
+    }
+    if (resource.isClosed()) {
+      currentChunkMetaDataList = DeviceMetaDataCache.getInstance().get(resource, seriesPath);
+    } else {
+      currentChunkMetaDataList = resource.getChunkMetaDataList();
+    }
+    List<Modification> pathModifications =
+        context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
+
+    if (!pathModifications.isEmpty()) {
+      QueryUtils.modifyChunkMetaData(currentChunkMetaDataList, pathModifications);
+    }
+
+    for (ChunkMetaData data : currentChunkMetaDataList) {
+      TsFileSequenceReader tsFileSequenceReader =
+          FileReaderManager.getInstance().get(resource, resource.isClosed());
+      data.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
+    }
+    List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
+    if (memChunks != null) {
+      for (ReadOnlyMemChunk readOnlyMemChunk : memChunks) {
+        if (!memChunks.isEmpty()) {
+          currentChunkMetaDataList.add(readOnlyMemChunk.getChunkMetaData());
+        }
+      }
+    }
+    return currentChunkMetaDataList;
   }
 }

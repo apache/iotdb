@@ -446,6 +446,40 @@ root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT.
 
 ```
 
+* Last语句
+
+Last 语句返回所要查询时间序列的最近时间戳的一条数据
+
+```
+SELECT LAST <SelectClause> FROM <FromClause> <DisableAlignClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+DisableAlignClause : [DISABLE ALIGN]
+
+Eg. SELECT LAST s1 FROM root.sg.d1 disable align
+Eg. SELECT LAST s1, s2 FROM root.sg.d1 disable align
+Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2 disable align
+
+规则:
+1. 需要满足PrefixPath.Path 为一条完整的时间序列，即 <PrefixPath> + <Path> = <Timeseries>
+
+2. SELECT LAST 语句不支持过滤条件.
+
+3. 结果集以"disable align"的形式返回，表现为总是包含三列的表格。
+例如 "select last s1, s2 from root.sg.d1, root.sg.d2 disable align", 结果集返回如下：
+
+| Time | Path         | Value |
+| ---  | ------------ | ----- |
+|  5   | root.sg.d1.s1| 100   |
+|  2   | root.sg.d1.s2| 400   |
+|  4   | root.sg.d2.s1| 250   |
+|  9   | root.sg.d2.s2| 600   |
+
+4. SELECT LAST 查询语句要是总是和末尾的disable align在一起使用。如果用户不熟悉SELECT LAST的语法或者忘记在末尾添加"disable align"，IoTDB 也会接受不包含"disable align"的SQL语句并且仍以"disable align"的形式返回结果集。
+例如用户输入 "select last s1 from root.sg.d1" 所得到的查询结果与 "select last s1 from root.sg.d1 disable align". 的结果是完全相同的。
+
+```
+
 ### 数据库管理语句
 
 * 创建用户
