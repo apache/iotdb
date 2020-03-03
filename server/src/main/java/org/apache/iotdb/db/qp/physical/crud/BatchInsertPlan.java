@@ -44,6 +44,8 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 
 public class BatchInsertPlan extends PhysicalPlan {
 
+  private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
+
   private String deviceId;
   private String[] measurements;
   private TSDataType[] dataTypes;
@@ -205,7 +207,7 @@ public class BatchInsertPlan extends PhysicalPlan {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
+            String.format(DATATYPE_UNSUPPORTED, dataType));
     }
   }
 
@@ -292,7 +294,7 @@ public class BatchInsertPlan extends PhysicalPlan {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
+            String.format(DATATYPE_UNSUPPORTED, dataType));
     }
   }
 
@@ -436,7 +438,7 @@ public class BatchInsertPlan extends PhysicalPlan {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataTypes[measurementIndex]));
+            String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
     }
     return new TimeValuePair(times[end - 1], value);
   }

@@ -132,7 +132,7 @@ class StaticResps {
       List<String> dataTypes, boolean ignoreTimeStamp) {
     TSExecuteStatementResp resp =
         TSServiceImpl.getTSExecuteStatementResp(TSServiceImpl.getStatus(TSStatusCode.SUCCESS_STATUS));
-    resp.setIgnoreTimeStamp(true);
+    resp.setIgnoreTimeStamp(ignoreTimeStamp);
     resp.setColumns(columns);
     resp.setDataTypeList(dataTypes);
     return resp;
