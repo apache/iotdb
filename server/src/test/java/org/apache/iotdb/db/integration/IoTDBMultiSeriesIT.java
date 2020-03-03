@@ -408,7 +408,7 @@ public class IoTDBMultiSeriesIT {
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
       assertEquals(
-          "Statement format is not right: Filter has some time series don't correspond to any known time series",
+          "401: Statement format is not right: Filter has some time series don't correspond to any known time series",
           e.getMessage());
     }
   }
@@ -426,7 +426,7 @@ public class IoTDBMultiSeriesIT {
     } catch (SQLException e) {
       e.printStackTrace();
       assertEquals(
-          "org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.vehicle.d0.s10] does not exist",
+          "401: Statement format is not right: org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.vehicle.d0.s10] does not exist",
           e.getMessage());
     }
   }
