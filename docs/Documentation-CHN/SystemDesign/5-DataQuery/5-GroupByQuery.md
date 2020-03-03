@@ -141,7 +141,7 @@ if (readAndCalcFromPage()) {
 //遗留的数据如果计算完了就要打开新的chunk继续计算
 while (reader.hasNextChunk()) {
     Statistics chunkStatistics = reader.currentChunkStatistics();
-      // 判断能否使用pageStatistics，并执行计算
+      // 判断能否使用 Statistics，并执行计算
        ....
       // 跳过当前chunk
       reader.skipCurrentChunk();
@@ -165,7 +165,7 @@ while (reader.hasNextPage()) {
     Statistics pageStatistics = reader.currentPageStatistics();
     //只有page与其它page不相交时，才能使用 pageStatistics
     if (pageStatistics != null) {
-        // 判断能否使用pageStatistics，并执行计算
+        // 判断能否使用 Statistics，并执行计算
         ....
         // 跳过当前page
         reader.skipCurrentPage();
