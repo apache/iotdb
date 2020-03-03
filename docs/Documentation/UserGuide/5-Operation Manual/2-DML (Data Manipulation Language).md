@@ -270,6 +270,41 @@ The path after SELECT in GROUP BY statement must be aggregate function, otherwis
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116099-0b715300-0ac6-11ea-8074-84e04797b8c7.png"></center>
 
+### Last timestamp Query
+In scenarios when IoT devices updates data in a fast manner, users are more interested in the most recent record of IoT devices. 
+The LAST query is to return the most recent value of the given timeseries in a time-value pair format.
+
+The SQL statement is:
+
+```
+select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <DISABLE ALIGN>
+```
+which means:
+
+Query and return the data with the largest timestamp of timeseries prefixPath.path.
+
+In the following example, we queries the latest record of timeseries root.ln.wf01.wt01.status:
+```
+select last status from root.ln.wf01.wt01 disable align
+```
+The result will be returned in a three column table format.
+```
+| Time | Path                    | Value |
+| ---  | ----------------------- | ----- |
+|  5   | root.ln.wf01.wt01.status| 100   |
+```
+If the path root.ln.wf01.wt01 has multiple columns, for example id, status and temperature, the following case will return records of all the three measurements with the largest timestamp.
+```
+select last id, status, temperature from root.ln.wf01.wt01 disable align
+
+| Time | Path                         | Value |
+| ---  | ---------------------------- | ----- |
+|  5   | root.ln.wf01.wt01.id         | 10    |
+|  7   | root.ln.wf01.wt01.status     | true  |
+|  9   | root.ln.wf01.wt01.temperature| 35.7  |
+```
+
+
 ### Automated Fill
 
 In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.

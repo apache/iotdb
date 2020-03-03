@@ -1,8 +1,28 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -26,12 +46,12 @@ public class GroupByFillDataSet extends QueryDataSet {
 
   public GroupByFillDataSet(List<Path> paths, List<TSDataType> dataTypes, GroupByEngineDataSet groupByEngineDataSet,
                             Map<TSDataType, IFill> fillTypes, QueryContext context)
-          throws StorageEngineException, IOException, UnSupportedFillTypeException {
+          throws StorageEngineException, IOException, QueryProcessException {
     super(paths, dataTypes);
     this.groupByEngineDataSet = groupByEngineDataSet;
     this.fillTypes = fillTypes;
     initPreviousParis(context);
-    initLastTimeArray();
+    initLastTimeArray(context);
   }
 
   private void initPreviousParis(QueryContext context) throws StorageEngineException, IOException, UnSupportedFillTypeException {
@@ -51,10 +71,16 @@ public class GroupByFillDataSet extends QueryDataSet {
     }
   }
 
-  private void initLastTimeArray() {
+  private void initLastTimeArray(QueryContext context) throws IOException, StorageEngineException, QueryProcessException {
     lastTimeArray = new long[paths.size()];
-    Arrays.fill(lastTimeArray, -1L);
-
+    Arrays.fill(lastTimeArray, Long.MAX_VALUE);
+    for (int i = 0; i < paths.size(); i++) {
+      TimeValuePair lastTimeValuePair =
+              LastQueryExecutor.calculateLastPairForOneSeries(paths.get(i), dataTypes.get(i), context);
+      if (lastTimeValuePair.getValue() != null) {
+        lastTimeArray[i] = lastTimeValuePair.getTimestamp();
+      }
+    }
   }
 
   @Override

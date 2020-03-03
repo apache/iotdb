@@ -54,7 +54,16 @@ public interface IQueryRouter {
   QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException;
 
+  /**
+   * Execute group by fill query
+   */
   QueryDataSet groupByFill(GroupByFillPlan groupByFillPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException,
       QueryProcessException, IOException;
+
+  /**
+   * Execute last query
+   */
+  QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
+      throws StorageEngineException, QueryProcessException, IOException;
 }

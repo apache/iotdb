@@ -300,6 +300,39 @@ GROUP BY的SELECT子句里的查询路径必须是聚合函数，否则系统将
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116099-0b715300-0ac6-11ea-8074-84e04797b8c7.png"></center>
 
+### 最近时间戳数据查询
+
+对应的SQL语句是：
+
+```
+select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <DISABLE ALIGN>
+```
+其含义是：
+
+查询时间序列prefixPath.path中最近时间戳的数据
+
+下面的例子中查询时间序列root.ln.wf01.wt01.status最近时间戳的数据:
+```
+select last status from root.ln.wf01.wt01 disable align
+```
+结果集为以下的形式返回：
+```
+| Time | Path                    | Value |
+| ---  | ----------------------- | ----- |
+|  5   | root.ln.wf01.wt01.status| 100   |
+```
+
+假设root.ln.wf01.wt01中包含多列数据，如id, status, temperature，下面的例子将会把这几列数据在最近时间戳的记录同时返回：
+```
+select last id, status, temperature from root.ln.wf01 disable align
+
+| Time | Path                         | Value |
+| ---  | ---------------------------- | ----- |
+|  5   | root.ln.wf01.wt01.id         | 10    |
+|  7   | root.ln.wf01.wt01.status     | true  |
+|  9   | root.ln.wf01.wt01.temperature| 35.7  |
+```
+
 
 ## 数据维护
 

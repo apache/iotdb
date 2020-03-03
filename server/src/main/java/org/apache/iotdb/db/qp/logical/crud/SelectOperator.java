@@ -31,6 +31,7 @@ public final class SelectOperator extends Operator {
 
   private List<Path> suffixList;
   private List<String> aggregations;
+  private boolean lastQuery;
 
   /**
    * init with tokenIntType, default operatorType is <code>OperatorType.SELECT</code>.
@@ -40,6 +41,7 @@ public final class SelectOperator extends Operator {
     operatorType = OperatorType.SELECT;
     suffixList = new ArrayList<>();
     aggregations = new ArrayList<>();
+    lastQuery = false;
   }
 
   public void addSelectPath(Path suffixPath) {
@@ -49,6 +51,10 @@ public final class SelectOperator extends Operator {
   public void addClusterPath(Path suffixPath, String aggregation) {
     suffixList.add(suffixPath);
     aggregations.add(aggregation);
+  }
+
+  public void setLastQuery() {
+    lastQuery = true;
   }
 
   public List<String> getAggregations() {
@@ -67,4 +73,5 @@ public final class SelectOperator extends Operator {
     return suffixList;
   }
 
+  public boolean isLastQuery() {return this.lastQuery; }
 }

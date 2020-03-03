@@ -51,24 +51,24 @@ It costs 0.417s
 * Set Storage Group
 
 ``` SQL
-SET STORAGE GROUP TO <PrefixPath>
+SET STORAGE GROUP TO <FullPath>
 Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
-Note: PrefixPath can not include `*`
+Note: FullPath can not include `*`
 ```
 
 * Delete Storage Group
 
 ```
-DELETE STORAGE GROUP <PrefixPath> [COMMA <PrefixPath>]*
+DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Note: PrefixPath can not include `*`
+Note: FullPath can not include `*`
 ```
 
 * Create Timeseries Statement
 
 ```
-CREATE TIMESERIES <Timeseries> WITH <AttributeClauses>
+CREATE TIMESERIES <FullPath> WITH <AttributeClauses>
 AttributeClauses : DATATYPE=<DataTypeValue> COMMA ENCODING=<EncodingValue> [COMMA <ExtraAttributeClause>]*
 DataTypeValue: BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
 EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF | REGULAR
@@ -478,6 +478,39 @@ You could expect a table like:
    - select s0,s1 from root.vehicle.* limit 10 offset 1 disable align
    - select * from root.vehicle slimit 10 soffset 2 disable align
    - select * from root.vehicle where time > 10 disable align
+
+```
+
+* Select Last Record Statement
+
+The LAST function returns the last time-value pair of the given timeseries. Currently filters are not supported in LAST queries.
+
+```
+SELECT LAST <SelectClause> FROM <FromClause> <DisableAlignClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+DisableAlignClause : [DISABLE ALIGN]
+
+Eg. SELECT LAST s1 FROM root.sg.d1 disable align
+Eg. SELECT LAST s1, s2 FROM root.sg.d1 disable align
+Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2 disable align
+
+Rules:
+1. the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
+
+2. The result set of last query will always be displayed in a "disable-aligned" format showed below.
+For example, "select last s1, s2 from root.sg.d1, root.sg.d2 disable align", the query result would be:
+
+| Time | Path         | Value |
+| ---  | ------------ | ----- |
+|  5   | root.sg.d1.s1| 100   |
+|  2   | root.sg.d1.s2| 400   |
+|  4   | root.sg.d2.s1| 250   |
+|  9   | root.sg.d2.s2| 600   |
+
+3. LAST query syntax is expecting users to write a "diable align" keyword at the end of the query. 
+However, as it is a unique SQL syntax in IoTDB, IoTDB accepts LAST queries without "disable align" and treats them as "disable align" ones.
+Query like "select last s1 from root.sg.d1" will be parsed exactly the same as "select last s1 from root.sg.d1 disable align". 
 
 ```
 

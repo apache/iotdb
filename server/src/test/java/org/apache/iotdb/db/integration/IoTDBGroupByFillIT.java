@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -5,7 +23,6 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -14,10 +31,9 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-import static org.apache.iotdb.db.integration.Constant.TIMESTAMP_STR;
-import static org.apache.iotdb.db.integration.Constant.last_value;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.db.constant.TestConstant.last_value;
+import static org.junit.Assert.*;
 
 public class IoTDBGroupByFillIT {
 
@@ -78,7 +94,7 @@ public class IoTDBGroupByFillIT {
                       + "root.ln.wf01.wt01 "
                       + "GROUP BY ([17, 48), 5ms) FILL(int32[previous])");
 
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -108,7 +124,7 @@ public class IoTDBGroupByFillIT {
                       + "root.ln.wf01.wt01 "
                       + "GROUP BY ([17, 48), 5ms) FILL(int32[previous])");
     } catch (IoTDBSQLException e) {
-      assertEquals("Statement format is not right: Group By Fill only support last_value function", e.getMessage());
+      assertTrue(e.getMessage().contains("Statement format is not right: Group By Fill only support last_value function"));
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -139,7 +155,7 @@ public class IoTDBGroupByFillIT {
                       + "root.ln.wf01.wt01 "
                       + "GROUP BY ([2, 48), 5ms) FILL(int32[previous])");
 
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -181,7 +197,7 @@ public class IoTDBGroupByFillIT {
                       + "root.ln.wf01.wt01 "
                       + "GROUP BY ([2, 48), 5ms) FILL(int32[previous], double[previous])");
 
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -224,7 +240,7 @@ public class IoTDBGroupByFillIT {
                       + "root.ln.wf01.wt01 "
                       + "GROUP BY ([2, 48), 5ms) FILL(ALL[previous])");
 
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -264,7 +280,7 @@ public class IoTDBGroupByFillIT {
                       + "root.ln.wf01.wt01 "
                       + "GROUP BY ([17, 48), 5ms) FILL(int32[previousUntilLast])");
 
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -294,7 +310,7 @@ public class IoTDBGroupByFillIT {
                       + "root.ln.wf01.wt01 "
                       + "GROUP BY ([17, 48), 5ms) FILL(int32[previousUntilLast])");
     } catch (IoTDBSQLException e) {
-      assertEquals("Statement format is not right: Group By Fill only support last_value function", e.getMessage());
+      assertTrue(e.getMessage().contains("Statement format is not right: Group By Fill only support last_value function"));
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -325,7 +341,7 @@ public class IoTDBGroupByFillIT {
                       + "root.ln.wf01.wt01 "
                       + "GROUP BY ([2, 48), 5ms) FILL(int32[previousUntilLast])");
 
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -367,7 +383,7 @@ public class IoTDBGroupByFillIT {
                       + "root.ln.wf01.wt01 "
                       + "GROUP BY ([2, 48), 5ms) FILL(int32[previousUntilLast], double[previousUntilLast])");
 
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -410,7 +426,7 @@ public class IoTDBGroupByFillIT {
                       + "root.ln.wf01.wt01 "
                       + "GROUP BY ([2, 48), 5ms) FILL(ALL[previousUntilLast])");
 
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;

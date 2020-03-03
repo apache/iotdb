@@ -156,4 +156,11 @@ public class QueryRouter implements IQueryRouter {
             groupByEngineDataSet, groupByFillPlan.getFillType(), context);
   }
 
+  @Override
+  public QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
+          throws StorageEngineException, QueryProcessException, IOException {
+    LastQueryExecutor lastQueryExecutor = new LastQueryExecutor(lastQueryPlan);
+    return lastQueryExecutor.execute(context);
+  }
+
 }
