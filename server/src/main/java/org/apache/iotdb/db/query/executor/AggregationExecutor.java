@@ -28,7 +28,6 @@ import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -37,8 +36,8 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
@@ -132,10 +131,7 @@ public class AggregationExecutor {
   public static void aggregateOneSeries(Path seriesPath, QueryContext context, Filter timeFilter,
       TSDataType tsDataType, List<AggregateResult> aggregateResultList, TsFileFilter fileFilter)
       throws StorageEngineException, IOException, QueryProcessException {
-    List<Boolean> isCalculatedList = new ArrayList<>();
-    for (int i = 0; i < aggregateResultList.size(); i++) {
-      isCalculatedList.add(false);
-    }
+
     // construct series reader without value filter
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(seriesPath, context, timeFilter);
@@ -147,69 +143,83 @@ public class AggregationExecutor {
 
     IAggregateReader seriesReader = new SeriesAggregateReader(seriesPath,
         tsDataType, context, queryDataSource, timeFilter, null, null);
+    aggregateFromReader(seriesReader, aggregateResultList);
+  }
 
+  private static void aggregateFromReader(IAggregateReader seriesReader,
+      List<AggregateResult> aggregateResultList) throws QueryProcessException, IOException {
     int remainingToCalculate = aggregateResultList.size();
+    boolean[] isCalculatedArray = new boolean[aggregateResultList.size()];
 
     while (seriesReader.hasNextChunk()) {
       // cal by chunk statistics
       if (seriesReader.canUseCurrentChunkStatistics()) {
         Statistics chunkStatistics = seriesReader.currentChunkStatistics();
-        for (int i = 0; i < aggregateResultList.size(); i++) {
-          if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-            AggregateResult aggregateResult = aggregateResultList.get(i);
-            aggregateResult.updateResultFromStatistics(chunkStatistics);
-            if (aggregateResult.isCalculatedAggregationResult()) {
-              isCalculatedList.set(i, true);
-              remainingToCalculate--;
-              if (remainingToCalculate == 0) {
-                return;
-              }
-            }
-          }
+        remainingToCalculate = aggregateStatistics(aggregateResultList, isCalculatedArray,
+            remainingToCalculate, chunkStatistics);
+        if (remainingToCalculate == 0) {
+          return;
         }
         seriesReader.skipCurrentChunk();
         continue;
       }
-      while (seriesReader.hasNextPage()) {
-        //cal by page statistics
-        if (seriesReader.canUseCurrentPageStatistics()) {
-          Statistics pageStatistic = seriesReader.currentPageStatistics();
-          for (int i = 0; i < aggregateResultList.size(); i++) {
-            if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-              AggregateResult aggregateResult = aggregateResultList.get(i);
-              aggregateResult.updateResultFromStatistics(pageStatistic);
-              if (aggregateResult.isCalculatedAggregationResult()) {
-                isCalculatedList.set(i, true);
-                remainingToCalculate--;
-                if (remainingToCalculate == 0) {
-                  return;
-                }
-              }
-            }
+      remainingToCalculate = aggregateOverlappedPages(seriesReader, aggregateResultList,
+          isCalculatedArray, remainingToCalculate);
+    }
+  }
+
+  /**
+   * Aggregate each result in the list with the statistics
+   * @param aggregateResultList
+   * @param isCalculatedArray
+   * @param remainingToCalculate
+   * @param statistics
+   * @return new remainingToCalculate
+   * @throws QueryProcessException
+   */
+  private static int aggregateStatistics(List<AggregateResult> aggregateResultList,
+      boolean[] isCalculatedArray, int remainingToCalculate, Statistics statistics)
+      throws QueryProcessException {
+    int newRemainingToCalculate = remainingToCalculate;
+    for (int i = 0; i < aggregateResultList.size(); i++) {
+      if (!isCalculatedArray[i]) {
+        AggregateResult aggregateResult = aggregateResultList.get(i);
+        aggregateResult.updateResultFromStatistics(statistics);
+        if (aggregateResult.isCalculatedAggregationResult()) {
+          isCalculatedArray[i] = true;
+          newRemainingToCalculate--;
+          if (newRemainingToCalculate == 0) {
+            return newRemainingToCalculate;
           }
-          seriesReader.skipCurrentPage();
-          continue;
         }
-        // cal by page data
-        while (seriesReader.hasNextOverlappedPage()) {
-          BatchData nextOverlappedPageData = seriesReader.nextOverlappedPage();
-          for (int i = 0; i < aggregateResultList.size(); i++) {
-            if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-              AggregateResult aggregateResult = aggregateResultList.get(i);
-              aggregateResult.updateResultFromPageData(nextOverlappedPageData);
-              nextOverlappedPageData.resetBatchData();
-              if (aggregateResult.isCalculatedAggregationResult()) {
-                isCalculatedList.set(i, true);
-                remainingToCalculate--;
-                if (remainingToCalculate == 0) {
-                  return;
-                }
-              }
+      }
+    }
+    return newRemainingToCalculate;
+  }
+
+  private static int aggregateOverlappedPages(IAggregateReader seriesReader,
+      List<AggregateResult> aggregateResultList, boolean[] isCalculatedArray, int remainingToCalculate)
+      throws IOException {
+    // cal by page data
+    int newRemainingToCalculate = remainingToCalculate;
+    while (seriesReader.hasNextOverlappedPage()) {
+      BatchData nextOverlappedPageData = seriesReader.nextOverlappedPage();
+      for (int i = 0; i < aggregateResultList.size(); i++) {
+        if (!isCalculatedArray[i]) {
+          AggregateResult aggregateResult = aggregateResultList.get(i);
+          aggregateResult.updateResultFromPageData(nextOverlappedPageData);
+          nextOverlappedPageData.resetBatchData();
+          if (aggregateResult.isCalculatedAggregationResult()) {
+            isCalculatedArray[i] = true;
+            newRemainingToCalculate--;
+            if (newRemainingToCalculate == 0) {
+              return newRemainingToCalculate;
             }
           }
         }
       }
     }
+    return newRemainingToCalculate;
   }
 
   /**

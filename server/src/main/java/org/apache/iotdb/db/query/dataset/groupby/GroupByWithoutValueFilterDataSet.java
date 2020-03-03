@@ -148,17 +148,17 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       List<Integer>> pathToAggrIndexes) throws IOException, QueryProcessException {
     List<AggregateResult> aggregateResultList = new ArrayList<>();
     List<Integer> indexList = pathToAggrIndexes.getValue();
-    boolean[] isCalculatedList = new boolean[indexList.size()];
+    boolean[] isCalculatedArray = new boolean[indexList.size()];
     TSDataType tsDataType = groupByPlan.getDeduplicatedDataTypes().get(indexList.get(0));
 
-    aggregateLastBatches(indexList, aggregateResultList, tsDataType, isCalculatedList);
+    aggregateLastBatches(indexList, aggregateResultList, tsDataType, isCalculatedArray);
     if (remainingToCalculate == 0) {
       return aggregateResultList;
     }
 
     TimeRange timeRange = new TimeRange(curStartTime, curEndTime - 1);
     IAggregateReader reader = aggregateReaders.get(pathToAggrIndexes.getKey());
-    aggregateFromReader(reader, timeRange, aggregateResultList, isCalculatedList, pathToAggrIndexes);
+    aggregateFromReader(reader, timeRange, aggregateResultList, isCalculatedArray, pathToAggrIndexes);
 
     return aggregateResultList;
   }
@@ -168,7 +168,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    */
   private void aggregateLastBatches(List<Integer> indexList,
       List<AggregateResult> aggregateResultList, TSDataType tsDataType,
-      boolean[] isCalculatedList) throws IOException {
+      boolean[] isCalculatedArray) throws IOException {
     remainingToCalculate = indexList.size();
     for (int i = 0; i < indexList.size(); i++) {
       int index = indexList.get(i);
@@ -180,7 +180,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
       calcBatchData(result, lastBatch);
       if (isEndCalc(result, lastBatch)) {
-        isCalculatedList[i] = true;
+        isCalculatedArray[i] = true;
         remainingToCalculate--;
         if (remainingToCalculate == 0) {
           return;
@@ -190,7 +190,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   private void aggregateFromReader(IAggregateReader reader, TimeRange timeRange,
-      List<AggregateResult> aggregateResultList, boolean[] isCalculatedList, Map.Entry<Path,
+      List<AggregateResult> aggregateResultList, boolean[] isCalculatedArray, Map.Entry<Path,
       List<Integer>> pathToAggrIndexes)
       throws IOException, QueryProcessException {
     while (reader.hasNextChunk()) {
@@ -200,18 +200,18 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         return;
       }
 
-      boolean statisticApplied = aggregateChunkStatistic(reader, timeRange, chunkStatistics,
-          aggregateResultList, isCalculatedList);
+      boolean statisticApplied = aggregateChunkStatistics(reader, timeRange, chunkStatistics,
+          aggregateResultList, isCalculatedArray);
       if (remainingToCalculate == 0) {
         return;
       } else if (!statisticApplied) {
-        aggregatePages(reader, timeRange, aggregateResultList, isCalculatedList, pathToAggrIndexes);
+        aggregatePages(reader, timeRange, aggregateResultList, isCalculatedArray, pathToAggrIndexes);
       }
     }
   }
 
   private void aggregatePages(IAggregateReader reader, TimeRange timeRange,
-      List<AggregateResult> aggregateResultList, boolean[] isCalculatedList, Map.Entry<Path,
+      List<AggregateResult> aggregateResultList, boolean[] isCalculatedArray, Map.Entry<Path,
       List<Integer>> pathToAggrIndexes) throws IOException, QueryProcessException {
     while (reader.hasNextPage()) {
       //cal by page statistics
@@ -220,11 +220,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         return;
       }
       boolean statisticApplied = aggregatePageStatistic(reader, timeRange, pageStatistics,
-          aggregateResultList, isCalculatedList);
+          aggregateResultList, isCalculatedArray);
       if (remainingToCalculate == 0) {
         return;
       } else if (!statisticApplied) {
-        aggregateOverlappedPages(reader, aggregateResultList, isCalculatedList, pathToAggrIndexes);
+        aggregateOverlappedPages(reader, aggregateResultList, isCalculatedArray, pathToAggrIndexes);
       }
     }
   }
@@ -235,16 +235,16 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * @param timeRange
    * @param chunkStatistics
    * @param aggregateResultList
-   * @param isCalculatedList
+   * @param isCalculatedArray
    * @return true if the statistic is applied, false otherwise
    * @throws QueryProcessException
    */
-  private boolean aggregateChunkStatistic(IAggregateReader reader, TimeRange timeRange,
+  private boolean aggregateChunkStatistics(IAggregateReader reader, TimeRange timeRange,
       Statistics chunkStatistics, List<AggregateResult> aggregateResultList,
-      boolean[] isCalculatedList) throws QueryProcessException {
+      boolean[] isCalculatedArray) throws QueryProcessException {
     if (reader.canUseCurrentChunkStatistics() && timeRange.contains(
        chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
-      aggregateStatistic(aggregateResultList, isCalculatedList, chunkStatistics);
+      aggregateStatistic(aggregateResultList, isCalculatedArray, chunkStatistics);
       if (remainingToCalculate == 0) {
         return true;
       }
@@ -260,17 +260,17 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * @param timeRange
    * @param pageStatistics
    * @param aggregateResultList
-   * @param isCalculatedList
+   * @param isCalculatedArray
    * @return true if the statistic is applied, false otherwise
    * @throws QueryProcessException
    */
   private boolean aggregatePageStatistic(IAggregateReader reader, TimeRange timeRange,
       Statistics pageStatistics, List<AggregateResult> aggregateResultList,
-      boolean[] isCalculatedList) throws IOException, QueryProcessException {
+      boolean[] isCalculatedArray) throws IOException, QueryProcessException {
     if (reader.canUseCurrentPageStatistics() && timeRange.contains(
         pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
       for (int i = 0; i < aggregateResultList.size(); i++) {
-        aggregateStatistic(aggregateResultList, isCalculatedList, pageStatistics);
+        aggregateStatistic(aggregateResultList, isCalculatedArray, pageStatistics);
         if (remainingToCalculate == 0) {
           return true;
         }
@@ -282,20 +282,20 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   private void aggregateOverlappedPages(IAggregateReader reader,
-      List<AggregateResult> aggregateResultList, boolean[] isCalculatedList, Map.Entry<Path,
+      List<AggregateResult> aggregateResultList, boolean[] isCalculatedArray, Map.Entry<Path,
       List<Integer>> pathToAggrIndexes) throws IOException {
     while (reader.hasNextOverlappedPage()) {
       // cal by page data
       BatchData batchData = reader.nextOverlappedPage();
-      aggregateBatch(aggregateResultList, isCalculatedList, batchData, pathToAggrIndexes);
+      aggregateBatch(aggregateResultList, isCalculatedArray, batchData, pathToAggrIndexes);
     }
   }
 
   private void aggregateBatch(List<AggregateResult> aggregateResultList,
-      boolean[] isCalculatedList, BatchData batchData, Map.Entry<Path,
+      boolean[] isCalculatedArray, BatchData batchData, Map.Entry<Path,
       List<Integer>> pathToAggrIndexes) throws IOException {
     for (int i = 0; i < aggregateResultList.size(); i++) {
-      if (!isCalculatedList[i]) {
+      if (!isCalculatedArray[i]) {
         AggregateResult result = aggregateResultList.get(i);
         calcBatchData(result, batchData);
         int idx = pathToAggrIndexes.getValue().get(i);
@@ -303,7 +303,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           cachedBatchDataList[idx] = batchData;
         }
         if (isEndCalc(result, null)) {
-          isCalculatedList[i] = true;
+          isCalculatedArray[i] = true;
           remainingToCalculate--;
           if (remainingToCalculate == 0) {
             break;
@@ -314,13 +314,13 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   private void aggregateStatistic(List<AggregateResult> aggregateResultList,
-      boolean[] isCalculatedList, Statistics statistics) throws QueryProcessException {
+      boolean[] isCalculatedArray, Statistics statistics) throws QueryProcessException {
     for (int i = 0; i < aggregateResultList.size(); i++) {
-      if (!isCalculatedList[i]) {
+      if (!isCalculatedArray[i]) {
         AggregateResult result = aggregateResultList.get(i);
         result.updateResultFromStatistics(statistics);
         if (result.isCalculatedAggregationResult()) {
-          isCalculatedList[i] = true;
+          isCalculatedArray[i] = true;
           remainingToCalculate--;
           if (remainingToCalculate == 0) {
             return;

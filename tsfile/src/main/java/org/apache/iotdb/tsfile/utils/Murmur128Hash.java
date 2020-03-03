@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import java.nio.ByteBuffer;
-
 public class Murmur128Hash {
+
+  private Murmur128Hash() {
+    // util class
+  }
 
   /**
    * get hashcode of value by seed
@@ -30,7 +32,7 @@ public class Murmur128Hash {
    * @return hashcode of value
    */
   public static int hash(String value, int seed) {
-    return (int) hash3_x64_128(value.getBytes(), 0, value.getBytes().length, seed);
+    return (int) innerHash(value.getBytes(), 0, value.getBytes().length, seed);
   }
 
   /**
@@ -42,7 +44,7 @@ public class Murmur128Hash {
    * @return hashcode of value
    */
   public static int hash(String value1, long value2, int seed) {
-    return (int) hash3_x64_128(
+    return (int) innerHash(
         BytesUtils.concatByteArray(value1.getBytes(), BytesUtils.longToBytes(value2)), 0,
         value1.length() + 8, seed);
   }
@@ -51,8 +53,8 @@ public class Murmur128Hash {
    * Methods to perform murmur 128 hash.
    **************************************/
   private static long getBlock(byte[] key, int offset, int index) {
-    int i_8 = index << 3;
-    int blockOffset = offset + i_8;
+    int i8 = index << 3;
+    int blockOffset = offset + i8;
     return ((long) key[blockOffset] & 0xff) + (((long) key[blockOffset + 1] & 0xff) << 8)
         +
         (((long) key[blockOffset + 2] & 0xff) << 16) + (
@@ -76,7 +78,7 @@ public class Murmur128Hash {
     return k;
   }
 
-  private static long hash3_x64_128(byte[] key, int offset, int length, long seed) {
+  private static long innerHash(byte[] key, int offset, int length, long seed) {
     final int nblocks = length >> 4; // Process as 128-bit blocks.
     long h1 = seed;
     long h2 = seed;
@@ -85,7 +87,7 @@ public class Murmur128Hash {
     // ----------
     // body
     for (int i = 0; i < nblocks; i++) {
-      long k1 = getBlock(key, offset, i * 2 + 0);
+      long k1 = getBlock(key, offset, i * 2);
       long k2 = getBlock(key, offset, i * 2 + 1);
       k1 *= c1;
       k1 = rotl64(k1, 31);
@@ -128,7 +130,7 @@ public class Murmur128Hash {
         k2 ^= ((long) key[offset + 9]) << 8;
         // fallthrough
       case 9:
-        k2 ^= ((long) key[offset + 8]);
+        k2 ^= key[offset + 8];
         k2 *= c2;
         k2 = rotl64(k2, 33);
         k2 *= c1;

@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.service;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
@@ -584,14 +578,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       long statementId, PhysicalPlan plan, int fetchSize, String username) {
     long t1 = System.currentTimeMillis();
     try {
-      TSExecuteStatementResp resp; // column headers
-      if (plan instanceof AuthorPlan) {
-        resp = getAuthQueryColumnHeaders(plan);
-      } else if (plan instanceof ShowPlan) {
-        resp = getShowQueryColumnHeaders((ShowPlan) plan);
-      } else {
-        resp = getQueryColumnHeaders(plan, username);
-      }
+      TSExecuteStatementResp resp = getQueryResp(plan, username); // column headers
+
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
         if (plan.getOperatorType() == OperatorType.AGGREGATION) {
           throw new QueryProcessException("Aggregation doesn't support disable align clause.");
@@ -618,12 +606,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
         TSQueryNonAlignDataSet result = fillRpcNonAlignReturnData(fetchSize, newDataSet, username);
         resp.setNonAlignQueryDataSet(result);
-        resp.setQueryId(queryId);
       } else {
         TSQueryDataSet result = fillRpcReturnData(fetchSize, newDataSet, username);
         resp.setQueryDataSet(result);
-        resp.setQueryId(queryId);
       }
+      resp.setQueryId(queryId);
       return resp;
     } catch (Exception e) {
       logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
@@ -631,6 +618,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, t1);
+    }
+  }
+
+  private TSExecuteStatementResp getQueryResp(PhysicalPlan plan, String username)
+      throws QueryProcessException, AuthException, TException {
+    if (plan instanceof AuthorPlan) {
+      return getAuthQueryColumnHeaders(plan);
+    } else if (plan instanceof ShowPlan) {
+      return getShowQueryColumnHeaders((ShowPlan) plan);
+    } else {
+      return getQueryColumnHeaders(plan, username);
     }
   }
 
@@ -813,11 +811,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     while (loc < totalSize) {
       boolean isNonExist = false;
       boolean isConstant = false;
-      TSDataType type = null;
-      String column = null;
+      TSDataType type;
+      String column;
       // not exist
-      if (notExistMeasurementsLoc < plan.getNotExistMeasurements().size()
-          && loc == plan.getPositionOfNotExistMeasurements().get(notExistMeasurementsLoc)) {
+      if (isOneMeasurementIn(loc,
+          notExistMeasurementsLoc, plan.getPositionOfNotExistMeasurements())) {
         // for shifting
         plan.getPositionOfNotExistMeasurements().set(notExistMeasurementsLoc, loc - shiftLoc);
 
@@ -827,8 +825,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         isNonExist = true;
       }
       // constant
-      else if (constMeasurementsLoc < plan.getConstMeasurements().size()
-              && loc == plan.getPositionOfConstMeasurements().get(constMeasurementsLoc)) {
+      else if (isOneMeasurementIn(loc,
+          constMeasurementsLoc, plan.getPositionOfConstMeasurements())) {
         // for shifting
         plan.getPositionOfConstMeasurements().set(constMeasurementsLoc, loc - shiftLoc);
 
@@ -881,6 +879,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     // set these null since they are never used henceforth in ALIGN_BY_DEVICE query processing.
     plan.setPaths(null);
     plan.setDataTypeConsistencyChecker(null);
+  }
+
+  /**
+   *
+   * @param subLoc
+   * @param totalLoc
+   * @param measurementPositions
+   * @return true if the measurement at totalLoc is the subLoc measurement in measurementPositions,
+   * false otherwise
+   */
+  private boolean isOneMeasurementIn(int totalLoc,
+      int subLoc, List<Integer> measurementPositions) {
+    return subLoc < measurementPositions.size() && totalLoc == measurementPositions.get(subLoc);
   }
 
   @Override
