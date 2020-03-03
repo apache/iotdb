@@ -87,9 +87,11 @@ for (AggregateResult res : fields) {
 
 ### GroupByExecutor
 封装了相同 path 下的所有聚合函数的计算方法，该类有如下关键字段：
-private IAggregateReader reader 读取当前 `Path` 数据用到的 `SeriesAggregateReader`
-private BatchData preCachedData 每次从 `Reader` 读取的数据是一批，很有可能会超过当前的时间段，那么这个 `BatchData` 就会被缓存留给下一次使用
-private List<Pair<AggregateResult, Integer>> results 存储了当前 `Path` 里所有的聚合方法，例如：`select count(a),sum(a)` ，`count` 和 `sum` 方法就被存到这里，右侧的 `Integer` 用于结果集转化为RowRecord之前，需要将其顺序还原为用户查询的顺序。
+* private IAggregateReader reader 读取当前 `Path` 数据用到的 `SeriesAggregateReader`
+* private BatchData preCachedData 每次从 `Reader` 读取的数据是一批，很有可能会超过当前的时间段，那么这个 `BatchData` 就会被缓存留给下一次使用
+* private List<Pair<AggregateResult, Integer>> results 存储了当前 `Path` 里所有的聚合方法，
+例如：`select count(a),sum(a),avg(b)` ，`count` 和 `sum` 方法就被存到一起。
+右侧的 `Integer` 用于结果集转化为RowRecord之前，需要将其顺序还原为用户查询的顺序。
 
 #### 主要方法
 
