@@ -219,10 +219,10 @@ public class SessionDataSet {
       TSStatus closeResp = client.closeOperation(closeReq);
       RpcUtils.verifySuccess(closeResp);
     } catch (IoTDBRPCException e) {
-      throw new SQLException("Error occurs for close opeation in server side. The reason is " + e);
+      throw new SQLException("Error occurs for close opeation in server side. The reason is " + e, e);
     } catch (TException e) {
       throw new SQLException(
-          "Error occurs when connecting to server for close operation, because: " + e);
+          "Error occurs when connecting to server for close operation, because: " + e, e);
     }
   }
 }

@@ -224,6 +224,15 @@ public class EnvironmentUtils {
     }
   }
 
+  public static void reactiveDaemon() {
+    if (daemon == null) {
+      daemon = new IoTDB();
+      daemon.active();
+    } else {
+      activeDaemon();
+    }
+  }
+
   private static void createAllDir() {
     // create sequential files
     for (String path : directoryManager.getAllSequenceFileFolders()) {
