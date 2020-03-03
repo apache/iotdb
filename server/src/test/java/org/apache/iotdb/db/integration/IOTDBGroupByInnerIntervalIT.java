@@ -27,7 +27,7 @@ import org.junit.Test;
 
 import java.sql.*;
 
-import static org.apache.iotdb.db.integration.Constant.*;
+import static org.apache.iotdb.db.constant.TestConstant.*;
 import static org.junit.Assert.*;
 
 public class IOTDBGroupByInnerIntervalIT {

@@ -53,10 +53,10 @@ public class UtilsTest {
     IoTDBConnectionParams params = Utils
         .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host1, port),
             properties);
-    assertEquals(params.getHost(), host1);
-    assertEquals(params.getPort(), port);
-    assertEquals(params.getUsername(), userName);
-    assertEquals(params.getPassword(), userPwd);
+    assertEquals(host1, params.getHost());
+    assertEquals(port, params.getPort());
+    assertEquals(userName, params.getUsername());
+    assertEquals(userPwd, params.getPassword());
 
     params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host1, port), properties);
     assertEquals(params.getHost(), host1);
@@ -69,6 +69,15 @@ public class UtilsTest {
   public void testParseWrongUrl1() throws IoTDBURLException {
     Properties properties = new Properties();
     Utils.parseUrl("jdbc:iotdb//test6667", properties);
+  }
+
+  @Test
+  public void testParseDomainName() throws IoTDBURLException {
+    Properties properties = new Properties();
+    final IoTDBConnectionParams params = Utils.parseUrl("jdbc:iotdb://test:6667", properties);
+
+    assertEquals("test", params.getHost());
+    assertEquals(6667, params.getPort());
   }
 
   @Test(expected = IoTDBURLException.class)

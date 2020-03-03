@@ -37,6 +37,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  */
 public abstract class PhysicalPlan {
 
+  private static final String SERIALIZATION_UNIMPLEMENTED = "serialization unimplemented";
+
   private boolean isQuery;
   private Operator.OperatorType operatorType;
   private static final int NULL_VALUE_LEN = -1;
@@ -88,15 +90,15 @@ public abstract class PhysicalPlan {
   }
 
   public void serializeTo(DataOutputStream stream) throws IOException {
-    throw new UnsupportedOperationException("serialize of unimplemented");
+    throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
   public void serializeTo(ByteBuffer buffer) {
-    throw new UnsupportedOperationException("serialize of unimplemented");
+    throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
   public void deserializeFrom(ByteBuffer buffer) {
-    throw new UnsupportedOperationException("serialize of unimplemented");
+    throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
   protected void putString(ByteBuffer buffer, String value) {

@@ -93,6 +93,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertColumnSpecContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertValuesSpecContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LimitClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LastClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllRoleOfUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllUserOfRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListPrivilegesRoleContext;
@@ -688,11 +689,15 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     TimeIntervalContext timeInterval = ctx.timeInterval();
     if (timeInterval.timeValue(0).INT() != null) {
       startTime = Long.parseLong(timeInterval.timeValue(0).INT().getText());
+    } else if (timeInterval.timeValue(0).dateExpression() != null) {
+      startTime = parseDateExpression(timeInterval.timeValue(0).dateExpression());
     } else {
       startTime = parseTimeFormat(timeInterval.timeValue(0).dateFormat().getText());
     }
     if (timeInterval.timeValue(1).INT() != null) {
       endTime = Long.parseLong(timeInterval.timeValue(1).INT().getText());
+    } else if (timeInterval.timeValue(1).dateExpression() != null) {
+      endTime = parseDateExpression(timeInterval.timeValue(1).dateExpression());
     } else {
       endTime = parseTimeFormat(timeInterval.timeValue(1).dateFormat().getText());
     }
@@ -976,6 +981,20 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterSelectElement(ctx);
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
     List<SuffixPathContext> suffixPaths = ctx.suffixPath();
+    for (SuffixPathContext suffixPath : suffixPaths) {
+      Path path = parseSuffixPath(suffixPath);
+      selectOp.addSelectPath(path);
+    }
+    queryOp.setSelectOperator(selectOp);
+  }
+
+  @Override
+  public void enterLastElement(SqlBaseParser.LastElementContext ctx) {
+    super.enterLastElement(ctx);
+    selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    selectOp.setLastQuery();
+    LastClauseContext lastClauseContext = ctx.lastClause();
+    List<SuffixPathContext> suffixPaths = lastClauseContext.suffixPath();
     for (SuffixPathContext suffixPath : suffixPaths) {
       Path path = parseSuffixPath(suffixPath);
       selectOp.addSelectPath(path);

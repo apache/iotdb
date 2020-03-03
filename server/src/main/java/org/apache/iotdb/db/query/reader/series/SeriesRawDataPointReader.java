@@ -26,37 +26,16 @@ import java.io.IOException;
 
 public class SeriesRawDataPointReader implements IPointReader {
 
-  private final SeriesReader seriesReader;
+  private final SeriesRawDataBatchReader batchReader;
 
   private boolean hasCachedTimeValuePair;
   private BatchData batchData;
   private TimeValuePair timeValuePair;
 
   public SeriesRawDataPointReader(SeriesReader seriesReader) {
-    this.seriesReader = seriesReader;
+    this.batchReader = new SeriesRawDataBatchReader(seriesReader);
   }
 
-  private boolean hasNext() throws IOException {
-    while (seriesReader.hasNextChunk()) {
-      while (seriesReader.hasNextPage()) {
-        if (seriesReader.hasNextOverlappedPage()) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  private boolean hasNextSatisfiedInCurrentBatch() {
-    if (batchData != null && batchData.hasCurrent()) {
-      timeValuePair = new TimeValuePair(batchData.currentTime(),
-          batchData.currentTsPrimitiveType());
-      hasCachedTimeValuePair = true;
-      batchData.next();
-      return true;
-    }
-    return false;
-  }
 
   @Override
   public boolean hasNextTimeValuePair() throws IOException {
@@ -64,17 +43,25 @@ public class SeriesRawDataPointReader implements IPointReader {
       return true;
     }
 
-    if (hasNextSatisfiedInCurrentBatch()) {
+    if (batchData != null && batchData.hasCurrent()) {
+      timeValuePair = new TimeValuePair(batchData.currentTime(),
+          batchData.currentTsPrimitiveType());
+      hasCachedTimeValuePair = true;
+      batchData.next();
       return true;
     }
 
-    // has not cached timeValuePair
-    while (hasNext()) {
-      batchData = seriesReader.nextOverlappedPage();
-      if (hasNextSatisfiedInCurrentBatch()) {
+    while (batchReader.hasNextBatch()) {
+      batchData = batchReader.nextBatch();
+      if (batchData.hasCurrent()) {
+        timeValuePair = new TimeValuePair(batchData.currentTime(),
+            batchData.currentTsPrimitiveType());
+        hasCachedTimeValuePair = true;
+        batchData.next();
         return true;
       }
     }
+
     return false;
   }
 

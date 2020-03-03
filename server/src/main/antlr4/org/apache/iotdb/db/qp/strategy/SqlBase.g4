@@ -93,6 +93,7 @@ selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
     | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
+    | lastClause #lastElement
     ;
 
 functionCall
@@ -109,6 +110,10 @@ functionName
     | FIRST_VALUE
     | SUM
     | LAST_VALUE
+    ;
+
+lastClause
+    : LAST suffixPath (COMMA suffixPath)*
     ;
 
 attributeClauses
@@ -149,6 +154,7 @@ specialClause
     : specialLimit
     | groupByClause specialLimit?
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
+    | alignByDeviceClauseOrDisableAlign?
     ;
 
 specialLimit
@@ -258,6 +264,7 @@ timeInterval
 
 timeValue
     : dateFormat
+    | dateExpression
     | INT
     ;
 
@@ -717,6 +724,10 @@ SUM
 
 LAST_VALUE
     : L A S T UNDERLINE V A L U E
+    ;
+
+LAST
+    : L A S T
     ;
 
 DISABLE

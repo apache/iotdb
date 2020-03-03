@@ -16,37 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader.series;
 
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+package org.apache.iotdb.db.qp.physical.crud;
 
-import java.io.IOException;
+import org.apache.iotdb.db.qp.logical.Operator;
 
-public interface IAggregateReader {
+public class LastQueryPlan extends RawDataQueryPlan {
 
-  boolean hasNextChunk() throws IOException;
-
-  boolean canUseCurrentChunkStatistics();
-
-  Statistics currentChunkStatistics();
-
-  void skipCurrentChunk();
-
-  boolean hasNextPage() throws IOException;
-
-  /**
-   * only be used without value filter
-   */
-  boolean canUseCurrentPageStatistics() throws IOException;
-
-  /**
-   * only be used without value filter
-   */
-  Statistics currentPageStatistics() throws IOException;
-
-  void skipCurrentPage();
-
-  BatchData nextPage() throws IOException;
-
+  public LastQueryPlan() {
+    super();
+    setOperatorType(Operator.OperatorType.LAST);
+  }
 }

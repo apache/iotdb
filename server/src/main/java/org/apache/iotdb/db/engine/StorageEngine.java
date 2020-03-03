@@ -95,6 +95,11 @@ public class StorageEngine implements IService {
       .newFixedThreadPool(Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
 
   static class InstanceHolder {
+
+    private InstanceHolder() {
+      // forbidding instantiation
+    }
+
     private static final StorageEngine INSTANCE = new StorageEngine();
   }
 
