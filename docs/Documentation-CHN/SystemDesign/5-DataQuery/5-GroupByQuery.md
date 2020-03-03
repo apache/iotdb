@@ -161,7 +161,6 @@ while (reader.hasNextChunk()) {
 `readAndCalcFromPage` 方法是从当前打开的chunk中获取page的数据，并计算聚合结果，主要逻辑：
 
 ```
-
 while (reader.hasNextPage()) {
     Statistics pageStatistics = reader.currentPageStatistics();
     //只有page与其它page不相交时，才能使用 pageStatistics
@@ -209,7 +208,6 @@ for (Pair<AggregateResult, Integer> result : results) {
 if (batchData.getMaxTimestamp() >= curEndTime) {
     preCachedData = batchData;
 }
-
 ```
 
 ## 带值过滤条件的聚合查询
