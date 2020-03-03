@@ -96,7 +96,6 @@ for (AggregateResult res : fields) {
 #### 主要方法
 
 ```
-
 //从 reader 中读取数据，并计算，该类的主方法。
 private List<Pair<AggregateResult, Integer>> calcResult() throws IOException, QueryProcessException;
 
@@ -122,10 +121,12 @@ private void resetAggregateResults();
 private boolean readAndCalcFromPage() throws IOException, QueryProcessException;
 
 ```
+
 `GroupByExecutor` 中因为相同 `path` 的不同聚合函数使用的数据是相同的，所以在入口方法 `calcResult` 中负责读取该 `Path` 的所有数据,
 取出来的数据再调用 `calcFromBatch` 方法完成遍历所有聚合函数对 `BatchData` 的计算。
 
 `calcResult` 方法的主要逻辑：
+
 ```
 //把上次遗留的数据先做计算，如果能直接获得结果就结束计算
 if (calcFromCacheData()) {
@@ -158,6 +159,7 @@ while (reader.hasNextChunk()) {
 ```
 
 `readAndCalcFromPage` 方法是从当前打开的chunk中获取page的数据，并计算聚合结果，主要逻辑：
+
 ```
 
 while (reader.hasNextPage()) {
@@ -191,7 +193,9 @@ while (reader.hasNextPage()) {
 }
 
 ```
-calcFromBatch 方法是对于取出的BatchData数据，遍历所有聚合函数进行计算，主要逻辑为：
+
+`calcFromBatch` 方法是对于取出的BatchData数据，遍历所有聚合函数进行计算，主要逻辑为：
+
 ```
 for (Pair<AggregateResult, Integer> result : results) {
     //如果某个函数已经完成了计算，就不在进行计算了，比如最小值这种计算
