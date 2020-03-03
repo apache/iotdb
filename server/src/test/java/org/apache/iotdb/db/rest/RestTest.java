@@ -47,9 +47,6 @@ public class RestTest {
   private static final String REST_URI
       = "http://localhost:8181/rest/query";
 
-  private static final String LOGIN
-      = "http://localhost:8181/rest/login";
-
   private static final String METRICS1
       = "http://localhost:8181/rest/sql_arguments";
 
@@ -173,10 +170,6 @@ public class RestTest {
         + "  ]\n"
         + "}";
 
-    String json2 = "{username : \"root\", password : \"root\"}";
-    client.target(LOGIN)
-        .request(MediaType.APPLICATION_JSON)
-        .post(Entity.entity(JSONObject.parse(json2), MediaType.APPLICATION_JSON));
     String userAndPassword = "root:root";
     String encodedUserPassword = new String(Base64.getEncoder().encode(userAndPassword.getBytes()));
     Response response = client.target(REST_URI)

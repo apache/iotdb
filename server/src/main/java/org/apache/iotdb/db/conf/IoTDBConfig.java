@@ -44,7 +44,7 @@ public class IoTDBConfig {
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
   /**
-   * Port which the rest service listens to.
+   * Port which the RESTful service listens to.
    */
   private int restPort = 8181;
   private String rpcAddress = "0.0.0.0";

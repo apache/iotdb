@@ -34,7 +34,7 @@ to install them or use MacOS installer, download in https://nodejs.org/en/downlo
 
 #### Windows
 
-I suggest using Windows Installer, download in https://nodejs.org/en/download/.
+You can use the Windows Installer, which can be downloaded in https://nodejs.org/en/download/.
 
 #### Ubuntu
 
