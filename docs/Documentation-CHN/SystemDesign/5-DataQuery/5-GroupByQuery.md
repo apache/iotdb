@@ -125,7 +125,7 @@ private boolean readAndCalcFromPage() throws IOException, QueryProcessException;
 `GroupByExecutor` 中因为相同 `path` 的不同聚合函数使用的数据是相同的，所以在入口方法 `calcResult` 中负责读取该 `Path` 的所有数据,
 取出来的数据再调用 `calcFromBatch` 方法完成遍历所有聚合函数对 `BatchData` 的计算。
 
-`calcResult` 方法的主要逻辑：
+`calcResult` 方法返回当前 Path 下的所有AggregateResult，以及当前聚合值在用户查询顺序里的位置，其主要逻辑：
 
 ```
 //把上次遗留的数据先做计算，如果能直接获得结果就结束计算
@@ -158,7 +158,7 @@ while (reader.hasNextChunk()) {
 }
 ```
 
-`readAndCalcFromPage` 方法是从当前打开的chunk中获取page的数据，并计算聚合结果，主要逻辑：
+`readAndCalcFromPage` 方法是从当前打开的chunk中获取page的数据，并计算聚合结果。当完成所有计算时返回 true，否则返回 false。主要逻辑：
 
 ```
 while (reader.hasNextPage()) {
