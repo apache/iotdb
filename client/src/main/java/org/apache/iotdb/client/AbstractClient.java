@@ -531,8 +531,15 @@ public abstract class AbstractClient {
           ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
           int columnLength = resultSetMetaData.getColumnCount();
           List<Integer> maxSizeList = new ArrayList<>(columnLength);
-          List<List<String>> lists = cacheResult(resultSet, maxSizeList, columnLength,
-              resultSetMetaData, zoneId);
+          List<List<String>> lists;
+          if (resultSet instanceof IoTDBQueryResultSet) {
+            lists = cacheResult(resultSet, maxSizeList, columnLength,
+                resultSetMetaData, zoneId);
+          }
+          else {
+            lists = cacheNonAlignResult(resultSet, maxSizeList, columnLength,
+                resultSetMetaData, zoneId);
+          }
           output(lists, maxSizeList);
           long costTime = System.currentTimeMillis() - startTime;
           println(String.format("It costs %.3fs", costTime / 1000.0));
@@ -544,8 +551,14 @@ public abstract class AbstractClient {
             try {
               if (br.readLine().equals("")) {
                 maxSizeList = new ArrayList<>(columnLength);
-                lists = cacheResult(resultSet, maxSizeList, columnLength,
-                    resultSetMetaData, zoneId);
+                if (resultSet instanceof IoTDBQueryResultSet) {
+                  lists = cacheResult(resultSet, maxSizeList, columnLength,
+                      resultSetMetaData, zoneId);
+                }
+                else {
+                  lists = cacheNonAlignResult(resultSet, maxSizeList, columnLength,
+                      resultSetMetaData, zoneId);
+                }
                 output(lists, maxSizeList);
               } else {
                 break;
@@ -599,6 +612,57 @@ public abstract class AbstractClient {
         }
         if (tmp == null) {
           tmp = NULL;
+        }
+        lists.get(i - 1).add(tmp);
+        if (maxSizeList.get(i - 1) < tmp.length()) {
+          maxSizeList.set(i - 1, tmp.length());
+        }
+      }
+      j++;
+      isReachEnd = !resultSet.next();
+    }
+    return lists;
+  }
+
+  /**
+   * cache all disable align results
+   *
+   * @param resultSet jdbc resultSet
+   * @param maxSizeList the longest result of every column
+   * @param columnCount the number of column
+   * @param resultSetMetaData jdbc resultSetMetaData
+   * @param zoneId your time zone
+   * @return List<List < String>> result
+   * @throws SQLException throw exception
+   */
+  private static List<List<String>> cacheNonAlignResult(ResultSet resultSet, List<Integer> maxSizeList,
+      int columnCount, ResultSetMetaData resultSetMetaData, ZoneId zoneId) throws SQLException {
+
+    List<List<String>> lists = new ArrayList<>(columnCount);
+    for (int i = 1; i <= columnCount; i++) {
+      List<String> list = new ArrayList<>(maxPrintRowCount + 1);
+      if (resultSetMetaData.getColumnLabel(i).startsWith(TIMESTAMP_STR)) {
+        list.add(TIMESTAMP_STR);
+        maxSizeList.add(TIMESTAMP_STR.length());
+      } else {
+        list.add(resultSetMetaData.getColumnLabel(i));
+        maxSizeList.add(resultSetMetaData.getColumnLabel(i).length());
+      }
+      lists.add(list);
+    }
+    int j = 0;
+    if (cursorBeforeFirst) {
+      isReachEnd = !resultSet.next();
+      cursorBeforeFirst = false;
+    }
+    while (j < maxPrintRowCount && !isReachEnd) {
+      for (int i = 1; i <= columnCount; i++) {
+        String tmp = resultSet.getString(i);
+        if (tmp == null) {
+          tmp = NULL;
+        }
+        else if ((i & 1) == 1) { // for Time columns
+          tmp = formatDatetime(resultSet.getLong(i), zoneId);
         }
         lists.get(i - 1).add(tmp);
         if (maxSizeList.get(i - 1) < tmp.length()) {
