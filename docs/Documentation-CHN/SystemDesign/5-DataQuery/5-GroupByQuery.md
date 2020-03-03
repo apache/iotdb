@@ -96,6 +96,10 @@ for (AggregateResult res : fields) {
 #### 主要方法
 
 ```
+
+//从 reader 中读取数据，并计算，该类的主方法。
+private List<Pair<AggregateResult, Integer>> calcResult() throws IOException, QueryProcessException;
+
 //添加当前 path 的聚合操作
 private void addAggregateResult(AggregateResult aggrResult, int index);
 
@@ -111,9 +115,6 @@ private void calcFromBatch(BatchData batchData) throws IOException;
 //使用 Page 或 Chunk 的 Statistics 信息直接计算结果
 private void calcFromStatistics(Statistics statistics) throws QueryProcessException;
 
-//从 reader 中读取数据，并计算
-private List<Pair<AggregateResult, Integer>> calcResult() throws IOException, QueryProcessException;
-
 //清空所有计算结果
 private void resetAggregateResults();
 
@@ -121,7 +122,76 @@ private void resetAggregateResults();
 private boolean readAndCalcFromPage() throws IOException, QueryProcessException;
 
 ```
-`GroupByExecutor` 中因为相同 `path` 的不同聚合函数使用的数据是相同的，所以 `calcFromBatch` 方法就是完成遍历所有聚合函数对 `BatchData` 的计算:
+`GroupByExecutor` 中因为相同 `path` 的不同聚合函数使用的数据是相同的，所以在入口方法 `calcResult` 中负责读取该 `Path` 的所有数据,
+取出来的数据再调用 `calcFromBatch` 方法完成遍历所有聚合函数对 `BatchData` 的计算。
+
+`calcResult` 方法的主要逻辑：
+```
+//把上次遗留的数据先做计算，如果能直接获得结果就结束计算
+if (calcFromCacheData()) {
+    return results;
+}
+
+//因为一个chunk是包含多个page的，那么必须先使用完当前chunk的page，再打开下一个chunk
+if (readAndCalcFromPage()) {
+    return results;
+}
+
+//遗留的数据如果计算完了就要打开新的chunk继续计算
+while (reader.hasNextChunk()) {
+    Statistics chunkStatistics = reader.currentChunkStatistics();
+      // 判断能否使用pageStatistics，并执行计算
+       ....
+      // 跳过当前chunk
+      reader.skipCurrentChunk();
+      // 如果已经获取到了所有结果就结束计算
+      if (isEndCalc()) {
+        return true;
+      }
+      continue;
+    }
+    //如果不能使用 chunkStatistics 就需要使用page数据计算
+    if (readAndCalcFromPage()) {
+      return results;
+    }
+}
+```
+
+`readAndCalcFromPage` 方法是从当前打开的chunk中获取page的数据，并计算聚合结果，主要逻辑：
+```
+
+while (reader.hasNextPage()) {
+    Statistics pageStatistics = reader.currentPageStatistics();
+    //只有page与其它page不相交时，才能使用 pageStatistics
+    if (pageStatistics != null) {
+        // 判断能否使用pageStatistics，并执行计算
+        ....
+        // 跳过当前page
+        reader.skipCurrentPage();
+        // 如果已经获取到了所有结果就结束计算
+        if (isEndCalc()) {
+          return true;
+        }
+        continue;
+      }
+    }
+    // 不能使用 Statistics 时，只能取出所有数据进行计算
+    BatchData batchData = reader.nextPage();
+    if (batchData == null || !batchData.hasCurrent()) {
+      continue;
+    }
+    // 如果刚打开的page就超过时间范围，缓存取出来的数据并直接结束计算
+    if (batchData.currentTime() >= curEndTime) {
+      preCachedData = batchData;
+      return true;
+    }
+    //执行计算
+    calcFromBatch(batchData);
+    ...
+}
+
+```
+calcFromBatch 方法是对于取出的BatchData数据，遍历所有聚合函数进行计算，主要逻辑为：
 ```
 for (Pair<AggregateResult, Integer> result : results) {
     //如果某个函数已经完成了计算，就不在进行计算了，比如最小值这种计算
@@ -133,7 +203,7 @@ for (Pair<AggregateResult, Integer> result : results) {
 }
 //判断当前的 batchdata 里的数据是否还能被下次使用，如果能则加到缓存中
 if (batchData.getMaxTimestamp() >= curEndTime) {
-preCachedData = batchData;
+    preCachedData = batchData;
 }
 
 ```
