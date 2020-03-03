@@ -64,14 +64,16 @@ protected boolean hasNextWithoutConstraint() {
 
 
 该类有如下关键字段：
-* private Map<Path, GroupByExecutor> pathExecutors 针对于相同 Path 的聚合函数进行归类，并封装成 GroupByExecutor
-* private TimeRange timeRange 将每次计算的时间区间封装成对象，过滤查询到到文件中的原始数据
-* private Filter timeFilter   将用户定义的查询区间生成为 Filter 对象，用来过滤哪些文件、chunk、page 可用
-* private GroupByExecutor groupByPlan  相同 path 下的聚合函数，在后面介绍
+* private Map<Path, GroupByExecutor> pathExecutors 针对于相同 `Path` 的聚合函数进行归类，并封装成 `GroupByExecutor` ,
+`GroupByExecutor` 封装了每个 `Path` 的数据计算逻辑和方法，在后面介绍
+
+* private TimeRange timeRange 将每次计算的时间区间封装成对象，用于判断 `Statistics` 是否可以直接参与计算
+* private Filter timeFilter   将用户定义的查询区间生成为 `Filter` 对象，用来过滤可用的`文件`、`chunk`、`page`
   
 首先，在初始化 `initGroupBy()` 方法中，根据表达式计算出 `timeFilter`，并为每个 `path` 生成 `GroupByExecutor` 。
 
-`nextWithoutConstraint()` 方法通过调用 `GroupByExecutor.calcResult()` 方法计算出每个 `Path` 内的所有聚合方法的聚合值 `aggregateResults`。以下方法用于将结果列表转化为 RowRecord，需要注意列表中没有结果时， RowRecord 中添加类型为 `null` 的 `Field`：
+`nextWithoutConstraint()` 方法通过调用 `GroupByExecutor.calcResult()` 方法计算出每个 `Path` 内的所有聚合方法的聚合值 `aggregateResults`。
+以下方法用于将结果列表转化为 RowRecord，需要注意列表中没有结果时， RowRecord 中添加 `null`：
 ```
 for (AggregateResult res : fields) {
   if (res == null) {
