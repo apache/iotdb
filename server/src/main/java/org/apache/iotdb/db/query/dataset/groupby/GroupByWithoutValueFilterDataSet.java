@@ -165,6 +165,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
             new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
           calcFromStatistics(chunkStatistics);
           reader.skipCurrentChunk();
+          if(isEndCalc()){
+            return results;
+          }
           continue;
         }
         if (readAndCalcFromPage()) {
