@@ -224,14 +224,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
     }
 
-    private void calcFromStatistics(Statistics pageStatistics)
+    private void calcFromStatistics(Statistics statistics)
         throws QueryProcessException {
       for (Pair<AggregateResult, Integer> result : results) {
         //cacl is compile
         if (result.left.isCalculatedAggregationResult()) {
           continue;
         }
-        result.left.updateResultFromStatistics(pageStatistics);
+        result.left.updateResultFromStatistics(statistics);
       }
     }
 
