@@ -36,6 +36,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -839,23 +840,39 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       AlignByDevicePlan plan, List<String> respColumns, List<String> columnTypes) {
     // set columns in TSExecuteStatementResp.
     respColumns.add(SQLConstant.ALIGNBY_DEVICE_COLUMN_NAME);
+
+    // get column types and do deduplication
     columnTypes.add(TSDataType.TEXT.toString()); // the DEVICE column of ALIGN_BY_DEVICE result
+    List<TSDataType> deduplicatedColumnsType = new ArrayList<>();
+    deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of ALIGN_BY_DEVICE result
+    Set<String> deduplicatedMeasurements = new LinkedHashSet<>();
     Map<String, TSDataType> checker = plan.getMeasurementDataTypeMap();
 
-    // build column header with constant and non exist column
+    // build column header with constant and non exist column and deduplication
     List<String> measurements = plan.getMeasurements();
     Map<String, measurementType> measurementToTypeMap = plan.getMeasurementTypeMap();
     for (String measurement : measurements) {
+      TSDataType type = null;
       switch (measurementToTypeMap.get(measurement)) {
         case Normal:
-          columnTypes.add(checker.get(measurement).toString());
+          type = checker.get(measurement);
           break;
         case NonExist:
         case Constant:
-          columnTypes.add(TSDataType.TEXT.toString());
+          type = TSDataType.TEXT;
       }
       respColumns.add(measurement);
+      columnTypes.add(type.toString());
+      if (!deduplicatedMeasurements.contains(measurement)) {
+        deduplicatedMeasurements.add(measurement);
+        deduplicatedColumnsType.add(type);
+      }
     }
+
+    // save deduplicated measurementColumn names and types in QueryPlan for the next stage to use.
+    // i.e., used by AlignByDeviceDataSet constructor in `fetchResults` stage.
+    plan.setMeasurements(new ArrayList<>(deduplicatedMeasurements));
+    plan.setDataTypes(deduplicatedColumnsType);
 
     // set these null since they are never used henceforth in ALIGN_BY_DEVICE query processing.
     plan.setPaths(null);

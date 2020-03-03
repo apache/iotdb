@@ -324,7 +324,8 @@ public class PhysicalGenerator {
               }
 
               // update measurementSetOfGivenSuffix and Normal measurement
-              if (measurementSetOfGivenSuffix.add(measurementChecked)) {
+              if (measurementSetOfGivenSuffix.add(measurementChecked)
+                  || measurementToTypeMap.get(measurementChecked) != measurementType.Normal) {
                 measurementToTypeMap.put(measurementChecked, measurementType.Normal);
               }
               // update deviceToMeasurementsMap
