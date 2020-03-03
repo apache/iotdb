@@ -93,6 +93,7 @@ public class SessionPool {
   private int fetchSize;
 
   //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
+  //TODO: we can add a mechanism that if the user waits too long time, throw exception.
   private Session getSession() throws IoTDBSessionException {
     Session session = queue.poll();
     if (session != null) {
