@@ -26,6 +26,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -85,7 +86,7 @@ public class IoTDBMultiStatementsIT {
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
 
-      for (String sql : Constant.create_sql) {
+      for (String sql : TestConstant.create_sql) {
         statement.execute(sql);
       }
 
@@ -138,7 +139,7 @@ public class IoTDBMultiStatementsIT {
       int cnt1 = 0;
       while (resultSet1.next() && cnt1 < 5) {
         StringBuilder builder = new StringBuilder();
-        builder.append(resultSet1.getString(Constant.TIMESTAMP_STR))
+        builder.append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
                 .append(",")
                 .append(resultSet1.getString("root.fans.d0.s0"))
                 .append(",")
@@ -154,7 +155,7 @@ public class IoTDBMultiStatementsIT {
       int cnt2 = 0;
       while (resultSet2.next()) {
         StringBuilder builder = new StringBuilder();
-        builder.append(resultSet2.getString(Constant.TIMESTAMP_STR))
+        builder.append(resultSet2.getString(TestConstant.TIMESTAMP_STR))
                 .append(",")
                 .append(resultSet2.getString("root.fans.d0.s0"))
                 .append(",")
@@ -168,7 +169,7 @@ public class IoTDBMultiStatementsIT {
       // and the cursor has been moved to the next position, so we should fetch that value first.
       do {
         StringBuilder builder = new StringBuilder();
-        builder.append(resultSet1.getString(Constant.TIMESTAMP_STR))
+        builder.append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
                 .append(",")
                 .append(resultSet1.getString("root.fans.d0.s0"))
                 .append(",")
