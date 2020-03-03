@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,21 +31,13 @@ public class AlignByDevicePlan extends QueryPlan {
   private List<String> measurements; // e.g. temperature, status, speed
   private Map<String, Set<String>> deviceToMeasurementsMap; // e.g. root.ln.d1 -> temperature
   // to check data type consistency for the same name sensor of different devices
-  private Map<String, TSDataType> dataTypeConsistencyChecker;
+  private Map<String, TSDataType> measurementDataTypeMap;
   private Map<String, IExpression> deviceToFilterMap;
+  private Map<String, measurementType> measurementTypeMap;
 
   private GroupByPlan groupByPlan;
   private FillQueryPlan fillQueryPlan;
   private AggregationPlan aggregationPlan;
-
-  // the measurements that do not exist in any device,
-  // data type is considered as Boolean. The value is considered as null
-  private List<String> notExistMeasurements = new ArrayList<>();
-  private List<Integer> positionOfNotExistMeasurements = new ArrayList<>();
-  // the measurements that have quotation mark. e.g. "abc",
-  // '11', the data type is considered as String and the value is considered is the same with measurement name
-  private List<String> constMeasurements = new ArrayList<>();
-  private List<Integer> positionOfConstMeasurements = new ArrayList<>();
 
   public AlignByDevicePlan() {
     super();
@@ -69,13 +60,13 @@ public class AlignByDevicePlan extends QueryPlan {
     return deviceToMeasurementsMap;
   }
 
-  public void setDataTypeConsistencyChecker(
-      Map<String, TSDataType> dataTypeConsistencyChecker) {
-    this.dataTypeConsistencyChecker = dataTypeConsistencyChecker;
+  public void setMeasurementDataTypeMap(
+      Map<String, TSDataType> measurementDataTypeMap) {
+    this.measurementDataTypeMap = measurementDataTypeMap;
   }
 
-  public Map<String, TSDataType> getDataTypeConsistencyChecker() {
-    return dataTypeConsistencyChecker;
+  public Map<String, TSDataType> getMeasurementDataTypeMap() {
+    return measurementDataTypeMap;
   }
 
   public Map<String, IExpression> getDeviceToFilterMap() {
@@ -84,6 +75,15 @@ public class AlignByDevicePlan extends QueryPlan {
 
   public void setDeviceToFilterMap(Map<String, IExpression> deviceToFilterMap) {
     this.deviceToFilterMap = deviceToFilterMap;
+  }
+
+  public Map<String, measurementType> getMeasurementTypeMap() {
+    return measurementTypeMap;
+  }
+
+  public void setMeasurementTypeMap(
+      Map<String, measurementType> measurementTypeMap) {
+    this.measurementTypeMap = measurementTypeMap;
   }
 
   public GroupByPlan getGroupByPlan() {
@@ -131,46 +131,13 @@ public class AlignByDevicePlan extends QueryPlan {
   // current ++;
   //</pre>
 
-  public void addNotExistMeasurement(int position, String measurement) {
-    notExistMeasurements.add(measurement);
-    positionOfNotExistMeasurements.add(position);
-  }
-
-  public void addConstMeasurement(int position, String measurement) {
-    constMeasurements.add(measurement);
-    positionOfConstMeasurements.add(position);
-  }
-
-  public List<String> getNotExistMeasurements() {
-    return notExistMeasurements;
-  }
-
-  public void setNotExistMeasurements(List<String> notExistMeasurements) {
-    this.notExistMeasurements = notExistMeasurements;
-  }
-
-  public List<Integer> getPositionOfNotExistMeasurements() {
-    return positionOfNotExistMeasurements;
-  }
-
-  public void setPositionOfNotExistMeasurements(
-      List<Integer> positionOfNotExistMeasurements) {
-    this.positionOfNotExistMeasurements = positionOfNotExistMeasurements;
-  }
-
-  public List<String> getConstMeasurements() {
-    return constMeasurements;
-  }
-
-  public void setConstMeasurements(List<String> constMeasurements) {
-    this.constMeasurements = constMeasurements;
-  }
-
-  public List<Integer> getPositionOfConstMeasurements() {
-    return positionOfConstMeasurements;
-  }
-
-  public void setPositionOfConstMeasurements(List<Integer> positionOfConstMeasurements) {
-    this.positionOfConstMeasurements = positionOfConstMeasurements;
+  /**
+   * NonExist: the measurements that do not exist in any device, data type is considered as Boolean.
+   * The value is considered as null.
+   * Constant: the measurements that have quotation mark. e.g. "abc",'11'.
+   * The data type is considered as String and the value is considered is the same with measurement name.
+   */
+  public enum measurementType {
+    Normal, NonExist, Constant;
   }
 }

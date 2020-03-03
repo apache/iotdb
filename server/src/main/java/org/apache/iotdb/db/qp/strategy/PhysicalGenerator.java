@@ -59,13 +59,14 @@ import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.measurementType;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -263,21 +264,19 @@ public class PhysicalGenerator {
       Map<String, Set<String>> deviceToMeasurementsMap = new LinkedHashMap<>();
       // to check the same measurement of different devices having the same datatype
       Map<String, TSDataType> dataTypeConsistencyChecker = new HashMap<>();
+      Map<String, measurementType> measurementToTypeMap = new LinkedHashMap<>();
       List<Path> paths = new ArrayList<>();
-
-      // current location for measurements in SELECT
-      int loc = 0;
 
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix in SELECT
         Path suffixPath = suffixPaths.get(i);
-        Set<String> nonExistMeasurement = new HashSet<>();
 
         // to record measurements in the loop of a suffix path
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
 
         // if const measurement
         if (suffixPath.startWith("'") || suffixPath.startWith("\"")) {
-          alignByDevicePlan.addConstMeasurement(loc++, suffixPath.getMeasurement());
+          measurements.add(suffixPath.getMeasurement());
+          measurementToTypeMap.put(suffixPath.getMeasurement(), measurementType.Constant);
           continue;
         }
 
@@ -290,7 +289,11 @@ public class PhysicalGenerator {
 
             // for actual non exist path
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
-              nonExistMeasurement.add(fullPath.getMeasurement());
+              String nonExistMeasurement = fullPath.getMeasurement();
+              if (measurementSetOfGivenSuffix.add(nonExistMeasurement)
+                  && measurementToTypeMap.get(nonExistMeasurement) != measurementType.Normal) {
+                measurementToTypeMap.put(fullPath.getMeasurement(), measurementType.NonExist);
+              }
             }
 
             for (String pathStr : actualPaths) {
@@ -320,9 +323,9 @@ public class PhysicalGenerator {
                 dataTypeConsistencyChecker.put(measurementChecked, dataType);
               }
 
-              // update measurementSetOfGivenSuffix and measurement location
+              // update measurementSetOfGivenSuffix and Normal measurement
               if (measurementSetOfGivenSuffix.add(measurementChecked)) {
-                loc++;
+                measurementToTypeMap.put(measurementChecked, measurementType.Normal);
               }
               // update deviceToMeasurementsMap
               if (!deviceToMeasurementsMap.containsKey(device)) {
@@ -340,11 +343,6 @@ public class PhysicalGenerator {
           }
         }
 
-        nonExistMeasurement.removeAll(measurementSetOfGivenSuffix);
-        // update notExistMeasurement
-        for (String notExistMeasurementString : nonExistMeasurement) {
-          alignByDevicePlan.addNotExistMeasurement(loc++, notExistMeasurementString);
-        }
         // update measurements
         // Note that in the loop of a suffix path, set is used.
         // And across the loops of suffix paths, list is used.
@@ -365,7 +363,8 @@ public class PhysicalGenerator {
       // assigns to alignByDevicePlan
       alignByDevicePlan.setMeasurements(measurements);
       alignByDevicePlan.setDeviceToMeasurementsMap(deviceToMeasurementsMap);
-      alignByDevicePlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
+      alignByDevicePlan.setMeasurementDataTypeMap(dataTypeConsistencyChecker);
+      alignByDevicePlan.setMeasurementTypeMap(measurementToTypeMap);
       alignByDevicePlan.setPaths(paths);
 
       // get deviceToFilterMap

@@ -21,10 +21,10 @@ package org.apache.iotdb.db.service;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -67,7 +67,13 @@ import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.measurementType;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -240,7 +246,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       //check the version compatibility
       boolean compatible = checkCompatibility(req.getClient_protocol());
       if (!compatible) {
-        tsStatus = getStatus(TSStatusCode.INCOMPATIBLE_VERSION, "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
+        tsStatus = getStatus(TSStatusCode.INCOMPATIBLE_VERSION,
+            "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
         TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
             TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
         resp.setSessionId(sessionId);
@@ -256,7 +263,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       tsStatus = getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
-            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
+        TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
     resp.setSessionId(sessionId);
     logger.info(
         "{}: Login status: {}. User : {}",
@@ -368,7 +375,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * convert from TSStatusCode to TSStatus, which has message appending with existed status message
    *
-   * @param statusType status type
+   * @param statusType    status type
    * @param appendMessage appending message
    */
   private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
@@ -614,7 +621,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   /**
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
-   * AuthorPlan
+   *             AuthorPlan
    */
   private TSExecuteStatementResp internalExecuteQueryStatement(
       long statementId, PhysicalPlan plan, int fetchSize, String username) {
@@ -830,105 +837,33 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private void getAlignByDeviceQueryHeaders(
       AlignByDevicePlan plan, List<String> respColumns, List<String> columnTypes) {
-    // set columns in TSExecuteStatementResp. Note this is without deduplication.
-    respColumns.add(SQLConstant.GROUPBY_DEVICE_COLUMN_NAME);
-
-    // get column types and do deduplication
+    // set columns in TSExecuteStatementResp.
+    respColumns.add(SQLConstant.ALIGNBY_DEVICE_COLUMN_NAME);
     columnTypes.add(TSDataType.TEXT.toString()); // the DEVICE column of ALIGN_BY_DEVICE result
-    List<TSDataType> deduplicatedColumnsType = new ArrayList<>();
-    deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of ALIGN_BY_DEVICE result
-    List<String> deduplicatedMeasurementColumns = new ArrayList<>();
-    Set<String> tmpColumnSet = new HashSet<>();
-    Map<String, TSDataType> checker = plan.getDataTypeConsistencyChecker();
-    // build column header with constant and non exist column and deduplicate
-    int loc = 0;
-    // size of total column
-    int totalSize = plan.getNotExistMeasurements().size() + plan.getConstMeasurements().size()
-        + plan.getMeasurements().size();
-    // not exist column loc
-    int notExistMeasurementsLoc = 0;
-    // constant column loc
-    int constMeasurementsLoc = 0;
-    // normal column loc
-    int resLoc = 0;
-    // after removing duplicate, we must shift column position
-    int shiftLoc = 0;
-    while (loc < totalSize) {
-      boolean isNonExist = false;
-      boolean isConstant = false;
-      TSDataType type = null;
-      String column = null;
-      // not exist
-      if (notExistMeasurementsLoc < plan.getNotExistMeasurements().size()
-          && loc == plan.getPositionOfNotExistMeasurements().get(notExistMeasurementsLoc)) {
-        // for shifting
-        plan.getPositionOfNotExistMeasurements().set(notExistMeasurementsLoc, loc - shiftLoc);
+    Map<String, TSDataType> checker = plan.getMeasurementDataTypeMap();
 
-        type = TSDataType.TEXT;
-        column = plan.getNotExistMeasurements().get(notExistMeasurementsLoc);
-        notExistMeasurementsLoc++;
-        isNonExist = true;
+    // build column header with constant and non exist column
+    List<String> measurements = plan.getMeasurements();
+    Map<String, measurementType> measurementToTypeMap = plan.getMeasurementTypeMap();
+    for (String measurement : measurements) {
+      switch (measurementToTypeMap.get(measurement)) {
+        case Normal:
+          columnTypes.add(checker.get(measurement).toString());
+          break;
+        case NonExist:
+        case Constant:
+          columnTypes.add(TSDataType.TEXT.toString());
       }
-      // constant
-      else if (constMeasurementsLoc < plan.getConstMeasurements().size()
-              && loc == plan.getPositionOfConstMeasurements().get(constMeasurementsLoc)) {
-        // for shifting
-        plan.getPositionOfConstMeasurements().set(constMeasurementsLoc, loc - shiftLoc);
-
-        type = TSDataType.TEXT;
-        column = plan.getConstMeasurements().get(constMeasurementsLoc);
-        constMeasurementsLoc++;
-        isConstant = true;
-      }
-      // normal series
-      else {
-        type = checker.get(plan.getMeasurements().get(resLoc));
-        column = plan.getMeasurements().get(resLoc);
-        resLoc++;
-      }
-
-      columnTypes.add(type.toString());
-      respColumns.add(column);
-      // deduplicate part
-      if (!tmpColumnSet.contains(column)) {
-        // Note that this deduplication strategy is consistent with that of client
-        // IoTDBQueryResultSet.
-        tmpColumnSet.add(column);
-        if (!isNonExist && !isConstant) {
-          // only refer to those normal measurements
-          deduplicatedMeasurementColumns.add(column);
-        }
-        deduplicatedColumnsType.add(type);
-      } else if (isConstant) {
-        shiftLoc++;
-        constMeasurementsLoc--;
-        plan.getConstMeasurements().remove(constMeasurementsLoc);
-        plan.getPositionOfConstMeasurements().remove(constMeasurementsLoc);
-      } else if (isNonExist) {
-        shiftLoc++;
-        notExistMeasurementsLoc--;
-        plan.getNotExistMeasurements().remove(notExistMeasurementsLoc);
-        plan.getPositionOfNotExistMeasurements().remove(notExistMeasurementsLoc);
-      } else {
-        shiftLoc++;
-      }
-
-      loc++;
+      respColumns.add(measurement);
     }
-
-    // save deduplicated measurementColumn names and types in QueryPlan for the next stage to use.
-    // i.e., used by DeviceIterateDataSet constructor in `fetchResults` stage.
-    plan.setMeasurements(deduplicatedMeasurementColumns);
-    plan.setDataTypes(deduplicatedColumnsType);
 
     // set these null since they are never used henceforth in ALIGN_BY_DEVICE query processing.
     plan.setPaths(null);
-    plan.setDataTypeConsistencyChecker(null);
   }
 
   private void getLastQueryHeaders(
-          QueryPlan plan, List<String> respColumns, List<String> columnTypes)
-          throws TException, QueryProcessException {
+      QueryPlan plan, List<String> respColumns, List<String> columnTypes)
+      throws TException, QueryProcessException {
     respColumns.add(COLUMN_TIMESERIES);
     respColumns.add(COLUMN_VALUE);
     columnTypes.add(TSDataType.TEXT.toString());
