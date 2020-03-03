@@ -1617,12 +1617,11 @@ public class StorageGroupProcessor {
     while (iterator.hasNext()) {
       TsFileResource seqFile = iterator.next();
       if (resource.getHistoricalVersions().containsAll(seqFile.getHistoricalVersions())
-          && !resource.getHistoricalVersions().equals(seqFile.getHistoricalVersions())) {
-        if (seqFile.getWriteQueryLock().writeLock().tryLock()) {
-          iterator.remove();
-          seqFile.remove();
-          seqFile.getWriteQueryLock().writeLock().unlock();
-        }
+          && !resource.getHistoricalVersions().equals(seqFile.getHistoricalVersions())
+          && seqFile.getWriteQueryLock().writeLock().tryLock()) {
+        iterator.remove();
+        seqFile.remove();
+        seqFile.getWriteQueryLock().writeLock().unlock();
       }
     }
   }

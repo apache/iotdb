@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -32,16 +36,14 @@ import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.*;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -55,8 +57,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * Maps path and its aggregate reader
    */
   private Map<Path, IAggregateReader> aggregateReaders;
-  private List<BatchData> cachedBatchDataList;
+  private BatchData[] cachedBatchDataList;
   private GroupByPlan groupByPlan;
+  private int remainingToCalculate;
 
   /**
    * constructor.
@@ -67,10 +70,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
     this.pathToAggrIndexesMap = new HashMap<>();
     this.aggregateReaders = new HashMap<>();
-    this.cachedBatchDataList = new ArrayList<>();
-    for (int i = 0; i < paths.size(); i++) {
-      cachedBatchDataList.add(null);
-    }
+    this.cachedBatchDataList = new BatchData[paths.size()];
     initGroupBy(context, groupByPlan);
   }
 
@@ -147,106 +147,187 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   private List<AggregateResult> nextIntervalAggregation(Map.Entry<Path,
       List<Integer>> pathToAggrIndexes) throws IOException, QueryProcessException {
     List<AggregateResult> aggregateResultList = new ArrayList<>();
-    List<Boolean> isCalculatedList = new ArrayList<>();
     List<Integer> indexList = pathToAggrIndexes.getValue();
-
-    int remainingToCalculate = indexList.size();
+    boolean[] isCalculatedList = new boolean[indexList.size()];
     TSDataType tsDataType = groupByPlan.getDeduplicatedDataTypes().get(indexList.get(0));
 
-    for (int index : indexList) {
+    aggregateLastBatches(indexList, aggregateResultList, tsDataType, isCalculatedList);
+    if (remainingToCalculate == 0) {
+      return aggregateResultList;
+    }
+
+    TimeRange timeRange = new TimeRange(curStartTime, curEndTime - 1);
+    IAggregateReader reader = aggregateReaders.get(pathToAggrIndexes.getKey());
+    aggregateFromReader(reader, timeRange, aggregateResultList, isCalculatedList, pathToAggrIndexes);
+
+    return aggregateResultList;
+  }
+
+  /**
+   * Execute the aggregations using the batches from last execution.
+   */
+  private void aggregateLastBatches(List<Integer> indexList,
+      List<AggregateResult> aggregateResultList, TSDataType tsDataType,
+      boolean[] isCalculatedList) throws IOException {
+    remainingToCalculate = indexList.size();
+    for (int i = 0; i < indexList.size(); i++) {
+      int index = indexList.get(i);
       AggregateResult result = AggregateResultFactory
           .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(index), tsDataType);
       aggregateResultList.add(result);
 
-      BatchData lastBatch = cachedBatchDataList.get(index);
+      BatchData lastBatch = cachedBatchDataList[index];
 
       calcBatchData(result, lastBatch);
       if (isEndCalc(result, lastBatch)) {
-        isCalculatedList.add(true);
+        isCalculatedList[i] = true;
         remainingToCalculate--;
         if (remainingToCalculate == 0) {
-          return aggregateResultList;
+          return;
         }
-      } else {
-        isCalculatedList.add(false);
       }
     }
-    TimeRange timeRange = new TimeRange(curStartTime, curEndTime - 1);
-    IAggregateReader reader = aggregateReaders.get(pathToAggrIndexes.getKey());
+  }
 
+  private void aggregateFromReader(IAggregateReader reader, TimeRange timeRange,
+      List<AggregateResult> aggregateResultList, boolean[] isCalculatedList, Map.Entry<Path,
+      List<Integer>> pathToAggrIndexes)
+      throws IOException, QueryProcessException {
     while (reader.hasNextChunk()) {
       // cal by chunk statistics
       Statistics chunkStatistics = reader.currentChunkStatistics();
       if (chunkStatistics.getStartTime() >= curEndTime) {
-        return aggregateResultList;
-      }
-      if (reader.canUseCurrentChunkStatistics() && timeRange.contains(
-          new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
-        for (int i = 0; i < aggregateResultList.size(); i++) {
-          if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-            AggregateResult result = aggregateResultList.get(i);
-            result.updateResultFromStatistics(chunkStatistics);
-            if (result.isCalculatedAggregationResult()) {
-              isCalculatedList.set(i, true);
-              remainingToCalculate--;
-              if (remainingToCalculate == 0) {
-                return aggregateResultList;
-              }
-            }
-          }
-        }
-        reader.skipCurrentChunk();
-        continue;
+        return;
       }
 
-      while (reader.hasNextPage()) {
-        //cal by page statistics
-        Statistics pageStatistics = reader.currentPageStatistics();
-        if (pageStatistics.getStartTime() >= curEndTime) {
-          return aggregateResultList;
+      boolean statisticApplied = aggregateChunkStatistic(reader, timeRange, chunkStatistics,
+          aggregateResultList, isCalculatedList);
+      if (remainingToCalculate == 0) {
+        return;
+      } else if (!statisticApplied) {
+        aggregatePages(reader, timeRange, aggregateResultList, isCalculatedList, pathToAggrIndexes);
+      }
+    }
+  }
+
+  private void aggregatePages(IAggregateReader reader, TimeRange timeRange,
+      List<AggregateResult> aggregateResultList, boolean[] isCalculatedList, Map.Entry<Path,
+      List<Integer>> pathToAggrIndexes) throws IOException, QueryProcessException {
+    while (reader.hasNextPage()) {
+      //cal by page statistics
+      Statistics pageStatistics = reader.currentPageStatistics();
+      if (pageStatistics.getStartTime() >= curEndTime) {
+        return;
+      }
+      boolean statisticApplied = aggregatePageStatistic(reader, timeRange, pageStatistics,
+          aggregateResultList, isCalculatedList);
+      if (remainingToCalculate == 0) {
+        return;
+      } else if (!statisticApplied) {
+        aggregateOverlappedPages(reader, aggregateResultList, isCalculatedList, pathToAggrIndexes);
+      }
+    }
+  }
+
+  /**
+   * Try aggregating using the next chunk statistic from the reader
+   * @param reader
+   * @param timeRange
+   * @param chunkStatistics
+   * @param aggregateResultList
+   * @param isCalculatedList
+   * @return true if the statistic is applied, false otherwise
+   * @throws QueryProcessException
+   */
+  private boolean aggregateChunkStatistic(IAggregateReader reader, TimeRange timeRange,
+      Statistics chunkStatistics, List<AggregateResult> aggregateResultList,
+      boolean[] isCalculatedList) throws QueryProcessException {
+    if (reader.canUseCurrentChunkStatistics() && timeRange.contains(
+       chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
+      aggregateStatistic(aggregateResultList, isCalculatedList, chunkStatistics);
+      if (remainingToCalculate == 0) {
+        return true;
+      }
+      reader.skipCurrentChunk();
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Try aggregating using the next page statistic from the reader
+   * @param reader
+   * @param timeRange
+   * @param pageStatistics
+   * @param aggregateResultList
+   * @param isCalculatedList
+   * @return true if the statistic is applied, false otherwise
+   * @throws QueryProcessException
+   */
+  private boolean aggregatePageStatistic(IAggregateReader reader, TimeRange timeRange,
+      Statistics pageStatistics, List<AggregateResult> aggregateResultList,
+      boolean[] isCalculatedList) throws IOException, QueryProcessException {
+    if (reader.canUseCurrentPageStatistics() && timeRange.contains(
+        pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
+      for (int i = 0; i < aggregateResultList.size(); i++) {
+        aggregateStatistic(aggregateResultList, isCalculatedList, pageStatistics);
+        if (remainingToCalculate == 0) {
+          return true;
         }
-        if (reader.canUseCurrentPageStatistics() && timeRange.contains(
-            new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
-          for (int i = 0; i < aggregateResultList.size(); i++) {
-            if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-              AggregateResult result = aggregateResultList.get(i);
-              result.updateResultFromStatistics(pageStatistics);
-              if (result.isCalculatedAggregationResult()) {
-                isCalculatedList.set(i, true);
-                remainingToCalculate--;
-                if (remainingToCalculate == 0) {
-                  return aggregateResultList;
-                }
-              }
-            }
-          }
-          reader.skipCurrentPage();
-          continue;
+      }
+      reader.skipCurrentPage();
+      return true;
+    }
+    return false;
+  }
+
+  private void aggregateOverlappedPages(IAggregateReader reader,
+      List<AggregateResult> aggregateResultList, boolean[] isCalculatedList, Map.Entry<Path,
+      List<Integer>> pathToAggrIndexes) throws IOException {
+    while (reader.hasNextOverlappedPage()) {
+      // cal by page data
+      BatchData batchData = reader.nextOverlappedPage();
+      aggregateBatch(aggregateResultList, isCalculatedList, batchData, pathToAggrIndexes);
+    }
+  }
+
+  private void aggregateBatch(List<AggregateResult> aggregateResultList,
+      boolean[] isCalculatedList, BatchData batchData, Map.Entry<Path,
+      List<Integer>> pathToAggrIndexes) throws IOException {
+    for (int i = 0; i < aggregateResultList.size(); i++) {
+      if (!isCalculatedList[i]) {
+        AggregateResult result = aggregateResultList.get(i);
+        calcBatchData(result, batchData);
+        int idx = pathToAggrIndexes.getValue().get(i);
+        if (batchData.hasCurrent()) {
+          cachedBatchDataList[idx] = batchData;
         }
-        while (reader.hasNextOverlappedPage()) {
-          // cal by page data
-          BatchData batchData = reader.nextOverlappedPage();
-          for (int i = 0; i < aggregateResultList.size(); i++) {
-            if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-              AggregateResult result = aggregateResultList.get(i);
-              calcBatchData(result, batchData);
-              int idx = pathToAggrIndexes.getValue().get(i);
-              if (batchData.hasCurrent()) {
-                cachedBatchDataList.set(idx, batchData);
-              }
-              if (isEndCalc(result, null)) {
-                isCalculatedList.set(i, true);
-                remainingToCalculate--;
-                if (remainingToCalculate == 0) {
-                  break;
-                }
-              }
-            }
+        if (isEndCalc(result, null)) {
+          isCalculatedList[i] = true;
+          remainingToCalculate--;
+          if (remainingToCalculate == 0) {
+            break;
           }
         }
       }
     }
-    return aggregateResultList;
+  }
+
+  private void aggregateStatistic(List<AggregateResult> aggregateResultList,
+      boolean[] isCalculatedList, Statistics statistics) throws QueryProcessException {
+    for (int i = 0; i < aggregateResultList.size(); i++) {
+      if (!isCalculatedList[i]) {
+        AggregateResult result = aggregateResultList.get(i);
+        result.updateResultFromStatistics(statistics);
+        if (result.isCalculatedAggregationResult()) {
+          isCalculatedList[i] = true;
+          remainingToCalculate--;
+          if (remainingToCalculate == 0) {
+            return;
+          }
+        }
+      }
+    }
   }
 
   private boolean isEndCalc(AggregateResult function, BatchData lastBatch) {
@@ -262,6 +343,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       return;
     }
     while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
+      // TODO: provide a fast skip in BatchData since it is always ordered
       batchData.next();
     }
     if (batchData.hasCurrent()) {
