@@ -41,12 +41,15 @@ public class GroupByFillDataSet extends QueryDataSet {
 
   private GroupByEngineDataSet groupByEngineDataSet;
   private Map<TSDataType, IFill> fillTypes;
+  // the first value for each time series
   private Object[] previousValue;
+  // last timestamp for each time series
   private long[] lastTimeArray;
 
-  public GroupByFillDataSet(List<Path> paths, List<TSDataType> dataTypes, GroupByEngineDataSet groupByEngineDataSet,
-                            Map<TSDataType, IFill> fillTypes, QueryContext context)
-          throws StorageEngineException, IOException, QueryProcessException {
+  public GroupByFillDataSet(List<Path> paths, List<TSDataType> dataTypes,
+      GroupByEngineDataSet groupByEngineDataSet,
+      Map<TSDataType, IFill> fillTypes, QueryContext context)
+      throws StorageEngineException, IOException, QueryProcessException {
     super(paths, dataTypes);
     this.groupByEngineDataSet = groupByEngineDataSet;
     this.fillTypes = fillTypes;
@@ -54,7 +57,8 @@ public class GroupByFillDataSet extends QueryDataSet {
     initLastTimeArray(context);
   }
 
-  private void initPreviousParis(QueryContext context) throws StorageEngineException, IOException, UnSupportedFillTypeException {
+  private void initPreviousParis(QueryContext context)
+      throws StorageEngineException, IOException, UnSupportedFillTypeException {
     previousValue = new Object[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
@@ -71,12 +75,13 @@ public class GroupByFillDataSet extends QueryDataSet {
     }
   }
 
-  private void initLastTimeArray(QueryContext context) throws IOException, StorageEngineException, QueryProcessException {
+  private void initLastTimeArray(QueryContext context)
+      throws IOException, StorageEngineException, QueryProcessException {
     lastTimeArray = new long[paths.size()];
     Arrays.fill(lastTimeArray, Long.MAX_VALUE);
     for (int i = 0; i < paths.size(); i++) {
       TimeValuePair lastTimeValuePair =
-              LastQueryExecutor.calculateLastPairForOneSeries(paths.get(i), dataTypes.get(i), context);
+          LastQueryExecutor.calculateLastPairForOneSeries(paths.get(i), dataTypes.get(i), context);
       if (lastTimeValuePair.getValue() != null) {
         lastTimeArray[i] = lastTimeValuePair.getTimestamp();
       }
@@ -96,9 +101,11 @@ public class GroupByFillDataSet extends QueryDataSet {
       Field field = rowRecord.getFields().get(i);
       // current group by result is null
       if (field.getDataType() == null) {
-        // the previous value is not null and (fill type is not previous until last or now time is before last time)
+        // the previous value is not null and
+        // (fill type is not previous until last or now time is before last time)
         if (previousValue[i] != null
-                && (!((PreviousFill)fillTypes.get(dataTypes.get(i))).isUntilLast() || rowRecord.getTimestamp() <= lastTimeArray[i])) {
+            && (!((PreviousFill) fillTypes.get(dataTypes.get(i))).isUntilLast()
+            || rowRecord.getTimestamp() <= lastTimeArray[i])) {
           rowRecord.getFields().set(i, Field.getField(previousValue[i], dataTypes.get(i)));
         }
       } else {
