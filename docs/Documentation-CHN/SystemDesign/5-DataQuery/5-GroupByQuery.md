@@ -226,6 +226,7 @@ if (batchData.getMaxTimestamp() >= curEndTime) {
 首先，在初始化 `initGroupBy()` 方法中，根据表达式创建 `timestampGenerator`；然后为每一个时间序列创建一个 `SeriesReaderByTimestamp`，放到 `allDataReaderList`列表中
 
 初始化完成后，调用 `nextWithoutConstraint()` 方法更新结果。如果有为下一个 group by 分区缓存 timestamp，且时间符合要求，则将其加入 `timestampArray` 中，否则直接返回 `aggregateResultList` 结果；在没有为下一个 group by 分区缓存 timestamp 的情况下，使用 `timestampGenerator` 进行遍历：
+
 ```
 while (timestampGenerator.hasNext()) {
   // 调用 constructTimeArrayForOneCal() 方法，得到 timestamp 列表
@@ -245,7 +246,9 @@ while (timestampGenerator.hasNext()) {
   }
 }
 ```
+
 其中的 `constructTimeArrayForOneCal()` 方法遍历 timestampGenerator 构建 timestamp 列表：
+
 ```
 for (int cnt = 1; cnt < timeStampFetchSize && timestampGenerator.hasNext(); cnt++) {
   timestamp = timestampGenerator.next();
