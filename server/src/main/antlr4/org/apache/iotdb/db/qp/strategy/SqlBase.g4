@@ -264,6 +264,7 @@ timeInterval
 
 timeValue
     : dateFormat
+    | dateExpression
     | INT
     ;
 

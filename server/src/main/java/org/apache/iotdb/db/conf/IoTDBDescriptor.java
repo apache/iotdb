@@ -117,6 +117,11 @@ public class IoTDBDescriptor {
       conf.setMetricsPort(Integer.parseInt(properties.getProperty("metrics_port",
           Integer.toString(conf.getMetricsPort()))));
 
+      conf.setQueryCacheSizeInMetric(Integer
+          .parseInt(properties.getProperty("query_cache_size_in_metric",
+              Integer.toString(conf.getQueryCacheSizeInMetric()))
+          ));
+
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
 
       conf.setRpcThriftCompressionEnable(

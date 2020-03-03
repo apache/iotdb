@@ -414,6 +414,11 @@ public abstract class Statistics<T> {
   }
 
   @Override
+  public String toString() {
+    return "startTime: " + startTime + " endTime: " + endTime + " count: " + count;
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
