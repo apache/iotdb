@@ -33,6 +33,7 @@ public class AlignByDevicePlan extends QueryPlan {
   // to check data type consistency for the same name sensor of different devices
   private Map<String, TSDataType> measurementDataTypeMap;
   private Map<String, IExpression> deviceToFilterMap;
+  // to record different kinds of measurement
   private Map<String, measurementType> measurementTypeMap;
 
   private GroupByPlan groupByPlan;
@@ -113,31 +114,14 @@ public class AlignByDevicePlan extends QueryPlan {
     this.setOperatorType(Operator.OperatorType.AGGREGATION);
   }
 
-  //we use the following algorithm to reproduce the order of measurements that user writes.
-  //suppose user writes SELECT 'c1',a1,b1,b2,'c2',a2,a3,'c3',b3,a4,a5 FROM ... where for each a_i
-  // column there is at least one device having it, and for each b_i column there is no device
-  // having it, and 'c_i' is a const column.
-  // Then, measurements is {a1, a2, a3, a4, a5};
-  // notExistMeasurements = {b1, b2, b3}, and positionOfNotExistMeasurements is {2, 3, 8};
-  // constMeasurements is {'c1', 'c2', 'c3'}, and positionOfConstMeasurements is {0, 4, 7}.
-  // When to reproduce the order of measurements. The pseudocode is:
-  //<pre>
-  // current = 0;
-  // if (min(notExist, const) <= current) {
-  //  pull min_element(notExist, const);
-  // } else {
-  //  pull from measurements;
-  // }
-  // current ++;
-  //</pre>
-
   /**
-   * NonExist: the measurements that do not exist in any device, data type is considered as Boolean.
+   * Normal: the measurements which don't belong to NonExist and Constant.
+   * NonExist: the measurements that do not exist in any device, data type is considered as String.
    * The value is considered as null.
-   * Constant: the measurements that have quotation mark. e.g. "abc",'11'.
+   * Const: the measurements that have quotation mark. e.g. "abc",'11'.
    * The data type is considered as String and the value is considered is the same with measurement name.
    */
   public enum measurementType {
-    Normal, NonExist, Constant;
+    Normal, NonExist, Const;
   }
 }

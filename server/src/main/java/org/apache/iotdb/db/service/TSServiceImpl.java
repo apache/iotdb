@@ -850,19 +850,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     // build column header with constant and non exist column and deduplication
     List<String> measurements = plan.getMeasurements();
-    Map<String, measurementType> measurementToTypeMap = plan.getMeasurementTypeMap();
+    Map<String, measurementType> measurementTypeMap = plan.getMeasurementTypeMap();
     for (String measurement : measurements) {
       TSDataType type = null;
-      switch (measurementToTypeMap.get(measurement)) {
+      switch (measurementTypeMap.get(measurement)) {
         case Normal:
           type = checker.get(measurement);
           break;
         case NonExist:
-        case Constant:
+        case Const:
           type = TSDataType.TEXT;
       }
       respColumns.add(measurement);
       columnTypes.add(type.toString());
+
       if (!deduplicatedMeasurements.contains(measurement)) {
         deduplicatedMeasurements.add(measurement);
         deduplicatedColumnsType.add(type);

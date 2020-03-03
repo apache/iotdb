@@ -58,7 +58,6 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private List<String> measurements;
   private Map<String, Set<String>> deviceToMeasurementsMap;
   private Map<String, IExpression> deviceToFilterMap;
-  private Map<String, TSDataType> measurementDataTypeMap;
   private Map<String, measurementType> measurementTypeMap;
 
 
@@ -84,7 +83,6 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     this.context = context;
     this.deviceToMeasurementsMap = alignByDevicePlan.getDeviceToMeasurementsMap();
     this.deviceToFilterMap = alignByDevicePlan.getDeviceToFilterMap();
-    this.measurementDataTypeMap = alignByDevicePlan.getMeasurementDataTypeMap();
     this.measurementTypeMap = alignByDevicePlan.getMeasurementTypeMap();
 
     switch (alignByDevicePlan.getOperatorType()) {
@@ -213,7 +211,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         case NonExist:
           rowRecord.addField(new Field(null));
           break;
-        case Constant:
+        case Const:
           Field res = new Field(TSDataType.TEXT);
           res.setBinaryV(Binary.valueOf(measurement));
           rowRecord.addField(res);
