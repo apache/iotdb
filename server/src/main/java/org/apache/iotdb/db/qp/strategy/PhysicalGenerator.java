@@ -263,7 +263,7 @@ public class PhysicalGenerator {
       List<String> measurements = new ArrayList<>();
       Map<String, Set<String>> deviceToMeasurementsMap = new LinkedHashMap<>();
       // to check the same measurement of different devices having the same datatype
-      Map<String, TSDataType> dataTypeConsistencyChecker = new HashMap<>();
+      Map<String, TSDataType> measurementDataTypeMap = new HashMap<>();
       Map<String, measurementType> measurementTypeMap = new HashMap<>();
       List<Path> paths = new ArrayList<>();
 
@@ -312,15 +312,15 @@ public class PhysicalGenerator {
                 measurementChecked = path.getMeasurement();
               }
               TSDataType dataType = TSServiceImpl.getSeriesType(pathForDataType);
-              if (dataTypeConsistencyChecker.containsKey(measurementChecked)) {
-                if (!dataType.equals(dataTypeConsistencyChecker.get(measurementChecked))) {
+              if (measurementDataTypeMap.containsKey(measurementChecked)) {
+                if (!dataType.equals(measurementDataTypeMap.get(measurementChecked))) {
                   throw new QueryProcessException(
                       "The data types of the same measurement column should be the same across "
                           + "devices in ALIGN_BY_DEVICE sql. For more details please refer to the "
                           + "SQL document.");
                 }
               } else {
-                dataTypeConsistencyChecker.put(measurementChecked, dataType);
+                measurementDataTypeMap.put(measurementChecked, dataType);
               }
 
               // update measurementSetOfGivenSuffix and Normal measurement
@@ -364,7 +364,7 @@ public class PhysicalGenerator {
       // assigns to alignByDevicePlan
       alignByDevicePlan.setMeasurements(measurements);
       alignByDevicePlan.setDeviceToMeasurementsMap(deviceToMeasurementsMap);
-      alignByDevicePlan.setMeasurementDataTypeMap(dataTypeConsistencyChecker);
+      alignByDevicePlan.setMeasurementDataTypeMap(measurementDataTypeMap);
       alignByDevicePlan.setMeasurementTypeMap(measurementTypeMap);
       alignByDevicePlan.setPaths(paths);
 
