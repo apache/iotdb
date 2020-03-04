@@ -86,6 +86,7 @@ public class ClientMain {
     executeQuery(client, sessionId, "SELECT s1 FROM root.shanghai.d1", statementId);
     executeQuery(client, sessionId, "SELECT s1 FROM root.guangzhou.d1", statementId);
     executeQuery(client, sessionId, "SELECT s1 FROM root.shenzhen.d1", statementId);
+
     executeQuery(client, sessionId, "SELECT count(s1) FROM root.*.*", statementId);
     executeQuery(client, sessionId, "SELECT avg(s1) FROM root.*.*", statementId);
     executeQuery(client, sessionId, "SELECT sum(s1) FROM root.*.*", statementId);
@@ -94,6 +95,15 @@ public class ClientMain {
         statementId);
     executeQuery(client, sessionId, "SELECT count(s1) FROM root.*.* where s1 <= 0.7", statementId);
     executeQuery(client, sessionId,"SELECT * FROM root GROUP BY DEVICE", statementId);
+
+    executeQuery(client, sessionId, "SELECT s1 FROM root.beijing.d1 WHERE time = 86400000 FILL "
+        + "(DOUBLE[PREVIOUS,1d])", statementId);
+    executeQuery(client, sessionId, "SELECT s1 FROM root.shanghai.d1 WHERE time = 86400000 FILL "
+        + "(DOUBLE[LINEAR,1d,1d])", statementId);
+    executeQuery(client, sessionId, "SELECT s1 FROM root.guangzhou.d1 WHERE time = 126400000 FILL "
+        + "(DOUBLE[PREVIOUS,1d])", statementId);
+    executeQuery(client, sessionId, "SELECT s1 FROM root.shenzhen.d1 WHERE time = 126400000 FILL "
+        + "(DOUBLE[LINEAR,1d,1d])", statementId);
 
 
     TSCloseOperationReq tsCloseOperationReq = new TSCloseOperationReq(sessionId);

@@ -85,20 +85,26 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     // TODO-Cluster#349: the collection is re-collected each time to prevent inconsistency when
     //  some of them are removed during two snapshots. Incremental addition or removal may be
     //  used to optimize
-    Map<String, List<TsFileResource>> storageGroupFiles =
-        StorageEngine.getInstance().getAllClosedStorageGroupTsFile();
-    for (Entry<String, List<TsFileResource>> entry : storageGroupFiles.entrySet()) {
-      String storageGroupName = entry.getKey();
-      // TODO-Cluster#350: add time partitioning
-      int slotNum = PartitionUtils.calculateStorageGroupSlot(storageGroupName, 0,
-          partitionTable.getTotalSlotNumbers());
 
-      FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
-          s -> new FileSnapshot());
-      snapshot.setTimeseriesSchemas(slotTimeseries.getOrDefault(slotNum,
-        Collections.emptySet()));
-      for (TsFileResource tsFileResource : entry.getValue()) {
-        snapshot.addFile(tsFileResource, header);
+    Map<String, Map<Integer, List<TsFileResource>>> allClosedStorageGroupTsFile = StorageEngine
+        .getInstance().getAllClosedStorageGroupTsFile();
+    for (Entry<String, Map<Integer, List<TsFileResource>>> entry :
+        allClosedStorageGroupTsFile.entrySet()) {
+      String storageGroupName = entry.getKey();
+      Map<Integer, List<TsFileResource>> storageGroupsFiles = entry.getValue();
+      for (Entry<Integer, List<TsFileResource>> storageGroupFiles : storageGroupsFiles.entrySet()) {
+        Integer partitionNum = storageGroupFiles.getKey();
+        int slotNum = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName,
+            partitionNum, partitionTable.getTotalSlotNumbers());
+        FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
+            s -> new FileSnapshot());
+        if (snapshot.getTimeseriesSchemas() == null) {
+          snapshot.setTimeseriesSchemas(slotTimeseries.getOrDefault(slotNum,
+              Collections.emptySet()));
+        }
+        for (TsFileResource tsFileResource : storageGroupFiles.getValue()) {
+          snapshot.addFile(tsFileResource, header);
+        }
       }
     }
   }

@@ -72,7 +72,6 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
-import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -93,6 +92,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -317,7 +317,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // TODO-Cluster#352: The problem of duplicated data in remote files is partially resolved by
     //  tracking the merge history using the version numbers of the merged files. But a better
     //  solution still remains to be found.
-    String[] pathSegments = PartitionUtils.splitTsFilePath(resource);
+    String[] pathSegments = FilePathUtils.splitTsFilePath(resource);
     int segSize = pathSegments.length;
     // {storageGroupName}/{partitionNum}/{fileName}
     String storageGroupName = pathSegments[segSize - 3];
@@ -361,7 +361,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   private void loadRemoteResource(RemoteTsFileResource resource) {
     // remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/{fileName}
-    String[] pathSegments = PartitionUtils.splitTsFilePath(resource);
+    String[] pathSegments = FilePathUtils.splitTsFilePath(resource);
     int segSize = pathSegments.length;
     String storageGroupName = pathSegments[segSize - 3];
     File remoteModFile =
@@ -385,7 +385,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   private File pullRemoteFile(RemoteTsFileResource resource, Node node) {
     logger.debug("{}: pulling remote file {} from {}", name, resource, node);
 
-    String[] pathSegments = PartitionUtils.splitTsFilePath(resource);
+    String[] pathSegments = FilePathUtils.splitTsFilePath(resource);
     int segSize = pathSegments.length;
     // remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/{fileName}
     String tempFileName =

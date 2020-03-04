@@ -60,7 +60,7 @@ public class MetaHeartBeatThreadTest extends HeartBeatThreadTest {
 
     @Override
     public int getPartitionKey(String storageGroupName, long timestamp) {
-      return PartitionUtils.calculateStorageGroupSlot(storageGroupName, timestamp, getTotalSlotNumbers());
+      return PartitionUtils.calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
     }
 
     @Override

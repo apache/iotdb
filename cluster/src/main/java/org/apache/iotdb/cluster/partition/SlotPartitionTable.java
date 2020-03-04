@@ -176,7 +176,7 @@ public class SlotPartitionTable implements PartitionTable {
   }
   @Override
   public int getPartitionKey(String storageGroupName, long timestamp){
-    return PartitionUtils.calculateStorageGroupSlot(storageGroupName, timestamp, getTotalSlotNumbers());
+    return PartitionUtils.calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
   }
 
   @Override
@@ -193,7 +193,7 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public Node routeToHeader(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
-      int slot = PartitionUtils.calculateStorageGroupSlot(storageGroupName, timestamp, getTotalSlotNumbers());
+      int slot = PartitionUtils.calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
       Node node = slotNodeMap.get(slot);
       logger.debug("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp,
           slot, node);
@@ -249,7 +249,7 @@ public class SlotPartitionTable implements PartitionTable {
     }
   }
 
-  private void moveSlotsToNew(Node node) {
+  private void moveSlotsToNew(Node newNode) {
     // as a node is added, the average slots for each node decrease
     // move the slots to the new node if any previous node have more slots than the new average
     List<Integer> newSlots = new ArrayList<>();
@@ -261,15 +261,16 @@ public class SlotPartitionTable implements PartitionTable {
       if (transferNum > 0) {
         List<Integer> slotsToMove = slots.subList(slots.size() - transferNum, slots.size());
         newSlots.addAll(slotsToMove);
-        for (Integer integer : slotsToMove) {
+        for (Integer slot : slotsToMove) {
           // record what node previously hold the integer
-          previousHolders.put(integer, entry.getKey());
+          previousHolders.put(slot, entry.getKey());
+          slotNodeMap.put(slot, newNode);
         }
         slotsToMove.clear();
       }
     }
-    nodeSlotMap.put(node, newSlots);
-    previousNodeMap.put(node, previousHolders);
+    nodeSlotMap.put(newNode, newSlots);
+    previousNodeMap.put(newNode, previousHolders);
   }
 
   @Override
