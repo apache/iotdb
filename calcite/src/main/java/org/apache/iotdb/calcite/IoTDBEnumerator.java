@@ -24,7 +24,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import org.apache.calcite.interpreter.Row;
 import org.apache.calcite.linq4j.Enumerator;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.rel.type.RelDataTypeField;
@@ -103,20 +102,21 @@ public class IoTDBEnumerator implements Enumerator<Object> {
    */
   private Object currentRowField(int index, SqlTypeName type) {
     try {
-      if (type == SqlTypeName.VARCHAR) {
-        return currentResultSet.getString(index);
-      } else if (type == SqlTypeName.INTEGER) {
-        return currentResultSet.getInt(index);
-      } else if (type == SqlTypeName.BIGINT) {
-        return currentResultSet.getLong(index);
-      } else if (type == SqlTypeName.DOUBLE) {
-        return currentResultSet.getDouble(index);
-      } else if (type == SqlTypeName.REAL) {
-        return currentResultSet.getFloat(index);
-      } else if (type == SqlTypeName.BOOLEAN) {
-        return currentResultSet.getBoolean(index);
-      } else {
-        return null;
+      switch (type) {
+        case VARCHAR:
+          return currentResultSet.getString(index);
+        case INTEGER:
+          return currentResultSet.getInt(index);
+        case BIGINT:
+          return currentResultSet.getLong(index);
+        case DOUBLE:
+          return currentResultSet.getDouble(index);
+        case REAL:
+          return currentResultSet.getFloat(index);
+        case BOOLEAN:
+          return currentResultSet.getBoolean(index);
+        default:
+          return null;
       }
     } catch (SQLException e) {
       if (e.getMessage().endsWith("NULL.")) {

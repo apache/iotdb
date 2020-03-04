@@ -163,7 +163,6 @@ public class IoTDBTable extends AbstractQueryableTable
     }
 
     List<String> queryList = new ArrayList<>();
-
     Set<String> tmpDevices = new HashSet<>(); // to deduplicate in global query
     // construct query by device
     if (!deviceToFilterList.isEmpty()) {
