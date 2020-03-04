@@ -63,6 +63,14 @@ This is like maven packaging jars.
 
 Run `npm install` in the web package to install necessary dependencies, and then run `npm run-script build` to pack web resources.
 
-you can find a bundle.js and a png in dist and use it in index.html directly.
+you can find a bundle.js and a png in dist.
+
+### Set IOTDB_HOME 
+
+In order to access web static resource, you have to set IOTDB_HOME. For example, run
+
+```
+export IOTDB_HOME=${your_path}
+```
 
 
