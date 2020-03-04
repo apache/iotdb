@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.rest.util;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.rest.filter.AuthenticationFilter;
 import org.apache.iotdb.db.rest.filter.CORSFilter;
 import org.eclipse.jetty.server.Server;
@@ -44,7 +45,11 @@ public class RestUtil {
     ctx.addServlet(servletHolder, "/rest/*");
     ctx.setWelcomeFiles(new String[]{"index.html"});
     ServletHolder staticHolder = new ServletHolder("default", DefaultServlet.class);
-    staticHolder.setInitParameter("resourceBase","file://" + System.getProperty("user.dir") + "/web/");
+    String webPath = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    if(webPath == null) {
+      webPath = System.getProperty("user.dir");
+    }
+    staticHolder.setInitParameter("resourceBase","file://" + webPath+ "/web/");
     staticHolder.setInitParameter("dirAllowed","true");
     ctx.addServlet(staticHolder, "/");
     return ctx;

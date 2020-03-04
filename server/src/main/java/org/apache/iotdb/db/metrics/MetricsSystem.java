@@ -111,7 +111,6 @@ public class MetricsSystem {
 
   public JSONArray sqlJson() {
     JSONArray jsonArray = new JSONArray();
-    System.out.println(sqlArgumentsList.get(0).getStatement());
     for (SqlArgument sqlArgument : sqlArgumentsList) {
       JSONObject sql = new JSONObject();
       TSExecuteStatementResp resp = sqlArgument.getTSExecuteStatementResp();
