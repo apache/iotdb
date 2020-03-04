@@ -428,7 +428,7 @@ public class PlanExecutor implements IPlanExecutor {
         ttl = new Field(TSDataType.INT64);
         ttl.setLongV(mNode.getDataTTL());
       } else {
-        ttl = new Field(null);
+        ttl = null;
       }
       rowRecord.addField(sg);
       rowRecord.addField(ttl);

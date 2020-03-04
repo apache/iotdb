@@ -180,7 +180,7 @@ public class SessionDataSet {
           }
         }
         else {
-          field = new Field(null);
+          field = null;
         }
         loc++;
       }

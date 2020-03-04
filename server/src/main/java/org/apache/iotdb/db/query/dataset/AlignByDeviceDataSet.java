@@ -94,7 +94,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     this.positionOfNotExistMeasurements = alignByDevicePlan.getPositionOfNotExistMeasurements();
     this.positionOfConstMeasurements = alignByDevicePlan.getPositionOfConstMeasurements();
 
-    switch (alignByDevicePlan.getOperatorType()){
+    switch (alignByDevicePlan.getOperatorType()) {
       case GROUPBY:
         this.dataSetType = DataSetType.GROUPBY;
         this.groupByPlan = alignByDevicePlan.getGroupByPlan();
@@ -225,7 +225,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     List<Field> measurementFields = originRowRecord.getFields();
     for (int mapPos : currentColumnMapRelation) {
       if (mapPos == -1) {
-        rowRecord.addField(new Field(null));
+        rowRecord.addField(null);
       } else {
         rowRecord.addField(measurementFields.get(mapPos));
       }
@@ -243,7 +243,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     while (loc < totalSize) {
       if (notExistMeasurementsLoc < notExistMeasurements.size()
           && loc - 1 == positionOfNotExistMeasurements.get(notExistMeasurementsLoc)) {
-        outRecord.addField(new Field(null));
+        outRecord.addField(null);
         notExistMeasurementsLoc++;
       } else if (constMeasurementsLoc < constMeasurements.size()
           && loc - 1 == positionOfConstMeasurements.get(constMeasurementsLoc)) {
