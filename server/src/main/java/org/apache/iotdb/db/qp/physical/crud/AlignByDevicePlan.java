@@ -115,13 +115,13 @@ public class AlignByDevicePlan extends QueryPlan {
   }
 
   /**
-   * Normal: the measurements which don't belong to NonExist and Constant.
+   * Exist: the measurements which don't belong to NonExist and Constant.
    * NonExist: the measurements that do not exist in any device, data type is considered as String.
    * The value is considered as null.
-   * Const: the measurements that have quotation mark. e.g. "abc",'11'.
+   * Constant: the measurements that have quotation mark. e.g. "abc",'11'.
    * The data type is considered as String and the value is the measurement name.
    */
   public enum MeasurementType {
-    Normal, NonExist, Const;
+    Exist, NonExist, Constant;
   }
 }

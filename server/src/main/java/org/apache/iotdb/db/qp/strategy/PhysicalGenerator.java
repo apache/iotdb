@@ -276,7 +276,7 @@ public class PhysicalGenerator {
         // if const measurement
         if (suffixPath.startWith("'") || suffixPath.startWith("\"")) {
           measurements.add(suffixPath.getMeasurement());
-          measurementTypeMap.put(suffixPath.getMeasurement(), MeasurementType.Const);
+          measurementTypeMap.put(suffixPath.getMeasurement(), MeasurementType.Constant);
           continue;
         }
 
@@ -291,7 +291,7 @@ public class PhysicalGenerator {
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
               String nonExistMeasurement = fullPath.getMeasurement();
               if (measurementSetOfGivenSuffix.add(nonExistMeasurement)
-                  && measurementTypeMap.get(nonExistMeasurement) != MeasurementType.Normal) {
+                  && measurementTypeMap.get(nonExistMeasurement) != MeasurementType.Exist) {
                 measurementTypeMap.put(fullPath.getMeasurement(), MeasurementType.NonExist);
               }
             }
@@ -325,8 +325,8 @@ public class PhysicalGenerator {
 
               // update measurementSetOfGivenSuffix and Normal measurement
               if (measurementSetOfGivenSuffix.add(measurementChecked)
-                  || measurementTypeMap.get(measurementChecked) != MeasurementType.Normal) {
-                measurementTypeMap.put(measurementChecked, MeasurementType.Normal);
+                  || measurementTypeMap.get(measurementChecked) != MeasurementType.Exist) {
+                measurementTypeMap.put(measurementChecked, MeasurementType.Exist);
               }
               // update deviceToMeasurementsMap
               if (!deviceToMeasurementsMap.containsKey(device)) {

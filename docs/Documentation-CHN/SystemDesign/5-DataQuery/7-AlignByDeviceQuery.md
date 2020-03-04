@@ -38,7 +38,7 @@ AlignByDevicePlan 即按设备对齐查询对应的表结构为：
 - dataTypeMapping: 该变量继承自基类 QueryPlan，其主要作用是在计算每个设备的执行路径时，提供此次查询的 paths 对应的数据类型。
 - deviceToMeasurementsMap, deviceToFilterMap: 这两个字段分别用来存储设备对应的测点和过滤条件。
 - measurementDataTypeMap：AlignByDevicePlan 要求不同设备的同名 sensor 数据类型一致，该字段是一个 `measurementName -> dataType` 的 Map 结构，用来验证同名 sensor 的数据类型一致性。如 `root.sg.d1.s1` 和 `root.sg.d2.s1` 应该是同一数据类型。
-- measurementType：记录三种 measurement 类型。在任何设备中都不存在的 measurement 为 `NonExist` 类型；有单引号或双引号的 measurement 为 `Const` 类型；不属于以上两种的正常 measurement 为 `Normal` 类型。
+- measurementType：记录三种 measurement 类型。在任何设备中都不存在的 measurement 为 `NonExist` 类型；有单引号或双引号的 measurement 为 `Constant` 类型；不属于以上两种的正常 measurement 为 `Exist` 类型。
 - measurementTypeMap: 该字段是一个 `measureName -> measurementType` 的 Map 结构，用来记录查询中所有 measurement 的类型。
 - groupByPlan, fillQueryPlan, aggregationPlan：为了避免冗余，这三个执行计划被设定为 RawDataQueryPlan 的子类，而在 AlignByDevicePlan 中被设置为变量。如果查询计划属于这三个计划中的一种，则该字段会被赋值并保存。
 
@@ -83,9 +83,9 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
 接下来介绍 AlignByDevicePlan 的计算过程：
 
 1. 检查查询类型是否为 groupByPlan, fillQueryPlan, aggregationPlan 这三类查询中的一种，如果是则对相应的变量进行赋值，并更改 `AlignByDevicePlan` 的查询类型。
-2. 遍历 SELECT 后缀路径，对每一个后缀路径设置一个中间变量为 `measurementSetOfGivenSuffix`，用来记录该后缀路径对应的所有 measurement。如果后缀路径以单引号或双引号开头，则直接在 `measurements` 中增加该值，并记录其类型为 `Const` 类型。
-3. 否则将设备列表与该后缀路径拼接，得到完整的路径，如果拼接后的路径不存在，需要进一步判断该 measurement 是否在其它设备中存在，如果都没有则暂时识别为 `NonExist`，如果后续出现设备存在该 measurement，则覆盖 `NonExist` 值为 `Normal`。
-4. 如果拼接后路径存在，则证明 measurement 是 `Normal` 类型，需要检验数据类型的一致性，不满足返回错误信息，满足则记录下该 Measurement，对 `measurementSetOfGivenSuffix`, `deviceToMeasurementsMap` 等进行更新。
+2. 遍历 SELECT 后缀路径，对每一个后缀路径设置一个中间变量为 `measurementSetOfGivenSuffix`，用来记录该后缀路径对应的所有 measurement。如果后缀路径以单引号或双引号开头，则直接在 `measurements` 中增加该值，并记录其类型为 `Constant` 类型。
+3. 否则将设备列表与该后缀路径拼接，得到完整的路径，如果拼接后的路径不存在，需要进一步判断该 measurement 是否在其它设备中存在，如果都没有则暂时识别为 `NonExist`，如果后续出现设备存在该 measurement，则覆盖 `NonExist` 值为 `Exist`。
+4. 如果拼接后路径存在，则证明 measurement 是 `Exist` 类型，需要检验数据类型的一致性，不满足返回错误信息，满足则记录下该 Measurement，对 `measurementSetOfGivenSuffix`, `deviceToMeasurementsMap` 等进行更新。
 5. 在一层 suffix 循环结束后，将该层循环中出现的 `measurementSetOfGivenSuffix` 加入 `measurements` 中。在整个循环结束后，将循环中得到的变量信息赋值到 AlignByDevicePlan 中。此处得到的 measurements 列表是未经过去重的，在生成 `ColumnHeader` 时将进行去重。
 6. 最后调用 `concatFilterByDevice()` 方法计算 `deviceToFilterMap`，得到将每个设备分别拼接后对应的 Filter 信息。
 
@@ -104,9 +104,9 @@ Map<String, IExpression> concatFilterByDevice(List<String> devices,
 
 - measurement 列表 `measurements`：`[s1, "1", s1, s2, s2, s5]`
 - measurement 类型 `measurementTypeMap`：
-  -  `s1 -> Normal`
-  -  `s2 -> Normal`
-  -  `"1" -> Const`
+  -  `s1 -> Exist`
+  -  `s2 -> Exist`
+  -  `"1" -> Constant`
   -  `s5 -> NonExist`
 - 每个设备的测点 `deviceToMeasurementsMap`:
   -  `root.sg.d1 -> s1, s2`
@@ -135,7 +135,7 @@ private void getAlignByDeviceQueryHeaders(
 其具体实现逻辑如下：
 
 1. 首先加入 `Device` 列，其数据类型为 `TEXT`；
-2. 遍历未去重的 measurements 列表，判断当前遍历 measurement 的类型，如果是 `Normal` 类型则从 `measurementTypeMap` 中取得其类型；其余两种类型设其类型为 `TEXT`，然后将 measurement 及其类型加入表头数据结构中。
+2. 遍历未去重的 measurements 列表，判断当前遍历 measurement 的类型，如果是 `Exist` 类型则从 `measurementTypeMap` 中取得其类型；其余两种类型设其类型为 `TEXT`，然后将 measurement 及其类型加入表头数据结构中。
 3. 根据中间变量 `deduplicatedMeasurements` 对 measurements 进行去重。
 
 最终得到的 Header 为：
@@ -198,6 +198,6 @@ private void getAlignByDeviceQueryHeaders(
 
 1. 首先从结果集中取得下一个按时间对齐的 `originRowRecord`。
 2. 新建一个添加了时间戳的 `RowRecord`，向其中加入设备列，先根据 `executeColumns` 与得到的结果建立一个由 `measurementName -> Field` 的 Map 结构 `currentColumnMap`.
-3. 之后只需要遍历去重后的 `measurements` 列表，判断其类型，如果类型为 `Normal` 则根据 measurementName 从 `currentColumnMap` 中取得其对应的结果，如果没有则设为 `null`；如果是 `NonExist`类型，则直接设为 `null`; 如果是 `Const` 类型，则将 `measureName` 作为该列的值。
+3. 之后只需要遍历去重后的 `measurements` 列表，判断其类型，如果类型为 `Exist` 则根据 measurementName 从 `currentColumnMap` 中取得其对应的结果，如果没有则设为 `null`；如果是 `NonExist`类型，则直接设为 `null`; 如果是 `Constant` 类型，则将 `measureName` 作为该列的值。
 
 在根据变换后的 `RowRecord` 写入输出数据流后，即可将结果集返回。

@@ -854,11 +854,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     for (String measurement : measurements) {
       TSDataType type = null;
       switch (measurementTypeMap.get(measurement)) {
-        case Normal:
+        case Exist:
           type = checker.get(measurement);
           break;
         case NonExist:
-        case Const:
+        case Constant:
           type = TSDataType.TEXT;
       }
       respColumns.add(measurement);

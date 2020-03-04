@@ -201,7 +201,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
     for (String measurement : measurements) {
       switch (measurementTypeMap.get(measurement)) {
-        case Normal:
+        case Exist:
           if (currentColumnMap.get(measurement) != null) {
             rowRecord.addField(currentColumnMap.get(measurement));
           } else {
@@ -211,7 +211,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         case NonExist:
           rowRecord.addField(new Field(null));
           break;
-        case Const:
+        case Constant:
           Field res = new Field(TSDataType.TEXT);
           res.setBinaryV(Binary.valueOf(measurement));
           rowRecord.addField(res);
