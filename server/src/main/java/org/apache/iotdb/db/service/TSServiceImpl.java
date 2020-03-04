@@ -69,7 +69,7 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.measurementType;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -850,7 +850,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     // build column header with constant and non exist column and deduplication
     List<String> measurements = plan.getMeasurements();
-    Map<String, measurementType> measurementTypeMap = plan.getMeasurementTypeMap();
+    Map<String, MeasurementType> measurementTypeMap = plan.getMeasurementTypeMap();
     for (String measurement : measurements) {
       TSDataType type = null;
       switch (measurementTypeMap.get(measurement)) {

@@ -29,7 +29,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.measurementType;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -58,7 +58,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private List<String> measurements;
   private Map<String, Set<String>> deviceToMeasurementsMap;
   private Map<String, IExpression> deviceToFilterMap;
-  private Map<String, measurementType> measurementTypeMap;
+  private Map<String, MeasurementType> measurementTypeMap;
 
 
   private GroupByPlan groupByPlan;

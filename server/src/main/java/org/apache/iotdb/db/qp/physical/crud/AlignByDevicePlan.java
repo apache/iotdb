@@ -34,7 +34,7 @@ public class AlignByDevicePlan extends QueryPlan {
   private Map<String, TSDataType> measurementDataTypeMap;
   private Map<String, IExpression> deviceToFilterMap;
   // to record different kinds of measurement
-  private Map<String, measurementType> measurementTypeMap;
+  private Map<String, MeasurementType> measurementTypeMap;
 
   private GroupByPlan groupByPlan;
   private FillQueryPlan fillQueryPlan;
@@ -78,12 +78,12 @@ public class AlignByDevicePlan extends QueryPlan {
     this.deviceToFilterMap = deviceToFilterMap;
   }
 
-  public Map<String, measurementType> getMeasurementTypeMap() {
+  public Map<String, MeasurementType> getMeasurementTypeMap() {
     return measurementTypeMap;
   }
 
   public void setMeasurementTypeMap(
-      Map<String, measurementType> measurementTypeMap) {
+      Map<String, MeasurementType> measurementTypeMap) {
     this.measurementTypeMap = measurementTypeMap;
   }
 
@@ -121,7 +121,7 @@ public class AlignByDevicePlan extends QueryPlan {
    * Const: the measurements that have quotation mark. e.g. "abc",'11'.
    * The data type is considered as String and the value is considered is the same with measurement name.
    */
-  public enum measurementType {
+  public enum MeasurementType {
     Normal, NonExist, Const;
   }
 }

@@ -59,7 +59,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.measurementType;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
@@ -264,7 +264,7 @@ public class PhysicalGenerator {
       Map<String, Set<String>> deviceToMeasurementsMap = new LinkedHashMap<>();
       // to check the same measurement of different devices having the same datatype
       Map<String, TSDataType> measurementDataTypeMap = new HashMap<>();
-      Map<String, measurementType> measurementTypeMap = new HashMap<>();
+      Map<String, MeasurementType> measurementTypeMap = new HashMap<>();
       List<Path> paths = new ArrayList<>();
 
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix in SELECT
@@ -276,7 +276,7 @@ public class PhysicalGenerator {
         // if const measurement
         if (suffixPath.startWith("'") || suffixPath.startWith("\"")) {
           measurements.add(suffixPath.getMeasurement());
-          measurementTypeMap.put(suffixPath.getMeasurement(), measurementType.Const);
+          measurementTypeMap.put(suffixPath.getMeasurement(), MeasurementType.Const);
           continue;
         }
 
@@ -291,8 +291,8 @@ public class PhysicalGenerator {
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
               String nonExistMeasurement = fullPath.getMeasurement();
               if (measurementSetOfGivenSuffix.add(nonExistMeasurement)
-                  && measurementTypeMap.get(nonExistMeasurement) != measurementType.Normal) {
-                measurementTypeMap.put(fullPath.getMeasurement(), measurementType.NonExist);
+                  && measurementTypeMap.get(nonExistMeasurement) != MeasurementType.Normal) {
+                measurementTypeMap.put(fullPath.getMeasurement(), MeasurementType.NonExist);
               }
             }
 
@@ -325,8 +325,8 @@ public class PhysicalGenerator {
 
               // update measurementSetOfGivenSuffix and Normal measurement
               if (measurementSetOfGivenSuffix.add(measurementChecked)
-                  || measurementTypeMap.get(measurementChecked) != measurementType.Normal) {
-                measurementTypeMap.put(measurementChecked, measurementType.Normal);
+                  || measurementTypeMap.get(measurementChecked) != MeasurementType.Normal) {
+                measurementTypeMap.put(measurementChecked, MeasurementType.Normal);
               }
               // update deviceToMeasurementsMap
               if (!deviceToMeasurementsMap.containsKey(device)) {
