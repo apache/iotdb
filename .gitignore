@@ -82,8 +82,8 @@ venv/
 
 
 ### web ###
-web/node_modules/*
-web/package-lock.json
+**/node_modules/*
+**/package-lock.json
 
 partitions.tmp
 partitions
