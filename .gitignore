@@ -80,3 +80,6 @@ tsfile/src/test/resources/*.ts
 local-snapshots-dir/
 venv/
 
+partitions.tmp
+partitions
+node_identifier

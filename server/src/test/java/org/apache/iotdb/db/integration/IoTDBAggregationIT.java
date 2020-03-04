@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.db.integration;
 
-import static org.apache.iotdb.db.integration.Constant.avg;
-import static org.apache.iotdb.db.integration.Constant.count;
-import static org.apache.iotdb.db.integration.Constant.first_value;
-import static org.apache.iotdb.db.integration.Constant.last_value;
-import static org.apache.iotdb.db.integration.Constant.max_time;
-import static org.apache.iotdb.db.integration.Constant.max_value;
-import static org.apache.iotdb.db.integration.Constant.min_time;
-import static org.apache.iotdb.db.integration.Constant.min_value;
-import static org.apache.iotdb.db.integration.Constant.sum;
+import static org.apache.iotdb.db.constant.TestConstant.avg;
+import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.first_value;
+import static org.apache.iotdb.db.constant.TestConstant.last_value;
+import static org.apache.iotdb.db.constant.TestConstant.max_time;
+import static org.apache.iotdb.db.constant.TestConstant.max_value;
+import static org.apache.iotdb.db.constant.TestConstant.min_time;
+import static org.apache.iotdb.db.constant.TestConstant.min_value;
+import static org.apache.iotdb.db.constant.TestConstant.sum;
 import static org.junit.Assert.fail;
 
 import java.sql.Connection;
@@ -420,8 +420,8 @@ public class IoTDBAggregationIT {
   @Test
   public void avgSumTest() {
     String[] retArray = new String[]{
-        "0,1.4508E7,7250.374812593703",
-        "0,626750.0,1250.998003992016"
+        "0,1.4508E7,7250.374812593702",
+        "0,626750.0,1250.9980039920158"
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -474,7 +474,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("Unsupported data type in aggregation AVG : TEXT", e.getMessage());
+        Assert.assertEquals("500: Unsupported data type in aggregation AVG : TEXT", e.getMessage());
       }
       try {
         statement.execute("SELECT sum(s3)" +
@@ -483,7 +483,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("Unsupported data type in aggregation SUM : TEXT", e.getMessage());
+        Assert.assertEquals("500: Unsupported data type in aggregation SUM : TEXT", e.getMessage());
       }
       try {
         statement.execute("SELECT avg(s4)" +
@@ -492,7 +492,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("Unsupported data type in aggregation AVG : BOOLEAN", e.getMessage());
+        Assert.assertEquals("500: Unsupported data type in aggregation AVG : BOOLEAN", e.getMessage());
       }
       try {
         statement.execute("SELECT sum(s4)" +
@@ -501,7 +501,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("Unsupported data type in aggregation SUM : BOOLEAN", e.getMessage());
+        Assert.assertEquals("500: Unsupported data type in aggregation SUM : BOOLEAN", e.getMessage());
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -515,10 +515,10 @@ public class IoTDBAggregationIT {
   @Test
   public void mergeAggrOnOneSeriesTest() {
     String[] retArray = new String[]{
-        "0,1.4508E7,7250.374812593703,7250.374812593703,1.4508E7",
-        "0,626750.0,1250.998003992016,1250.998003992016,626750.0",
-        "0,1.4508E7,2001,7250.374812593703,7250.374812593703",
-        "0,1.4508E7,2001,7250.374812593703,7250.374812593703,2001,1.4508E7"
+        "0,1.4508E7,7250.374812593702,7250.374812593702,1.4508E7",
+        "0,626750.0,1250.9980039920158,1250.9980039920158,626750.0",
+        "0,1.4508E7,2001,7250.374812593702,7250.374812593702",
+        "0,1.4508E7,2001,7250.374812593702,7250.374812593702,2001,1.4508E7"
 
     };
     try (Connection connection = DriverManager.

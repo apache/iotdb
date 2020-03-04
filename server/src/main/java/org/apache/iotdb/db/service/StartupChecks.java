@@ -36,7 +36,7 @@ public class StartupChecks {
               + "Please check conf/{}.sh(Unix or OS X, if you use Windows, "
               + "check conf/{}.bat) for more info",
           IoTDBConstant.ENV_FILE_NAME, IoTDBConstant.ENV_FILE_NAME);
-      jmxPort = System.getProperty(IoTDBConstant.IOTDB_LOCAL_JMX_PORT_NAME);
+      jmxPort = System.getProperty(IoTDBConstant.IOTDB_LOCAL_JMX_PORT_NAME, "31999");
       if (jmxPort == null) {
         logger.warn("{} missing from {}.sh(Unix or OS X, if you use Windows,"
                 + " check conf/{}.bat)",

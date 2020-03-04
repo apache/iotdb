@@ -47,6 +47,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBSessionIT {
 
@@ -66,7 +68,7 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void testGroupByDevice()
+  public void testAlignByDevice()
       throws IoTDBSessionException, SQLException, ClassNotFoundException, TException, IoTDBRPCException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
@@ -77,8 +79,8 @@ public class IoTDBSessionIT {
 
     insertRowBatchTest2("root.sg1.d1");
 
-    queryForGroupBy();
-    queryForGroupBy2();
+    queryForAlignByDevice();
+    queryForAlignByDevice2();
   }
 
   // it's will output too much to travis, so ignore it
@@ -207,10 +209,12 @@ public class IoTDBSessionIT {
     session.setStorageGroup("root.sg1");
 
     createTimeseries();
+
     insert();
 
     // sql test
     insert_via_sql();
+
     query3();
 
 //    insertRowBatchTest1();
@@ -225,7 +229,6 @@ public class IoTDBSessionIT {
     insertInBatch();
 
     query4();
-
     // Add another storage group to test the deletion of storage group
     session.setStorageGroup("root.sg2");
     session.createTimeseries("root.sg2.d1.s1", TSDataType.INT64, TSEncoding.RLE,
@@ -415,7 +418,7 @@ public class IoTDBSessionIT {
     }
   }
 
-  private void queryForGroupBy()
+  private void queryForAlignByDevice()
       throws  SQLException, TException, IoTDBRPCException {
     SessionDataSet sessionDataSet = session.executeQueryStatement("select '11', s1, '11' from root.sg1.d1 align by device");
     sessionDataSet.setBatchSize(1024);
@@ -433,7 +436,7 @@ public class IoTDBSessionIT {
     sessionDataSet.closeOperationHandle();
   }
 
-  private void queryForGroupBy2()
+  private void queryForAlignByDevice2()
       throws  SQLException, TException, IoTDBRPCException {
     SessionDataSet sessionDataSet = session.executeQueryStatement("select '11', s1, '11', s5, s1, s5 from root.sg1.d1 align by device");
     sessionDataSet.setBatchSize(1024);
@@ -492,7 +495,7 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     // using the query result as the QueryTest to verify the deletion and the new insertion
     Class.forName(Config.JDBC_DRIVER_NAME);
-    String standard = "Time\n" + "root.sg1.d1.s1\n" + "root.sg2.d1.s1\n";
+    String standard = "Time\n" + "root.sg2.d1.s1\n" + "root.sg1.d1.s1\n";
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {

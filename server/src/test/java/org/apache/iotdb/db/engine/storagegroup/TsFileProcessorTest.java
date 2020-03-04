@@ -27,12 +27,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -51,6 +53,8 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TsFileProcessorTest {
 
@@ -64,11 +68,12 @@ public class TsFileProcessorTest {
   private TSEncoding encoding = TSEncoding.RLE;
   private Map<String, String> props = Collections.emptyMap();
   private QueryContext context;
-
+  private static Logger logger = LoggerFactory.getLogger(TsFileProcessorTest.class);
   @Before
   public void setUp() throws Exception {
-    MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
+    MetadataManagerHelper.initMetadata();
+    ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
   }
 
@@ -79,10 +84,10 @@ public class TsFileProcessorTest {
   }
 
   @Test
-  public void testWriteAndFlush() throws IOException, QueryProcessException {
+  public void testWriteAndFlush() throws IOException, QueryProcessException, MetadataException {
+    logger.info("testWriteAndFlush begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
-    },
+        SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
@@ -127,10 +132,11 @@ public class TsFileProcessorTest {
   }
 
   @Test
-  public void testWriteAndRestoreMetadata() throws IOException, QueryProcessException {
+  public void testWriteAndRestoreMetadata()
+      throws IOException, QueryProcessException, MetadataException {
+    logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
-    },
+        SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
@@ -161,7 +167,7 @@ public class TsFileProcessorTest {
         assertEquals(num, timeValuePair.getValue().getInt());
       }
     }
-
+    logger.info("syncFlush..");
     // flush synchronously
     processor.syncFlush();
 
@@ -191,15 +197,17 @@ public class TsFileProcessorTest {
       }
     }
     restorableTsFileIOWriter.close();
+    logger.info("syncClose..");
     processor.syncClose();
+    //we need to close the tsfile writer first and then reopen it.
   }
 
 
   @Test
-  public void testMultiFlush() throws IOException, QueryProcessException {
+  public void testMultiFlush() throws IOException, QueryProcessException, MetadataException {
+    logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
-    },
+        SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
@@ -231,23 +239,11 @@ public class TsFileProcessorTest {
 
 
   @Test
-  public void testWriteAndClose() throws IOException, QueryProcessException {
+  public void testWriteAndClose() throws IOException, QueryProcessException, MetadataException {
+    logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE,
-        unsealedTsFileProcessor -> {
-          TsFileResource resource = unsealedTsFileProcessor.getTsFileResource();
-          synchronized (resource) {
-            for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
-              String deviceId = startTime.getKey();
-              resource.getEndTimeMap().put(deviceId, resource.getStartTimeMap().get(deviceId));
-            }
-            try {
-              resource.close();
-            } catch (IOException e) {
-              throw new TsFileProcessorException(e);
-            }
-          }
-        }, (tsFileProcessor) -> true, true);
+        this::closeTsFileProcessor, (tsFileProcessor) -> true, true);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, encoding, props, context);
@@ -283,5 +279,19 @@ public class TsFileProcessorTest {
 
     assertTrue(processor.getTsFileResource().isClosed());
 
+  }
+  private void closeTsFileProcessor(TsFileProcessor unsealedTsFileProcessor) throws TsFileProcessorException {
+    TsFileResource resource = unsealedTsFileProcessor.getTsFileResource();
+    synchronized (resource) {
+      for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
+        String deviceId = startTime.getKey();
+        resource.getEndTimeMap().put(deviceId, resource.getStartTimeMap().get(deviceId));
+      }
+      try {
+        resource.close();
+      } catch (IOException e) {
+        throw new TsFileProcessorException(e);
+      }
+    }
   }
 }

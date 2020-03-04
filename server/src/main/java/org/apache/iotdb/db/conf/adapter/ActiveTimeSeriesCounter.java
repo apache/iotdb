@@ -62,10 +62,16 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
   public void offer(String storageGroup, String device, String measurement) {
     String path = device + IoTDBConstant.PATH_SEPARATOR + measurement;
     try {
-      storageGroupHllMap.get(storageGroup).offer(path);
+      HyperLogLog log = storageGroupHllMap.get(storageGroup);
+      if (log != null) {
+        log.offer(path);
+      } else {
+        LOGGER.warn(
+            "Unknown SG {} is calling HyperLogLog.offer(). It can be ignored the sg is deleted recently",
+            storageGroup);
+      }
     } catch (Exception e) {
-      storageGroupHllMap.putIfAbsent(storageGroup, new HyperLogLog(LOG2M));
-      storageGroupHllMap.get(storageGroup).offer(path);
+      //we do not register it if there is no the storage group.
       LOGGER.error("Storage group {} registers active time series {} failed", storageGroup, path,
           e);
     }
@@ -75,6 +81,13 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
   public void updateActiveRatio(String storageGroup) {
     lock.writeLock().lock();
     try {
+      HyperLogLog log = storageGroupHllMap.get(storageGroup);
+      if (log == null) {
+        LOGGER.warn(
+            "Unknown SG {} is calling updateActiveRatio. It can be ignored the sg is deleted recently",
+            storageGroup);
+        return;
+      }
       long activeTimeSeriesNum = storageGroupHllMap.get(storageGroup).cardinality();
       if (activeTimeSeriesNum != activeTimeSeriesNumMap.get(storageGroup)) {
         // update the active time series number in the newest memtable to be flushed

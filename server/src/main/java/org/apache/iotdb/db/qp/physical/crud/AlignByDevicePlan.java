@@ -117,9 +117,9 @@ public class AlignByDevicePlan extends QueryPlan {
   //suppose user writes SELECT 'c1',a1,b1,b2,'c2',a2,a3,'c3',b3,a4,a5 FROM ... where for each a_i
   // column there is at least one device having it, and for each b_i column there is no device
   // having it, and 'c_i' is a const column.
-  // Then, measurements = {a1, a2, a3, a4, a5};
-  // notExistMeasurements = {b1, b2, b3}, and positionOfNotExistMeasurements = {2, 3, 8};
-  // constMeasurements = {'c1', 'c2', 'c3'}, and positionOfConstMeasurements = {0, 4, 7}.
+  // Then, measurements is {a1, a2, a3, a4, a5};
+  // notExistMeasurements = {b1, b2, b3}, and positionOfNotExistMeasurements is {2, 3, 8};
+  // constMeasurements is {'c1', 'c2', 'c3'}, and positionOfConstMeasurements is {0, 4, 7}.
   // When to reproduce the order of measurements. The pseudocode is:
   //<pre>
   // current = 0;

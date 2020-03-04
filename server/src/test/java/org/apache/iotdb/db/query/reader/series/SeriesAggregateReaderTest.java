@@ -30,11 +30,11 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.factory.AggreResultFactory;
+import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -71,8 +71,8 @@ public class SeriesAggregateReaderTest {
       Path path = new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0");
       QueryDataSource queryDataSource = new QueryDataSource(path, seqResources, unseqResources);
       SeriesAggregateReader seriesReader = new SeriesAggregateReader(path, TSDataType.INT32,
-          new QueryContext(), queryDataSource, null, null);
-      AggregateResult aggregateResult = AggreResultFactory
+          new QueryContext(), queryDataSource, null, null, null);
+      AggregateResult aggregateResult = AggregateResultFactory
           .getAggrResultByName("count", TSDataType.INT32);
       int loopTime = 0;
       while (seriesReader.hasNextChunk()) {
@@ -98,8 +98,8 @@ public class SeriesAggregateReaderTest {
             assertEquals((long) loopTime * 20 + 60, aggregateResult.getResult());
           }
 
-          while (seriesReader.hasNextOverlappedPage()) {
-            BatchData nextOverlappedPageData = seriesReader.nextOverlappedPage();
+          while (seriesReader.hasNextPage()) {
+            BatchData nextOverlappedPageData = seriesReader.nextPage();
             aggregateResult.updateResultFromPageData(nextOverlappedPageData);
             nextOverlappedPageData.resetBatchData();
             assertEquals(true, nextOverlappedPageData.hasCurrent());

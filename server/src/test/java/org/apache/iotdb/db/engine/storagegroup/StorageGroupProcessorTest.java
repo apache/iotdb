@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
@@ -78,6 +79,7 @@ public class StorageGroupProcessorTest {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     MergeManager.getINSTANCE().stop();
+    EnvironmentUtils.cleanEnv();
   }
 
 
@@ -275,7 +277,8 @@ public class StorageGroupProcessorTest {
 
   class DummySGP extends StorageGroupProcessor {
 
-    DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
+    DummySGP(String systemInfoDir, String storageGroupName)
+        throws StorageGroupProcessorException, MetadataException {
       super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy());
     }
 

@@ -20,14 +20,13 @@ package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-
 import java.io.IOException;
-
 
 public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
@@ -36,9 +35,9 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   private long currentTime = Long.MIN_VALUE;
 
   public SeriesReaderByTimestamp(Path seriesPath, TSDataType dataType, QueryContext context,
-      QueryDataSource dataSource) {
+      QueryDataSource dataSource, TsFileFilter fileFilter) {
     seriesReader = new SeriesReader(seriesPath, dataType, context,
-        dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null);
+        dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null, fileFilter);
   }
 
   @Override
@@ -62,24 +61,44 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   }
 
   private boolean hasNext(long timestamp) throws IOException {
+
+    /*
+     * consume pages firstly
+     */
+    if (readPageData(timestamp)) {
+      return true;
+    }
+
+    /*
+     * consume chunk secondly
+     */
     while (seriesReader.hasNextChunk()) {
-      if (!satisfyTimeFilter(seriesReader.currentChunkStatistics())) {
+      Statistics statistics = seriesReader.currentChunkStatistics();
+      if (!satisfyTimeFilter(statistics)) {
         seriesReader.skipCurrentChunk();
         continue;
       }
-      while (seriesReader.hasNextPage()) {
+      if (readPageData(timestamp)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean readPageData(long timestamp) throws IOException {
+    while (seriesReader.hasNextPage()) {
+      if (!seriesReader.isPageOverlapped()) {
         if (!satisfyTimeFilter(seriesReader.currentPageStatistics())) {
           seriesReader.skipCurrentPage();
           continue;
         }
-        if (!seriesReader.isPageOverlapped()) {
-          batchData = seriesReader.nextPage();
-        } else {
-          batchData = seriesReader.nextOverlappedPage();
-        }
-        if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
-          return true;
-        }
+      }
+      batchData = seriesReader.nextPage();
+      if (isEmpty(batchData)) {
+        continue;
+      }
+      if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
+        return true;
       }
     }
     return false;
@@ -89,4 +108,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     return seriesReader.getTimeFilter().satisfy(statistics);
   }
 
+  private boolean isEmpty(BatchData batchData) {
+    return batchData == null || !batchData.hasCurrent();
+  }
 }
