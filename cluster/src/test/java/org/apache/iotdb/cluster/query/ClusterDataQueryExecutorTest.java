@@ -23,7 +23,6 @@ import java.io.IOException;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -44,7 +43,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
-    checkDataset(dataSet, 0, 20);
+    checkSequentialDataset(dataSet, 0, 20);
   }
 
   @Test
@@ -58,7 +57,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     QueryDataSet dataSet = queryExecutor.executeWithValueFilter(
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
-    checkDataset(dataSet, 5, 15);
+    checkSequentialDataset(dataSet, 5, 15);
   }
 
 }

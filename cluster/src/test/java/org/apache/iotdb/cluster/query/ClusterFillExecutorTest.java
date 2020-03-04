@@ -1,96 +1,25 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
 package org.apache.iotdb.cluster.query;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.junit.Before;
 import org.junit.Test;
 
-public class ClusterQueryRouterTest extends BaseQueryTest {
-
-  private ClusterQueryRouter clusterQueryRouter;
-
-  @Override
-  @Before
-  public void setUp() throws Exception {
-    super.setUp();
-    clusterQueryRouter = new ClusterQueryRouter(testMetaMember);
-  }
-
-  @Test
-  public void test() throws StorageEngineException, IOException {
-    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedPaths(pathList);
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
-    QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
-
-    QueryDataSet dataSet = clusterQueryRouter.rawDataQuery(queryPlan, context);
-    checkSequentialDataset(dataSet, 0, 20);
-  }
-
-  @Test
-  public void testAggregation()
-      throws StorageEngineException, IOException, QueryProcessException, QueryFilterOptimizationException {
-    AggregationPlan plan = new AggregationPlan();
-    List<Path> paths = Arrays.asList(
-        new Path(TestUtils.getTestSeries(0, 0)),
-        new Path(TestUtils.getTestSeries(0, 1)),
-        new Path(TestUtils.getTestSeries(0, 2)),
-        new Path(TestUtils.getTestSeries(0, 3)),
-        new Path(TestUtils.getTestSeries(0, 4)));
-    List<TSDataType> dataTypes = Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE,
-        TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE);
-    List<String> aggregations = Arrays.asList(SQLConstant.MIN_TIME, SQLConstant.MAX_VALUE,
-        SQLConstant.AVG, SQLConstant.COUNT, SQLConstant.SUM);
-    plan.setPaths(paths);
-    plan.setDeduplicatedPaths(paths);
-    plan.setDataTypes(dataTypes);
-    plan.setDeduplicatedDataTypes(dataTypes);
-    plan.setAggregations(aggregations);
-    plan.setDeduplicatedAggregations(aggregations);
-
-    QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
-    QueryDataSet queryDataSet = clusterQueryRouter.aggregate(plan, context);
-    checkDoubleDataset(queryDataSet, new Object[]{0.0, 19.0, 9.5, 20.0, 190.0});
-  }
+public class ClusterFillExecutorTest extends BaseQueryTest {
 
   @Test
   public void testPreviousFill() throws QueryProcessException, StorageEngineException, IOException {
@@ -106,6 +35,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
     plan.setFillType(tsDataTypeIFillMap);
     QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
 
+    ClusterFillExecutor fillExecutor;
     QueryDataSet queryDataSet;
     long[] queryTimes = new long[] {-1, 0, 5, 10, 20};
     Object[][] answers = new Object[][]{
@@ -116,8 +46,9 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
         new Object[]{10.0},
     };
     for (int i = 0; i < queryTimes.length; i++) {
-      plan.setQueryTime(queryTimes[i]);
-      queryDataSet = clusterQueryRouter.fill(plan, context);
+      fillExecutor = new ClusterFillExecutor(plan.getDeduplicatedPaths(),
+          plan.getDeduplicatedDataTypes(), queryTimes[i], plan.getFillType(), testMetaMember);
+      queryDataSet = fillExecutor.execute(context);
       checkDoubleDataset(queryDataSet, answers[i]);
     }
   }
@@ -134,9 +65,9 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
     Map<TSDataType, IFill> tsDataTypeIFillMap = Collections.singletonMap(TSDataType.DOUBLE,
         new LinearFill(TSDataType.DOUBLE, 0, defaultFillInterval, defaultFillInterval));
     plan.setFillType(tsDataTypeIFillMap);
-
     QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
 
+    ClusterFillExecutor fillExecutor;
     QueryDataSet queryDataSet;
     long[] queryTimes = new long[] {-1, 0, 5, 10, 20};
     Object[][] answers = new Object[][]{
@@ -147,10 +78,10 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
         new Object[]{null},
     };
     for (int i = 0; i < queryTimes.length; i++) {
-      plan.setQueryTime(queryTimes[i]);
-      queryDataSet = clusterQueryRouter.fill(plan, context);
+      fillExecutor = new ClusterFillExecutor(plan.getDeduplicatedPaths(),
+          plan.getDeduplicatedDataTypes(), queryTimes[i], plan.getFillType(), testMetaMember);
+      queryDataSet = fillExecutor.execute(context);
       checkDoubleDataset(queryDataSet, answers[i]);
     }
   }
-
 }

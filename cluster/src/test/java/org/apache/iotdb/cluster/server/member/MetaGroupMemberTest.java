@@ -508,7 +508,7 @@ public class MetaGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       List<MeasurementSchema> schemas =
           metaGroupMember.pullTimeSeriesSchemas(TestUtils.getTestSg(i));
-      assertEquals(10, schemas.size());
+      assertEquals(20, schemas.size());
       for (int j = 0; j < 10; j++) {
         assertEquals(TestUtils.getTestSchema(i, j), schemas.get(j));
       }
@@ -545,7 +545,7 @@ public class MetaGroupMemberTest extends MemberTest {
         schemas.add(MeasurementSchema.deserializeFrom(schemaBuffer));
       }
 
-      assertEquals(10, schemas.size());
+      assertEquals(20, schemas.size());
       for (int j = 0; j < 10; j++) {
         assertEquals(TestUtils.getTestSchema(i, j), schemas.get(j));
       }
@@ -664,7 +664,7 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testGetMatchedPaths() throws MetadataException {
     List<String> matchedPaths = metaGroupMember
         .getMatchedPaths(TestUtils.getTestSg(0) + ".*");
-    assertEquals(10, matchedPaths.size());
+    assertEquals(20, matchedPaths.size());
     for (int j = 0; j < 10; j++) {
       assertEquals(TestUtils.getTestSeries(0, j), matchedPaths.get(j));
     }

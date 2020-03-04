@@ -23,7 +23,6 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -51,10 +50,12 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPaths(pathList);
     queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setPaths(pathList);
+    queryPlan.setDataTypes(dataTypes);
     QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
 
     QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, context);
-    checkDataset(dataSet, 0, 20);
+    checkSequentialDataset(dataSet, 0, 20);
   }
 
   @Test

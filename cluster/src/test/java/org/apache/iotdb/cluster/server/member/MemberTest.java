@@ -96,7 +96,7 @@ public class MemberTest {
 
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().setStorageGroup(TestUtils.getTestSg(i));
-      for (int j = 0; j < 10; j++) {
+      for (int j = 0; j < 20; j++) {
         SchemaUtils.registerTimeseries(TestUtils.getTestSchema(i, j));
       }
     }
@@ -170,6 +170,11 @@ public class MemberTest {
       @Override
       protected DataGroupMember getLocalDataMember(Node header, AsyncMethodCallback resultHandler,
           Object request) {
+        return getDataGroupMember(header);
+      }
+
+      @Override
+      protected DataGroupMember getLocalDataMember(Node header) {
         return getDataGroupMember(header);
       }
 

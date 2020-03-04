@@ -107,12 +107,7 @@ public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPoin
   }
 
   @Override
-  public boolean hasNextOverlappedPage() {
-    return false;
-  }
-
-  @Override
-  public BatchData nextOverlappedPage() {
+  public BatchData nextPage() throws IOException {
     return null;
   }
 }

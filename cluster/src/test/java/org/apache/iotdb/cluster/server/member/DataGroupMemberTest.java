@@ -714,7 +714,7 @@ public class DataGroupMemberTest extends MemberTest {
       pathResult.wait(200);
     }
     List<String> result = pathResult.get();
-    assertEquals(10, result.size());
+    assertEquals(20, result.size());
     for (int i = 0; i < 10; i++) {
       assertEquals(TestUtils.getTestSeries(0, i), result.get(i));
     }

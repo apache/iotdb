@@ -191,16 +191,20 @@ public class TestUtils {
   public static void prepareData()
       throws QueryProcessException {
     InsertPlan insertPlan = new InsertPlan();
+    // data for raw data query and aggregation
+    // 10 devices (storage groups)
     for (int j = 0; j < 10; j++) {
       insertPlan.setDeviceId(getTestSg(j));
       String[] measurements = new String[10];
       TSDataType[] tsDataTypes = new TSDataType[10];
+      // 10 series each device, all double
       for (int i = 0; i < 10; i++) {
         measurements[i] = getTestMeasurement(i);
         tsDataTypes[i] = TSDataType.DOUBLE;
       }
       insertPlan.setMeasurements(measurements);
       insertPlan.setDataTypes(tsDataTypes);
+      // the first sequential file
       for (int i = 10; i < 20; i++) {
         insertPlan.setTime(i);
         String[] values = new String[10];
@@ -212,6 +216,7 @@ public class TestUtils {
         planExecutor.processNonQuery(insertPlan);
       }
       StorageEngine.getInstance().syncCloseAllProcessor();
+      // the first unsequential file, not overlapped with the sequential file
       for (int i = 0; i < 10; i++) {
         insertPlan.setTime(i);
         String[] values = new String[10];
@@ -223,6 +228,7 @@ public class TestUtils {
         planExecutor.processNonQuery(insertPlan);
       }
       StorageEngine.getInstance().syncCloseAllProcessor();
+      // the second unsequential file, overlapped with the sequential file
       for (int i = 10; i < 20; i++) {
         insertPlan.setTime(i);
         String[] values = new String[10];
@@ -236,5 +242,18 @@ public class TestUtils {
       StorageEngine.getInstance().syncCloseAllProcessor();
     }
 
+    // data for fill
+    insertPlan.setDeviceId(getTestSg(0));
+    String[] measurements = new String[] {getTestMeasurement(10)};
+    TSDataType[] tsDataTypes = new TSDataType[] {TSDataType.DOUBLE};
+    insertPlan.setMeasurements(measurements);
+    insertPlan.setDataTypes(tsDataTypes);
+    for (int i : new int[]{0, 10}) {
+      insertPlan.setTime(i);
+      String[] values = new String[] {String.valueOf(i)};
+      insertPlan.setValues(values);
+      PlanExecutor planExecutor = new PlanExecutor();
+      planExecutor.processNonQuery(insertPlan);
+    }
   }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.query;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -33,10 +34,12 @@ import org.apache.iotdb.cluster.server.member.MemberTest;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 
 /**
@@ -69,7 +72,7 @@ public class BaseQueryTest extends MemberTest {
     QueryCoordinator.getINSTANCE().setMetaGroupMember(null);
   }
 
-  void checkDataset(QueryDataSet dataSet, int offset, int size) throws IOException {
+  void checkSequentialDataset(QueryDataSet dataSet, int offset, int size) throws IOException {
     for (int i = offset; i < offset + size; i++) {
       assertTrue(dataSet.hasNext());
       RowRecord record = dataSet.next();
@@ -80,5 +83,21 @@ public class BaseQueryTest extends MemberTest {
       }
     }
     assertFalse(dataSet.hasNext());
+  }
+
+  void checkDoubleDataset(QueryDataSet queryDataSet, Object[] answers) throws IOException {
+    Assert.assertTrue(queryDataSet.hasNext());
+    RowRecord record = queryDataSet.next();
+    List<Field> fields = record.getFields();
+    Assert.assertEquals(answers.length, fields.size());
+    for (int i = 0; i < answers.length; i++) {
+      if (answers[i] != null) {
+        Assert.assertEquals((double) answers[i], Double.parseDouble(fields.get(i).getStringValue()),
+            0.000001);
+      } else {
+        assertEquals("null", fields.get(i).getStringValue());
+      }
+    }
+    Assert.assertFalse(queryDataSet.hasNext());
   }
 }

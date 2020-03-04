@@ -23,7 +23,6 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
-import java.io.IOException;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -95,7 +94,7 @@ public class ClusterQueryManagerTest {
   @Test
   public void testRegisterAggregateReader() {
     IAggregateReader reader = new IAggregateReader() {
-      @Override
+        @Override
       public boolean hasNextChunk() {
         return false;
       }
@@ -136,12 +135,7 @@ public class ClusterQueryManagerTest {
       }
 
       @Override
-      public boolean hasNextOverlappedPage() {
-        return false;
-      }
-
-      @Override
-      public BatchData nextOverlappedPage() {
+      public BatchData nextPage() {
         return null;
       }
     };

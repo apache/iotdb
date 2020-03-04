@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.query;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
@@ -60,12 +59,8 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
       ManagedSeriesReader reader;
-      try {
-        reader = metaGroupMember.getSeriesReader(path, dataType, timeFilter,
-            null, context);
-      } catch (IOException e) {
-        throw new StorageEngineException(e);
-      }
+      reader = metaGroupMember.getSeriesReader(path, dataType, timeFilter,
+          null, context);
       readersOfSelectedSeries.add(reader);
     }
     return readersOfSelectedSeries;

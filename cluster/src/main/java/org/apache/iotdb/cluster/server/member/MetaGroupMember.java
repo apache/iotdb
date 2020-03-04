@@ -1158,7 +1158,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   public ManagedSeriesReader getSeriesReader(Path path, TSDataType dataType, Filter timeFilter,
       Filter valueFilter, QueryContext context)
-      throws IOException, StorageEngineException {
+      throws StorageEngineException {
     // make sure the partition table is new
     syncLeader();
     List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
@@ -1166,12 +1166,16 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       logger.debug("{}: Sending data query of {} to {} groups", name, path, partitionGroups.size());
     }
     ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
-    for (PartitionGroup partitionGroup : partitionGroups) {
-      IPointReader seriesReader = getSeriesReader(partitionGroup, path, timeFilter, valueFilter,
-          context, dataType);
-      if (seriesReader.hasNextTimeValuePair()) {
-        mergeReader.addReader(seriesReader, 0);
+    try {
+      for (PartitionGroup partitionGroup : partitionGroups) {
+        IPointReader seriesReader = getSeriesReader(partitionGroup, path, timeFilter, valueFilter,
+            context, dataType);
+        if (seriesReader.hasNextTimeValuePair()) {
+          mergeReader.addReader(seriesReader, 0);
+        }
       }
+    } catch (IOException e) {
+      throw new StorageEngineException(e);
     }
     return mergeReader;
   }

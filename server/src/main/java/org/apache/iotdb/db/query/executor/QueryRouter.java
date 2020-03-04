@@ -153,9 +153,16 @@ public class QueryRouter implements IQueryRouter {
     long queryTime = fillQueryPlan.getQueryTime();
     Map<TSDataType, IFill> fillType = fillQueryPlan.getFillType();
 
-    FillQueryExecutor fillQueryExecutor = new FillQueryExecutor(fillPaths, dataTypes, queryTime,
+    FillQueryExecutor fillQueryExecutor = getFillExecutor(fillPaths, dataTypes, queryTime,
         fillType);
     return fillQueryExecutor.execute(context);
+  }
+
+  protected FillQueryExecutor getFillExecutor(
+      List<Path> fillPaths,
+      List<TSDataType> dataTypes, long queryTime,
+      Map<TSDataType, IFill> fillType) {
+    return new FillQueryExecutor(fillPaths, dataTypes, queryTime, fillType);
   }
 
   @Override

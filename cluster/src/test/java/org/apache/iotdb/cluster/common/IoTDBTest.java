@@ -20,11 +20,9 @@
 package org.apache.iotdb.cluster.common;
 
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -33,7 +31,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -77,7 +74,7 @@ public class IoTDBTest {
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(prevEnableAutoSchema);
   }
 
-  private void prepareSchema() throws QueryProcessException {
+  private void prepareSchema() {
     for (int i = 0; i < 4; i++) {
       // storage groups that has timeseries schema locally
       setStorageGroup(TestUtils.getTestSg(i));
@@ -114,14 +111,22 @@ public class IoTDBTest {
     }
   }
 
-  protected void setStorageGroup(String storageGroupName) throws QueryProcessException {
-    planExecutor.setStorageGroup(new SetStorageGroupPlan(new Path(storageGroupName)));
+  protected void setStorageGroup(String storageGroupName) {
+    try {
+      planExecutor.setStorageGroup(new SetStorageGroupPlan(new Path(storageGroupName)));
+    } catch (QueryProcessException e) {
+      // ignore
+    }
   }
 
-  private void createTimeSeries(int sgNum, int seriesNum) throws QueryProcessException {
-    MeasurementSchema schema = TestUtils.getTestSchema(sgNum, seriesNum);
-    planExecutor.processNonQuery(new CreateTimeSeriesPlan(new Path(schema.getMeasurementId()),
-        schema.getType(), schema.getEncodingType(), schema.getCompressor(), schema.getProps()));
+  private void createTimeSeries(int sgNum, int seriesNum) {
+    try {
+      MeasurementSchema schema = TestUtils.getTestSchema(sgNum, seriesNum);
+      planExecutor.processNonQuery(new CreateTimeSeriesPlan(new Path(schema.getMeasurementId()),
+          schema.getType(), schema.getEncodingType(), schema.getCompressor(), schema.getProps()));
+    } catch (QueryProcessException e) {
+      // ignore
+    }
   }
 
   protected QueryDataSet query(List<String> pathStrs, IExpression expression)
@@ -134,11 +139,13 @@ public class IoTDBTest {
       paths.add(new Path(pathStr));
     }
     queryPlan.setDeduplicatedPaths(paths);
+    queryPlan.setPaths(paths);
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : paths) {
       dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
     }
     queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDataTypes(dataTypes);
     queryPlan.setExpression(expression);
 
     return planExecutor.processQuery(queryPlan, context);
