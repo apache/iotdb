@@ -408,10 +408,10 @@ When the fill method is not specified, each data type bears its own default fill
 |Data Type|Default Fill Methods and Parameters|
 |:---|:---|
 |boolean|previous, 600000|
-|int32|linear, 600000, 600000|
-|int64|linear, 600000, 600000|
-|float|linear, 600000, 600000|
-|double|linear, 600000, 600000|
+|int32|previous, 600000|
+|int64|previous, 600000|
+|float|previous, 600000|
+|double|previous, 600000|
 |text|previous, 600000|
 </center>
 

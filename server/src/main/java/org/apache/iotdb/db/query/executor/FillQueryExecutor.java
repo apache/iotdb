@@ -71,20 +71,8 @@ public class FillQueryExecutor {
       IFill fill;
       long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
       if (!typeIFillMap.containsKey(dataType)) {
-        switch (dataType) {
-          case INT32:
-          case INT64:
-          case FLOAT:
-          case DOUBLE:
-            fill = new LinearFill(dataType, queryTime, defaultFillInterval, defaultFillInterval);
-            break;
-          case BOOLEAN:
-          case TEXT:
-            fill = new PreviousFill(dataType, queryTime, defaultFillInterval);
-            break;
-          default:
-            throw new UnsupportedDataTypeException("do not support datatype " + dataType);
-        }
+        // the default fill function is PreviousFill for all data type
+        fill = new PreviousFill(dataType, queryTime, defaultFillInterval);
       } else {
         fill = typeIFillMap.get(dataType).copy();
       }
