@@ -22,7 +22,7 @@ import java.io.Serializable;
 
 /**
  * IoTSerializationSchema serializes the input tuple data into events for inserting into IoTDB server.
- * @param <T>
+ * @param <T> the input data type
  */
 public interface IoTSerializationSchema<T> extends Serializable {
 

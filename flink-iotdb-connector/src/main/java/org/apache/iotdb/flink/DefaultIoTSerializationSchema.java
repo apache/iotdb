@@ -18,10 +18,7 @@
 
 package org.apache.iotdb.flink;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,20 +27,11 @@ import java.util.Map;
  * The default implementation of IoTSerializationSchema. Gets info from a map struct.
  */
 public class DefaultIoTSerializationSchema implements IoTSerializationSchema<Map<String,String>> {
-    public static final String FIELD_DEVICE = "device";
-    public static final String FIELD_TIMESTAMP = "timestamp";
-    public static final String FIELD_MEASUREMENTS = "measurements";
-    public static final String FIELD_VALUES = "values";
-    public static final String DEFAULT_SEPARATOR = ",";
-
-    private Map<String, IoTDBOptions.TimeseriesOption> timeseriesOptionMap;
-
-    public DefaultIoTSerializationSchema(IoTDBOptions ioTDBOptions) {
-        timeseriesOptionMap = new HashMap<>();
-        for (IoTDBOptions.TimeseriesOption timeseriesOption : ioTDBOptions.getTimeseriesOptionList()) {
-            timeseriesOptionMap.put(timeseriesOption.getPath(), timeseriesOption);
-        }
-    }
+    private String fieldDevice = "device";
+    private String fieldTimestamp = "timestamp";
+    private String fieldMeasurements = "measurements";
+    private String fieldValues = "values";
+    private String separator = ",";
 
     @Override
     public Event serialize(Map<String,String> tuple) {
@@ -51,32 +39,61 @@ public class DefaultIoTSerializationSchema implements IoTSerializationSchema<Map
             return null;
         }
 
-        String device = tuple.get(FIELD_DEVICE);
+        String device = tuple.get(fieldDevice);
 
-        String ts = tuple.get(FIELD_TIMESTAMP);
+        String ts = tuple.get(fieldTimestamp);
         Long timestamp = ts == null ? System.currentTimeMillis() : Long.parseLong(ts);
 
         List<String> measurements = null;
-        if (tuple.get(FIELD_MEASUREMENTS) != null) {
-            measurements = Arrays.asList(tuple.get(FIELD_MEASUREMENTS).split(DEFAULT_SEPARATOR));
+        if (tuple.get(fieldMeasurements) != null) {
+            measurements = Arrays.asList(tuple.get(fieldMeasurements).split(separator));
         }
 
         List<String> values = null;
-        if (tuple.get(FIELD_VALUES) != null) {
-            values = Arrays.asList(tuple.get(FIELD_VALUES).split(DEFAULT_SEPARATOR));
-        }
-
-        if (device != null && measurements != null && values != null && measurements.size() == values.size()) {
-            for (int i = 0; i < measurements.size(); i++) {
-                String measurement = device + "." + measurements.get(i);
-                IoTDBOptions.TimeseriesOption timeseriesOption = timeseriesOptionMap.get(measurement);
-                if (timeseriesOption!= null && TSDataType.TEXT.equals(timeseriesOption.getDataType())) {
-                    // The TEXT data type should be covered by " or '
-                    values.set(i, "'" + values.get(i) + "'");
-                }
-            }
+        if (tuple.get(fieldValues) != null) {
+            values = Arrays.asList(tuple.get(fieldValues).split(separator));
         }
 
         return new Event(device, timestamp, measurements, values);
+    }
+
+    public String getFieldDevice() {
+        return fieldDevice;
+    }
+
+    public void setFieldDevice(String fieldDevice) {
+        this.fieldDevice = fieldDevice;
+    }
+
+    public String getFieldTimestamp() {
+        return fieldTimestamp;
+    }
+
+    public void setFieldTimestamp(String fieldTimestamp) {
+        this.fieldTimestamp = fieldTimestamp;
+    }
+
+    public String getFieldMeasurements() {
+        return fieldMeasurements;
+    }
+
+    public void setFieldMeasurements(String fieldMeasurements) {
+        this.fieldMeasurements = fieldMeasurements;
+    }
+
+    public String getFieldValues() {
+        return fieldValues;
+    }
+
+    public void setFieldValues(String fieldValues) {
+        this.fieldValues = fieldValues;
+    }
+
+    public String getSeparator() {
+        return separator;
+    }
+
+    public void setSeparator(String separator) {
+        this.separator = separator;
     }
 }

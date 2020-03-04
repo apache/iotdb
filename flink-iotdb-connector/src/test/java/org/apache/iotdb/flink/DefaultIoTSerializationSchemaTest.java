@@ -32,9 +32,9 @@ public class DefaultIoTSerializationSchemaTest {
     public void serialize() {
         IoTDBOptions options = new IoTDBOptions();
         options.setTimeseriesOptionList(Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
-        DefaultIoTSerializationSchema serializationSchema = new DefaultIoTSerializationSchema(options);
+        DefaultIoTSerializationSchema serializationSchema = new DefaultIoTSerializationSchema();
 
-        Map tuple = new HashMap();
+        Map<String,String> tuple = new HashMap();
         tuple.put("device", "root.sg.D01");
         tuple.put("timestamp", "1581861293000");
         tuple.put("measurements", "temperature");
@@ -44,6 +44,6 @@ public class DefaultIoTSerializationSchemaTest {
         assertEquals(tuple.get("device"), event.getDevice());
         assertEquals(tuple.get("timestamp"), String.valueOf(event.getTimestamp()));
         assertEquals(tuple.get("measurements"), event.getMeasurements().get(0));
-        assertEquals("'" + tuple.get("values") + "'", event.getValues().get(0));
+        assertEquals(tuple.get("values"), event.getValues().get(0));
     }
 }

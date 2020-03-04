@@ -28,10 +28,9 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
-public class IoTDBSinkInsertTest {
+public class IoTDBSinkBatchTimerTest {
 
     private IoTDBSink ioTDBSink;
     private Session session;
@@ -41,21 +40,36 @@ public class IoTDBSinkInsertTest {
         IoTDBOptions options = new IoTDBOptions();
         options.setTimeseriesOptionList(Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
         ioTDBSink = new IoTDBSink(options, new DefaultIoTSerializationSchema());
+        ioTDBSink.withBatchSize(3);
+        ioTDBSink.withFlushIntervalMs(1000);
+        ioTDBSink.initScheduler();
 
         session = mock(Session.class);
         ioTDBSink.setSession(session);
     }
 
     @Test
-    public void testInsert() throws Exception {
+    public void testBatchInsert() throws Exception {
         Map<String,String> tuple = new HashMap();
         tuple.put("device", "root.sg.D01");
         tuple.put("timestamp", "1581861293000");
         tuple.put("measurements", "temperature");
         tuple.put("values", "36.5");
-
         ioTDBSink.invoke(tuple, null);
-        verify(session).insert(any(String.class), any(Long.class), any(List.class), any(List.class));
+
+        verifyZeroInteractions(session);
+
+        Thread.sleep(500);
+
+        verifyZeroInteractions(session);
+
+        Thread.sleep(500);
+
+        verify(session).insertInBatch(any(List.class), any(List.class), any(List.class), any(List.class));
+
+        Thread.sleep(1000);
+
+        verifyZeroInteractions(session);
     }
 
     @Test

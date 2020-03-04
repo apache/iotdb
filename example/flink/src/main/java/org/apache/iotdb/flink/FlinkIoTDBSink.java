@@ -35,7 +35,6 @@ public class FlinkIoTDBSink {
 
         // run the flink job on local mini cluster
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.enableCheckpointing(3000);
 
         IoTDBOptions options = new IoTDBOptions();
         options.setHost("127.0.0.1");
@@ -45,7 +44,7 @@ public class FlinkIoTDBSink {
         options.setStorageGroup("root.sg");
         options.setTimeseriesOptionList(Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.d1.s1")));
 
-        IoTSerializationSchema serializationSchema = new DefaultIoTSerializationSchema(options);
+        IoTSerializationSchema serializationSchema = new DefaultIoTSerializationSchema();
         IoTDBSink ioTDBSink = new IoTDBSink(options, serializationSchema)
                 // enable batching
                 .withBatchSize(10);
@@ -53,7 +52,6 @@ public class FlinkIoTDBSink {
         env.addSource(new SensorSource())
                 .name("sensor-source")
                 .setParallelism(1)
-
                 .addSink(ioTDBSink)
                 .name("iotdb-sink")
                 .setParallelism(1);
@@ -68,7 +66,7 @@ public class FlinkIoTDBSink {
         public void run(SourceContext context) throws Exception {
             Random random = new Random();
             while (running) {
-                Map tuple = new HashMap();
+                Map<String,String> tuple = new HashMap();
                 tuple.put("device", "root.sg.d1");
                 tuple.put("timestamp", String.valueOf(System.currentTimeMillis()));
                 tuple.put("measurements", "s1");

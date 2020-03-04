@@ -31,7 +31,6 @@ The following is an example which receiving events from sensor source and then s
 
  ```java
 StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.enableCheckpointing(3000);
 
         IoTDBOptions options = new IoTDBOptions();
         options.setHost("127.0.0.1");
@@ -50,7 +49,6 @@ StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironm
         env.addSource(new SensorSource())
                 .name("sensor-source")
                 .setParallelism(1)
-
                 .addSink(ioTDBSink)
                 .name("iotdb-sink")
                 .setParallelism(1)

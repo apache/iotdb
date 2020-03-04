@@ -23,7 +23,6 @@ import org.apache.iotdb.session.Session;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,17 +39,16 @@ public class IoTDBSinkBatchInsertTest {
     public void setUp() throws Exception {
         IoTDBOptions options = new IoTDBOptions();
         options.setTimeseriesOptionList(Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
-        ioTDBSink = new IoTDBSink(options, new DefaultIoTSerializationSchema(options));
+        ioTDBSink = new IoTDBSink(options, new DefaultIoTSerializationSchema());
         ioTDBSink.withBatchSize(3);
 
         session = mock(Session.class);
         ioTDBSink.setSession(session);
-        ioTDBSink.setBatchList(new ArrayList<>());
     }
 
     @Test
     public void testBatchInsert() throws Exception {
-        Map tuple = new HashMap();
+        Map<String,String> tuple = new HashMap();
         tuple.put("device", "root.sg.D01");
         tuple.put("timestamp", "1581861293000");
         tuple.put("measurements", "temperature");
@@ -89,7 +87,7 @@ public class IoTDBSinkBatchInsertTest {
 
     @Test
     public void close() throws Exception {
-        Map tuple = new HashMap();
+        Map<String,String> tuple = new HashMap();
         tuple.put("device", "root.sg.D01");
         tuple.put("timestamp", "1581861293005");
         tuple.put("measurements", "temperature");
