@@ -281,7 +281,7 @@ private boolean cacheRowRecord() throws IOException {
 	    Object value = reader.getValueInTimestamp(timestamp);
 	    // 如果该时间序列在当前时间戳下没有值，则置null
 	    if (value == null) {
-	      rowRecord.addField(new Field(null));
+	      rowRecord.addField(null);
 	    } 
 	    // 否则将hasField置为true
 	    else {

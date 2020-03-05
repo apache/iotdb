@@ -94,7 +94,7 @@ public class FillQueryExecutor {
 
       TimeValuePair timeValuePair = fill.getFillResult();
       if (timeValuePair == null || timeValuePair.getValue() == null) {
-        record.addField(new Field(null));
+        record.addField(null);
       } else {
         record.addField(timeValuePair.getValue().getValue(), dataType);
       }

@@ -818,9 +818,9 @@ DURATION
 
 DATETIME
     : INT ('-'|'/') INT ('-'|'/') INT
-      (T | WS)
+      ((T | WS)
       INT ':' INT ':' INT (DOT INT)?
-      (('+' | '-') INT ':' INT)?
+      (('+' | '-') INT ':' INT)?)?
     ;
 /** Allow unicode rule/token names */
 ID : NameChar NameChar*;

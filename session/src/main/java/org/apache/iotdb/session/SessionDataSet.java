@@ -83,8 +83,7 @@ public class SessionDataSet {
       String name = columnNameList.get(i);
       if (columnMap.containsKey(name)) {
         duplicateLocation.put(i, columnMap.get(name));
-      }
-      else{
+      } else {
         columnMap.put(name, i);
         columnTypeDeduplicatedList.add(columnTypeList.get(i));
       }
@@ -102,8 +101,9 @@ public class SessionDataSet {
   }
 
   public boolean hasNext() throws SQLException, IoTDBRPCException {
-    if (hasCachedRecord)
+    if (hasCachedRecord) {
       return true;
+    }
     if (tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining()) {
       TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, batchSize, queryId, true);
       try {
@@ -118,7 +118,7 @@ public class SessionDataSet {
         }
       } catch (TException e) {
         throw new SQLException(
-                "Cannot fetch result from server, because of network connection: {} ", e);
+            "Cannot fetch result from server, because of network connection: {} ", e);
       }
 
     }
@@ -134,7 +134,7 @@ public class SessionDataSet {
     for (int i = 0; i < columnSize; i++) {
       Field field;
 
-      if(duplicateLocation.containsKey(i)){
+      if (duplicateLocation.containsKey(i)) {
         field = Field.copy(outFields.get(duplicateLocation.get(i)));
       } else {
         ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(loc);
@@ -143,7 +143,7 @@ public class SessionDataSet {
           currentBitmap[loc] = bitmapBuffer.get();
         }
 
-        if(!isNull(loc, rowsIndex)){
+        if (!isNull(loc, rowsIndex)) {
           ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(loc);
           TSDataType dataType = TSDataType.valueOf(columnTypeDeduplicatedList.get(loc));
           field = new Field(dataType);
@@ -175,11 +175,10 @@ public class SessionDataSet {
               field.setBinaryV(new Binary(binaryValue));
               break;
             default:
-              throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+              throw new UnSupportedDataTypeException(String
+                  .format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
           }
-        }
-        else {
+        } else {
           field = new Field(null);
         }
         loc++;
@@ -193,6 +192,7 @@ public class SessionDataSet {
 
   /**
    * judge whether the specified column value is null in the current position
+   *
    * @param index column index
    * @return
    */
@@ -204,8 +204,9 @@ public class SessionDataSet {
 
   public RowRecord next() throws SQLException, IoTDBRPCException {
     if (!hasCachedRecord) {
-      if (!hasNext())
+      if (!hasNext()) {
         return null;
+      }
     }
 
     hasCachedRecord = false;
