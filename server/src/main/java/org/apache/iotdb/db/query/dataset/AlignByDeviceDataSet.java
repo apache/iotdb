@@ -172,7 +172,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
           default:
             throw new IOException("unsupported DataSetType");
         }
-      } catch (QueryProcessException | QueryFilterOptimizationException | StorageEngineException | IOException e) {
+      } catch (QueryProcessException | QueryFilterOptimizationException | StorageEngineException e) {
         throw new IOException(e);
       }
 

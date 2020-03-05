@@ -53,7 +53,7 @@ public class FileLoaderUtils {
       // write .resource file
       tsFileResource.serialize();
     } else {
-      tsFileResource.deSerialize();
+      tsFileResource.deserialize();
     }
   }
 
