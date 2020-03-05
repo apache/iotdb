@@ -284,7 +284,7 @@ Windows系统停止命令如下：
 
 ## 只建立客户端
 
-在incubator-iotdb的跟路径下：
+在incubator-iotdb的根路径下：
 
 ```
 > mvn clean package -pl client -am -DskipTests
