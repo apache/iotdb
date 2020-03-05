@@ -41,14 +41,13 @@ import org.slf4j.LoggerFactory;
 /**
  * SessionPool is a wrapper of a Session Set.
  * Using SessionPool, the user do not need to consider how to reuse a session connection.
- * Even if the session is disconnected, the session pool can recognize it and remove the borken
+ * Even if the session is disconnected, the session pool can recognize it and remove the broken
  * session connection and create a new one.
  *
  * If there is no available connections and the pool reaches its max size, the all methods will hang
  * until there is a available connection.
  *
  * If a user has waited for a session for more than 60 seconds, a warn log will be printed.
- *
  *
  * The only thing you have to remember is that:
  *
@@ -60,7 +59,6 @@ import org.slf4j.LoggerFactory;
  * Another case that you have to manually call closeResultSet() is that when there is exception
  * when you call SessionDataSetWrapper.hasNext() or next()
  *
- *
  */
 public class SessionPool {
 
@@ -69,6 +67,14 @@ public class SessionPool {
   //for session whose resultSet is not released.
   private ConcurrentMap<Session, Session> occupied = new ConcurrentHashMap<>();
 
+  private int size = 0;
+  private int maxSize = 0;
+  private String ip;
+  private int port;
+  private String user;
+  private String password;
+
+  private int fetchSize;
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
     this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE);
@@ -82,15 +88,6 @@ public class SessionPool {
     this.password = password;
     this.fetchSize = fetchSize;
   }
-
-  private int size = 0;
-  private int maxSize = 0;
-  private String ip;
-  private int port;
-  private String user;
-  private String password;
-
-  private int fetchSize;
 
   //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
   //TODO: we can add a mechanism that if the user waits too long time, throw exception.
