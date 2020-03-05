@@ -59,7 +59,7 @@ pip install apache-iotdb
 #### 方案3：thrift的基本用法
 
 或者，如果您了解thrift的基本用法，则只能在以下位置下载Thrift源文件：
-`service-rpc \ src \ main \ thrift \ rpc.thrift`，并且只需使用`thrift -gen py -out ./target/iotdb rpc.thrift`生成python库。
+`service-rpc\src\main\thrift\rpc.thrift`，并且只需使用`thrift -gen py -out ./target/iotdb rpc.thrift`生成python库。
 
 ### 4. Use Example
 
