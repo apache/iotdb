@@ -248,7 +248,7 @@ Monitor下有几个属性，包括在不同文件夹中打开的文件数，数�
 |服务器重启后是否重置| 是 |
 |例子| select TOTAL\_POINTS\_FAIL from root.stats.write.\<storage\_group\_name\>|
 
-> 其中，\<storage\_group\_name\> 为所需进行数据统计的存储组名称，存储组中的“.”使用“_”代替。例如：名为'root.a.b'的存储组命名为：'root\_a\_b'。
+> 其中，\<storage\_group\_name\> 为所需进行数据统计的存储组名称，存储组中的“.”使用“\_”代替。例如：名为'root.a.b'的存储组命名为：'root\_a\_b'。
 
 ##### 例子
 
