@@ -315,7 +315,7 @@ select last id, status, temperature from root.ln.wf01 disable align
 
 自动填充功能是指对单列或多列执行时间序列查询时，根据用户指定的方法和有效时间范围填充空值。 如果查询点的值不为null，则填充功能将不起作用。
 
-> 注意：在当前版本中，IoTDB为用户提供两种方法：Previous 和Linear。 previous 方法用前一个值填充空白。 Linear方法通过线性拟合来填充空白。 并且填充功能只能在执行时间点查询时使用。
+> 注意：在当前版本中，IoTDB为用户提供两种方法：Previous 和Linear。 Previous 方法用前一个值填充空白。 Linear方法通过线性拟合来填充空白。 并且填充功能只能在执行时间点查询时使用。
 
 #### 填充功能
 
