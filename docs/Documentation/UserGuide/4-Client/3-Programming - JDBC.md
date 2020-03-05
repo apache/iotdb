@@ -34,7 +34,7 @@
 Execute the following command in the root directory:
 
 ```
-mvn clean package -pl jdbc -am -Dmaven.test.skip=true
+mvn clean package -pl jdbc -am -DskipTests
 ```
 
 ## How to install in local maven repository
