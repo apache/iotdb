@@ -81,7 +81,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
         IReaderByTimestamp reader = seriesReaderByTimestampList.get(i);
         Object value = reader.getValueInTimestamp(timestamp);
         if (value == null) {
-          rowRecord.addField(new Field(null));
+          rowRecord.addField(null);
         } else {
           hasField = true;
           rowRecord.addField(value, dataTypes.get(i));

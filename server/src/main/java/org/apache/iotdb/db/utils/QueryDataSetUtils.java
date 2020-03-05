@@ -49,7 +49,7 @@ public class QueryDataSetUtils {
    * convert query data set by fetch size.
    *
    * @param queryDataSet -query dataset
-   * @param fetchSize -fetch size
+   * @param fetchSize    -fetch size
    * @return -convert query dataset
    */
   public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet,
@@ -86,11 +86,11 @@ public class QueryDataSetUtils {
         List<Field> fields = rowRecord.getFields();
         for (int k = 0; k < fields.size(); k++) {
           Field field = fields.get(k);
-          DataOutputStream dataOutputStream = dataOutputStreams[2*k + 1]; // DO NOT FORGET +1
-          if (field.getDataType() == null) {
-            bitmap[k] =  (bitmap[k] << 1);
+          DataOutputStream dataOutputStream = dataOutputStreams[2 * k + 1]; // DO NOT FORGET +1
+          if (field == null || field.getDataType() == null) {
+            bitmap[k] = (bitmap[k] << 1);
           } else {
-            bitmap[k] =  (bitmap[k] << 1) | flag;
+            bitmap[k] = (bitmap[k] << 1) | flag;
             TSDataType type = field.getDataType();
             switch (type) {
               case INT32:
@@ -127,7 +127,7 @@ public class QueryDataSetUtils {
         rowCount++;
         if (rowCount % 8 == 0) {
           for (int j = 0; j < bitmap.length; j++) {
-            DataOutputStream dataBitmapOutputStream = dataOutputStreams[2*(j+1)];
+            DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (j + 1)];
             dataBitmapOutputStream.writeByte(bitmap[j]);
             // we should clear the bitmap every 8 row record
             bitmap[j] = 0;
@@ -142,8 +142,8 @@ public class QueryDataSetUtils {
     int remaining = rowCount % 8;
     if (remaining != 0) {
       for (int j = 0; j < bitmap.length; j++) {
-        DataOutputStream dataBitmapOutputStream = dataOutputStreams[2*(j+1)];
-        dataBitmapOutputStream.writeByte(bitmap[j] << (8-remaining));
+        DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (j + 1)];
+        dataBitmapOutputStream.writeByte(bitmap[j] << (8 - remaining));
       }
     }
 
@@ -160,13 +160,13 @@ public class QueryDataSetUtils {
     List<ByteBuffer> bitmapList = new LinkedList<>();
     List<ByteBuffer> valueList = new LinkedList<>();
     for (int i = 1; i < byteArrayOutputStreams.length; i += 2) {
-      ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation[(i-1)/2]);
+      ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation[(i - 1) / 2]);
       valueBuffer.put(byteArrayOutputStreams[i].toByteArray());
       valueBuffer.flip();
       valueList.add(valueBuffer);
 
       ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapOccupation);
-      bitmapBuffer.put(byteArrayOutputStreams[i+1].toByteArray());
+      bitmapBuffer.put(byteArrayOutputStreams[i + 1].toByteArray());
       bitmapBuffer.flip();
       bitmapList.add(bitmapBuffer);
     }
@@ -194,9 +194,9 @@ public class QueryDataSetUtils {
   }
 
   /**
-   * @param buffer data values
+   * @param buffer  data values
    * @param columns column number
-   * @param size value count in each column
+   * @param size    value count in each column
    */
   public static Object[] readValuesFromBuffer(ByteBuffer buffer, TSDataType[] types,
       int columns, int size) {

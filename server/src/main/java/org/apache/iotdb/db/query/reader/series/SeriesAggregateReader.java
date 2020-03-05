@@ -46,7 +46,7 @@ public class SeriesAggregateReader implements IAggregateReader {
   }
 
   @Override
-  public boolean canUseCurrentChunkStatistics() {
+  public boolean canUseCurrentChunkStatistics() throws IOException {
     Statistics chunkStatistics = currentChunkStatistics();
     return !seriesReader.isChunkOverlapped() && containedByTimeFilter(chunkStatistics);
   }
@@ -77,7 +77,7 @@ public class SeriesAggregateReader implements IAggregateReader {
   }
 
   @Override
-  public Statistics currentPageStatistics() throws IOException {
+  public Statistics currentPageStatistics() {
     return seriesReader.currentPageStatistics();
   }
 
