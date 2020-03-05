@@ -97,7 +97,7 @@ public class TSFileConfig {
    * Encoder of time column, TsFile supports TS_2DIFF, PLAIN and RLE(run-length
    * encoding) Default value is TS_2DIFF.
    */
-  private String timeEncoder = "TS_2DIFF";
+  private String timeEncoding = "TS_2DIFF";
   /**
    * Encoder of value series. default value is PLAIN. For int, long data type,
    * TsFile also supports TS_2DIFF and RLE(run-length encoding). For float, double
@@ -257,13 +257,13 @@ public class TSFileConfig {
   }
 
   public String getTimeEncoder() {
-    return timeEncoder;
+    return timeEncoding;
   }
 
   // Compression configuration
 
   public void setTimeEncoder(String timeEncoder) {
-    this.timeEncoder = timeEncoder;
+    this.timeEncoding = timeEncoder;
   }
 
   // Don't change the following configuration

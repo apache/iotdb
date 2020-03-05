@@ -187,14 +187,12 @@ public class TsFileWriter implements AutoCloseable {
       groupWriter = groupWriters.get(record.deviceId);
     }
 
-    // add all SeriesWriter of measurements in this TSRecord to this
-    // ChunkGroupWriter
-    Map<Path, MeasurementSchema> schemaDescriptorMap = schema.getMeasurementSchemaMap();
+    // add all SeriesWriter of measurements in this TSRecord to this ChunkGroupWriter
     for (DataPoint dp : record.dataPointList) {
       String measurementId = dp.getMeasurementId();
       Path path = new Path(record.deviceId, measurementId);
-      if (schemaDescriptorMap.containsKey(path)) {
-        groupWriter.tryToAddSeriesWriter(schemaDescriptorMap.get(path), pageSize);
+      if (schema.containsTimeseries(path)) {
+        groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(path), pageSize);
       } else {
         throw new NoMeasurementException("input path is invalid: " + path);
       }
@@ -221,11 +219,10 @@ public class TsFileWriter implements AutoCloseable {
     String deviceId = rowBatch.deviceId;
 
     // add all SeriesWriter of measurements in this RowBatch to this ChunkGroupWriter
-    Map<Path, MeasurementSchema> schemaDescriptorMap = schema.getMeasurementSchemaMap();
     for (MeasurementSchema timeseries : rowBatch.timeseries) {
       String measurementId = timeseries.getMeasurementId();
-      if (schemaDescriptorMap.containsKey(new Path(deviceId, measurementId))) {
-        groupWriter.tryToAddSeriesWriter(schemaDescriptorMap.get(new Path(deviceId, measurementId)),
+      if (schema.containsTimeseries(new Path(deviceId, measurementId))) {
+        groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(new Path(deviceId, measurementId)),
             pageSize);
       } else {
         throw new NoMeasurementException("input measurement is invalid: " + measurementId);

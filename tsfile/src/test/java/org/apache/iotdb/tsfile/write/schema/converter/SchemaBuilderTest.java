@@ -47,7 +47,7 @@ public class SchemaBuilderTest {
     schema.registerTimeseries(new Path("d1", "s5"),
         new MeasurementSchema("s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
 
-    Collection<MeasurementSchema> timeseries = schema.getMeasurementSchemaMap().values();
+    Collection<MeasurementSchema> timeseries = schema.getRegisteredTimeseriesMap().values();
     String[] tsDesStrings = { "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,{},UNCOMPRESSED]" };
     int i = 0;
     for (MeasurementSchema desc : timeseries) {
@@ -69,7 +69,7 @@ public class SchemaBuilderTest {
     schema.registerDeviceTemplate("template1", template);
     schema.registerDevice("d1", "template1");
 
-    Collection<MeasurementSchema> timeseries = schema.getMeasurementSchemaMap().values();
+    Collection<MeasurementSchema> timeseries = schema.getRegisteredTimeseriesMap().values();
     String[] tsDesStrings = { "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,{},UNCOMPRESSED]" };
     int i = 0;
     for (MeasurementSchema desc : timeseries) {
@@ -96,7 +96,7 @@ public class SchemaBuilderTest {
     
     schema.registerDevice("d1", "template1");
 
-    Collection<MeasurementSchema> timeseries = schema.getMeasurementSchemaMap().values();
+    Collection<MeasurementSchema> timeseries = schema.getRegisteredTimeseriesMap().values();
     String[] tsDesStrings = { "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", 
                               "[s5,INT32,TS_2DIFF,{},UNCOMPRESSED]",
                               "[s6,INT64,RLE,{max_point_number=3},SNAPPY]"};

@@ -56,7 +56,7 @@ public abstract class TSEncodingBuilder {
    * @param type - given encoding type
    * @return - responding TSEncodingBuilder
    */
-  public static TSEncodingBuilder getConverter(TSEncoding type) {
+  public static TSEncodingBuilder getEncodingBuilder(TSEncoding type) {
     switch (type) {
     case PLAIN:
       return new PLAIN();
