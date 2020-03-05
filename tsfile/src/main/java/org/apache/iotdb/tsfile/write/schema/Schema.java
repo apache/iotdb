@@ -45,10 +45,6 @@ public class Schema {
    */
   private Map<String, Map<String, MeasurementSchema>> deviceTemplates;
 
-  /**
-   * register a measurement schema map.
-   */
-
   public Schema() {
     this.registeredTimeseries = new LinkedHashMap<>();
   }
