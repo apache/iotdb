@@ -103,10 +103,10 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
         int toIndex = Math.min(i + minExternalSortSourceCount, ret.size());
         List<ExternalSortJobPart> partGroup = ret.subList(i, toIndex);
         i = toIndex;
-        StringBuilder tmpFilePath = new StringBuilder(queryDir).append(jobId).append("_")
-            .append(partId);
+        String tmpFilePath = queryDir + jobId + "_"
+            + partId;
         MultiSourceExternalSortJobPart part = new MultiSourceExternalSortJobPart(queryId,
-            tmpFilePath.toString(), partGroup);
+            tmpFilePath, partGroup);
         tmpPartList.add(part);
         partId++;
       }
@@ -115,19 +115,19 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
     return new ExternalSortJob(ret);
   }
 
-  public String getQueryDir() {
+  String getQueryDir() {
     return queryDir;
   }
 
-  public void setQueryDir(String queryDir) {
+  void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
   }
 
-  public int getMinExternalSortSourceCount() {
+  int getMinExternalSortSourceCount() {
     return minExternalSortSourceCount;
   }
 
-  public void setMinExternalSortSourceCount(int minExternalSortSourceCount) {
+  void setMinExternalSortSourceCount(int minExternalSortSourceCount) {
     this.minExternalSortSourceCount = minExternalSortSourceCount;
   }
 
@@ -171,7 +171,7 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
 
   private static class SimpleExternalSortJobEngineHelper {
 
-    private static SimpleExternalSortEngine INSTANCE = new SimpleExternalSortEngine();
+    private static final SimpleExternalSortEngine INSTANCE = new SimpleExternalSortEngine();
   }
 
   public static SimpleExternalSortEngine getInstance() {

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,11 +44,13 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 
 public class BatchInsertPlan extends PhysicalPlan {
 
+  private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
+
   private String deviceId;
   private String[] measurements;
   private TSDataType[] dataTypes;
 
-  private long[] times;
+  private long[] times; // times should be sorted. It is done in the session API.
   private ByteBuffer timeBuffer;
 
   private Object[] columns;
@@ -65,6 +69,11 @@ public class BatchInsertPlan extends PhysicalPlan {
   }
 
   public BatchInsertPlan(String deviceId, List<String> measurements) {
+    super(false, OperatorType.BATCHINSERT);
+    this.deviceId = deviceId;
+    setMeasurements(measurements);
+  }
+  public BatchInsertPlan(String deviceId, String[] measurements) {
     super(false, OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     setMeasurements(measurements);
@@ -115,6 +124,94 @@ public class BatchInsertPlan extends PhysicalPlan {
   }
 
   @Override
+  public void serializeTo(DataOutputStream stream) throws IOException {
+    int type = PhysicalPlanType.BATCHINSERT.ordinal();
+    stream.writeByte((byte) type);
+
+    putString(stream, deviceId);
+
+    stream.writeInt(measurements.length);
+    for (String m : measurements) {
+      putString(stream, m);
+    }
+
+    for (TSDataType dataType : dataTypes) {
+      stream.writeShort(dataType.serialize());
+    }
+
+    stream.writeInt(index.size());
+
+    if (timeBuffer == null) {
+      for(int loc : index){
+        stream.writeLong(times[loc]);
+      }
+    } else {
+      stream.write(timeBuffer.array());
+      timeBuffer = null;
+    }
+
+    if (valueBuffer == null) {
+      serializeValues(stream);
+    } else {
+      stream.write(valueBuffer.array());
+      valueBuffer = null;
+    }
+  }
+
+  private void serializeValues(DataOutputStream stream) throws IOException {
+    for (int i = 0; i < measurements.length; i++) {
+      serializeColumn(dataTypes[i], columns[i], stream, index);
+    }
+  }
+
+  private void serializeColumn(TSDataType dataType, Object column, DataOutputStream stream,
+      Set<Integer> index)
+      throws IOException {
+    switch (dataType) {
+      case INT32:
+        int[] intValues = (int[]) column;
+        for(int loc : index){
+          stream.writeInt(intValues[loc]);
+        }
+        break;
+      case INT64:
+        long[] longValues = (long[]) column;
+        for(int loc : index){
+          stream.writeLong(longValues[loc]);
+        }
+        break;
+      case FLOAT:
+        float[] floatValues = (float[]) column;
+        for(int loc : index){
+          stream.writeFloat(floatValues[loc]);
+        }
+        break;
+      case DOUBLE:
+        double[] doubleValues = (double[]) column;
+        for(int loc : index){
+          stream.writeDouble(doubleValues[loc]);
+        }
+        break;
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) column;
+        for(int loc : index){
+          stream.write(BytesUtils.boolToByte(boolValues[loc]));
+        }
+        break;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) column;
+        for(int loc : index){
+          stream.writeInt(binaryValues[loc].getLength());
+          stream.write(binaryValues[loc].getValues());
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format(DATATYPE_UNSUPPORTED, dataType));
+    }
+  }
+
+  @Override
   public void serializeTo(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     buffer.put((byte) type);
@@ -142,54 +239,62 @@ public class BatchInsertPlan extends PhysicalPlan {
     }
 
     if (valueBuffer == null) {
-      for (int i = 0; i < measurements.length; i++) {
-        TSDataType dataType = dataTypes[i];
-        switch (dataType) {
-          case INT32:
-            int[] intValues = (int[]) columns[i];
-            for (int j = start; j < end; j++) {
-              buffer.putInt(intValues[j]);
-            }
-            break;
-          case INT64:
-            long[] longValues = (long[]) columns[i];
-            for (int j = start; j < end; j++) {
-              buffer.putLong(longValues[j]);
-            }
-            break;
-          case FLOAT:
-            float[] floatValues = (float[]) columns[i];
-            for (int j = start; j < end; j++) {
-              buffer.putFloat(floatValues[j]);
-            }
-            break;
-          case DOUBLE:
-            double[] doubleValues = (double[]) columns[i];
-            for (int j = start; j < end; j++) {
-              buffer.putDouble(doubleValues[j]);
-            }
-            break;
-          case BOOLEAN:
-            boolean[] boolValues = (boolean[]) columns[i];
-            for (int j = start; j < end; j++) {
-              buffer.putInt(BytesUtils.boolToByte(boolValues[j]));
-            }
-            break;
-          case TEXT:
-            Binary[] binaryValues = (Binary[]) columns[i];
-            for (int j = start; j < end; j++) {
-              buffer.putInt(binaryValues[j].getLength());
-              buffer.put(binaryValues[j].getValues());
-            }
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataType));
-        }
-      }
+      serializeValues(buffer);
     } else {
       buffer.put(valueBuffer.array());
       valueBuffer = null;
+    }
+  }
+
+  private void serializeValues(ByteBuffer buffer) {
+    for (int i = 0; i < measurements.length; i++) {
+      serializeColumn(dataTypes[i], columns[i], buffer, start, end);
+    }
+  }
+
+  private void serializeColumn(TSDataType dataType, Object column, ByteBuffer buffer,
+      int start, int end) {
+    switch (dataType) {
+      case INT32:
+        int[] intValues = (int[]) column;
+        for (int j = start; j < end; j++) {
+          buffer.putInt(intValues[j]);
+        }
+        break;
+      case INT64:
+        long[] longValues = (long[]) column;
+        for (int j = start; j < end; j++) {
+          buffer.putLong(longValues[j]);
+        }
+        break;
+      case FLOAT:
+        float[] floatValues = (float[]) column;
+        for (int j = start; j < end; j++) {
+          buffer.putFloat(floatValues[j]);
+        }
+        break;
+      case DOUBLE:
+        double[] doubleValues = (double[]) column;
+        for (int j = start; j < end; j++) {
+          buffer.putDouble(doubleValues[j]);
+        }
+        break;
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) column;
+        for (int j = start; j < end; j++) {
+          buffer.putInt(BytesUtils.boolToByte(boolValues[j]));
+        }
+        break;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) column;
+        for (int j = start; j < end; j++) {
+          buffer.putInt(binaryValues[j].getLength());
+          buffer.put(binaryValues[j].getValues());
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format(DATATYPE_UNSUPPORTED, dataType));
     }
   }
 
@@ -259,6 +364,10 @@ public class BatchInsertPlan extends PhysicalPlan {
     }
   }
 
+  public void setDataTypes(TSDataType[] dataTypes) {
+    this.dataTypes = dataTypes;
+  }
+
   public Object[] getColumns() {
     return columns;
   }
@@ -288,13 +397,13 @@ public class BatchInsertPlan extends PhysicalPlan {
     if (maxTime != null) {
       return maxTime;
     }
-    long maxTime = Long.MIN_VALUE;
+    long tmpMaxTime = Long.MIN_VALUE;
     for (Long time : times) {
-      if (time > maxTime) {
-        maxTime = time;
+      if (time > tmpMaxTime) {
+        tmpMaxTime = time;
       }
     }
-    return maxTime;
+    return tmpMaxTime;
   }
 
   public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
@@ -329,7 +438,7 @@ public class BatchInsertPlan extends PhysicalPlan {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataTypes[measurementIndex]));
+            String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
     }
     return new TimeValuePair(times[end - 1], value);
   }
@@ -349,4 +458,5 @@ public class BatchInsertPlan extends PhysicalPlan {
   public void setRowCount(int size) {
     this.rowCount = size;
   }
+
 }

@@ -18,34 +18,51 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import java.nio.ByteBuffer;
-
 public class Murmur128Hash {
 
+  private Murmur128Hash() {
+    // util class
+  }
+
   /**
-   *  get hashcode of value by seed
+   * get hashcode of value by seed
+   *
    * @param value value
-   * @param seed seend
+   * @param seed seed
    * @return hashcode of value
    */
-  public static int hash(String value, int seed){
-    return (int) hash3_x64_128(ByteBuffer.wrap(value.getBytes()), 0, value.length(), seed);
+  public static int hash(String value, int seed) {
+    return (int) innerHash(value.getBytes(), 0, value.getBytes().length, seed);
+  }
+
+  /**
+   * get hashcode of two values by seed
+   *
+   * @param value1 the first value
+   * @param value2 the second value
+   * @param seed seed
+   * @return hashcode of value
+   */
+  public static int hash(String value1, long value2, int seed) {
+    return (int) innerHash(
+        BytesUtils.concatByteArray(value1.getBytes(), BytesUtils.longToBytes(value2)), 0,
+        value1.length() + 8, seed);
   }
 
   /**************************************
    * Methods to perform murmur 128 hash.
    **************************************/
-  private static long getBlock(ByteBuffer key, int offset, int index) {
-    int i_8 = index << 3;
-    int blockOffset = offset + i_8;
-    return ((long) key.get(blockOffset) & 0xff) + (((long) key.get(blockOffset + 1) & 0xff) << 8)
+  private static long getBlock(byte[] key, int offset, int index) {
+    int i8 = index << 3;
+    int blockOffset = offset + i8;
+    return ((long) key[blockOffset] & 0xff) + (((long) key[blockOffset + 1] & 0xff) << 8)
         +
-        (((long) key.get(blockOffset + 2) & 0xff) << 16) + (
-        ((long) key.get(blockOffset + 3) & 0xff) << 24) +
-        (((long) key.get(blockOffset + 4) & 0xff) << 32) + (
-        ((long) key.get(blockOffset + 5) & 0xff) << 40) +
-        (((long) key.get(blockOffset + 6) & 0xff) << 48) + (
-        ((long) key.get(blockOffset + 7) & 0xff) << 56);
+        (((long) key[blockOffset + 2] & 0xff) << 16) + (
+        ((long) key[blockOffset + 3] & 0xff) << 24) +
+        (((long) key[blockOffset + 4] & 0xff) << 32) + (
+        ((long) key[blockOffset + 5] & 0xff) << 40) +
+        (((long) key[blockOffset + 6] & 0xff) << 48) + (
+        ((long) key[blockOffset + 7] & 0xff) << 56);
   }
 
   private static long rotl64(long v, int n) {
@@ -61,7 +78,7 @@ public class Murmur128Hash {
     return k;
   }
 
-  private static long hash3_x64_128(ByteBuffer key, int offset, int length, long seed) {
+  private static long innerHash(byte[] key, int offset, int length, long seed) {
     final int nblocks = length >> 4; // Process as 128-bit blocks.
     long h1 = seed;
     long h2 = seed;
@@ -70,7 +87,7 @@ public class Murmur128Hash {
     // ----------
     // body
     for (int i = 0; i < nblocks; i++) {
-      long k1 = getBlock(key, offset, i * 2 + 0);
+      long k1 = getBlock(key, offset, i * 2);
       long k2 = getBlock(key, offset, i * 2 + 1);
       k1 *= c1;
       k1 = rotl64(k1, 31);
@@ -95,53 +112,53 @@ public class Murmur128Hash {
     long k2 = 0;
     switch (length & 15) {
       case 15:
-        k2 ^= ((long) key.get(offset + 14)) << 48;
+        k2 ^= ((long) key[offset + 14]) << 48;
         // fallthrough
       case 14:
-        k2 ^= ((long) key.get(offset + 13)) << 40;
+        k2 ^= ((long) key[offset + 13]) << 40;
         // fallthrough
       case 13:
-        k2 ^= ((long) key.get(offset + 12)) << 32;
+        k2 ^= ((long) key[offset + 12]) << 32;
         // fallthrough
       case 12:
-        k2 ^= ((long) key.get(offset + 11)) << 24;
+        k2 ^= ((long) key[offset + 11]) << 24;
         // fallthrough
       case 11:
-        k2 ^= ((long) key.get(offset + 10)) << 16;
+        k2 ^= ((long) key[offset + 10]) << 16;
         // fallthrough
       case 10:
-        k2 ^= ((long) key.get(offset + 9)) << 8;
+        k2 ^= ((long) key[offset + 9]) << 8;
         // fallthrough
       case 9:
-        k2 ^= ((long) key.get(offset + 8));
+        k2 ^= key[offset + 8];
         k2 *= c2;
         k2 = rotl64(k2, 33);
         k2 *= c1;
         h2 ^= k2;
         // fallthrough
       case 8:
-        k1 ^= ((long) key.get(offset + 7)) << 56;
+        k1 ^= ((long) key[offset + 7]) << 56;
         // fallthrough
       case 7:
-        k1 ^= ((long) key.get(offset + 6)) << 48;
+        k1 ^= ((long) key[offset + 6]) << 48;
         // fallthrough
       case 6:
-        k1 ^= ((long) key.get(offset + 5)) << 40;
+        k1 ^= ((long) key[offset + 5]) << 40;
         // fallthrough
       case 5:
-        k1 ^= ((long) key.get(offset + 4)) << 32;
+        k1 ^= ((long) key[offset + 4]) << 32;
         // fallthrough
       case 4:
-        k1 ^= ((long) key.get(offset + 3)) << 24;
+        k1 ^= ((long) key[offset + 3]) << 24;
         // fallthrough
       case 3:
-        k1 ^= ((long) key.get(offset + 2)) << 16;
+        k1 ^= ((long) key[offset + 2]) << 16;
         // fallthrough
       case 2:
-        k1 ^= ((long) key.get(offset + 1)) << 8;
+        k1 ^= ((long) key[offset + 1]) << 8;
         // fallthrough
       case 1:
-        k1 ^= (key.get(offset));
+        k1 ^= (key[offset]);
         k1 *= c1;
         k1 = rotl64(k1, 31);
         k1 *= c2;
@@ -163,5 +180,6 @@ public class Murmur128Hash {
     h2 += h1;
     return h1 + h2;
   }
+
 
 }

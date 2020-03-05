@@ -21,16 +21,16 @@ package org.apache.iotdb.db.query.dataset;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
-import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 public class RawQueryDataSetWithValueFilter extends QueryDataSet {
 
-  private ServerTimeGenerator timeGenerator;
+  private TimeGenerator timeGenerator;
   private List<IReaderByTimestamp> seriesReaderByTimestampList;
   private boolean hasCachedRowRecord;
   private RowRecord cachedRowRecord;
@@ -44,7 +44,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
    * @param readers       readers in List(IReaderByTimeStamp) structure
    */
   public RawQueryDataSetWithValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-      ServerTimeGenerator timeGenerator, List<IReaderByTimestamp> readers) {
+      TimeGenerator timeGenerator, List<IReaderByTimestamp> readers) {
     super(paths, dataTypes);
     this.timeGenerator = timeGenerator;
     this.seriesReaderByTimestampList = readers;

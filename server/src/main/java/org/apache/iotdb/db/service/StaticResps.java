@@ -118,11 +118,21 @@ class StaticResps {
       Collections.singletonList(COLUMN_PRIVILEGE),
       Collections.singletonList(TSDataType.TEXT.toString()));
 
+  static final TSExecuteStatementResp LAST_RESP = getExecuteResp(
+      Arrays.asList(COLUMN_TIMESERIES, COLUMN_VALUE),
+      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()), false
+  );
+
   private static TSExecuteStatementResp getNoTimeExecuteResp(List<String> columns,
       List<String> dataTypes) {
+    return getExecuteResp(columns, dataTypes, true);
+  }
+
+  private static TSExecuteStatementResp getExecuteResp(List<String> columns,
+      List<String> dataTypes, boolean ignoreTimeStamp) {
     TSExecuteStatementResp resp =
         TSServiceImpl.getTSExecuteStatementResp(TSServiceImpl.getStatus(TSStatusCode.SUCCESS_STATUS));
-    resp.setIgnoreTimeStamp(true);
+    resp.setIgnoreTimeStamp(ignoreTimeStamp);
     resp.setColumns(columns);
     resp.setDataTypeList(dataTypes);
     return resp;
