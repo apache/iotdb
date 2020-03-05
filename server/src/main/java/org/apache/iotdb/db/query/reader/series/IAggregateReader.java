@@ -27,7 +27,7 @@ public interface IAggregateReader {
 
   boolean hasNextChunk() throws IOException;
 
-  boolean canUseCurrentChunkStatistics();
+  boolean canUseCurrentChunkStatistics() throws IOException;
 
   Statistics currentChunkStatistics();
 

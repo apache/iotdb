@@ -63,15 +63,11 @@ while (aggregateReader.hasNextChunk()) {
 	   
 	   aggregateReader.skipCurrentPage();
 	   continue;
-	 }
-	 
-	 // 遍历所有重叠的page
-	 while (aggregateReader.hasNextOverlappedPage()) {
-	   BatchData batchData = aggregateReader.nextOverlappedPage();
-	   
-	   // do some aggregate calculation using batch data
+	 } else {
+	 	BatchData batchData = aggregateReader.nextPage();
+	 	// do some aggregate calculation using batch data
       ...
-	 }
+	 }	 
   }
 }
 ```

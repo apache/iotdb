@@ -95,7 +95,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
         Thread.currentThread().interrupt();
         reader.setHasRemaining(false);
       } catch (IOException e) {
-        LOGGER.error(String.format("Something gets wrong while reading from the series reader %s: ", pathName), e);
+        LOGGER.error(String
+            .format("Something gets wrong while reading from the series reader %s: ", pathName), e);
         reader.setHasRemaining(false);
       } catch (Exception e) {
         LOGGER.error("Something gets wrong: ", e);
@@ -158,7 +159,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
       ManagedSeriesReader reader = seriesReaderList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
-      TASK_POOL_MANAGER.submit(new ReadTask(reader, blockingQueueArray[i], paths.get(i).getFullPath()));
+      TASK_POOL_MANAGER
+          .submit(new ReadTask(reader, blockingQueueArray[i], paths.get(i).getFullPath()));
     }
     for (int i = 0; i < seriesReaderList.size(); i++) {
       fillCache(i);
@@ -356,7 +358,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
           // now we should submit it again
           if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
             reader.setManagedByQueryManager(true);
-            TASK_POOL_MANAGER.submit(new ReadTask(reader, blockingQueueArray[seriesIndex], paths.get(seriesIndex).getFullPath()));
+            TASK_POOL_MANAGER.submit(new ReadTask(reader, blockingQueueArray[seriesIndex],
+                paths.get(seriesIndex).getFullPath()));
           }
         }
       }
@@ -395,7 +398,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
       if (cachedBatchDataArray[seriesIndex] == null
           || !cachedBatchDataArray[seriesIndex].hasCurrent()
           || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
-        record.addField(new Field(null));
+        record.addField(null);
       } else {
         TSDataType dataType = dataTypes.get(seriesIndex);
         record.addField(cachedBatchDataArray[seriesIndex].currentValue(), dataType);
