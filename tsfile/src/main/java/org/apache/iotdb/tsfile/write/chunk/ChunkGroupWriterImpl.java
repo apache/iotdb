@@ -77,10 +77,10 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
 
   @Override
   public void write(RowBatch rowBatch) throws WriteProcessException, IOException {
-    List<MeasurementSchema> measurements = rowBatch.measurements;
-    for (int i = 0; i < measurements.size(); i++) {
-      String measurementId = measurements.get(i).getMeasurementId();
-      TSDataType dataType = measurements.get(i).getType();
+    List<MeasurementSchema> timeseries = rowBatch.timeseries;
+    for (int i = 0; i < timeseries.size(); i++) {
+      String measurementId = timeseries.get(i).getMeasurementId();
+      TSDataType dataType = timeseries.get(i).getType();
       if (!chunkWriters.containsKey(measurementId)) {
         throw new NoMeasurementException("measurement id" + measurementId + " not found!");
       }

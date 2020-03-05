@@ -19,11 +19,13 @@
 package org.apache.iotdb.tsfile.common.conf;
 
 import java.nio.charset.Charset;
+
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 /**
- * TSFileConfig is a configure class. Every variables is public and has default value.
+ * TSFileConfig is a configure class. Every variables is public and has default
+ * value.
  */
 public class TSFileConfig {
 
@@ -92,15 +94,15 @@ public class TSFileConfig {
    */
   private int floatPrecision = 2;
   /**
-   * Encoder of time column, TsFile supports TS_2DIFF, PLAIN and RLE(run-length encoding) Default
-   * value is TS_2DIFF.
+   * Encoder of time column, TsFile supports TS_2DIFF, PLAIN and RLE(run-length
+   * encoding) Default value is TS_2DIFF.
    */
-  private String timeEncoder = "TS_2DIFF";
+  private String timeEncoding = "TS_2DIFF";
   /**
-   * Encoder of value series. default value is PLAIN. For int, long data type, TsFile also supports
-   * TS_2DIFF and RLE(run-length encoding). For float, double data type, TsFile also supports
-   * TS_2DIFF, RLE(run-length encoding) and GORILLA. For text data type, TsFile only supports
-   * PLAIN.
+   * Encoder of value series. default value is PLAIN. For int, long data type,
+   * TsFile also supports TS_2DIFF and RLE(run-length encoding). For float, double
+   * data type, TsFile also supports TS_2DIFF, RLE(run-length encoding) and
+   * GORILLA. For text data type, TsFile only supports PLAIN.
    */
   private String valueEncoder = "PLAIN";
   /**
@@ -128,8 +130,8 @@ public class TSFileConfig {
    */
   private double dftSatisfyRate = 0.1;
   /**
-   * Data compression method, TsFile supports UNCOMPRESSED or SNAPPY. Default value is UNCOMPRESSED
-   * which means no compression
+   * Data compression method, TsFile supports UNCOMPRESSED or SNAPPY. Default
+   * value is UNCOMPRESSED which means no compression
    */
   private CompressionType compressor = CompressionType.SNAPPY;
   /**
@@ -173,7 +175,8 @@ public class TSFileConfig {
    */
   private boolean dfsHaAutomaticFailoverEnabled = true;
   /**
-   * Default DFS client failover proxy provider is "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider"
+   * Default DFS client failover proxy provider is
+   * "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider"
    */
   private String dfsClientFailoverProxyProvider = "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider";
   /**
@@ -254,13 +257,13 @@ public class TSFileConfig {
   }
 
   public String getTimeEncoder() {
-    return timeEncoder;
+    return timeEncoding;
   }
 
   // Compression configuration
 
   public void setTimeEncoder(String timeEncoder) {
-    this.timeEncoder = timeEncoder;
+    this.timeEncoding = timeEncoder;
   }
 
   // Don't change the following configuration
@@ -376,7 +379,6 @@ public class TSFileConfig {
   public void setBloomFilterErrorRate(double bloomFilterErrorRate) {
     this.bloomFilterErrorRate = bloomFilterErrorRate;
   }
-
 
   public FSType getTSFileStorageFs() {
     return this.TSFileStorageFs;

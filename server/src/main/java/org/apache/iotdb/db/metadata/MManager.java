@@ -47,6 +47,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
+import org.apache.iotdb.db.metadata.mnode.DeviceMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.MonitorConstants;
@@ -81,8 +82,8 @@ public class MManager {
   private BufferedWriter logWriter;
   private boolean writeToLog;
   private String schemaDir;
-  // path -> MNode
-  private RandomDeleteCache<String, MNode> mNodeCache;
+  // device -> DeviceMNode
+  private RandomDeleteCache<String, DeviceMNode> mNodeCache;
 
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
   private long maxSeriesNumberAmongStorageGroup;
@@ -104,10 +105,10 @@ public class MManager {
     writeToLog = false;
 
     int cacheSize = config.getmManagerCacheSize();
-    mNodeCache = new RandomDeleteCache<String, MNode>(cacheSize) {
+    mNodeCache = new RandomDeleteCache<String, DeviceMNode>(cacheSize) {
 
       @Override
-      public MNode loadObjectByKey(String key) throws CacheException {
+      public DeviceMNode loadObjectByKey(String key) throws CacheException {
         lock.readLock().lock();
         try {
           return mtree.getNodeByPathWithStorageGroupCheck(key);
@@ -282,9 +283,10 @@ public class MManager {
       }
 
       /*
-       * check if the measurement schema conflict in its storage group
+       * check if the measurement schema conflict in its device
        */
-      Map<String, MeasurementSchema> schemaMap = mtree.getStorageGroupSchemaMap(storageGroupName);
+      String device = new Path(path).getDevice();
+      Map<String, MeasurementSchema> schemaMap = mtree.getDeviceSchemaMap(device);
       String measurement = new Path(path).getMeasurement();
       boolean isNewMeasurement = true;
       if (schemaMap.containsKey(measurement)) {
@@ -295,15 +297,15 @@ public class MManager {
           // conflict with existing
           throw new MetadataException(String.format(
               "The resultDataType or encoding or compression of the last node %s is conflicting "
-                  + "in the storage group %s", measurement, storageGroupName));
+                  + "in the device %s", measurement, device));
         }
       }
 
       // create time series with memory check
       createTimeseriesWithMemoryCheckAndLog(path, dataType, encoding, compressor, props);
-      // register schema in this storage group
+      // register schema in this device
       if (isNewMeasurement) {
-        schemaMap.put(measurement,
+        mtree.addSchemaToDevice(device,
             new MeasurementSchema(measurement, dataType, encoding, compressor, props));
       }
       // update statistics
@@ -595,6 +597,8 @@ public class MManager {
    *
    * @param storageGroup storage group name
    */
+  
+  /*
   public List<MeasurementSchema> getStorageGroupSchema(String storageGroup)
       throws MetadataException {
     lock.readLock().lock();
@@ -604,6 +608,7 @@ public class MManager {
       lock.readLock().unlock();
     }
   }
+  */
 
   /**
    * Get storage group name by path
@@ -670,10 +675,25 @@ public class MManager {
    * wildcard can only match one level, otherwise it can match to the tail.
    * @return for each storage group, return a List [name, sg name, data type, encoding, compressor]
    */
-  public List<String[]> getAllTimeseriesSchema(String path) throws MetadataException {
+  public List<String[]> getAllMeasurementSchema(String path) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getAllTimeseriesSchema(path);
+      return mtree.getAllMeasurementSchema(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get schema map for the device
+   *
+   * @param deviceId
+   * @return a map measurementId -> measurememtSchema in the device
+   */
+  public Map<String, MeasurementSchema> getDeviceSchemaMap(String device) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getDeviceSchemaMap(device);
     } finally {
       lock.readLock().unlock();
     }
@@ -740,10 +760,10 @@ public class MManager {
    *
    * @param path path
    */
-  public MNode getDeviceNodeWithAutoCreateStorageGroup(String path, boolean autoCreateSchema,
+  public DeviceMNode getDeviceNodeWithAutoCreateStorageGroup(String path, boolean autoCreateSchema,
       int sgLevel) throws MetadataException {
     lock.readLock().lock();
-    MNode node = null;
+    DeviceMNode node = null;
     boolean shouldSetStorageGroup = false;
     try {
       node = mNodeCache.get(path);
@@ -793,7 +813,6 @@ public class MManager {
   }
 
   private static class MManagerHolder {
-
     private MManagerHolder() {
       //allowed to do nothing
     }

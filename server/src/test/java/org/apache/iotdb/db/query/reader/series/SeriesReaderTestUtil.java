@@ -24,7 +24,10 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
@@ -47,10 +50,10 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class SeriesReaderTestUtil {
 
-  private static int seqFileNum = 5;
-  private static int unseqFileNum = 5;
-  private static int measurementNum = 10;
-  private static int deviceNum = 10;
+  private static int seqFileNum = 1;
+  private static int unseqFileNum = 1;
+  private static int measurementNum = 1;
+  private static int deviceNum = 1;
   private static long ptNum = 100;
   private static long flushInterval = 20;
   private static TSEncoding encoding = TSEncoding.PLAIN;
@@ -120,8 +123,13 @@ public class SeriesReaderTestUtil {
       long valueOffset, List<MeasurementSchema> measurementSchemas, List<String> deviceIds)
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
+    Map<String, MeasurementSchema> template = new HashMap<>();
     for (MeasurementSchema measurementSchema : measurementSchemas) {
-      fileWriter.addMeasurement(measurementSchema);
+      template.put(measurementSchema.getMeasurementId(), measurementSchema);
+    }
+    fileWriter.addDeviceTemplate("template0", template);
+    for (String deviceId : deviceIds) {
+      fileWriter.addDevice(deviceId, "template0");
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (String deviceId : deviceIds) {

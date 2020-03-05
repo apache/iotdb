@@ -22,6 +22,7 @@ import java.io.File;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -45,11 +46,17 @@ public class TsFileExample {
 
     // add measurements into file schema
     tsFileWriter
-        .addMeasurement(new MeasurementSchema("status", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+        .addTimeseries(new Path("root.ln.wf01.wt01", "status"), 
+            new MeasurementSchema("status", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     tsFileWriter
-        .addMeasurement(new MeasurementSchema("temperature", TSDataType.FLOAT, TSEncoding.RLE));
+        .addTimeseries(new Path("root.ln.wf01.wt01", "temperature"), 
+            new MeasurementSchema("temperature", TSDataType.FLOAT, TSEncoding.RLE));
     tsFileWriter
-        .addMeasurement(new MeasurementSchema("hardware", TSDataType.TEXT, TSEncoding.PLAIN));
+        .addTimeseries(new Path("root.ln.wf02.wt02", "temperature"), 
+            new MeasurementSchema("temperature", TSDataType.FLOAT, TSEncoding.RLE));
+    tsFileWriter
+        .addTimeseries(new Path("root.ln.wf02.wt02", "hardware"), 
+            new MeasurementSchema("hardware", TSDataType.TEXT, TSEncoding.PLAIN));
 
     // construct TSRecord
     TSRecord tsRecord = new TSRecord(1, "root.ln.wf01.wt01");

@@ -66,9 +66,9 @@ public class TsFileExecutor implements QueryExecutor {
           filteredSeriesPath.add(path);
         }
       }
+      queryExpression.setSelectSeries(filteredSeriesPath);
     }
 
-    queryExpression.setSelectSeries(filteredSeriesPath);
     metadataQuerier.loadChunkMetaDatas(queryExpression.getSelectedSeries());
     if (queryExpression.hasQueryFilter()) {
       try {
@@ -175,7 +175,7 @@ public class TsFileExecutor implements QueryExecutor {
       AbstractFileSeriesReader seriesReader;
       if (chunkMetaDataList.isEmpty()) {
         seriesReader = new EmptyFileSeriesReader();
-        dataTypes.add(metadataQuerier.getDataType(path.getMeasurement()));
+        dataTypes.add(metadataQuerier.getDataType(path));
       } else {
         if (timeExpression == null) {
           seriesReader = new FileSeriesReader(chunkLoader, chunkMetaDataList, null);

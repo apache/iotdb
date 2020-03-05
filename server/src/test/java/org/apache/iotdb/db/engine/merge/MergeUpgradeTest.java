@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -54,7 +55,7 @@ public class MergeUpgradeTest {
   private int seqFileNum = 2;
   private TSEncoding encoding = TSEncoding.RLE;
   private MeasurementSchema[] measurementSchemas;
-  private int measurementNum = 5;
+  private int timeseriesNum = 5;
   private long ptNum = 10;
   private boolean changeVersion = true;
   private String deviceName = "root.MergeUpgrade.device0";
@@ -104,8 +105,8 @@ public class MergeUpgradeTest {
   }
 
   private void prepareSeries() {
-    measurementSchemas = new MeasurementSchema[measurementNum];
-    for (int i = 0; i < measurementNum; i++) {
+    measurementSchemas = new MeasurementSchema[timeseriesNum];
+    for (int i = 0; i < timeseriesNum; i++) {
       measurementSchemas[i] = new MeasurementSchema("sensor" + i, TSDataType.DOUBLE,
           encoding, CompressionType.UNCOMPRESSED);
     }
@@ -144,12 +145,12 @@ public class MergeUpgradeTest {
 
   private void prepareData(TsFileResource tsFileResource, TsFileWriter fileWriter, long timeOffset,
       long ptNum, long valueOffset) throws WriteProcessException, IOException {
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
-      fileWriter.addMeasurement(measurementSchema);
+    for (MeasurementSchema MeasurementSchema : measurementSchemas) {
+      fileWriter.addTimeseries(new Path(deviceName, MeasurementSchema.getMeasurementId()), MeasurementSchema);
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       TSRecord record = new TSRecord(i, deviceName);
-      for (int k = 0; k < measurementNum; k++) {
+      for (int k = 0; k < timeseriesNum; k++) {
         record.addTuple(DataPoint.getDataPoint(measurementSchemas[k].getType(),
             measurementSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
       }

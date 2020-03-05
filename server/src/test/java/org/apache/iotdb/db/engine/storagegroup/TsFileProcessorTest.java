@@ -40,7 +40,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -180,20 +179,24 @@ public class TsFileProcessorTest {
     assertEquals(dataType, right.get(0).getDataType());
 
     RestorableTsFileIOWriter tsFileIOWriter = processor.getWriter();
-    List<ChunkGroupMetaData> chunkGroupMetaDataList = tsFileIOWriter.getChunkGroupMetaDatas();
+    Map<String, List<ChunkMetaData>> chunkMetaDataListInChunkGroups = 
+        tsFileIOWriter.getDeviceChunkMetadataMap();
     RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(
         SystemFileFactory.INSTANCE.getFile(filePath));
-    List<ChunkGroupMetaData> restoredChunkGroupMetaDataList = restorableTsFileIOWriter
-        .getChunkGroupMetaDatas();
-    assertEquals(chunkGroupMetaDataList.size(), restoredChunkGroupMetaDataList.size());
-    for (int i = 0; i < chunkGroupMetaDataList.size(); i++) {
-      ChunkGroupMetaData chunkGroupMetaData = chunkGroupMetaDataList.get(i);
-      ChunkGroupMetaData chunkGroupMetaDataRestore = restoredChunkGroupMetaDataList.get(i);
-      for (int j = 0; j < chunkGroupMetaData.getChunkMetaDataList().size(); j++) {
-        ChunkMetaData chunkMetaData = chunkGroupMetaData.getChunkMetaDataList().get(j);
-        ChunkMetaData chunkMetaDataRestore = chunkGroupMetaDataRestore.getChunkMetaDataList()
-            .get(j);
-        assertEquals(chunkMetaData, chunkMetaDataRestore);
+    Map<String, List<ChunkMetaData>> restoredChunkMetaDataListInChunkGroups = restorableTsFileIOWriter
+        .getDeviceChunkMetadataMap();
+    assertEquals(chunkMetaDataListInChunkGroups.size(), restoredChunkMetaDataListInChunkGroups.size());
+    for (Map.Entry<String, List<ChunkMetaData>> entry1 
+        : chunkMetaDataListInChunkGroups.entrySet()) {
+      for (Map.Entry<String, List<ChunkMetaData>> entry2 
+          : restoredChunkMetaDataListInChunkGroups.entrySet()) {
+        assertEquals(entry1.getKey(), entry2.getKey());
+        assertEquals(entry1.getValue().size(), entry2.getValue().size());
+        for (int i = 0; i < entry1.getValue().size(); i++) {
+          ChunkMetaData chunkMetaData = entry1.getValue().get(i);
+          ChunkMetaData chunkMetaDataRestore = entry2.getValue().get(i);
+          assertEquals(chunkMetaData, chunkMetaDataRestore);
+        }
       }
     }
     restorableTsFileIOWriter.close();

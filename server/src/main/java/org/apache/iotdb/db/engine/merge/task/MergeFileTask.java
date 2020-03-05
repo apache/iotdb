@@ -38,12 +38,10 @@ import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.ForceAppendTsFileWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -142,15 +140,18 @@ class MergeFileTask {
       newFileWriter.close();
       try (TsFileSequenceReader newFileReader =
           new TsFileSequenceReader(newFileWriter.getFile().getPath())) {
-        List<ChunkGroupMetaData> chunkGroupMetadataList = newFileWriter.getChunkGroupMetaDatas();
+        Map<String, List<ChunkMetaData>> chunkMetadataListInChunkGroups = 
+            newFileWriter.getDeviceChunkMetadataMap();
         if (logger.isDebugEnabled()) {
-          logger.debug("{} find {} merged chunk groups", taskName, chunkGroupMetadataList.size());
+          logger.debug("{} find {} merged chunk groups", taskName, chunkMetadataListInChunkGroups.size());
         }
-        for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetadataList) {
-          writeMergedChunkGroup(chunkGroupMetaData, newFileReader, oldFileWriter);
+        for (Map.Entry<String, List<ChunkMetaData>> entry : chunkMetadataListInChunkGroups.entrySet()) {
+          String deviceId = entry.getKey();
+          List<ChunkMetaData> chunkMetaDataList = entry.getValue();
+          writeMergedChunkGroup(chunkMetaDataList, deviceId, newFileReader, oldFileWriter);
         }
       }
-      oldFileWriter.endFile(new Schema(newFileWriter.getKnownSchema()));
+      oldFileWriter.endFile();
 
       updateHistoricalVersions(seqFile);
       seqFile.serialize();
@@ -186,12 +187,13 @@ class MergeFileTask {
     seqFile.setHistoricalVersions(newHistoricalVersions);
   }
 
-  private void writeMergedChunkGroup(ChunkGroupMetaData chunkGroupMetaData,
+  private void writeMergedChunkGroup(List<ChunkMetaData> chunkMetaDataList, String device,
       TsFileSequenceReader reader, TsFileIOWriter fileWriter)
       throws IOException {
-    fileWriter.startChunkGroup(chunkGroupMetaData.getDeviceID());
-    long version = chunkGroupMetaData.getVersion();
-    for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+    fileWriter.startChunkGroup(device);
+    // long version = chunkGroupMetaData.getVersion();
+    long version = 0;
+    for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       fileWriter.writeChunk(chunk, chunkMetaData);
       context.incTotalPointWritten(chunkMetaData.getNumOfPoints());
@@ -230,7 +232,7 @@ class MergeFileTask {
       }
     }
 
-    fileWriter.endFile(new Schema(fileWriter.getKnownSchema()));
+    fileWriter.endFile();
 
     updateHistoricalVersions(seqFile);
     seqFile.serialize();

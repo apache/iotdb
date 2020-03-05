@@ -46,7 +46,7 @@ public class IoTDBMetadataFetchIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      String[] insertSqls = new String[]{"SET STORAGE GROUP TO root.ln.wf01.wt01",
+      String[] insertSqls = new String[]{"SET STORAGE GROUP TO root.ln.wf01",
           "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
           "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
               + "compressor = SNAPPY, MAX_POINT_NUMBER = 3"};
@@ -87,16 +87,16 @@ public class IoTDBMetadataFetchIT {
           "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
       };
       String[] standards = new String[]{
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,SNAPPY,\n",
 
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,SNAPPY,\n"
+              + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,SNAPPY,\n",
 
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,SNAPPY,\n"
+              + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,SNAPPY,\n",
 
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-                  + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,SNAPPY,\n"
+                  + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,SNAPPY,\n",
 
           "",
 
@@ -134,7 +134,7 @@ public class IoTDBMetadataFetchIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       String[] sqls = new String[]{"show storage group"};
-      String[] standards = new String[]{"root.ln.wf01.wt01,\n"};
+      String[] standards = new String[]{"root.ln.wf01,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -390,14 +390,14 @@ public class IoTDBMetadataFetchIT {
             + "\t\t\t\t\"wt01\":{\n"
             + "\t\t\t\t\t\"temperature\":{\n"
             + "\t\t\t\t\t\t\"args\":\"{max_point_number=3}\",\n"
-            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf01.wt01\",\n"
+            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf01\",\n"
             + "\t\t\t\t\t\t\"DataType\":\"FLOAT\",\n"
             + "\t\t\t\t\t\t\"Compressor\":\"SNAPPY\",\n"
             + "\t\t\t\t\t\t\"Encoding\":\"RLE\"\n"
             + "\t\t\t\t\t},\n"
             + "\t\t\t\t\t\"status\":{\n"
             + "\t\t\t\t\t\t\"args\":\"{}\",\n"
-            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf01.wt01\",\n"
+            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf01\",\n"
             + "\t\t\t\t\t\t\"DataType\":\"BOOLEAN\",\n"
             + "\t\t\t\t\t\t\"Compressor\":\"SNAPPY\",\n"
             + "\t\t\t\t\t\t\"Encoding\":\"PLAIN\"\n"

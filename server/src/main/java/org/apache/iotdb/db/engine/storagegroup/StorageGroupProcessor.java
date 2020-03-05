@@ -78,6 +78,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -453,25 +454,18 @@ public class StorageGroupProcessor {
   }
 
   private Schema constructSchema(String storageGroupName) throws MetadataException {
-    List<MeasurementSchema> columnSchemaList =
-        MManager.getInstance().getStorageGroupSchema(storageGroupName);
-
-    Schema newSchema = new Schema();
-    for (MeasurementSchema measurementSchema : columnSchemaList) {
-      newSchema.registerMeasurement(measurementSchema);
-    }
-    return newSchema;
+    return SchemaUtils.constructSchema(storageGroupName);
   }
 
 
   /**
    * add a measurement into the schema.
    */
-  public void addMeasurement(String measurementId, TSDataType dataType, TSEncoding encoding,
+  public void addTimeseries(Path path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) {
     writeLock();
     try {
-      schema.registerMeasurement(new MeasurementSchema(measurementId, dataType, encoding,
+      schema.registerTimeseries(path, new MeasurementSchema(path.getMeasurement(), dataType, encoding,
           compressor, props));
     } finally {
       writeUnlock();
@@ -1116,7 +1110,7 @@ public class StorageGroupProcessor {
       Collection<TsFileResource> tsFileResources,
       String deviceId, String measurementId, QueryContext context, Filter timeFilter) {
 
-    MeasurementSchema mSchema = schema.getMeasurementSchema(measurementId);
+    MeasurementSchema mSchema = schema.getSeriesSchema(new Path(deviceId, measurementId));
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     long timeLowerBound = dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long

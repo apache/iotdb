@@ -22,53 +22,50 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
-import org.apache.iotdb.tsfile.file.metadata.TimeSeriesMetadataTest;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaDataTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class TestHelper {
 
   public static TsFileMetaData createSimpleFileMetaData() {
-    TsFileMetaData metaData = new TsFileMetaData(generateDeviceIndexMetadataMap(), new HashMap<>());
-    metaData.addMeasurementSchema(TestHelper.createSimpleMeasurementSchema());
-    metaData.addMeasurementSchema(TestHelper.createSimpleMeasurementSchema());
-    metaData.setCreatedBy(TsFileMetaDataTest.CREATED_BY);
+    TsFileMetaData metaData = new TsFileMetaData();
+    metaData.setDeviceMetaDataMap(generateDeviceMetaDataMap());
     return metaData;
   }
 
-  private static Map<String, TsDeviceMetadataIndex> generateDeviceIndexMetadataMap() {
-    Map<String, TsDeviceMetadataIndex> indexMap = new HashMap<>();
+  private static Map<String, Pair<Long, Integer>> generateDeviceMetaDataMap() {
+    Map<String, Pair<Long, Integer>> deviceMetaDataMap = new HashMap<>();
     for (int i = 0; i < 5; i++) {
-      indexMap.put("device_" + i, createSimpleDeviceIndexMetadata());
+      deviceMetaDataMap.put("d" + i, new Pair<Long, Integer>((long) i * 5, 5));
     }
-    return indexMap;
+    return deviceMetaDataMap;
   }
 
-  private static TsDeviceMetadataIndex createSimpleDeviceIndexMetadata() {
-    TsDeviceMetadataIndex index = new TsDeviceMetadataIndex();
-    index.setOffset(0);
-    index.setLen(10);
-    index.setStartTime(100);
-    index.setEndTime(200);
-    return index;
+  public static MeasurementSchema createSimpleMeasurementSchema(String measurementuid) {
+    return new MeasurementSchema(measurementuid, TSDataType.INT64, TSEncoding.RLE);
   }
-
-  public static MeasurementSchema createSimpleMeasurementSchema() {
-    return new MeasurementSchema(TimeSeriesMetadataTest.measurementUID,
-        TSDataType.INT64,
-        TSEncoding.RLE);
+  
+  public static TimeseriesMetaData createSimpleTimseriesMetaData(String measurementuid) {
+    Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
+    statistics.setEmpty(false);
+    TimeseriesMetaData timeseriesMetaData = new TimeseriesMetaData();
+    timeseriesMetaData.setMeasurementId(measurementuid);
+    timeseriesMetaData.setTSDataType(PageHeaderTest.DATA_TYPE);
+    timeseriesMetaData.setOffsetOfChunkMetaDataList(1000L);
+    timeseriesMetaData.setDataSizeOfChunkMetaDataList(200);
+    timeseriesMetaData.setStatistics(statistics);
+    return timeseriesMetaData;
   }
-
 
   public static PageHeader createTestPageHeader() {
     Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);
-    return new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE,
-        PageHeaderTest.COMPRESSED_SIZE, statistics);
+    return new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE, PageHeaderTest.COMPRESSED_SIZE,
+        statistics);
   }
 }

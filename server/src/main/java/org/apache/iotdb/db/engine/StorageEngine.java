@@ -444,7 +444,7 @@ public class StorageEngine implements IService {
       CompressionType compressor, Map<String, String> props) throws StorageEngineException {
     StorageGroupProcessor storageGroupProcessor = getProcessor(path.getDevice());
     storageGroupProcessor
-        .addMeasurement(path.getMeasurement(), dataType, encoding, compressor, props);
+        .addTimeseries(path, dataType, encoding, compressor, props);
   }
 
   public void addTimeSeries(Path path, TSDataType dataType, TSEncoding encoding)
@@ -453,7 +453,7 @@ public class StorageEngine implements IService {
     CompressionType compressor =
         TSFileDescriptor.getInstance().getConfig().getCompressor();
     storageGroupProcessor
-        .addMeasurement(path.getMeasurement(), dataType, encoding, compressor,
+        .addTimeseries(path, dataType, encoding, compressor,
             Collections.emptyMap());
   }
 

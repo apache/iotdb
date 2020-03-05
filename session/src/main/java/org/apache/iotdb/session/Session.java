@@ -207,7 +207,7 @@ public class Session {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
-    for (MeasurementSchema measurementSchema : rowBatch.measurements) {
+    for (MeasurementSchema measurementSchema : rowBatch.timeseries) {
       request.addToMeasurements(measurementSchema.getMeasurementId());
       request.addToTypes(measurementSchema.getType().ordinal());
     }
@@ -265,9 +265,9 @@ public class Session {
       }
     });
     Arrays.sort(rowBatch.timestamps, 0, rowBatch.batchSize);
-    for (int i = 0; i < rowBatch.measurements.size(); i++) {
+    for (int i = 0; i < rowBatch.timeseries.size(); i++) {
       rowBatch.values[i] =
-          sortList(rowBatch.values[i], rowBatch.measurements.get(i).getType(), index);
+          sortList(rowBatch.values[i], rowBatch.timeseries.get(i).getType(), index);
     }
   }
 
@@ -397,7 +397,7 @@ public class Session {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
-    for (MeasurementSchema measurementSchema : rowBatch.measurements) {
+    for (MeasurementSchema measurementSchema : rowBatch.timeseries) {
       request.addToMeasurements(measurementSchema.getMeasurementId());
       request.addToTypes(measurementSchema.getType().ordinal());
     }

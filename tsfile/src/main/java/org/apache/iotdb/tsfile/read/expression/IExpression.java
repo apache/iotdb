@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.expression;
 
-public interface IExpression{
+public interface IExpression {
 
   ExpressionType getType();
 

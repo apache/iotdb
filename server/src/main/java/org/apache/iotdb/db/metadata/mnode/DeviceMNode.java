@@ -16,24 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.controller;
+package org.apache.iotdb.db.metadata.mnode;
 
-import java.io.IOException;
+import java.util.Map;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.read.common.Chunk;
+public class DeviceMNode extends InternalMNode {
 
-import java.io.IOException;
-
-public interface IChunkLoader {
-
+  private static final long serialVersionUID = -1077855539671279042L;
   /**
-   * read all content of any chunk.
+   * Map for the schema in this device
    */
-  Chunk getChunk(ChunkMetaData chunkMetaData) throws IOException;
+  private Map<String, MeasurementSchema> schemaMap;
 
-  /**
-   * close the file reader.
-   */
-  void close() throws IOException;
+  public DeviceMNode(MNode parent, String name,
+      Map<String, MeasurementSchema> schemaMap) {
+    super(parent, name);
+    this.schemaMap = schemaMap;
+  }
+
+  public Map<String, MeasurementSchema> getSchemaMap() {
+    return schemaMap;
+  }
+
+  public void addSchema(MNode child) {
+    this.schemaMap.put(child.getName(), child.getSchema());
+  }
+
+  public void addMeasurementSchema(MeasurementSchema schema) {
+    this.schemaMap.put(schema.getMeasurementId(), schema);
+  }
+
 }

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -34,7 +35,8 @@ public class MemTableTestUtils {
 
   static {
     schema
-        .registerMeasurement(new MeasurementSchema(measurementId0, dataType0, TSEncoding.PLAIN));
+        .registerTimeseries(new Path(deviceId0, measurementId0), 
+            new MeasurementSchema(measurementId0, dataType0, TSEncoding.PLAIN));
   }
 
   public static void produceData(IMemTable iMemTable, long startTime, long endTime, String deviceId,

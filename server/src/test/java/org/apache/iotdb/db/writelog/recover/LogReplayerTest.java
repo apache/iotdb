@@ -75,8 +75,10 @@ public class LogReplayerTest {
 
     try {
       for (int i = 0; i < 5; i++) {
-        schema.registerMeasurement(
-            new MeasurementSchema("sensor" + i, TSDataType.INT64, TSEncoding.PLAIN));
+        for (int j = 0; j < 5; j++) {
+          schema.registerTimeseries(new Path(("device" + i), ("sensor" + j)),
+              new MeasurementSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN));
+        }
       }
 
       LogReplayer replayer = new LogReplayer(logNodePrefix, tsFile.getPath(), modFile,

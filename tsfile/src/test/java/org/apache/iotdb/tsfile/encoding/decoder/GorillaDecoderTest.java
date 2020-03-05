@@ -26,14 +26,18 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoder;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.iotdb.tsfile.encoding.decoder.DoublePrecisionDecoder;
+import org.apache.iotdb.tsfile.encoding.decoder.SinglePrecisionDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoder;
 
 public class GorillaDecoderTest {
 
@@ -197,8 +201,7 @@ public class GorillaDecoderTest {
     }
   }
 
-  private void testFloatLength(List<Float> valueList, boolean isDebug, int repeatCount)
-      throws Exception {
+  private void testFloatLength(List<Float> valueList, boolean isDebug, int repeatCount) throws Exception {
     Encoder encoder = new SinglePrecisionEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
@@ -226,8 +229,7 @@ public class GorillaDecoderTest {
     }
   }
 
-  private void testDoubleLength(List<Double> valueList, boolean isDebug, int repeatCount)
-      throws Exception {
+  private void testDoubleLength(List<Double> valueList, boolean isDebug, int repeatCount) throws Exception {
     Encoder encoder = new DoublePrecisionEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {

@@ -24,8 +24,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -40,6 +38,12 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 
 public class SchemaUtils {
@@ -56,9 +60,15 @@ public class SchemaUtils {
    * @return the schema of the FileNode named processorName.
    */
   public static Schema constructSchema(String processorName) throws MetadataException {
-    List<MeasurementSchema> columnSchemaList;
-    columnSchemaList = MManager.getInstance().getStorageGroupSchema(processorName);
-    return getSchemaFromColumnSchema(columnSchemaList);
+    Set<String> devices = MManager.getInstance().getDevices(processorName);
+    Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>();
+    for (String device : devices) {
+      Map<String, MeasurementSchema> schema = MManager.getInstance().getDeviceSchemaMap(device);
+      for (Map.Entry<String, MeasurementSchema> entry : schema.entrySet()) {
+        measurementSchemaMap.put(new Path(device, entry.getKey()), entry.getValue());
+      }
+    }
+    return getSchemaFromColumnSchema(measurementSchemaMap);
   }
 
   /**
@@ -67,10 +77,10 @@ public class SchemaUtils {
    * @param schemaList the schema of the columns in this file.
    * @return a Schema contains the provided schemas.
    */
-  private static Schema getSchemaFromColumnSchema(List<MeasurementSchema> schemaList) {
+  public static Schema getSchemaFromColumnSchema(Map<Path, MeasurementSchema> schemaMap) {
     Schema schema = new Schema();
-    for (MeasurementSchema measurementSchema : schemaList) {
-      schema.registerMeasurement(measurementSchema);
+    for (Map.Entry<Path, MeasurementSchema> entry : schemaMap.entrySet()) {
+      schema.registerTimeseries(entry.getKey(), entry.getValue());
     }
     return schema;
   }

@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.tsfile.file.header;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -44,10 +47,9 @@ public class ChunkHeader {
   // this field does not need to be serialized.
   private int serializedSize;
 
-  public ChunkHeader(String measurementID, int dataSize, TSDataType dataType,
-      CompressionType compressionType, TSEncoding encoding, int numOfPages) {
-    this(measurementID, dataSize, getSerializedSize(measurementID), dataType, compressionType,
-        encoding, numOfPages);
+  public ChunkHeader(String measurementID, int dataSize, TSDataType dataType, CompressionType compressionType,
+      TSEncoding encoding, int numOfPages) {
+    this(measurementID, dataSize, getSerializedSize(measurementID), dataType, compressionType, encoding, numOfPages);
   }
 
   private ChunkHeader(String measurementID, int dataSize, int headerSize, TSDataType dataType,
@@ -62,14 +64,14 @@ public class ChunkHeader {
   }
 
   public static int getSerializedSize(String measurementID) {
-    return Byte.BYTES   // marker
-        + Integer.BYTES   // measurementID length
+    return Byte.BYTES // marker
+        + Integer.BYTES // measurementID length
         + measurementID.getBytes(TSFileConfig.STRING_CHARSET).length // measurementID
-        + Integer.BYTES  // dataSize
+        + Integer.BYTES // dataSize
         + TSDataType.getSerializedSize() // dataType
         + CompressionType.getSerializedSize() // compressionType
         + TSEncoding.getSerializedSize() // encodingType
-        + Integer.BYTES;  // numOfPages
+        + Integer.BYTES; // numOfPages
   }
 
   /**
@@ -77,8 +79,7 @@ public class ChunkHeader {
    *
    * @param markerRead Whether the marker of the CHUNK_HEADER has been read
    */
-  public static ChunkHeader deserializeFrom(InputStream inputStream, boolean markerRead)
-      throws IOException {
+  public static ChunkHeader deserializeFrom(InputStream inputStream, boolean markerRead) throws IOException {
     if (!markerRead) {
       byte marker = (byte) inputStream.read();
       if (marker != MetaMarker.CHUNK_HEADER) {
@@ -98,15 +99,14 @@ public class ChunkHeader {
   /**
    * deserialize from TsFileInput.
    *
-   * @param input TsFileInput
-   * @param offset offset
+   * @param input           TsFileInput
+   * @param offset          offset
    * @param chunkHeaderSize the size of chunk's header
-   * @param markerRead read marker (boolean type)
+   * @param markerRead      read marker (boolean type)
    * @return CHUNK_HEADER object
    * @throws IOException IOException
    */
-  public static ChunkHeader deserializeFrom(TsFileInput input, long offset, int chunkHeaderSize,
-      boolean markerRead)
+  public static ChunkHeader deserializeFrom(TsFileInput input, long offset, int chunkHeaderSize, boolean markerRead)
       throws IOException {
     long offsetVar = offset;
     if (!markerRead) {
@@ -126,8 +126,7 @@ public class ChunkHeader {
     int numOfPages = ReadWriteIOUtils.readInt(buffer);
     CompressionType type = ReadWriteIOUtils.readCompressionType(buffer);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(buffer);
-    return new ChunkHeader(measurementID, dataSize, chunkHeaderSize, dataType, type, encoding,
-        numOfPages);
+    return new ChunkHeader(measurementID, dataSize, chunkHeaderSize, dataType, type, encoding, numOfPages);
   }
 
   public int getSerializedSize() {
@@ -197,10 +196,8 @@ public class ChunkHeader {
 
   @Override
   public String toString() {
-    return "CHUNK_HEADER{" + "measurementID='" + measurementID + '\'' + ", dataSize=" + dataSize
-        + ", dataType="
-        + dataType + ", compressionType=" + compressionType + ", encodingType=" + encodingType
-        + ", numOfPages="
+    return "CHUNK_HEADER{" + "measurementID='" + measurementID + '\'' + ", dataSize=" + dataSize + ", dataType="
+        + dataType + ", compressionType=" + compressionType + ", encodingType=" + encodingType + ", numOfPages="
         + numOfPages + ", serializedSize=" + serializedSize + '}';
   }
 }

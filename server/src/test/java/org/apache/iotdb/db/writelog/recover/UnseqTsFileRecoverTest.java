@@ -47,8 +47,8 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -88,9 +88,17 @@ public class UnseqTsFileRecoverTest {
 
     schema = new Schema();
     for (int i = 0; i < 10; i++) {
-      schema.registerMeasurement(new MeasurementSchema("sensor" + i, TSDataType.INT64,
-          TSEncoding.PLAIN));
+      for (int j = 0; j < 10; j++) {
+        schema.registerTimeseries(new Path(("device" + i), ("sensor" + j)),
+            new MeasurementSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN));
+      }
     }
+    schema.registerTimeseries(new Path(("device99"), ("sensor4")),
+        new MeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path(("device99"), ("sensor2")),
+        new MeasurementSchema("sensor2", TSDataType.INT64, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path(("device99"), ("sensor1")),
+        new MeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
     writer = new TsFileWriter(tsF, schema);
 
     TSRecord tsRecord = new TSRecord(100, "device99");

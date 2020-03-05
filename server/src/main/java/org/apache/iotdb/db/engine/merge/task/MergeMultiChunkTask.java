@@ -186,8 +186,8 @@ class MergeMultiChunkTask {
 
     RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(currTsFile);
     for (Path path : currMergingPaths) {
-      MeasurementSchema schema = resource.getSchema(path.getMeasurement());
-      mergeFileWriter.addSchema(schema);
+      MeasurementSchema schema = resource.getSchema(path);
+      mergeFileWriter.addSchema(path, schema);
     }
     // merge unseq data with seq data in this file or small chunks in this file into a larger chunk
     mergeFileWriter.startChunkGroup(deviceId);
@@ -275,7 +275,7 @@ class MergeMultiChunkTask {
       int pathIdx = metaListEntry.getPathId();
       boolean isLastChunk = !metaListEntry.hasNext();
       Path path = currMergingPaths.get(pathIdx);
-      MeasurementSchema measurementSchema = resource.getSchema(path.getMeasurement());
+      MeasurementSchema measurementSchema = resource.getSchema(path);
       IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
 
       boolean chunkOverflowed = MergeUtils.isChunkOverflowed(currTimeValuePairs[pathIdx], currMeta);

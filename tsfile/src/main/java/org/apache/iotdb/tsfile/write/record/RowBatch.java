@@ -39,14 +39,15 @@ public class RowBatch {
   /**
    * the list of measurement schemas for creating the row batch
    */
-  public List<MeasurementSchema> measurements;
+  public List<MeasurementSchema> timeseries;
 
   /**
    * timestamps in this row batch
    */
   public long[] timestamps;
   /**
-   * each object is a primitive type array, which represents values of one measurement
+   * each object is a primitive type array, which represents values of one
+   * measurement
    */
   public Object[] values;
   /**
@@ -64,28 +65,29 @@ public class RowBatch {
   private int valueOccupation = -1;
 
   /**
-   * Return a row batch with default specified row number.
-   * This is the standard constructor (all RowBatch should be the same size).
+   * Return a row batch with default specified row number. This is the standard
+   * constructor (all RowBatch should be the same size).
    *
-   * @param deviceId the name of the device specified to be written in
-   * @param measurements the list of measurement schemas for creating the row batch
+   * @param deviceId   the name of the device specified to be written in
+   * @param timeseries the list of measurement schemas for creating the row batch
    */
-  public RowBatch(String deviceId, List<MeasurementSchema> measurements) {
-    this(deviceId, measurements, DEFAULT_SIZE);
+  public RowBatch(String deviceId, List<MeasurementSchema> timeseries) {
+    this(deviceId, timeseries, DEFAULT_SIZE);
   }
 
   /**
-   * Return a row batch with the specified number of rows (maxBatchSize).
-   * Only call this constructor directly for testing purposes.
-   * RowBatch should normally always be default size.
+   * Return a row batch with the specified number of rows (maxBatchSize). Only
+   * call this constructor directly for testing purposes. RowBatch should normally
+   * always be default size.
    *
-   * @param deviceId the name of the device specified to be written in
-   * @param measurements the list of measurement schemas for creating the row batch
+   * @param deviceId     the name of the device specified to be written in
+   * @param timeseries   the list of measurement schemas for creating the row
+   *                     batch
    * @param maxBatchSize the maximum number of rows for this row batch
    */
-  public RowBatch(String deviceId, List<MeasurementSchema> measurements, int maxBatchSize) {
+  public RowBatch(String deviceId, List<MeasurementSchema> timeseries, int maxBatchSize) {
     this.deviceId = deviceId;
-    this.measurements = measurements;
+    this.timeseries = timeseries;
     this.maxBatchSize = maxBatchSize;
 
     createColumns();
@@ -110,32 +112,31 @@ public class RowBatch {
   private void createColumns() {
     // create timestamp column
     timestamps = new long[maxBatchSize];
-    values = new Object[measurements.size()];
+    values = new Object[timeseries.size()];
     // create value columns
-    for (int i = 0; i < measurements.size(); i++) {
-      TSDataType dataType = measurements.get(i).getType();
+    for (int i = 0; i < timeseries.size(); i++) {
+      TSDataType dataType = timeseries.get(i).getType();
       switch (dataType) {
-        case INT32:
-          values[i] = new int[maxBatchSize];
-          break;
-        case INT64:
-          values[i] = new long[maxBatchSize];
-          break;
-        case FLOAT:
-          values[i] = new float[maxBatchSize];
-          break;
-        case DOUBLE:
-          values[i] = new double[maxBatchSize];
-          break;
-        case BOOLEAN:
-          values[i] = new boolean[maxBatchSize];
-          break;
-        case TEXT:
-          values[i] = new Binary[maxBatchSize];
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", dataType));
+      case INT32:
+        values[i] = new int[maxBatchSize];
+        break;
+      case INT64:
+        values[i] = new long[maxBatchSize];
+        break;
+      case FLOAT:
+        values[i] = new float[maxBatchSize];
+        break;
+      case DOUBLE:
+        values[i] = new double[maxBatchSize];
+        break;
+      case BOOLEAN:
+        values[i] = new boolean[maxBatchSize];
+        break;
+      case TEXT:
+        values[i] = new Binary[maxBatchSize];
+        break;
+      default:
+        throw new UnSupportedDataTypeException(String.format("Data type %s is not supported.", dataType));
       }
     }
   }
@@ -149,32 +150,32 @@ public class RowBatch {
    */
   public int getValueBytesSize() {
     valueOccupation = 0;
-    for (int i = 0; i < measurements.size(); i++) {
-      switch (measurements.get(i).getType()) {
-        case BOOLEAN:
-          valueOccupation += batchSize;
-          break;
-        case INT32:
-          valueOccupation += batchSize * 4;
-          break;
-        case INT64:
-          valueOccupation += batchSize * 8;
-          break;
-        case FLOAT:
-          valueOccupation += batchSize * 4;
-          break;
-        case DOUBLE:
-          valueOccupation += batchSize * 8;
-          break;
-        case TEXT:
-          valueOccupation += batchSize * 4;
-          for (Binary value : (Binary[]) values[i]) {
-            valueOccupation += value.getLength();
-          }
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", measurements.get(i).getType()));
+    for (int i = 0; i < timeseries.size(); i++) {
+      switch (timeseries.get(i).getType()) {
+      case BOOLEAN:
+        valueOccupation += batchSize;
+        break;
+      case INT32:
+        valueOccupation += batchSize * 4;
+        break;
+      case INT64:
+        valueOccupation += batchSize * 8;
+        break;
+      case FLOAT:
+        valueOccupation += batchSize * 4;
+        break;
+      case DOUBLE:
+        valueOccupation += batchSize * 8;
+        break;
+      case TEXT:
+        valueOccupation += batchSize * 4;
+        for (Binary value : (Binary[]) values[i]) {
+          valueOccupation += value.getLength();
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", timeseries.get(i).getType()));
       }
     }
     return valueOccupation;

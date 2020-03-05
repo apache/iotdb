@@ -50,15 +50,15 @@ public class IoTDBVersionIT {
         Statement statement = connection.createStatement()){
       statement.execute("SET STORAGE GROUP TO root.versionTest1");
       statement.execute("SET STORAGE GROUP TO root.versionTest2");
-      statement.execute("CREATE TIMESERIES root.versionTest1.s0"
+      statement.execute("CREATE TIMESERIES root.versionTest1.d0.s0"
           + " WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.versionTest2.s0"
+      statement.execute("CREATE TIMESERIES root.versionTest2.d0.s0"
           + " WITH DATATYPE=INT32,ENCODING=PLAIN");
 
       // insert and flush enough times to make the version file persist
       for (int i = 0; i < SimpleFileVersionController.getSaveInterval() + 1; i ++) {
         statement.execute(String
-            .format("INSERT INTO root.versionTest1(timestamp, s0) VALUES (%d, %d)", i*100, i));
+            .format("INSERT INTO root.versionTest1.d0(timestamp, s0) VALUES (%d, %d)", i*100, i));
         statement.execute("FLUSH");
         statement.execute("MERGE");
       }

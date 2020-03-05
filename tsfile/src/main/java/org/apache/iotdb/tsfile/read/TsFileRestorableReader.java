@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.tsfile.read;
 
+import java.io.IOException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 public class TsFileRestorableReader extends TsFileSequenceReader {
 
@@ -35,11 +34,13 @@ public class TsFileRestorableReader extends TsFileSequenceReader {
     this(file, true);
   }
 
-  public TsFileRestorableReader(String file, boolean autoRepair)
-      throws IOException {
-    //if autoRepair == true, then it means the file is likely broken, so we can not read metadata
-    //otherwise, the user may consider that either the file is complete, or the user can accept an
-    // Exception when reading broken data. Therefore, we set loadMetadata as true in this case.
+  public TsFileRestorableReader(String file, boolean autoRepair) throws IOException {
+    // if autoRepair == true, then it means the file is likely broken, so we can not
+    // read metadata
+    // otherwise, the user may consider that either the file is complete, or the
+    // user can accept an
+    // Exception when reading broken data. Therefore, we set loadMetadata as true in
+    // this case.
     super(file, !autoRepair);
     if (autoRepair) {
       try {
@@ -60,7 +61,8 @@ public class TsFileRestorableReader extends TsFileSequenceReader {
     if (!isComplete()) {
       // Try to close it
       logger.info("File {} has no correct tail magic, try to repair...", file);
-      RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(file));
+      RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(
+          FSFactoryProducer.getFSFactory().getFile(file));
       TsFileWriter writer = new TsFileWriter(rWriter);
       // This writes the right magic string
       writer.close();

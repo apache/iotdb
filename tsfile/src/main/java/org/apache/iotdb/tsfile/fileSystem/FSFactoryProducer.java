@@ -54,7 +54,6 @@ public class FSFactoryProducer {
     return fsFactory;
   }
 
-
   public static FileInputFactory getFileInputFactory() {
     return fileInputFactory;
   }

@@ -37,9 +37,9 @@ import org.junit.Test;
 public class IoTDBTimeZoneIT {
 
   private static String[] insertSqls = new String[]{"SET STORAGE GROUP TO root.timezone",
-      "CREATE TIMESERIES root.timezone.tz1 WITH DATATYPE = INT32, ENCODING = PLAIN",};
+      "CREATE TIMESERIES root.timezone.d0.tz1 WITH DATATYPE = INT32, ENCODING = PLAIN",};
   private final String TIMESTAMP_STR = "Time";
-  private final String tz1 = "root.timezone.tz1";
+  private final String tz1 = "root.timezone.d0.tz1";
 
   // private boolean testFlag = TestUtils.testFlag;
   private String[] retArray = new String[]{"1514775603000,4", "1514779200000,1", "1514779201000,2",
@@ -84,7 +84,7 @@ public class IoTDBTimeZoneIT {
             "root", "root");
         Statement statement = connection.createStatement()) {
 
-      String insertSQLTemplate = "insert into root.timezone(timestamp,tz1) values(%s,%s)";
+      String insertSQLTemplate = "insert into root.timezone.d0(timestamp,tz1) values(%s,%s)";
       connection.setTimeZone("+08:00");
       // 1514779200000 = 2018-1-1T12:00:00+08:00
       statement.execute(String.format(insertSQLTemplate, "1514779200000", "1"));

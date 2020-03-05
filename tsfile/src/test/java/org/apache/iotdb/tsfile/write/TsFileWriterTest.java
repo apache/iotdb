@@ -80,7 +80,7 @@ public class TsFileWriterTest {
     try {
       //String measurementId, TSDataType type, TSEncoding encoding,
       //      CompressionType compressionType
-      writer.addMeasurement(
+      writer.addTimeseries(new Path("d1.s1"),
           new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
       e.printStackTrace();
@@ -89,16 +89,25 @@ public class TsFileWriterTest {
     try {
       //String measurementId, TSDataType type, TSEncoding encoding,
       //      CompressionType compressionType
-      writer.addMeasurement(
+      writer.addTimeseries(new Path("d1.s1"),
           new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
-      Assert.assertEquals("given measurement has exists! s1", e.getMessage());
+      Assert.assertEquals("given timeseries has exists! d1.s1", e.getMessage());
     }
     try {
       //String measurementId, TSDataType type, TSEncoding encoding,
       //      CompressionType compressionType
-      writer.addMeasurement(
+      writer.addTimeseries(new Path("d1.s2"),
           new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY));
+    } catch (WriteProcessException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    try {
+      for(int i = 2; i < 3; i++) {
+        writer.addTimeseries(new Path("d"+ i + ".s1"),
+            new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
+      }
     } catch (WriteProcessException e) {
       e.printStackTrace();
       fail(e.getMessage());

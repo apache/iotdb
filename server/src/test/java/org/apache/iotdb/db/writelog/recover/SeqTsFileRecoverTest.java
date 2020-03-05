@@ -26,7 +26,10 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -51,8 +54,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
@@ -90,10 +93,16 @@ public class SeqTsFileRecoverTest {
     tsF.getParentFile().mkdirs();
 
     schema = new Schema();
+    Map<String, MeasurementSchema> template = new HashMap<>();
     for (int i = 0; i < 10; i++) {
-      schema.registerMeasurement(new MeasurementSchema("sensor" + i, TSDataType.INT64,
+      template.put("sensor" + i, new MeasurementSchema("sensor" + i, TSDataType.INT64,
           TSEncoding.PLAIN));
     }
+    schema.registerDeviceTemplate("template1", template);
+    for (int i = 0; i < 10; i++) {
+      schema.registerDevice("device" + i, "template1");
+    }
+    schema.registerDevice("device99", "template1");
     writer = new TsFileWriter(tsF, schema);
 
     TSRecord tsRecord = new TSRecord(100, "device99");
@@ -130,6 +139,7 @@ public class SeqTsFileRecoverTest {
       }
       node.notifyStartFlush();
     }
+    
     resource = new TsFileResource(tsF);
   }
 
@@ -197,7 +207,7 @@ public class SeqTsFileRecoverTest {
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     RestorableTsFileIOWriter writer = performer.recover();
     assertTrue(writer.canWrite());
-    writer.endFile(schema);
+    writer.endFile();
 
     assertEquals(2, (long) resource.getStartTimeMap().get("device99"));
     assertEquals(100, (long) resource.getEndTimeMap().get("device99"));

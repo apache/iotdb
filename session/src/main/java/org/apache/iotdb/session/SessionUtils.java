@@ -39,8 +39,8 @@ public class SessionUtils {
 
   public static ByteBuffer getValueBuffer(RowBatch rowBatch) {
     ByteBuffer valueBuffer = ByteBuffer.allocate(rowBatch.getValueBytesSize());
-    for (int i = 0; i < rowBatch.measurements.size(); i++) {
-      TSDataType dataType = rowBatch.measurements.get(i).getType();
+    for (int i = 0; i < rowBatch.timeseries.size(); i++) {
+      TSDataType dataType = rowBatch.timeseries.get(i).getType();
       switch (dataType) {
         case INT32:
           int[] intValues = (int[]) rowBatch.values[i];

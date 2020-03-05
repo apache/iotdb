@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -33,7 +34,7 @@ import java.io.File;
 /**
  * An example of writing data with TSRecord to TsFile
  * It uses the interface:
- * public void addMeasurement(MeasurementSchema MeasurementSchema) throws WriteProcessException
+ * public void addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
  */
 public class TsFileWriteWithTSRecord {
 
@@ -47,12 +48,16 @@ public class TsFileWriteWithTSRecord {
       TsFileWriter tsFileWriter = new TsFileWriter(f);
 
       // add measurements into file schema
-      tsFileWriter
-          .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.RLE));
-      tsFileWriter
-          .addMeasurement(new MeasurementSchema("sensor_2", TSDataType.INT64, TSEncoding.RLE));
-      tsFileWriter
-          .addMeasurement(new MeasurementSchema("sensor_3", TSDataType.INT64, TSEncoding.RLE));
+      
+      for (int i = 0; i < 4; i++) {
+        // add measurements into file schema
+        tsFileWriter.addTimeseries(new Path("device_" + i, "sensor_1"),
+            new MeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.RLE));
+        tsFileWriter.addTimeseries(new Path("device_" + i, "sensor_2"),
+            new MeasurementSchema("sensor_2", TSDataType.INT64, TSEncoding.RLE));
+        tsFileWriter.addTimeseries(new Path("device_" + i, "sensor_3"),
+            new MeasurementSchema("sensor_3", TSDataType.INT64, TSEncoding.RLE));
+      }
 
       // construct TSRecord
       for (int i = 0; i < 100; i++) {

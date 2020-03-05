@@ -45,13 +45,9 @@ public class TsFileMetaDataCache {
   private AtomicLong cacheRequestNum = new AtomicLong();
 
   /**
-   * estimated size of a deviceIndexMap entry in TsFileMetaData.
+   * estimated size of a deviceMetaDataMap entry in TsFileMetaData.
    */
   private long deviceIndexMapEntrySize = 0;
-  /**
-   * estimated size of measurementSchema entry in TsFileMetaData.
-   */
-  private long measurementSchemaEntrySize = 0;
   /**
    * estimated size of version and CreateBy in TsFileMetaData.
    */
@@ -61,17 +57,19 @@ public class TsFileMetaDataCache {
     cache = new LRULinkedHashMap<TsFileResource, TsFileMetaData>(MEMORY_THRESHOLD_IN_B, true) {
       @Override
       protected long calEntrySize(TsFileResource key, TsFileMetaData value) {
-        if (deviceIndexMapEntrySize == 0 && value.getDeviceMap().size() > 0) {
+        if (deviceIndexMapEntrySize == 0 && value.getDeviceMetaDataMap() != null
+            && value.getDeviceMetaDataMap().size() > 0) {
           deviceIndexMapEntrySize = RamUsageEstimator
-              .sizeOf(value.getDeviceMap().entrySet().iterator().next());
+              .sizeOf(value.getDeviceMetaDataMap().entrySet().iterator().next());
         }
-        if (measurementSchemaEntrySize == 0 && value.getMeasurementSchema().size() > 0) {
-          measurementSchemaEntrySize = RamUsageEstimator
-              .sizeOf(value.getMeasurementSchema().entrySet().iterator().next());
+        long valueSize;
+        if (value.getDeviceMetaDataMap() == null) {
+          valueSize = versionAndCreatebySize;
         }
-        long valueSize = value.getDeviceMap().size() * deviceIndexMapEntrySize
-            + measurementSchemaEntrySize * value.getMeasurementSchema().size()
+        else {
+          valueSize = value.getDeviceMetaDataMap().size() * deviceIndexMapEntrySize
             + versionAndCreatebySize;
+        }
         return key.getFile().getPath().length() * 2 + valueSize;
       }
     };

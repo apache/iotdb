@@ -23,9 +23,9 @@ import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SU
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -37,13 +37,11 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -163,18 +161,14 @@ public class TsFileRecoverPerformer {
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(tsFileResource.getFile().getAbsolutePath(), false)) {
       TsFileMetaData metaData = reader.readFileMetadata();
-      List<TsDeviceMetadataIndex> deviceMetadataIndexList = new ArrayList<>(
-          metaData.getDeviceMap().values());
-      for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
-        TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
-        for (ChunkGroupMetaData chunkGroupMetaData : deviceMetadata
-            .getChunkGroupMetaDataList()) {
-          for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-            tsFileResource.updateStartTime(chunkGroupMetaData.getDeviceID(),
-                chunkMetaData.getStartTime());
-            tsFileResource
-                .updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
-          }
+      
+      Map<String, Pair<Long, Integer>> deviceMetaDataMap = metaData.getDeviceMetaDataMap();
+      for (Map.Entry<String, Pair<Long, Integer>>  entry: deviceMetaDataMap.entrySet()) {
+        String deviceId = entry.getKey();
+        List<ChunkMetaData> chunkMetadataList = reader.readAllChunkMetadatas();
+        for (ChunkMetaData chunkMetaData : chunkMetadataList) {
+          tsFileResource.updateStartTime(deviceId, chunkMetaData.getStartTime());
+          tsFileResource.updateEndTime(deviceId, chunkMetaData.getEndTime());
         }
       }
     }
@@ -182,13 +176,16 @@ public class TsFileRecoverPerformer {
     tsFileResource.serialize();
   }
 
+
   private void recoverResourceFromWriter(RestorableTsFileIOWriter restorableTsFileIOWriter) {
-    for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter
-        .getChunkGroupMetaDatas()) {
-      for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-        tsFileResource
-            .updateStartTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
-        tsFileResource.updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
+    Map<String, List<ChunkMetaData>> deviceChunkMetaDataMap =
+        restorableTsFileIOWriter.getDeviceChunkMetadataMap();
+    for (Map.Entry<String, List<ChunkMetaData>> entry : deviceChunkMetaDataMap.entrySet()) {
+      String deviceId = entry.getKey();
+      List<ChunkMetaData> chunkMetaDataList = entry.getValue();
+      for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
+        tsFileResource.updateStartTime(deviceId, chunkMetaData.getStartTime());
+        tsFileResource.updateEndTime(deviceId, chunkMetaData.getEndTime());
       }
     }
     long fileVersion =
@@ -214,7 +211,7 @@ public class TsFileRecoverPerformer {
 
       if (!isLastFile || isLastFile && tsFileResource.isCloseFlagSet()) {
         // end the file if it is not the last file or it is closed before crush
-        restorableTsFileIOWriter.endFile(schema);
+        restorableTsFileIOWriter.endFile();
         tsFileResource.cleanCloseFlag();
       }
       // otherwise this file is not closed before crush, do nothing so we can continue writing

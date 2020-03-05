@@ -19,43 +19,26 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
-
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.BloomFilter;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import java.util.Set;
 
 /**
  * TSFileMetaData collects all metadata info and saves in its data structure.
  */
 public class TsFileMetaData {
 
-  private Map<String, TsDeviceMetadataIndex> deviceIndexMap = new HashMap<>();
-
-  /**
-   * TSFile schema for this file. This schema contains metadata for all the measurements.
-   */
-  private Map<String, MeasurementSchema> measurementSchema = new HashMap<>();
-
-  /**
-   * String for application that wrote this file. This should be in the format [Application] version
-   * [App Version](build [App Build Hash]). e.g. impala version 1.0 (build SHA-1_hash_code)
-   */
-  private String createdBy;
-
-  // fields below are IoTDB extensions and they does not affect TsFile's stand-alone functionality
+  // fields below are IoTDB extensions and they does not affect TsFile's
+  // stand-alone functionality
   private int totalChunkNum;
   // invalid means a chunk has been rewritten by merge and the chunk's data is in
   // another new chunk
@@ -64,80 +47,11 @@ public class TsFileMetaData {
   // bloom filter
   private BloomFilter bloomFilter;
 
+  private Map<String, Pair<Long, Integer>> deviceMetaDataMap;
+  
+  private Map<Long, Long> versionInfo;
+
   public TsFileMetaData() {
-    //do nothing
-  }
-
-  /**
-   * construct function for TsFileMetaData.
-   *
-   * @param measurementSchema - time series info list
-   */
-  public TsFileMetaData(Map<String, TsDeviceMetadataIndex> deviceMap,
-      Map<String, MeasurementSchema> measurementSchema) {
-    this.deviceIndexMap = deviceMap;
-    this.measurementSchema = measurementSchema;
-  }
-
-  /**
-   * deserialize data from the inputStream.
-   *
-   * @param inputStream input stream used to deserialize
-   * @return an instance of TsFileMetaData
-   */
-  public static TsFileMetaData deserializeFrom(InputStream inputStream, boolean isOldVersion)
-      throws IOException {
-    TsFileMetaData fileMetaData = new TsFileMetaData();
-
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    if (size > 0) {
-      Map<String, TsDeviceMetadataIndex> deviceMap = new HashMap<>();
-      String key;
-      TsDeviceMetadataIndex value;
-      for (int i = 0; i < size; i++) {
-        key = ReadWriteIOUtils.readString(inputStream);
-        value = TsDeviceMetadataIndex.deserializeFrom(inputStream);
-        deviceMap.put(key, value);
-      }
-      fileMetaData.deviceIndexMap = deviceMap;
-    }
-
-    size = ReadWriteIOUtils.readInt(inputStream);
-    if (size > 0) {
-      fileMetaData.measurementSchema = new HashMap<>();
-      String key;
-      MeasurementSchema value;
-      for (int i = 0; i < size; i++) {
-        key = ReadWriteIOUtils.readString(inputStream);
-        value = MeasurementSchema.deserializeFrom(inputStream);
-        fileMetaData.measurementSchema.put(key, value);
-      }
-    }
-
-    if (isOldVersion) {
-      // skip the current version of file metadata
-      ReadWriteIOUtils.readInt(inputStream);
-    }
-
-    if (ReadWriteIOUtils.readIsNull(inputStream)) {
-      fileMetaData.createdBy = ReadWriteIOUtils.readString(inputStream);
-    }
-    if (isOldVersion) {
-      fileMetaData.totalChunkNum = 0;
-      fileMetaData.invalidChunkNum = 0;
-    } else {
-      fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(inputStream);
-      fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(inputStream);
-    }
-    // read bloom filter
-    if (!ReadWriteIOUtils.checkIfMagicString(inputStream)) {
-      byte[] bytes = ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream);
-      int filterSize = ReadWriteIOUtils.readInt(inputStream);
-      int hashFunctionSize = ReadWriteIOUtils.readInt(inputStream);
-      fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize, hashFunctionSize);
-    }
-
-    return fileMetaData;
   }
 
   /**
@@ -146,50 +60,23 @@ public class TsFileMetaData {
    * @param buffer -buffer use to deserialize
    * @return -a instance of TsFileMetaData
    */
-  public static TsFileMetaData deserializeFrom(ByteBuffer buffer, boolean isOldVersion)
-      throws IOException {
+  public static TsFileMetaData deserializeFrom(ByteBuffer buffer) throws IOException {
     TsFileMetaData fileMetaData = new TsFileMetaData();
-
-    int size = ReadWriteIOUtils.readInt(buffer);
-    if (size > 0) {
-      Map<String, TsDeviceMetadataIndex> deviceMap = new HashMap<>();
-      String key;
-      TsDeviceMetadataIndex value;
-      for (int i = 0; i < size; i++) {
-        key = ReadWriteIOUtils.readString(buffer);
-        value = TsDeviceMetadataIndex.deserializeFrom(buffer);
-        deviceMap.put(key, value);
+    int deviceNum = ReadWriteIOUtils.readInt(buffer);
+    if (deviceNum > 0) {
+      Map<String, Pair<Long, Integer>> deviceMetaDataMap = new HashMap<>();
+      for (int i = 0; i < deviceNum; i++) {
+        String deviceId = ReadWriteIOUtils.readString(buffer);
+        long offset = ReadWriteIOUtils.readLong(buffer);
+        int length = ReadWriteIOUtils.readInt(buffer);
+        deviceMetaDataMap.put(deviceId, new Pair<>(offset, length));
       }
-      fileMetaData.deviceIndexMap = deviceMap;
+      fileMetaData.setDeviceMetaDataMap(deviceMetaDataMap);
     }
 
-    size = ReadWriteIOUtils.readInt(buffer);
-    if (size > 0) {
-      fileMetaData.measurementSchema = new HashMap<>();
-      String key;
-      MeasurementSchema value;
-      for (int i = 0; i < size; i++) {
-        key = ReadWriteIOUtils.readString(buffer);
-        value = MeasurementSchema.deserializeFrom(buffer);
-        fileMetaData.measurementSchema.put(key, value);
-      }
-    }
-
-    if (isOldVersion) {
-      // skip the current version of file metadata
-      ReadWriteIOUtils.readInt(buffer);
-    }
-
-    if (ReadWriteIOUtils.readIsNull(buffer)) {
-      fileMetaData.createdBy = ReadWriteIOUtils.readString(buffer);
-    }
-    if (isOldVersion) {
-      fileMetaData.totalChunkNum = 0;
-      fileMetaData.invalidChunkNum = 0;
-    } else {
-      fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
-      fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
-    }
+    fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
+    fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
+    
     // read bloom filter
     if (buffer.hasRemaining()) {
       byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer).array();
@@ -206,67 +93,6 @@ public class TsFileMetaData {
   }
 
   /**
-   * add time series metadata to list. THREAD NOT SAFE
-   *
-   * @param measurementSchema series metadata to add
-   */
-  public void addMeasurementSchema(MeasurementSchema measurementSchema) {
-    this.measurementSchema.put(measurementSchema.getMeasurementId(), measurementSchema);
-  }
-
-  @Override
-  public String toString() {
-    return "TsFileMetaData{" + "deviceIndexMap=" + deviceIndexMap + ", measurementSchema="
-        + measurementSchema + ", createdBy='" + createdBy + '\'' + '}';
-  }
-
-  public String getCreatedBy() {
-    return createdBy;
-  }
-
-  public void setCreatedBy(String createdBy) {
-    this.createdBy = createdBy;
-  }
-
-  public Map<String, TsDeviceMetadataIndex> getDeviceMap() {
-    return deviceIndexMap;
-  }
-
-  public void setDeviceMap(Map<String, TsDeviceMetadataIndex> deviceMap) {
-    this.deviceIndexMap = deviceMap;
-  }
-
-  public boolean containsDevice(String deltaObjUid) {
-    return this.deviceIndexMap.containsKey(deltaObjUid);
-  }
-
-  public TsDeviceMetadataIndex getDeviceMetadataIndex(String deviceUid) {
-    return this.deviceIndexMap.get(deviceUid);
-  }
-
-  public boolean containsMeasurement(String measurement) {
-    return measurementSchema.containsKey(measurement);
-  }
-
-  /**
-   * return the type of the measurement.
-   *
-   * @param measurement -measurement
-   * @return -type of the measurement
-   */
-  public TSDataType getType(String measurement) {
-    if (containsMeasurement(measurement)) {
-      return measurementSchema.get(measurement).getType();
-    } else {
-      return null;
-    }
-  }
-
-  public Map<String, MeasurementSchema> getMeasurementSchema() {
-    return measurementSchema;
-  }
-
-  /**
    * use the given outputStream to serialize.
    *
    * @param outputStream -output stream to determine byte length
@@ -274,24 +100,16 @@ public class TsFileMetaData {
    */
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
-
-    byteLen += ReadWriteIOUtils.write(deviceIndexMap.size(), outputStream);
-    for (Map.Entry<String, TsDeviceMetadataIndex> entry : deviceIndexMap.entrySet()) {
-      byteLen += ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      byteLen += entry.getValue().serializeTo(outputStream);
+    if (deviceMetaDataMap != null) {
+      byteLen += ReadWriteIOUtils.write(deviceMetaDataMap.size(), outputStream);
+      for (Map.Entry<String, Pair<Long, Integer>> entry : deviceMetaDataMap.entrySet()) {
+        byteLen += ReadWriteIOUtils.write(entry.getKey(), outputStream);
+        byteLen += ReadWriteIOUtils.write(entry.getValue().left, outputStream);
+        byteLen += ReadWriteIOUtils.write(entry.getValue().right, outputStream);
+      }
+    } else {
+      byteLen += ReadWriteIOUtils.write(0, outputStream);
     }
-
-    byteLen += ReadWriteIOUtils.write(measurementSchema.size(), outputStream);
-    for (Map.Entry<String, MeasurementSchema> entry : measurementSchema.entrySet()) {
-      byteLen += ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      byteLen += entry.getValue().serializeTo(outputStream);
-    }
-
-    byteLen += ReadWriteIOUtils.writeIsNotNull(createdBy, outputStream);
-    if (createdBy != null) {
-      byteLen += ReadWriteIOUtils.write(createdBy, outputStream);
-    }
-
     byteLen += ReadWriteIOUtils.write(totalChunkNum, outputStream);
     byteLen += ReadWriteIOUtils.write(invalidChunkNum, outputStream);
 
@@ -301,14 +119,14 @@ public class TsFileMetaData {
   /**
    * use the given outputStream to serialize bloom filter.
    *
-   * @param outputStream -output stream to determine byte length
+   * @param outputStream      -output stream to determine byte length
+   * @param schemaDescriptors
    * @return -byte length
    */
-  public int serializeBloomFilter(OutputStream outputStream,
-      List<ChunkGroupMetaData> chunkGroupMetaDataList)
+  public int serializeBloomFilter(OutputStream outputStream, Set<Path> paths)
       throws IOException {
     int byteLen = 0;
-    BloomFilter filter = buildBloomFilter(chunkGroupMetaDataList);
+    BloomFilter filter = buildBloomFilter(paths);
 
     byte[] bytes = filter.serialize();
     byteLen += ReadWriteIOUtils.write(bytes.length, outputStream);
@@ -320,69 +138,19 @@ public class TsFileMetaData {
   }
 
   /**
-   * get all path in this tsfile
-   *
-   * @return all path in set
-   */
-  private List<String> getAllPath(List<ChunkGroupMetaData> chunkGroupMetaDataList) {
-    List<String> res = new ArrayList<>();
-    for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
-      String deviceId = chunkGroupMetaData.getDeviceID();
-      for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-        res.add(deviceId + PATH_SEPARATOR + chunkMetaData.getMeasurementUid());
-      }
-    }
-
-    return res;
-  }
-
-  /**
    * build bloom filter
    *
+   * @param schemaDescriptors
    * @return bloom filter
    */
-  private BloomFilter buildBloomFilter(List<ChunkGroupMetaData> chunkGroupMetaDataList) {
-    List<String> paths = getAllPath(chunkGroupMetaDataList);
+  private BloomFilter buildBloomFilter(Set<Path> paths) {
     BloomFilter bloomFilter = BloomFilter
         .getEmptyBloomFilter(TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(),
             paths.size());
-    for (String path : paths) {
-      bloomFilter.add(path);
+    for (Path path : paths) {
+      bloomFilter.add(path.toString());
     }
     return bloomFilter;
-  }
-
-
-  /**
-   * use the given buffer to serialize.
-   *
-   * @param buffer -buffer to determine byte length
-   * @return -byte length
-   */
-  public int serializeTo(ByteBuffer buffer) throws IOException {
-    int byteLen = 0;
-
-    byteLen += ReadWriteIOUtils.write(deviceIndexMap.size(), buffer);
-    for (Map.Entry<String, TsDeviceMetadataIndex> entry : deviceIndexMap.entrySet()) {
-      byteLen += ReadWriteIOUtils.write(entry.getKey(), buffer);
-      byteLen += entry.getValue().serializeTo(buffer);
-    }
-
-    byteLen += ReadWriteIOUtils.write(measurementSchema.size(), buffer);
-    for (Map.Entry<String, MeasurementSchema> entry : measurementSchema.entrySet()) {
-      byteLen += ReadWriteIOUtils.write(entry.getKey(), buffer);
-      byteLen += entry.getValue().serializeTo(buffer);
-    }
-
-    byteLen += ReadWriteIOUtils.writeIsNotNull(createdBy, buffer);
-    if (createdBy != null) {
-      byteLen += ReadWriteIOUtils.write(createdBy, buffer);
-    }
-
-    byteLen += ReadWriteIOUtils.write(totalChunkNum, buffer);
-    byteLen += ReadWriteIOUtils.write(invalidChunkNum, buffer);
-
-    return byteLen;
   }
 
   public int getTotalChunkNum() {
@@ -401,23 +169,16 @@ public class TsFileMetaData {
     this.invalidChunkNum = invalidChunkNum;
   }
 
-  public List<MeasurementSchema> getMeasurementSchemaList() {
-    return new ArrayList<MeasurementSchema>(measurementSchema.values());
+  public Map<String, Pair<Long, Integer>> getDeviceMetaDataMap() {
+    return deviceMetaDataMap;
   }
 
-  /**
-   * This function is just for upgrade.
-   */
-  public void setDeviceIndexMap(
-      Map<String, TsDeviceMetadataIndex> deviceIndexMap) {
-    this.deviceIndexMap = deviceIndexMap;
+  public void setDeviceMetaDataMap(Map<String, Pair<Long, Integer>> deviceMetaDataMap) {
+    this.deviceMetaDataMap = deviceMetaDataMap;
   }
 
-  /**
-   * This function is just for upgrade.
-   */
-  public void setMeasurementSchema(
-      Map<String, MeasurementSchema> measurementSchema) {
-    this.measurementSchema = measurementSchema;
+  public void setVersionInfo(Map<Long, Long> versionInfo) {
+    this.versionInfo = versionInfo;
   }
+
 }

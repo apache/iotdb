@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -110,7 +111,6 @@ import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -398,7 +398,8 @@ public class PlanExecutor implements IPlanExecutor {
         new Path(COLUMN_TIMESERIES_COMPRESSION)),
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
             TSDataType.TEXT));
-    List<String[]> timeseriesList = getTimeseriesSchemas(timeSeriesPlan.getPath().toString());
+    List<String[]> timeseriesList = MManager.getInstance()
+        .getAllMeasurementSchema(timeSeriesPlan.getPath().toString());
     for (String[] list : timeseriesList) {
       RowRecord record = new RowRecord(0);
       for (String s : list) {
@@ -412,7 +413,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected List<String[]> getTimeseriesSchemas(String path) throws MetadataException {
-    return MManager.getInstance().getAllTimeseriesSchema(path);
+    return MManager.getInstance().getAllMeasurementSchema(path);
   }
 
   private QueryDataSet processShowTTLQuery(ShowTTLPlan showTTLPlan) {
@@ -567,10 +568,10 @@ public class PlanExecutor implements IPlanExecutor {
             String.format("Cannot load file %s because the file has crashed.",
                 file.getAbsolutePath()));
       }
-      Map<String, MeasurementSchema> schemaMap = new HashMap<>();
-      List<ChunkGroupMetaData> chunkGroupMetaData = new ArrayList<>();
+      Map<Path, MeasurementSchema> schemaMap = new HashMap<>();
+      Map<Path, List<ChunkMetaData>> chunkMetaDataListMap = new HashMap<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
-        reader.selfCheck(schemaMap, chunkGroupMetaData, false);
+        reader.selfCheck(schemaMap, chunkMetaDataListMap, false);
       }
 
       FileLoaderUtils.checkTsFileResource(tsFileResource);
@@ -583,7 +584,7 @@ public class PlanExecutor implements IPlanExecutor {
 
       //create schemas if they doesn't exist
       if (plan.isAutoCreateSchema()) {
-        createSchemaAutomatically(chunkGroupMetaData, schemaMap, plan.getSgLevel());
+        createSchemaAutomatically(chunkMetaDataListMap, schemaMap, plan.getSgLevel());
       }
 
       StorageEngine.getInstance().loadNewTsFile(tsFileResource);
@@ -593,19 +594,19 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private void createSchemaAutomatically(List<ChunkGroupMetaData> chunkGroupMetaDatas,
-      Map<String, MeasurementSchema> knownSchemas, int sgLevel)
+  private void createSchemaAutomatically(Map<Path, List<ChunkMetaData>> chunkMetaDataListMap,
+      Map<Path, MeasurementSchema> knownSchemas, int sgLevel)
       throws QueryProcessException, MetadataException, StorageEngineException {
-    if (chunkGroupMetaDatas.isEmpty()) {
+    if (chunkMetaDataListMap.isEmpty()) {
       return;
     }
-    for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDatas) {
-      String device = chunkGroupMetaData.getDeviceID();
+    for (Entry<Path, List<ChunkMetaData>> entry : chunkMetaDataListMap.entrySet()) {
+      String device = entry.getKey().getDevice();
       MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(device, true, sgLevel);
-      for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+      for (ChunkMetaData chunkMetaData : entry.getValue()) {
         String measurement = chunkMetaData.getMeasurementUid();
         String fullPath = device + IoTDBConstant.PATH_SEPARATOR + measurement;
-        MeasurementSchema schema = knownSchemas.get(measurement);
+        MeasurementSchema schema = knownSchemas.get(entry.getKey());
         if (schema == null) {
           throw new MetadataException(String
               .format("Can not get the schema of measurement [%s]", measurement));

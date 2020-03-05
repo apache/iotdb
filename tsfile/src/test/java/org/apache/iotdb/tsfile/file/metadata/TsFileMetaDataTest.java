@@ -22,7 +22,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
@@ -62,7 +63,11 @@ public class TsFileMetaDataTest {
     TsFileMetaData metaData = null;
     try {
       fileInputStream = new FileInputStream(new File(PATH));
-      metaData = TsFileMetaData.deserializeFrom(fileInputStream, false);
+      FileChannel channel = fileInputStream.getChannel();
+      ByteBuffer buffer = ByteBuffer.allocate((int) channel.size());
+      channel.read(buffer);
+      buffer.rewind();
+      metaData = TsFileMetaData.deserializeFrom(buffer);
       return metaData;
     } catch (IOException e) {
       e.printStackTrace();

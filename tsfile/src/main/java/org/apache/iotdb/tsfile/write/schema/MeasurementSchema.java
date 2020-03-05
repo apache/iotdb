@@ -27,11 +27,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -46,11 +44,9 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
  */
 public class MeasurementSchema implements Comparable<MeasurementSchema>, Serializable {
 
+  private String measurementId;
   private TSDataType type;
   private TSEncoding encoding;
-  private String measurementId;
-  //TODO serializable interface may serialize this field. So it is time to
-  // improve how to serialize MGraph in MManager.
   private TSEncodingBuilder encodingConverter;
   private CompressionType compressor;
   private Map<String, String> props = new HashMap<>();
@@ -170,51 +166,23 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   }
 
   /**
-   * return the max possible length of given type.
-   *
-   * @return length in unit of byte
-   */
-  public int getTypeLength() {
-    switch (type) {
-      case BOOLEAN:
-        return 1;
-      case INT32:
-        return 4;
-      case INT64:
-        return 8;
-      case FLOAT:
-        return 4;
-      case DOUBLE:
-        return 8;
-      case TEXT:
-        // 4 is the length of string in type of Integer.
-        // Note that one char corresponding to 3 byte is valid only in 16-bit BMP
-        return TSFileDescriptor.getInstance().getConfig().getMaxStringLength() * TSFileConfig.BYTE_SIZE_PER_CHAR + 4;
-      default:
-        throw new UnSupportedDataTypeException(type.toString());
-    }
-  }
-
-  /**
    * function for getting time encoder.
-   * TODO can I be optimized?
    */
   public Encoder getTimeEncoder() {
-    TSEncoding timeSeriesEncoder = TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
+    TSEncoding timeEncoding = TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
     TSDataType timeType = TSDataType.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
-    return TSEncodingBuilder.getConverter(timeSeriesEncoder).getEncoder(timeType);
+    return TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType);
   }
 
   /**
    * get Encoder of value from encodingConverter by measurementID and data type.
-   * TODO can I be optimized?
    * @return Encoder for value
    */
   public Encoder getValueEncoder() {
-    //it is ok even if encodingConverter is constructed two instances for concurrent scenario..
+    //it is ok even if encodingConverter is constructed two instances for concurrent scenario
     if (encodingConverter == null) {
       // initialize TSEncoding. e.g. set max error for PLA and SDT
-      encodingConverter = TSEncodingBuilder.getConverter(encoding);
+      encodingConverter = TSEncodingBuilder.getEncodingBuilder(encoding);
       encodingConverter.initFromProps(props);
     }
     return encodingConverter.getEncoder(type);

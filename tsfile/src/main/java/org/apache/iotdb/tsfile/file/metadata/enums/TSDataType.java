@@ -28,7 +28,7 @@ public enum TSDataType {
    * @return -enum type
    */
   public static TSDataType deserialize(short i) {
-    if(i >= 6){
+    if (i >= 6) {
       throw new IllegalArgumentException("Invalid input: " + i);
     }
     switch (i) {
@@ -60,20 +60,20 @@ public enum TSDataType {
    */
   public short serialize() {
     switch (this) {
-      case BOOLEAN:
-        return 0;
-      case INT32:
-        return 1;
-      case INT64:
-        return 2;
-      case FLOAT:
-        return 3;
-      case DOUBLE:
-        return 4;
-      case TEXT:
-        return 5;
-      default:
-        return -1;
+    case BOOLEAN:
+      return 0;
+    case INT32:
+      return 1;
+    case INT64:
+      return 2;
+    case FLOAT:
+      return 3;
+    case DOUBLE:
+      return 4;
+    case TEXT:
+      return 5;
+    default:
+      return -1;
     }
   }
 }

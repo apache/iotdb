@@ -22,9 +22,10 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.slf4j.Logger;
@@ -91,14 +92,9 @@ public class DeviceMetaDataCache {
         }
         return new ArrayList<>();
       }
-      //
-      TsDeviceMetadata deviceMetaData = TsFileMetadataUtils
-          .getTsDeviceMetaData(resource, seriesPath, fileMetaData);
-      // If measurement isn't included in the tsfile, empty list is returned.
-      if (deviceMetaData == null) {
-        return new ArrayList<>();
-      }
-      return TsFileMetadataUtils.getChunkMetaDataList(seriesPath.getMeasurement(), deviceMetaData);
+      // If timeseries isn't included in the tsfile, empty list is returned.
+      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource, true);
+      return tsFileReader.getChunkMetadataList(seriesPath);
     }
 
     StringBuilder builder = new StringBuilder(resource.getFile().getPath()).append(".")
@@ -134,15 +130,8 @@ public class DeviceMetaDataCache {
         }
         return new ArrayList<>();
       }
-      //
-      TsDeviceMetadata deviceMetaData = TsFileMetadataUtils
-          .getTsDeviceMetaData(resource, seriesPath, fileMetaData);
-      // If measurement isn't included in the tsfile, empty list is returned.
-      if (deviceMetaData == null) {
-        return new ArrayList<>();
-      }
       Map<Path, List<ChunkMetaData>> chunkMetaData = TsFileMetadataUtils
-          .getChunkMetaDataList(calHotSensorSet(seriesPath), deviceMetaData);
+          .getChunkMetaDataList(calHotSensorSet(seriesPath), seriesPath.getDevice(), resource);
       synchronized (lruCache) {
         chunkMetaData.forEach((path, chunkMetaDataList) -> {
           String k = pathDeviceStr + "." + path.getMeasurement();
