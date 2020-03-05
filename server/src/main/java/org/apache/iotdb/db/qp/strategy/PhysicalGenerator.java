@@ -265,6 +265,7 @@ public class PhysicalGenerator {
       List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
       List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
 
+      // to record result measurement columns
       List<String> measurements = new ArrayList<>();
       Map<String, Set<String>> deviceToMeasurementsMap = new LinkedHashMap<>();
       // to check the same measurement of different devices having the same datatype

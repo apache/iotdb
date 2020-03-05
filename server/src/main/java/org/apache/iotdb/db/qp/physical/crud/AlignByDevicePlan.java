@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 public class AlignByDevicePlan extends QueryPlan {
 
-  private List<String> measurements; // e.g. temperature, status, speed
+  private List<String> measurements; // to record result measurement columns, e.g. temperature, status, speed
   private Map<String, Set<String>> deviceToMeasurementsMap; // e.g. root.ln.d1 -> temperature
   // to check data type consistency for the same name sensor of different devices
   private Map<String, TSDataType> measurementDataTypeMap;

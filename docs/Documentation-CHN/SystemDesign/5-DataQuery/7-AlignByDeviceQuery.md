@@ -29,17 +29,17 @@ AlignByDevicePlan 即按设备对齐查询对应的表结构为：
 
 ## 设计原理
 
-按设备对齐查询其实现原理主要是计算出查询中每个设备对应的映射值和过滤条件，然后将查询按设备分别进行，最后将结果集拼装并返回。
+按设备对齐查询其实现原理主要是计算出查询中每个设备对应的测点和过滤条件，然后将查询按设备分别进行，最后将结果集拼装并返回。
 
 ### AlignByDevicePlan 中重要字段含义
 
 首先解释一下 AlignByDevicePlan 中一些重要字段的含义：
-- measurements：查询中出现的 measurement 列表。
-- dataTypeMapping: 该变量继承自基类 QueryPlan，其主要作用是在计算每个设备的执行路径时，提供此次查询的 paths 对应的数据类型。
-- deviceToMeasurementsMap, deviceToFilterMap: 这两个字段分别用来存储设备对应的测点和过滤条件。
-- measurementDataTypeMap：AlignByDevicePlan 要求不同设备的同名 sensor 数据类型一致，该字段是一个 `measurementName -> dataType` 的 Map 结构，用来验证同名 sensor 的数据类型一致性。如 `root.sg.d1.s1` 和 `root.sg.d2.s1` 应该是同一数据类型。
-- measurementType：记录三种 measurement 类型。在任何设备中都不存在的 measurement 为 `NonExist` 类型；有单引号或双引号的 measurement 为 `Constant` 类型；不属于以上两种的正常 measurement 为 `Exist` 类型。
-- measurementTypeMap: 该字段是一个 `measureName -> measurementType` 的 Map 结构，用来记录查询中所有 measurement 的类型。
+- `List<String> measurements`：查询中出现的 measurement 列表。
+- `Map<Path, TSDataType> dataTypeMapping`: 该变量继承自基类 QueryPlan，其主要作用是在计算每个设备的执行路径时，提供此次查询的 paths 对应的数据类型。
+- `Map<String, Set<String>> deviceToMeasurementsMap`, `Map<String, IExpression> deviceToFilterMap`: 这两个字段分别用来存储设备对应的测点和过滤条件。
+- `Map<String, TSDataType> measurementDataTypeMap`：AlignByDevicePlan 要求不同设备的同名 sensor 数据类型一致，该字段是一个 `measurementName -> dataType` 的 Map 结构，用来验证同名 sensor 的数据类型一致性。如 `root.sg.d1.s1` 和 `root.sg.d2.s1` 应该是同一数据类型。
+- `enum MeasurementType`：记录三种 measurement 类型。在任何设备中都不存在的 measurement 为 `NonExist` 类型；有单引号或双引号的 measurement 为 `Constant` 类型；存在的 measurement 为 `Exist` 类型。
+- `Map<String, MeasurementType> measurementTypeMap`: 该字段是一个 `measureName -> measurementType` 的 Map 结构，用来记录查询中所有 measurement 的类型。
 - groupByPlan, fillQueryPlan, aggregationPlan：为了避免冗余，这三个执行计划被设定为 RawDataQueryPlan 的子类，而在 AlignByDevicePlan 中被设置为变量。如果查询计划属于这三个计划中的一种，则该字段会被赋值并保存。
 
 在进行具体实现过程的讲解前，先给出一个覆盖较为完整的例子，下面的解释过程中将结合该示例进行说明。
