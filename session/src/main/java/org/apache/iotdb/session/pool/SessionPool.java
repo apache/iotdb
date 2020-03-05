@@ -155,6 +155,28 @@ public class SessionPool {
     occupied.put(session, session);
   }
 
+  /**
+   * close all connections in the pool
+   */
+  public synchronized void close() {
+    for (Session session : queue) {
+      try {
+        session.close();
+      } catch (IoTDBSessionException e) {
+        //do nothing
+      }
+    }
+    for (Session session : occupied.keySet()) {
+      try {
+        session.close();
+      } catch (IoTDBSessionException e) {
+        //do nothing
+      }
+    }
+    queue.clear();
+    occupied.clear();
+  }
+
   public void closeResultSet(SessionDataSetWrapper wrapper) throws SQLException {
     boolean putback = true;
     try {
