@@ -118,4 +118,8 @@ public class In<T extends Comparable<T>> implements Filter {
   public FilterSerializeId getSerializeId() {
     return FilterSerializeId.IN;
   }
+
+  public Set<T> getValues() {
+    return values;
+  }
 }

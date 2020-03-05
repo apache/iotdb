@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -26,6 +27,8 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -34,9 +37,22 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  */
 public abstract class PhysicalPlan {
 
+  private static final String SERIALIZATION_UNIMPLEMENTED = "serialization unimplemented";
+
   private boolean isQuery;
   private Operator.OperatorType operatorType;
   private static final int NULL_VALUE_LEN = -1;
+
+  //for cluster mode, whether the plan may be splitted into several sub plans
+  protected boolean canbeSplit = true;
+
+  /**
+   * whether the plan can be split into more than one Plans.
+   * Only used in the cluster mode.
+   */
+  public boolean canbeSplit() {
+    return canbeSplit;
+  }
 
   protected PhysicalPlan(boolean isQuery) {
     this.isQuery = isQuery;
@@ -73,12 +89,16 @@ public abstract class PhysicalPlan {
     isQuery = query;
   }
 
+  public void serializeTo(DataOutputStream stream) throws IOException {
+    throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
+  }
+
   public void serializeTo(ByteBuffer buffer) {
-    throw new UnsupportedOperationException("serialize of unimplemented");
+    throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
   public void deserializeFrom(ByteBuffer buffer) {
-    throw new UnsupportedOperationException("serialize of unimplemented");
+    throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
   protected void putString(ByteBuffer buffer, String value) {
@@ -86,6 +106,14 @@ public abstract class PhysicalPlan {
       buffer.putInt(NULL_VALUE_LEN);
     } else {
       ReadWriteIOUtils.write(value, buffer);
+    }
+  }
+
+  protected void putString(DataOutputStream stream, String value) throws IOException {
+    if (value == null) {
+      stream.writeInt(NULL_VALUE_LEN);
+    } else {
+      ReadWriteIOUtils.write(value, stream);
     }
   }
 
@@ -110,6 +138,7 @@ public abstract class PhysicalPlan {
       }
       PhysicalPlanType type = PhysicalPlanType.values()[typeNum];
       PhysicalPlan plan;
+      // TODO-Cluster: support more plans
       switch (type) {
         case INSERT:
           plan = new InsertPlan();
@@ -123,6 +152,14 @@ public abstract class PhysicalPlan {
           plan = new BatchInsertPlan();
           plan.deserializeFrom(buffer);
           break;
+        case SET_STORAGE_GROUP:
+          plan = new SetStorageGroupPlan();
+          plan.deserializeFrom(buffer);
+          break;
+        case CREATE_TIMESERIES:
+          plan = new CreateTimeSeriesPlan();
+          plan.deserializeFrom(buffer);
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -131,7 +168,7 @@ public abstract class PhysicalPlan {
   }
 
   public enum PhysicalPlanType {
-    INSERT, DELETE, BATCHINSERT
+    INSERT, DELETE, BATCHINSERT, SET_STORAGE_GROUP, CREATE_TIMESERIES
   }
 
 

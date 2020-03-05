@@ -40,6 +40,10 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
         dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null, fileFilter);
   }
 
+  public SeriesReaderByTimestamp(SeriesReader seriesReader) {
+    this.seriesReader = seriesReader;
+  }
+
   @Override
   public Object[] getValuesInTimestamps(long[] timestamps) throws IOException {
     Object[] result = new Object[timestamps.length];

@@ -25,8 +25,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
+import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -39,15 +39,16 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 /**
  * IoTDB query executor.
  */
 public class RawDataQueryExecutor {
 
-  private List<Path> deduplicatedPaths;
-  private List<TSDataType> deduplicatedDataTypes;
-  private IExpression optimizedExpression;
+  protected List<Path> deduplicatedPaths;
+  protected List<TSDataType> deduplicatedDataTypes;
+  protected IExpression optimizedExpression;
 
   public RawDataQueryExecutor(RawDataQueryPlan queryPlan) {
     this.deduplicatedPaths = queryPlan.getDeduplicatedPaths();
@@ -77,7 +78,7 @@ public class RawDataQueryExecutor {
         readersOfSelectedSeries);
   }
 
-  private List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context)
+  protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context)
       throws StorageEngineException {
     Filter timeFilter = null;
     if (optimizedExpression != null) {
@@ -108,19 +109,30 @@ public class RawDataQueryExecutor {
    */
   public QueryDataSet executeWithValueFilter(QueryContext context) throws StorageEngineException {
 
-    ServerTimeGenerator timestampGenerator = new ServerTimeGenerator(
+    TimeGenerator timestampGenerator = getTimeGenerator(
         optimizedExpression, context);
 
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
       Path path = deduplicatedPaths.get(i);
-      SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path,
-          deduplicatedDataTypes.get(i), context,
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
+      IReaderByTimestamp seriesReaderByTimestamp = getReaderByTimestamp(path,
+          deduplicatedDataTypes.get(i), context);
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
     return new RawQueryDataSetWithValueFilter(deduplicatedPaths, deduplicatedDataTypes,
         timestampGenerator, readersOfSelectedSeries);
   }
 
+  protected IReaderByTimestamp getReaderByTimestamp(Path path, TSDataType dataType,
+      QueryContext context)
+      throws StorageEngineException {
+    return new SeriesReaderByTimestamp(path,
+        dataType, context,
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
+  }
+
+  protected TimeGenerator getTimeGenerator(IExpression expression,
+      QueryContext context) throws StorageEngineException {
+    return new ServerTimeGenerator(expression, context);
+  }
 }

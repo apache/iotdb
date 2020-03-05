@@ -93,8 +93,7 @@ public class PhysicalPlanTest {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=INT32,encoding=RLE";
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals(String.format("seriesPath: root.vehicle.d1.s2%n" + "resultDataType: INT32%n" +
-        "encoding: RLE%nnamespace type: ADD_PATH%n" + "args: "), plan.toString());
+    assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
   }
 
   @Test
@@ -102,8 +101,7 @@ public class PhysicalPlanTest {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=int32,encoding=rle";
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals(String.format("seriesPath: root.vehicle.d1.s2%n" + "resultDataType: INT32%n" +
-        "encoding: RLE%nnamespace type: ADD_PATH%n" + "args: "), plan.toString());
+    assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
   }
 
   @Test

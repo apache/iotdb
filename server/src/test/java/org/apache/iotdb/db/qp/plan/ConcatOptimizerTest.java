@@ -23,7 +23,6 @@ import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 import org.antlr.v4.runtime.RecognitionException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.Planner;
@@ -49,7 +48,7 @@ public class ConcatOptimizerTest {
   private Planner processor;
 
   @Before
-  public void before() throws MetadataException, PathException {
+  public void before() throws MetadataException {
     processor = new Planner();
     MManager.getInstance().init();
     MManager.getInstance().setStorageGroup("root.laptop");
