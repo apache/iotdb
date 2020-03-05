@@ -53,7 +53,7 @@ pip install apache-iotdb
 
 #### 方案2: 使用我们提供的编译脚本
 
-如果你在路径中添加了Thrift可执行文件，则可以运行`client-py / compile.sh`或
+如果你在路径中添加了Thrift可执行文件，则可以运行`client-py/compile.sh`或
   `client-py \ compile.bat`，或者你必须对其进行修改以将变量`THRIFT_EXE`设置为指向你的可执行文件。 这将在`target`文件夹下生成节俭源，你可以将其添加到你的`PYTHONPATH`，以便你可以在代码中使用该库。 请注意，脚本通过相对路径找到节俭的源文件，因此，如果将脚本移动到其他位置，它们将不再有效。
 
 #### 方案3：thrift的基本用法
