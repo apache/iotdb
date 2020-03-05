@@ -200,4 +200,4 @@ private void getAlignByDeviceQueryHeaders(
 2. 新建一个添加了时间戳的 `RowRecord`，向其中加入设备列，先根据 `executeColumns` 与得到的结果建立一个由 `measurementName -> Field` 的 Map 结构 `currentColumnMap`.
 3. 之后只需要遍历去重后的 `measurements` 列表，判断其类型，如果类型为 `Exist` 则根据 measurementName 从 `currentColumnMap` 中取得其对应的结果，如果没有则设为 `null`；如果是 `NonExist`类型，则直接设为 `null`; 如果是 `Constant` 类型，则将 `measureName` 作为该列的值。
 
-在根据变换后的 `RowRecord` 写入输出数据流后，即可将结果集返回。
+再根据变换后的 `RowRecord` 写入输出数据流后，即可将结果集返回。
