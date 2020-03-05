@@ -79,5 +79,4 @@ public class TimeValuePair implements Serializable, Comparable<TimeValuePair> {
     return Long.compare(this.getTimestamp(), o.getTimestamp());
   }
 
-
 }

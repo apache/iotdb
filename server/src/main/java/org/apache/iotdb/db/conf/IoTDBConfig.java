@@ -486,8 +486,6 @@ public class IoTDBConfig {
   //wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
 
-  private boolean enableMetricsWebService = true;
-
   private int queryCacheSizeInMetric = 200;
 
   public IoTDBConfig() {
@@ -614,24 +612,24 @@ public class IoTDBConfig {
     return dataDirs;
   }
 
-  public boolean isEnableMetricService() {
-    return enableMetricService;
-  }
-
-  void setEnableMetricService(boolean enableMetricService) {
-    this.enableMetricService = enableMetricService;
-  }
-
-  void setDataDirs(String[] dataDirs) {
-    this.dataDirs = dataDirs;
-  }
-
   public int getMetricsPort() {
     return metricsPort;
   }
 
   void setMetricsPort(int metricsPort) {
     this.metricsPort = metricsPort;
+  }
+
+  public boolean isEnableMetricService() {
+    return enableMetricService;
+  }
+
+  public void setEnableMetricService(boolean enableMetricService) {
+    this.enableMetricService = enableMetricService;
+  }
+
+  void setDataDirs(String[] dataDirs) {
+    this.dataDirs = dataDirs;
   }
 
   public String getRpcAddress() {
@@ -1367,14 +1365,6 @@ public class IoTDBConfig {
 
   public void setThriftServerAwaitTimeForStopService(int thriftServerAwaitTimeForStopService) {
     this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
-  }
-
-  public boolean isEnableMetricsWebService() {
-    return enableMetricsWebService;
-  }
-
-  public void setEnableMetricsWebService(boolean enableMetricsWebService) {
-    this.enableMetricsWebService = enableMetricsWebService;
   }
 
   public int getQueryCacheSizeInMetric() {

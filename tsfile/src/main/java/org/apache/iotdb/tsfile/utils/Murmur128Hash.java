@@ -28,7 +28,7 @@ public class Murmur128Hash {
    * get hashcode of value by seed
    *
    * @param value value
-   * @param seed seend
+   * @param seed seed
    * @return hashcode of value
    */
   public static int hash(String value, int seed) {
@@ -40,7 +40,7 @@ public class Murmur128Hash {
    *
    * @param value1 the first value
    * @param value2 the second value
-   * @param seed seend
+   * @param seed seed
    * @return hashcode of value
    */
   public static int hash(String value1, long value2, int seed) {
