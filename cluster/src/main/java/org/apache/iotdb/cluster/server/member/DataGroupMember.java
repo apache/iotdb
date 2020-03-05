@@ -56,6 +56,7 @@ import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
@@ -83,8 +84,11 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
+import org.apache.iotdb.db.query.dataset.groupby.LocalGroupByExecutor;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -104,6 +108,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -324,7 +329,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     return StorageEngine.getInstance().isFileAlreadyExist(resource, storageGroupName);
   }
 
-
   private void applyPartitionedSnapshot(PartitionedSnapshot snapshot) {
     synchronized (logManager) {
       List<Integer> slots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
@@ -451,7 +455,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     logger.info("{}: remote file {} is pulled at {}", name, remotePath, dest);
     return true;
   }
-
 
   @Override
   public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
@@ -920,6 +923,73 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   public void setLogManager(PartitionedSnapshotLogManager logManager) {
     this.logManager = logManager;
     super.logManager = logManager;
+  }
+
+  public GroupByExecutor getGroupByExecutor(Path path, TSDataType dataType, Filter timeFilter,
+      List<Integer> aggregationTypes, QueryContext context) throws StorageEngineException {
+    // pull the newest data
+    if (syncLeader()) {
+      List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
+      LocalGroupByExecutor executor = new LocalGroupByExecutor(path, dataType, context,
+          timeFilter, new SlotTsFileFilter(nodeSlots));
+      for (int i = 0; i < aggregationTypes.size(); i++) {
+        executor.addAggregateResult(AggregateResultFactory
+            .getAggrResultByType(AggregationType.values()[aggregationTypes.get(i)], dataType), i);
+      }
+      return executor;
+    } else {
+      throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
+    }
+  }
+
+  @Override
+  public void getGroupByExecutor(GroupByRequest request, AsyncMethodCallback<Long> resultHandler) {
+    Path path = new Path(request.getPath());
+    List<Integer> aggregationTypeOrdinals = request.getAggregationTypeOrdinals();
+    TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
+    Filter timeFilter = null;
+    if (request.isSetTimeFilterBytes()) {
+      timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
+    }
+    long queryId = request.getQueryId();
+    logger.debug("{}: {} is querying {} using group by, queryId: {}", name,
+        request.getRequestor(), path, queryId);
+    RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequestor(), queryId);
+    try {
+      GroupByExecutor executor = getGroupByExecutor(path, dataType, timeFilter,
+          aggregationTypeOrdinals, queryContext);
+      long executorId = queryManager.registerGroupByExecutor(executor);
+      logger.debug("{}: Build a GroupByExecutor of {} for {}, executorId: {}", name, path,
+          request.getRequestor(), executor);
+      queryContext.registerLocalGroupByExecutor(executorId);
+      resultHandler.onComplete(executorId);
+    } catch (StorageEngineException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void getGroupByResult(Node header, long executorId, long startTime, long endTime,
+      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+    GroupByExecutor executor = getQueryManager().getGroupByExecutor(executorId);
+    if (executor == null) {
+      resultHandler.onError(new ReaderNotFoundException(executorId));
+      return;
+    }
+    try {
+      List<Pair<AggregateResult, Integer>> results = executor.calcResult(startTime, endTime);
+      List<ByteBuffer> resultBuffers = new ArrayList<>();
+      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      for (Pair<AggregateResult, Integer> result : results) {
+        result.left.serializeTo(byteArrayOutputStream);
+        resultBuffers.add(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+      }
+      logger.debug("{}: Send results of group by executor {}, size:{}", name, executor,
+          resultBuffers.size());
+      resultHandler.onComplete(resultBuffers);
+    } catch (IOException | QueryProcessException e) {
+      resultHandler.onError(e);
+    }
   }
 }
 

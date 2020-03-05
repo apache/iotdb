@@ -77,6 +77,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
+import org.apache.iotdb.cluster.query.groupby.RemoteGroupByExecutor;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.query.reader.EmptyReader;
 import org.apache.iotdb.cluster.query.reader.ManagedMergeReader;
@@ -86,6 +87,7 @@ import org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -127,6 +129,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -1736,5 +1739,88 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   public DataClient getDataClient(Node node) throws IOException {
     return (DataClient) getDataClientPool().getClient(node);
+  }
+
+  public List<GroupByExecutor> getGroupByExecutors(Path path, TSDataType dataType,
+      QueryContext context, Filter timeFilter, List<Integer> aggregationTypes)
+      throws StorageEngineException {
+    // make sure the partition table is new
+    syncLeader();
+    List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: Sending group by query of {} to {} groups", name, path,
+          partitionGroups.size());
+    }
+    List<GroupByExecutor> executors = new ArrayList<>();
+    for (PartitionGroup partitionGroup : partitionGroups) {
+      GroupByExecutor groupByExecutor = getGroupByExecutor(path, partitionGroup,
+          timeFilter, context, dataType, aggregationTypes);
+      executors.add(groupByExecutor);
+    }
+    return executors;
+  }
+
+  private GroupByExecutor getGroupByExecutor(Path path,
+      PartitionGroup partitionGroup, Filter timeFilter, QueryContext context, TSDataType dataType,
+      List<Integer> aggregationTypes) throws StorageEngineException {
+    if (partitionGroup.contains(thisNode)) {
+      // the target storage group contains this node, perform a local query
+      DataGroupMember dataGroupMember = getLocalDataMember(partitionGroup.getHeader());
+      logger.debug("{}: creating a local group by executor for {}#{}", name,
+          path.getFullPath(), context.getQueryId());
+      return dataGroupMember.getGroupByExecutor(path, dataType, timeFilter, aggregationTypes, context);
+    } else {
+      return getRemoteGroupByExecutor(timeFilter, aggregationTypes, dataType, path, partitionGroup,
+          context);
+    }
+  }
+
+  private GroupByExecutor getRemoteGroupByExecutor(Filter timeFilter,
+      List<Integer> aggregationTypes, TSDataType dataType, Path path, PartitionGroup partitionGroup,
+      QueryContext context) throws StorageEngineException {
+    // query a remote node
+    AtomicReference<Long> result = new AtomicReference<>();
+    GroupByRequest request = new GroupByRequest();
+    if (timeFilter != null) {
+      request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
+    }
+    request.setPath(path.getFullPath());
+    request.setHeader(partitionGroup.getHeader());
+    request.setQueryId(context.getQueryId());
+    request.setAggregationTypeOrdinals(aggregationTypes);
+    request.setDataTypeOrdinal(dataType.ordinal());
+    request.setRequestor(thisNode);
+
+    List<Node> orderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+    for (Node node : orderedNodes) {
+      logger.debug("{}: querying group by {} from {}", name, path, node);
+      GenericHandler<Long> handler = new GenericHandler<>(node, result);
+      try {
+        DataClient client = getDataClient(node);
+        synchronized (result) {
+          result.set(null);
+          client.getGroupByExecutor(request, handler);
+          result.wait(connectionTimeoutInMS);
+        }
+        Long executorId = result.get();
+        if (executorId != null) {
+          if (executorId != -1) {
+            ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
+            logger.debug("{}: get an executorId {} for {}@{} from {}", name, executorId,
+                aggregationTypes, path, node);
+            return new RemoteGroupByExecutor(executorId,  this, node, partitionGroup.getHeader());
+          } else {
+            // there is no satisfying data on the remote node, create an empty reader to reduce
+            // further communication
+            logger.debug("{}: no data for {} from {}", name, path, node);
+            return new EmptyReader();
+          }
+        }
+      } catch (TException | InterruptedException | IOException e) {
+        logger.error("{}: Cannot query {} from {}", name, path, node, e);
+      }
+    }
+    throw new StorageEngineException(
+        new RequestTimeOutException("Query " + path + " in " + partitionGroup));
   }
 }

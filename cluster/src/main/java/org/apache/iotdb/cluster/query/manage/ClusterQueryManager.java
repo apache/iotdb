@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
@@ -38,11 +39,12 @@ public class ClusterQueryManager {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterQueryManager.class);
 
-  private AtomicLong readerIdAtom = new AtomicLong();
+  private AtomicLong idAtom = new AtomicLong();
   private Map<Node, Map<Long, RemoteQueryContext>> queryContextMap = new ConcurrentHashMap<>();
   private Map<Long, IBatchReader> seriesReaderMap = new ConcurrentHashMap<>();
   private Map<Long, IReaderByTimestamp> seriesReaderByTimestampMap = new ConcurrentHashMap<>();
   private Map<Long, IAggregateReader> aggrReaderMap = new ConcurrentHashMap<>();
+  private Map<Long, GroupByExecutor> groupByExecutorMap = new ConcurrentHashMap<>();
 
 
   public synchronized RemoteQueryContext getQueryContext(Node node, long queryId) {
@@ -58,13 +60,13 @@ public class ClusterQueryManager {
   }
 
   public long registerReader(IBatchReader reader) {
-    long newReaderId = readerIdAtom.incrementAndGet();
+    long newReaderId = idAtom.incrementAndGet();
     seriesReaderMap.put(newReaderId, reader);
     return newReaderId;
   }
 
   public long registerReaderByTime(IReaderByTimestamp readerByTimestamp) {
-    long newReaderId = readerIdAtom.incrementAndGet();
+    long newReaderId = idAtom.incrementAndGet();
     seriesReaderByTimestampMap.put(newReaderId, readerByTimestamp);
     return newReaderId;
   }
@@ -86,6 +88,11 @@ public class ClusterQueryManager {
     for (long readerId : readerIds) {
       seriesReaderMap.remove(readerId);
       seriesReaderByTimestampMap.remove(readerId);
+    }
+
+    Set<Long> localGroupByExecutorIds = remoteQueryContext.getLocalGroupByExecutorIds();
+    for (Long localGroupByExecutorId : localGroupByExecutorIds) {
+      groupByExecutorMap.remove(localGroupByExecutorId);
     }
   }
 
@@ -113,8 +120,18 @@ public class ClusterQueryManager {
   }
 
   public long registerAggrReader(IAggregateReader aggregateReader) {
-    long newReaderId = readerIdAtom.incrementAndGet();
+    long newReaderId = idAtom.incrementAndGet();
     aggrReaderMap.put(newReaderId, aggregateReader);
     return newReaderId;
+  }
+
+  public long registerGroupByExecutor(GroupByExecutor groupByExecutor) {
+    long newExecutorId = idAtom.incrementAndGet();
+    groupByExecutorMap.put(newExecutorId, groupByExecutor);
+    return newExecutorId;
+  }
+
+  public GroupByExecutor getGroupByExecutor(long executorId) {
+    return groupByExecutorMap.get(executorId);
   }
 }

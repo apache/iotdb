@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -143,6 +142,16 @@ public class QueryRouter implements IQueryRouter {
     } else {
       return new GroupByWithValueFilterDataSet(context, groupByPlan);
     }
+  }
+
+  protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(QueryContext context, GroupByPlan plan)
+      throws StorageEngineException {
+    return new GroupByWithoutValueFilterDataSet(context, plan);
+  }
+
+  protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(QueryContext context, GroupByPlan plan)
+      throws StorageEngineException {
+    return new GroupByWithValueFilterDataSet(context, plan);
   }
 
   @Override

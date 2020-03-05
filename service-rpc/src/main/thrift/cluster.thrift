@@ -162,6 +162,16 @@ struct GetAggrResultRequest {
   7: required Node requestor
 }
 
+struct GroupByRequest {
+  1: required string path
+  2: required int dataTypeOrdinal
+  3: optional binary timeFilterBytes
+  4: required long queryId
+  5: required list<int> aggregationTypeOrdinals
+  6: required Node header
+  7: required Node requestor
+}
+
 service RaftService {
   /**
   * Leader will call this method to all followers to ensure its authority.
@@ -280,6 +290,19 @@ service TSDataService extends RaftService {
   list<binary> getAggrResult(1:GetAggrResultRequest request)
 
   PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
+
+  /**
+  * Create a GroupByExecutor for a path, executing the given aggregations.
+  * @return the executorId
+  **/
+  long getGroupByExecutor(1:GroupByRequest request)
+
+  /**
+  * Fetch the group by result in the interval [startTime, endTime) from the given executor.
+  * @return the serialized AggregationResults, each is the result of one of the previously
+  * required aggregations, and their orders are the same.
+  **/
+  list<binary> getGroupByResult(1:Node header, 2:long executorId, 3:long startTime, 4:long endTime)
 }
 
 service TSMetaService extends RaftService {

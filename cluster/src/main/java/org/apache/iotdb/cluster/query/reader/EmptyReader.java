@@ -1,20 +1,27 @@
 package org.apache.iotdb.cluster.query.reader;
 
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 /**
  * A placeholder when the remote node does not contain satisfying data of a series.
  */
-public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPointReader {
+public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPointReader,
+    GroupByExecutor {
 
   private volatile boolean managedByPool;
   private volatile boolean hasRemaining;
+
+  private List<Pair<AggregateResult, Integer>> aggregationResults = new ArrayList<>();
 
   @Override
   public boolean isManagedByQueryManager() {
@@ -47,17 +54,17 @@ public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPoin
   }
 
   @Override
-  public boolean hasNextTimeValuePair() throws IOException {
+  public boolean hasNextTimeValuePair() {
     return false;
   }
 
   @Override
-  public TimeValuePair nextTimeValuePair() throws IOException {
+  public TimeValuePair nextTimeValuePair() {
     return null;
   }
 
   @Override
-  public TimeValuePair currentTimeValuePair() throws IOException {
+  public TimeValuePair currentTimeValuePair() {
     return null;
   }
 
@@ -107,7 +114,22 @@ public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPoin
   }
 
   @Override
-  public BatchData nextPage() throws IOException {
+  public BatchData nextPage() {
     return null;
+  }
+
+  @Override
+  public void addAggregateResult(AggregateResult aggrResult, int index) {
+    aggregationResults.add(new Pair<>(aggrResult, index));
+  }
+
+  @Override
+  public void resetAggregateResults() {
+
+  }
+
+  @Override
+  public List<Pair<AggregateResult, Integer>> calcResult(long curStartTime, long curEndTime) {
+    return aggregationResults;
   }
 }

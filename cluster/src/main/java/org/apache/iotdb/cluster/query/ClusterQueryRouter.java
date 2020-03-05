@@ -21,12 +21,16 @@ package org.apache.iotdb.cluster.query;
 
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.cluster.query.groupby.ClusterGroupByNoVFilterDataSet;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.db.query.executor.FillQueryExecutor;
 import org.apache.iotdb.db.query.executor.QueryRouter;
@@ -51,8 +55,15 @@ public class ClusterQueryRouter extends QueryRouter {
   }
 
   @Override
-  public QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context) {
-    throw new UnsupportedOperationException("GroupBy not implemented");
+  protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(
+      QueryContext context, GroupByPlan plan) throws StorageEngineException {
+    return new ClusterGroupByNoVFilterDataSet(context, plan, metaGroupMember);
+  }
+
+  @Override
+  protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(QueryContext context,
+      GroupByPlan plan) throws StorageEngineException {
+    return super.getGroupByWithValueFilterDataSet(context, plan);
   }
 
   @Override

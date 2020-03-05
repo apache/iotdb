@@ -295,4 +295,8 @@ public abstract class AggregateResult {
   public String toString() {
     return String.valueOf(getResult());
   }
+
+  public AggregationType getAggregationType() {
+    return aggregationType;
+  }
 }
