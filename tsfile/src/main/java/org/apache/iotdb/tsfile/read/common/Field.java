@@ -40,6 +40,36 @@ public class Field {
     this.dataType = dataType;
   }
 
+  public static Field copy(Field field) {
+    Field out = new Field(field.dataType);
+    if (out.dataType != null) {
+      switch (out.dataType) {
+        case DOUBLE:
+          out.setDoubleV(field.getDoubleV());
+          break;
+        case FLOAT:
+          out.setFloatV(field.getFloatV());
+          break;
+        case INT64:
+          out.setLongV(field.getLongV());
+          break;
+        case INT32:
+          out.setIntV(field.getIntV());
+          break;
+        case BOOLEAN:
+          out.setBoolV(field.getBoolV());
+          break;
+        case TEXT:
+          out.setBinaryV(field.getBinaryV());
+          break;
+        default:
+          throw new UnSupportedDataTypeException(out.dataType.toString());
+      }
+    }
+
+    return out;
+  }
+
   public TSDataType getDataType() {
     return dataType;
   }
@@ -115,7 +145,7 @@ public class Field {
       case TEXT:
         return binaryV.toString();
       default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+        throw new UnSupportedDataTypeException(dataType.toString());
     }
   }
 
@@ -142,7 +172,37 @@ public class Field {
       case TEXT:
         return getBinaryV();
       default:
-        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
+        throw new UnSupportedDataTypeException(dataType.toString());
     }
+  }
+
+  public static Field getField(Object value, TSDataType dataType) {
+    if (value == null) {
+      return null;
+    }
+    Field field = new Field(dataType);
+    switch (dataType) {
+      case INT32:
+        field.setIntV((int) value);
+        break;
+      case INT64:
+        field.setLongV((long) value);
+        break;
+      case FLOAT:
+        field.setFloatV((float) value);
+        break;
+      case DOUBLE:
+        field.setDoubleV((double) value);
+        break;
+      case BOOLEAN:
+        field.setBoolV((boolean) value);
+        break;
+      case TEXT:
+        field.setBinaryV((Binary) value);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(dataType.toString());
+    }
+    return field;
   }
 }

@@ -51,24 +51,24 @@ It costs 0.417s
 * Set Storage Group
 
 ``` SQL
-SET STORAGE GROUP TO <PrefixPath>
+SET STORAGE GROUP TO <FullPath>
 Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
-Note: PrefixPath can not include `*`
+Note: FullPath can not include `*`
 ```
 
 * Delete Storage Group
 
 ```
-DELETE STORAGE GROUP <PrefixPath> [COMMA <PrefixPath>]*
+DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Note: PrefixPath can not include `*`
+Note: FullPath can not include `*`
 ```
 
 * Create Timeseries Statement
 
 ```
-CREATE TIMESERIES <Timeseries> WITH <AttributeClauses>
+CREATE TIMESERIES <FullPath> WITH <AttributeClauses>
 AttributeClauses : DATATYPE=<DataTypeValue> COMMA ENCODING=<EncodingValue> [COMMA <ExtraAttributeClause>]*
 DataTypeValue: BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
 EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF | REGULAR
@@ -152,10 +152,22 @@ Note: The path can be prefix path or timeseries path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
-* Show Devices Statement
+* Show All Devices Statement
+
 ```
-SHOW DEVICES
-Eg: IoTDB > SHOW DEVICES
+SHOW Devices
+Eg: IoTDB > SHOW Devices
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* Show Specific Devices Statement
+
+```
+SHOW DEVICES <PrefixPath>
+Eg: IoTDB > SHOW DEVICES root
+Eg: IoTDB > SHOW DEVICES root.ln
+Eg: IoTDB > SHOW DEVICES root.*.wf01
+Note: The path can be prefix path or star path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -171,8 +183,9 @@ Note: This statement can be used in IoTDB Client and JDBC.
 SHOW CHILD PATHS <Path>
 Eg: IoTDB > SHOW CHILD PATHS root
 Eg: IoTDB > SHOW CHILD PATHS root.ln
-Eg: IoTDB > SHOW CHILD PATHS root.ln.wf01
-Note: The path can only be prefix path.
+Eg: IoTDB > SHOW CHILD PATHS root.*.wf01
+Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
+Note: The path can be prefix path or star path, the nodes can be in a "prefix + star" format. 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 ### Data Management Statement
@@ -231,6 +244,7 @@ SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
 Eg. IoTDB > SELECT * FROM root
 Eg. IoTDB > SELECT * FROM root where time > now() - 5m
+Eg. IoTDB > SELECT * FROM root.ln.*.wf*
 Eg. IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MAX_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature > 24
@@ -260,9 +274,9 @@ GroupByClause : LPAREN <TimeInterval> COMMA <TimeUnit> (COMMA <TimeUnit>)? RPARE
 TimeInterval: LBRACKET <TimeValue> COMMA <TimeValue> RBRACKET
 TimeUnit : Integer <DurationUnit>
 DurationUnit : "ms" | "s" | "m" | "h" | "d" | "w"
-Eg: SELECT COUNT(status), COUNT(temperature) FROM root.ln.wf01.wt01 where temperature < 24 GROUP BY([1509465720000, 1509466380000], 5m)
-Eg. SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY([1509465720000, 1509466380000], 5m, 10m)
-Eg. SELECT MIN_TIME(status), MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE temperature < 25 GROUP BY ([1509466140000, 1509466380000], 3m, 5ms)
+Eg: SELECT COUNT(status), COUNT(temperature) FROM root.ln.wf01.wt01 where temperature < 24 GROUP BY([1509465720000, 1509466380000), 5m)
+Eg. SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY([1509465720000, 1509466380000), 5m, 10m)
+Eg. SELECT MIN_TIME(status), MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE temperature < 25 GROUP BY ([1509466140000, 1509466380000), 3m, 5ms)
 Note: the statement needs to satisfy this constraint: <Path>(SelectClause) + <PrefixPath>(FromClause) = <Timeseries>
 Note: If the <SensorExpr>(WhereClause) is started with <Path> and not with ROOT, the statement needs to satisfy this constraint: <PrefixPath>(FromClause) + <Path>(SensorExpr) = <Timeseries>
 Note: <TimeValue>(TimeInterval) needs to be greater than 0
@@ -329,82 +343,82 @@ Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammati
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
 
-* Group By Device Statement
+* Align By Device Statement
+
 ```
-GroupbyDeviceClause : GROUP BY DEVICE
+AlignbyDeviceClause : ALIGN BY DEVICE
 
 Rules:  
 1. Both uppercase and lowercase are ok.  
-Correct example: select * from root.sg1 group by device  
-Correct example: select * from root.sg1 GROUP BY DEVICE  
+Correct example: select * from root.sg1 align by device  
+Correct example: select * from root.sg1 ALIGN BY DEVICE  
 
 2. GroupbyDeviceClause can only be used at the end of a query statement.  
-Correct example: select * from root.sg1 where time > 10 group by device  
-Wrong example: select * from root.sg1 group by device where time > 10  
+Correct example: select * from root.sg1 where time > 10 align by device  
+Wrong example: select * from root.sg1 align by device where time > 10  
 
 3. The paths of the SELECT clause can only be single level. In other words, the paths of the SELECT clause can only be measurements or STAR, without DOT.
-Correct example: select s0,s1 from root.sg1.* group by device  
-Correct example: select s0,s1 from root.sg1.d0, root.sg1.d1 group by device  
-Correct example: select * from root.sg1.* group by device  
-Correct example: select * from root group by device  
-Correct example: select s0,s1,* from root.*.* group by device  
-Wrong example: select d0.s1, d0.s2, d1.s0 from root.sg1 group by device  
-Wrong example: select *.s0, *.s1 from root.* group by device  
-Wrong example: select *.*.* from root group by device
+Correct example: select s0,s1 from root.sg1.* align by device  
+Correct example: select s0,s1 from root.sg1.d0, root.sg1.d1 align by device  
+Correct example: select * from root.sg1.* align by device  
+Correct example: select * from root align by device  
+Correct example: select s0,s1,* from root.*.* align by device  
+Wrong example: select d0.s1, d0.s2, d1.s0 from root.sg1 align by device  
+Wrong example: select *.s0, *.s1 from root.* align by device  
+Wrong example: select *.*.* from root align by device
 
 4. The data types of the same measurement column should be the same across devices. 
 Note that when it comes to aggregated paths, the data type of the measurement column will reflect 
 the aggregation function rather than the original timeseries.
 
-Correct example: select s0 from root.sg1.d0,root.sg1.d1 group by device   
+Correct example: select s0 from root.sg1.d0,root.sg1.d1 align by device   
 root.sg1.d0.s0 and root.sg1.d1.s0 are both INT32.  
 
-Correct example: select count(s0) from root.sg1.d0,root.sg1.d1 group by device   
+Correct example: select count(s0) from root.sg1.d0,root.sg1.d1 align by device   
 count(root.sg1.d0.s0) and count(root.sg1.d1.s0) are both INT64.  
 
-Wrong example: select s0 from root.sg1.d0, root.sg2.d3 group by device  
+Wrong example: select s0 from root.sg1.d0, root.sg2.d3 align by device  
 root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT. 
 
-5. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being null.   
-For example, "select s0,s1,s2 from root.sg.d0, root.sg.d1, root.sg.d2 group by device". Suppose that the actual existing timeseries are as follows:  
+5. The display principle of the result table is that all the columns (no matther whther a column has has existing data) will be shown, with nonexistent cells being null. Besides, the select clause support const column (e.g., 'a', '123' etc..).  
+For example, "select s0,s1,s2,'abc',s1,s2 from root.sg.d0, root.sg.d1, root.sg.d2 align by device". Suppose that the actual existing timeseries are as follows:  
 - root.sg.d0.s0
 - root.sg.d0.s1
 - root.sg.d1.s0
 
-Then the header of the result table will be: [Time, Device, s0, s1].  
-And you could expect a table like:  
+Then you could expect a table like:  
 
-| Time | Device   | s0 | s1 |
-| ---  | ---      | ---| ---|
-|  1   |root.sg.d0| 20 | 2.5|
-|  2   |root.sg.d0| 23 | 3.1|
-| ...  | ...      | ...| ...|
-|  1   |root.sg.d1| 12 |null|
-|  2   |root.sg.d1| 19 |null|
-| ...  | ...      | ...| ...|
+| Time | Device   | s0 | s1 |  s2  | 'abc' | s1 |  s2  |
+| ---  | ---      | ---| ---| null | 'abc' | ---| null |
+|  1   |root.sg.d0| 20 | 2.5| null | 'abc' | 2.5| null |
+|  2   |root.sg.d0| 23 | 3.1| null | 'abc' | 3.1| null |
+| ...  | ...      | ...| ...| null | 'abc' | ...| null |
+|  1   |root.sg.d1| 12 |null| null | 'abc' |null| null |
+|  2   |root.sg.d1| 19 |null| null | 'abc' |null| null |
+| ...  | ...      | ...| ...| null | 'abc' | ...| null |
 
 Note that the cells of measurement 's0' and device 'root.sg.d1' are all null.    
-Also note that the column of 's2' and the rows of 'root.sg.d2' are not existent.  
 
 6. The duplicated devices in the prefix paths are neglected.  
-For example, "select s0,s1 from root.sg.d0,root.sg.d0,root.sg.d1 group by device" is equal to "select s0,s1 from root.sg.d0,root.sg.d1 group by device".  
-For example. "select s0,s1 from root.sg.*,root.sg.d0 group by device" is equal to "select s0,s1 from root.sg.* group by device".  
+For example, "select s0,s1 from root.sg.d0,root.sg.d0,root.sg.d1 align by device" is equal to "select s0,s1 from root.sg.d0,root.sg.d1 align by device".  
+For example. "select s0,s1 from root.sg.*,root.sg.d0 align by device" is equal to "select s0,s1 from root.sg.* align by device".  
 
 7. The duplicated measurements in the suffix paths are not neglected.  
-For example, "select s0,s0,s1 from root.sg.* group by device" is not equal to "select s0,s1 from root.sg.* group by device".
+For example, "select s0,s0,s1 from root.sg.* align by device" is not equal to "select s0,s1 from root.sg.* align by device".
 
 8. More correct examples: 
-   - select * from root.vehicle group by device
-   - select s0,s0,s1 from root.vehicle.* group by device
-   - select s0,s1 from root.vehicle.* limit 10 offset 1 group by device
-   - select * from root.vehicle slimit 10 soffset 2 group by device
-   - select * from root.vehicle where time > 10 group by device
-   - select * from root.vehicle where root.vehicle.d0.s0>0 group by device
-   - select count(*) from root.vehicle group by device
-   - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) group by device
-   - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) group by device
+   - select * from root.vehicle align by device
+   - select s0,s0,s1 from root.vehicle.* align by device
+   - select s0,s1 from root.vehicle.* limit 10 offset 1 align by device
+   - select * from root.vehicle slimit 10 soffset 2 align by device
+   - select * from root.vehicle where time > 10 align by device
+   - select * from root.vehicle where root.vehicle.d0.s0>0 align by device
+   - select count(*) from root.vehicle align by device
+   - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) align by device
+   - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) align by device
 ```
 * Disable Align Statement
+
 ```
 Disable Align Clause: DISABLE ALIGN
 
@@ -422,7 +436,7 @@ Correct example: select * from root.sg1 limit 3 offset 2 disable align
 Correct example: select * from root.sg1 slimit 3 soffset 2 disable align
 Wrong example: select count(s0),count(s1) from root.sg1.d1 disable align
 Wrong example: select * from root.vehicle where root.vehicle.d0.s0>0 disable align
-Wrong example: select * from root.vehicle group by device disable align
+Wrong example: select * from root.vehicle align by device disable align
 
 4. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being empty.
 
@@ -440,6 +454,39 @@ You could expect a table like:
    - select s0,s1 from root.vehicle.* limit 10 offset 1 disable align
    - select * from root.vehicle slimit 10 soffset 2 disable align
    - select * from root.vehicle where time > 10 disable align
+
+```
+
+* Select Last Record Statement
+
+The LAST function returns the last time-value pair of the given timeseries. Currently filters are not supported in LAST queries.
+
+```
+SELECT LAST <SelectClause> FROM <FromClause> <DisableAlignClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+DisableAlignClause : [DISABLE ALIGN]
+
+Eg. SELECT LAST s1 FROM root.sg.d1 disable align
+Eg. SELECT LAST s1, s2 FROM root.sg.d1 disable align
+Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2 disable align
+
+Rules:
+1. the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
+
+2. The result set of last query will always be displayed in a "disable-aligned" format showed below.
+For example, "select last s1, s2 from root.sg.d1, root.sg.d2 disable align", the query result would be:
+
+| Time | Path         | Value |
+| ---  | ------------ | ----- |
+|  5   | root.sg.d1.s1| 100   |
+|  2   | root.sg.d1.s2| 400   |
+|  4   | root.sg.d2.s1| 250   |
+|  9   | root.sg.d2.s2| 600   |
+
+3. LAST query syntax is expecting users to write a "diable align" keyword at the end of the query. 
+However, as it is a unique SQL syntax in IoTDB, IoTDB accepts LAST queries without "disable align" and treats them as "disable align" ones.
+Query like "select last s1 from root.sg.d1" will be parsed exactly the same as "select last s1 from root.sg.d1 disable align". 
 
 ```
 

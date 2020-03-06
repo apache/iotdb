@@ -22,7 +22,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.file.Files;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -61,12 +60,12 @@ public class TsFileResource {
   /**
    * device -> start time
    */
-  private Map<String, Long> startTimeMap;
+  protected Map<String, Long> startTimeMap;
 
   /**
    * device -> end time. It is null if it's an unsealed sequence tsfile
    */
-  private Map<String, Long> endTimeMap;
+  protected Map<String, Long> endTimeMap;
 
   public TsFileProcessor getProcessor() {
     return processor;
@@ -96,12 +95,31 @@ public class TsFileResource {
   /**
    * Mem chunk data. Only be set in a temporal TsFileResource in a query process.
    */
-  private ReadOnlyMemChunk readOnlyMemChunk;
+  private List<ReadOnlyMemChunk> readOnlyMemChunk;
 
   private ReentrantReadWriteLock writeQueryLock = new ReentrantReadWriteLock();
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
-  
+
+  public TsFileResource() {
+  }
+
+  public TsFileResource(TsFileResource other) {
+    this.file = other.file;
+    this.startTimeMap = other.startTimeMap;
+    this.endTimeMap = other.endTimeMap;
+    this.processor = other.processor;
+    this.modFile = other.modFile;
+    this.closed = other.closed;
+    this.deleted = other.deleted;
+    this.isMerging = other.isMerging;
+    this.chunkMetaDataList = other.chunkMetaDataList;
+    this.readOnlyMemChunk = other.readOnlyMemChunk;
+    this.writeQueryLock = other.writeQueryLock;
+    this.fsFactory = other.fsFactory;
+    this.historicalVersions = other.historicalVersions;
+  }
+
   /**
    * for sealed TsFile, call setClosed to close TsFileResource
    */
@@ -110,7 +128,7 @@ public class TsFileResource {
     this.startTimeMap = new ConcurrentHashMap<>();
     this.endTimeMap = new HashMap<>();
   }
-  
+
   /**
    * unsealed TsFile
    */
@@ -127,7 +145,7 @@ public class TsFileResource {
   public TsFileResource(File file,
       Map<String, Long> startTimeMap,
       Map<String, Long> endTimeMap,
-      ReadOnlyMemChunk readOnlyMemChunk,
+      List<ReadOnlyMemChunk> readOnlyMemChunk,
       List<ChunkMetaData> chunkMetaDataList) {
     this.file = file;
     this.startTimeMap = startTimeMap;
@@ -163,7 +181,7 @@ public class TsFileResource {
     fsFactory.moveFile(src, dest);
   }
 
-  public void deSerialize() throws IOException {
+  public void deserialize() throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(
         file + RESOURCE_SUFFIX)) {
       int size = ReadWriteIOUtils.readInt(inputStream);
@@ -216,14 +234,14 @@ public class TsFileResource {
   }
 
   void forceUpdateEndTime(String device, long time) {
-      endTimeMap.put(device, time);
+    endTimeMap.put(device, time);
   }
 
   public List<ChunkMetaData> getChunkMetaDataList() {
     return chunkMetaDataList;
   }
 
-  public ReadOnlyMemChunk getReadOnlyMemChunk() {
+  public List<ReadOnlyMemChunk> getReadOnlyMemChunk() {
     return readOnlyMemChunk;
   }
 
@@ -348,6 +366,7 @@ public class TsFileResource {
 
   /**
    * check if any of the device lives over the given time bound
+   *
    * @param timeLowerBound
    */
   public boolean stillLives(long timeLowerBound) {
@@ -363,11 +382,19 @@ public class TsFileResource {
     return false;
   }
 
+  protected void setStartTimeMap(Map<String, Long> startTimeMap) {
+    this.startTimeMap = startTimeMap;
+  }
+
+  protected void setEndTimeMap(Map<String, Long> endTimeMap) {
+    this.endTimeMap = endTimeMap;
+  }
+
   /**
-   * set a file flag indicating that the file is being closed, so during recovery we could know
-   * we should close the file.
+   * set a file flag indicating that the file is being closed, so during recovery we could know we
+   * should close the file.
    */
-  public void setCloseFlag() {
+  void setCloseFlag() {
     try {
       new File(file.getAbsoluteFile() + CLOSING_SUFFIX).createNewFile();
     } catch (IOException e) {
@@ -393,7 +420,7 @@ public class TsFileResource {
   public void setHistoricalVersions(Set<Long> historicalVersions) {
     this.historicalVersions = historicalVersions;
   }
-  
+
   public void setProcessor(TsFileProcessor processor) {
     this.processor = processor;
   }

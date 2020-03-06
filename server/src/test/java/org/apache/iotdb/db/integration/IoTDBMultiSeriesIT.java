@@ -28,6 +28,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -43,7 +44,7 @@ import org.junit.Test;
  */
 public class IoTDBMultiSeriesIT {
 
-  private static boolean testFlag = Constant.testFlag;
+  private static boolean testFlag = TestConstant.testFlag;
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
@@ -91,7 +92,7 @@ public class IoTDBMultiSeriesIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      for (String sql : Constant.create_sql) {
+      for (String sql : TestConstant.create_sql) {
         statement.execute(sql);
       }
 
@@ -137,10 +138,10 @@ public class IoTDBMultiSeriesIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 22);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            Constant.stringValue[time % 5]);
+            TestConstant.stringValue[time % 5]);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
-            Constant.booleanValue[time % 2]);
+            TestConstant.booleanValue[time % 2]);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, time);
         statement.execute(sql);
@@ -192,7 +193,7 @@ public class IoTDBMultiSeriesIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time + 2);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            Constant.stringValue[time % 5]);
+            TestConstant.stringValue[time % 5]);
         statement.execute(sql);
       }
 
@@ -210,7 +211,7 @@ public class IoTDBMultiSeriesIT {
             .format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, "goodman");
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
-            Constant.booleanValue[time % 2]);
+            TestConstant.booleanValue[time % 2]);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, 9999);
         statement.execute(sql);
@@ -237,7 +238,7 @@ public class IoTDBMultiSeriesIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet
+              resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet
                   .getString("root.fans.d0.s0")
                   + "," + resultSet.getString("root.fans.d0.s1");
           cnt++;
@@ -265,12 +266,15 @@ public class IoTDBMultiSeriesIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0)
-                  + "," + resultSet.getString(Constant.d0s1) + "," + resultSet
-                  .getString(Constant.d0s2) + ","
-                  + resultSet.getString(Constant.d0s3) + "," + resultSet.getString(Constant.d0s4)
+              resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet.getString(
+                  TestConstant.d0s0)
+                  + "," + resultSet.getString(
+                  TestConstant.d0s1) + "," + resultSet
+                  .getString(TestConstant.d0s2) + ","
+                  + resultSet.getString(TestConstant.d0s3) + "," + resultSet.getString(
+                  TestConstant.d0s4)
                   + ","
-                  + resultSet.getString(Constant.d0s5);
+                  + resultSet.getString(TestConstant.d0s5);
           cnt++;
         }
         assertEquals(23400, cnt);
@@ -298,8 +302,8 @@ public class IoTDBMultiSeriesIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet
-                  .getString(Constant.d0s0);
+              resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet
+                  .getString(TestConstant.d0s0);
           // System.out.println("===" + ans);
           cnt++;
         }
@@ -329,8 +333,8 @@ public class IoTDBMultiSeriesIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet
-                  .getString(Constant.d0s0);
+              resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet
+                  .getString(TestConstant.d0s0);
           // System.out.println(ans);
           cnt++;
         }
@@ -359,8 +363,9 @@ public class IoTDBMultiSeriesIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
-          long time = Long.valueOf(resultSet.getString(Constant.TIMESTAMP_STR));
-          String value = resultSet.getString(Constant.d0s1);
+          long time = Long.valueOf(resultSet.getString(
+              TestConstant.TIMESTAMP_STR));
+          String value = resultSet.getString(TestConstant.d0s1);
           if (time > 200900) {
             assertEquals("7777", value);
           }
@@ -383,12 +388,17 @@ public class IoTDBMultiSeriesIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("select s10 from root.vehicle.d0");
-      fail("not throw exception when select unknown time series");
+      statement.execute("select s0, s10 from root.vehicle.*");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        assertEquals(23400, cnt);
+      }
     } catch (SQLException e) {
-      assertEquals(
-          "Statement format is not right: Path: \"root.vehicle.d0.s10\" doesn't correspond to any known time series",
-          e.getMessage());
+      e.printStackTrace();
+      fail();
     }
   }
 
@@ -399,11 +409,11 @@ public class IoTDBMultiSeriesIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("select s1 from root.vehicle.d0 where s0 < 111 and s10 < 111");
+      statement.execute("select s0 from root.vehicle.d0 where s10 < 111");
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
       assertEquals(
-          "Statement format is not right: Path: \"root.vehicle.d0.s10\" doesn't correspond to any known time series",
+          "401: Statement format is not right: Filter has some time series don't correspond to any known time series",
           e.getMessage());
     }
   }
@@ -419,8 +429,9 @@ public class IoTDBMultiSeriesIT {
           "select s1 from root.vehicle.d0 where root.vehicle.d0.s0 < 111 and root.vehicle.d0.s10 < 111");
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
+      e.printStackTrace();
       assertEquals(
-          "Statement format is not right: Path: [root.vehicle.d0.s10] doesn't correspond to any known time series",
+          "401: Statement format is not right: org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.vehicle.d0.s10] does not exist",
           e.getMessage());
     }
   }

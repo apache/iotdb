@@ -18,6 +18,18 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
+
+import java.io.File;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -29,13 +41,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.Assert.*;
 
 public class IoTDBLoadExternalTsfileTest {
 
@@ -179,7 +184,8 @@ public class IoTDBLoadExternalTsfileTest {
       List<TsFileResource> resources = new ArrayList<>(
           StorageEngine.getInstance().getProcessor("root.vehicle")
               .getSequenceFileTreeSet());
-      File tmpDir = new File(resources.get(0).getFile().getParentFile().getParentFile().getParentFile(),
+      File tmpDir = new File(
+          resources.get(0).getFile().getParentFile().getParentFile().getParentFile(),
           "tmp" + File.separator + "root.vehicle");
       if (!tmpDir.exists()) {
         tmpDir.mkdirs();
@@ -202,7 +208,8 @@ public class IoTDBLoadExternalTsfileTest {
       }
 
       // load all tsfile in tmp dir
-      tmpDir = new File(resources.get(0).getFile().getParentFile().getParentFile().getParentFile(), "tmp");
+      tmpDir = new File(resources.get(0).getFile().getParentFile().getParentFile().getParentFile(),
+          "tmp");
       statement.execute(String.format("load %s", tmpDir.getAbsolutePath()));
       resources = new ArrayList<>(
           StorageEngine.getInstance().getProcessor("root.vehicle")
@@ -260,7 +267,7 @@ public class IoTDBLoadExternalTsfileTest {
         Statement statement = connection.createStatement()) {
 
       // check query result
-      boolean hasResultSet = statement.execute("select * from root");
+      boolean hasResultSet = statement.execute("SELECT * FROM root");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
@@ -330,7 +337,7 @@ public class IoTDBLoadExternalTsfileTest {
       assertEquals(0, new File(tmpDir, "root.test").listFiles().length);
 
       // check query result
-      hasResultSet = statement.execute("select  * from root");
+      hasResultSet = statement.execute("SELECT  * FROM root");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
@@ -361,7 +368,8 @@ public class IoTDBLoadExternalTsfileTest {
           StorageEngine.getInstance().getProcessor("root.vehicle")
               .getSequenceFileTreeSet());
 
-      File tmpDir = new File(resources.get(0).getFile().getParentFile().getParentFile().getParentFile(),
+      File tmpDir = new File(
+          resources.get(0).getFile().getParentFile().getParentFile().getParentFile(),
           "tmp" + File.separator + "root.vehicle");
       if (!tmpDir.exists()) {
         tmpDir.mkdirs();
@@ -383,7 +391,7 @@ public class IoTDBLoadExternalTsfileTest {
         statement.execute(String.format("move %s %s", resource.getFile().getPath(), tmpDir));
       }
 
-      boolean hasResultSet = statement.execute("show timeseries");
+      boolean hasResultSet = statement.execute("SHOW timeseries");
       Assert.assertTrue(hasResultSet);
       StringBuilder timeseriesPath = new StringBuilder();
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -409,7 +417,7 @@ public class IoTDBLoadExternalTsfileTest {
       } catch (Exception e) {
         hasError = true;
         Assert.assertEquals(
-            "Statement format is not right: Please check the statement: load [FILE] true/false [storage group level]",
+            "401: Statement format is not right: Please check the statement: load [FILE] true/false [storage group level]",
             e.getMessage());
       }
       Assert.assertTrue(hasError);
@@ -435,7 +443,7 @@ public class IoTDBLoadExternalTsfileTest {
               .getSequenceFileTreeSet());
       assertEquals(2, resources.size());
       assertEquals(2, tmpDir.listFiles().length);
-      for(File dir: tmpDir.listFiles()){
+      for (File dir : tmpDir.listFiles()) {
         assertEquals(0, dir.listFiles().length);
       }
     } catch (StorageEngineException e) {

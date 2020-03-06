@@ -20,7 +20,9 @@
 -->
 
 # 第5章 IoTDB操作指南
+
 ## DML (数据操作语言)
+
 ## 数据接入
 
 IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工具](/#/Documents/progress/chap4/sec1)中直接输入插入数据的INSERT语句，或使用Java API（标准[Java JDBC](/#/Documents/progress/chap4/sec2)接口）单条或批量执行插入数据的INSERT语句。
@@ -28,11 +30,13 @@ IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工�
 本节主要为您介绍实时数据接入的INSERT语句在场景中的实际使用示例，有关INSERT SQL语句的详细语法请参见本文[INSERT语句](/#/Documents/progress/chap5/sec4)节。
 
 ### 使用INSERT语句
+
 使用INSERT语句可以向指定的已经创建的一条或多条时间序列中插入数据。对于每一条数据，均由一个时间戳类型的时间戳和一个数值或布尔值、字符串类型的传感器采集值组成。
 
 在本节的场景实例下，以其中的两个时间序列`root.ln.wf02.wt02.status`和`root.ln.wf02.wt02.hardware`为例 ，它们的数据类型分别为BOOLEAN和TEXT。
 
 单列数据插入示例代码如下：
+
 ```
 IoTDB > insert into root.ln.wf02.wt02(timestamp,status) values(1,true)
 IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, "v1")
@@ -70,16 +74,21 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp, temperature) values(1,"v1")
 ```
 Msg: The resultDataType or encoding or compression of the last node temperature is conflicting in the storage group root.ln
 ```
+
 若用户插入的数据类型与该Timeseries对应的数据类型不一致，例如执行以下命令：
+
 ```
 IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1,100)
 ```
+
 系统将会返回以下ERROR告知数据类型有误：
+
 ```
 error: The TEXT data type should be covered by " or '
 ```
 
 ## 数据查询
+
 ### 时间切片查询
 
 本节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](/#/Documents/progress/chap5/sec4)。同时，您也可以使用[Java JDBC](/#/Documents/progress/chap4/sec2)标准接口来执行相关的查询语句。
@@ -91,6 +100,7 @@ SQL语句为：
 ```
 select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
 ```
+
 其含义为：
 
 被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看[2.1节](/#/Documents/progress/chap2/sec1)）时间点以前的所有温度传感器的值。
@@ -106,6 +116,7 @@ SQL语句为：
 ```
 select status, temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000;
 ```
+
 其含义为：
 
 被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为供电状态（status）和温度传感器（temperature）；该语句要求选择出“2017-11-01T00:05:00.000”至“2017-11-01T00:12:00.000”之间的所选时间序列的值。
@@ -123,6 +134,7 @@ SQL语句为：
 ```
 select status,temperature from root.ln.wf01.wt01 where (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000) or (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000);
 ```
+
 其含义为：
 
 被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为“供电状态（status）”和“温度传感器（temperature）”；该语句指定了两个不同的时间区间，分别为“2017-11-01T00:05:00.000至2017-11-01T00:12:00.000”和“2017-11-01T16:35:00.000至2017-11-01T16:37:00.000”；该语句要求选择出满足任一时间区间的被选时间序列的值。
@@ -138,12 +150,28 @@ select status,temperature from root.ln.wf01.wt01 where (time > 2017-11-01T00:05:
 ```
 select wf01.wt01.status,wf02.wt02.hardware from root.ln where (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000) or (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000);
 ```
+
 其含义为：
 
 被选择的时间序列为“ln集团wf01子站wt01设备的供电状态”以及“ln集团wf02子站wt02设备的硬件版本”；该语句指定了两个时间区间，分别为“2017-11-01T00:05:00.000至2017-11-01T00:12:00.000”和“2017-11-01T16:35:00.000至2017-11-01T16:37:00.000”；该语句要求选择出满足任意时间区间的被选时间序列的值。
 
 该SQL语句的执行结果如下：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
+
+#### 其他结果返回形式
+
+IoTDB支持另外两种结果返回形式: 按设备时间对齐 'align by device' 和 时序不对齐 'disable align'.
+
+'align by device' 对齐方式下，设备ID会单独作为一列出现。在 select 子句中写了多少列，最终结果就会有该列数+2 （时间列和设备名字列）。SQL形如:
+
+```
+select s1,s2 from root.sg1.* GROUP BY DEVICE
+```
+
+更多语法请参照 SQL REFERENCE.
+
+'disable align' 意味着每条时序就有3列存在。更多语法请参照 SQL REFERENCE.
+
 
 ### 降频聚合查询
 
@@ -152,6 +180,8 @@ select wf01.wt01.status,wf02.wt02.hardware from root.ln where (time > 2017-11-01
 该子句是IoTDB中用于根据用户给定划分条件对结果集进行划分，并对已划分的结果集进行聚合计算的语句。
 IoTDB支持根据时间间隔和自定义的滑动步长（默认值与时间间隔相同，自定义的值必须大于等于时间间隔）对结果集进行划分，默认结果按照时间升序排列。
 同时，您也可以使用Java JDBC标准接口来执行相关的查询语句。
+
+Group By 语句不支持 limit 和 offset。
 
 GROUP BY语句为用户提供三类指定参数：
 
@@ -170,6 +200,7 @@ GROUP BY语句为用户提供三类指定参数：
 **图 5.2 三类参数的实际含义**</center>
 
 #### 未指定滑动步长的降频聚合查询
+
 对应的SQL语句是:
 
 ```
@@ -190,6 +221,7 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116068-eed51b00-0ac5-11ea-9731-b5a45c5cd224.png"></center>
 
 #### 指定滑动步长的降频聚合查询
+
 对应的SQL语句是:
 
 ```
@@ -215,11 +247,13 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116083-f85e8300-0ac5-11ea-84f1-59d934eee96e.png"></center>
 
 #### 带值过滤条件的降频聚合查询
+
 对应的SQL语句是:
 
 ```
 select count(status), max_value(temperature) from root.ln.wf01.wt01 where time > 2017-11-01T01:00:00 and temperature > 20 group by([2017-11-01T00:00:00, 2017-11-07T23:00:00], 3h, 1d);
 ```
+
 这条查询的含义是:
 
 由于用户指定了滑动步长为`1d`，GROUP BY语句执行时将会每次把时间间隔往后移动一天的步长，而不是默认的3小时。
@@ -241,6 +275,39 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 where time >
 GROUP BY的SELECT子句里的查询路径必须是聚合函数，否则系统将会抛出如下对应的错误。
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116099-0b715300-0ac6-11ea-8074-84e04797b8c7.png"></center>
+
+### 最近时间戳数据查询
+
+对应的SQL语句是：
+
+```
+select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <DISABLE ALIGN>
+```
+其含义是：
+
+查询时间序列prefixPath.path中最近时间戳的数据
+
+下面的例子中查询时间序列root.ln.wf01.wt01.status最近时间戳的数据:
+```
+select last status from root.ln.wf01.wt01 disable align
+```
+结果集为以下的形式返回：
+```
+| Time | Path                    | Value |
+| ---  | ----------------------- | ----- |
+|  5   | root.ln.wf01.wt01.status| 100   |
+```
+
+假设root.ln.wf01.wt01中包含多列数据，如id, status, temperature，下面的例子将会把这几列数据在最近时间戳的记录同时返回：
+```
+select last id, status, temperature from root.ln.wf01 disable align
+
+| Time | Path                         | Value |
+| ---  | ---------------------------- | ----- |
+|  5   | root.ln.wf01.wt01.id         | 10    |
+|  7   | root.ln.wf01.wt01.status     | true  |
+|  9   | root.ln.wf01.wt01.temperature| 35.7  |
+```
 
 
 ## 数据维护
@@ -268,6 +335,7 @@ delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
 ```
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
 ```
+
 或
 
 ```
@@ -275,6 +343,7 @@ delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 ```
 
 需要注意的是，当删除的路径不存在时，IoTDB会提示路径不存在，无法删除数据，如下所示。
+
 ```
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
 Msg: TimeSeries does not exist and its data cannot be deleted

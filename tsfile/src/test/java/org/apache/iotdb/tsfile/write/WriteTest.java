@@ -103,11 +103,11 @@ public class WriteTest {
     HashMap<String,String> props = new HashMap<>();
     props.put("max_point_number", "2");
     measurementArray.add(new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE,
-                              CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()), props));
+                              TSFileDescriptor.getInstance().getConfig().getCompressor(), props));
     props = new HashMap<>();
     props.put("max_point_number", "3");
     measurementArray.add(new MeasurementSchema("s3", TSDataType.DOUBLE, TSEncoding.TS_2DIFF,
-            CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()), props));
+            TSFileDescriptor.getInstance().getConfig().getCompressor(), props));
     measurementArray.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     schema = new Schema();
     LOG.info(schema.toString());
@@ -189,10 +189,10 @@ public class WriteTest {
     TsFileSequenceReader reader = new TsFileSequenceReader(outputDataFile);
     TsFileMetaData metaData = reader.readFileMetadata();
 
-    Assert.assertEquals("{s3=[s3,DOUBLE,TS_2DIFF,{max_point_number=3},UNCOMPRESSED], "
-            + "s4=[s4,BOOLEAN,PLAIN,{},UNCOMPRESSED], " + "s0=[s0,INT32,RLE,{},UNCOMPRESSED], "
-            + "s1=[s1,INT64,TS_2DIFF,{},UNCOMPRESSED], "
-            + "s2=[s2,FLOAT,RLE,{max_point_number=2},UNCOMPRESSED]}",
+    Assert.assertEquals("{s3=[s3,DOUBLE,TS_2DIFF,{max_point_number=3},SNAPPY], "
+            + "s4=[s4,BOOLEAN,PLAIN,{},SNAPPY], " + "s0=[s0,INT32,RLE,{},SNAPPY], "
+            + "s1=[s1,INT64,TS_2DIFF,{},SNAPPY], "
+            + "s2=[s2,FLOAT,RLE,{max_point_number=2},SNAPPY]}",
         metaData.getMeasurementSchema().toString());
   }
 

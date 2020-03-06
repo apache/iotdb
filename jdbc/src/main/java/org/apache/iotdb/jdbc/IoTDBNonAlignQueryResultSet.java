@@ -44,13 +44,13 @@ public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
   private static final int TIMESTAMP_STR_LENGTH = 4;
   private static final String EMPTY_STR = "";
 
-  private TSQueryNonAlignDataSet tsQueryNonAlignDataSet = null;
+  private TSQueryNonAlignDataSet tsQueryNonAlignDataSet;
   private byte[][] times; // used for disable align
 
   // for disable align clause
-  public IoTDBNonAlignQueryResultSet(Statement statement, List<String> columnNameList,
-                                     List<String> columnTypeList, boolean ignoreTimeStamp, TSIService.Iface client,
-                                     String sql, long queryId, long sessionId, TSQueryNonAlignDataSet dataset)
+  IoTDBNonAlignQueryResultSet(Statement statement, List<String> columnNameList,
+      List<String> columnTypeList, boolean ignoreTimeStamp, TSIService.Iface client,
+      String sql, long queryId, long sessionId, TSQueryNonAlignDataSet dataset)
           throws SQLException {
     super(statement, columnNameList, columnTypeList, ignoreTimeStamp, client, sql, queryId, sessionId);
 

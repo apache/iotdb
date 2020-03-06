@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.integration;
 
-import static org.apache.iotdb.db.integration.Constant.count;
-import static org.apache.iotdb.db.integration.Constant.max_value;
-import static org.apache.iotdb.db.integration.Constant.min_time;
-import static org.apache.iotdb.db.integration.Constant.min_value;
+import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.max_value;
+import static org.apache.iotdb.db.constant.TestConstant.min_time;
+import static org.apache.iotdb.db.constant.TestConstant.min_value;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -33,7 +33,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -45,7 +44,6 @@ public class IoTDBRecoverIT {
 
   private static final String TIMESTAMP_STR = "Time";
   private static final String TEMPERATURE_STR = "root.ln.wf01.wt01.temperature";
-  private static IoTDB daemon;
   private static String[] creationSqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",
       "SET STORAGE GROUP TO root.vehicle.d1",
@@ -82,8 +80,7 @@ public class IoTDBRecoverIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
+
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
@@ -91,7 +88,6 @@ public class IoTDBRecoverIT {
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -156,15 +152,14 @@ public class IoTDBRecoverIT {
     }
 
     // we want to recover
-    daemon.stop();
+    EnvironmentUtils.stopDaemon();
     // wait for close
     try {
       Thread.sleep(1000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    daemon.active();
-    EnvironmentUtils.envSetUp();
+    EnvironmentUtils.activeDaemon();
 
     // count test
     retArray = new String[]{
@@ -211,15 +206,15 @@ public class IoTDBRecoverIT {
     }
 
     // we want to recover
-    daemon.stop();
+    EnvironmentUtils.stopDaemon();
     // wait for close
     try {
       Thread.sleep(1000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    daemon.active();
-    EnvironmentUtils.envSetUp();
+
+    EnvironmentUtils.activeDaemon();
 
     // maxminValueTest
 

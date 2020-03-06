@@ -67,7 +67,7 @@ import org.slf4j.LoggerFactory;
 public class Session {
 
   private static final Logger logger = LoggerFactory.getLogger(Session.class);
-  private final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1;
+  private final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2;
   private String host;
   private int port;
   private String username;
@@ -128,7 +128,7 @@ public class Session {
       client = new TSIService.Client(new TBinaryProtocol(transport));
     }
 
-    TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1);
+    TSOpenSessionReq openReq = new TSOpenSessionReq();
     openReq.setUsername(username);
     openReq.setPassword(password);
 
@@ -138,9 +138,13 @@ public class Session {
       RpcUtils.verifySuccess(openResp.getStatus());
 
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
-        throw new TException(String
-            .format("Protocol not supported, Client version is %s, but Server version is %s",
-                protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
+        logger.warn("Protocol differ, Client version is {}}, but Server version is {}",
+            protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue());
+        if (openResp.getServerProtocolVersion().getValue() == 0) {// less than 0.10
+          throw new TException(String
+              .format("Protocol not supported, Client version is %s, but Server version is %s",
+                  protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
+        }
       }
 
       sessionId = openResp.getSessionId();
@@ -606,6 +610,15 @@ public class Session {
     try {
       return checkAndReturn(client.createTimeseries(request));
     } catch (TException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
+  public boolean checkTimeseriesExists(String path) throws IoTDBSessionException {
+    checkPathValidity(path);
+    try {
+      return executeQueryStatement(String.format("SHOW TIMESERIES %s", path)).hasNext();
+    } catch (Exception e) {
       throw new IoTDBSessionException(e);
     }
   }

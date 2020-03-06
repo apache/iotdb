@@ -18,29 +18,39 @@
  */
 package org.apache.iotdb.db.exception.metadata;
 
-import org.apache.iotdb.db.exception.ProcessException;
+import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
  * If query metadata constructs schema but passes illegal parameters to EncodingConvertor or
  * DataTypeConvertor,this exception will be threw.
  */
-public class MetadataException extends ProcessException {
+public class MetadataException extends IoTDBException {
 
   private static final long serialVersionUID = 3415275599091623570L;
 
+  public MetadataException(Throwable cause) {
+    super(cause, TSStatusCode.METADATA_ERROR.getStatusCode());
+  }
+
+  public MetadataException(Throwable cause, int errorCode) {
+    super(cause, TSStatusCode.METADATA_ERROR.getStatusCode());
+    this.errorCode = errorCode;
+  }
+
   public MetadataException(String msg) {
-    super(msg);
-    errorCode = TSStatusCode.METADATA_ERROR.getStatusCode();
+    super(msg, TSStatusCode.METADATA_ERROR.getStatusCode());
   }
 
   public MetadataException(String message, Throwable cause) {
-    super(message + cause.getMessage());
-    errorCode = TSStatusCode.METADATA_ERROR.getStatusCode();
+    super(message + cause.getMessage(), TSStatusCode.METADATA_ERROR.getStatusCode());
   }
 
-  public MetadataException(ProcessException exception) {
-    super(exception.getMessage());
-    this.errorCode = exception.getErrorCode();
+  public MetadataException(IoTDBException exception) {
+    super(exception.getMessage(), exception.getErrorCode());
+  }
+
+  public MetadataException(String message, int errorCode) {
+    super(message, errorCode);
   }
 }

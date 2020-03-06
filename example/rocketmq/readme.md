@@ -19,9 +19,9 @@
 
 -->
 # Rocketmq-IoTDB Demo
-##Introduction
+## Introduction
 This demo shows how to store data into IoTDB via rocketmq
-##Basic Concept
+## Basic Concept
 The following basic concepts are involved in IoTDB:
 
 * Device
@@ -35,12 +35,12 @@ A sensor is a detection equipment in an actual scene, which can sense the inform
 * Storage Group
 
 Storage groups are used to let users define how to organize and isolate different time series data on disk. Time series belonging to the same storage group will be continuously written to the same file in the corresponding folder. The file may be closed due to user commands or system policies, and hence the data coming next from these sensors will be stored in a new file in the same folder. Time series belonging to different storage groups are stored in different folders.
-##Connector
+## Connector
 > note:In this sample program, there are some update operations for historical data, so it is necessary to ensure the sequential transmission and consumption of data via RocketMQ. If there is no update operation in use, then there is no need to guarantee the order of data. IoTDB will process these data which may be disorderly.
 
-###Producer
+### Producer
 Producers insert IoTDB insert statements into partitions according to devices, ensuring that the same device's data is inserted or updated in the same MessageQueue.
-###Consumer 
+### Consumer 
 1. At startup, the consumer client first creates a IOTDB-Session connection and check whether the storage groups and timeseries are created in IoTDB. If not, create it.  
 2. Then consume client consume data from RocketMQ using MessageListener Orderly to ensure orderly consumption, and insert the sql statement into IoTDB.
 
@@ -66,18 +66,18 @@ RocketMQ: 4.4.0
 ```
 Note: The maven dependencies of io.netty in IoTDB are in conflicts with those dependencies in RocketMQ-Client.
 
-###1. Install IoTDB
+### 1. Install IoTDB
 please refer to [https://iotdb.apache.org/#/Download](https://iotdb.apache.org/#/Download)
 
-###2. Install RocketMQ
-pleasr refer to [http://rocketmq.apache.org/docs/quick-start/](http://rocketmq.apache.org/docs/quick-start/)
-
-###3. Startup IoTDB
-please refer to [https://iotdb.apache.org/#/Documents](https://iotdb.apache.org/#/Documents)
-
-###4. Startup RocketMQ
+### 2. Install RocketMQ
 please refer to [http://rocketmq.apache.org/docs/quick-start/](http://rocketmq.apache.org/docs/quick-start/)
 
-###5. Start the consumer client:RocketMQConsumer
+### 3. Startup IoTDB
+please refer to [https://iotdb.apache.org/#/Documents/progress/chap1/sec1](https://iotdb.apache.org/#/Documents/progress/chap1/sec1)
 
-###6. Start the producer client:RocketMQProducer
+### 4. Startup RocketMQ
+please refer to [http://rocketmq.apache.org/docs/quick-start/](http://rocketmq.apache.org/docs/quick-start/)
+
+### 5. Start the consumer client:RocketMQConsumer
+
+### 6. Start the producer client:RocketMQProducer

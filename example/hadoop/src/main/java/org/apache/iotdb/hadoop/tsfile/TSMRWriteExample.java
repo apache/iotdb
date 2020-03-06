@@ -41,7 +41,6 @@ import java.net.URISyntaxException;
 
 /**
  * One example for writing TsFile with MapReduce.
- * @author Yuan Tian
  */
 public class TSMRWriteExample {
 

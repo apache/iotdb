@@ -80,6 +80,9 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
   @Override
   public synchronized void startService() throws StartupException {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
+      return;
+    }
     logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     executorService = Executors.newSingleThreadExecutor();
     int port = getMetricsPort();
@@ -88,6 +91,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
     metricsWebUI.getHandlers().add(metricsSystem.getServletHandlers());
     metricsWebUI.initialize();
     server = metricsWebUI.getServer(port);
+    server.setStopTimeout(10000);
     metricsSystem.start();
     try {
       executorService.execute(new MetricsServiceThread(server));
@@ -132,7 +136,6 @@ public class MetricsService implements MetricsServiceMBean, IService {
           .error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(),
               e);
       executorService.shutdownNow();
-      Thread.currentThread().interrupt();
     }
     checkAndWaitPortIsClosed();
     logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
@@ -185,7 +188,6 @@ public class MetricsService implements MetricsServiceMBean, IService {
       } catch (@SuppressWarnings("squid:S2142") InterruptedException e1) {
         //we do not sure why InterruptedException happens, but it indeed occurs in Travis WinOS
         logger.error(e1.getMessage(), e1);
-        stopService();
       } catch (Exception e) {
         logger.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
       }

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -99,6 +101,14 @@ public class DeletePlan extends PhysicalPlan {
     }
     DeletePlan that = (DeletePlan) o;
     return deleteTime == that.deleteTime && Objects.equals(paths, that.paths);
+  }
+
+  @Override
+  public void serializeTo(DataOutputStream stream) throws IOException {
+    int type = PhysicalPlanType.DELETE.ordinal();
+    stream.writeByte((byte) type);
+    stream.writeLong(deleteTime);
+    putString(stream, paths.get(0).getFullPath());
   }
 
   @Override
