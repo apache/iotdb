@@ -12,6 +12,10 @@ import java.nio.ByteBuffer;
 public class RemoveNodeLog extends Log {
     private Node removedNode;
 
+    public RemoveNodeLog(){
+        logType = LogType.REMOVE_NODE;
+    }
+
     @Override
     public ByteBuffer serialize() {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();

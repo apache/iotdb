@@ -34,7 +34,9 @@ public class CloseFileLog extends Log {
   private String storageGroupName;
   private boolean isSeq;
 
+
   public CloseFileLog() {
+    logType = LogType.CLOSE_FILE;
   }
 
   public CloseFileLog(String storageGroupName, boolean isSeq) {

@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.log;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import org.apache.iotdb.cluster.log.logtypes.LogType;
 
 /**
  * Log records operations that are made on this cluster. Each log records 4 longs: currLogIndex
@@ -34,6 +35,8 @@ public abstract class Log {
   private long currLogTerm;
   private long previousLogIndex;
   private long previousLogTerm;
+
+  protected LogType logType;
 
   public abstract ByteBuffer serialize();
 
@@ -95,5 +98,9 @@ public abstract class Log {
   @Override
   public int hashCode() {
     return Objects.hash(currLogIndex, currLogTerm, previousLogIndex, previousLogTerm);
+  }
+
+  public LogType getLogType(){
+    return logType;
   }
 }

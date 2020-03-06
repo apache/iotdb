@@ -27,26 +27,25 @@ import java.util.List;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.LogManager;
+import org.apache.iotdb.cluster.log.manage.serializable.LogManagerMeta;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 // TODO-Cluster#351: implement a serializable LogManager.
+
 /**
  * MemoryLogManager stores all logs in a memory deque without providing snapshots.
  */
 public abstract class MemoryLogManager implements LogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MemoryLogManager.class);
-
-  long commitLogIndex = -1;
-  private long lastLogId = -1;
-  private long lastLogTerm = -1;
-
-  Deque<Log> logBuffer = new ArrayDeque<>();
+  protected long commitLogIndex = -1;
+  protected Deque<Log> logBuffer = new ArrayDeque<>();
+  protected long lastLogId = -1;
+  protected long lastLogTerm = -1;
   private LogApplier logApplier;
-
   protected MemoryLogManager(LogApplier logApplier) {
     this.logApplier = logApplier;
   }
@@ -62,8 +61,17 @@ public abstract class MemoryLogManager implements LogManager {
   }
 
   @Override
+  public void setLastLogTerm(long lastLogTerm) {
+    this.lastLogTerm = lastLogTerm;
+  }
+
+  @Override
   public long getCommitLogIndex() {
     return commitLogIndex;
+  }
+
+  public void setCommitLogIndex(long commitLogIndex) {
+    this.commitLogIndex = commitLogIndex;
   }
 
   @Override
@@ -96,7 +104,7 @@ public abstract class MemoryLogManager implements LogManager {
       return;
     }
     for (Log log : logBuffer) {
-      long i  = log.getCurrLogIndex();
+      long i = log.getCurrLogIndex();
       if (commitLogIndex < i && i <= maxLogIndex) {
         try {
           logApplier.apply(log);
@@ -140,7 +148,7 @@ public abstract class MemoryLogManager implements LogManager {
 
   @Override
   public Log getLastLog() {
-    return logBuffer.isEmpty()? null : logBuffer.getLast();
+    return logBuffer.isEmpty() ? null : logBuffer.getLast();
   }
 
   @Override
@@ -153,8 +161,46 @@ public abstract class MemoryLogManager implements LogManager {
     this.lastLogId = lastLogId;
   }
 
-  @Override
-  public void setLastLogTerm(long lastLogTerm) {
-    this.lastLogTerm = lastLogTerm;
+  Log removeFirstLog() {
+    return logBuffer.removeFirst();
+  }
+
+  /**
+   * remove logs which haven been committed
+   *
+   * @return last committed log
+   */
+  public Log removeCommittedLogsReturnLastLog() {
+    Log res = null;
+    while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
+      // remove committed logs
+      res = removeFirstLog();
+    }
+
+    return res;
+  }
+
+  /**
+   * remove logs which haven been committed
+   *
+   * @return committed logs List
+   */
+  public List<Log> removeAndReturnCommittedLogs() {
+    List<Log> res = new ArrayList<>();
+    while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
+      res.add(removeFirstLog());
+    }
+
+    return res;
+  }
+
+  public void setLogBuffer(Deque<Log> logBuffer) {
+    this.logBuffer = logBuffer;
+  }
+
+  public void setMeta(LogManagerMeta meta) {
+    commitLogIndex = meta.getCommitLogIndex();
+    lastLogId = meta.getLastLogId();
+    lastLogTerm = meta.getLastLogTerm();
   }
 }

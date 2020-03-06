@@ -67,11 +67,10 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     synchronized (slotSnapshots) {
       collectTimeseriesSchemas();
 
-      while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
-        // remove committed logs
-        Log log = logBuffer.removeFirst();
-        snapshotLastLogId = log.getCurrLogIndex();
-        snapshotLastLogTerm = log.getCurrLogTerm();
+      Log lastCommittedLog = removeCommittedLogsReturnLastLog();
+      if(lastCommittedLog != null){
+        snapshotLastLogId = lastCommittedLog.getCurrLogIndex();
+        snapshotLastLogTerm = lastCommittedLog.getCurrLogTerm();
       }
 
       collectTsFiles();

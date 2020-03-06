@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -53,6 +54,20 @@ public class TestUtils {
     node.setDataPort(ClusterDescriptor.getINSTANCE().getConfig().getLocalDataPort());
     node.setNodeIdentifier(nodeNum);
     return node;
+  }
+
+  public static List<Log> prepareNodeLogs(int logNum){
+    List<Log> logList = new ArrayList<>();
+    for (int i = 0; i < logNum; i++) {
+      AddNodeLog log = new AddNodeLog();
+      log.setNewNode(getNode(i));
+      log.setCurrLogIndex(i);
+      log.setCurrLogTerm(i);
+      log.setPreviousLogIndex(i - 1L);
+      log.setPreviousLogTerm(i - 1L);
+      logList.add(log);
+    }
+    return logList;
   }
 
   public static List<Log> prepareTestLogs(int logNum) {
