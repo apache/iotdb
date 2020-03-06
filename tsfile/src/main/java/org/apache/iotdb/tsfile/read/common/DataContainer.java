@@ -131,8 +131,8 @@ public class DataContainer {
 
     for (int i = 0; i < time.length; i++) {
       statistics.update(time[i], value[i]);
-      timeColumn.firstPut(time[i]);
-      valueColumn.firstPut(value[i]);
+      timeColumn.fastPut(time[i]);
+      valueColumn.fastPut(value[i]);
     }
   }
 
@@ -146,8 +146,8 @@ public class DataContainer {
 
     for (int i = 0; i < time.length; i++) {
       statistics.update(time[i], value[i]);
-      timeColumn.firstPut(time[i]);
-      valueColumn.firstPut(value[i]);
+      timeColumn.fastPut(time[i]);
+      valueColumn.fastPut(value[i]);
     }
   }
 
@@ -161,8 +161,8 @@ public class DataContainer {
 
     for (int i = 0; i < time.length; i++) {
       statistics.update(time[i], value[i]);
-      timeColumn.firstPut(time[i]);
-      valueColumn.firstPut(value[i]);
+      timeColumn.fastPut(time[i]);
+      valueColumn.fastPut(value[i]);
     }
   }
 
@@ -176,8 +176,8 @@ public class DataContainer {
 
     for (int i = 0; i < time.length; i++) {
       statistics.update(time[i], value[i]);
-      timeColumn.firstPut(time[i]);
-      valueColumn.firstPut(value[i]);
+      timeColumn.fastPut(time[i]);
+      valueColumn.fastPut(value[i]);
     }
   }
 
@@ -191,8 +191,8 @@ public class DataContainer {
 
     for (int i = 0; i < time.length; i++) {
       statistics.update(time[i], value[i]);
-      timeColumn.firstPut(time[i]);
-      valueColumn.firstPut(value[i]);
+      timeColumn.fastPut(time[i]);
+      valueColumn.fastPut(value[i]);
     }
   }
 
@@ -206,8 +206,8 @@ public class DataContainer {
 
     for (int i = 0; i < time.length; i++) {
       statistics.update(time[i], value[i]);
-      timeColumn.firstPut(time[i]);
-      valueColumn.firstPut(value[i]);
+      timeColumn.fastPut(time[i]);
+      valueColumn.fastPut(value[i]);
     }
   }
 

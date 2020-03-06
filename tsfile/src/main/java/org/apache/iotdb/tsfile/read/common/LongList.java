@@ -9,7 +9,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
  */
 public class LongList extends IoTDBArrayList {
 
-  private long[][] elementData = new long[2][1024];
+  private long[][] elementData = new long[1][1024];
 
   @Override
   public void put(long value) {

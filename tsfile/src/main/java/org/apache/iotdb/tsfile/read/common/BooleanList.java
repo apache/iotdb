@@ -9,7 +9,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
  */
 public class BooleanList extends IoTDBArrayList {
 
-  private boolean[][] elementData = new boolean[2][1024];
+  private boolean[][] elementData = new boolean[1][1024];
 
 
   @Override
