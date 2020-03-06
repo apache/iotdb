@@ -79,7 +79,7 @@ For the latest information about IoTDB, please visit [IoTDB official website](ht
 
 # Quick Start
 
-This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/0.10.0/chap1/sec1).
+This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/0.9.x/chap1/sec1).
 
 ## Prerequisites
 
