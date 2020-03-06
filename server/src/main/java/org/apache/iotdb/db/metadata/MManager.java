@@ -687,7 +687,6 @@ public class MManager {
   /**
    * Get schema map for the device
    *
-   * @param deviceId
    * @return a map measurementId -> measurememtSchema in the device
    */
   public Map<String, MeasurementSchema> getDeviceSchemaMap(String device) throws MetadataException {
