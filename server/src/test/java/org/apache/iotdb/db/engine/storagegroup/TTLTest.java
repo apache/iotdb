@@ -21,6 +21,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -328,7 +329,7 @@ public class TTLTest {
 
     rowRecord = queryDataSet.next();
     assertEquals(sg2, rowRecord.getFields().get(0).getStringValue());
-    assertEquals("null", rowRecord.getFields().get(1).getStringValue());
+    assertNull(rowRecord.getFields().get(1));
   }
 
   @Test

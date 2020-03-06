@@ -22,16 +22,17 @@ package org.apache.iotdb.db.qp.physical.sys;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ShowChildPathsPlan extends ShowPlan {
-  //show child paths SQL does not support path with wildcard
-  private Path path;
 
-  public ShowChildPathsPlan(ShowContentType showContentType, Path path) {
+  // the path could be a prefix path with wildcard
+  private Path prefixPath;
+
+  public ShowChildPathsPlan(ShowContentType showContentType, Path prefixPath) {
     super(showContentType);
-    this.path = path;
+    this.prefixPath = prefixPath;
     canbeSplit = false;
   }
 
   public Path getPath() {
-    return this.path;
+    return this.prefixPath;
   }
 }

@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,6 +61,7 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -192,7 +194,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       //check the version compatibility
       boolean compatible = checkCompatibility(req.getClient_protocol());
       if (!compatible) {
-        tsStatus = getStatus(TSStatusCode.INCOMPATIBLE_VERSION, "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
+        tsStatus = getStatus(TSStatusCode.INCOMPATIBLE_VERSION,
+            "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
         TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
             TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
         resp.setSessionId(sessionId);
@@ -208,7 +211,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       tsStatus = getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
-            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
+        TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
     resp.setSessionId(sessionId);
     logger.info(
         "{}: Login status: {}. User : {}",
@@ -320,7 +323,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * convert from TSStatusCode to TSStatus, which has message appending with existed status message
    *
-   * @param statusType status type
+   * @param statusType    status type
    * @param appendMessage appending message
    */
   private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
@@ -574,7 +577,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   /**
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
-   * AuthorPlan
+   *             AuthorPlan
    */
   private TSExecuteStatementResp internalExecuteQueryStatement(
       long statementId, PhysicalPlan plan, int fetchSize, String username) {
@@ -798,113 +801,46 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private void getAlignByDeviceQueryHeaders(
       AlignByDevicePlan plan, List<String> respColumns, List<String> columnTypes) {
-    // set columns in TSExecuteStatementResp. Note this is without deduplication.
-    respColumns.add(SQLConstant.GROUPBY_DEVICE_COLUMN_NAME);
+    // set columns in TSExecuteStatementResp.
+    respColumns.add(SQLConstant.ALIGNBY_DEVICE_COLUMN_NAME);
 
     // get column types and do deduplication
     columnTypes.add(TSDataType.TEXT.toString()); // the DEVICE column of ALIGN_BY_DEVICE result
     List<TSDataType> deduplicatedColumnsType = new ArrayList<>();
     deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of ALIGN_BY_DEVICE result
-    List<String> deduplicatedMeasurementColumns = new ArrayList<>();
-    Set<String> tmpColumnSet = new HashSet<>();
-    Map<String, TSDataType> checker = plan.getDataTypeConsistencyChecker();
-    // build column header with constant and non exist column and deduplicate
-    int loc = 0;
-    // size of total column
-    int totalSize = plan.getNotExistMeasurements().size() + plan.getConstMeasurements().size()
-        + plan.getMeasurements().size();
-    // not exist column loc
-    int notExistMeasurementsLoc = 0;
-    // constant column loc
-    int constMeasurementsLoc = 0;
-    // normal column loc
-    int resLoc = 0;
-    // after removing duplicate, we must shift column position
-    int shiftLoc = 0;
-    while (loc < totalSize) {
-      boolean isNonExist = false;
-      boolean isConstant = false;
-      TSDataType type;
-      String column;
-      // not exist
-      if (isOneMeasurementIn(loc,
-          notExistMeasurementsLoc, plan.getPositionOfNotExistMeasurements())) {
-        // for shifting
-        plan.getPositionOfNotExistMeasurements().set(notExistMeasurementsLoc, loc - shiftLoc);
 
-        type = TSDataType.TEXT;
-        column = plan.getNotExistMeasurements().get(notExistMeasurementsLoc);
-        notExistMeasurementsLoc++;
-        isNonExist = true;
-      }
-      // constant
-      else if (isOneMeasurementIn(loc,
-          constMeasurementsLoc, plan.getPositionOfConstMeasurements())) {
-        // for shifting
-        plan.getPositionOfConstMeasurements().set(constMeasurementsLoc, loc - shiftLoc);
+    Set<String> deduplicatedMeasurements = new LinkedHashSet<>();
+    Map<String, TSDataType> checker = plan.getMeasurementDataTypeMap();
 
-        type = TSDataType.TEXT;
-        column = plan.getConstMeasurements().get(constMeasurementsLoc);
-        constMeasurementsLoc++;
-        isConstant = true;
+    // build column header with constant and non exist column and deduplication
+    List<String> measurements = plan.getMeasurements();
+    Map<String, MeasurementType> measurementTypeMap = plan.getMeasurementTypeMap();
+    for (String measurement : measurements) {
+      TSDataType type = null;
+      switch (measurementTypeMap.get(measurement)) {
+        case Exist:
+          type = checker.get(measurement);
+          break;
+        case NonExist:
+        case Constant:
+          type = TSDataType.TEXT;
       }
-      // normal series
-      else {
-        type = checker.get(plan.getMeasurements().get(resLoc));
-        column = plan.getMeasurements().get(resLoc);
-        resLoc++;
-      }
-
+      respColumns.add(measurement);
       columnTypes.add(type.toString());
-      respColumns.add(column);
-      // deduplicate part
-      if (!tmpColumnSet.contains(column)) {
-        // Note that this deduplication strategy is consistent with that of client
-        // IoTDBQueryResultSet.
-        tmpColumnSet.add(column);
-        if (!isNonExist && !isConstant) {
-          // only refer to those normal measurements
-          deduplicatedMeasurementColumns.add(column);
-        }
-        deduplicatedColumnsType.add(type);
-      } else if (isConstant) {
-        shiftLoc++;
-        constMeasurementsLoc--;
-        plan.getConstMeasurements().remove(constMeasurementsLoc);
-        plan.getPositionOfConstMeasurements().remove(constMeasurementsLoc);
-      } else if (isNonExist) {
-        shiftLoc++;
-        notExistMeasurementsLoc--;
-        plan.getNotExistMeasurements().remove(notExistMeasurementsLoc);
-        plan.getPositionOfNotExistMeasurements().remove(notExistMeasurementsLoc);
-      } else {
-        shiftLoc++;
-      }
 
-      loc++;
+      if (!deduplicatedMeasurements.contains(measurement)) {
+        deduplicatedMeasurements.add(measurement);
+        deduplicatedColumnsType.add(type);
+      }
     }
 
     // save deduplicated measurementColumn names and types in QueryPlan for the next stage to use.
-    // i.e., used by DeviceIterateDataSet constructor in `fetchResults` stage.
-    plan.setMeasurements(deduplicatedMeasurementColumns);
+    // i.e., used by AlignByDeviceDataSet constructor in `fetchResults` stage.
+    plan.setMeasurements(new ArrayList<>(deduplicatedMeasurements));
     plan.setDataTypes(deduplicatedColumnsType);
 
     // set these null since they are never used henceforth in ALIGN_BY_DEVICE query processing.
     plan.setPaths(null);
-    plan.setDataTypeConsistencyChecker(null);
-  }
-
-  /**
-   *
-   * @param subLoc
-   * @param totalLoc
-   * @param measurementPositions
-   * @return true if the measurement at totalLoc is the subLoc measurement in measurementPositions,
-   * false otherwise
-   */
-  private boolean isOneMeasurementIn(int totalLoc,
-      int subLoc, List<Integer> measurementPositions) {
-    return subLoc < measurementPositions.size() && totalLoc == measurementPositions.get(subLoc);
   }
 
   @Override

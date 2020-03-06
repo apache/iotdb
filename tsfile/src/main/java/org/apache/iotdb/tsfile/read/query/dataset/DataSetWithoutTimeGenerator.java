@@ -53,9 +53,9 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
   /**
    * constructor of DataSetWithoutTimeGenerator.
    *
-   * @param paths paths in List structure
+   * @param paths     paths in List structure
    * @param dataTypes TSDataTypes in List structure
-   * @param readers readers in List(FileSeriesReaderByTimestamp) structure
+   * @param readers   readers in List(FileSeriesReaderByTimestamp) structure
    * @throws IOException IOException
    */
   public DataSetWithoutTimeGenerator(List<Path> paths, List<TSDataType> dataTypes,
@@ -106,7 +106,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
       Field field = new Field(dataTypes.get(i));
 
       if (!hasDataRemaining.get(i)) {
-        record.addField(new Field(null));
+        record.addField(null);
         continue;
       }
 
@@ -134,7 +134,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
         }
         record.addField(field);
       } else {
-        record.addField(new Field(null));
+        record.addField(null);
       }
     }
     return record;

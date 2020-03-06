@@ -143,7 +143,7 @@ public class LastQueryExecutor {
     long version = 0;
     for (TsFileResource resource : unseqFileResources) {
       if (resource.getEndTimeMap().get(seriesPath.getDevice()) < resultPair.getTimestamp()) {
-        break;
+        continue;
       }
       List<ChunkMetaData> chunkMetadata =
           FileLoaderUtils.loadChunkMetadataFromTsFileResource(resource, seriesPath, context);
