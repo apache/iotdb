@@ -589,9 +589,8 @@ public class IoTDBSessionIT {
     checkSetSG(session, "root.\tvehicle", false);
     checkSetSG(session, "root.\nvehicle", false);
     checkSetSG(session, "root..vehicle", false);
-    checkSetSG(session, "root.1234a4", false);
-    checkSetSG(session, "root.+12345", true);
-    checkSetSG(session, "root.-12345", true);
+    checkSetSG(session, "root.1234a4", true);
+    checkSetSG(session, "root.1_2", true);
     checkSetSG(session, "root.%12345", false);
     checkSetSG(session, "root.a{12345}", false);
 
@@ -600,7 +599,8 @@ public class IoTDBSessionIT {
     checkCreateTimeseries(session, "root.vehicle.1110.s0", true);
     checkCreateTimeseries(session, "root.vehicle.d0.1220", true);
     checkCreateTimeseries(session, "root.vehicle._1234.s0", true);
-    checkCreateTimeseries(session, "root.vehicle.+1245.-1256", true);
+    checkCreateTimeseries(session, "root.vehicle.1245.\"1.2.3\"", true);
+    checkCreateTimeseries(session, "root.vehicle.1245.\'1.2.4\'", true);
     checkCreateTimeseries(session, "root.vehicle./d0.s0", false);
     checkCreateTimeseries(session, "root.vehicle.d\t0.s0", false);
     checkCreateTimeseries(session, "root.vehicle.!d\t0.s0", false);
@@ -616,18 +616,18 @@ public class IoTDBSessionIT {
     } catch (IoTDBSessionException e) {
       status = false;
     }
-    assertEquals(status, correctStatus);
+    assertEquals(correctStatus, status);
   }
 
-  private void checkCreateTimeseries(Session session, String timeseris, boolean correctStatus) {
+  private void checkCreateTimeseries(Session session, String timeseries, boolean correctStatus) {
     boolean status = true;
     try {
-      session.createTimeseries(timeseris, TSDataType.INT64, TSEncoding.RLE,
+      session.createTimeseries(timeseries, TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY);
     } catch (IoTDBSessionException e) {
       status = false;
     }
-    assertEquals(status, correctStatus);
+    assertEquals(correctStatus, status);
   }
 
   private void insertRowBatchTest2(String deviceId) throws IoTDBSessionException {

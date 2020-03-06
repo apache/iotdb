@@ -28,11 +28,12 @@ public class Config {
   public static final int DEFAULT_FETCH_SIZE = 10000;
   public static final int DEFAULT_TIMEOUT_MS = 0;
 
-  public static final String NODE_MATCHER = "([a-zA-Z0-9_-]+)";
+  public static final String NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + "([a-zA-Z0-9_]+)";
 
   // for path like: root.sg1.d1."1.2.3" or root.sg1.d1.'1.2.3', only occurs in the end of the path and only occurs once
-  public static final String NODE_WITH_QUOTATION_MARK_MATCHER = "\"|\'a-zA-Z0-9_-[.a-zA-Z0-9_-]+\"|\'";
-  public static final String PATH_MATCHER = PATH_ROOT + "([" + PATH_SEPARATOR + "]" + NODE_MATCHER
-      + ")+[" + NODE_WITH_QUOTATION_MARK_MATCHER + "]?";
+  public static final String NODE_WITH_QUOTATION_MARK_MATCHER =
+      "[" + PATH_SEPARATOR + "][\"|\']([a-zA-Z0-9_]+)(" + NODE_MATCHER + ")+[\"|\']";
+  public static final String PATH_MATCHER =
+      PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")?";
 
 }

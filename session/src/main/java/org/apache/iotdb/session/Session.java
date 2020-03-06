@@ -646,10 +646,9 @@ public class Session {
   }
 
   private void checkPathValidity(String path) throws IoTDBSessionException {
-    if (!Pattern.compile(PATH_MATCHER).matcher(path).find()) {
+    if (!Pattern.matches(PATH_MATCHER, path)) {
       throw new IoTDBSessionException(
           String.format("Path [%s] is invalid", path));
     }
   }
-
 }
