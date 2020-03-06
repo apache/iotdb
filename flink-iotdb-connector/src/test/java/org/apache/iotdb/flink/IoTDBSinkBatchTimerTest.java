@@ -57,13 +57,7 @@ public class IoTDBSinkBatchTimerTest {
         tuple.put("values", "36.5");
         ioTDBSink.invoke(tuple, null);
 
-        verifyZeroInteractions(session);
-
-        Thread.sleep(500);
-
-        verifyZeroInteractions(session);
-
-        Thread.sleep(500);
+        Thread.sleep(2500);
 
         verify(session).insertInBatch(any(List.class), any(List.class), any(List.class), any(List.class));
 
