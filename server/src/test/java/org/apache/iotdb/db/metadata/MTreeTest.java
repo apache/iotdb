@@ -278,6 +278,9 @@ public class MTreeTest {
       assertTrue(root.isStorageGroup("root.laptop.d1"));
       assertTrue(root.isStorageGroup("root.laptop.d2"));
       assertFalse(root.isStorageGroup("root.laptop.d3"));
+
+      root.setStorageGroup("root.1");
+      assertTrue(root.isStorageGroup("root.1"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
