@@ -19,7 +19,7 @@ public class LongList extends IoTDBArrayList {
   }
 
   @Override
-  public void firstPut(long value) {
+  public void fastPut(long value) {
     elementData[currentArrayIndex][currentInsideIndex++] = value;
     size++;
   }
@@ -74,27 +74,27 @@ public class LongList extends IoTDBArrayList {
   }
 
   @Override
-  public void firstPut(int value) {
+  public void fastPut(int value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   @Override
-  public void firstPut(float value) {
+  public void fastPut(float value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   @Override
-  public void firstPut(double value) {
+  public void fastPut(double value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   @Override
-  public void firstPut(Binary value) {
+  public void fastPut(Binary value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   @Override
-  public void firstPut(boolean value) {
+  public void fastPut(boolean value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

@@ -26,17 +26,17 @@ public abstract class IoTDBArrayList {
 
   public abstract void put(boolean value);
 
-  public abstract void firstPut(long value);
+  public abstract void fastPut(long value);
 
-  public abstract void firstPut(int value);
+  public abstract void fastPut(int value);
 
-  public abstract void firstPut(float value);
+  public abstract void fastPut(float value);
 
-  public abstract void firstPut(double value);
+  public abstract void fastPut(double value);
 
-  public abstract void firstPut(Binary value);
+  public abstract void fastPut(Binary value);
 
-  public abstract void firstPut(boolean value);
+  public abstract void fastPut(boolean value);
 
   public abstract Object getValue(int currentReadIndex);
 
