@@ -98,8 +98,7 @@ public class DeviceMetaDataCache {
     }
 
     StringBuilder builder = new StringBuilder(resource.getFile().getPath()).append(".")
-        .append(seriesPath
-            .getDevice());
+        .append(seriesPath.getDevice());
     String pathDeviceStr = builder.toString();
     String key = builder.append(".").append(seriesPath.getMeasurement()).toString();
     Object devicePathObject = pathDeviceStr.intern();

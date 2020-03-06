@@ -71,7 +71,7 @@ public class MManagerAdvancedTest {
     EnvironmentUtils.cleanEnv();
   }
 
-  @org.junit.Test
+  @Test
   public void test() {
 
     try {
@@ -104,7 +104,7 @@ public class MManagerAdvancedTest {
   }
 
   @Test
-  public void testCache() throws MetadataException, IOException, StorageGroupException {
+  public void testCache() throws MetadataException {
     mmanager.createTimeseries("root.vehicle.d2.s0", "DOUBLE", "RLE");
     mmanager.createTimeseries("root.vehicle.d2.s1", "BOOLEAN", "PLAIN");
     mmanager.createTimeseries("root.vehicle.d2.s2.g0", "TEXT", "PLAIN");
@@ -122,8 +122,7 @@ public class MManagerAdvancedTest {
   }
 
   @Test
-  public void testCachedLastTimeValue()
-          throws MetadataException, IOException, StorageGroupException {
+  public void testCachedLastTimeValue() throws MetadataException {
     mmanager.createTimeseries("root.vehicle.d2.s0", "DOUBLE", "RLE");
 
     TimeValuePair tv1 = new TimeValuePair(1000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0));

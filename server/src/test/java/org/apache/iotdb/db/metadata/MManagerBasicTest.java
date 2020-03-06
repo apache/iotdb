@@ -72,6 +72,8 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
 
+    assertTrue(manager.isPathExist("root.1"));
+
     try {
       manager.setStorageGroup("root.laptop");
     } catch (MetadataException e) {
@@ -99,16 +101,16 @@ public class MManagerBasicTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
       manager.createTimeseries("root.1.2.3", TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+
+      assertTrue(manager.isPathExist("root.laptop.d1.s1"));
+      assertTrue(manager.isPathExist("root.laptop.d1.1_2"));
+      assertTrue(manager.isPathExist("root.laptop.d1.\"1.2.3\""));
+      assertTrue(manager.isPathExist("root.1.2"));
+      assertTrue(manager.isPathExist("root.1.2.3"));
     } catch (MetadataException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
-    assertTrue(manager.isPathExist("root.laptop.d1.s1"));
-    assertTrue(manager.isPathExist("root.laptop.d1.1_2"));
-    assertTrue(manager.isPathExist("root.laptop.d1.\"1.2.3\""));
-    assertTrue(manager.isPathExist("root.1.2.3"));
-    assertTrue(manager.isPathExist("root.1"));
-    assertTrue(manager.isPathExist("root.1.2"));
 
     try {
       manager.deleteTimeseries("root.laptop.d1.s1");
@@ -125,7 +127,7 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
     assertFalse(manager.isPathExist("root.laptop.d1.s0"));
-    assertFalse(manager.isPathExist("root.laptop.d1"));
+    assertTrue(manager.isPathExist("root.laptop.d1"));
     assertTrue(manager.isPathExist("root.laptop"));
     assertTrue(manager.isPathExist("root"));
 

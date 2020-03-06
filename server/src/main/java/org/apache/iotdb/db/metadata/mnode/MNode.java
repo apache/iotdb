@@ -87,6 +87,9 @@ public abstract class MNode implements Serializable {
     MNode curr = this;
     while (curr.getParent() != null) {
       curr = curr.getParent();
+      if (curr instanceof EmptyDeviceMNode) {
+        continue;
+      }
       builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.name);
     }
     fullPath = builder.toString();

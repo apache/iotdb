@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.cache;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,8 +61,9 @@ public class TsFileMetadataUtils {
    */
   public static Map<Path, List<ChunkMetaData>> getChunkMetaDataList(
       Set<String> sensorSet, String deviceId, TsFileResource resource) throws IOException {
-    Map<Path, List<ChunkMetaData>> pathToChunkMetaDataList = new ConcurrentHashMap<>();
+    Map<Path, List<ChunkMetaData>> pathToChunkMetaDataList = new HashMap<>();
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource, true);
+
     List<ChunkMetaData> chunkMetaDataListInOneDevice = tsFileReader
         .readChunkMetadataInDevice(deviceId);
     for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneDevice) {
@@ -71,9 +73,6 @@ public class TsFileMetadataUtils {
         // chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
         pathToChunkMetaDataList.get(path).add(chunkMetaData);
       }
-    }
-    for (List<ChunkMetaData> chunkMetaDataList : pathToChunkMetaDataList.values()) {
-      chunkMetaDataList.sort(Comparator.comparingLong(ChunkMetaData::getStartTime));
     }
     return pathToChunkMetaDataList;
   }

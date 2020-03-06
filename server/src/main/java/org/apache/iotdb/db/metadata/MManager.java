@@ -263,7 +263,7 @@ public class MManager {
    * @return whether the measurement occurs for the first time in this storage group (if true, the
    * measurement should be registered to the StorageEngine too)
    */
-  public boolean createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
+  public void createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) throws MetadataException {
     lock.writeLock().lock();
     try {
@@ -282,39 +282,15 @@ public class MManager {
         setStorageGroup(storageGroupName);
       }
 
-      /*
-       * check if the measurement schema conflict in its device
-       */
-      String device = new Path(path).getDevice();
-      Map<String, MeasurementSchema> schemaMap = mtree.getDeviceSchemaMap(device);
-      String measurement = new Path(path).getMeasurement();
-      boolean isNewMeasurement = true;
-      if (schemaMap.containsKey(measurement)) {
-        isNewMeasurement = false;
-        MeasurementSchema schema = schemaMap.get(measurement);
-        if (!schema.getType().equals(dataType) || !schema.getEncodingType().equals(encoding)
-            || !schema.getCompressor().equals(compressor)) {
-          // conflict with existing
-          throw new MetadataException(String.format(
-              "The resultDataType or encoding or compression of the last node %s is conflicting "
-                  + "in the device %s", measurement, device));
-        }
-      }
-
       // create time series with memory check
       createTimeseriesWithMemoryCheckAndLog(path, dataType, encoding, compressor, props);
-      // register schema in this device
-      if (isNewMeasurement) {
-        mtree.addSchemaToDevice(device,
-            new MeasurementSchema(measurement, dataType, encoding, compressor, props));
-      }
+
       // update statistics
       int size = seriesNumberInStorageGroups.get(storageGroupName);
       seriesNumberInStorageGroups.put(storageGroupName, size + 1);
       if (size + 1 > maxSeriesNumberAmongStorageGroup) {
         maxSeriesNumberAmongStorageGroup = size + 1;
       }
-      return isNewMeasurement;
     } finally {
       lock.writeLock().unlock();
     }
@@ -778,8 +754,8 @@ public class MManager {
         if (shouldSetStorageGroup) {
           String storageGroupName = MetaUtils.getStorageGroupNameByLevel(path, sgLevel);
           setStorageGroup(storageGroupName);
+          node = mtree.getDeviceNodeWithAutoCreating(path);
         }
-        node = mtree.getDeviceNodeWithAutoCreating(path);
       }
     }
     return node;

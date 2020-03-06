@@ -24,6 +24,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -35,13 +36,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -74,7 +73,6 @@ public class SchemaUtils {
   /**
    * getSchemaFromColumnSchema construct a Schema using the schema of the columns and device type.
    *
-   * @param schemaList the schema of the columns in this file.
    * @return a Schema contains the provided schemas.
    */
   public static Schema getSchemaFromColumnSchema(Map<Path, MeasurementSchema> schemaMap) {
@@ -92,12 +90,10 @@ public class SchemaUtils {
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();
       CompressionType compressionType = schema.getCompressor();
-      boolean result = MManager.getInstance().createTimeseries(path, dataType, encoding,
+      MManager.getInstance().createTimeseries(path, dataType, encoding,
           compressionType, Collections.emptyMap());
-      if (result) {
-        StorageEngine.getInstance().addTimeSeries(new Path(path), dataType, encoding,
-            compressionType, Collections.emptyMap());
-      }
+      StorageEngine.getInstance().addTimeSeries(new Path(path), dataType, encoding,
+          compressionType, Collections.emptyMap());
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
     } catch (MetadataException | StorageEngineException e) {

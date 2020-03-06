@@ -613,14 +613,11 @@ public class PlanExecutor implements IPlanExecutor {
         }
         if (!node.hasChild(measurement)) {
           try {
-            boolean result = mManager
-                .createTimeseries(fullPath, schema.getType(), schema.getEncodingType(),
+            mManager.createTimeseries(fullPath, schema.getType(), schema.getEncodingType(),
+                schema.getCompressor(), Collections.emptyMap());
+            StorageEngine.getInstance()
+                .addTimeSeries(new Path(fullPath), schema.getType(), schema.getEncodingType(),
                     schema.getCompressor(), Collections.emptyMap());
-            if (result) {
-              StorageEngine.getInstance()
-                  .addTimeSeries(new Path(fullPath), schema.getType(), schema.getEncodingType(),
-                      schema.getCompressor(), Collections.emptyMap());
-            }
           } catch (MetadataException e) {
             if (!e.getMessage().contains("already exist")) {
               throw e;
@@ -715,13 +712,10 @@ public class PlanExecutor implements IPlanExecutor {
           TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValues[i]);
           Path path = new Path(deviceId, measurement);
 
-          boolean result = mManager
-              .createTimeseries(path.toString(), dataType, getDefaultEncoding(dataType),
+          mManager.createTimeseries(path.toString(), dataType, getDefaultEncoding(dataType),
                   TSFileDescriptor.getInstance().getConfig().getCompressor(),
-                  Collections.emptyMap());
-          if (result) {
-            StorageEngine.getInstance().addTimeSeries(path, dataType, getDefaultEncoding(dataType));
-          }
+              Collections.emptyMap());
+          StorageEngine.getInstance().addTimeSeries(path, dataType, getDefaultEncoding(dataType));
         }
         MNode measurementNode = node.getChild(measurement);
         if (measurementNode instanceof InternalMNode) {
@@ -781,14 +775,10 @@ public class PlanExecutor implements IPlanExecutor {
           }
           Path path = new Path(deviceId, measurementList[i]);
           TSDataType dataType = dataTypes[i];
-          boolean result = mManager
-              .createTimeseries(path.getFullPath(), dataType, getDefaultEncoding(dataType),
+          mManager.createTimeseries(path.getFullPath(), dataType, getDefaultEncoding(dataType),
                   TSFileDescriptor.getInstance().getConfig().getCompressor(),
                   Collections.emptyMap());
-          if (result) {
-            StorageEngine.getInstance()
-                .addTimeSeries(path, dataType, getDefaultEncoding(dataType));
-          }
+          StorageEngine.getInstance().addTimeSeries(path, dataType, getDefaultEncoding(dataType));
         }
         MNode measurementNode = node.getChild(measurementList[i]);
         if (measurementNode instanceof InternalMNode) {
@@ -890,11 +880,8 @@ public class PlanExecutor implements IPlanExecutor {
     TSEncoding encoding = createTimeSeriesPlan.getEncoding();
     Map<String, String> props = createTimeSeriesPlan.getProps();
     try {
-      boolean result = mManager
-          .createTimeseries(path.getFullPath(), dataType, encoding, compressor, props);
-      if (result) {
-        StorageEngine.getInstance().addTimeSeries(path, dataType, encoding, compressor, props);
-      }
+      mManager.createTimeseries(path.getFullPath(), dataType, encoding, compressor, props);
+      StorageEngine.getInstance().addTimeSeries(path, dataType, encoding, compressor, props);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     }
