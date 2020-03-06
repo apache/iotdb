@@ -65,7 +65,7 @@ public class AggregationExecutor {
    **/
   private int aggregateFetchSize;
 
-  AggregationExecutor(AggregationPlan aggregationPlan) {
+  protected AggregationExecutor(AggregationPlan aggregationPlan) {
     this.selectedSeries = aggregationPlan.getDeduplicatedPaths();
     this.dataTypes = aggregationPlan.getDeduplicatedDataTypes();
     this.aggregations = aggregationPlan.getDeduplicatedAggregations();
@@ -78,7 +78,7 @@ public class AggregationExecutor {
    *
    * @param context query context
    */
-  QueryDataSet executeWithoutValueFilter(QueryContext context)
+  public QueryDataSet executeWithoutValueFilter(QueryContext context)
       throws StorageEngineException, IOException, QueryProcessException {
 
     Filter timeFilter = null;

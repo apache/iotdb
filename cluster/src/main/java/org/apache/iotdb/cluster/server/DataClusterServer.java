@@ -39,6 +39,7 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -403,5 +404,18 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
     DataGroupMember dataMember = getDataMember(request.getHeader(), resultHandler, request);
     dataMember.getAggrResult(request, resultHandler);
+  }
+
+  @Override
+  public void getGroupByExecutor(GroupByRequest request, AsyncMethodCallback<Long> resultHandler) {
+    DataGroupMember dataMember = getDataMember(request.getHeader(), resultHandler, request);
+    dataMember.getGroupByExecutor(request, resultHandler);
+  }
+
+  @Override
+  public void getGroupByResult(Node header, long executorId, long startTime, long endTime,
+      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+    DataGroupMember dataMember = getDataMember(header, resultHandler, "Fetch group by");
+    dataMember.getGroupByResult(header, executorId, startTime, endTime, resultHandler);
   }
 }

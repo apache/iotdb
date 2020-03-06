@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestLogApplier;
 import org.apache.iotdb.cluster.common.TestRemoteFileSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
@@ -75,7 +76,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
     for (int i = 1; i < 4; i++) {
       FileSnapshot fileSnapshot =
           (FileSnapshot) snapshot.getSnapshot(PartitionUtils.calculateStorageGroupSlotByTime(
-              TestUtils.getTestSg(i), 0, 100));
+              TestUtils.getTestSg(i), 0, ClusterConstant.SLOT_NUM));
       assertEquals(10, fileSnapshot.getTimeseriesSchemas().size());
       assertEquals(5, fileSnapshot.getDataFiles().size());
     }
@@ -106,7 +107,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
     PartitionedSnapshot snapshot = (PartitionedSnapshot) manager.getSnapshot();
     for (int i = 6; i < 9; i++) {
       FileSnapshot fileSnapshot =
-          (FileSnapshot) snapshot.getSnapshot(PartitionUtils.calculateStorageGroupSlotByTime(TestUtils.getTestSg(i), 0, 100));
+          (FileSnapshot) snapshot.getSnapshot(PartitionUtils.calculateStorageGroupSlotByTime(TestUtils.getTestSg(i), 0, ClusterConstant.SLOT_NUM));
       assertEquals(10, fileSnapshot.getDataFiles().size());
       assertEquals(10, fileSnapshot.getTimeseriesSchemas().size());
     }

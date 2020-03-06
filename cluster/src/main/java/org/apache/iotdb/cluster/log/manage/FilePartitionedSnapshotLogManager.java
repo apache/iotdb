@@ -98,7 +98,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
             partitionNum, partitionTable.getTotalSlotNumbers());
         FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
             s -> new FileSnapshot());
-        if (snapshot.getTimeseriesSchemas() == null) {
+        if (snapshot.getTimeseriesSchemas().isEmpty()) {
           snapshot.setTimeseriesSchemas(slotTimeseries.getOrDefault(slotNum,
               Collections.emptySet()));
         }

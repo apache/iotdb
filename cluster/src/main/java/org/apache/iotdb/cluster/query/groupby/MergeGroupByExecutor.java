@@ -55,6 +55,7 @@ public class MergeGroupByExecutor implements GroupByExecutor {
       initExecutors();
     }
     for (GroupByExecutor groupByExecutor : groupByExecutors) {
+      groupByExecutor.resetAggregateResults();
       List<Pair<AggregateResult, Integer>> pairs = groupByExecutor
           .calcResult(curStartTime, curEndTime);
       for (int i = 0; i < pairs.size(); i++) {

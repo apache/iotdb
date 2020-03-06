@@ -21,6 +21,8 @@ package org.apache.iotdb.cluster.server.member;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -55,7 +57,9 @@ import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
@@ -78,8 +82,13 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -156,6 +165,11 @@ public class DataGroupMemberTest extends MemberTest {
   private DataGroupMember getDataGroupMember(Node node, PartitionGroup nodes) {
     return new DataGroupMember(new TCompactProtocol.Factory(), nodes, node, getLogManager(nodes),
         testMetaMember) {
+      @Override
+      public boolean syncLeader() {
+        return true;
+      }
+
       @Override
       public AsyncClient connectNode(Node node) {
         try {
@@ -852,6 +866,94 @@ public class DataGroupMemberTest extends MemberTest {
       }
     } finally {
       dataGroupMember.stop();
+    }
+  }
+
+  @Test
+  public void testGroupBy() throws QueryProcessException {
+    TestUtils.prepareData();
+
+    GroupByRequest request = new GroupByRequest();
+    request.setPath(TestUtils.getTestSeries(0, 0));
+    List<Integer> aggregationTypes = new ArrayList<>();
+    for (AggregationType value : AggregationType.values()) {
+      aggregationTypes.add(value.ordinal());
+    }
+    request.setAggregationTypeOrdinals(aggregationTypes);
+    Filter timeFilter = TimeFilter.gtEq(5);
+    request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
+    QueryContext queryContext =
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    request.setQueryId(queryContext.getQueryId());
+    request.setRequestor(TestUtils.getNode(0));
+    request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
+
+    DataGroupMember dataGroupMember;
+    AtomicReference<Long> resultRef;
+    GenericHandler<Long> handler;
+    Long executorId;
+    AtomicReference<List<ByteBuffer>> aggrResultRef;
+    GenericHandler<List<ByteBuffer>> aggrResultHandler;
+    List<ByteBuffer> byteBuffers;
+    List<AggregateResult> aggregateResults;
+    Object[] answers;
+    // get an executor from a node holding this timeseries
+    request.setHeader(TestUtils.getNode(10));
+    dataGroupMember = getDataGroupMember(TestUtils.getNode(10));
+    resultRef = new AtomicReference<>();
+    handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
+    dataGroupMember.getGroupByExecutor(request, handler);
+    executorId = resultRef.get();
+    assertEquals(1L, (long) executorId);
+
+    // fetch result
+    aggrResultRef = new AtomicReference<>();
+    aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
+    dataGroupMember.getGroupByResult(TestUtils.getNode(10), executorId, 0, 20, aggrResultHandler);
+
+    byteBuffers = aggrResultRef.get();
+    assertNotNull(byteBuffers);
+    aggregateResults = new ArrayList<>();
+    for (ByteBuffer byteBuffer : byteBuffers) {
+      aggregateResults.add(AggregateResult.deserializeFrom(byteBuffer));
+    }
+    answers = new Object[] {15.0, 12.0, 180.0, 5.0, 19.0, 19.0, 5.0, 19.0, 5.0};
+    checkAggregates(answers, aggregateResults);
+
+    // get an executor from a node not holding this timeseries
+    request.setHeader(TestUtils.getNode(30));
+    dataGroupMember = getDataGroupMember(TestUtils.getNode(30));
+    resultRef = new AtomicReference<>();
+    handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
+    request.timeFilterBytes.position(0);
+    dataGroupMember.getGroupByExecutor(request, handler);
+    executorId = resultRef.get();
+    assertEquals(1L, (long) executorId);
+
+    // fetch result
+    aggrResultRef = new AtomicReference<>();
+    aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
+    dataGroupMember.getGroupByResult(TestUtils.getNode(30), executorId, 0, 20, aggrResultHandler);
+
+    byteBuffers = aggrResultRef.get();
+    assertNotNull(byteBuffers);
+    aggregateResults = new ArrayList<>();
+    for (ByteBuffer byteBuffer : byteBuffers) {
+      aggregateResults.add(AggregateResult.deserializeFrom(byteBuffer));
+    }
+    answers = new Object[] {0.0, null, 0.0, null, null, null, null, null, null};
+    checkAggregates(answers, aggregateResults);
+  }
+
+  private void checkAggregates(Object[] answers, List<AggregateResult> aggregateResults) {
+    assertEquals(answers.length, aggregateResults.size());
+    for (int i = 0; i < aggregateResults.size(); i++) {
+      if (answers[i] != null) {
+        assertEquals((double) answers[i],
+            Double.parseDouble(aggregateResults.get(i).getResult().toString()), 0.000001);
+      } else {
+        assertNull(aggregateResults.get(i).getResult());
+      }
     }
   }
 }

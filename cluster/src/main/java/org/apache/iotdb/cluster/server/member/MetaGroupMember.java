@@ -128,9 +128,11 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
+import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -1808,7 +1810,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
             logger.debug("{}: get an executorId {} for {}@{} from {}", name, executorId,
                 aggregationTypes, path, node);
-            return new RemoteGroupByExecutor(executorId,  this, node, partitionGroup.getHeader());
+            RemoteGroupByExecutor remoteGroupByExecutor = new RemoteGroupByExecutor(executorId,
+                this, node, partitionGroup.getHeader());
+            for (int i = 0; i < aggregationTypes.size(); i++) {
+              Integer aggregationType = aggregationTypes.get(i);
+              remoteGroupByExecutor.addAggregateResult(AggregateResultFactory.getAggrResultByType(
+                  AggregationType.values()[aggregationType], dataType), i);
+            }
+            return remoteGroupByExecutor;
           } else {
             // there is no satisfying data on the remote node, create an empty reader to reduce
             // further communication

@@ -1,5 +1,7 @@
 package org.apache.iotdb.cluster.query;
 
+import static org.junit.Assert.assertFalse;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,6 +52,7 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
           plan.getDeduplicatedDataTypes(), queryTimes[i], plan.getFillType(), testMetaMember);
       queryDataSet = fillExecutor.execute(context);
       checkDoubleDataset(queryDataSet, answers[i]);
+      assertFalse(queryDataSet.hasNext());
     }
   }
 
@@ -82,6 +85,7 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
           plan.getDeduplicatedDataTypes(), queryTimes[i], plan.getFillType(), testMetaMember);
       queryDataSet = fillExecutor.execute(context);
       checkDoubleDataset(queryDataSet, answers[i]);
+      assertFalse(queryDataSet.hasNext());
     }
   }
 }

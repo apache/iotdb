@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
@@ -166,5 +167,18 @@ public class TestDataClient extends DataClient {
       AsyncMethodCallback<Long> resultHandler) {
     new Thread(() -> dataGroupMemberMap.get(request.getHeader()).querySingleSeriesByTimestamp(request,
         resultHandler)).start();
+  }
+
+  @Override
+  public void getGroupByExecutor(GroupByRequest request, AsyncMethodCallback<Long> resultHandler) {
+    new Thread(() -> dataGroupMemberMap.get(request.getHeader()).getGroupByExecutor(request,
+        resultHandler)).start();
+  }
+
+  @Override
+  public void getGroupByResult(Node header, long executorId, long startTime, long endTime,
+      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+    new Thread(() -> dataGroupMemberMap.get(header).getGroupByResult(header, executorId,
+        startTime, endTime, resultHandler)).start();
   }
 }

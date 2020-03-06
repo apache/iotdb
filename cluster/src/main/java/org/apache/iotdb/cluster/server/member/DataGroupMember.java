@@ -977,12 +977,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       return;
     }
     try {
+      executor.resetAggregateResults();
       List<Pair<AggregateResult, Integer>> results = executor.calcResult(startTime, endTime);
       List<ByteBuffer> resultBuffers = new ArrayList<>();
       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
       for (Pair<AggregateResult, Integer> result : results) {
         result.left.serializeTo(byteArrayOutputStream);
         resultBuffers.add(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+        byteArrayOutputStream.reset();
       }
       logger.debug("{}: Send results of group by executor {}, size:{}", name, executor,
           resultBuffers.size());

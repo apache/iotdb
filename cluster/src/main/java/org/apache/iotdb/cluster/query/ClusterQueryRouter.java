@@ -22,10 +22,10 @@ package org.apache.iotdb.cluster.query;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.query.groupby.ClusterGroupByNoVFilterDataSet;
+import org.apache.iotdb.cluster.query.groupby.ClusterGroupByVFilterDataSet;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -38,7 +38,6 @@ import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class ClusterQueryRouter extends QueryRouter {
 
@@ -63,7 +62,7 @@ public class ClusterQueryRouter extends QueryRouter {
   @Override
   protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(QueryContext context,
       GroupByPlan plan) throws StorageEngineException {
-    return super.getGroupByWithValueFilterDataSet(context, plan);
+    return new ClusterGroupByVFilterDataSet(context, plan, metaGroupMember);
   }
 
   @Override

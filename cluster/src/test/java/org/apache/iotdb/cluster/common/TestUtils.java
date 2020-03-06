@@ -108,7 +108,7 @@ public class TestUtils {
     for (int i = 0; i < nodeNum; i++) {
       nodes.add(getNode(i));
     }
-    return new SlotPartitionTable(nodes, getNode(0), 100);
+    return new SlotPartitionTable(nodes, getNode(0));
   }
 
   public static String getTestSg(int i) {
