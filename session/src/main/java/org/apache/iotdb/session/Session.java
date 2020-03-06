@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.session;
 
-import static org.apache.iotdb.session.Config.PATH_MATCHER;
+import static org.apache.iotdb.session.Config.PATH_PATTERN;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -26,7 +26,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.regex.Pattern;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -646,7 +645,7 @@ public class Session {
   }
 
   private void checkPathValidity(String path) throws IoTDBSessionException {
-    if (!Pattern.matches(PATH_MATCHER, path)) {
+    if (!PATH_PATTERN.matcher(path).matches()) {
       throw new IoTDBSessionException(
           String.format("Path [%s] is invalid", path));
     }
