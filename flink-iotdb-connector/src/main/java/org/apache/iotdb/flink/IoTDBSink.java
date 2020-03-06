@@ -105,20 +105,20 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
             return;
         }
 
-        synchronized (batchList) {
-            if (batchSize > 0) {
+        if (batchSize > 0) {
+            synchronized (batchList) {
                 batchList.add(event);
                 if (batchList.size() >= batchSize) {
                     flush();
                 }
                 return;
             }
-
-            convertText(event.getDevice(), event.getMeasurements(), event.getValues());
-            TSStatus status = session.insert(event.getDevice(), event.getTimestamp(),
-                    event.getMeasurements(), event.getValues());
-            LOG.debug("send event result: {}", status);
         }
+
+        convertText(event.getDevice(), event.getMeasurements(), event.getValues());
+        TSStatus status = session.insert(event.getDevice(), event.getTimestamp(),
+                event.getMeasurements(), event.getValues());
+        LOG.debug("send event result: {}", status);
     }
 
     public IoTDBSink<IN> withBatchSize(int batchSize) {
@@ -162,23 +162,25 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
     }
 
     private void flush() throws Exception {
-        synchronized (batchList) {
-            if (batchSize > 0 && batchList.size() > 0) {
-                List<String> deviceIds = new ArrayList<>();
-                List<Long> timestamps = new ArrayList<>();
-                List<List<String>> measurementsList = new ArrayList<>();
-                List<List<String>> valuesList = new ArrayList<>();
+        if (batchSize > 0) {
+            synchronized (batchList) {
+                if (batchList.size() > 0) {
+                    List<String> deviceIds = new ArrayList<>();
+                    List<Long> timestamps = new ArrayList<>();
+                    List<List<String>> measurementsList = new ArrayList<>();
+                    List<List<String>> valuesList = new ArrayList<>();
 
-                for (Event event : batchList) {
-                    convertText(event.getDevice(), event.getMeasurements(), event.getValues());
-                    deviceIds.add(event.getDevice());
-                    timestamps.add(event.getTimestamp());
-                    measurementsList.add(event.getMeasurements());
-                    valuesList.add(event.getValues());
+                    for (Event event : batchList) {
+                        convertText(event.getDevice(), event.getMeasurements(), event.getValues());
+                        deviceIds.add(event.getDevice());
+                        timestamps.add(event.getTimestamp());
+                        measurementsList.add(event.getMeasurements());
+                        valuesList.add(event.getValues());
+                    }
+                    List<TSStatus> statusList = session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+                    LOG.debug("send events result: {}", statusList);
+                    batchList.clear();
                 }
-                List<TSStatus> statusList = session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
-                LOG.debug("send events result: {}", statusList);
-                batchList.clear();
             }
         }
     }
