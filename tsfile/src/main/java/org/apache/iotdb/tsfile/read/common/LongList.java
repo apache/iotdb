@@ -9,7 +9,11 @@ import org.apache.iotdb.tsfile.utils.Binary;
  */
 public class LongList extends IoTDBArrayList {
 
-  private long[][] elementData = new long[1][1024];
+  private long[][] elementData = new long[ARRAY_INIT_SIZE][];
+
+  public LongList(){
+    initCurrentInsideArray();
+  }
 
   @Override
   public void put(long value) {
@@ -27,13 +31,14 @@ public class LongList extends IoTDBArrayList {
 
   @Override
   public Object getValue(int currentReadIndex) {
-    return elementData[currentReadIndex / 1024][currentReadIndex % 1024];
+    return elementData[currentReadIndex / INSIDE_ARRAY_INIT_SIZE]
+        [currentReadIndex % INSIDE_ARRAY_INIT_SIZE];
   }
 
   @Override
   protected void initCurrentInsideArray() {
     if (elementData[currentArrayIndex] == null) {
-      elementData[currentArrayIndex] = new long[1024];
+      elementData[currentArrayIndex] = new long[INSIDE_ARRAY_INIT_SIZE];
     }
   }
 
@@ -44,7 +49,9 @@ public class LongList extends IoTDBArrayList {
 
   @Override
   protected void growArray() {
-    elementData = Arrays.copyOf(elementData, elementData.length * 2);
+    int oldCapacity = elementData.length;
+    int newCapacity = oldCapacity + (oldCapacity >> 1);
+    elementData = Arrays.copyOf(elementData, newCapacity);
   }
 
 
@@ -99,6 +106,6 @@ public class LongList extends IoTDBArrayList {
   }
 
   public long getOriginValue(int index) {
-    return elementData[index / 1024][index % 1024];
+    return elementData[index / INSIDE_ARRAY_INIT_SIZE][index % INSIDE_ARRAY_INIT_SIZE];
   }
 }

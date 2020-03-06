@@ -9,6 +9,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 public abstract class IoTDBArrayList {
 
   protected static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
+  protected static final int ARRAY_INIT_SIZE = 10;
+  protected static final int INSIDE_ARRAY_INIT_SIZE = 1024;
+
 
   protected int currentArrayIndex = 0;
   protected int currentInsideIndex = 0;
@@ -47,7 +50,7 @@ public abstract class IoTDBArrayList {
 
 
   protected void ensureCapacityInternal(int newSize) {
-    if (currentArrayIndex << 10 > newSize) {
+    if (newSize - size <= INSIDE_ARRAY_INIT_SIZE - currentInsideIndex) {
       return;
     }
 

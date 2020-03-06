@@ -9,8 +9,11 @@ import org.apache.iotdb.tsfile.utils.Binary;
  */
 public class BooleanList extends IoTDBArrayList {
 
-  private boolean[][] elementData = new boolean[1][1024];
+  private boolean[][] elementData = new boolean[ARRAY_INIT_SIZE][];
 
+  public BooleanList() {
+    initCurrentInsideArray();
+  }
 
   @Override
   public void put(boolean value) {
@@ -28,13 +31,14 @@ public class BooleanList extends IoTDBArrayList {
 
   @Override
   public Object getValue(int currentReadIndex) {
-    return elementData[currentReadIndex / 1024][currentReadIndex % 1024];
+    return elementData[currentReadIndex / INSIDE_ARRAY_INIT_SIZE]
+        [currentReadIndex % INSIDE_ARRAY_INIT_SIZE];
   }
 
   @Override
   protected void initCurrentInsideArray() {
     if (elementData[currentArrayIndex] == null) {
-      elementData[currentArrayIndex] = new boolean[1024];
+      elementData[currentArrayIndex] = new boolean[INSIDE_ARRAY_INIT_SIZE];
     }
   }
 
@@ -45,7 +49,9 @@ public class BooleanList extends IoTDBArrayList {
 
   @Override
   protected void growArray() {
-    elementData = Arrays.copyOf(elementData, elementData.length * 2);
+    int oldCapacity = elementData.length;
+    int newCapacity = oldCapacity + (oldCapacity >> 1);
+    elementData = Arrays.copyOf(elementData, newCapacity);
   }
 
 
