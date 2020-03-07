@@ -38,6 +38,16 @@ For example,
 docker run -d -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 apache/iotdb:0.9.1
 ```
 
+## How to configure docker volumes
+
+The instructions below show how to store the output data and logs of IoTDB to two folders called 
+iotdb_data and iotdb_logs respectively. 
+
+`/D/docker/iotdb_data` and `/D/docker/iotdb_logs` can be changed to any local directory of your own host.
+```
+docker run -it -v /D/docker/iotdb_data:/iotdb/data -v /D/docker/iotdb_logs:/iotdb/logs --name 123 apache/iotdb:0.9.0
+```
+
 # How to run IoTDB client
 
 Suppose you have run an IoTDB Server in docker
@@ -52,16 +62,6 @@ c82321c70137        apache/iotdb:0.9.1  "/iotdb/sbin/start-s…"   12 minutes ag
 2. Use `docker exec` to attach the container:
 ```
 docker exec -it c82321c70137 /bin/bash
-```
-
-# How to configure docker volumes
-
-The instructions below show how to store the output data and logs of IoTDB to two folders called 
-iotdb_data and iotdb_logs respectively. 
-
-`/D/docker/iotdb_data` and `/D/docker/iotdb_logs` can be changed to any local directory of your own host.
-```
-docker run -it -v /D/docker/iotdb_data:/iotdb/data -v /D/docker/iotdb_logs:/iotdb/logs --name 123 apache/iotdb:0.9.0
 ```
 
 Then, run `start-client.sh`
