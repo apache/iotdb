@@ -43,7 +43,8 @@ public enum ServiceType {
       generateJmxName(IoTDBConstant.IOTDB_PACKAGE, "Cache Hit Ratio")),
 
   FLUSH_SERVICE("Flush ServerService",
-      generateJmxName("org.apache.iotdb.db.engine.pool", "Flush Manager"));
+      generateJmxName("org.apache.iotdb.db.engine.pool", "Flush Manager")),
+  CLUSTER_MONITOR_SERVICE("Cluster Monitor ServerService", "Cluster Monitor");
 
   private String name;
   private String jmxName;

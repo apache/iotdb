@@ -32,7 +32,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -229,6 +232,7 @@ public class MTree implements Serializable {
    *
    * @param path Format: root.node(.node)+
    */
+
   String deleteTimeseriesAndReturnEmptyStorageGroup(String path) throws MetadataException {
     MNode curNode = getNodeByPath(path);
     if (!(curNode instanceof LeafMNode)) {
@@ -503,13 +507,16 @@ public class MTree implements Serializable {
       return;
     }
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    if (!(PATH_WILDCARD).equals(nodeReg)) {
+    if (!nodeReg.contains(PATH_WILDCARD)) {
       if (node.hasChild(nodeReg)) {
         findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
             timeseriesSchemaList);
       }
     } else {
       for (MNode child : node.getChildren().values()) {
+        if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
+          continue;
+        }
         findPath(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
             timeseriesSchemaList);
       }
@@ -525,17 +532,58 @@ public class MTree implements Serializable {
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {
-    MNode node = getNodeByPath(path);
-
-    if (node instanceof LeafMNode) {
-      return new HashSet<>();
+    String[] nodes = MetaUtils.getNodeNames(path);
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(path);
     }
+    Set<String> childNodePaths = new TreeSet<>();
+    findChildNodePathInNextLevel(root, nodes, 1, "", childNodePaths, nodes.length + 1);
+    return childNodePaths;
+  }
 
-    Set<String> childPaths = new HashSet<>();
-    for (MNode child : node.getChildren().values()) {
-      childPaths.add(path + PATH_SEPARATOR + child.getName());
+  /**
+   * Traverse the MTree to match all child node path in next level
+   *
+   * @param node the current traversing node
+   * @param nodes split the prefix path with '.'
+   * @param idx the current index of array nodes
+   * @param parent store the node string having traversed
+   * @param res store all matched device names
+   * @param length expected length of path
+   */
+  private void findChildNodePathInNextLevel(MNode node, String[] nodes, int idx, String parent,
+      Set<String> res, int length) {
+    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
+    if (!nodeReg.contains(PATH_WILDCARD)) {
+      if (idx == length) {
+        res.add(parent + node.getName());
+      } else {
+        findChildNodePathInNextLevel(node.getChild(nodeReg), nodes, idx + 1,
+            parent + node.getName() + PATH_SEPARATOR, res, length);
+      }
+    } else {
+      if (node instanceof InternalMNode && node.getChildren().size() > 0) {
+        for (MNode child : node.getChildren().values()) {
+          if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
+            continue;
+          }
+          if (idx == length) {
+            res.add(parent + node.getName());
+          } else {
+            findChildNodePathInNextLevel(child, nodes, idx + 1,
+                parent + node.getName() + PATH_SEPARATOR, res, length);
+          }
+        }
+      } else if (idx == length) {
+        String nodeName;
+        if (node.getName().contains(TsFileConstant.PATH_SEPARATOR)) {
+          nodeName = "\"" + node + "\"";
+        } else {
+          nodeName = node.getName();
+        }
+        res.add(parent + nodeName);
+      }
     }
-    return childPaths;
   }
 
   /**
@@ -543,12 +591,12 @@ public class MTree implements Serializable {
    *
    * @return a list contains all distinct devices names
    */
-  List<String> getDevices(String prefixPath) throws MetadataException {
+  Set<String> getDevices(String prefixPath) throws MetadataException {
     String[] nodes = MetaUtils.getNodeNames(prefixPath);
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath);
     }
-    List<String> devices = new ArrayList<>();
+    Set<String> devices = new TreeSet<>();
     findDevices(root, nodes, 1, "", devices);
     return devices;
   }
@@ -562,7 +610,7 @@ public class MTree implements Serializable {
    * @param parent store the node string having traversed
    * @param res store all matched device names
    */
-  private void findDevices(MNode node, String[] nodes, int idx, String parent, List<String> res) {
+  private void findDevices(MNode node, String[] nodes, int idx, String parent, Set<String> res) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       if (node.hasChild(nodeReg)) {
@@ -714,5 +762,64 @@ public class MTree implements Serializable {
       }
     }
     return res;
+  }
+
+  Map<String, String> determineStorageGroup(String path) throws IllegalPathException {
+    Map<String, String> paths = new HashMap<>();
+    String[] nodes = MetaUtils.getNodeNames(path);
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(path);
+    }
+
+    Deque<MNode> nodeStack = new ArrayDeque<>();
+    Deque<Integer> depthStack = new ArrayDeque<>();
+    if (!root.getChildren().isEmpty()) {
+      nodeStack.push(root);
+      depthStack.push(0);
+    }
+
+    while (!nodeStack.isEmpty()) {
+      MNode mNode = nodeStack.removeFirst();
+      int depth = depthStack.removeFirst();
+
+      determineStorageGroup(depth + 1, nodes, mNode, paths, nodeStack, depthStack);
+    }
+    return paths;
+  }
+
+  /**
+   * Try determining the storage group using the children of a mNode. If one child is a storage
+   * group node, put a storageGroupName-fullPath pair into paths. Otherwise put the children that
+   * match the path into the queue and discard other children.
+   */
+  private void determineStorageGroup(int depth, String[] nodes, MNode mNode,
+      Map<String, String> paths, Deque<MNode> nodeStack, Deque<Integer> depthStack) {
+    String currNode = depth >= nodes.length ? PATH_WILDCARD : nodes[depth];
+    for (Entry<String, MNode> entry : mNode.getChildren().entrySet()) {
+      if (!currNode.equals(PATH_WILDCARD) && !currNode.equals(entry.getKey())) {
+        continue;
+      }
+      // this child is desired
+      MNode child = entry.getValue();
+      if (child instanceof StorageGroupMNode) {
+        // we have found one storage group, record it
+        String sgName = child.getFullPath();
+        // concat the remaining path with the storage group name
+        StringBuilder pathWithKnownSG = new StringBuilder(sgName);
+        for (int i = depth + 1; i < nodes.length; i++) {
+          pathWithKnownSG.append(IoTDBConstant.PATH_SEPARATOR).append(nodes[i]);
+        }
+        if (depth >= nodes.length - 1 && currNode.equals(PATH_WILDCARD)) {
+          // the we find the sg at the last node and the last node is a wildcard (find "root
+          // .group1", for "root.*"), also append the wildcard (to make "root.group1.*")
+          pathWithKnownSG.append(IoTDBConstant.PATH_SEPARATOR).append(PATH_WILDCARD);
+        }
+        paths.put(sgName, pathWithKnownSG.toString());
+      } else if (!child.getChildren().isEmpty()) {
+        // push it back so we can traver its children later
+        nodeStack.push(child);
+        depthStack.push(depth);
+      }
+    }
   }
 }

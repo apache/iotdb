@@ -18,11 +18,8 @@
  */
 package org.apache.iotdb.db.service;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -34,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -65,9 +63,11 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -83,6 +83,7 @@ import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
@@ -132,7 +133,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
-  private static final int MAX_SIZE = 200;
+  private static final int MAX_SIZE =
+      IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
   private static final int DELETE_SIZE = 50;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
@@ -143,8 +145,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private static List<SqlArgument> sqlArgumentsList = new ArrayList<>();
 
-  private Planner processor;
-  private IPlanExecutor executor;
+  protected Planner processor;
+  protected IPlanExecutor executor;
 
   // Record the username for every rpc connection (session).
   private Map<Long, String> sessionIdUsernameMap = new ConcurrentHashMap<>();
@@ -173,52 +175,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     executor = new PlanExecutor();
   }
 
-  public static TSDataType getSeriesType(String path) throws QueryProcessException {
-    switch (path.toLowerCase()) {
-      // authorization queries
-      case COLUMN_ROLE:
-      case COLUMN_USER:
-      case COLUMN_PRIVILEGE:
-      case COLUMN_STORAGE_GROUP:
-        return TSDataType.TEXT;
-      case COLUMN_TTL:
-        return TSDataType.INT64;
-      default:
-        // do nothing
-    }
-
-    if (path.contains("(") && !path.startsWith("(") && path.endsWith(")")) {
-      // aggregation
-      int leftBracketIndex = path.indexOf('(');
-      String aggrType = path.substring(0, leftBracketIndex);
-      String innerPath = path.substring(leftBracketIndex + 1, path.length() - 1);
-      switch (aggrType.toLowerCase()) {
-        case SQLConstant.MIN_TIME:
-        case SQLConstant.MAX_TIME:
-        case SQLConstant.COUNT:
-          return TSDataType.INT64;
-        case SQLConstant.LAST_VALUE:
-        case SQLConstant.FIRST_VALUE:
-        case SQLConstant.MIN_VALUE:
-        case SQLConstant.MAX_VALUE:
-          return getSeriesType(innerPath);
-        case SQLConstant.AVG:
-        case SQLConstant.SUM:
-          return TSDataType.DOUBLE;
-        default:
-          throw new QueryProcessException("aggregate does not support " + aggrType + " function.");
-      }
-    }
-    TSDataType dataType;
-    try {
-      dataType = MManager.getInstance().getSeriesType(path);
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
-
-    return dataType;
-  }
-
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     logger.info(
@@ -239,9 +195,21 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info("meet error while logging in.", e);
       status = false;
     }
+
     TSStatus tsStatus;
     long sessionId = -1;
     if (status) {
+      //check the version compatibility
+      boolean compatible = checkCompatibility(req.getClient_protocol());
+      if (!compatible) {
+        tsStatus = getStatus(TSStatusCode.INCOMPATIBLE_VERSION,
+            "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
+        TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
+            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
+        resp.setSessionId(sessionId);
+        return resp;
+      }
+
       tsStatus = getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
       sessionId = sessionIdGenerator.incrementAndGet();
       sessionIdUsernameMap.put(sessionId, req.getUsername());
@@ -250,8 +218,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } else {
       tsStatus = getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
     }
-    TSOpenSessionResp resp =
-        new TSOpenSessionResp(tsStatus, TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1);
+    TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
+        TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
     resp.setSessionId(sessionId);
     logger.info(
         "{}: Login status: {}. User : {}",
@@ -260,6 +228,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         req.getUsername());
 
     return resp;
+  }
+
+  private boolean checkCompatibility(TSProtocolVersion version) {
+    return version.equals(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
   }
 
   @Override
@@ -340,7 +312,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * release single operation resource
    */
-  private void releaseQueryResource(long queryId) throws StorageEngineException {
+  protected void releaseQueryResource(long queryId) throws StorageEngineException {
     // remove the corresponding Physical Plan
     queryId2DataSet.remove(queryId);
     QueryResourceManager.getInstance().endQuery(queryId);
@@ -359,12 +331,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * convert from TSStatusCode to TSStatus, which has message appending with existed status message
    *
-   * @param statusType status type
+   * @param statusType    status type
    * @param appendMessage appending message
    */
   private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
     TSStatusType statusCodeAndMessage = new TSStatusType(statusType.getStatusCode(), appendMessage);
     return new TSStatus(statusCodeAndMessage);
+  }
+
+  protected TSDataType getSeriesType(String path) throws QueryProcessException, MetadataException {
+    try {
+      return SchemaUtils.getSeriesType(path);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
   }
 
   @Override
@@ -396,7 +376,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = getStatus(TSStatusCode.METADATA_ERROR, req.getType());
           break;
       }
-    } catch (QueryProcessException | MetadataException | OutOfMemoryError e) {
+    } catch (MetadataException | OutOfMemoryError | QueryProcessException e) {
       logger.error(
           String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()), e);
       status = getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
@@ -569,7 +549,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
       if (physicalPlan.isQuery()) {
         resp =
-            executeQueryStatement(
+            internalExecuteQueryStatement(
                 req.statementId,
                 physicalPlan,
                 req.fetchSize,
@@ -605,20 +585,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   /**
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
-   * AuthorPlan
+   *             AuthorPlan
    */
-  private TSExecuteStatementResp executeQueryStatement(
+  private TSExecuteStatementResp internalExecuteQueryStatement(
       long statementId, PhysicalPlan plan, int fetchSize, String username) {
     long t1 = System.currentTimeMillis();
     try {
-      TSExecuteStatementResp resp; // column headers
-      if (plan instanceof AuthorPlan) {
-        resp = getAuthQueryColumnHeaders(plan);
-      } else if (plan instanceof ShowPlan) {
-        resp = getShowQueryColumnHeaders((ShowPlan) plan);
-      } else {
-        resp = getQueryColumnHeaders(plan, username);
-      }
+      TSExecuteStatementResp resp = getQueryResp(plan, username); // column headers
+
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
         if (plan.getOperatorType() == OperatorType.AGGREGATION) {
           throw new QueryProcessException("Aggregation doesn't support disable align clause.");
@@ -645,12 +619,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
         TSQueryNonAlignDataSet result = fillRpcNonAlignReturnData(fetchSize, newDataSet, username);
         resp.setNonAlignQueryDataSet(result);
-        resp.setQueryId(queryId);
       } else {
         TSQueryDataSet result = fillRpcReturnData(fetchSize, newDataSet, username);
         resp.setQueryDataSet(result);
-        resp.setQueryId(queryId);
       }
+      resp.setQueryId(queryId);
       return resp;
     } catch (Exception e) {
       logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
@@ -661,8 +634,23 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
+  private TSExecuteStatementResp getQueryResp(PhysicalPlan plan, String username)
+      throws QueryProcessException, AuthException, TException {
+    if (plan instanceof AuthorPlan) {
+      return getAuthQueryColumnHeaders(plan);
+    } else if (plan instanceof ShowPlan) {
+      return getShowQueryColumnHeaders((ShowPlan) plan);
+    } else {
+      return getQueryColumnHeaders(plan, username);
+    }
+  }
+
   @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
+    long startTime = System.currentTimeMillis();
+    TSExecuteStatementResp resp;
+    SqlArgument sqlArgument;
+
     if (!checkLogin(req.getSessionId())) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getTSExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
@@ -682,8 +670,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSExecuteStatementResp(
           getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement."));
     }
-    return executeQueryStatement(
+
+    resp = internalExecuteQueryStatement(
         req.statementId, physicalPlan, req.fetchSize, sessionIdUsernameMap.get(req.getSessionId()));
+    long endTime = System.currentTimeMillis();
+    sqlArgument = new SqlArgument(resp, physicalPlan, statement, startTime, endTime);
+    sqlArgumentsList.add(sqlArgument);
+    if (sqlArgumentsList.size() > MAX_SIZE) {
+      sqlArgumentsList.subList(0, DELETE_SIZE).clear();
+    }
+    return resp;
   }
 
   private TSExecuteStatementResp getShowQueryColumnHeaders(ShowPlan showPlan)
@@ -762,14 +758,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     QueryPlan plan = (QueryPlan) physicalPlan;
     if (plan instanceof AlignByDevicePlan) {
       getAlignByDeviceQueryHeaders((AlignByDevicePlan) plan, respColumns, columnsTypes);
-      // set dataTypeList in TSExecuteStatementResp. Note this is without deduplication.
-      resp.setColumns(respColumns);
-      resp.setDataTypeList(columnsTypes);
+    } else if (plan instanceof LastQueryPlan) {
+      return StaticResps.LAST_RESP;
     } else {
       getWideQueryHeaders(plan, respColumns, columnsTypes);
-      resp.setColumns(respColumns);
-      resp.setDataTypeList(columnsTypes);
     }
+    resp.setColumns(respColumns);
+    resp.setDataTypeList(columnsTypes);
     return resp;
   }
 
@@ -804,106 +799,64 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     for (String column : respColumns) {
-      columnTypes.add(getSeriesType(column).toString());
+      try {
+        columnTypes.add(getSeriesType(column).toString());
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
+      }
     }
   }
 
   private void getAlignByDeviceQueryHeaders(
       AlignByDevicePlan plan, List<String> respColumns, List<String> columnTypes) {
-    // set columns in TSExecuteStatementResp. Note this is without deduplication.
-    respColumns.add(SQLConstant.GROUPBY_DEVICE_COLUMN_NAME);
+    // set columns in TSExecuteStatementResp.
+    respColumns.add(SQLConstant.ALIGNBY_DEVICE_COLUMN_NAME);
 
     // get column types and do deduplication
     columnTypes.add(TSDataType.TEXT.toString()); // the DEVICE column of ALIGN_BY_DEVICE result
     List<TSDataType> deduplicatedColumnsType = new ArrayList<>();
     deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of ALIGN_BY_DEVICE result
-    List<String> deduplicatedMeasurementColumns = new ArrayList<>();
-    Set<String> tmpColumnSet = new HashSet<>();
-    Map<String, TSDataType> checker = plan.getDataTypeConsistencyChecker();
-    // build column header with constant and non exist column and deduplicate
-    int loc = 0;
-    // size of total column
-    int totalSize = plan.getNotExistMeasurements().size() + plan.getConstMeasurements().size()
-        + plan.getMeasurements().size();
-    // not exist column loc
-    int notExistMeasurementsLoc = 0;
-    // constant column loc
-    int constMeasurementsLoc = 0;
-    // normal column loc
-    int resLoc = 0;
-    // after removing duplicate, we must shift column position
-    int shiftLoc = 0;
-    while (loc < totalSize) {
-      boolean isNonExist = false;
-      boolean isConstant = false;
+    Set<String> deduplicatedMeasurements = new LinkedHashSet<>();
+    Map<String, TSDataType> checker = plan.getMeasurementDataTypeMap();
+
+    // build column header with constant and non exist column and deduplication
+    List<String> measurements = plan.getMeasurements();
+    Map<String, MeasurementType> measurementTypeMap = plan.getMeasurementTypeMap();
+    for (String measurement : measurements) {
       TSDataType type = null;
-      String column = null;
-      // not exist
-      if (notExistMeasurementsLoc < plan.getNotExistMeasurements().size()
-          && loc == plan.getPositionOfNotExistMeasurements().get(notExistMeasurementsLoc)) {
-        // for shifting
-        plan.getPositionOfNotExistMeasurements().set(notExistMeasurementsLoc, loc - shiftLoc);
-
-        type = TSDataType.TEXT;
-        column = plan.getNotExistMeasurements().get(notExistMeasurementsLoc);
-        notExistMeasurementsLoc++;
-        isNonExist = true;
+      switch (measurementTypeMap.get(measurement)) {
+        case Exist:
+          type = checker.get(measurement);
+          break;
+        case NonExist:
+        case Constant:
+          type = TSDataType.TEXT;
       }
-      // constant
-      else if (constMeasurementsLoc < plan.getConstMeasurements().size()
-              && loc == plan.getPositionOfConstMeasurements().get(constMeasurementsLoc)) {
-        // for shifting
-        plan.getPositionOfConstMeasurements().set(constMeasurementsLoc, loc - shiftLoc);
-
-        type = TSDataType.TEXT;
-        column = plan.getConstMeasurements().get(constMeasurementsLoc);
-        constMeasurementsLoc++;
-        isConstant = true;
-      }
-      // normal series
-      else {
-        type = checker.get(plan.getMeasurements().get(resLoc));
-        column = plan.getMeasurements().get(resLoc);
-        resLoc++;
-      }
-
+      respColumns.add(measurement);
       columnTypes.add(type.toString());
-      respColumns.add(column);
-      // deduplicate part
-      if (!tmpColumnSet.contains(column)) {
-        // Note that this deduplication strategy is consistent with that of client
-        // IoTDBQueryResultSet.
-        tmpColumnSet.add(column);
-        if (!isNonExist && !isConstant) {
-          // only refer to those normal measurements
-          deduplicatedMeasurementColumns.add(column);
-        }
-        deduplicatedColumnsType.add(type);
-      } else if (isConstant) {
-        shiftLoc++;
-        constMeasurementsLoc--;
-        plan.getConstMeasurements().remove(constMeasurementsLoc);
-        plan.getPositionOfConstMeasurements().remove(constMeasurementsLoc);
-      } else if (isNonExist) {
-        shiftLoc++;
-        notExistMeasurementsLoc--;
-        plan.getNotExistMeasurements().remove(notExistMeasurementsLoc);
-        plan.getPositionOfNotExistMeasurements().remove(notExistMeasurementsLoc);
-      } else {
-        shiftLoc++;
-      }
 
-      loc++;
+      if (!deduplicatedMeasurements.contains(measurement)) {
+        deduplicatedMeasurements.add(measurement);
+        deduplicatedColumnsType.add(type);
+      }
     }
 
     // save deduplicated measurementColumn names and types in QueryPlan for the next stage to use.
-    // i.e., used by DeviceIterateDataSet constructor in `fetchResults` stage.
-    plan.setMeasurements(deduplicatedMeasurementColumns);
+    // i.e., used by AlignByDeviceDataSet constructor in `fetchResults` stage.
+    plan.setMeasurements(new ArrayList<>(deduplicatedMeasurements));
     plan.setDataTypes(deduplicatedColumnsType);
 
     // set these null since they are never used henceforth in ALIGN_BY_DEVICE query processing.
     plan.setPaths(null);
-    plan.setDataTypeConsistencyChecker(null);
+  }
+
+  private void getLastQueryHeaders(
+      QueryPlan plan, List<String> respColumns, List<String> columnTypes)
+      throws TException, QueryProcessException {
+    respColumns.add(COLUMN_TIMESERIES);
+    respColumns.add(COLUMN_VALUE);
+    columnTypes.add(TSDataType.TEXT.toString());
+    columnTypes.add(TSDataType.TEXT.toString());
   }
 
   @Override
@@ -1037,10 +990,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
       IOException, MetadataException, SQLException {
 
-    QueryContext context = new QueryContext(queryId);
+    QueryContext context = genQueryContext(queryId);
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryId2DataSet.put(queryId, queryDataSet);
     return queryDataSet;
+  }
+
+  protected QueryContext genQueryContext(long queryId) {
+    return new QueryContext(queryId);
   }
 
   @Override
@@ -1139,7 +1096,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  void handleClientExit() {
+  protected void handleClientExit() {
     Long sessionId = currSessionId.get();
     if (sessionId != null) {
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
@@ -1425,7 +1382,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return null;
   }
 
-  private TSStatus executePlan(PhysicalPlan plan) {
+  protected TSStatus executePlan(PhysicalPlan plan) {
     boolean execRet;
     try {
       execRet = executeNonQuery(plan);
