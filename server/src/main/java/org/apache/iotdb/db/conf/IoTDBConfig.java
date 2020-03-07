@@ -629,6 +629,10 @@ public class IoTDBConfig {
     this.enableMetricService = enableMetricService;
   }
 
+  void setDataDirs(String[] dataDirs) {
+    this.dataDirs = dataDirs;
+  }
+
   public String getRpcAddress() {
     return rpcAddress;
   }
