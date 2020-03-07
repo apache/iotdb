@@ -184,5 +184,4 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
             }
         }
     }
-
 }

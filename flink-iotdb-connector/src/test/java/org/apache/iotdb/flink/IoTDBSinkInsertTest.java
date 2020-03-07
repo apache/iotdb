@@ -63,5 +63,4 @@ public class IoTDBSinkInsertTest {
         ioTDBSink.close();
         verify(session).close();
     }
-
 }

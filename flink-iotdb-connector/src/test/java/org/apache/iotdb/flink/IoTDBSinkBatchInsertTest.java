@@ -99,5 +99,4 @@ public class IoTDBSinkBatchInsertTest {
         verify(session).insertInBatch(any(List.class), any(List.class), any(List.class), any(List.class));
         verify(session).close();
     }
-
 }

@@ -30,7 +30,7 @@ The `IoTDBSink` send only one event after another by default, but you can change
 The following is an example which receiving events from sensor source and then sending events to iotdb.
 
  ```java
-StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
         IoTDBOptions options = new IoTDBOptions();
         options.setHost("127.0.0.1");

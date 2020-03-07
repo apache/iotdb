@@ -71,5 +71,4 @@ public class IoTDBSinkBatchTimerTest {
         ioTDBSink.close();
         verify(session).close();
     }
-
 }
