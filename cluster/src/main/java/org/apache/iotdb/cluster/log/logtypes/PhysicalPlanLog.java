@@ -40,7 +40,7 @@ public class PhysicalPlanLog extends Log {
   private PhysicalPlan plan;
 
   public PhysicalPlanLog() {
-    logType = LogType.PHYSICAL_PLAN;
+
   }
 
   public PhysicalPlanLog(PhysicalPlan plan) {

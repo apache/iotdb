@@ -40,10 +40,6 @@ public class AddNodeLog extends Log {
     this.newNode = newNode;
   }
 
-  public AddNodeLog(){
-    logType = LogType.ADD_NODE;
-  }
-
 
   @Override
   public ByteBuffer serialize() {

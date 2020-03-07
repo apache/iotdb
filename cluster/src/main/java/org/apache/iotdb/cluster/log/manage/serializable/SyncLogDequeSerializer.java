@@ -33,17 +33,31 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   private long maxRemovedLogSize = ClusterDescriptor.getINSTANCE().getConfig()
       .getMaxRemovedLogSize();
 
-  // log in disk is
-  // size of log | log buffer
-  // meta in disk is
-  // firstLogPosition | size of log meta | log meta buffer
+  /**
+   * for log tools
+   * @param logPath log dir path
+   */
+  public SyncLogDequeSerializer(String logPath) {
+    logFile = SystemFileFactory.INSTANCE
+        .getFile(logPath + File.separator + "logData");
+    metaFile = SystemFileFactory.INSTANCE
+        .getFile(logPath + File.separator + "logMeta");
+    String name = logFile.getAbsolutePath();
+    init();
+  }
+
+  /**
+   * log in disk is
+   * size of log | log buffer
+   * meta in disk is
+   * firstLogPosition | size of log meta | log meta buffer
+   */
   public SyncLogDequeSerializer() {
     String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     logFile = SystemFileFactory.INSTANCE
         .getFile(systemDir + File.separator + "raftLog" + File.separator + "logData");
     metaFile = SystemFileFactory.INSTANCE
         .getFile(systemDir + File.separator + "raftLog" + File.separator + "logMeta");
-    String path = logFile.getAbsolutePath();
     init();
   }
 
