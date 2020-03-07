@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
 public class QueryUtils {
 
@@ -42,12 +42,12 @@ public class QueryUtils {
    * @param chunkMetaData the original chunkMetaData.
    * @param modifications all possible modifications.
    */
-  public static void modifyChunkMetaData(List<ChunkMetaData> chunkMetaData,
+  public static void modifyChunkMetaData(List<ChunkMetadata> chunkMetaData,
                                          List<Modification> modifications) {
     int modIndex = 0;
 
     for (int metaIndex = 0; metaIndex < chunkMetaData.size(); metaIndex++) {
-      ChunkMetaData metaData = chunkMetaData.get(metaIndex);
+      ChunkMetadata metaData = chunkMetaData.get(metaIndex);
       for (int j = modIndex; j < modifications.size(); j++) {
         // iterate each modification to find the max deletion time
         Modification modification = modifications.get(j);
@@ -66,7 +66,7 @@ public class QueryUtils {
     chunkMetaData.removeIf(metaData -> metaData.getDeletedAt() >= metaData.getEndTime());
   }
 
-  private static boolean doModifyChunkMetaData(Modification modification, ChunkMetaData metaData) {
+  private static boolean doModifyChunkMetaData(Modification modification, ChunkMetadata metaData) {
     if (modification instanceof Deletion) {
       Deletion deletion = (Deletion) modification;
       if (metaData.getDeletedAt() < deletion.getTimestamp()) {

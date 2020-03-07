@@ -44,7 +44,7 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -172,7 +172,7 @@ class MergeMultiChunkTask {
 
     TsFileSequenceReader fileSequenceReader = resource.getFileReader(currTsFile);
     List<Modification>[] modifications = new List[currMergingPaths.size()];
-    List<ChunkMetaData>[] seqChunkMeta = new List[currMergingPaths.size()];
+    List<ChunkMetadata>[] seqChunkMeta = new List[currMergingPaths.size()];
     for (int i = 0; i < currMergingPaths.size(); i++) {
       modifications[i] = resource.getModifications(currTsFile, currMergingPaths.get(i));
       seqChunkMeta[i] = resource.queryChunkMetadata(currMergingPaths.get(i), currTsFile);
@@ -214,7 +214,7 @@ class MergeMultiChunkTask {
     return ret;
   }
 
-  private boolean mergeChunks(List<ChunkMetaData>[] seqChunkMeta, boolean isLastFile,
+  private boolean mergeChunks(List<ChunkMetadata>[] seqChunkMeta, boolean isLastFile,
       TsFileSequenceReader reader, IPointReader[] unseqReaders,
       RestorableTsFileIOWriter mergeFileWriter, TsFileResource currFile)
       throws IOException {
@@ -271,7 +271,7 @@ class MergeMultiChunkTask {
                               boolean isLastFile) throws IOException {
     while (!chunkMetaHeap.isEmpty()) {
       MetaListEntry metaListEntry = chunkMetaHeap.poll();
-      ChunkMetaData currMeta = metaListEntry.current();
+      ChunkMetadata currMeta = metaListEntry.current();
       int pathIdx = metaListEntry.getPathId();
       boolean isLastChunk = !metaListEntry.hasNext();
       Path path = currMergingPaths.get(pathIdx);
@@ -334,7 +334,7 @@ class MergeMultiChunkTask {
    * 3.2 SK is overflowed
    *
    */
-  private int mergeChunkV2(ChunkMetaData currMeta, boolean chunkOverflowed,
+  private int mergeChunkV2(ChunkMetadata currMeta, boolean chunkOverflowed,
       boolean chunkTooSmall,Chunk chunk, int lastUnclosedChunkPoint, int pathIdx,
       TsFileIOWriter mergeFileWriter, IPointReader unseqReader,
       IChunkWriter chunkWriter, TsFileResource currFile) throws IOException {

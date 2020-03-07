@@ -24,7 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -171,18 +171,18 @@ public class TsFileExecutor implements QueryExecutor {
     List<TSDataType> dataTypes = new ArrayList<>();
 
     for (Path path : selectedPathList) {
-      List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(path);
+      List<ChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(path);
       AbstractFileSeriesReader seriesReader;
-      if (chunkMetaDataList.isEmpty()) {
+      if (chunkMetadataList.isEmpty()) {
         seriesReader = new EmptyFileSeriesReader();
         dataTypes.add(metadataQuerier.getDataType(path));
       } else {
         if (timeExpression == null) {
-          seriesReader = new FileSeriesReader(chunkLoader, chunkMetaDataList, null);
+          seriesReader = new FileSeriesReader(chunkLoader, chunkMetadataList, null);
         } else {
-          seriesReader = new FileSeriesReader(chunkLoader, chunkMetaDataList, timeExpression.getFilter());
+          seriesReader = new FileSeriesReader(chunkLoader, chunkMetadataList, timeExpression.getFilter());
         }
-        dataTypes.add(chunkMetaDataList.get(0).getDataType());
+        dataTypes.add(chunkMetadataList.get(0).getDataType());
       }
       readersOfSelectedSeries.add(seriesReader);
     }

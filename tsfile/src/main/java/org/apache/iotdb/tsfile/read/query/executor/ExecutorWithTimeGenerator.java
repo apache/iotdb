@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
@@ -74,15 +74,15 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
       boolean cachedValue = cachedIterator.next();
       Path selectedPath = selectedPathIterator.next();
 
-      List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(selectedPath);
-      if (chunkMetaDataList.size() != 0) {
-        dataTypes.add(chunkMetaDataList.get(0).getDataType());
+      List<ChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(selectedPath);
+      if (chunkMetadataList.size() != 0) {
+        dataTypes.add(chunkMetadataList.get(0).getDataType());
         if (cachedValue) {
           readersOfSelectedSeries.add(null);
           continue;
         }
         FileSeriesReaderByTimestamp seriesReader = new FileSeriesReaderByTimestamp(chunkLoader,
-            chunkMetaDataList);
+            chunkMetadataList);
         readersOfSelectedSeries.add(seriesReader);
       } else {
         selectedPathIterator.remove();

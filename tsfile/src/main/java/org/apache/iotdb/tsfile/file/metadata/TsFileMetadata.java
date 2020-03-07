@@ -35,7 +35,7 @@ import java.util.Set;
 /**
  * TSFileMetaData collects all metadata info and saves in its data structure.
  */
-public class TsFileMetaData {
+public class TsFileMetadata {
 
   // fields below are IoTDB extensions and they does not affect TsFile's
   // stand-alone functionality
@@ -47,11 +47,11 @@ public class TsFileMetaData {
   // bloom filter
   private BloomFilter bloomFilter;
 
-  private Map<String, Pair<Long, Integer>> deviceMetaDataMap;
+  private Map<String, Pair<Long, Integer>> deviceMetadataMap;
   
   private Map<Long, Long> versionInfo;
 
-  public TsFileMetaData() {
+  public TsFileMetadata() {
   }
 
   /**
@@ -60,8 +60,8 @@ public class TsFileMetaData {
    * @param buffer -buffer use to deserialize
    * @return -a instance of TsFileMetaData
    */
-  public static TsFileMetaData deserializeFrom(ByteBuffer buffer) throws IOException {
-    TsFileMetaData fileMetaData = new TsFileMetaData();
+  public static TsFileMetadata deserializeFrom(ByteBuffer buffer) {
+    TsFileMetadata fileMetaData = new TsFileMetadata();
     int deviceNum = ReadWriteIOUtils.readInt(buffer);
     if (deviceNum > 0) {
       Map<String, Pair<Long, Integer>> deviceMetaDataMap = new HashMap<>();
@@ -71,7 +71,7 @@ public class TsFileMetaData {
         int length = ReadWriteIOUtils.readInt(buffer);
         deviceMetaDataMap.put(deviceId, new Pair<>(offset, length));
       }
-      fileMetaData.setDeviceMetaDataMap(deviceMetaDataMap);
+      fileMetaData.setDeviceMetadataMap(deviceMetaDataMap);
     }
 
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
@@ -100,9 +100,9 @@ public class TsFileMetaData {
    */
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
-    if (deviceMetaDataMap != null) {
-      byteLen += ReadWriteIOUtils.write(deviceMetaDataMap.size(), outputStream);
-      for (Map.Entry<String, Pair<Long, Integer>> entry : deviceMetaDataMap.entrySet()) {
+    if (deviceMetadataMap != null) {
+      byteLen += ReadWriteIOUtils.write(deviceMetadataMap.size(), outputStream);
+      for (Map.Entry<String, Pair<Long, Integer>> entry : deviceMetadataMap.entrySet()) {
         byteLen += ReadWriteIOUtils.write(entry.getKey(), outputStream);
         byteLen += ReadWriteIOUtils.write(entry.getValue().left, outputStream);
         byteLen += ReadWriteIOUtils.write(entry.getValue().right, outputStream);
@@ -169,12 +169,12 @@ public class TsFileMetaData {
     this.invalidChunkNum = invalidChunkNum;
   }
 
-  public Map<String, Pair<Long, Integer>> getDeviceMetaDataMap() {
-    return deviceMetaDataMap;
+  public Map<String, Pair<Long, Integer>> getDeviceMetadataMap() {
+    return deviceMetadataMap;
   }
 
-  public void setDeviceMetaDataMap(Map<String, Pair<Long, Integer>> deviceMetaDataMap) {
-    this.deviceMetaDataMap = deviceMetaDataMap;
+  public void setDeviceMetadataMap(Map<String, Pair<Long, Integer>> deviceMetadataMap) {
+    this.deviceMetadataMap = deviceMetadataMap;
   }
 
   public void setVersionInfo(Map<Long, Long> versionInfo) {

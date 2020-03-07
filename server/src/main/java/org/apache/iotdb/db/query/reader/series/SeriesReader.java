@@ -28,7 +28,7 @@ import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -70,10 +70,10 @@ class SeriesReader {
   /*
    * chunk cache
    */
-  private ChunkMetaData firstChunkMetaData;
-  private final List<ChunkMetaData> seqChunkMetadatas = new LinkedList<>();
-  private final PriorityQueue<ChunkMetaData> unseqChunkMetadatas =
-      new PriorityQueue<>(Comparator.comparingLong(ChunkMetaData::getStartTime));
+  private ChunkMetadata firstChunkMetadata;
+  private final List<ChunkMetadata> seqChunkMetadata = new LinkedList<>();
+  private final PriorityQueue<ChunkMetadata> unseqChunkMetadata =
+      new PriorityQueue<>(Comparator.comparingLong(ChunkMetadata::getStartTime));
 
   /*
    * page cache
@@ -127,35 +127,35 @@ class SeriesReader {
       throw new IOException("all cached pages should be consumed first");
     }
 
-    if (firstChunkMetaData != null) {
+    if (firstChunkMetadata != null) {
       return true;
     }
 
     // init first chunk metadata whose startTime is minimum
     tryToUnpackAllOverlappedFilesToChunkMetadatas();
 
-    return firstChunkMetaData != null;
+    return firstChunkMetadata != null;
   }
 
 
   boolean isChunkOverlapped() throws IOException {
-    if (firstChunkMetaData == null) {
+    if (firstChunkMetadata == null) {
       throw new IOException("no first chunk");
     }
 
-    Statistics chunkStatistics = firstChunkMetaData.getStatistics();
-    return !seqChunkMetadatas.isEmpty()
-        && chunkStatistics.getEndTime() >= seqChunkMetadatas.get(0).getStartTime()
-        || !unseqChunkMetadatas.isEmpty()
-        && chunkStatistics.getEndTime() >= unseqChunkMetadatas.peek().getStartTime();
+    Statistics chunkStatistics = firstChunkMetadata.getStatistics();
+    return !seqChunkMetadata.isEmpty()
+        && chunkStatistics.getEndTime() >= seqChunkMetadata.get(0).getStartTime()
+        || !unseqChunkMetadata.isEmpty()
+        && chunkStatistics.getEndTime() >= unseqChunkMetadata.peek().getStartTime();
   }
 
   Statistics currentChunkStatistics() {
-    return firstChunkMetaData.getStatistics();
+    return firstChunkMetadata.getStatistics();
   }
 
   void skipCurrentChunk() {
-    firstChunkMetaData = null;
+    firstChunkMetadata = null;
   }
 
   /**
@@ -186,11 +186,11 @@ class SeriesReader {
     /*
      * construct first page reader
      */
-    if (firstChunkMetaData != null) {
+    if (firstChunkMetadata != null) {
       /*
        * try to unpack all overlapped ChunkMetadata to cachedPageReaders
        */
-      unpackAllOverlappedChunkMetadataToCachedPageReaders(firstChunkMetaData.getEndTime());
+      unpackAllOverlappedChunkMetadataToCachedPageReaders(firstChunkMetadata.getEndTime());
     } else {
       /*
        * first chunk metadata is already unpacked, consume cached pages
@@ -220,16 +220,16 @@ class SeriesReader {
 
   private void unpackAllOverlappedChunkMetadataToCachedPageReaders(long endTime)
       throws IOException {
-    while (!seqChunkMetadatas.isEmpty() && endTime >= seqChunkMetadatas.get(0).getStartTime()) {
-      unpackOneChunkMetaData(seqChunkMetadatas.remove(0));
+    while (!seqChunkMetadata.isEmpty() && endTime >= seqChunkMetadata.get(0).getStartTime()) {
+      unpackOneChunkMetaData(seqChunkMetadata.remove(0));
     }
-    while (!unseqChunkMetadatas.isEmpty() && endTime >= unseqChunkMetadatas.peek().getStartTime()) {
-      unpackOneChunkMetaData(unseqChunkMetadatas.poll());
+    while (!unseqChunkMetadata.isEmpty() && endTime >= unseqChunkMetadata.peek().getStartTime()) {
+      unpackOneChunkMetaData(unseqChunkMetadata.poll());
     }
 
-    if (firstChunkMetaData != null && endTime >= firstChunkMetaData.getStartTime()) {
-      unpackOneChunkMetaData(firstChunkMetaData);
-      firstChunkMetaData = null;
+    if (firstChunkMetadata != null && endTime >= firstChunkMetadata.getStartTime()) {
+      unpackOneChunkMetaData(firstChunkMetadata);
+      firstChunkMetadata = null;
     }
 
     if (firstPageReader == null && !cachedPageReaders.isEmpty()) {
@@ -237,7 +237,7 @@ class SeriesReader {
     }
   }
 
-  private void unpackOneChunkMetaData(ChunkMetaData chunkMetaData) throws IOException {
+  private void unpackOneChunkMetaData(ChunkMetadata chunkMetaData) throws IOException {
     initChunkReader(chunkMetaData)
         .getPageReaderList()
         .forEach(
@@ -427,7 +427,7 @@ class SeriesReader {
     throw new IOException("No more batch data");
   }
 
-  private IChunkReader initChunkReader(ChunkMetaData metaData) throws IOException {
+  private IChunkReader initChunkReader(ChunkMetadata metaData) throws IOException {
     if (metaData == null) {
       throw new IOException("Can't init null chunkMeta");
     }
@@ -474,8 +474,8 @@ class SeriesReader {
     /*
      * Fill sequence chunkMetadatas until it is not empty
      */
-    while (seqChunkMetadatas.isEmpty() && !seqFileResource.isEmpty()) {
-      seqChunkMetadatas.addAll(FileLoaderUtils
+    while (seqChunkMetadata.isEmpty() && !seqFileResource.isEmpty()) {
+      seqChunkMetadata.addAll(FileLoaderUtils
           .loadChunkMetadataFromTsFileResource(seqFileResource.remove(0), seriesPath, context,
               timeFilter));
     }
@@ -483,8 +483,8 @@ class SeriesReader {
     /*
      * Fill unsequence chunkMetadatas until it is not empty
      */
-    while (unseqChunkMetadatas.isEmpty() && !unseqFileResource.isEmpty()) {
-      unseqChunkMetadatas.addAll(FileLoaderUtils
+    while (unseqChunkMetadata.isEmpty() && !unseqFileResource.isEmpty()) {
+      unseqChunkMetadata.addAll(FileLoaderUtils
           .loadChunkMetadataFromTsFileResource(unseqFileResource.poll(), seriesPath, context,
               timeFilter));
     }
@@ -492,39 +492,39 @@ class SeriesReader {
     /*
      * find first chunk metadata
      */
-    if (!seqChunkMetadatas.isEmpty() && unseqChunkMetadatas.isEmpty()) {
+    if (!seqChunkMetadata.isEmpty() && unseqChunkMetadata.isEmpty()) {
       // only has seq
-      firstChunkMetaData = seqChunkMetadatas.remove(0);
-    } else if (seqChunkMetadatas.isEmpty() && !unseqChunkMetadatas.isEmpty()) {
+      firstChunkMetadata = seqChunkMetadata.remove(0);
+    } else if (seqChunkMetadata.isEmpty() && !unseqChunkMetadata.isEmpty()) {
       // only has unseq
-      firstChunkMetaData = unseqChunkMetadatas.poll();
-    } else if (!seqChunkMetadatas.isEmpty()) {
+      firstChunkMetadata = unseqChunkMetadata.poll();
+    } else if (!seqChunkMetadata.isEmpty()) {
       // has seq and unseq
-      if (seqChunkMetadatas.get(0).getStartTime() <= unseqChunkMetadatas.peek().getStartTime()) {
-        firstChunkMetaData = seqChunkMetadatas.remove(0);
+      if (seqChunkMetadata.get(0).getStartTime() <= unseqChunkMetadata.peek().getStartTime()) {
+        firstChunkMetadata = seqChunkMetadata.remove(0);
       } else {
-        firstChunkMetaData = unseqChunkMetadatas.poll();
+        firstChunkMetadata = unseqChunkMetadata.poll();
       }
     }
 
     /*
      * unpack all directly overlapped seq/unseq files with first chunk metadata
      */
-    if (firstChunkMetaData != null) {
-      unpackAllOverlappedTsFilesToChunkMetadatas(firstChunkMetaData.getEndTime());
+    if (firstChunkMetadata != null) {
+      unpackAllOverlappedTsFilesToChunkMetadatas(firstChunkMetadata.getEndTime());
     }
   }
 
   private void unpackAllOverlappedTsFilesToChunkMetadatas(long endTime) throws IOException {
     while (!unseqFileResource.isEmpty() && endTime >=
         unseqFileResource.peek().getStartTimeMap().get(seriesPath.getDevice())) {
-      unseqChunkMetadatas.addAll(FileLoaderUtils
+      unseqChunkMetadata.addAll(FileLoaderUtils
           .loadChunkMetadataFromTsFileResource(unseqFileResource.poll(), seriesPath, context,
               timeFilter));
     }
     while (!seqFileResource.isEmpty() && endTime >=
         seqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
-      seqChunkMetadatas.addAll(FileLoaderUtils
+      seqChunkMetadata.addAll(FileLoaderUtils
           .loadChunkMetadataFromTsFileResource(seqFileResource.remove(0), seriesPath, context,
               timeFilter));
     }

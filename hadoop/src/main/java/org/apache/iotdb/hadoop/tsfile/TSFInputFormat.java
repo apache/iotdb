@@ -29,7 +29,7 @@ import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
 import org.apache.iotdb.hadoop.tsfile.TSFInputSplit.ChunkGroupInfo;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.slf4j.Logger;
@@ -39,7 +39,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -311,8 +310,8 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
       List<TimeseriesMetaData> timeseriesMetaDataList = entry.getValue();
       logger.info("The device name is {}", deviceId);
       for (TimeseriesMetaData timeseriesMetaData : timeseriesMetaDataList) {
-        List<ChunkMetaData> chunkMetaDataList = fileReader.readChunkMetaDataList(timeseriesMetaData);
-        for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
+        List<ChunkMetadata> chunkMetadataList = fileReader.readChunkMetaDataList(timeseriesMetaData);
+        for (ChunkMetadata chunkMetaData : chunkMetadataList) {
           long middle = chunkMetaData.getOffsetOfChunkHeader() 
               + getTotalByteSizeOfChunk(chunkMetaData) / 2;
           int blkIndex = getBlockLocationIndex(blockLocations, middle, logger);
@@ -346,7 +345,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
     return splits;
   }
 
-  private static long getTotalByteSizeOfChunk(ChunkMetaData chunkMetaData) {
+  private static long getTotalByteSizeOfChunk(ChunkMetadata chunkMetaData) {
     return chunkMetaData.getMeasurementUid().getBytes().length
         + Long.BYTES + Short.BYTES + chunkMetaData.getStatistics().getSerializedSize();
   }

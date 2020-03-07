@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.read.reader.series;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 public class FileSeriesReaderByTimestamp {
 
   protected IChunkLoader chunkLoader;
-  protected List<ChunkMetaData> chunkMetaDataList;
+  protected List<ChunkMetadata> chunkMetadataList;
   private int currentChunkIndex = 0;
 
   private ChunkReader chunkReader;
@@ -47,14 +47,14 @@ public class FileSeriesReaderByTimestamp {
   /**
    * init with chunkLoader and chunkMetaDataList.
    */
-  public FileSeriesReaderByTimestamp(IChunkLoader chunkLoader, List<ChunkMetaData> chunkMetaDataList) {
+  public FileSeriesReaderByTimestamp(IChunkLoader chunkLoader, List<ChunkMetadata> chunkMetadataList) {
     this.chunkLoader = chunkLoader;
-    this.chunkMetaDataList = chunkMetaDataList;
+    this.chunkMetadataList = chunkMetadataList;
     currentTimestamp = Long.MIN_VALUE;
   }
 
   public TSDataType getDataType() {
-    return chunkMetaDataList.get(0).getDataType();
+    return chunkMetadataList.get(0).getDataType();
   }
 
   /**
@@ -134,8 +134,8 @@ public class FileSeriesReaderByTimestamp {
   }
 
   private boolean constructNextSatisfiedChunkReader() throws IOException {
-    while (currentChunkIndex < chunkMetaDataList.size()) {
-      ChunkMetaData chunkMetaData = chunkMetaDataList.get(currentChunkIndex++);
+    while (currentChunkIndex < chunkMetadataList.size()) {
+      ChunkMetadata chunkMetaData = chunkMetadataList.get(currentChunkIndex++);
       if (chunkSatisfied(chunkMetaData)) {
         initChunkReader(chunkMetaData);
         ((ChunkReaderByTimestamp) chunkReader).setCurrentTimestamp(currentTimestamp);
@@ -145,12 +145,12 @@ public class FileSeriesReaderByTimestamp {
     return false;
   }
 
-  private void initChunkReader(ChunkMetaData chunkMetaData) throws IOException {
+  private void initChunkReader(ChunkMetadata chunkMetaData) throws IOException {
     Chunk chunk = chunkLoader.getChunk(chunkMetaData);
     this.chunkReader = new ChunkReaderByTimestamp(chunk);
   }
 
-  private boolean chunkSatisfied(ChunkMetaData chunkMetaData) {
+  private boolean chunkSatisfied(ChunkMetadata chunkMetaData) {
     return chunkMetaData.getEndTime() >= currentTimestamp;
   }
 

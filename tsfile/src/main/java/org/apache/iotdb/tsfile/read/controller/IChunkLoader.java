@@ -20,17 +20,15 @@ package org.apache.iotdb.tsfile.read.controller;
 
 import java.io.IOException;
 
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-
-import java.io.IOException;
 
 public interface IChunkLoader {
 
   /**
    * read all content of any chunk.
    */
-  Chunk getChunk(ChunkMetaData chunkMetaData) throws IOException;
+  Chunk getChunk(ChunkMetadata chunkMetaData) throws IOException;
 
   /**
    * close the file reader.

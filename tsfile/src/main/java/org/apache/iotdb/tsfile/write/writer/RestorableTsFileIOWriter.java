@@ -29,8 +29,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
@@ -60,7 +60,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * 
    * all chunk group metadata which have been serialized on disk.
    */
-  private Map<String, Map<String, List<ChunkMetaData>>> metadatas = new HashMap<>();
+  private Map<String, Map<String, List<ChunkMetadata>>> metadatas = new HashMap<>();
 
   /**
    * @param file a given tsfile path you want to (continue to) write
@@ -127,8 +127,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       // this tsfile is complete
       if (reader.isComplete()) {
         reader.loadMetadataSize();
-        TsFileMetaData metaData = reader.readFileMetadata();
-        for (Pair<Long, Integer> deviceMetaData : metaData.getDeviceMetaDataMap().values()) {
+        TsFileMetadata metaData = reader.readFileMetadata();
+        for (Pair<Long, Integer> deviceMetaData : metaData.getDeviceMetadataMap().values()) {
           if (position > deviceMetaData.left) {
             position = deviceMetaData.left;
           }
@@ -165,20 +165,20 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @return chunks' metadata
    */
 
-  public List<ChunkMetaData> getVisibleMetadataList(String deviceId, String measurementId,
+  public List<ChunkMetadata> getVisibleMetadataList(String deviceId, String measurementId,
       TSDataType dataType) {
-    List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
+    List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
     if (metadatas.containsKey(deviceId) && metadatas.get(deviceId).containsKey(measurementId)) {
-      for (ChunkMetaData chunkMetaData : metadatas.get(deviceId).get(measurementId)) {
+      for (ChunkMetadata chunkMetaData : metadatas.get(deviceId).get(measurementId)) {
         // filter: if adevice'sensor is defined as float type, and data has been persistent.
         // Then someone deletes the timeseries and recreate it with Int type. We have to ignore
         // all the stale data.
         if (dataType == null || dataType.equals(chunkMetaData.getDataType())) {
-          chunkMetaDataList.add(chunkMetaData);
+          chunkMetadataList.add(chunkMetaData);
         }
       }
     }
-    return chunkMetaDataList;
+    return chunkMetadataList;
   }
 
   /**
@@ -187,12 +187,12 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    */
 
   public void makeMetadataVisible() {
-    List<Pair<String, List<ChunkMetaData>>> newlyFlushedMetadataList = getAppendedRowMetadata();
+    List<Pair<String, List<ChunkMetadata>>> newlyFlushedMetadataList = getAppendedRowMetadata();
     if (!newlyFlushedMetadataList.isEmpty()) {
-      for (Pair<String, List<ChunkMetaData>> pair : newlyFlushedMetadataList) {
-        List<ChunkMetaData> rowMetaDataList = pair.right;
+      for (Pair<String, List<ChunkMetadata>> pair : newlyFlushedMetadataList) {
+        List<ChunkMetadata> rowMetaDataList = pair.right;
         String deviceId = pair.left;
-        for (ChunkMetaData chunkMetaData : rowMetaDataList) {
+        for (ChunkMetadata chunkMetaData : rowMetaDataList) {
           String measurementId = chunkMetaData.getMeasurementUid();
           if (!metadatas.containsKey(deviceId)) {
             metadatas.put(deviceId, new HashMap<>());
@@ -216,8 +216,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    *
    * @return a list of Device ChunkMetadataList Pair
    */
-  private List<Pair<String, List<ChunkMetaData>>> getAppendedRowMetadata() {
-    List<Pair<String, List<ChunkMetaData>>> append = new ArrayList<>();
+  private List<Pair<String, List<ChunkMetadata>>> getAppendedRowMetadata() {
+    List<Pair<String, List<ChunkMetadata>>> append = new ArrayList<>();
     if (lastFlushedChunkGroupIndex < chunkGroupInfoList.size()) {
       append.addAll(chunkGroupInfoList
           .subList(lastFlushedChunkGroupIndex, chunkGroupInfoList.size()));

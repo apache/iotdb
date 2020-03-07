@@ -29,9 +29,9 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -46,7 +46,7 @@ public class FileLoaderUtils {
       // .resource file does not exist, read file metadata and recover tsfile resource
       try (TsFileSequenceReader reader = new TsFileSequenceReader(
           tsFileResource.getFile().getAbsolutePath())) {
-        TsFileMetaData metaData = reader.readFileMetadata();
+        TsFileMetadata metaData = reader.readFileMetadata();
         updateTsFileResource(metaData, reader, tsFileResource);
       }
       // write .resource file
@@ -56,9 +56,9 @@ public class FileLoaderUtils {
     }
   }
 
-  public static void updateTsFileResource(TsFileMetaData metaData, TsFileSequenceReader reader,
+  public static void updateTsFileResource(TsFileMetadata metaData, TsFileSequenceReader reader,
       TsFileResource tsFileResource) throws IOException {
-    for (String device : metaData.getDeviceMetaDataMap().keySet()) {
+    for (String device : metaData.getDeviceMetadataMap().keySet()) {
       Map<String, TimeseriesMetaData> chunkMetadataListInOneDevice = reader
           .readAllTimeseriesMetaDataInDevice(device);
       for (TimeseriesMetaData timeseriesMetaData : chunkMetadataListInOneDevice.values()) {
@@ -71,41 +71,41 @@ public class FileLoaderUtils {
   /**
    * load all ChunkMetadatas belong to the seriesPath and satisfy filter
    */
-  public static List<ChunkMetaData> loadChunkMetadataFromTsFileResource(
+  public static List<ChunkMetadata> loadChunkMetadataFromTsFileResource(
       TsFileResource resource, Path seriesPath, QueryContext context, Filter timeFilter) throws IOException {
-    List<ChunkMetaData> chunkMetaDataList = loadChunkMetadataFromTsFileResource(resource, seriesPath, context);
+    List<ChunkMetadata> chunkMetadataList = loadChunkMetadataFromTsFileResource(resource, seriesPath, context);
 
     /*
      * remove not satisfied ChunkMetaData
      */
-    chunkMetaDataList.removeIf(chunkMetaData -> (timeFilter != null && !timeFilter
+    chunkMetadataList.removeIf(chunkMetaData -> (timeFilter != null && !timeFilter
         .satisfyStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
         || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
-    return chunkMetaDataList;
+    return chunkMetadataList;
   }
 
   /**
    * load all ChunkMetadatas belong to the seriesPath
    */
-  public static List<ChunkMetaData> loadChunkMetadataFromTsFileResource(
+  public static List<ChunkMetadata> loadChunkMetadataFromTsFileResource(
       TsFileResource resource, Path seriesPath, QueryContext context) throws IOException {
-    List<ChunkMetaData> chunkMetaDataList;
+    List<ChunkMetadata> chunkMetadataList;
     if (resource == null) {
       return new ArrayList<>();
     }
     if (resource.isClosed()) {
-      chunkMetaDataList = DeviceMetaDataCache.getInstance().get(resource, seriesPath);
+      chunkMetadataList = DeviceMetaDataCache.getInstance().get(resource, seriesPath);
     } else {
-      chunkMetaDataList = resource.getChunkMetaDataList();
+      chunkMetadataList = resource.getChunkMetadataList();
     }
     List<Modification> pathModifications =
         context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
 
     if (!pathModifications.isEmpty()) {
-      QueryUtils.modifyChunkMetaData(chunkMetaDataList, pathModifications);
+      QueryUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
     }
 
-    for (ChunkMetaData data : chunkMetaDataList) {
+    for (ChunkMetadata data : chunkMetadataList) {
       TsFileSequenceReader tsFileSequenceReader =
           FileReaderManager.getInstance().get(resource, resource.isClosed());
       data.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
@@ -114,7 +114,7 @@ public class FileLoaderUtils {
     if (memChunks != null) {
       for (ReadOnlyMemChunk readOnlyMemChunk : memChunks) {
         if (!memChunks.isEmpty()) {
-          chunkMetaDataList.add(readOnlyMemChunk.getChunkMetaData());
+          chunkMetadataList.add(readOnlyMemChunk.getChunkMetaData());
         }
       }
     }
@@ -122,8 +122,8 @@ public class FileLoaderUtils {
     /*
      * remove empty or invalid chunk metadata
      */
-    chunkMetaDataList.removeIf(chunkMetaData -> (
+    chunkMetadataList.removeIf(chunkMetaData -> (
         chunkMetaData.getStartTime() > chunkMetaData.getEndTime()));
-    return chunkMetaDataList;
+    return chunkMetadataList;
   }
 }

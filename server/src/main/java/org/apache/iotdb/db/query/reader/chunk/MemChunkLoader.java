@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
@@ -36,7 +36,7 @@ public class MemChunkLoader implements IChunkLoader {
 
 
   @Override
-  public Chunk getChunk(ChunkMetaData chunkMetaData) {
+  public Chunk getChunk(ChunkMetadata chunkMetaData) {
     throw new UnsupportedOperationException();
   }
 

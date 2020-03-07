@@ -31,7 +31,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class TsFileMetaDataTest {
+public class TsFileMetadataTest {
 
   public static final int VERSION = 123;
   public static final String CREATED_BY = "tsf";
@@ -51,23 +51,23 @@ public class TsFileMetaDataTest {
 
   @Test
   public void testWriteFileMetaData() throws IOException {
-    TsFileMetaData tsfMetaData = TestHelper.createSimpleFileMetaData();
+    TsFileMetadata tsfMetaData = TestHelper.createSimpleFileMetaData();
     serialized(tsfMetaData);
-    TsFileMetaData readMetaData = deSerialized();
+    TsFileMetadata readMetaData = deSerialized();
     Utils.isFileMetaDataEqual(tsfMetaData, readMetaData);
     serialized(readMetaData);
   }
 
-  private TsFileMetaData deSerialized() {
+  private TsFileMetadata deSerialized() {
     FileInputStream fileInputStream = null;
-    TsFileMetaData metaData = null;
+    TsFileMetadata metaData = null;
     try {
       fileInputStream = new FileInputStream(new File(PATH));
       FileChannel channel = fileInputStream.getChannel();
       ByteBuffer buffer = ByteBuffer.allocate((int) channel.size());
       channel.read(buffer);
       buffer.rewind();
-      metaData = TsFileMetaData.deserializeFrom(buffer);
+      metaData = TsFileMetadata.deserializeFrom(buffer);
       return metaData;
     } catch (IOException e) {
       e.printStackTrace();
@@ -83,7 +83,7 @@ public class TsFileMetaDataTest {
     return metaData;
   }
 
-  private void serialized(TsFileMetaData metaData) {
+  private void serialized(TsFileMetadata metaData) {
     File file = new File(PATH);
     if (file.exists()) {
       file.delete();

@@ -82,7 +82,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -204,10 +204,6 @@ public class StorageGroupProcessor {
   private ModificationFile mergingModification;
   private volatile boolean isMerging = false;
   private long mergeStartTime;
-  /**
-   * This linked list records the access order of measurements used by query.
-   */
-  private LinkedList<String> lruForSensorUsedInQuery = new LinkedList<>();
   /**
    * when the data in a storage group is older than dataTTL, it is considered invalid and will be
    * eventually removed.
@@ -1045,12 +1041,6 @@ public class StorageGroupProcessor {
       QueryFileManager filePathsManager, Filter timeFilter) {
     insertLock.readLock().lock();
     mergeLock.readLock().lock();
-    synchronized (lruForSensorUsedInQuery) {
-      if (lruForSensorUsedInQuery.size() >= MAX_CACHE_SENSORS) {
-        lruForSensorUsedInQuery.removeFirst();
-      }
-      lruForSensorUsedInQuery.add(measurementId);
-    }
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(sequenceFileTreeSet,
           deviceId, measurementId, context, timeFilter);
@@ -1070,27 +1060,6 @@ public class StorageGroupProcessor {
       insertLock.readLock().unlock();
       mergeLock.readLock().unlock();
     }
-  }
-
-  /**
-   * returns the top k% measurements which are recently used in queries.
-   */
-  public Set calTopKMeasurement(String sensorId, double k) {
-    int num = (int) (lruForSensorUsedInQuery.size() * k);
-    Set<String> sensorSet = new HashSet<>(num + 1);
-    synchronized (lruForSensorUsedInQuery) {
-      Iterator<String> iterator = lruForSensorUsedInQuery.descendingIterator();
-      while (iterator.hasNext() && sensorSet.size() < num) {
-        String sensor = iterator.next();
-        if (sensorSet.contains(sensor)) {
-          iterator.remove();
-        } else {
-          sensorSet.add(sensor);
-        }
-      }
-    }
-    sensorSet.add(sensorId);
-    return sensorSet;
   }
 
   public void writeLock() {
@@ -1128,7 +1097,7 @@ public class StorageGroupProcessor {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
           // left: in-memory data, right: meta of disk data
-          Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = tsFileResource
+          Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = tsFileResource
               .getUnsealedFileProcessor()
               .query(deviceId, measurementId, mSchema.getType(), mSchema.getEncodingType(),
                   mSchema.getProps(), context);

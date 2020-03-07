@@ -28,9 +28,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -74,8 +72,8 @@ public class ReadInPartitionTest {
     // different test environments,
     // we get metadata from the real-time generated TsFile instead of using a fixed
     // parameter setting.
-    List<ChunkMetaData> d1s6List = reader.getChunkMetadataList(new Path("d1.s6"));
-    for (ChunkMetaData chunkMetaData : d1s6List) {
+    List<ChunkMetadata> d1s6List = reader.getChunkMetadataList(new Path("d1.s6"));
+    for (ChunkMetadata chunkMetaData : d1s6List) {
       // get a series of [startTime, endTime] of d1.s6 from the chunkGroupMetaData of
       // d1
       d1s6timeRangeList.add(new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
@@ -87,8 +85,8 @@ public class ReadInPartitionTest {
       d1chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
     
-    List<ChunkMetaData> d2s1List = reader.getChunkMetadataList(new Path("d2.s1"));
-    for (ChunkMetaData chunkMetaData : d2s1List) {
+    List<ChunkMetadata> d2s1List = reader.getChunkMetadataList(new Path("d2.s1"));
+    for (ChunkMetadata chunkMetaData : d2s1List) {
       d2s1timeRangeList.add(new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
     }
   }

@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +40,7 @@ public class TsFileMetaDataCache {
   /**
    * key: Tsfile path. value: TsFileMetaData
    */
-  private LRULinkedHashMap<TsFileResource, TsFileMetaData> cache;
+  private LRULinkedHashMap<TsFileResource, TsFileMetadata> cache;
   private AtomicLong cacheHitNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
@@ -54,20 +54,20 @@ public class TsFileMetaDataCache {
   private long versionAndCreatebySize = 10;
 
   private TsFileMetaDataCache() {
-    cache = new LRULinkedHashMap<TsFileResource, TsFileMetaData>(MEMORY_THRESHOLD_IN_B, true) {
+    cache = new LRULinkedHashMap<TsFileResource, TsFileMetadata>(MEMORY_THRESHOLD_IN_B, true) {
       @Override
-      protected long calEntrySize(TsFileResource key, TsFileMetaData value) {
-        if (deviceIndexMapEntrySize == 0 && value.getDeviceMetaDataMap() != null
-            && value.getDeviceMetaDataMap().size() > 0) {
+      protected long calEntrySize(TsFileResource key, TsFileMetadata value) {
+        if (deviceIndexMapEntrySize == 0 && value.getDeviceMetadataMap() != null
+            && value.getDeviceMetadataMap().size() > 0) {
           deviceIndexMapEntrySize = RamUsageEstimator
-              .sizeOf(value.getDeviceMetaDataMap().entrySet().iterator().next());
+              .sizeOf(value.getDeviceMetadataMap().entrySet().iterator().next());
         }
         long valueSize;
-        if (value.getDeviceMetaDataMap() == null) {
+        if (value.getDeviceMetadataMap() == null) {
           valueSize = versionAndCreatebySize;
         }
         else {
-          valueSize = value.getDeviceMetaDataMap().size() * deviceIndexMapEntrySize
+          valueSize = value.getDeviceMetadataMap().size() * deviceIndexMapEntrySize
             + versionAndCreatebySize;
         }
         return key.getFile().getPath().length() * 2 + valueSize;
@@ -84,7 +84,7 @@ public class TsFileMetaDataCache {
    *
    * @param tsFileResource -given TsFile
    */
-  public TsFileMetaData get(TsFileResource tsFileResource) throws IOException {
+  public TsFileMetadata get(TsFileResource tsFileResource) throws IOException {
     if (!cacheEnable) {
       return TsFileMetadataUtils.getTsFileMetaData(tsFileResource);
     }
@@ -108,7 +108,7 @@ public class TsFileMetaDataCache {
         }
       }
       printCacheLog(false);
-      TsFileMetaData fileMetaData = TsFileMetadataUtils.getTsFileMetaData(tsFileResource);
+      TsFileMetadata fileMetaData = TsFileMetadataUtils.getTsFileMetaData(tsFileResource);
       synchronized (cache) {
         cache.put(tsFileResource, fileMetaData);
         return fileMetaData;

@@ -27,7 +27,7 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
@@ -73,7 +73,7 @@ public class MemTableFlushTaskTest {
     assertEquals(1, writer
         .getVisibleMetadataList(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).size());
-    ChunkMetaData chunkMetaData = writer
+    ChunkMetadata chunkMetaData = writer
         .getVisibleMetadataList(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).get(0);
     assertEquals(MemTableTestUtils.measurementId0, chunkMetaData.getMeasurementUid());

@@ -19,61 +19,41 @@
 package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
- * This class is used to read metadata(<code>TsFileMetaData</code> and
- * <code>TsRowGroupBlockMetaData</code>).
+ * This class is used to read metadata(<code>TsFileMetadata</code> and ChunkMetadata of a path
  */
-public class TsFileMetadataUtils {
-
-  private TsFileMetadataUtils() {
-
-  }
+class TsFileMetadataUtils {
 
   /**
-   * get tsfile meta data.
+   * get TsFileMetadata of a closed TsFile.
    *
    * @param resource -given TsFile
    * @return -meta data
    */
-  public static TsFileMetaData getTsFileMetaData(TsFileResource resource) throws IOException {
+  static TsFileMetadata getTsFileMetaData(TsFileResource resource) throws IOException {
+    if (!resource.isClosed()) {
+      throw new IOException("The TsFile is not closed: " + resource.getFile().getAbsolutePath());
+    }
     TsFileSequenceReader reader = FileReaderManager.getInstance().get(resource, true);
     return reader.readFileMetadata();
   }
 
   /**
-   * get ChunkMetaData List of measurements in sensorSet included in all ChunkGroups of this device. If
-   * sensorSet is empty, then return metadata of all sensor included in this device.
-   * @throws IOException 
+   * get ChunkMetadata List of a path in the tsfile resource
    */
-  public static Map<Path, List<ChunkMetaData>> getChunkMetaDataList(
-      Set<String> sensorSet, String deviceId, TsFileResource resource) throws IOException {
-    Map<Path, List<ChunkMetaData>> pathToChunkMetaDataList = new HashMap<>();
-    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource, true);
-
-    List<ChunkMetaData> chunkMetaDataListInOneDevice = tsFileReader
-        .readChunkMetadataInDevice(deviceId);
-    for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneDevice) {
-      if (sensorSet.isEmpty() || sensorSet.contains(chunkMetaData.getMeasurementUid())) {
-        Path path = new Path(deviceId, chunkMetaData.getMeasurementUid());
-        pathToChunkMetaDataList.putIfAbsent(path, new ArrayList<>());
-        // chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
-        pathToChunkMetaDataList.get(path).add(chunkMetaData);
-      }
+  static List<ChunkMetadata> getChunkMetaDataList(Path path, TsFileResource resource) throws IOException {
+    if (!resource.isClosed()) {
+      throw new IOException("The TsFile is not closed: " + resource.getFile().getAbsolutePath());
     }
-    return pathToChunkMetaDataList;
+    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource, true);
+    return tsFileReader.getChunkMetadataList(path);
   }
 }

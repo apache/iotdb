@@ -37,7 +37,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resource.CachedUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.MergeUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -131,7 +131,7 @@ public class MergeResource {
    * @return
    * @throws IOException
    */
-  public List<ChunkMetaData> queryChunkMetadata(Path path, TsFileResource seqFile)
+  public List<ChunkMetadata> queryChunkMetadata(Path path, TsFileResource seqFile)
       throws IOException {
     TsFileSequenceReader sequenceReader = getFileReader(seqFile);
     return sequenceReader.getChunkMetadataList(path);

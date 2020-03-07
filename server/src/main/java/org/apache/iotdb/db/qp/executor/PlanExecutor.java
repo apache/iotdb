@@ -111,7 +111,7 @@ import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -569,7 +569,7 @@ public class PlanExecutor implements IPlanExecutor {
                 file.getAbsolutePath()));
       }
       Map<Path, MeasurementSchema> schemaMap = new HashMap<>();
-      Map<Path, List<ChunkMetaData>> chunkMetaDataListMap = new HashMap<>();
+      Map<Path, List<ChunkMetadata>> chunkMetaDataListMap = new HashMap<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
         reader.selfCheck(schemaMap, chunkMetaDataListMap, false);
       }
@@ -594,16 +594,16 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private void createSchemaAutomatically(Map<Path, List<ChunkMetaData>> chunkMetaDataListMap,
+  private void createSchemaAutomatically(Map<Path, List<ChunkMetadata>> chunkMetaDataListMap,
       Map<Path, MeasurementSchema> knownSchemas, int sgLevel)
       throws QueryProcessException, MetadataException, StorageEngineException {
     if (chunkMetaDataListMap.isEmpty()) {
       return;
     }
-    for (Entry<Path, List<ChunkMetaData>> entry : chunkMetaDataListMap.entrySet()) {
+    for (Entry<Path, List<ChunkMetadata>> entry : chunkMetaDataListMap.entrySet()) {
       String device = entry.getKey().getDevice();
       MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(device, true, sgLevel);
-      for (ChunkMetaData chunkMetaData : entry.getValue()) {
+      for (ChunkMetadata chunkMetaData : entry.getValue()) {
         String measurement = chunkMetaData.getMeasurementUid();
         String fullPath = device + IoTDBConstant.PATH_SEPARATOR + measurement;
         MeasurementSchema schema = knownSchemas.get(entry.getKey());

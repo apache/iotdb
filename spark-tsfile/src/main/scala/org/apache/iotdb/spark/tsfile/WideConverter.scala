@@ -25,7 +25,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileStatus
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata
 import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
 import org.apache.iotdb.tsfile.read.common.Path
@@ -58,7 +58,7 @@ object WideConverter extends Converter {
     * @param tsFileMetaData TsFileMetaData
     * @return union series
     */
-  def getSeries(tsFileMetaData: TsFileMetaData): util.ArrayList[Series] = {
+  def getSeries(tsFileMetaData: TsFileMetadata): util.ArrayList[Series] = {
     val series = new util.ArrayList[Series]()
 
     val devices = tsFileMetaData.getDeviceMap.keySet()
@@ -117,7 +117,7 @@ object WideConverter extends Converter {
     * @param tsFileMetaData tsFileMetaData
     * @return
     */
-  def prepSchema(requiredSchema: StructType, tsFileMetaData: TsFileMetaData): StructType = {
+  def prepSchema(requiredSchema: StructType, tsFileMetaData: TsFileMetadata): StructType = {
     var queriedSchema: StructType = new StructType()
 
     if (requiredSchema.isEmpty

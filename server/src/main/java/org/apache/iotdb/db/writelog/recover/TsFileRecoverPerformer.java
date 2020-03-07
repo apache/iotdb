@@ -37,8 +37,8 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -111,7 +111,7 @@ public class TsFileRecoverPerformer {
           // .resource file does not exist, read file metadata and recover tsfile resource
           try (TsFileSequenceReader reader = new TsFileSequenceReader(
               tsFileResource.getFile().getAbsolutePath())) {
-            TsFileMetaData metaData = reader.readFileMetadata();
+            TsFileMetadata metaData = reader.readFileMetadata();
             FileLoaderUtils.updateTsFileResource(metaData, reader, tsFileResource);
           }
           // write .resource file
@@ -160,13 +160,13 @@ public class TsFileRecoverPerformer {
   private void recoverResourceFromReader() throws IOException {
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(tsFileResource.getFile().getAbsolutePath(), false)) {
-      TsFileMetaData metaData = reader.readFileMetadata();
+      TsFileMetadata metaData = reader.readFileMetadata();
       
-      Map<String, Pair<Long, Integer>> deviceMetaDataMap = metaData.getDeviceMetaDataMap();
+      Map<String, Pair<Long, Integer>> deviceMetaDataMap = metaData.getDeviceMetadataMap();
       for (Map.Entry<String, Pair<Long, Integer>>  entry: deviceMetaDataMap.entrySet()) {
         String deviceId = entry.getKey();
-        List<ChunkMetaData> chunkMetadataList = reader.readAllChunkMetadatas();
-        for (ChunkMetaData chunkMetaData : chunkMetadataList) {
+        List<ChunkMetadata> chunkMetadataList = reader.readAllChunkMetadatas();
+        for (ChunkMetadata chunkMetaData : chunkMetadataList) {
           tsFileResource.updateStartTime(deviceId, chunkMetaData.getStartTime());
           tsFileResource.updateEndTime(deviceId, chunkMetaData.getEndTime());
         }
@@ -178,12 +178,12 @@ public class TsFileRecoverPerformer {
 
 
   private void recoverResourceFromWriter(RestorableTsFileIOWriter restorableTsFileIOWriter) {
-    Map<String, List<ChunkMetaData>> deviceChunkMetaDataMap =
+    Map<String, List<ChunkMetadata>> deviceChunkMetaDataMap =
         restorableTsFileIOWriter.getDeviceChunkMetadataMap();
-    for (Map.Entry<String, List<ChunkMetaData>> entry : deviceChunkMetaDataMap.entrySet()) {
+    for (Map.Entry<String, List<ChunkMetadata>> entry : deviceChunkMetaDataMap.entrySet()) {
       String deviceId = entry.getKey();
-      List<ChunkMetaData> chunkMetaDataList = entry.getValue();
-      for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
+      List<ChunkMetadata> chunkMetadataList = entry.getValue();
+      for (ChunkMetadata chunkMetaData : chunkMetadataList) {
         tsFileResource.updateStartTime(deviceId, chunkMetaData.getStartTime());
         tsFileResource.updateEndTime(deviceId, chunkMetaData.getEndTime());
       }

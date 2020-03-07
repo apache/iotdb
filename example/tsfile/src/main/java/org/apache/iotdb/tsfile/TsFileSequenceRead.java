@@ -29,8 +29,8 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -52,7 +52,7 @@ public class TsFileSequenceRead {
     System.out.println("file magic tail: " + reader.readTailMagic());
     System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
     System.out.println("Level 1 metadata size: " + reader.getFileMetadataSize());
-    TsFileMetaData metaData = reader.readFileMetadata();
+    TsFileMetadata metaData = reader.readFileMetadata();
     // Sequential reading of one ChunkGroup now follows this order:
     // first SeriesChunks (headers and data) in one ChunkGroup, then the CHUNK_GROUP_FOOTER
     // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the marker) ahead and
@@ -103,14 +103,14 @@ public class TsFileSequenceRead {
       }
     }
     System.out.println("[Metadata]");
-    Map<String, Pair<Long, Integer>> deviceOffsetsMap = metaData.getDeviceMetaDataMap();
+    Map<String, Pair<Long, Integer>> deviceOffsetsMap = metaData.getDeviceMetadataMap();
     for (Map.Entry<String, Pair<Long, Integer>>  entry: deviceOffsetsMap.entrySet()) {
       String deviceId = entry.getKey();
-      List<ChunkMetaData> chunkMetadataList = 
+      List<ChunkMetadata> chunkMetadataList =
           reader.readChunkMetadataInDevice(deviceId);
       System.out.println(String
           .format("\t[Device]Device %s, Number of Chunk %d", deviceId, chunkMetadataList.size()));
-      for (ChunkMetaData chunkMetadata : chunkMetadataList) {
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         System.out.println("\t\tMeasurement:" + chunkMetadata.getMeasurementUid());
         System.out.println("\t\tFile offset:" + chunkMetadata.getOffsetOfChunkHeader());
       }

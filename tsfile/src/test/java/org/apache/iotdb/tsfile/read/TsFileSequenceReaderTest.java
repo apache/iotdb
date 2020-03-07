@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.utils.FileGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
@@ -60,7 +60,7 @@ public class TsFileSequenceReaderTest {
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
     reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
         .getBytes().length);
-    TsFileMetaData metaData = reader.readFileMetadata();
+    TsFileMetadata metaData = reader.readFileMetadata();
     Map<String, List<Pair<Long, Long>>> deviceChunkGroupMetadataOffsets = new HashMap<>();
 
     long startOffset = reader.position();

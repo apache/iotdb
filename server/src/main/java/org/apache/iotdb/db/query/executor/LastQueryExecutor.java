@@ -22,10 +22,7 @@ package org.apache.iotdb.db.query.executor;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 
-import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
-import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -35,17 +32,13 @@ import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -128,12 +121,12 @@ public class LastQueryExecutor {
     TimeValuePair resultPair = new TimeValuePair(Long.MIN_VALUE, null);
 
     if (!seqFileResources.isEmpty()) {
-      List<ChunkMetaData> chunkMetadata =
+      List<ChunkMetadata> chunkMetadata =
           FileLoaderUtils.loadChunkMetadataFromTsFileResource(
               seqFileResources.get(seqFileResources.size() - 1), seriesPath, context);
       if (!chunkMetadata.isEmpty()) {
-        ChunkMetaData lastChunkMetaData = chunkMetadata.get(chunkMetadata.size() - 1);
-        Statistics chunkStatistics = lastChunkMetaData.getStatistics();
+        ChunkMetadata lastChunkMetadata = chunkMetadata.get(chunkMetadata.size() - 1);
+        Statistics chunkStatistics = lastChunkMetadata.getStatistics();
         resultPair =
             constructLastPair(
                 chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
@@ -145,9 +138,9 @@ public class LastQueryExecutor {
       if (resource.getEndTimeMap().get(seriesPath.getDevice()) < resultPair.getTimestamp()) {
         continue;
       }
-      List<ChunkMetaData> chunkMetadata =
+      List<ChunkMetadata> chunkMetadata =
           FileLoaderUtils.loadChunkMetadataFromTsFileResource(resource, seriesPath, context);
-      for (ChunkMetaData chunkMetaData : chunkMetadata) {
+      for (ChunkMetadata chunkMetaData : chunkMetadata) {
         if (chunkMetaData.getEndTime() == resultPair.getTimestamp()
             && chunkMetaData.getVersion() > version) {
           Statistics chunkStatistics = chunkMetaData.getStatistics();

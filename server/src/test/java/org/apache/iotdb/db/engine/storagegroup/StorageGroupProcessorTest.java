@@ -34,7 +34,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -108,7 +108,7 @@ public class StorageGroupProcessorTest {
 
     processor.delete(deviceId, measurementId, 15L);
 
-    Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = null;
+    Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = null;
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
       pair = tsfileProcessor
           .query(deviceId, measurementId, TSDataType.INT32, TSEncoding.RLE, Collections.emptyMap(),

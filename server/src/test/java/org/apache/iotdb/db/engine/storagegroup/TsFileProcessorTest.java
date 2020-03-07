@@ -40,7 +40,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -89,10 +89,10 @@ public class TsFileProcessorTest {
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
-    Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
+    Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = processor
         .query(deviceId, measurementId, dataType, encoding, props, context);
     List<ReadOnlyMemChunk> left = pair.left;
-    List<ChunkMetaData> right = pair.right;
+    List<ChunkMetadata> right = pair.right;
     assertTrue(left.isEmpty());
     assertEquals(0, right.size());
 
@@ -138,10 +138,10 @@ public class TsFileProcessorTest {
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
-    Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
+    Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = processor
         .query(deviceId, measurementId, dataType, encoding, props, context);
     List<ReadOnlyMemChunk> left = pair.left;
-    List<ChunkMetaData> right = pair.right;
+    List<ChunkMetadata> right = pair.right;
     assertTrue(left.isEmpty());
     assertEquals(0, right.size());
 
@@ -179,23 +179,23 @@ public class TsFileProcessorTest {
     assertEquals(dataType, right.get(0).getDataType());
 
     RestorableTsFileIOWriter tsFileIOWriter = processor.getWriter();
-    Map<String, List<ChunkMetaData>> chunkMetaDataListInChunkGroups = 
+    Map<String, List<ChunkMetadata>> chunkMetaDataListInChunkGroups =
         tsFileIOWriter.getDeviceChunkMetadataMap();
     RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(
         SystemFileFactory.INSTANCE.getFile(filePath));
-    Map<String, List<ChunkMetaData>> restoredChunkMetaDataListInChunkGroups = restorableTsFileIOWriter
+    Map<String, List<ChunkMetadata>> restoredChunkMetaDataListInChunkGroups = restorableTsFileIOWriter
         .getDeviceChunkMetadataMap();
     assertEquals(chunkMetaDataListInChunkGroups.size(), restoredChunkMetaDataListInChunkGroups.size());
-    for (Map.Entry<String, List<ChunkMetaData>> entry1 
+    for (Map.Entry<String, List<ChunkMetadata>> entry1
         : chunkMetaDataListInChunkGroups.entrySet()) {
-      for (Map.Entry<String, List<ChunkMetaData>> entry2 
+      for (Map.Entry<String, List<ChunkMetadata>> entry2
           : restoredChunkMetaDataListInChunkGroups.entrySet()) {
         assertEquals(entry1.getKey(), entry2.getKey());
         assertEquals(entry1.getValue().size(), entry2.getValue().size());
         for (int i = 0; i < entry1.getValue().size(); i++) {
-          ChunkMetaData chunkMetaData = entry1.getValue().get(i);
-          ChunkMetaData chunkMetaDataRestore = entry2.getValue().get(i);
-          assertEquals(chunkMetaData, chunkMetaDataRestore);
+          ChunkMetadata chunkMetaData = entry1.getValue().get(i);
+          ChunkMetadata chunkMetadataRestore = entry2.getValue().get(i);
+          assertEquals(chunkMetaData, chunkMetadataRestore);
         }
       }
     }
@@ -213,10 +213,10 @@ public class TsFileProcessorTest {
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
-    Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
+    Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = processor
         .query(deviceId, measurementId, dataType, encoding, props, context);
     List<ReadOnlyMemChunk> left = pair.left;
-    List<ChunkMetaData> right = pair.right;
+    List<ChunkMetadata> right = pair.right;
     assertTrue(left.isEmpty());
     assertEquals(0, right.size());
 
@@ -248,10 +248,10 @@ public class TsFileProcessorTest {
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE,
         this::closeTsFileProcessor, (tsFileProcessor) -> true, true);
 
-    Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = processor
+    Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = processor
         .query(deviceId, measurementId, dataType, encoding, props, context);
     List<ReadOnlyMemChunk> left = pair.left;
-    List<ChunkMetaData> right = pair.right;
+    List<ChunkMetadata> right = pair.right;
     assertTrue(left.isEmpty());
     assertEquals(0, right.size());
 

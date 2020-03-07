@@ -39,7 +39,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.UpgradeUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -90,7 +90,7 @@ public class TsFileResource {
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
    * process.
    */
-  private List<ChunkMetaData> chunkMetaDataList;
+  private List<ChunkMetadata> chunkMetadataList;
 
   /**
    * Mem chunk data. Only be set in a temporal TsFileResource in a query process.
@@ -113,7 +113,7 @@ public class TsFileResource {
     this.closed = other.closed;
     this.deleted = other.deleted;
     this.isMerging = other.isMerging;
-    this.chunkMetaDataList = other.chunkMetaDataList;
+    this.chunkMetadataList = other.chunkMetadataList;
     this.readOnlyMemChunk = other.readOnlyMemChunk;
     this.writeQueryLock = other.writeQueryLock;
     this.fsFactory = other.fsFactory;
@@ -146,11 +146,11 @@ public class TsFileResource {
       Map<String, Long> startTimeMap,
       Map<String, Long> endTimeMap,
       List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<ChunkMetaData> chunkMetaDataList) {
+      List<ChunkMetadata> chunkMetadataList) {
     this.file = file;
     this.startTimeMap = startTimeMap;
     this.endTimeMap = endTimeMap;
-    this.chunkMetaDataList = chunkMetaDataList;
+    this.chunkMetadataList = chunkMetadataList;
     this.readOnlyMemChunk = readOnlyMemChunk;
   }
 
@@ -237,8 +237,8 @@ public class TsFileResource {
     endTimeMap.put(device, time);
   }
 
-  public List<ChunkMetaData> getChunkMetaDataList() {
-    return chunkMetaDataList;
+  public List<ChunkMetadata> getChunkMetadataList() {
+    return chunkMetadataList;
   }
 
   public List<ReadOnlyMemChunk> getReadOnlyMemChunk() {
@@ -287,7 +287,7 @@ public class TsFileResource {
       modFile = null;
     }
     processor = null;
-    chunkMetaDataList = null;
+    chunkMetadataList = null;
   }
 
   TsFileProcessor getUnsealedFileProcessor() {

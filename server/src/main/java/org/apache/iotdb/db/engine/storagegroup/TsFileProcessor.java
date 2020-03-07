@@ -55,7 +55,7 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -678,7 +678,7 @@ public class TsFileProcessor {
    * @param encoding encoding
    * @return left: the chunk data in memory; right: the chunkMetadatas of data on disk
    */
-  public Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> query(String deviceId,
+  public Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> query(String deviceId,
       String measurementId, TSDataType dataType, TSEncoding encoding, Map<String, String> props,
       QueryContext context) {
     if (logger.isDebugEnabled()) {
@@ -710,14 +710,14 @@ public class TsFileProcessor {
       List<Modification> modifications = context.getPathModifications(modificationFile,
           deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId);
 
-      List<ChunkMetaData> chunkMetaDataList = writer
+      List<ChunkMetadata> chunkMetadataList = writer
           .getVisibleMetadataList(deviceId, measurementId, dataType);
-      QueryUtils.modifyChunkMetaData(chunkMetaDataList,
+      QueryUtils.modifyChunkMetaData(chunkMetadataList,
           modifications);
 
-      chunkMetaDataList.removeIf(context::chunkNotSatisfy);
+      chunkMetadataList.removeIf(context::chunkNotSatisfy);
 
-      return new Pair<>(readOnlyMemChunks, chunkMetaDataList);
+      return new Pair<>(readOnlyMemChunks, chunkMetadataList);
     } catch (Exception e) {
       logger.error("{}: {} get ReadOnlyMemChunk has error", storageGroupName,
           tsFileResource.getFile().getName(), e);

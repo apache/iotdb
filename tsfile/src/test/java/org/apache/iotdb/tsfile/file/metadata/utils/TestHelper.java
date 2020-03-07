@@ -23,7 +23,7 @@ import java.util.Map;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -32,9 +32,9 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class TestHelper {
 
-  public static TsFileMetaData createSimpleFileMetaData() {
-    TsFileMetaData metaData = new TsFileMetaData();
-    metaData.setDeviceMetaDataMap(generateDeviceMetaDataMap());
+  public static TsFileMetadata createSimpleFileMetaData() {
+    TsFileMetadata metaData = new TsFileMetadata();
+    metaData.setDeviceMetadataMap(generateDeviceMetaDataMap());
     return metaData;
   }
 

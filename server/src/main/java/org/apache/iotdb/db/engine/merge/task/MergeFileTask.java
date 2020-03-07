@@ -38,7 +38,7 @@ import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -140,15 +140,15 @@ class MergeFileTask {
       newFileWriter.close();
       try (TsFileSequenceReader newFileReader =
           new TsFileSequenceReader(newFileWriter.getFile().getPath())) {
-        Map<String, List<ChunkMetaData>> chunkMetadataListInChunkGroups = 
+        Map<String, List<ChunkMetadata>> chunkMetadataListInChunkGroups =
             newFileWriter.getDeviceChunkMetadataMap();
         if (logger.isDebugEnabled()) {
           logger.debug("{} find {} merged chunk groups", taskName, chunkMetadataListInChunkGroups.size());
         }
-        for (Map.Entry<String, List<ChunkMetaData>> entry : chunkMetadataListInChunkGroups.entrySet()) {
+        for (Map.Entry<String, List<ChunkMetadata>> entry : chunkMetadataListInChunkGroups.entrySet()) {
           String deviceId = entry.getKey();
-          List<ChunkMetaData> chunkMetaDataList = entry.getValue();
-          writeMergedChunkGroup(chunkMetaDataList, deviceId, newFileReader, oldFileWriter);
+          List<ChunkMetadata> chunkMetadataList = entry.getValue();
+          writeMergedChunkGroup(chunkMetadataList, deviceId, newFileReader, oldFileWriter);
         }
       }
       oldFileWriter.endFile();
@@ -187,13 +187,13 @@ class MergeFileTask {
     seqFile.setHistoricalVersions(newHistoricalVersions);
   }
 
-  private void writeMergedChunkGroup(List<ChunkMetaData> chunkMetaDataList, String device,
+  private void writeMergedChunkGroup(List<ChunkMetadata> chunkMetadataList, String device,
       TsFileSequenceReader reader, TsFileIOWriter fileWriter)
       throws IOException {
     fileWriter.startChunkGroup(device);
     // long version = chunkGroupMetaData.getVersion();
     long version = 0;
-    for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
+    for (ChunkMetadata chunkMetaData : chunkMetadataList) {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       fileWriter.writeChunk(chunk, chunkMetaData);
       context.incTotalPointWritten(chunkMetaData.getNumOfPoints());
@@ -219,14 +219,14 @@ class MergeFileTask {
           continue;
         }
 
-        List<ChunkMetaData> chunkMetaDataList = resource.queryChunkMetadata(path, seqFile);
+        List<ChunkMetadata> chunkMetadataList = resource.queryChunkMetadata(path, seqFile);
 
         if (logger.isDebugEnabled()) {
-          logger.debug("{} find {} unmerged chunks", taskName, chunkMetaDataList.size());
+          logger.debug("{} find {} unmerged chunks", taskName, chunkMetadataList.size());
         }
 
         fileWriter.startChunkGroup(path.getDevice());
-        long maxVersion = writeUnmergedChunks(chunkStartTimes, chunkMetaDataList,
+        long maxVersion = writeUnmergedChunks(chunkStartTimes, chunkMetadataList,
             resource.getFileReader(seqFile), fileWriter);
         fileWriter.endChunkGroup(maxVersion + 1);
       }
@@ -270,13 +270,13 @@ class MergeFileTask {
   }
 
   private long writeUnmergedChunks(List<Long> chunkStartTimes,
-      List<ChunkMetaData> chunkMetaDataList, TsFileSequenceReader reader,
+      List<ChunkMetadata> chunkMetadataList, TsFileSequenceReader reader,
       RestorableTsFileIOWriter fileWriter) throws IOException {
     long maxVersion = 0;
     int chunkIdx = 0;
     for (Long startTime : chunkStartTimes) {
-      for (; chunkIdx < chunkMetaDataList.size(); chunkIdx ++) {
-        ChunkMetaData metaData = chunkMetaDataList.get(chunkIdx);
+      for (; chunkIdx < chunkMetadataList.size(); chunkIdx ++) {
+        ChunkMetadata metaData = chunkMetadataList.get(chunkIdx);
         if (metaData.getStartTime() == startTime) {
           Chunk chunk = reader.readMemChunk(metaData);
           fileWriter.writeChunk(chunk, metaData);

@@ -371,15 +371,6 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * returns the top k% measurements that are recently used in queries.
-   */
-  public Set calTopKMeasurement(String deviceId, String sensorId, double k)
-      throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.calTopKMeasurement(sensorId, k);
-  }
-
-  /**
    * count all Tsfiles which need to be upgraded
    *
    * @return total num of the tsfiles which need to be upgraded

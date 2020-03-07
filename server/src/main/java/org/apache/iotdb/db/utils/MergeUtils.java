@@ -28,8 +28,8 @@ import java.util.PriorityQueue;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -136,9 +136,9 @@ public class MergeUtils {
     List<Path> paths = collectFileSeries(sequenceReader);
 
     for (Path path : paths) {
-      List<ChunkMetaData> chunkMetaDataList = sequenceReader.getChunkMetadataList(path);
-      totalChunkNum += chunkMetaDataList.size();
-      maxChunkNum = chunkMetaDataList.size() > maxChunkNum ? chunkMetaDataList.size() : maxChunkNum;
+      List<ChunkMetadata> chunkMetadataList = sequenceReader.getChunkMetadataList(path);
+      totalChunkNum += chunkMetadataList.size();
+      maxChunkNum = chunkMetadataList.size() > maxChunkNum ? chunkMetadataList.size() : maxChunkNum;
     }
     logger.debug("In file {}, total chunk num {}, series max chunk num {}", tsFileResource,
         totalChunkNum, maxChunkNum);
@@ -147,8 +147,8 @@ public class MergeUtils {
 
   public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) throws IOException {
     long minPos = Long.MAX_VALUE;
-    TsFileMetaData fileMetaData = sequenceReader.readFileMetadata();
-    for (Pair<Long, Integer> deviceMetaData : fileMetaData.getDeviceMetaDataMap().values()) {
+    TsFileMetadata fileMetaData = sequenceReader.readFileMetadata();
+    for (Pair<Long, Integer> deviceMetaData : fileMetaData.getDeviceMetadataMap().values()) {
       long timeseriesMetaDataEndOffset = deviceMetaData.left + deviceMetaData.right;
       minPos = timeseriesMetaDataEndOffset < minPos ? timeseriesMetaDataEndOffset : minPos;
     }
@@ -190,7 +190,7 @@ public class MergeUtils {
       throws IOException {
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-      List<ChunkMetaData> metaDataList = tsFileReader.getChunkMetadataList(path);
+      List<ChunkMetadata> metaDataList = tsFileReader.getChunkMetadataList(path);
       if (metaDataList.isEmpty()) {
         continue;
       }
@@ -211,7 +211,7 @@ public class MergeUtils {
       TsFileSequenceReader tsFileReader, List<Chunk>[] ret) throws IOException {
     while (!chunkMetaHeap.isEmpty()) {
       MetaListEntry metaListEntry = chunkMetaHeap.poll();
-      ChunkMetaData currMeta = metaListEntry.current();
+      ChunkMetadata currMeta = metaListEntry.current();
       Chunk chunk = tsFileReader.readMemChunk(currMeta);
       ret[metaListEntry.pathId].add(chunk);
       if (metaListEntry.hasNext()) {
@@ -221,12 +221,12 @@ public class MergeUtils {
     }
   }
 
-  public static boolean isChunkOverflowed(TimeValuePair timeValuePair, ChunkMetaData metaData) {
+  public static boolean isChunkOverflowed(TimeValuePair timeValuePair, ChunkMetadata metaData) {
     return timeValuePair != null
         && timeValuePair.getTimestamp() < metaData.getEndTime();
   }
 
-  public static boolean isChunkTooSmall(int ptWritten, ChunkMetaData chunkMetaData,
+  public static boolean isChunkTooSmall(int ptWritten, ChunkMetadata chunkMetaData,
       boolean isLastChunk, int minChunkPointNum) {
     return ptWritten > 0 || (minChunkPointNum >= 0 && chunkMetaData.getNumOfPoints() < minChunkPointNum
         && !isLastChunk);
@@ -262,12 +262,12 @@ public class MergeUtils {
   public static class MetaListEntry implements Comparable<MetaListEntry>{
     private int pathId;
     private int listIdx;
-    private List<ChunkMetaData> chunkMetaDataList;
+    private List<ChunkMetadata> chunkMetadataList;
 
-    public MetaListEntry(int pathId, List<ChunkMetaData> chunkMetaDataList) {
+    public MetaListEntry(int pathId, List<ChunkMetadata> chunkMetadataList) {
       this.pathId = pathId;
       this.listIdx = -1;
-      this.chunkMetaDataList = chunkMetaDataList;
+      this.chunkMetadataList = chunkMetadataList;
     }
 
     @Override
@@ -276,16 +276,16 @@ public class MergeUtils {
           o.current().getOffsetOfChunkHeader());
     }
 
-    public ChunkMetaData current() {
-      return chunkMetaDataList.get(listIdx);
+    public ChunkMetadata current() {
+      return chunkMetadataList.get(listIdx);
     }
 
     public boolean hasNext() {
-      return listIdx + 1 < chunkMetaDataList.size();
+      return listIdx + 1 < chunkMetadataList.size();
     }
 
-    public ChunkMetaData next() {
-      return chunkMetaDataList.get(++listIdx);
+    public ChunkMetadata next() {
+      return chunkMetadataList.get(++listIdx);
     }
 
     public int getPathId() {

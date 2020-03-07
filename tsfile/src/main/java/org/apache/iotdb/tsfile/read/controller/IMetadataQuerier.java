@@ -23,19 +23,19 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 public interface IMetadataQuerier {
 
-  List<ChunkMetaData> getChunkMetaDataList(Path path) throws IOException;
+  List<ChunkMetadata> getChunkMetaDataList(Path path) throws IOException;
 
-  Map<Path, List<ChunkMetaData>> getChunkMetaDataMap(List<Path> paths) throws IOException;
+  Map<Path, List<ChunkMetadata>> getChunkMetaDataMap(List<Path> paths) throws IOException;
 
-  TsFileMetaData getWholeFileMetadata();
+  TsFileMetadata getWholeFileMetadata();
 
   /**
    * this will load all chunk metadata of given paths into cache.

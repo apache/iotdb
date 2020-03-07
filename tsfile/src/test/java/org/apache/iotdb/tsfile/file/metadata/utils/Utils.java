@@ -26,8 +26,8 @@ import static org.junit.Assert.fail;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.Assert;
@@ -104,8 +104,8 @@ public class Utils {
     assertTrue(str1.toString().equals(str2.toString()));
   }
 
-  public static void isTimeSeriesChunkMetadataEqual(ChunkMetaData metadata1,
-      ChunkMetaData metadata2) {
+  public static void isTimeSeriesChunkMetadataEqual(ChunkMetadata metadata1,
+      ChunkMetadata metadata2) {
     if (Utils.isTwoObjectsNotNULL(metadata1, metadata2, "ChunkMetaData")) {
       assertTrue(metadata1.getOffsetOfChunkHeader() == metadata2.getOffsetOfChunkHeader());
       assertTrue(metadata1.getNumOfPoints() == metadata2.getNumOfPoints());
@@ -117,14 +117,14 @@ public class Utils {
     }
   }
 
-  public static void isFileMetaDataEqual(TsFileMetaData metadata1, TsFileMetaData metadata2) {
+  public static void isFileMetaDataEqual(TsFileMetadata metadata1, TsFileMetadata metadata2) {
     if (Utils.isTwoObjectsNotNULL(metadata1, metadata2, "File MetaData")) {
       if (Utils
-          .isTwoObjectsNotNULL(metadata1.getDeviceMetaDataMap(), metadata2.getDeviceMetaDataMap(),
+          .isTwoObjectsNotNULL(metadata1.getDeviceMetadataMap(), metadata2.getDeviceMetadataMap(),
               "Delta object metadata list")) {
 
-        Map<String, Pair<Long, Integer>> deviceMetaDataMap1 = metadata1.getDeviceMetaDataMap();
-        Map<String, Pair<Long, Integer>> deviceMetaDataMap2 = metadata2.getDeviceMetaDataMap();
+        Map<String, Pair<Long, Integer>> deviceMetaDataMap1 = metadata1.getDeviceMetadataMap();
+        Map<String, Pair<Long, Integer>> deviceMetaDataMap2 = metadata2.getDeviceMetadataMap();
         assertEquals(deviceMetaDataMap1.size(), deviceMetaDataMap2.size());
 
       }

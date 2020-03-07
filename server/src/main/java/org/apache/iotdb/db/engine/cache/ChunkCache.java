@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.cache;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.slf4j.Logger;
@@ -44,7 +44,7 @@ public class ChunkCache {
   private static final long MEMORY_THRESHOLD_IN_CHUNK_CACHE = config.getAllocateMemoryForChunkCache();
   private static boolean cacheEnable = config.isMetaDataCacheEnable();
 
-  private final LRULinkedHashMap<ChunkMetaData, Chunk> lruCache;
+  private final LRULinkedHashMap<ChunkMetadata, Chunk> lruCache;
 
   private AtomicLong cacheHitNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
@@ -53,9 +53,9 @@ public class ChunkCache {
 
 
   private ChunkCache() {
-    lruCache = new LRULinkedHashMap<ChunkMetaData, Chunk>(MEMORY_THRESHOLD_IN_CHUNK_CACHE, true) {
+    lruCache = new LRULinkedHashMap<ChunkMetadata, Chunk>(MEMORY_THRESHOLD_IN_CHUNK_CACHE, true) {
       @Override
-      protected long calEntrySize(ChunkMetaData key, Chunk value) {
+      protected long calEntrySize(ChunkMetadata key, Chunk value) {
         return RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
       }
     };
@@ -65,7 +65,7 @@ public class ChunkCache {
     return ChunkCacheHolder.INSTANCE;
   }
 
-  public Chunk get(ChunkMetaData chunkMetaData, TsFileSequenceReader reader) throws IOException {
+  public Chunk get(ChunkMetadata chunkMetaData, TsFileSequenceReader reader) throws IOException {
     if (!cacheEnable) {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
@@ -143,7 +143,7 @@ public class ChunkCache {
     lock.writeLock().unlock();
   }
 
-  public void remove(ChunkMetaData chunkMetaData) {
+  public void remove(ChunkMetadata chunkMetaData) {
     lock.writeLock().lock();
     if (chunkMetaData != null) {
       lruCache.remove(chunkMetaData);

@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
 public class ForceAppendTsFileWriter extends TsFileIOWriter {
 
   private Map<Path, MeasurementSchema> knownSchemas;
-  private Map<Path, List<ChunkMetaData>> chunkMetadataListMap;
+  private Map<Path, List<ChunkMetadata>> chunkMetadataListMap;
   private long truncatePosition;
   private static Logger logger = LoggerFactory.getLogger(ForceAppendTsFileWriter.class);
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");

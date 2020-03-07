@@ -25,7 +25,7 @@ import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -43,7 +43,7 @@ public class ReadOnlyMemChunk {
 
   private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
 
-  private ChunkMetaData cachedMetaData;
+  private ChunkMetadata cachedMetaData;
 
   private TVList chunkData;
 
@@ -68,7 +68,7 @@ public class ReadOnlyMemChunk {
 
   private void initChunkMeta() throws IOException, QueryProcessException {
     Statistics statsByType = Statistics.getStatsByType(dataType);
-    ChunkMetaData metaData = new ChunkMetaData(measurementUid, dataType, 0, statsByType);
+    ChunkMetadata metaData = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
       IPointReader iterator = chunkData.getIterator(floatPrecision, encoding);
       while (iterator.hasNextTimeValuePair()) {
@@ -111,7 +111,7 @@ public class ReadOnlyMemChunk {
     return !chunkPointReader.hasNextTimeValuePair();
   }
 
-  public ChunkMetaData getChunkMetaData() {
+  public ChunkMetadata getChunkMetaData() {
     return cachedMetaData;
   }
 

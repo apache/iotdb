@@ -36,7 +36,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -138,7 +138,7 @@ public class DeviceMetaDataCacheTest {
     Assert.assertTrue(unseqResources.get(2).isClosed());
     Assert.assertFalse(unseqResources.get(3).isClosed());
 
-    List<ChunkMetaData> metaDataList = DeviceMetaDataCache.getInstance()
+    List<ChunkMetadata> metaDataList = DeviceMetaDataCache.getInstance()
         .get(seqResources.get(0), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }
@@ -160,7 +160,7 @@ public class DeviceMetaDataCacheTest {
     Assert.assertTrue(unseqResources.get(2).isClosed());
     Assert.assertFalse(unseqResources.get(3).isClosed());
 
-    List<ChunkMetaData> metaDataList = DeviceMetaDataCache.getInstance()
+    List<ChunkMetadata> metaDataList = DeviceMetaDataCache.getInstance()
         .get(seqResources.get(0), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }

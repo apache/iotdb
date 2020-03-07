@@ -19,12 +19,13 @@
 package org.apache.iotdb.db.engine.cache;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
@@ -44,14 +45,13 @@ public class DeviceMetaDataCache {
   private static final Logger logger = LoggerFactory.getLogger(DeviceMetaDataCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_B = config.getAllocateMemoryForChunkMetaDataCache();
-  private static StorageEngine storageEngine = StorageEngine.getInstance();
   private static boolean cacheEnable = config.isMetaDataCacheEnable();
   /**
    * key: file path dot deviceId dot sensorId.
    * <p>
    * value: chunkMetaData list of one timeseries in the file.
    */
-  private LRULinkedHashMap<String, List<ChunkMetaData>> lruCache;
+  private final LRULinkedHashMap<String, List<ChunkMetadata>> lruCache;
 
   private AtomicLong cacheHitNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
@@ -62,9 +62,9 @@ public class DeviceMetaDataCache {
   private long chunkMetaDataSize = 0;
 
   private DeviceMetaDataCache(long memoryThreshold) {
-    lruCache = new LRULinkedHashMap<String, List<ChunkMetaData>>(memoryThreshold, true) {
+    lruCache = new LRULinkedHashMap<String, List<ChunkMetadata>>(memoryThreshold, true) {
       @Override
-      protected long calEntrySize(String key, List<ChunkMetaData> value) {
+      protected long calEntrySize(String key, List<ChunkMetadata> value) {
         if (chunkMetaDataSize == 0 && !value.isEmpty()) {
           chunkMetaDataSize = RamUsageEstimator.sizeOf(value.get(0));
         }
@@ -78,12 +78,12 @@ public class DeviceMetaDataCache {
   }
 
   /**
-   * get {@link ChunkMetaData}. THREAD SAFE.
+   * get {@link ChunkMetadata}. THREAD SAFE.
    */
-  public List<ChunkMetaData> get(TsFileResource resource, Path seriesPath)
+  public List<ChunkMetadata> get(TsFileResource resource, Path seriesPath)
       throws IOException {
     if (!cacheEnable) {
-      TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
+      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
       // bloom filter part
       BloomFilter bloomFilter = fileMetaData.getBloomFilter();
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
@@ -97,11 +97,8 @@ public class DeviceMetaDataCache {
       return tsFileReader.getChunkMetadataList(seriesPath);
     }
 
-    StringBuilder builder = new StringBuilder(resource.getFile().getPath()).append(".")
-        .append(seriesPath.getDevice());
-    String pathDeviceStr = builder.toString();
-    String key = builder.append(".").append(seriesPath.getMeasurement()).toString();
-    Object devicePathObject = pathDeviceStr.intern();
+    String key = (resource.getFile().getPath() + IoTDBConstant.PATH_SEPARATOR
+        + seriesPath.getDevice() + seriesPath.getMeasurement()).intern();
 
     synchronized (lruCache) {
       cacheRequestNum.incrementAndGet();
@@ -111,7 +108,7 @@ public class DeviceMetaDataCache {
         return new ArrayList<>(lruCache.get(key));
       }
     }
-    synchronized (devicePathObject) {
+    synchronized (key) {
       synchronized (lruCache) {
         if (lruCache.containsKey(key)) {
           printCacheLog(true);
@@ -120,7 +117,7 @@ public class DeviceMetaDataCache {
         }
       }
       printCacheLog(false);
-      TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
+      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
       // bloom filter part
       BloomFilter bloomFilter = fileMetaData.getBloomFilter();
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
@@ -129,19 +126,12 @@ public class DeviceMetaDataCache {
         }
         return new ArrayList<>();
       }
-      Map<Path, List<ChunkMetaData>> chunkMetaData = TsFileMetadataUtils
-          .getChunkMetaDataList(calHotSensorSet(seriesPath), seriesPath.getDevice(), resource);
+      List<ChunkMetadata> chunkMetaDataList = TsFileMetadataUtils.getChunkMetaDataList(seriesPath, resource);
       synchronized (lruCache) {
-        chunkMetaData.forEach((path, chunkMetaDataList) -> {
-          String k = pathDeviceStr + "." + path.getMeasurement();
-          if (!lruCache.containsKey(k)) {
-            lruCache.put(k, chunkMetaDataList);
-          }
-        });
-        if (chunkMetaData.containsKey(seriesPath)) {
-          return new ArrayList<>(chunkMetaData.get(seriesPath));
+        if (!lruCache.containsKey(key)) {
+          lruCache.put(key, chunkMetaDataList);
         }
-        return new ArrayList<>();
+        return chunkMetaDataList;
       }
     }
   }
@@ -156,7 +146,7 @@ public class DeviceMetaDataCache {
         cacheHitNum.get() * 1.0 / cacheRequestNum.get());
   }
 
-  public double calculateChunkMetaDataHitRatio() {
+  double calculateChunkMetaDataHitRatio() {
     if (cacheRequestNum.get() != 0) {
       return cacheHitNum.get() * 1.0 / cacheRequestNum.get();
     } else {
@@ -165,40 +155,11 @@ public class DeviceMetaDataCache {
   }
 
   /**
-   * calculate the most frequently query measurements set.
-   *
-   * @param seriesPath the series to be queried in a query statements.
-   */
-  private Set<String> calHotSensorSet(Path seriesPath) throws IOException {
-    double usedMemProportion = lruCache.getUsedMemoryProportion();
-
-    if (usedMemProportion < 0.6) {
-      return new HashSet<>();
-    } else {
-      double hotSensorProportion;
-      if (usedMemProportion < 0.8) {
-        hotSensorProportion = 0.1;
-      } else {
-        hotSensorProportion = 0.05;
-      }
-      try {
-        return storageEngine
-            .calTopKMeasurement(seriesPath.getDevice(), seriesPath.getMeasurement(),
-                hotSensorProportion);
-      } catch (Exception e) {
-        throw new IOException(e);
-      }
-    }
-  }
-
-  /**
    * clear LRUCache.
    */
   public void clear() {
     synchronized (lruCache) {
-      if (lruCache != null) {
-        lruCache.clear();
-      }
+      lruCache.clear();
     }
   }
 

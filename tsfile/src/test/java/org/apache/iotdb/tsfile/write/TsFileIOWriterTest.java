@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.TimeSeriesMetadataTest;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -103,7 +103,7 @@ public class TsFileIOWriterTest {
     Assert.assertEquals(MetaMarker.SEPARATOR, reader.readMarker());
 
     // FileMetaData
-    TsFileMetaData metaData = reader.readFileMetadata();
-    Assert.assertEquals(1, metaData.getDeviceMetaDataMap().size());
+    TsFileMetadata metaData = reader.readFileMetadata();
+    Assert.assertEquals(1, metaData.getDeviceMetadataMap().size());
   }
 }
