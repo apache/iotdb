@@ -32,7 +32,7 @@ public class BooleanList extends IoTDBArrayList {
   @Override
   public Object getValue(int currentReadIndex) {
     return elementData[currentReadIndex / INSIDE_ARRAY_INIT_SIZE]
-        [currentReadIndex % INSIDE_ARRAY_INIT_SIZE];
+        [currentReadIndex & (INSIDE_ARRAY_INIT_SIZE - 1)];
   }
 
   @Override

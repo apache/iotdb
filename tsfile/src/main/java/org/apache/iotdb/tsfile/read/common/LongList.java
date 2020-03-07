@@ -11,7 +11,7 @@ public class LongList extends IoTDBArrayList {
 
   private long[][] elementData = new long[ARRAY_INIT_SIZE][];
 
-  public LongList(){
+  public LongList() {
     initCurrentInsideArray();
   }
 
@@ -32,7 +32,7 @@ public class LongList extends IoTDBArrayList {
   @Override
   public Object getValue(int currentReadIndex) {
     return elementData[currentReadIndex / INSIDE_ARRAY_INIT_SIZE]
-        [currentReadIndex % INSIDE_ARRAY_INIT_SIZE];
+        [currentReadIndex & (INSIDE_ARRAY_INIT_SIZE - 1)];
   }
 
   @Override
@@ -106,6 +106,6 @@ public class LongList extends IoTDBArrayList {
   }
 
   public long getOriginValue(int index) {
-    return elementData[index / INSIDE_ARRAY_INIT_SIZE][index % INSIDE_ARRAY_INIT_SIZE];
+    return elementData[index / INSIDE_ARRAY_INIT_SIZE][index & (INSIDE_ARRAY_INIT_SIZE - 1)];
   }
 }
