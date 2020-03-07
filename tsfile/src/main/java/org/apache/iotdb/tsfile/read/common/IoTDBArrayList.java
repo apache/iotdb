@@ -29,12 +29,26 @@ public abstract class IoTDBArrayList {
   protected static final int POWER_N = 10;
   protected static final int INSIDE_ARRAY_INIT_SIZE = 2 << (POWER_N - 1);
 
+  protected final PrimitiveArrayAllocator pAllocator;
+
+
   protected int currentArrayIndex = 0;
   protected int currentInsideIndex = 0;
   protected int size = 0;
 
+
+  public IoTDBArrayList(PrimitiveArrayAllocator pAllocator) {
+    this.pAllocator = pAllocator;
+  }
+
+  public IoTDBArrayList() {
+    this.pAllocator = new DefaultArrayAllocator();
+  }
+
+
   public abstract Object getValue(int currentReadIndex);
 
+  public abstract void clear();
 
   public void ensureCapacity(int newSize) {
     int ideaCapacity = INSIDE_ARRAY_INIT_SIZE - currentInsideIndex;

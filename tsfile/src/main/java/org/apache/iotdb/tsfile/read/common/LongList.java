@@ -56,9 +56,21 @@ public class LongList extends IoTDBArrayList {
   }
 
   @Override
+  public void clear() {
+    for (int i = 0; i <= currentArrayIndex; i++) {
+      pAllocator.release(elementData[i]);
+      elementData[i] = null;
+    }
+
+    currentArrayIndex = 0;
+    currentInsideIndex = 0;
+    size = 0;
+  }
+
+  @Override
   protected void initInsideArray(int index) {
     if (elementData[index] == null) {
-      elementData[index] = new long[INSIDE_ARRAY_INIT_SIZE];
+      elementData[index] = pAllocator.allocLong(INSIDE_ARRAY_INIT_SIZE);
     }
   }
 

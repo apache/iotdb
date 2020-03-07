@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read.common;
 
 import java.util.Arrays;
 
-
 public class BooleanList extends IoTDBArrayList {
 
   private boolean[][] elementData = new boolean[ARRAY_INIT_SIZE][];
@@ -53,6 +52,18 @@ public class BooleanList extends IoTDBArrayList {
         [currentReadIndex & (INSIDE_ARRAY_INIT_SIZE - 1)];
   }
 
+  @Override
+  public void clear() {
+    for (int i = 0; i <= currentArrayIndex; i++) {
+      pAllocator.release(elementData[i]);
+      elementData[i] = null;
+    }
+
+    currentArrayIndex = 0;
+    currentInsideIndex = 0;
+    size = 0;
+  }
+
 
   public boolean getOriginValue(int currentReadIndex) {
     return elementData[currentReadIndex / INSIDE_ARRAY_INIT_SIZE]
@@ -62,7 +73,7 @@ public class BooleanList extends IoTDBArrayList {
   @Override
   protected void initInsideArray(int index) {
     if (elementData[index] == null) {
-      elementData[index] = new boolean[INSIDE_ARRAY_INIT_SIZE];
+      elementData[index] = pAllocator.allocBoolean(INSIDE_ARRAY_INIT_SIZE);
     }
   }
 
