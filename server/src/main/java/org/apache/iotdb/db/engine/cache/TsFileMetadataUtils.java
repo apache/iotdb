@@ -38,7 +38,7 @@ class TsFileMetadataUtils {
    * @param resource -given TsFile
    * @return -meta data
    */
-  static TsFileMetadata getTsFileMetaData(TsFileResource resource) throws IOException {
+  static TsFileMetadata getTsFileMetadata(TsFileResource resource) throws IOException {
     if (!resource.isClosed()) {
       throw new IOException("The TsFile is not closed: " + resource.getFile().getAbsolutePath());
     }
@@ -49,7 +49,7 @@ class TsFileMetadataUtils {
   /**
    * get ChunkMetadata List of a path in the tsfile resource
    */
-  static List<ChunkMetadata> getChunkMetaDataList(Path path, TsFileResource resource) throws IOException {
+  static List<ChunkMetadata> getChunkMetadataList(Path path, TsFileResource resource) throws IOException {
     if (!resource.isClosed()) {
       throw new IOException("The TsFile is not closed: " + resource.getFile().getAbsolutePath());
     }

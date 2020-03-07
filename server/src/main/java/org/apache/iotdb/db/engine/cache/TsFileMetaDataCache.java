@@ -86,7 +86,7 @@ public class TsFileMetaDataCache {
    */
   public TsFileMetadata get(TsFileResource tsFileResource) throws IOException {
     if (!cacheEnable) {
-      return TsFileMetadataUtils.getTsFileMetaData(tsFileResource);
+      return TsFileMetadataUtils.getTsFileMetadata(tsFileResource);
     }
 
     String path = tsFileResource.getFile().getPath();
@@ -108,7 +108,7 @@ public class TsFileMetaDataCache {
         }
       }
       printCacheLog(false);
-      TsFileMetadata fileMetaData = TsFileMetadataUtils.getTsFileMetaData(tsFileResource);
+      TsFileMetadata fileMetaData = TsFileMetadataUtils.getTsFileMetadata(tsFileResource);
       synchronized (cache) {
         cache.put(tsFileResource, fileMetaData);
         return fileMetaData;

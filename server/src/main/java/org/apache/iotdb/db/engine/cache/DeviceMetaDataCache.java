@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.cache;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -126,7 +125,7 @@ public class DeviceMetaDataCache {
         }
         return new ArrayList<>();
       }
-      List<ChunkMetadata> chunkMetaDataList = TsFileMetadataUtils.getChunkMetaDataList(seriesPath, resource);
+      List<ChunkMetadata> chunkMetaDataList = TsFileMetadataUtils.getChunkMetadataList(seriesPath, resource);
       synchronized (lruCache) {
         if (!lruCache.containsKey(key)) {
           lruCache.put(key, chunkMetaDataList);
