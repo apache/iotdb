@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.session;
 
-import static org.apache.iotdb.session.Config.PATH_MATCHER;
+import static org.apache.iotdb.session.Config.PATH_PATTERN;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -26,8 +26,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.regex.Pattern;
-import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -258,12 +256,7 @@ public class Session {
     for (int i = 0; i < rowBatch.batchSize; i++) {
       index[i] = i;
     }
-    Arrays.sort(index, new Comparator<Integer>() {
-      @Override
-      public int compare(Integer o1, Integer o2) {
-        return Long.compare(rowBatch.timestamps[o1], rowBatch.timestamps[o2]);
-      }
-    });
+    Arrays.sort(index, Comparator.comparingLong(o -> rowBatch.timestamps[o]));
     Arrays.sort(rowBatch.timestamps, 0, rowBatch.batchSize);
     for (int i = 0; i < rowBatch.measurements.size(); i++) {
       rowBatch.values[i] =
@@ -652,10 +645,9 @@ public class Session {
   }
 
   private void checkPathValidity(String path) throws IoTDBSessionException {
-    if (!Pattern.matches(PATH_MATCHER, path)) {
+    if (!PATH_PATTERN.matcher(path).matches()) {
       throw new IoTDBSessionException(
-          String.format("Path [%s] is invalid", StringEscapeUtils.escapeJava(path)));
+          String.format("Path [%s] is invalid", path));
     }
   }
-
 }
