@@ -203,4 +203,15 @@ public abstract class MemoryLogManager implements LogManager {
     lastLogId = meta.getLastLogId();
     lastLogTerm = meta.getLastLogTerm();
   }
+
+  /**
+   * only for test
+   */
+  public LogManagerMeta getMeta(){
+    LogManagerMeta managerMeta = new LogManagerMeta();
+    managerMeta.setCommitLogIndex(commitLogIndex);
+    managerMeta.setLastLogId(lastLogId);
+    managerMeta.setLastLogTerm(lastLogTerm);
+    return managerMeta;
+  }
 }

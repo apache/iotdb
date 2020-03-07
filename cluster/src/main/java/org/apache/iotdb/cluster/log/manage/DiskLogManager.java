@@ -1,5 +1,7 @@
 package org.apache.iotdb.cluster.log.manage;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.manage.serializable.LogDequeSerializer;
@@ -15,6 +17,8 @@ public abstract class DiskLogManager extends MemoryLogManager {
   // manage logs in disk
   private LogDequeSerializer logDequeSerializer;
 
+  private LogManagerMeta managerMeta = new LogManagerMeta();
+
 
   protected DiskLogManager(LogApplier logApplier) {
     super(logApplier);
@@ -25,9 +29,11 @@ public abstract class DiskLogManager extends MemoryLogManager {
   private void recovery(){
     // recover meta
     LogManagerMeta logManagerMeta = logDequeSerializer.recoverMeta();
-    setCommitLogIndex(logManagerMeta.getCommitLogIndex());
-    setLastLogId(logManagerMeta.getLastLogId());
-    setLastLogTerm(logManagerMeta.getLastLogTerm());
+    if(logManagerMeta != null){
+      setCommitLogIndex(logManagerMeta.getCommitLogIndex());
+      setLastLogId(logManagerMeta.getLastLogId());
+      setLastLogTerm(logManagerMeta.getLastLogTerm());
+    }
     // recover logs
     setLogBuffer(logDequeSerializer.recoverLog());
   }
@@ -56,28 +62,23 @@ public abstract class DiskLogManager extends MemoryLogManager {
   @Override
   public void appendLog(Log log) {
     super.appendLog(log);
-    logDequeSerializer.addLast(log);
-    // save last log id and term
-    serializeMeta();
+    logDequeSerializer.addLast(log, getMeta());
   }
 
   @Override
   public void removeLastLog() {
     if (!logBuffer.isEmpty()) {
       super.removeLastLog();
-      logDequeSerializer.removeLast();
-      // save last log id and term
-      serializeMeta();
+      logDequeSerializer.removeLast(getMeta());
     }
   }
 
   @Override
   public void replaceLastLog(Log log) {
     super.replaceLastLog(log);
-    logDequeSerializer.removeLast();
-    logDequeSerializer.addLast(log);
-    // save last log id and term
-    serializeMeta();
+    LogManagerMeta curMeta = getMeta();
+    logDequeSerializer.removeLast(curMeta);
+    logDequeSerializer.addLast(log, curMeta);
   }
 
   @Override
@@ -101,12 +102,66 @@ public abstract class DiskLogManager extends MemoryLogManager {
     serializeMeta();
   }
 
-  Log removeFirstLog() {
-    Log res = super.removeFirstLog();
+  /**
+   * refresh meta info
+   * @return meta info
+   */
+  public LogManagerMeta getMeta(){
+    managerMeta.setCommitLogIndex(commitLogIndex);
+    managerMeta.setLastLogId(lastLogId);
+    managerMeta.setLastLogTerm(lastLogTerm);
+
+    return managerMeta;
+  }
+
+  /**
+   * serialize meta data of this log manager
+   */
+  private void serializeMeta(){
+    logDequeSerializer.serializeMeta(getMeta());
+  }
+
+  /**
+   * remove logs which haven been committed
+   *
+   * @return last committed log
+   */
+  @Override
+  public Log removeCommittedLogsReturnLastLog() {
+    Log res = null;
+    int removeCount = 0;
+    while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
+      removeCount++;
+      // remove committed logs
+      res = removeFirstLog();
+    }
+
+    logDequeSerializer.removeFirst(removeCount);
     return res;
   }
 
-  private void serializeMeta(){
-    logDequeSerializer.serializeMeta(null);
+  /**
+   * remove logs which haven been committed
+   *
+   * @return committed logs List
+   */
+  @Override
+  public List<Log> removeAndReturnCommittedLogs() {
+    List<Log> res = new ArrayList<>();
+    int removeCount = 0;
+    while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
+      removeCount++;
+      res.add(removeFirstLog());
+    }
+
+    logDequeSerializer.removeFirst(removeCount);
+    return res;
+  }
+
+  /**
+   * close file and release resource
+   */
+  public void close(){
+    logDequeSerializer.close();
   }
 }

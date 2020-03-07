@@ -2,7 +2,6 @@ package org.apache.iotdb.cluster.log.manage.serializable;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -10,9 +9,9 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.log.logtypes.LogFactory;
-import org.apache.iotdb.cluster.log.logtypes.LogType;
+import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -23,23 +22,19 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   File metaFile;
   FileOutputStream logOutputStream;
   FileOutputStream metaOutputStream;
+  LogParser parser = LogParser.getINSTANCE();
   private Deque<Integer> logSizeDeque = new ArrayDeque<>();
   private LogManagerMeta meta;
   // mark first log position
   private long firstLogPosition = 0;
   // removed log size
   private long removedLogSize = 0;
-
-  // only for test
-  public void setMaxRemovedLogSize(long maxRemovedLogSize) {
-    this.maxRemovedLogSize = maxRemovedLogSize;
-  }
-
   // when the removedLogSize larger than this, we actually delete logs
-  private long maxRemovedLogSize = ClusterDescriptor.getINSTANCE().getConfig().getMaxRemovedLogSize();
+  private long maxRemovedLogSize = ClusterDescriptor.getINSTANCE().getConfig()
+      .getMaxRemovedLogSize();
 
   // log in disk is
-  // size of type | type string | size of log | log buffer
+  // size of log | log buffer
   // meta in disk is
   // firstLogPosition | size of log meta | log meta buffer
   public SyncLogDequeSerializer() {
@@ -48,7 +43,13 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
         .getFile(systemDir + File.separator + "raftLog" + File.separator + "logData");
     metaFile = SystemFileFactory.INSTANCE
         .getFile(systemDir + File.separator + "raftLog" + File.separator + "logMeta");
+    String path = logFile.getAbsolutePath();
     init();
+  }
+
+  // only for test
+  public void setMaxRemovedLogSize(long maxRemovedLogSize) {
+    this.maxRemovedLogSize = maxRemovedLogSize;
   }
 
   public Deque<Integer> getLogSizeDeque() {
@@ -58,31 +59,36 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   // init output stream
   private void init() {
     try {
-      logOutputStream = new FileOutputStream(logFile);
-      metaOutputStream = new FileOutputStream(metaFile);
-    } catch (FileNotFoundException e) {
+      if (!logFile.getParentFile().exists()) {
+        logFile.getParentFile().mkdir();
+        logFile.createNewFile();
+        logFile.createNewFile();
+      }
+
+      logOutputStream = new FileOutputStream(logFile, true);
+      metaOutputStream = new FileOutputStream(metaFile, true);
+    } catch (IOException e) {
       e.printStackTrace();
     }
   }
 
   @Override
-  public void addLast(Log log) {
+  public void addLast(Log log, LogManagerMeta meta) {
     ByteBuffer data = log.serialize();
-    String logType = log.getLogType().toString();
     int totalSize = 0;
     // write into disk
     try {
-      totalSize += ReadWriteIOUtils.write(logType, logOutputStream);
       totalSize += ReadWriteIOUtils.write(data, logOutputStream);
     } catch (IOException e) {
       e.printStackTrace();
     }
 
     logSizeDeque.addLast(totalSize);
+    serializeMeta(meta);
   }
 
   @Override
-  public void removeLast() {
+  public void removeLast(LogManagerMeta meta) {
     int size = logSizeDeque.removeLast();
     // write into disk
     try {
@@ -90,16 +96,23 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     } catch (IOException e) {
       e.printStackTrace();
     }
+    serializeMeta(meta);
   }
 
   @Override
-  public void removeFirst(int removeNum) {
-    firstLogPosition++;
-    removedLogSize += logSizeDeque.removeFirst();
+  public void removeFirst(int num) {
+    firstLogPosition += num;
+    for (int i = 0; i < num; i++) {
+      removedLogSize += logSizeDeque.removeFirst();
+    }
+
     // do actual deletion
-    if(removedLogSize > maxRemovedLogSize){
+    if (removedLogSize > maxRemovedLogSize) {
       deleteRemovedLog();
     }
+
+    // firstLogPosition changed
+    serializeMeta(meta);
   }
 
   @Override
@@ -127,6 +140,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
         else {
           readLog(logReader, true);
         }
+        count++;
       }
       logReader.close();
     } catch (IOException e) {
@@ -138,18 +152,23 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
 
   // read single log
   private Log readLog(FileInputStream logReader, boolean canSkip) throws IOException {
-    String logType = ReadWriteIOUtils.readString(logReader);
     int logSize = ReadWriteIOUtils.readInt(logReader);
-    int totalSize = Integer.BYTES + Integer.BYTES + logType.length() + logSize;
+    int totalSize = Integer.BYTES + logSize;
 
     if (canSkip) {
       logReader.skip(logSize);
       removedLogSize += totalSize;
+      return null;
     }
 
-    Log log = LogFactory.getLogByType(LogType.valueOf(logType));
-    log.deserialize(
-        ByteBuffer.wrap(ReadWriteIOUtils.readBytes(logReader, logSize)));
+    Log log = null;
+
+    try {
+      log = parser.parse(ByteBuffer.wrap(ReadWriteIOUtils.readBytes(logReader, logSize)));
+    } catch (UnknownLogTypeException e) {
+      e.printStackTrace();
+    }
+
     logSizeDeque.addLast(totalSize);
 
     return log;
@@ -175,11 +194,10 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   @Override
   public void serializeMeta(LogManagerMeta meta) {
     try {
-      metaOutputStream.getChannel().position(0);
-      int size = 0;
-      size += ReadWriteIOUtils.write(firstLogPosition, metaOutputStream);
-      size += ReadWriteIOUtils.write(meta.serialize(), metaOutputStream);
-      metaOutputStream.getChannel().truncate(size);
+      metaOutputStream.getChannel().truncate(0);
+      ReadWriteIOUtils.write(firstLogPosition, metaOutputStream);
+      ReadWriteIOUtils.write(meta.serialize(), metaOutputStream);
+
       this.meta = meta;
     } catch (IOException e) {
       e.printStackTrace();
@@ -199,27 +217,36 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
 
   // actually delete removed logs, this may take lots of times
   // TODO : use an async method to delete file
-  private void deleteRemovedLog(){
+  private void deleteRemovedLog() {
     try {
       FileInputStream reader = new FileInputStream(logFile);
       // skip removed file
-      for (int i = 0; i < removedLogSize; i++) {
+      for (int i = 0; i < firstLogPosition; i++) {
         readLog(reader, true);
       }
 
       // begin to write
-      logOutputStream.getChannel().position(0);
-      int blockSize = 4096;
+      File tempLogFile = SystemFileFactory.INSTANCE
+          .getFile(
+              IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "raftLog"
+                  + File.separator + "logData.temp");
 
+      logOutputStream.close();
+      logOutputStream = new FileOutputStream(tempLogFile);
+      int blockSize = 4096;
       long curPosition = reader.getChannel().position();
-      while(curPosition < logFile.length()){
+      while (curPosition < logFile.length()) {
         long size = Math.min(blockSize, logFile.length() - curPosition);
         logOutputStream.write(ReadWriteIOUtils.readBytes(reader, (int) size));
         curPosition = reader.getChannel().position();
       }
 
-      // truncate unused file part
-      logOutputStream.getChannel().truncate(logOutputStream.getChannel().position());
+      // rename file
+      logFile.delete();
+      tempLogFile.renameTo(logFile);
+      logOutputStream.close();
+      reader.close();
+      logOutputStream = new FileOutputStream(logFile, true);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -227,6 +254,6 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     // re init and serialize
     removedLogSize = 0;
     firstLogPosition = 0;
-    serializeMeta(meta);
+    // meta will be serialized by caller
   }
 }
