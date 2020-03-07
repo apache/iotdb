@@ -1,7 +1,6 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import java.util.Arrays;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 /**
  * @Author: LiuDaWei
@@ -12,7 +11,7 @@ public class BooleanList extends IoTDBArrayList {
   private boolean[][] elementData = new boolean[ARRAY_INIT_SIZE][];
 
   public BooleanList() {
-    initCurrentInsideArray();
+    initInsideArray(0);
   }
 
   @Override
@@ -24,6 +23,10 @@ public class BooleanList extends IoTDBArrayList {
 
   @Override
   public void fastPut(boolean value) {
+    if (currentInsideIndex == INSIDE_ARRAY_INIT_SIZE) {
+      currentArrayIndex++;
+      currentInsideIndex = 0;
+    }
     elementData[currentArrayIndex][currentInsideIndex++] = value;
     size++;
   }
@@ -35,10 +38,16 @@ public class BooleanList extends IoTDBArrayList {
         [currentReadIndex & (INSIDE_ARRAY_INIT_SIZE - 1)];
   }
 
+
+  public boolean getOriginValue(int currentReadIndex) {
+    return elementData[currentReadIndex / INSIDE_ARRAY_INIT_SIZE]
+        [currentReadIndex & (INSIDE_ARRAY_INIT_SIZE - 1)];
+  }
+
   @Override
-  protected void initCurrentInsideArray() {
-    if (elementData[currentArrayIndex] == null) {
-      elementData[currentArrayIndex] = new boolean[INSIDE_ARRAY_INIT_SIZE];
+  protected void initInsideArray(int index) {
+    if (elementData[index] == null) {
+      elementData[index] = new boolean[INSIDE_ARRAY_INIT_SIZE];
     }
   }
 
@@ -48,62 +57,8 @@ public class BooleanList extends IoTDBArrayList {
   }
 
   @Override
-  protected void growArray() {
-    int oldCapacity = elementData.length;
-    int newCapacity = oldCapacity + (oldCapacity >> 1);
-    elementData = Arrays.copyOf(elementData, newCapacity);
-  }
-
-
-  @Override
-  public void put(long value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void put(int value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void put(float value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void put(double value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void put(Binary value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-
-  @Override
-  public void fastPut(long value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void fastPut(int value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void fastPut(float value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void fastPut(double value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void fastPut(Binary value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  protected void growArray(int size) {
+    elementData = Arrays.copyOf(elementData, size);
   }
 
 }

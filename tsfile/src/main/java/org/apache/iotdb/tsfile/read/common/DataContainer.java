@@ -7,7 +7,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public class DataContainer {
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws IOException {
 //    BatchData batchData = new BatchData(TSDataType.BOOLEAN);
 //    long startTime = System.currentTimeMillis();
 //    for (int i = 0; i < 99999999L; i++) {
@@ -26,23 +26,46 @@ public class DataContainer {
 //    System.out
 //        .println("read time :" + (System.currentTimeMillis() - startTime) + ", count:" + count);
 
-    DataContainer container = new DataContainer(TSDataType.BOOLEAN);
+    DataContainer batchData = new DataContainer(TSDataType.BOOLEAN);
     long startTime = System.currentTimeMillis();
     for (int i = 0; i < 99999999L; i++) {
-      container.put(i, true);
+      batchData.put(i, true);
     }
     System.out.println("insert time :" + (System.currentTimeMillis() - startTime));
 
     startTime = System.currentTimeMillis();
     int count = 0;
-    while (container.hasCurrent()) {
-      container.currentTime();
-      container.currentValue();
-      container.next();
+    while (batchData.hasCurrent()) {
+      batchData.currentTime();
+      batchData.currentValue();
+      batchData.next();
       count++;
     }
     System.out
         .println("read time :" + (System.currentTimeMillis() - startTime) + ", count:" + count);
+
+
+//    DataContainer container = new DataContainer(TSDataType.BOOLEAN);
+//    long[] data = new long[99999999];
+//    boolean[] va = new boolean[99999999];
+//    for (int i = 0; i < 99999999L; i++) {
+//      data[i] = i;
+//      va[i] = true;
+//    }
+//    long startTime = System.currentTimeMillis();
+//    container.put(data, va);
+//    System.out.println("insert time :" + (System.currentTimeMillis() - startTime));
+//
+//    startTime = System.currentTimeMillis();
+//    int count = 0;
+//    while (container.hasCurrent()) {
+//      container.currentTime();
+//      container.currentValue();
+//      container.next();
+//      count++;
+//    }
+//    System.out
+//        .println("read time :" + (System.currentTimeMillis() - startTime) + ", count:" + count);
 
   }
 
@@ -59,6 +82,7 @@ public class DataContainer {
 
   public DataContainer(TSDataType dataType) {
     timeColumn = new LongList();
+    statistics = Statistics.getStatsByType(dataType);
     switch (dataType) {
       case TEXT:
         break;
@@ -92,31 +116,37 @@ public class DataContainer {
   }
 
   public void put(long time, long value) {
+    statistics.update(time, value);
     timeColumn.put(time);
     valueColumn.put(value);
   }
 
   public void put(long time, int value) {
+    statistics.update(time, value);
     timeColumn.put(time);
     valueColumn.put(value);
   }
 
   public void put(long time, float value) {
+    statistics.update(time, value);
     timeColumn.put(time);
     valueColumn.put(value);
   }
 
   public void put(long time, double value) {
+    statistics.update(time, value);
     timeColumn.put(time);
     valueColumn.put(value);
   }
 
   public void put(long time, Binary value) {
+    statistics.update(time, value);
     timeColumn.put(time);
     valueColumn.put(value);
   }
 
   public void put(long time, boolean value) {
+    statistics.update(time, value);
     timeColumn.put(time);
     valueColumn.put(value);
   }
@@ -126,8 +156,8 @@ public class DataContainer {
       throw new IOException("time and value must be align");
     }
 
-    timeColumn.ensureCapacityInternal();
-    valueColumn.ensureCapacityInternal();
+    timeColumn.ensureCapacity(time.length);
+    valueColumn.ensureCapacity(value.length);
 
     for (int i = 0; i < time.length; i++) {
       statistics.update(time[i], value[i]);
@@ -141,8 +171,8 @@ public class DataContainer {
       throw new IOException("time and value must be align");
     }
 
-    timeColumn.ensureCapacityInternal(timeColumn.size + time.length);
-    valueColumn.ensureCapacityInternal(valueColumn.size + value.length);
+    timeColumn.ensureCapacity(time.length);
+    valueColumn.ensureCapacity(value.length);
 
     for (int i = 0; i < time.length; i++) {
       statistics.update(time[i], value[i]);
@@ -156,8 +186,8 @@ public class DataContainer {
       throw new IOException("time and value must be align");
     }
 
-    timeColumn.ensureCapacityInternal(timeColumn.size + time.length);
-    valueColumn.ensureCapacityInternal(valueColumn.size + value.length);
+    timeColumn.ensureCapacity(time.length);
+    valueColumn.ensureCapacity(value.length);
 
     for (int i = 0; i < time.length; i++) {
       statistics.update(time[i], value[i]);
@@ -171,8 +201,8 @@ public class DataContainer {
       throw new IOException("time and value must be align");
     }
 
-    timeColumn.ensureCapacityInternal(timeColumn.size + time.length);
-    valueColumn.ensureCapacityInternal(valueColumn.size + value.length);
+    timeColumn.ensureCapacity(time.length);
+    valueColumn.ensureCapacity(value.length);
 
     for (int i = 0; i < time.length; i++) {
       statistics.update(time[i], value[i]);
@@ -186,8 +216,8 @@ public class DataContainer {
       throw new IOException("time and value must be align");
     }
 
-    timeColumn.ensureCapacityInternal(timeColumn.size + time.length);
-    valueColumn.ensureCapacityInternal(valueColumn.size + value.length);
+    timeColumn.ensureCapacity(time.length);
+    valueColumn.ensureCapacity(value.length);
 
     for (int i = 0; i < time.length; i++) {
       statistics.update(time[i], value[i]);
@@ -201,8 +231,8 @@ public class DataContainer {
       throw new IOException("time and value must be align");
     }
 
-    timeColumn.ensureCapacityInternal(timeColumn.size + time.length);
-    valueColumn.ensureCapacityInternal(valueColumn.size + value.length);
+    timeColumn.ensureCapacity(time.length);
+    valueColumn.ensureCapacity(value.length);
 
     for (int i = 0; i < time.length; i++) {
       statistics.update(time[i], value[i]);

@@ -12,7 +12,7 @@ public class LongList extends IoTDBArrayList {
   private long[][] elementData = new long[ARRAY_INIT_SIZE][];
 
   public LongList() {
-    initCurrentInsideArray();
+    initInsideArray(0);
   }
 
   @Override
@@ -24,10 +24,17 @@ public class LongList extends IoTDBArrayList {
 
   @Override
   public void fastPut(long value) {
+    if (currentInsideIndex == INSIDE_ARRAY_INIT_SIZE) {
+      currentArrayIndex++;
+      currentInsideIndex = 0;
+    }
     elementData[currentArrayIndex][currentInsideIndex++] = value;
     size++;
   }
 
+  public long getOriginValue(int index) {
+    return elementData[index / INSIDE_ARRAY_INIT_SIZE][index & (INSIDE_ARRAY_INIT_SIZE - 1)];
+  }
 
   @Override
   public Object getValue(int currentReadIndex) {
@@ -36,9 +43,9 @@ public class LongList extends IoTDBArrayList {
   }
 
   @Override
-  protected void initCurrentInsideArray() {
-    if (elementData[currentArrayIndex] == null) {
-      elementData[currentArrayIndex] = new long[INSIDE_ARRAY_INIT_SIZE];
+  protected void initInsideArray(int index) {
+    if (elementData[index] == null) {
+      elementData[index] = new long[INSIDE_ARRAY_INIT_SIZE];
     }
   }
 
@@ -48,64 +55,9 @@ public class LongList extends IoTDBArrayList {
   }
 
   @Override
-  protected void growArray() {
-    int oldCapacity = elementData.length;
-    int newCapacity = oldCapacity + (oldCapacity >> 1);
-    elementData = Arrays.copyOf(elementData, newCapacity);
+  protected void growArray(int size) {
+    elementData = Arrays.copyOf(elementData, size);
   }
 
 
-  @Override
-  public void put(int value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void put(float value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void put(double value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void put(Binary value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void put(boolean value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void fastPut(int value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void fastPut(float value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void fastPut(double value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void fastPut(Binary value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  @Override
-  public void fastPut(boolean value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public long getOriginValue(int index) {
-    return elementData[index / INSIDE_ARRAY_INIT_SIZE][index & (INSIDE_ARRAY_INIT_SIZE - 1)];
-  }
 }
