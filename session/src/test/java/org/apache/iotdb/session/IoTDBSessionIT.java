@@ -198,11 +198,14 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void test()
-      throws ClassNotFoundException, SQLException, IoTDBSessionException,
+  public void test() throws ClassNotFoundException, SQLException,
       IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
+    try {
+      session.open();
+    } catch (IoTDBConnectionException e) {
+      e.printStackTrace();
+    }
 
     session.setStorageGroup("root.sg1");
 
