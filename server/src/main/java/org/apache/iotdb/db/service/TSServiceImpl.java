@@ -617,7 +617,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return resp;
     } catch (ParseCancellationException e) {
       logger.debug(e.getMessage());
-      return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
+      return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR,
+          "Statement format is not right: " + e.getMessage()));
+    } catch (SQLParserException e) {
+      logger.error("check metadata error: ", e);
+      return getTSExecuteStatementResp(
+          getStatus(TSStatusCode.METADATA_ERROR, "Check metadata error: " + e.getMessage()));
     }
   }
 
