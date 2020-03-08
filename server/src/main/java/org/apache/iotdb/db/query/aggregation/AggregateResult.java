@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.aggregation;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -29,8 +30,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
-
-import java.io.IOException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public abstract class AggregateResult {
@@ -74,11 +73,12 @@ public abstract class AggregateResult {
    * @param dataInThisPage the data in Page
    */
   public abstract void updateResultFromPageData(BatchData dataInThisPage) throws IOException;
+
   /**
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
    *
    * @param dataInThisPage the data in Page
-   * @param bound calculate points whose time < bound
+   * @param bound          calculate points whose time < bound
    */
   public abstract void updateResultFromPageData(BatchData dataInThisPage, long bound)
       throws IOException;
@@ -170,6 +170,12 @@ public abstract class AggregateResult {
 
   public void reset() {
     hasResult = false;
+    booleanValue = false;
+    doubleValue = 0;
+    floatValue = 0;
+    intValue = 0;
+    longValue = 0;
+    binaryValue = null;
   }
 
   protected Object getValue() {
@@ -284,4 +290,8 @@ public abstract class AggregateResult {
     return hasResult;
   }
 
+  @Override
+  public String toString() {
+    return String.valueOf(getResult());
+  }
 }

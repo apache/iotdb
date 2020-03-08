@@ -26,7 +26,7 @@ public class StorageGroupProcessorException extends IoTDBException {
   private static final long serialVersionUID = 7373978140952977661L;
 
   public StorageGroupProcessorException(Exception exception) {
-    super(exception.getMessage(), TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode());
+    super(exception, TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode());
   }
 
   public StorageGroupProcessorException(String message) {

@@ -37,3 +37,4 @@
 * [原始数据查询](/#/SystemDesign/progress/chap5/sec3)
 * [聚合查询](/#/SystemDesign/progress/chap5/sec4)
 * [降采样查询](/#/SystemDesign/progress/chap5/sec5)
+* [最近时间戳查询](/#/SystemDesign/progress/chap5/sec6)

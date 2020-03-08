@@ -36,8 +36,9 @@ public class IoTDBConfigCheck {
   private static final IoTDBConfigCheck INSTANCE = new IoTDBConfigCheck();
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
   // this is a initial parameter.
-  private static String TIMESTAMP_PRECISION = "ms";
-  private static long PARTITION_INTERVAL = 86400;
+  private static String timestampPrecision = "ms";
+  private static long partitionInterval = 86400;
+  private static String tsfileFileSystem = "LOCAL";
   private Properties properties = new Properties();
 
   public static final IoTDBConfigCheck getInstance() {
@@ -45,24 +46,26 @@ public class IoTDBConfigCheck {
   }
 
   public void checkConfig() {
-    TIMESTAMP_PRECISION = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
 
     // check time stamp precision
-    if (!(TIMESTAMP_PRECISION.equals("ms") || TIMESTAMP_PRECISION.equals("us")
-            || TIMESTAMP_PRECISION.equals("ns"))) {
+    if (!(timestampPrecision.equals("ms") || timestampPrecision.equals("us")
+            || timestampPrecision.equals("ns"))) {
       logger.error("Wrong timestamp precision, please set as: ms, us or ns ! Current is: "
-              + TIMESTAMP_PRECISION);
+              + timestampPrecision);
       System.exit(-1);
     }
 
-    PARTITION_INTERVAL = IoTDBDescriptor.getInstance().getConfig()
+    partitionInterval = IoTDBDescriptor.getInstance().getConfig()
             .getPartitionInterval();
 
     // check partition interval
-    if (PARTITION_INTERVAL <= 0) {
+    if (partitionInterval <= 0) {
       logger.error("Partition interval must larger than 0!");
       System.exit(-1);
     }
+
+    tsfileFileSystem = IoTDBDescriptor.getInstance().getConfig().getTsFileStorageFs().toString();
 
     createDir(SCHEMA_DIR);
     checkFile(SCHEMA_DIR);
@@ -87,8 +90,9 @@ public class IoTDBConfigCheck {
         file.createNewFile();
         logger.info(" {} has been created.", file.getAbsolutePath());
         try (FileOutputStream outputStream = new FileOutputStream(file.toString())) {
-          properties.setProperty("timestamp_precision", TIMESTAMP_PRECISION);
-          properties.setProperty("storage_group_time_range", String.valueOf(PARTITION_INTERVAL));
+          properties.setProperty("timestamp_precision", timestampPrecision);
+          properties.setProperty("storage_group_time_range", String.valueOf(partitionInterval));
+          properties.setProperty("tsfile_storage_fs", tsfileFileSystem);
           properties.store(outputStream, "System properties:");
         }
       }
@@ -100,15 +104,20 @@ public class IoTDBConfigCheck {
             .getFile(filepath + File.separator + PROPERTIES_FILE_NAME);
     try (FileInputStream inputStream = new FileInputStream(inputFile.toString())) {
       properties.load(new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET));
-      if (!properties.getProperty("timestamp_precision").equals(TIMESTAMP_PRECISION)) {
+      if (!properties.getProperty("timestamp_precision").equals(timestampPrecision)) {
         logger.error("Wrong timestamp precision, please set as: " + properties
                 .getProperty("timestamp_precision") + " !");
         System.exit(-1);
       }
       if (!(Long.parseLong(properties.getProperty("storage_group_time_range"))
-              == PARTITION_INTERVAL)) {
+              == partitionInterval)) {
         logger.error("Wrong storage group time range, please set as: " + properties
                 .getProperty("storage_group_time_range") + " !");
+        System.exit(-1);
+      }
+      if (!(properties.getProperty("tsfile_storage_fs").equals(tsfileFileSystem))) {
+        logger.error("Wrong tsfile file system, please set as: " + properties
+            .getProperty("tsfile_storage_fs") + " !");
         System.exit(-1);
       }
     } catch (IOException e) {

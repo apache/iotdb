@@ -28,6 +28,7 @@ import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
@@ -64,7 +65,7 @@ public class QueryRouter implements IQueryRouter {
     }
     queryPlan.setExpression(optimizedExpression);
 
-    RawDataQueryExecutor rawDataQueryExecutor = new RawDataQueryExecutor(queryPlan);
+    RawDataQueryExecutor rawDataQueryExecutor = getRawDataQueryExecutor(queryPlan);
 
     if (!queryPlan.isAlignByTime()) {
       return rawDataQueryExecutor.executeNonAlign(context);
@@ -76,6 +77,10 @@ public class QueryRouter implements IQueryRouter {
 
     }
     return rawDataQueryExecutor.executeWithoutValueFilter(context);
+  }
+
+  protected RawDataQueryExecutor getRawDataQueryExecutor(RawDataQueryPlan queryPlan) {
+    return new RawDataQueryExecutor(queryPlan);
   }
 
   @Override
@@ -93,7 +98,7 @@ public class QueryRouter implements IQueryRouter {
 
     aggregationPlan.setExpression(optimizedExpression);
 
-    AggregationExecutor engineExecutor = new AggregationExecutor(aggregationPlan);
+    AggregationExecutor engineExecutor = getAggregationExecutor(aggregationPlan);
 
     if (optimizedExpression != null
         && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME) {
@@ -103,6 +108,9 @@ public class QueryRouter implements IQueryRouter {
     return engineExecutor.executeWithoutValueFilter(context);
   }
 
+  protected AggregationExecutor getAggregationExecutor(AggregationPlan aggregationPlan) {
+    return new AggregationExecutor(aggregationPlan);
+  }
 
   @Override
   public QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
@@ -147,6 +155,13 @@ public class QueryRouter implements IQueryRouter {
     FillQueryExecutor fillQueryExecutor = new FillQueryExecutor(fillPaths, dataTypes, queryTime,
         fillType);
     return fillQueryExecutor.execute(context);
+  }
+
+  @Override
+  public QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
+          throws StorageEngineException, QueryProcessException, IOException {
+    LastQueryExecutor lastQueryExecutor = new LastQueryExecutor(lastQueryPlan);
+    return lastQueryExecutor.execute(context);
   }
 
 }

@@ -46,7 +46,7 @@ public class SeriesAggregateReader implements IAggregateReader {
   }
 
   @Override
-  public boolean canUseCurrentChunkStatistics() {
+  public boolean canUseCurrentChunkStatistics() throws IOException {
     Statistics chunkStatistics = currentChunkStatistics();
     return !seriesReader.isChunkOverlapped() && containedByTimeFilter(chunkStatistics);
   }
@@ -70,11 +70,14 @@ public class SeriesAggregateReader implements IAggregateReader {
   @Override
   public boolean canUseCurrentPageStatistics() throws IOException {
     Statistics currentPageStatistics = currentPageStatistics();
+    if (currentPageStatistics == null) {
+      return false;
+    }
     return !seriesReader.isPageOverlapped() && containedByTimeFilter(currentPageStatistics);
   }
 
   @Override
-  public Statistics currentPageStatistics() throws IOException {
+  public Statistics currentPageStatistics() {
     return seriesReader.currentPageStatistics();
   }
 
@@ -84,15 +87,9 @@ public class SeriesAggregateReader implements IAggregateReader {
   }
 
   @Override
-  public boolean hasNextOverlappedPage() throws IOException {
-    return seriesReader.hasNextOverlappedPage();
+  public BatchData nextPage() throws IOException {
+    return seriesReader.nextPage();
   }
-
-  @Override
-  public BatchData nextOverlappedPage() throws IOException {
-    return seriesReader.nextOverlappedPage();
-  }
-
 
   private boolean containedByTimeFilter(Statistics statistics) {
     Filter timeFilter = seriesReader.getTimeFilter();

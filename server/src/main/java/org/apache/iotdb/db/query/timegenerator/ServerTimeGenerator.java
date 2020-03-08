@@ -39,7 +39,11 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
  */
 public class ServerTimeGenerator extends TimeGenerator {
 
-  private QueryContext context;
+  protected QueryContext context;
+
+  public ServerTimeGenerator(QueryContext context) {
+    this.context = context;
+  }
 
   /**
    * Constructor of EngineTimeGenerator.
@@ -50,7 +54,7 @@ public class ServerTimeGenerator extends TimeGenerator {
     try {
       super.constructNode(expression);
     } catch (IOException e) {
-      throw new StorageEngineException(e.getMessage());
+      throw new StorageEngineException(e);
     }
   }
 
