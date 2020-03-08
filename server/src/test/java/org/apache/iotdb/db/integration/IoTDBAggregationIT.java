@@ -50,7 +50,8 @@ public class IoTDBAggregationIT {
   private static final String TEMPERATURE_STR = "root.ln.wf01.wt01.temperature";
 
   private static String[] creationSqls = new String[]{
-      "SET STORAGE GROUP TO root.vehicle",
+      "SET STORAGE GROUP TO root.vehicle.d0",
+      "SET STORAGE GROUP TO root.vehicle.d1",
 
       "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
       "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
@@ -59,7 +60,7 @@ public class IoTDBAggregationIT {
       "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN"
   };
   private static String[] dataSet2 = new String[]{
-      "SET STORAGE GROUP TO root.ln.wf01",
+      "SET STORAGE GROUP TO root.ln.wf01.wt01",
       "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
       "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN",
       "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",

@@ -32,7 +32,9 @@ public class MetadataManagerHelper {
     mmanager.init();
     mmanager.clear();
     try {
-      mmanager.setStorageGroup("root.vehicle");
+      mmanager.setStorageGroup("root.vehicle.d0");
+      mmanager.setStorageGroup("root.vehicle.d1");  
+      mmanager.setStorageGroup("root.vehicle.d2");
 
       CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
 

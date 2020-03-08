@@ -37,7 +37,7 @@ import org.junit.Test;
 public class IoTDBFlushQueryMergeTest {
 
   private static String[] sqls = new String[]{
-      "SET STORAGE GROUP TO root.vehicle",
+      "SET STORAGE GROUP TO root.vehicle.d0",
       "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
 
       "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
@@ -111,7 +111,7 @@ public class IoTDBFlushQueryMergeTest {
     Class.forName(Config.JDBC_DRIVER_NAME);
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
     String insertTemplate =
-        "INSERT INTO root.group%d.d1(timestamp, s1, s2, s3) VALUES (%d, %d, %f, %s)";
+        "INSERT INTO root.group%d(timestamp, s1, s2, s3) VALUES (%d, %d, %f, %s)";
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {

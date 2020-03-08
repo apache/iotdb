@@ -56,7 +56,7 @@ import static org.junit.Assert.assertFalse;
 
 public class StorageGroupProcessorTest {
 
-  private String storageGroup = "root.vehicle";
+  private String storageGroup = "root.vehicle.d0";
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";

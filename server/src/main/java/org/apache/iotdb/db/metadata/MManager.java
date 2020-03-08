@@ -59,7 +59,6 @@ import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,7 +82,7 @@ public class MManager {
   private boolean writeToLog;
   private String schemaDir;
   // device -> DeviceMNode
-  private RandomDeleteCache<String, DeviceMNode> mNodeCache;
+  private RandomDeleteCache<String, MNode> mNodeCache;
 
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
   private long maxSeriesNumberAmongStorageGroup;
@@ -105,10 +104,10 @@ public class MManager {
     writeToLog = false;
 
     int cacheSize = config.getmManagerCacheSize();
-    mNodeCache = new RandomDeleteCache<String, DeviceMNode>(cacheSize) {
+    mNodeCache = new RandomDeleteCache<String, MNode>(cacheSize) {
 
       @Override
-      public DeviceMNode loadObjectByKey(String key) throws CacheException {
+      public MNode loadObjectByKey(String key) throws CacheException {
         lock.readLock().lock();
         try {
           return mtree.getNodeByPathWithStorageGroupCheck(key);
@@ -738,7 +737,7 @@ public class MManager {
   public DeviceMNode getDeviceNodeWithAutoCreateStorageGroup(String path, boolean autoCreateSchema,
       int sgLevel) throws MetadataException {
     lock.readLock().lock();
-    DeviceMNode node = null;
+    MNode node = null;
     boolean shouldSetStorageGroup = false;
     try {
       node = mNodeCache.get(path);
@@ -758,7 +757,10 @@ public class MManager {
         }
       }
     }
-    return node;
+    if (node instanceof DeviceMNode) {
+      return (DeviceMNode) node;
+    }
+    return mtree.getDeviceNode(path);
   }
 
   public MNode getDeviceNodeWithAutoCreateStorageGroup(String path) throws MetadataException {

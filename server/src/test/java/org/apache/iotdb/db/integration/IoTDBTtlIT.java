@@ -67,24 +67,24 @@ public class IoTDBTtlIT {
       }
 
       statement.execute("SET STORAGE GROUP TO root.TTL_SG1");
-      statement.execute("CREATE TIMESERIES root.TTL_SG1.d0.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.TTL_SG1.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
       try {
-        statement.execute("SET TTL TO root.TTL_SG1.d0.s1 1000");
+        statement.execute("SET TTL TO root.TTL_SG1.s1 1000");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getErrorCode());
       }
 
       long now = System.currentTimeMillis();
       for (int i = 0; i < 100; i++) {
-        statement.execute(String.format("INSERT INTO root.TTL_SG1.d0(timestamp, s1) VALUES (%d, %d)",
+        statement.execute(String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)",
             now - 100 + i, i));
       }
       for (int i = 0; i < 100; i++) {
-        statement.execute(String.format("INSERT INTO root.TTL_SG1.d0(timestamp, s1) VALUES (%d, %d)",
+        statement.execute(String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)",
             now - 100000 + i, i));
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1.d0")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -93,7 +93,7 @@ public class IoTDBTtlIT {
       }
 
       statement.execute("SET TTL TO root.TTL_SG1 10000");
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1.d0")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -103,7 +103,7 @@ public class IoTDBTtlIT {
       for (int i = 0; i < 100; i++) {
         boolean caught = false;
         try {
-          statement.execute(String.format("INSERT INTO root.TTL_SG1.d0(timestamp, s1) VALUES (%d, %d)",
+          statement.execute(String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)",
               now - 50000 + i, i));
         } catch (SQLException e) {
           if (TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode() == e.getErrorCode()) {
@@ -112,7 +112,7 @@ public class IoTDBTtlIT {
         }
         assertTrue(caught);
       }
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1.d0")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -122,10 +122,10 @@ public class IoTDBTtlIT {
 
       statement.execute("UNSET TTL TO root.TTL_SG1");
       for (int i = 0; i < 100; i++) {
-        statement.execute(String.format("INSERT INTO root.TTL_SG1.d0(timestamp, s1) VALUES (%d, %d)",
+        statement.execute(String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)",
             now - 30000 + i, i));
       }
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1.d0")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
