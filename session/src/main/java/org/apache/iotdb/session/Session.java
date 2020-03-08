@@ -26,8 +26,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
@@ -100,12 +101,12 @@ public class Session {
     this.fetchSize = fetchSize;
   }
 
-  public synchronized void open() throws IoTDBSessionException {
+  public synchronized void open() throws IoTDBConnectionException {
     open(false, Config.DEFAULT_TIMEOUT_MS);
   }
 
   private synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
-      throws IoTDBSessionException {
+      throws IoTDBConnectionException {
     if (!isClosed) {
       return;
     }
@@ -114,7 +115,7 @@ public class Session {
       try {
         transport.open();
       } catch (TTransportException e) {
-        throw new IoTDBSessionException(e);
+        throw new IoTDBConnectionException(e);
       }
     }
 
@@ -153,10 +154,9 @@ public class Session {
         zoneId = ZoneId.of(getTimeZone());
       }
 
-    } catch (TException | IoTDBRPCException e) {
+    } catch (Exception e) {
       transport.close();
-      throw new IoTDBSessionException(String.format("Can not open session to %s:%s with user: %s.",
-          host, port, username), e);
+      throw new IoTDBConnectionException(e);
     }
     isClosed = false;
 
@@ -164,7 +164,7 @@ public class Session {
 
   }
 
-  public synchronized void close() throws IoTDBSessionException {
+  public synchronized void close() throws IoTDBConnectionException {
     if (isClosed) {
       return;
     }
@@ -172,7 +172,7 @@ public class Session {
     try {
       client.closeSession(req);
     } catch (TException e) {
-      throw new IoTDBSessionException(
+      throw new IoTDBConnectionException(
           "Error occurs when closing session at server. Maybe server is down.", e);
     } finally {
       isClosed = true;
@@ -201,7 +201,8 @@ public class Session {
    *
    * @param rowBatch data batch
    */
-  private TSExecuteBatchStatementResp insertSortedBatchIntern(RowBatch rowBatch) throws IoTDBSessionException{
+  private TSExecuteBatchStatementResp insertSortedBatchIntern(RowBatch rowBatch)
+      throws IoTDBConnectionException {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
@@ -216,7 +217,7 @@ public class Session {
     try {
       return checkAndReturn(client.insertBatch(request));
     } catch (TException e) {
-      throw new IoTDBSessionException(e);
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -227,9 +228,9 @@ public class Session {
    * @param rowBatch data batch
    */
   public TSExecuteBatchStatementResp insertSortedBatch(RowBatch rowBatch)
-      throws IoTDBSessionException {
+      throws StatementExecutionException, IoTDBConnectionException {
     if(!checkSorted(rowBatch)){
-      throw new IoTDBSessionException("Row batch has't been sorted when calling insertSortedBatch");
+      throw new StatementExecutionException("Row batch has't been sorted when calling insertSortedBatch");
     }
     return insertSortedBatchIntern(rowBatch);
   }
@@ -239,8 +240,8 @@ public class Session {
    *
    * @param rowBatch data batch
    */
-  public TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch)
-      throws IoTDBSessionException {
+  public TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch) throws IoTDBConnectionException {
+
     sortRowBatch(rowBatch);
 
     return insertSortedBatchIntern(rowBatch);
@@ -329,9 +330,8 @@ public class Session {
    * @see Session#insertBatch(RowBatch)
    */
   public List<TSStatus> insertInBatch(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList,
-      List<List<String>> valuesList)
-      throws IoTDBSessionException {
+      List<List<String>> measurementsList, List<List<String>> valuesList)
+      throws IoTDBConnectionException {
     // check params size
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
@@ -353,7 +353,7 @@ public class Session {
       }
       return result;
     } catch (TException e) {
-      throw new IoTDBSessionException(e);
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -365,8 +365,7 @@ public class Session {
    * @see Session#insertBatch(RowBatch)
    */
   public TSStatus insert(String deviceId, long time, List<String> measurements,
-      List<String> values)
-      throws IoTDBSessionException {
+      List<String> values) throws IoTDBConnectionException {
     TSInsertReq request = new TSInsertReq();
     request.setSessionId(sessionId);
     request.setDeviceId(deviceId);
@@ -377,7 +376,7 @@ public class Session {
     try {
       return checkAndReturn(client.insert(request));
     } catch (TException e) {
-      throw new IoTDBSessionException(e);
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -386,7 +385,7 @@ public class Session {
    * this method should be used to test other time cost in client
    */
   public TSExecuteBatchStatementResp testInsertBatch(RowBatch rowBatch)
-      throws IoTDBSessionException {
+      throws IoTDBConnectionException {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
@@ -401,7 +400,7 @@ public class Session {
     try {
       return client.testInsertBatch(request);
     } catch (TException e) {
-      throw new IoTDBSessionException(e);
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -410,9 +409,8 @@ public class Session {
    * this method should be used to test other time cost in client
    */
   public List<TSStatus> testInsertInBatch(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList,
-      List<List<String>> valuesList)
-      throws IoTDBSessionException {
+      List<List<String>> measurementsList, List<List<String>> valuesList)
+      throws IoTDBConnectionException {
     // check params size
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
@@ -431,7 +429,7 @@ public class Session {
       client.testInsertRowInBatch(request);
       return Collections.emptyList();
     } catch (TException e) {
-      throw new IoTDBSessionException(e);
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -440,8 +438,7 @@ public class Session {
    * this method should be used to test other time cost in client
    */
   public TSStatus testInsert(String deviceId, long time, List<String> measurements,
-      List<String> values)
-      throws IoTDBSessionException {
+      List<String> values) throws IoTDBConnectionException {
     TSInsertReq request = new TSInsertReq();
     request.setSessionId(sessionId);
     request.setDeviceId(deviceId);
@@ -452,7 +449,7 @@ public class Session {
     try {
       return client.testInsertRow(request);
     } catch (TException e) {
-      throw new IoTDBSessionException(e);
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -461,7 +458,7 @@ public class Session {
    *
    * @param path timeseries to delete, should be a whole path
    */
-  public TSStatus deleteTimeseries(String path) throws IoTDBSessionException {
+  public TSStatus deleteTimeseries(String path) throws IoTDBConnectionException {
     List<String> paths = new ArrayList<>();
     paths.add(path);
     return deleteTimeseries(paths);
@@ -472,11 +469,11 @@ public class Session {
    *
    * @param paths timeseries to delete, should be a whole path
    */
-  public TSStatus deleteTimeseries(List<String> paths) throws IoTDBSessionException {
+  public TSStatus deleteTimeseries(List<String> paths) throws IoTDBConnectionException {
     try {
       return checkAndReturn(client.deleteTimeseries(sessionId, paths));
     } catch (TException e) {
-      throw new IoTDBSessionException(e);
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -486,7 +483,7 @@ public class Session {
    * @param path data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
-  public TSStatus deleteData(String path, long time) throws IoTDBSessionException {
+  public TSStatus deleteData(String path, long time) throws IoTDBConnectionException {
     List<String> paths = new ArrayList<>();
     paths.add(path);
     return deleteData(paths, time);
@@ -498,8 +495,7 @@ public class Session {
    * @param paths data in which time series to delete
    * @param time  data with time stamp less than or equal to time will be deleted
    */
-  public TSStatus deleteData(List<String> paths, long time)
-      throws IoTDBSessionException {
+  public TSStatus deleteData(List<String> paths, long time) throws IoTDBConnectionException {
     TSDeleteDataReq request = new TSDeleteDataReq();
     request.setSessionId(sessionId);
     request.setPaths(paths);
@@ -508,38 +504,38 @@ public class Session {
     try {
       return checkAndReturn(client.deleteData(request));
     } catch (TException e) {
-      throw new IoTDBSessionException(e);
+      throw new IoTDBConnectionException(e);
     }
   }
 
-  public TSStatus setStorageGroup(String storageGroupId) throws IoTDBSessionException {
+  public TSStatus setStorageGroup(String storageGroupId)
+      throws IoTDBConnectionException, StatementExecutionException {
     checkPathValidity(storageGroupId);
     try {
       return checkAndReturn(client.setStorageGroup(sessionId, storageGroupId));
     } catch (TException e) {
-      throw new IoTDBSessionException(e);
+      throw new IoTDBConnectionException(e);
     }
   }
 
 
-  public TSStatus deleteStorageGroup(String storageGroup)
-      throws IoTDBSessionException {
+  public TSStatus deleteStorageGroup(String storageGroup) throws IoTDBConnectionException {
     List<String> groups = new ArrayList<>();
     groups.add(storageGroup);
     return deleteStorageGroups(groups);
   }
 
-  public TSStatus deleteStorageGroups(List<String> storageGroup)
-      throws IoTDBSessionException {
+  public TSStatus deleteStorageGroups(List<String> storageGroup) throws IoTDBConnectionException {
     try {
       return checkAndReturn(client.deleteStorageGroups(sessionId, storageGroup));
     } catch (TException e) {
-      throw new IoTDBSessionException(e);
+      throw new IoTDBConnectionException(e);
     }
   }
 
   public TSStatus createTimeseries(String path, TSDataType dataType,
-      TSEncoding encoding, CompressionType compressor) throws IoTDBSessionException {
+      TSEncoding encoding, CompressionType compressor)
+      throws IoTDBConnectionException, StatementExecutionException {
     checkPathValidity(path);
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
     request.setSessionId(sessionId);
@@ -551,16 +547,17 @@ public class Session {
     try {
       return checkAndReturn(client.createTimeseries(request));
     } catch (TException e) {
-      throw new IoTDBSessionException(e);
+      throw new IoTDBConnectionException(e);
     }
   }
 
-  public boolean checkTimeseriesExists(String path) throws IoTDBSessionException {
+  public boolean checkTimeseriesExists(String path)
+      throws StatementExecutionException, IoTDBConnectionException {
     checkPathValidity(path);
     try {
       return executeQueryStatement(String.format("SHOW TIMESERIES %s", path)).hasNext();
     } catch (Exception e) {
-      throw new IoTDBSessionException(e);
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -578,19 +575,31 @@ public class Session {
     return resp;
   }
 
-  private synchronized String getTimeZone() throws TException, IoTDBRPCException {
+  private synchronized String getTimeZone()
+      throws StatementExecutionException, IoTDBConnectionException {
     if (zoneId != null) {
       return zoneId.toString();
     }
 
-    TSGetTimeZoneResp resp = client.getTimeZone(sessionId);
+    TSGetTimeZoneResp resp;
+    try {
+      resp = client.getTimeZone(sessionId);
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
     RpcUtils.verifySuccess(resp.getStatus());
     return resp.getTimeZone();
   }
 
-  private synchronized void setTimeZone(String zoneId) throws TException, IoTDBRPCException {
+  private synchronized void setTimeZone(String zoneId)
+      throws StatementExecutionException, IoTDBConnectionException {
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, zoneId);
-    TSStatus resp = client.setTimeZone(req);
+    TSStatus resp;
+    try {
+      resp = client.setTimeZone(req);
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
     RpcUtils.verifySuccess(resp);
     this.zoneId = ZoneId.of(zoneId);
   }
@@ -613,7 +622,7 @@ public class Session {
    * @return result set
    */
   public SessionDataSet executeQueryStatement(String sql)
-      throws TException, IoTDBRPCException {
+      throws StatementExecutionException, IoTDBConnectionException {
     if (!checkIsQuery(sql)) {
       throw new IllegalArgumentException("your sql \"" + sql
           + "\" is not a query statement, you should use executeNonQueryStatement method instead.");
@@ -621,7 +630,12 @@ public class Session {
 
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     execReq.setFetchSize(fetchSize);
-    TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
+    TSExecuteStatementResp execResp;
+    try {
+      execResp = client.executeQueryStatement(execReq);
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
 
     RpcUtils.verifySuccess(execResp.getStatus());
     return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
@@ -633,21 +647,25 @@ public class Session {
    *
    * @param sql non query statement
    */
-  public void executeNonQueryStatement(String sql) throws TException, IoTDBRPCException {
+  public void executeNonQueryStatement(String sql)
+      throws IoTDBConnectionException, StatementExecutionException {
     if (checkIsQuery(sql)) {
       throw new IllegalArgumentException("your sql \"" + sql
           + "\" is a query statement, you should use executeQueryStatement method instead.");
     }
 
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
-    TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
-    RpcUtils.verifySuccess(execResp.getStatus());
+    try {
+      TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
+      RpcUtils.verifySuccess(execResp.getStatus());
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
   }
 
-  private void checkPathValidity(String path) throws IoTDBSessionException {
+  private void checkPathValidity(String path) throws StatementExecutionException {
     if (!PATH_PATTERN.matcher(path).matches()) {
-      throw new IoTDBSessionException(
-          String.format("Path [%s] is invalid", path));
+      throw new StatementExecutionException(String.format("Path [%s] is invalid", path));
     }
   }
 }
