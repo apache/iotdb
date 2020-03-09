@@ -15,7 +15,7 @@
 package org.apache.iotdb.db.service;
 
 
-public interface RestServiceMBean {
+public interface HTTPServiceMBean {
 
   int getRestPort();
 

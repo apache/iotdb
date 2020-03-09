@@ -34,22 +34,22 @@ import org.eclipse.jetty.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RestService implements RestServiceMBean, IService {
+public class HTTPService implements HTTPServiceMBean, IService {
 
-  private static final Logger logger = LoggerFactory.getLogger(RestService.class);
+  private static final Logger logger = LoggerFactory.getLogger(HTTPService.class);
   private final String mbeanName = String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE,
       IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
   private Server server;
   private ExecutorService executorService;
 
-  public static final RestService getInstance() {
-    return RestServiceHolder.INSTANCE;
+  public static final HTTPService getInstance() {
+    return HTTPServiceHolder.INSTANCE;
   }
 
   @Override
   public ServiceType getID() {
-    return ServiceType.METRICS_SERVICE;
+    return ServiceType.HTTP_SERVICE;
   }
 
   @Override
@@ -159,11 +159,11 @@ public class RestService implements RestServiceMBean, IService {
     }
   }
 
-  private static class RestServiceHolder {
+  private static class HTTPServiceHolder {
 
-    private static final RestService INSTANCE = new RestService();
+    private static final HTTPService INSTANCE = new HTTPService();
 
-    private RestServiceHolder() {}
+    private HTTPServiceHolder() {}
   }
 
   private class MetricsServiceThread implements Runnable {
