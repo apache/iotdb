@@ -104,7 +104,7 @@ public class FileLoaderUtils {
 
     for (ChunkMetadata data : chunkMetadataList) {
       TsFileSequenceReader tsFileSequenceReader =
-          FileReaderManager.getInstance().get(resource, resource.isClosed());
+          FileReaderManager.getInstance().get(resource.getPath(), resource.isClosed());
       data.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
     }
     List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();

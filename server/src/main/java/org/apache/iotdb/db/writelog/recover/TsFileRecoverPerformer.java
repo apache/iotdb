@@ -67,7 +67,7 @@ public class TsFileRecoverPerformer {
   public TsFileRecoverPerformer(String logNodePrefix,
       Schema schema, VersionController versionController,
       TsFileResource currentTsFileResource, boolean acceptUnseq, boolean isLastFile) {
-    this.insertFilePath = currentTsFileResource.getFile().getPath();
+    this.insertFilePath = currentTsFileResource.getPath();
     this.logNodePrefix = logNodePrefix;
     this.schema = schema;
     this.versionController = versionController;
