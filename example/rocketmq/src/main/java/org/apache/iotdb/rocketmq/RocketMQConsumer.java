@@ -21,7 +21,7 @@ package org.apache.iotdb.rocketmq;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.session.IoTDBSessionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -45,7 +45,7 @@ public class RocketMQConsumer {
 
   public RocketMQConsumer(String producerGroup, String serverAddresses, String connectionHost,
       int connectionPort, String user, String password)
-      throws IoTDBConnectionException, IoTDBSessionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     this.producerGroup = producerGroup;
     this.serverAddresses = serverAddresses;
     this.consumer = new DefaultMQPushConsumer(producerGroup);
@@ -54,7 +54,7 @@ public class RocketMQConsumer {
   }
 
   private void initIoTDB(String host, int port, String user, String password)
-      throws IoTDBConnectionException, IoTDBSessionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     if (host == null) {
       host = Constant.IOTDB_CONNECTION_HOST;
       port = Constant.IOTDB_CONNECTION_PORT;
@@ -72,11 +72,11 @@ public class RocketMQConsumer {
   }
   
   private void addStorageGroup(String storageGroup)
-      throws IoTDBSessionException, IoTDBConnectionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     session.setStorageGroup(storageGroup);
   }
   
-  private void createTimeseries(String[] sql) throws IoTDBSessionException, IoTDBConnectionException {
+  private void createTimeseries(String[] sql) throws StatementExecutionException, IoTDBConnectionException {
     String timeseries = sql[0];
     TSDataType dataType = TSDataType.valueOf(sql[1]);
     TSEncoding encoding = TSEncoding.valueOf(sql[2]);
@@ -149,7 +149,7 @@ public class RocketMQConsumer {
   }
 
   public static void main(String[] args)
-      throws MQClientException, IoTDBSessionException, IoTDBConnectionException {
+      throws MQClientException, StatementExecutionException, IoTDBConnectionException {
     /**
      *Instantiate with specified consumer group name and specify name server addresses.
      */
