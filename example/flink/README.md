@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-    
+
         http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,8 +18,13 @@
     under the License.
 
 -->
-# 第3章: 服务器端
+# IoTDB-Flink-Connector Example
 
-## 集群设置
+## Function
+```
+The example is to show how to send data to a IoTDB server from a Flink job.
+```
 
-Coming Soon.
+## Usage
+
+* Run `org.apache.iotdb.flink.FlinkIoTDBSink.java` to launch the local iotDB server and run the flink job on local mini cluster.
