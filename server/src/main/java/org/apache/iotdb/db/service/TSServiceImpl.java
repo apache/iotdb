@@ -578,6 +578,54 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
+  @Override
+  public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
+    try {
+      long startTime = System.currentTimeMillis();
+      TSExecuteStatementResp resp;
+      SqlArgument sqlArgument;
+
+      if (!checkLogin(req.getSessionId())) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return getTSExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+      }
+
+      String statement = req.getStatement();
+      PhysicalPlan physicalPlan;
+      try {
+        physicalPlan =
+            processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
+      } catch (QueryProcessException | SQLParserException e) {
+        logger.info(ERROR_PARSING_SQL, e.getMessage());
+        return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
+      }
+
+      if (!physicalPlan.isQuery()) {
+        return getTSExecuteStatementResp(
+            getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement."));
+      }
+
+      resp = internalExecuteQueryStatement(
+          req.statementId, physicalPlan, req.fetchSize,
+          sessionIdUsernameMap.get(req.getSessionId()));
+      long endTime = System.currentTimeMillis();
+      sqlArgument = new SqlArgument(resp, physicalPlan, statement, startTime, endTime);
+      sqlArgumentsList.add(sqlArgument);
+      if (sqlArgumentsList.size() > MAX_SIZE) {
+        sqlArgumentsList.subList(0, DELETE_SIZE).clear();
+      }
+      return resp;
+    } catch (ParseCancellationException e) {
+      logger.debug(e.getMessage());
+      return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR,
+          "Statement format is not right: " + e.getMessage()));
+    } catch (SQLParserException e) {
+      logger.error("check metadata error: ", e);
+      return getTSExecuteStatementResp(
+          getStatus(TSStatusCode.METADATA_ERROR, "Check metadata error: " + e.getMessage()));
+    }
+  }
+
   /**
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
    *             AuthorPlan
@@ -638,43 +686,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } else {
       return getQueryColumnHeaders(plan, username);
     }
-  }
-
-  @Override
-  public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
-    long startTime = System.currentTimeMillis();
-    TSExecuteStatementResp resp;
-    SqlArgument sqlArgument;
-
-    if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return getTSExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
-    }
-
-    String statement = req.getStatement();
-    PhysicalPlan physicalPlan;
-    try {
-      physicalPlan =
-          processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
-    } catch (QueryProcessException | SQLParserException e) {
-      logger.info(ERROR_PARSING_SQL, e.getMessage());
-      return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
-    }
-
-    if (!physicalPlan.isQuery()) {
-      return getTSExecuteStatementResp(
-          getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement."));
-    }
-
-    resp = internalExecuteQueryStatement(
-        req.statementId, physicalPlan, req.fetchSize, sessionIdUsernameMap.get(req.getSessionId()));
-    long endTime = System.currentTimeMillis();
-    sqlArgument = new SqlArgument(resp, physicalPlan, statement, startTime, endTime);
-    sqlArgumentsList.add(sqlArgument);
-    if (sqlArgumentsList.size() > MAX_SIZE) {
-      sqlArgumentsList.subList(0, DELETE_SIZE).clear();
-    }
-    return resp;
   }
 
   private TSExecuteStatementResp getShowQueryColumnHeaders(ShowPlan showPlan)
