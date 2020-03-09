@@ -21,10 +21,8 @@ package org.apache.iotdb.jdbc;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
-
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
@@ -40,7 +38,7 @@ public class IoTDBConnectionTest {
   private TSIService.Iface client;
 
   private IoTDBConnection connection = new IoTDBConnection();
-  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
+  private TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
   private TSStatus Status_SUCCESS = new TSStatus(successStatus);
   private long sessionId;
 
@@ -73,7 +71,7 @@ public class IoTDBConnectionTest {
   }
 
   @Test
-  public void testGetServerProperties() throws IoTDBSQLException, TException {
+  public void testGetServerProperties() throws TException {
     final String version = "v0.1";
     @SuppressWarnings("serial") final List<String> supportedAggregationTime = new ArrayList<String>() {
       {

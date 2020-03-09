@@ -80,7 +80,9 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -501,10 +503,10 @@ public class StorageGroupProcessor {
     }
   }
 
-  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
+  public TSStatus[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
     writeLock();
     try {
-      Integer[] results = new Integer[batchInsertPlan.getRowCount()];
+      TSStatus[] results = new TSStatus[batchInsertPlan.getRowCount()];
 
       /*
        * assume that batch has been sorted by client
@@ -514,7 +516,8 @@ public class StorageGroupProcessor {
         long currTime = batchInsertPlan.getTimes()[loc];
         // skip points that do not satisfy TTL
         if (!checkTTL(currTime)) {
-          results[loc] = TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode();
+          results[loc] = RpcUtils.getStatus(TSStatusCode.OUT_OF_TTL_ERROR,
+              "time " + currTime + " in current line is out of TTL: " + dataTTL);
           loc++;
         } else {
           break;
@@ -537,7 +540,7 @@ public class StorageGroupProcessor {
       while (loc < batchInsertPlan.getRowCount()) {
         long time = batchInsertPlan.getTimes()[loc];
         long curTimePartition = StorageEngine.fromTimeToTimePartition(time);
-        results[loc] = TSStatusCode.SUCCESS_STATUS.getStatusCode();
+        results[loc] = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
         // start next partition
         if (curTimePartition != beforeTimePartition) {
           // insert last time partition
@@ -593,18 +596,18 @@ public class StorageGroupProcessor {
    * @param timePartitionId time partition id
    */
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
-      int start, int end, boolean sequence, Integer[] results, long timePartitionId)
+      int start, int end, boolean sequence, TSStatus[] results, long timePartitionId)
       throws QueryProcessException {
     // return when start <= end
     if (start >= end) {
       return;
     }
 
-    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId,
-        sequence);
+    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
     if (tsFileProcessor == null) {
       for (int i = start; i < end; i++) {
-        results[i] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
+        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR,
+            "can not create TsFileProcessor, timePartitionId: " + timePartitionId);
       }
       return;
     }

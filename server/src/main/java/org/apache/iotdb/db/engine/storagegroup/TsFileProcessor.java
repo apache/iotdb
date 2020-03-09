@@ -54,7 +54,9 @@ import org.apache.iotdb.db.rescon.MemTablePool;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -183,7 +185,7 @@ public class TsFileProcessor {
   }
 
   public boolean insertBatch(BatchInsertPlan batchInsertPlan, int start, int end,
-      Integer[] results) throws QueryProcessException {
+      TSStatus[] results) throws QueryProcessException {
 
     if (workMemTable == null) {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
@@ -201,7 +203,7 @@ public class TsFileProcessor {
         logger.error("{}: {} write WAL failed", storageGroupName,
             tsFileResource.getFile().getName(), e);
         for (int i = start; i < end; i++) {
-          results[i] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
+          results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
         }
         return false;
       }

@@ -21,7 +21,7 @@ package org.apache.iotdb.jdbc;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TSStatusType;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -103,15 +103,14 @@ public class UtilsTest {
   @Test
   public void testVerifySuccess() {
     try {
-      TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          "");
+      TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
       RpcUtils.verifySuccess(new TSStatus(successStatus));
     } catch (Exception e) {
       fail();
     }
 
     try {
-      TSStatusType errorStatus = new TSStatusType(
+      TSStatus errorStatus = new TSStatus(
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), "");
       RpcUtils.verifySuccess(new TSStatus(errorStatus));
     } catch (Exception e) {

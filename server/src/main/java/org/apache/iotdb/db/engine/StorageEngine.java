@@ -65,6 +65,7 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -276,7 +277,7 @@ public class StorageEngine implements IService {
    *
    * @return result of each row
    */
-  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws StorageEngineException {
+  public TSStatus[] insertBatch(BatchInsertPlan batchInsertPlan) throws StorageEngineException {
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(batchInsertPlan.getDeviceId());

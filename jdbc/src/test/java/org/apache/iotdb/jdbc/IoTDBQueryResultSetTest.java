@@ -47,7 +47,6 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TSStatusType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Before;
@@ -118,8 +117,7 @@ public class IoTDBQueryResultSetTest {
   @Mock
   private TSFetchResultsResp fetchResultsResp;
 
-  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-      "");
+  private TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
   private TSStatus Status_SUCCESS = new TSStatus(successStatus);
   private ZoneId zoneID = ZoneId.systemDefault();
 

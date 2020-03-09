@@ -19,6 +19,10 @@
 package org.apache.iotdb.rpc;
 
 import java.lang.reflect.Proxy;
+import java.util.List;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -35,11 +39,93 @@ public class RpcUtils {
    * @param status -status
    */
   public static void verifySuccess(TSStatus status) throws StatementExecutionException {
-    if (status.getStatusType().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new StatementExecutionException(String.format("%d: %s",
-          status.getStatusType().getCode(),
-          status.getStatusType().getMessage()));
+          status.code, status.message));
     }
+  }
+
+  public static void verifySuccess(List<TSStatus> statuses) throws BatchExecutionException {
+    for (TSStatus status : statuses) {
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new BatchExecutionException(statuses, status.message);
+      }
+    }
+  }
+
+  /**
+   * convert from TSStatusCode to TSStatus according to status code and status message
+   */
+  public static TSStatus getStatus(TSStatusCode tsStatusCode) {
+    return new TSStatus(tsStatusCode.getStatusCode(), "");
+  }
+
+  /**
+   * convert from TSStatusCode to TSStatus, which has message appending with existed status message
+   *
+   * @param tsStatusCode    status type
+   * @param message appending message
+   */
+  public static TSStatus getStatus(TSStatusCode tsStatusCode, String message) {
+    return new TSStatus(tsStatusCode.getStatusCode(), message);
+  }
+
+  public static TSExecuteStatementResp getTSExecuteStatementResp(TSStatusCode tsStatusCode) {
+    TSStatus status = getStatus(tsStatusCode);
+    return getTSExecuteStatementResp(status);
+  }
+
+  public static TSExecuteStatementResp getTSExecuteStatementResp(TSStatusCode tsStatusCode, String message) {
+    TSStatus status = getStatus(tsStatusCode, message);
+    return getTSExecuteStatementResp(status);
+  }
+
+  public static TSExecuteStatementResp getTSExecuteStatementResp(TSStatus status) {
+    TSExecuteStatementResp resp = new TSExecuteStatementResp();
+    TSStatus tsStatus = new TSStatus(status);
+    resp.setStatus(tsStatus);
+    return resp;
+  }
+
+
+  public static TSExecuteBatchStatementResp getTSBatchExecuteStatementResp(TSStatusCode tsStatusCode) {
+    TSStatus status = getStatus(tsStatusCode);
+    return getTSBatchExecuteStatementResp(status);
+  }
+
+  public static TSExecuteBatchStatementResp getTSBatchExecuteStatementResp(TSStatusCode tsStatusCode, String message) {
+    TSStatus status = getStatus(tsStatusCode, message);
+    return getTSBatchExecuteStatementResp(status);
+  }
+
+  public static TSExecuteBatchStatementResp getTSBatchExecuteStatementResp(TSStatus status) {
+    TSExecuteBatchStatementResp resp = new TSExecuteBatchStatementResp();
+    resp.addToStatusList(status);
+    return resp;
+  }
+
+  public static TSExecuteBatchStatementResp getTSBatchExecuteStatementResp(List<TSStatus> statusList) {
+    TSExecuteBatchStatementResp resp = new TSExecuteBatchStatementResp();
+    resp.setStatusList(statusList);
+    return resp;
+  }
+
+
+  public static TSFetchResultsResp getTSFetchResultsResp(TSStatusCode tsStatusCode) {
+    TSStatus status = getStatus(tsStatusCode);
+    return getTSFetchResultsResp(status);
+  }
+
+  public static TSFetchResultsResp getTSFetchResultsResp(TSStatusCode tsStatusCode, String appendMessage) {
+    TSStatus status = getStatus(tsStatusCode, appendMessage);
+    return getTSFetchResultsResp(status);
+  }
+
+  public static TSFetchResultsResp getTSFetchResultsResp(TSStatus status) {
+    TSFetchResultsResp resp = new TSFetchResultsResp();
+    TSStatus tsStatus = new TSStatus(status);
+    resp.setStatus(tsStatus);
+    return resp;
   }
 
 }
