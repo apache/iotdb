@@ -319,13 +319,14 @@ public class TsFileIOWriter {
     return out.getPosition();
   }
 
+  // device -> ChunkMetadataList
   public Map<String, List<ChunkMetadata>> getDeviceChunkMetadataMap() {
     Map<String, List<ChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
     for (Map.Entry<Path, List<ChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
       Path path = entry.getKey();
       String deviceId = path.getDevice();
       deviceChunkMetadataMap.computeIfAbsent(deviceId, k -> new ArrayList<>())
-      .addAll(entry.getValue());
+          .addAll(entry.getValue());
     }
     return deviceChunkMetadataMap;
   }

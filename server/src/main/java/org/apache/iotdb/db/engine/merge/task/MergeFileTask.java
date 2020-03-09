@@ -120,7 +120,7 @@ class MergeFileTask {
     try {
       TsFileMetaDataCache.getInstance().remove(seqFile);
       DeviceMetaDataCache.getInstance().remove(seqFile);
-      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile);
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
 
       resource.removeFileReader(seqFile);
       TsFileIOWriter oldFileWriter;
@@ -244,7 +244,7 @@ class MergeFileTask {
       resource.removeFileReader(seqFile);
       TsFileMetaDataCache.getInstance().remove(seqFile);
       DeviceMetaDataCache.getInstance().remove(seqFile);
-      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile);
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
       seqFile.getFile().delete();
 
       File nextMergeVersionFile = getNextMergeVersionFile(seqFile.getFile());

@@ -62,7 +62,7 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
 
   @Override
   public double getTsfileMetaDataHitRatio() {
-    tsfileMetaDataHitRatio = TsFileMetaDataCache.getInstance().calculateTsfileMetaDataHitRatio();
+    tsfileMetaDataHitRatio = TsFileMetaDataCache.getInstance().calculateTsFileMetaDataHitRatio();
     return tsfileMetaDataHitRatio;
   }
 

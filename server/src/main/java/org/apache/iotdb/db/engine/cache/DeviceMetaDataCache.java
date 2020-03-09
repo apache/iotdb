@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -30,9 +32,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
-import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -92,11 +92,11 @@ public class DeviceMetaDataCache {
         return new ArrayList<>();
       }
       // If timeseries isn't included in the tsfile, empty list is returned.
-      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource, true);
+      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource.getPath(), true);
       return tsFileReader.getChunkMetadataList(seriesPath);
     }
 
-    String key = (resource.getFile().getPath() + IoTDBConstant.PATH_SEPARATOR
+    String key = (resource.getPath() + IoTDBConstant.PATH_SEPARATOR
         + seriesPath.getDevice() + seriesPath.getMeasurement()).intern();
 
     synchronized (lruCache) {
@@ -164,7 +164,7 @@ public class DeviceMetaDataCache {
 
   public void remove(TsFileResource resource) {
     synchronized (lruCache) {
-      lruCache.entrySet().removeIf(e -> e.getKey().startsWith(resource.getFile().getPath()));
+      lruCache.entrySet().removeIf(e -> e.getKey().startsWith(resource.getPath()));
     }
   }
 

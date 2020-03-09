@@ -977,7 +977,7 @@ public class StorageGroupProcessor {
           // physical removal
           resource.remove();
           if (logger.isInfoEnabled()) {
-            logger.info("Removed a file {} before {} by ttl ({}ms)", resource.getFile().getPath(),
+            logger.info("Removed a file {} before {} by ttl ({}ms)", resource.getPath(),
                 new Date(timeLowerBound), dataTTL);
           }
           if (isSeq) {

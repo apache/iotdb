@@ -42,7 +42,7 @@ class TsFileMetadataUtils {
     if (!resource.isClosed()) {
       throw new IOException("The TsFile is not closed: " + resource.getFile().getAbsolutePath());
     }
-    TsFileSequenceReader reader = FileReaderManager.getInstance().get(resource, true);
+    TsFileSequenceReader reader = FileReaderManager.getInstance().get(resource.getPath(), true);
     return reader.readFileMetadata();
   }
 
@@ -53,7 +53,7 @@ class TsFileMetadataUtils {
     if (!resource.isClosed()) {
       throw new IOException("The TsFile is not closed: " + resource.getFile().getAbsolutePath());
     }
-    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource, true);
+    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource.getPath(), true);
     return tsFileReader.getChunkMetadataList(path);
   }
 }

@@ -48,7 +48,7 @@ public class TsFileMetadata {
   private BloomFilter bloomFilter;
 
   private Map<String, Pair<Long, Integer>> deviceMetadataIndex;
-  
+
   private Map<Long, Long> versionInfo;
 
   public TsFileMetadata() {
@@ -179,4 +179,7 @@ public class TsFileMetadata {
     this.versionInfo = versionInfo;
   }
 
+  public Map<Long, Long> getVersionInfo() {
+    return versionInfo;
+  }
 }

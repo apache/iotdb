@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.cache;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,10 +39,11 @@ public class TsFileMetaDataCache {
 
   private static boolean cacheEnable = config.isMetaDataCacheEnable();
   private static final long MEMORY_THRESHOLD_IN_B = config.getAllocateMemoryForFileMetaDataCache();
+
   /**
-   * key: Tsfile path. value: TsFileMetaData
+   * TsFile path -> TsFileMetaData
    */
-  private LRULinkedHashMap<TsFileResource, TsFileMetadata> cache;
+  private final LRULinkedHashMap<String, TsFileMetadata> cache;
   private AtomicLong cacheHitNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
@@ -49,29 +51,29 @@ public class TsFileMetaDataCache {
    * estimated size of a deviceMetaDataMap entry in TsFileMetaData.
    */
   private long deviceIndexMapEntrySize = 0;
-  /**
-   * estimated size of version and CreateBy in TsFileMetaData.
-   */
-  private long versionAndCreatebySize = 10;
 
   private TsFileMetaDataCache() {
-    cache = new LRULinkedHashMap<TsFileResource, TsFileMetadata>(MEMORY_THRESHOLD_IN_B, true) {
+    cache = new LRULinkedHashMap<String, TsFileMetadata>(MEMORY_THRESHOLD_IN_B, true) {
       @Override
-      protected long calEntrySize(TsFileResource key, TsFileMetadata value) {
+      protected long calEntrySize(String key, TsFileMetadata value) {
         if (deviceIndexMapEntrySize == 0 && value.getDeviceMetadataIndex() != null
             && value.getDeviceMetadataIndex().size() > 0) {
           deviceIndexMapEntrySize = RamUsageEstimator
               .sizeOf(value.getDeviceMetadataIndex().entrySet().iterator().next());
         }
-        long valueSize;
-        if (value.getDeviceMetadataIndex() == null) {
-          valueSize = versionAndCreatebySize;
+        // totalChunkNum, invalidChunkNum
+        long valueSize = 4 + 4;
+
+        // deviceMetadataIndex
+        if (value.getDeviceMetadataIndex() != null) {
+          valueSize += value.getDeviceMetadataIndex().size() * deviceIndexMapEntrySize;
         }
-        else {
-          valueSize = value.getDeviceMetadataIndex().size() * deviceIndexMapEntrySize
-            + versionAndCreatebySize;
+
+        // versionInfo
+        if (value.getVersionInfo() != null) {
+          valueSize += value.getVersionInfo().size() * 16;
         }
-        return key.getFile().getPath().length() * 2 + valueSize;
+        return key.getBytes(TSFileConfig.STRING_CHARSET).length + valueSize;
       }
     };
   }
@@ -90,8 +92,7 @@ public class TsFileMetaDataCache {
       return TsFileMetadataUtils.getTsFileMetadata(tsFileResource);
     }
 
-    String path = tsFileResource.getFile().getPath();
-    Object internPath = path.intern();
+    String path = tsFileResource.getPath().intern();
     cacheRequestNum.incrementAndGet();
     synchronized (cache) {
       if (cache.containsKey(path)) {
@@ -100,7 +101,7 @@ public class TsFileMetaDataCache {
         return cache.get(path);
       }
     }
-    synchronized (internPath) {
+    synchronized (path) {
       synchronized (cache) {
         if (cache.containsKey(path)) {
           cacheHitNum.incrementAndGet();
@@ -111,7 +112,7 @@ public class TsFileMetaDataCache {
       printCacheLog(false);
       TsFileMetadata fileMetaData = TsFileMetadataUtils.getTsFileMetadata(tsFileResource);
       synchronized (cache) {
-        cache.put(tsFileResource, fileMetaData);
+        cache.put(tsFileResource.getPath(), fileMetaData);
         return fileMetaData;
       }
     }
@@ -132,7 +133,7 @@ public class TsFileMetaDataCache {
     }
   }
 
-  public double calculateTsfileMetaDataHitRatio() {
+  double calculateTsFileMetaDataHitRatio() {
     if (cacheRequestNum.get() != 0) {
       return cacheHitNum.get() * 1.0 / cacheRequestNum.get();
     } else {
@@ -142,17 +143,13 @@ public class TsFileMetaDataCache {
 
   public void remove(TsFileResource resource) {
     synchronized (cache) {
-      if (cache != null) {
-        cache.remove(resource);
-      }
+      cache.remove(resource.getPath());
     }
   }
 
   public void clear() {
     synchronized (cache) {
-      if (cache != null) {
-        cache.clear();
-      }
+      cache.clear();
     }
   }
 

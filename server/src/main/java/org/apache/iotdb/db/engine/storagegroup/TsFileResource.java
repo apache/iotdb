@@ -264,6 +264,10 @@ public class TsFileResource {
     return file;
   }
 
+  public String getPath() {
+    return file.getPath();
+  }
+
   public long getFileSize() {
     return file.length();
   }
