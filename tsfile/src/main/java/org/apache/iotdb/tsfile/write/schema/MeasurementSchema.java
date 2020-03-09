@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
- * This class describes a measurement's information registered in {@linkplain Schema FilSchema},
+ * This class describes a measurement's information registered in {@linkplain Schema FileSchema},
  * including measurement id, data type, encoding and compressor type. For each TSEncoding,
  * MeasurementSchema maintains respective TSEncodingBuilder; For TSDataType, only ENUM has
  * TSDataTypeConverter up to now.

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
@@ -217,7 +217,7 @@ public class IoTDBStatement implements Statement {
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
-    } catch (IoTDBRPCException e) {
+    } catch (StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
     if (execResp.isSetColumns()) {
@@ -325,7 +325,7 @@ public class IoTDBStatement implements Statement {
     queryId = execResp.getQueryId();
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
-    } catch (IoTDBRPCException e) {
+    } catch (StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
     if (execResp.queryDataSet == null) {
@@ -387,7 +387,7 @@ public class IoTDBStatement implements Statement {
     }
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
-    } catch (IoTDBRPCException e) {
+    } catch (StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
     return 0;
