@@ -15,8 +15,12 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RemoteGroupByExecutor implements GroupByExecutor {
+
+  private static final Logger logger = LoggerFactory.getLogger(RemoteGroupByExecutor.class);
 
   private long executorId;
   private MetaGroupMember metaGroupMember;
@@ -68,6 +72,8 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
         results.get(i).left.merge(result);
       }
     }
+    logger.debug("Fetched group by result from {} of [{}, {}]: {}", source, curStartTime,
+        curEndTime, results);
     return results;
   }
 }

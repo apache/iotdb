@@ -21,7 +21,8 @@ package org.apache.iotdb.cluster;
 
 import java.sql.SQLException;
 import java.util.Collections;
-import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
@@ -51,7 +52,7 @@ public class ClientMain {
   private static final Logger logger = LoggerFactory.getLogger(ClientMain.class);
 
   public static void main(String[] args)
-      throws TException, InterruptedException, SQLException, IoTDBRPCException {
+      throws TException, InterruptedException, StatementExecutionException, IoTDBConnectionException {
     String ip = "127.0.0.1";
     int port = 55560;
     TSIService.Client.Factory factory = new Factory();
@@ -75,7 +76,7 @@ public class ClientMain {
   }
 
   private static void testQuery(Client client, long sessionId)
-      throws TException, SQLException, IoTDBRPCException {
+      throws TException, StatementExecutionException, IoTDBConnectionException {
     long statementId = client.requestStatementId(sessionId);
     executeQuery(client, sessionId,"SELECT * FROM root", statementId);
     executeQuery(client, sessionId, "SELECT * FROM root WHERE time <= 691200000", statementId);
@@ -105,6 +106,10 @@ public class ClientMain {
     executeQuery(client, sessionId, "SELECT s1 FROM root.shenzhen.d1 WHERE time = 126400000 FILL "
         + "(DOUBLE[LINEAR,1d,1d])", statementId);
 
+    executeQuery(client, sessionId, "SELECT COUNT(*) FROM root.*.* GROUP BY ([0, 864000000), 3d, "
+            + "3d)", statementId);
+    executeQuery(client, sessionId, "SELECT AVG(*) FROM root.*.* WHERE s1 <= 0.7 GROUP BY ([0, "
+            + "864000000), 3d, 3d)", statementId);
 
     TSCloseOperationReq tsCloseOperationReq = new TSCloseOperationReq(sessionId);
     tsCloseOperationReq.setStatementId(statementId);
@@ -112,7 +117,7 @@ public class ClientMain {
   }
 
   private static void executeQuery(Client client, long sessionId, String query, long statementId)
-      throws TException, SQLException, IoTDBRPCException {
+      throws TException, StatementExecutionException, IoTDBConnectionException {
     logger.info(query);
     TSExecuteStatementResp resp = client
         .executeQueryStatement(new TSExecuteStatementReq(sessionId, query, statementId));
