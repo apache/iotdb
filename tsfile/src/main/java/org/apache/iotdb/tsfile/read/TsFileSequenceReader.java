@@ -583,7 +583,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * be truncated.
    */
 
-  public long selfCheck(Map<Path, MeasurementSchema> newSchema, 
+  public long selfCheck(Map<Path, MeasurementSchema> newSchema,
       Map<Path, List<ChunkMetadata>> chunkMetadataListMap,
       boolean fastFinish) throws IOException {
     File checkFile = FSFactoryProducer.getFSFactory().getFile(this.file);
@@ -849,12 +849,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   private LocateStatus checkLocateStatus(List<ChunkMetadata> chunkMetadataList,
       long spacePartitionStartPos, long spacePartitionEndPos) {
-    Collections.sort(chunkMetadataList, new Comparator<ChunkMetadata>(){
-      @Override
-      public int compare(ChunkMetadata chunkMetadata1, ChunkMetadata chunkMetadata2) {
-        return (int) (chunkMetadata1.getOffsetOfChunkHeader() - chunkMetadata2.getOffsetOfChunkHeader());
-      }
-    });
+    chunkMetadataList.sort((chunkMetadata1, chunkMetadata2) -> (int) (chunkMetadata1.getOffsetOfChunkHeader() - chunkMetadata2.getOffsetOfChunkHeader()));
     long middleOffset = chunkMetadataList.get(chunkMetadataList.size() / 2)
         .getOffsetOfChunkHeader();
     if (spacePartitionStartPos <= middleOffset && middleOffset < spacePartitionEndPos) {
