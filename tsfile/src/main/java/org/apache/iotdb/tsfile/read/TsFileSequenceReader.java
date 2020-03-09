@@ -27,7 +27,9 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.*;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -44,13 +46,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TsFileSequenceReader implements AutoCloseable {
@@ -730,7 +726,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   /**
    * get ChunkMetaDatas in given path
    *
-   * @param Path of timeseries
+   * @param path of timeseries
    * @return List of ChunkMetaData
    */
   public List<ChunkMetadata> getChunkMetadataList(Path path) throws IOException {
@@ -749,7 +745,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   /**
    * get ChunkMetaDatas in given TimeseriesMetaData
    *
-   * @param TimeseriesMetaData
+   * @param timeseriesMetaData
    * @return List of ChunkMetaData
    */
   public List<ChunkMetadata> readChunkMetaDataList(TimeseriesMetaData timeseriesMetaData)
