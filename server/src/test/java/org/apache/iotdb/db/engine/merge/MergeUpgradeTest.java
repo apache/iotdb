@@ -146,7 +146,7 @@ public class MergeUpgradeTest {
   private void prepareData(TsFileResource tsFileResource, TsFileWriter fileWriter, long timeOffset,
       long ptNum, long valueOffset) throws WriteProcessException, IOException {
     for (MeasurementSchema MeasurementSchema : measurementSchemas) {
-      fileWriter.addTimeseries(new Path(deviceName, MeasurementSchema.getMeasurementId()), MeasurementSchema);
+      fileWriter.registerTimeseries(new Path(deviceName, MeasurementSchema.getMeasurementId()), MeasurementSchema);
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       TSRecord record = new TSRecord(i, deviceName);

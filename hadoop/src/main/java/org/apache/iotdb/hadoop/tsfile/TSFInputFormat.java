@@ -27,20 +27,11 @@ import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
-import org.apache.iotdb.hadoop.tsfile.TSFInputSplit.ChunkGroupInfo;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class
@@ -110,7 +101,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
   public static List<String> getReadDeviceIds(Configuration configuration) {
     String deviceIds = configuration.get(READ_DELTAOBJECTS);
     if (deviceIds == null || deviceIds.length() < 1) {
-      return null;
+      return new LinkedList<>();
     } else {
 
       return Arrays.stream(deviceIds.split(SPERATOR)).collect(Collectors.toList());
@@ -148,7 +139,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
   public static List<String> getReadMeasurementIds(Configuration configuration) {
     String measurementIds = configuration.get(READ_MEASUREMENTID);
     if (measurementIds == null || measurementIds.length() < 1) {
-      return null;
+      return new LinkedList<>();
     } else {
       return Arrays.stream(measurementIds.split(SPERATOR)).collect(Collectors.toList());
     }
@@ -239,8 +230,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
 
   @Override
   public RecordReader<NullWritable, MapWritable> createRecordReader(InputSplit split,
-      TaskAttemptContext context)
-      throws IOException, InterruptedException {
+      TaskAttemptContext context) {
     return new TSFRecordReader();
   }
 
@@ -271,9 +261,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
         blockLocations = fileSystem.getFileBlockLocations(fileStatus, 0, length);
 
         logger.info("The block location information is {}", Arrays.toString(blockLocations));
-        try (TsFileSequenceReader fileReader = new TsFileSequenceReader(new HDFSInput(path, configuration))) {
-          splits.addAll(generateSplits(path, fileReader, blockLocations, logger));
-        }
+        splits.addAll(generateSplits(path, blockLocations, logger));
       } else {
         logger.warn("The file length is " + length);
       }
@@ -288,91 +276,15 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
    * get the TSFInputSplit from tsfMetaData and hdfs block location
    * information with the filter
    *
-   * @param path
-   * @param fileReader
-   * @param blockLocations
-   * @return
    * @throws IOException
    */
-  private static List<TSFInputSplit> generateSplits(Path path, TsFileSequenceReader fileReader,
-      BlockLocation[] blockLocations, Logger logger)
+  private static List<TSFInputSplit> generateSplits(Path path, BlockLocation[] blockLocations, Logger logger)
       throws IOException {
     List<TSFInputSplit> splits = new ArrayList<>();
-
-    Arrays.sort(blockLocations, Comparator.comparingLong(BlockLocation::getOffset));
-
-    List<ChunkGroupInfo> ChunkGroupInfoList = new ArrayList<>();
-    int currentBlockIndex = 0;
-    long splitSize = 0;
-    List<String> hosts = new ArrayList<>();
-    for (Map.Entry<String, List<TimeseriesMetaData>> entry : fileReader.getSortedTimeseriesMetaDataMap().entrySet()) {
-      String deviceId = entry.getKey();
-      List<TimeseriesMetaData> timeseriesMetaDataList = entry.getValue();
-      logger.info("The device name is {}", deviceId);
-      for (TimeseriesMetaData timeseriesMetaData : timeseriesMetaDataList) {
-        List<ChunkMetadata> chunkMetadataList = fileReader.readChunkMetaDataList(timeseriesMetaData);
-        for (ChunkMetadata chunkMetaData : chunkMetadataList) {
-          long middle = chunkMetaData.getOffsetOfChunkHeader() 
-              + getTotalByteSizeOfChunk(chunkMetaData) / 2;
-          int blkIndex = getBlockLocationIndex(blockLocations, middle, logger);
-          if (hosts.size() == 0) {
-            hosts.addAll(Arrays.asList(blockLocations[blkIndex].getHosts()));
-          }
-          ChunkGroupInfo chunkGroupInfo = new ChunkGroupInfo(deviceId, 
-              new String[] {chunkMetaData.getMeasurementUid()}, 
-              chunkMetaData.getOffsetOfChunkHeader(), 
-              chunkMetaData.getOffsetOfChunkHeader() + getTotalByteSizeOfChunk(chunkMetaData));
-          if (blkIndex != currentBlockIndex) {
-            TSFInputSplit tsfInputSplit = makeSplit(path, ChunkGroupInfoList, splitSize, hosts);
-            logger.info("The tsfile inputSplit information is {}", tsfInputSplit);
-            splits.add(tsfInputSplit);
-  
-            currentBlockIndex = blkIndex;
-            ChunkGroupInfoList.clear();
-            ChunkGroupInfoList.add(chunkGroupInfo);
-            splitSize = getTotalByteSizeOfChunk(chunkMetaData);
-            hosts.clear();
-          } else {
-            ChunkGroupInfoList.add(chunkGroupInfo);
-            splitSize += getTotalByteSizeOfChunk(chunkMetaData);
-          }
-        }
-      }
+    for (BlockLocation blockLocation : blockLocations) {
+      splits.add(new TSFInputSplit(path, blockLocation.getHosts(), blockLocation.getOffset(), blockLocation.getLength()));
     }
-    TSFInputSplit tsfInputSplit = makeSplit(path, ChunkGroupInfoList, splitSize, hosts);
-    logger.info("The tsfile inputSplit information is {}", tsfInputSplit);
-    splits.add(tsfInputSplit);
     return splits;
-  }
-
-  private static long getTotalByteSizeOfChunk(ChunkMetadata chunkMetaData) {
-    return chunkMetaData.getMeasurementUid().getBytes().length
-        + Long.BYTES + Short.BYTES + chunkMetaData.getStatistics().getSerializedSize();
-  }
-
-
-  /**
-   * Calculate the index of blockLocation that the chunkGroup belongs to
-   * @param blockLocations The Array of blockLocation
-   * @param middle Middle offset point of the chunkGroup
-   * @return the index of blockLocation or -1 if no block could be found
-   */
-  private static int getBlockLocationIndex(BlockLocation[] blockLocations, long middle, Logger logger) {
-    for (int i = 0; i < blockLocations.length; i++) {
-      if (blockLocations[i].getOffset() <= middle
-          && middle < blockLocations[i].getOffset() + blockLocations[i].getLength()) {
-        return i;
-      }
-    }
-    logger.warn("Can't find the block. The middle is {}. the last block is {}", middle,
-        blockLocations[blockLocations.length - 1].getOffset()
-            + blockLocations[blockLocations.length - 1].getLength());
-    return -1;
-  }
-
-  private static TSFInputSplit makeSplit(Path path, List<ChunkGroupInfo> chunkGroupInfoList,
-      long length, List<String> hosts) {
-    return new TSFInputSplit(path, hosts.toArray(new String[0]), length, chunkGroupInfoList);
   }
 
 }

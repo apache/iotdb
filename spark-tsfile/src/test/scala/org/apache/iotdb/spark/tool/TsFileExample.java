@@ -46,16 +46,16 @@ public class TsFileExample {
 
     // add measurements into file schema
     tsFileWriter
-        .addTimeseries(new Path("root.ln.wf01.wt01", "status"), 
+        .registerTimeseries(new Path("root.ln.wf01.wt01", "status"),
             new MeasurementSchema("status", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     tsFileWriter
-        .addTimeseries(new Path("root.ln.wf01.wt01", "temperature"), 
+        .registerTimeseries(new Path("root.ln.wf01.wt01", "temperature"),
             new MeasurementSchema("temperature", TSDataType.FLOAT, TSEncoding.RLE));
     tsFileWriter
-        .addTimeseries(new Path("root.ln.wf02.wt02", "temperature"), 
+        .registerTimeseries(new Path("root.ln.wf02.wt02", "temperature"),
             new MeasurementSchema("temperature", TSDataType.FLOAT, TSEncoding.RLE));
     tsFileWriter
-        .addTimeseries(new Path("root.ln.wf02.wt02", "hardware"), 
+        .registerTimeseries(new Path("root.ln.wf02.wt02", "hardware"),
             new MeasurementSchema("hardware", TSDataType.TEXT, TSEncoding.PLAIN));
 
     // construct TSRecord

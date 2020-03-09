@@ -27,7 +27,6 @@ import java.nio.channels.FileChannel;
 
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,23 +51,23 @@ public class TimeSeriesMetadataTest {
 
   @Test
   public void testWriteIntoFile() throws IOException {
-    TimeseriesMetaData timeseriesMetadata = TestHelper.createSimpleTimseriesMetaData(measurementUID);
+    TimeseriesMetadata timeseriesMetadata = TestHelper.createSimpleTimseriesMetaData(measurementUID);
     serialized(timeseriesMetadata);
-    TimeseriesMetaData readMetadata = deSerialized();
+    TimeseriesMetadata readMetadata = deSerialized();
     timeseriesMetadata.equals(readMetadata);
     serialized(readMetadata);
   }
 
-  private TimeseriesMetaData deSerialized() {
+  private TimeseriesMetadata deSerialized() {
     FileInputStream fis = null;
-    TimeseriesMetaData metaData = null;
+    TimeseriesMetadata metaData = null;
     try {
       fis = new FileInputStream(new File(PATH));
       FileChannel fch = fis.getChannel();
       ByteBuffer buffer = ByteBuffer.allocate((int) fch.size());
       fch.read(buffer);
       buffer.flip();
-      metaData = TimeseriesMetaData.deserializeFrom(buffer);
+      metaData = TimeseriesMetadata.deserializeFrom(buffer);
       return metaData;
     } catch (IOException e) {
       e.printStackTrace();
@@ -84,7 +83,7 @@ public class TimeSeriesMetadataTest {
     return metaData;
   }
 
-  private void serialized(TimeseriesMetaData metaData) {
+  private void serialized(TimeseriesMetadata metaData) {
     File file = new File(PATH);
     if (file.exists()) {
       file.delete();

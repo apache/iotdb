@@ -30,10 +30,9 @@ import org.apache.iotdb.spark.tsfile.qp.common.FilterOperator;
 import org.apache.iotdb.spark.tsfile.qp.common.SQLConstant;
 import org.apache.iotdb.spark.tsfile.qp.common.SingleQuery;
 import org.apache.iotdb.spark.tsfile.qp.common.TSQueryPlan;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class PhysicalOptimizer {
 
@@ -49,7 +48,7 @@ public class PhysicalOptimizer {
   public List<TSQueryPlan> optimize(SingleQuery singleQuery, List<String> paths,
       TsFileSequenceReader in, Long start, Long end) throws IOException {
     List<String> actualDeltaObjects = in.getDeviceNameInRange(start, end);
-    List<TimeseriesMetaData> actualSeries = in.getSortedTimeseriesMetaDataListByDeviceIds();
+    List<TimeseriesMetadata> actualSeries = in.getSortedTimeseriesMetaDataListByDeviceIds();
 
     List<String> selectedSeries = new ArrayList<>();
     for (String path : paths) {
@@ -66,7 +65,7 @@ public class PhysicalOptimizer {
       if (valueFilter != null) {
         List<String> filterPaths = valueFilter.getAllPaths();
         List<String> actualPaths = new ArrayList<>();
-        for (TimeseriesMetaData series : actualSeries) {
+        for (TimeseriesMetadata series : actualSeries) {
           actualPaths.add(series.getMeasurementId());
         }
         //if filter paths doesn't in tsfile, don't query
@@ -93,15 +92,15 @@ public class PhysicalOptimizer {
       validDeltaObjects.addAll(in.getDeviceNameInRange(start, end));
     }
 
-    List<TimeseriesMetaData> fileSeries = in.getSortedTimeseriesMetaDataListByDeviceIds();
+    List<TimeseriesMetadata> fileSeries = in.getSortedTimeseriesMetaDataListByDeviceIds();
     Set<String> seriesSet = new HashSet<>();
-    for (TimeseriesMetaData series : fileSeries) {
+    for (TimeseriesMetadata series : fileSeries) {
       seriesSet.add(series.getMeasurementId());
     }
 
     //query all measurements from TSFile
     if (selectedSeries.size() == 0) {
-      for (TimeseriesMetaData series : actualSeries) {
+      for (TimeseriesMetadata series : actualSeries) {
         selectedSeries.add(series.getMeasurementId());
       }
     } else {

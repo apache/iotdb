@@ -51,11 +51,11 @@ public class TsFileWriteWithTSRecord {
       
       for (int i = 0; i < 4; i++) {
         // add measurements into file schema
-        tsFileWriter.addTimeseries(new Path("device_" + i, "sensor_1"),
+        tsFileWriter.registerTimeseries(new Path("device_" + i, "sensor_1"),
             new MeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.RLE));
-        tsFileWriter.addTimeseries(new Path("device_" + i, "sensor_2"),
+        tsFileWriter.registerTimeseries(new Path("device_" + i, "sensor_2"),
             new MeasurementSchema("sensor_2", TSDataType.INT64, TSEncoding.RLE));
-        tsFileWriter.addTimeseries(new Path("device_" + i, "sensor_3"),
+        tsFileWriter.registerTimeseries(new Path("device_" + i, "sensor_3"),
             new MeasurementSchema("sensor_3", TSDataType.INT64, TSEncoding.RLE));
       }
 

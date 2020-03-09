@@ -131,7 +131,7 @@ public class IExpressionOptimizerTest {
     IExpression expression = BinaryExpression.or(BinaryExpression.and(singleSeriesExp1, globalTimeFilter),
         globalTimeFilter2);
     try {
-      String rightRet = "[[[[[d1.s1:time > 1] || [d2.s1:time > 1]] || [d1.s2:time > 1]] || [d2.s2:time > 1]] || [d2.s1:((value > 100 || value < 50) && time < 14001234)]]";
+      String rightRet = "[[[[d1.s1:time > 1] || [d2.s1:(time > 1 || ((value > 100 || value < 50) && time < 14001234))]] || [d1.s2:time > 1]] || [d2.s2:time > 1]]";
       IExpression regularFilter = expressionOptimizer.optimize(expression, selectedSeries);
       Assert.assertEquals(rightRet, regularFilter.toString());
     } catch (QueryFilterOptimizationException e) {
@@ -172,8 +172,11 @@ public class IExpressionOptimizerTest {
         globalTimeFilter);
 
     try {
-      String rightRet = "[[[[[d1.s1:time < 14001234] || [d2.s1:time < 14001234]] || [d1.s2:time < 14001234]] "
-          + "|| [d2.s2:time < 14001234]] || [[d2.s1:(value > 100 || value < 50)] || [d1.s2:(value > 100.5 || value < 50.6)]]]";
+      String rightRet =
+          "[[[[d1.s1:time < 14001234] "
+              + "|| [d2.s1:(time < 14001234 || (value > 100 || value < 50))]] "
+              + "|| [d1.s2:(time < 14001234 || (value > 100.5 || value < 50.6))]] "
+              + "|| [d2.s2:time < 14001234]]";
       IExpression regularFilter = expressionOptimizer.optimize(expression, selectedSeries);
       Assert.assertEquals(rightRet, regularFilter.toString());
     } catch (QueryFilterOptimizationException e) {
@@ -195,9 +198,11 @@ public class IExpressionOptimizerTest {
         BinaryExpression.and(globalTimeFilter1, globalTimeFilter2));
 
     try {
-      String rightRet = "[[[[[d1.s1:(time < 14001234 && time > 14001000)] || [d2.s1:(time < 14001234 "
-          + "&& time > 14001000)]] || [d1.s2:(time < 14001234 && time > 14001000)]] || [d2.s2:(time < 14001234 "
-          + "&& time > 14001000)]] || [[d2.s1:(value > 100 || value < 50)] || [d1.s2:(value > 100.5 || value < 50.6)]]]";
+      String rightRet =
+          "[[[[d1.s1:(time < 14001234 && time > 14001000)] "
+              + "|| [d2.s1:((time < 14001234 && time > 14001000) || (value > 100 || value < 50))]] "
+              + "|| [d1.s2:((time < 14001234 && time > 14001000) || (value > 100.5 || value < 50.6))]] "
+              + "|| [d2.s2:(time < 14001234 && time > 14001000)]]";
       IExpression regularFilter = expressionOptimizer.optimize(expression, selectedSeries);
       Assert.assertEquals(rightRet, regularFilter.toString());
     } catch (QueryFilterOptimizationException e) {

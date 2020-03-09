@@ -120,11 +120,11 @@ public class Utils {
   public static void isFileMetaDataEqual(TsFileMetadata metadata1, TsFileMetadata metadata2) {
     if (Utils.isTwoObjectsNotNULL(metadata1, metadata2, "File MetaData")) {
       if (Utils
-          .isTwoObjectsNotNULL(metadata1.getDeviceMetadataMap(), metadata2.getDeviceMetadataMap(),
+          .isTwoObjectsNotNULL(metadata1.getDeviceMetadataIndex(), metadata2.getDeviceMetadataIndex(),
               "Delta object metadata list")) {
 
-        Map<String, Pair<Long, Integer>> deviceMetaDataMap1 = metadata1.getDeviceMetadataMap();
-        Map<String, Pair<Long, Integer>> deviceMetaDataMap2 = metadata2.getDeviceMetadataMap();
+        Map<String, Pair<Long, Integer>> deviceMetaDataMap1 = metadata1.getDeviceMetadataIndex();
+        Map<String, Pair<Long, Integer>> deviceMetaDataMap2 = metadata2.getDeviceMetadataIndex();
         assertEquals(deviceMetaDataMap1.size(), deviceMetaDataMap2.size());
 
       }

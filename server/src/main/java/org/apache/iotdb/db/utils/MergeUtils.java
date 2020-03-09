@@ -148,7 +148,7 @@ public class MergeUtils {
   public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) throws IOException {
     long minPos = Long.MAX_VALUE;
     TsFileMetadata fileMetaData = sequenceReader.readFileMetadata();
-    for (Pair<Long, Integer> deviceMetaData : fileMetaData.getDeviceMetadataMap().values()) {
+    for (Pair<Long, Integer> deviceMetaData : fileMetaData.getDeviceMetadataIndex().values()) {
       long timeseriesMetaDataEndOffset = deviceMetaData.left + deviceMetaData.right;
       minPos = timeseriesMetaDataEndOffset < minPos ? timeseriesMetaDataEndOffset : minPos;
     }

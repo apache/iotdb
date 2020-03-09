@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -28,6 +28,124 @@
 ### 系统状态监控
 
 进入Jconsole监控页面后，首先看到的是IoTDB各类运行情况的概览。在这里，您可以看到[堆内存信息、线程信息、类信息以及服务器的CPU使用情况](https://docs.oracle.com/javase/7/docs/technotes/guides/management/jconsole.html)。
+
+#### JMX MBean监控
+
+通过使用JConsole工具并与JMX连接，您可以查看一些系统统计信息和参数。
+本节描述如何使用JConsole的“ Mbean”选项卡来监视IoTDB服务进程打开的文件数，数据文件的大小等等。 连接到JMX后，您可以通过“ MBeans”标签找到名为“ org.apache.iotdb.service”的“ MBean”，如下图所示。
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/20263106/53316064-54aec080-3901-11e9-9a49-76563ac09192.png">
+
+Monitor下有几个属性，包括在不同文件夹中打开的文件数，数据文件大小统计信息以及某些系统参数的值。 通过双击与属性对应的值，它还可以显示该属性的折线图。 特别是，当前所有打开的文件计数统计信息仅在`MacOS`和除`CentOS`以外的大多数`Linux`发行版中受支持。 对于不支持的操作系统，这些统计信息将返回“ -2”。 有关Monitor属性的具体介绍，请参见以下部分。
+
+##### MBean监视器属性列表
+
+- DataSizeInByte
+
+| 名称 | DataSizeInByte   |
+| :--: | :--------------- |
+| 描述 | 数据文件的总大小 |
+| 单元 | Byte             |
+| 类型 | Long             |
+
+- FileNodeNum
+
+| 名称 | FileNodeNum                    |
+| :--: | :----------------------------- |
+| 描述 | ThFileNode的计数（当前不支持） |
+| 类型 | Long                           |
+
+- OverflowCacheSize
+
+| 名称 | OverflowCacheSize                |
+| :--: | :------------------------------- |
+| 描述 | 乱序数据缓存的大小（当前不支持） |
+| 单元 | Byte                             |
+| 类型 | Long                             |
+
+- BufferWriteCacheSize
+
+| Name | BufferWriteCacheSize                   |
+| :--: | :------------------------------------- |
+| 描述 | BufferedWriter缓存的大小（当前不支持） |
+| 单元 | Byte                                   |
+| 类型 | Long                                   |
+
+- BaseDirectory
+
+| 名称 | BaseDirectory      |
+| :--: | :----------------- |
+| 描述 | 数据文件的绝对目录 |
+| 类型 | String             |
+
+- WriteAheadLogStatus
+
+| 名称 | WriteAheadLogStatus                       |
+| :--: | :---------------------------------------- |
+| 描述 | 预写日志（WAL）的状态。 True表示启用WAL。 |
+| 类型 | Boolean                                   |
+
+- TotalOpenFileNum
+
+| 名称 | TotalOpenFileNum                  |
+| :--: | :-------------------------------- |
+| 描述 | IoTDB服务器进程的所有打开的文件数 |
+| 类型 | Int                               |
+
+- DeltaOpenFileNum
+
+|   名称   | DeltaOpenFileNum                    |
+| :------: | :---------------------------------- |
+|   描述   | IoTDB服务器进程的打开的TsFile文件号 |
+| 默认路径 | /data/data/settled                  |
+|   类型   | Int                                 |
+
+- WalOpenFileNum
+
+|   名称   | WalOpenFileNum                           |
+| :------: | :--------------------------------------- |
+|   描述   | TIoTDB服务器进程的已打开的预写日志文件号 |
+| 默认路径 | /data/wal                                |
+|   类型   | Int                                      |
+
+- MetadataOpenFileNum
+
+|   名称   | MetadataOpenFileNum                   |
+| :------: | :------------------------------------ |
+|   描述   | IoTDB服务器进程的已打开元数据文件号。 |
+| 默认路径 | /data/system/schema                   |
+|   类型   | Int                                   |
+
+- DigestOpenFileNum
+
+|   名称   | DigestOpenFileNum                 |
+| :------: | :-------------------------------- |
+|   描述   | IoTDB服务器进程的打开的信息文件号 |
+| 默认路径 | /data/system/info                 |
+|   类型   | Int                               |
+
+- SocketOpenFileNum
+
+| 名称 | SocketOpenFileNum                  |
+| :--: | :--------------------------------- |
+| 描述 | 操作系统的套接字链接（TCP或UDP）号 |
+| 类型 | Int                                |
+
+- MergePeriodInSecond
+
+| 名称 | MergePeriodInSecond                     |
+| :--: | :-------------------------------------- |
+| 描述 | IoTDB服务过程定期触发合并过程的时间间隔 |
+| Unit | Second                                  |
+| 类型 | Long                                    |
+
+- ClosePeriodInSecond
+
+| 名称 | ClosePeriodInSecond                             |
+| :--: | :---------------------------------------------- |
+| 描述 | IoTDB服务进程定期将内存数据刷新到磁盘的时间间隔 |
+| Unit | Second                                          |
+| 类型 | Long                                            |
 
 ### 数据统计监控
 
@@ -130,7 +248,9 @@
 |服务器重启后是否重置| 是 |
 |例子| select TOTAL\_POINTS\_FAIL from root.stats.write.\<storage\_group\_name\>|
 
-> 其中，\<storage\_group\_name\> 为所需进行数据统计的存储组名称，存储组中的“.”使用“_”代替。例如：名为'root.a.b'的存储组命名为：'root\_a\_b'。
+> 其中，\<storage\_group\_name\> 为所需进行数据统计的存储组名称，存储组中的“.”使用“\_”代替。例如：名为'root.a.b'的存储组命名为：'root\_a\_b'。
+
+##### 例子
 
 下面为您展示两个具体的例子。用户可以通过`SELECT`语句查询自己所需要的写入数据统计项。（查询方法与普通的时间序列查询方式一致）
 
@@ -150,7 +270,79 @@ select TOTAL_POINTS_SUCCESS from root.stats.write.root_ln
 ```
 select MAX_VALUE(TOTAL_POINTS_SUCCESS) from root.stats.write.root_ln
 ```
+#### 文件大小监控
+
+有时我们担心IoTDB的数据文件大小如何变化，也许有助于计算剩余的磁盘空间或数据摄取速度。 文件大小监视提供了一些统计信息，以显示不同类型的文件大小如何变化。
+
+默认情况下，文件大小监视使用相同的共享参数```back_loop_period_in_second```每5秒收集一次文件大小数据 , 与写入数据监视不同，当前文件大小监视器将不会定期删除统计数据。
+
+您还可以像其他时间序列一样使用 `select` 子句来获取文件大小统计信息。
+
+以下是文件大小统计信息：
+
+- DATA
+
+|        Name        | DATA                                                         |
+| :----------------: | :----------------------------------------------------------- |
+|        描述        | 计算数据目录下所有文件大小的总和（默认为```data/data```），以字节为单位 |
+|        类型        | File size statistics                                         |
+|    时间序列名称    | root.stats.file\_size.DATA                                   |
+| 重新启动系统后重设 | 否                                                           |
+|        例子        | select DATA from root.stats.file\_size.DATA                  |
+
+- SETTLED
+
+|        Name        | SETTLED                                                      |
+| :----------------: | :----------------------------------------------------------- |
+|        描述        | 以字节为单位计算所有```TsFile```大小（默认情况下在```data/data/settled```下）的总和。 如果有多个“ TsFile”目录，例如```{data/data/settled1,data/data/settled2}```，则此统计信息是它们大小的总和 |
+|        类型        | File size statistics                                         |
+|    时间序列名称    | root.stats.file\_size.SETTLED                                |
+| 重新启动系统后重设 | 否                                                           |
+|        例子        | select SETTLED from root.stats.file\_size.SETTLED            |
+
+- OVERFLOW
+
+|        Name        | OVERFLOW                                                     |
+| :----------------: | :----------------------------------------------------------- |
+|        描述        | 计算所有“乱序数据文件”大小的总和（默认为```data/data/unsequence```下），以字节为单位 |
+|        类型        | File size statistics                                         |
+|    时间序列名称    | root.stats.file\_size.OVERFLOW                               |
+| 重新启动系统后重设 | 否                                                           |
+|        例子        | select OVERFLOW from root.stats.file\_size.OVERFLOW          |
+
+- WAL
+
+|        Name        | WAL                                                          |
+| :----------------: | :----------------------------------------------------------- |
+|        描述        | 计算所有```Write-Ahead-Log file```大小的总和（默认为```data/wal```之下），以字节为单位 |
+|        类型        | File size statistics                                         |
+|    时间序列名称    | root.stats.file\_size.WAL                                    |
+| 重新启动系统后重设 | 否                                                           |
+|        例子        | select WAL from root.stats.file\_size.WAL                    |
+
+- INFO
+
+|        Name        | INFO                                                         |
+| :----------------: | :----------------------------------------------------------- |
+|        描述        | 计算所有```.restore```等文件大小的总和（以```data/system/info```命名），以字节为单位 |
+|        类型        | File size statistics                                         |
+|    时间序列名称    | root.stats.file\_size.INFO                                   |
+| 重新启动系统后重设 | 否                                                           |
+|        例子        | select INFO from root.stats.file\_size.INFO                  |
+
+- SCHEMA
+
+|        Name        | SCHEMA                                                       |
+| :----------------: | :----------------------------------------------------------- |
+|        描述        | 计算所有```metadata file```大小（在```data/system/metadata```下）的总和（以字节为单位） |
+|        类型        | File size statistics                                         |
+|    时间序列名称    | root.stats.file\_size.SCHEMA                                 |
+| 重新启动系统后重设 | No                                                           |
+|        例子        | select SCHEMA from root.stats.file\_size.SCHEMA              |
+
 ## 性能监控
+
+### 介绍
 
 性能监控模块用来监控IOTDB每一个操作的耗时，以便用户更好的了解数据库的整体性能。此模块会统计每一种操作的平均耗时，以及耗时在一定时间区间内（1ms，4ms，16ms，64ms，256ms，1024ms，以上）的操作的比例。输出文件在log_measure.log中。输出样例如下：
 

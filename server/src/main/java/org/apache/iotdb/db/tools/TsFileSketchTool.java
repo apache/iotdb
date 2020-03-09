@@ -22,7 +22,7 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -62,19 +62,19 @@ public class TsFileSketchTool {
       // get metadata information
       TsFileSequenceReader reader = new TsFileSequenceReader(filename);
       TsFileMetadata tsFileMetaData = reader.readFileMetadata();
-      List<String> tsDeviceSortedList = tsFileMetaData.getDeviceMetadataMap()
+      List<String> tsDeviceSortedList = tsFileMetaData.getDeviceMetadataIndex()
           .keySet()
           .stream()
           .sorted().collect(Collectors.toList());
-      Map<String, List<TimeseriesMetaData>> tsDeviceTimeseriesMetaDataMap = new LinkedHashMap<>();
+      Map<String, List<TimeseriesMetadata>> tsDeviceTimeseriesMetaDataMap = new LinkedHashMap<>();
       Map<String, List<ChunkMetadata>> tsDeviceChunkMetaDataMap = new LinkedHashMap<>();
       for (String deviceId : tsDeviceSortedList) {
-        List<TimeseriesMetaData> timeseriesMetaDataList = 
-            reader.readAllTimeseriesMetaDataInDevice(deviceId)
+        List<TimeseriesMetadata> timeseriesMetadataList =
+            reader.readDeviceMetadata(deviceId)
             .values()
             .stream()
             .collect(Collectors.toList());
-        tsDeviceTimeseriesMetaDataMap.put(deviceId, timeseriesMetaDataList);
+        tsDeviceTimeseriesMetaDataMap.put(deviceId, timeseriesMetadataList);
         List<ChunkMetadata> chunkMetadataListInOneDevice =
             reader.readChunkMetadataInDevice(deviceId);
         tsDeviceChunkMetaDataMap.put(deviceId, chunkMetadataListInOneDevice);
@@ -137,12 +137,12 @@ public class TsFileSketchTool {
                 + "|\t[marker] 2");
       } else {
         printlnBoth(pw,
-            String.format("%20s", (tsFileMetaData.getDeviceMetadataMap()
+            String.format("%20s", (tsFileMetaData.getDeviceMetadataIndex()
                 .get(tsDeviceSortedList.get(0))).left - 1)
                 + "|\t[marker] 2");
       }
       for (Entry<String, Pair<Long,Integer>> entry 
-          : tsFileMetaData.getDeviceMetadataMap().entrySet()) {
+          : tsFileMetaData.getDeviceMetadataIndex().entrySet()) {
         printlnBoth(pw,
             String.format("%20s", entry.getValue().left
                 + "|\t[DeviceMetadata] of " + entry.getKey()));
@@ -151,9 +151,9 @@ public class TsFileSketchTool {
       printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos()) + "|\t[TsFileMetaData]");
       printlnBoth(pw,
           String.format("%20s", "") + "|\t\t[num of devices] " + tsFileMetaData
-              .getDeviceMetadataMap().size());
+              .getDeviceMetadataIndex().size());
       printlnBoth(pw,
-          String.format("%20s", "") + "|\t\t" + tsFileMetaData.getDeviceMetadataMap().size()
+          String.format("%20s", "") + "|\t\t" + tsFileMetaData.getDeviceMetadataIndex().size()
               + " key&TsDeviceMetadataIndex");
       // boolean createByIsNotNull = (tsFileMetaData.getCreatedBy() != null);
       // printlnBoth(pw,

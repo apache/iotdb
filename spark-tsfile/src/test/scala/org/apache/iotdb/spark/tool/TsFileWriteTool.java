@@ -49,11 +49,11 @@ public class TsFileWriteTool {
 
     // add measurements into file schema
     tsFileWriter
-        .addTimeseries(new Path("device_1", "sensor_1"), new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+        .registerTimeseries(new Path("device_1", "sensor_1"), new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
     tsFileWriter
-        .addTimeseries(new Path("device_1", "sensor_2"), new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+        .registerTimeseries(new Path("device_1", "sensor_2"), new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
     tsFileWriter
-        .addTimeseries(new Path("device_1", "sensor_3"), new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
+        .registerTimeseries(new Path("device_1", "sensor_3"), new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
     // construct TSRecord
     TSRecord tsRecord = new TSRecord(1, "device_1");
@@ -147,7 +147,7 @@ public class TsFileWriteTool {
 
     // add measurements into file schema
     tsFileWriter
-        .addTimeseries(new Path("device_1","sensor_1"), 
+        .registerTimeseries(new Path("device_1","sensor_1"),
             new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
     for (long i = 0; i < largeNum; i++) {
       // construct TSRecord
@@ -172,10 +172,10 @@ public class TsFileWriteTool {
     // NOTE the measurments here are different from those defined in create1 and
     // create2 function, despite their names are the same.
     tsFileWriter
-        .addTimeseries(new Path("device_1","sensor_1"), 
+        .registerTimeseries(new Path("device_1","sensor_1"),
             new MeasurementSchema("sensor_1", TSDataType.BOOLEAN, TSEncoding.RLE));
     tsFileWriter
-        .addTimeseries(new Path("device_1","sensor_2"), 
+        .registerTimeseries(new Path("device_1","sensor_2"),
             new MeasurementSchema("sensor_2", TSDataType.TEXT, TSEncoding.PLAIN));
 
     // construct TSRecord
@@ -245,16 +245,16 @@ public class TsFileWriteTool {
     TsFileWriter tsFileWriter = new TsFileWriter(f);
 
     tsFileWriter
-        .addTimeseries(new Path("device_1","sensor_1"), 
+        .registerTimeseries(new Path("device_1","sensor_1"),
             new MeasurementSchema("sensor_1", TSDataType.INT32, TSEncoding.RLE));
     tsFileWriter
-        .addTimeseries(new Path("device_2","sensor_1"), 
+        .registerTimeseries(new Path("device_2","sensor_1"),
             new MeasurementSchema("sensor_1", TSDataType.INT32, TSEncoding.RLE));
     tsFileWriter
-        .addTimeseries(new Path("device_2","sensor_2"), 
+        .registerTimeseries(new Path("device_2","sensor_2"),
             new MeasurementSchema("sensor_2", TSDataType.FLOAT, TSEncoding.RLE));
     tsFileWriter
-        .addTimeseries(new Path("device_2","sensor_3"), 
+        .registerTimeseries(new Path("device_2","sensor_3"),
             new MeasurementSchema("sensor_3", TSDataType.BOOLEAN, TSEncoding.RLE));
 
     int j = 0;

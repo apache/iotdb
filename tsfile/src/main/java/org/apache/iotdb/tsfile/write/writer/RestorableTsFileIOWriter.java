@@ -128,7 +128,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       if (reader.isComplete()) {
         reader.loadMetadataSize();
         TsFileMetadata metaData = reader.readFileMetadata();
-        for (Pair<Long, Integer> deviceMetaData : metaData.getDeviceMetadataMap().values()) {
+        for (Pair<Long, Integer> deviceMetaData : metaData.getDeviceMetadataIndex().values()) {
           if (position > deviceMetaData.left) {
             position = deviceMetaData.left;
           }

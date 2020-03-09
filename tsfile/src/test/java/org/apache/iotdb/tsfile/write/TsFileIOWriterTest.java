@@ -104,6 +104,6 @@ public class TsFileIOWriterTest {
 
     // FileMetaData
     TsFileMetadata metaData = reader.readFileMetadata();
-    Assert.assertEquals(1, metaData.getDeviceMetadataMap().size());
+    Assert.assertEquals(1, metaData.getDeviceMetadataIndex().size());
   }
 }
