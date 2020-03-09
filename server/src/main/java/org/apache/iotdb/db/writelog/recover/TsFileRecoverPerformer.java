@@ -162,7 +162,7 @@ public class TsFileRecoverPerformer {
         new TsFileSequenceReader(tsFileResource.getFile().getAbsolutePath(), false)) {
       TsFileMetadata metaData = reader.readFileMetadata();
       
-      Map<String, Pair<Long, Integer>> deviceMetaDataMap = metaData.getDeviceMetadataMap();
+      Map<String, Pair<Long, Integer>> deviceMetaDataMap = metaData.getDeviceMetadataIndex();
       for (Map.Entry<String, Pair<Long, Integer>>  entry: deviceMetaDataMap.entrySet()) {
         String deviceId = entry.getKey();
         List<ChunkMetadata> chunkMetadataList = reader.readAllChunkMetadatas();

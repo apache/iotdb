@@ -127,9 +127,9 @@ public class SeriesReaderTestUtil {
     for (MeasurementSchema measurementSchema : measurementSchemas) {
       template.put(measurementSchema.getMeasurementId(), measurementSchema);
     }
-    fileWriter.addDeviceTemplate("template0", template);
+    fileWriter.registerDeviceTemplate("template0", template);
     for (String deviceId : deviceIds) {
-      fileWriter.addDevice(deviceId, "template0");
+      fileWriter.registerDevice(deviceId, "template0");
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (String deviceId : deviceIds) {

@@ -154,16 +154,15 @@ public class TsFileWriter implements AutoCloseable {
   }
 
 
-  public void addDeviceTemplate(String templateName, Map<String, MeasurementSchema> template)
-      throws WriteProcessException {
+  public void registerDeviceTemplate(String templateName, Map<String, MeasurementSchema> template) {
     schema.registerDeviceTemplate(templateName, template);
   }
 
-  public void addDevice(String deviceId, String templateName) throws WriteProcessException {
+  public void registerDevice(String deviceId, String templateName) {
     schema.registerDevice(deviceId, templateName);
   }
 
-  public void addTimeseries(Path path, MeasurementSchema measurementSchema)
+  public void registerTimeseries(Path path, MeasurementSchema measurementSchema)
       throws WriteProcessException {
     if (schema.containsTimeseries(path)) {
       throw new WriteProcessException("given timeseries has exists! " + path.toString());

@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -126,11 +126,6 @@ public class TsFileIOWriter {
     out.write(versionNumberBytes);
   }
 
-  /**
-   * start a {@linkplain ChunkGroupMetaData ChunkGroupMetaData}.
-   *
-   * @param deviceId device id
-   */
   public void startChunkGroup(String deviceId) throws IOException {
     this.deviceId = deviceId;
     currentChunkGroupStartOffset = out.getPosition();
@@ -159,7 +154,7 @@ public class TsFileIOWriter {
   /**
    * start a {@linkplain ChunkMetadata ChunkMetaData}.
    *
-   * @param MeasurementSchema     - schema of this time series
+   * @param measurementSchema    - schema of this time series
    * @param compressionCodecName - compression name of this time series
    * @param tsDataType           - data type
    * @param statistics           - Chunk statistics
@@ -219,7 +214,6 @@ public class TsFileIOWriter {
   /**
    * write {@linkplain TsFileMetadata TSFileMetaData} to output stream and close it.
    *
-   * @param schema Schema
    * @throws IOException if I/O error occurs
    */
   public void endFile() throws IOException {
@@ -232,7 +226,7 @@ public class TsFileIOWriter {
     Map<String, Pair<Long, Integer>> deviceMetaDataMap = flushAllChunkMetadataList();
     
     TsFileMetadata tsFileMetaData = new TsFileMetadata();
-    tsFileMetaData.setDeviceMetadataMap(deviceMetaDataMap);
+    tsFileMetaData.setDeviceMetadataIndex(deviceMetaDataMap);
     tsFileMetaData.setVersionInfo(versionInfo);
     tsFileMetaData.setTotalChunkNum(totalChunkNum);
     tsFileMetaData.setInvalidChunkNum(invalidChunkNum);
@@ -275,13 +269,13 @@ public class TsFileIOWriter {
   private Map<String, Pair<Long, Integer>> flushAllChunkMetadataList() throws IOException {
 
     // convert ChunkMetadataList to this field
-    Map<String, List<TimeseriesMetaData>> deviceTimeseriesMetadataMap = new LinkedHashMap<>();
+    Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap = new LinkedHashMap<>();
     // create device -> TimeseriesMetaDataList Map
     for (Map.Entry<Path, List<ChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
       Path path = entry.getKey();
       String deviceId = path.getDevice();
       // create TimeseriesMetaData
-      TimeseriesMetaData timeseriesMetaData = new TimeseriesMetaData();
+      TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
       timeseriesMetaData.setMeasurementId(path.getMeasurement());
       timeseriesMetaData.setTSDataType(entry.getValue().get(0).getDataType());
       timeseriesMetaData.setOffsetOfChunkMetaDataList(out.getPosition());
@@ -299,13 +293,13 @@ public class TsFileIOWriter {
     }
     // create DeviceMetaDataMap device -> Pair<TimeseriesMetaDataOffset, TimeseriesMetaDataLength> 
     Map<String, Pair<Long, Integer>> deviceMetadataMap = new HashMap<>();
-    for (Map.Entry<String, List<TimeseriesMetaData>> entry : deviceTimeseriesMetadataMap
+    for (Map.Entry<String, List<TimeseriesMetadata>> entry : deviceTimeseriesMetadataMap
         .entrySet()) {
       String deviceId = entry.getKey();
-      List<TimeseriesMetaData> timeseriesMetaDataList = entry.getValue();
+      List<TimeseriesMetadata> timeseriesMetadataList = entry.getValue();
       long offsetOfFirstTimeseriesMetaDataInDevice = out.getPosition();
       int size = 0;
-      for (TimeseriesMetaData timeseriesMetaData : timeseriesMetaDataList) {
+      for (TimeseriesMetadata timeseriesMetaData : timeseriesMetadataList) {
         size += timeseriesMetaData.serializeTo(out.wrapAsStream());
       }
       deviceMetadataMap

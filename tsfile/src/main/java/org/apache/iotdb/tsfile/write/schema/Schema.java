@@ -27,10 +27,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 
 /**
- * Schema stores the schema of the measurements and devices that exist in this file. All devices
- * written to the same TsFile shall have the same schema. Schema takes the JSON schema file as a
- * parameter and registers measurements in such JSON. Schema also records all existing device IDs in
- * this file.
+ * The schema of timeseries that exist in this file. The deviceTemplates is a simplified manner to
+ * batch create schema of timeseries.
  */
 public class Schema {
 

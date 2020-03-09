@@ -22,14 +22,11 @@ package org.apache.iotdb.tsfile.file.metadata;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-public class TimeseriesMetaData {
+public class TimeseriesMetadata {
 
   private long startOffsetOfChunkMetaDataList;
   private int chunkMetaDataListDataSize;
@@ -39,11 +36,8 @@ public class TimeseriesMetaData {
   
   private Statistics<?> statistics;
 
-  public TimeseriesMetaData() {
-  }
-
-  public static TimeseriesMetaData deserializeFrom(ByteBuffer buffer) {
-    TimeseriesMetaData timeseriesMetaData = new TimeseriesMetaData();
+  public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer) {
+    TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readString(buffer));
     timeseriesMetaData.setTSDataType(ReadWriteIOUtils.readDataType(buffer));
     timeseriesMetaData.setOffsetOfChunkMetaDataList(ReadWriteIOUtils.readLong(buffer));

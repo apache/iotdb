@@ -66,7 +66,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   private int totalChunkNum;
   private TsFileMetadata tsFileMetaData;
   private EndianType endianType = EndianType.BIG_ENDIAN;
-  private Map<String, Map<String, TimeseriesMetaData>> cachedTimeseriesMetaDataMap;
+  // device -> measurement -> TimeseriesMetadata
+  private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadata = new ConcurrentHashMap();
   private boolean cacheDeviceMetadata;
   private ConcurrentHashMap deviceMetadataMap;
 
@@ -263,33 +264,27 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return the map measurementId -> TimeseriesMetaData in one device
    * @throws IOException io error
    */
-  public Map<String, TimeseriesMetaData> readAllTimeseriesMetaDataInDevice(String device)
-      throws IOException {
-    if (cachedTimeseriesMetaDataMap == null) {
-      cachedTimeseriesMetaDataMap = new HashMap<>();
-    }
-    if (cachedTimeseriesMetaDataMap.containsKey(device)) {
-      return cachedTimeseriesMetaDataMap.get(device);
+  public Map<String, TimeseriesMetadata> readDeviceMetadata(String device) throws IOException {
+    if (cachedDeviceMetadata.containsKey(device)) {
+      return cachedDeviceMetadata.get(device);
     }
 
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
-    if (tsFileMetaData.getDeviceMetadataMap() == null
-        || !tsFileMetaData.getDeviceMetadataMap().containsKey(device)) {
+    if (tsFileMetaData.getDeviceMetadataIndex() == null
+        || !tsFileMetaData.getDeviceMetadataIndex().containsKey(device)) {
       return new HashMap<>();
     }
-    Pair<Long, Integer> deviceMetadata = tsFileMetaData.getDeviceMetadataMap().get(device);
-    Map<String, TimeseriesMetaData> timeseriesMetaDataMapInOneDevice = new HashMap<>();
-    ByteBuffer buffer = readData(deviceMetadata.left, deviceMetadata.right);
+    Pair<Long, Integer> deviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex().get(device);
+    Map<String, TimeseriesMetadata> deviceMetadata = new HashMap<>();
+    ByteBuffer buffer = readData(deviceMetadataIndex.left, deviceMetadataIndex.right);
     while (buffer.hasRemaining()) {
-      TimeseriesMetaData tsMetaData = TimeseriesMetaData.deserializeFrom(buffer);
-      if (tsMetaData != null) {
-        timeseriesMetaDataMapInOneDevice.put(tsMetaData.getMeasurementId(), tsMetaData);
-      }
+      TimeseriesMetadata tsMetaData = TimeseriesMetadata.deserializeFrom(buffer);
+      deviceMetadata.put(tsMetaData.getMeasurementId(), tsMetaData);
     }
-    cachedTimeseriesMetaDataMap.put(device, timeseriesMetaDataMapInOneDevice);
-    return timeseriesMetaDataMapInOneDevice;
+    cachedDeviceMetadata.put(device, deviceMetadata);
+    return deviceMetadata;
   }
 
   /**
@@ -304,15 +299,15 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
-    if (tsFileMetaData.getDeviceMetadataMap() == null
-        || !tsFileMetaData.getDeviceMetadataMap().containsKey(device)) {
+    if (tsFileMetaData.getDeviceMetadataIndex() == null
+        || !tsFileMetaData.getDeviceMetadataIndex().containsKey(device)) {
       return new ArrayList<>();
     }
     List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
-    Pair<Long, Integer> deviceMetaData = tsFileMetaData.getDeviceMetadataMap().get(device);
+    Pair<Long, Integer> deviceMetaData = tsFileMetaData.getDeviceMetadataIndex().get(device);
     ByteBuffer buffer = readData(deviceMetaData.left, deviceMetaData.right);
     while (buffer.hasRemaining()) {
-      TimeseriesMetaData timeseriesMetaData = TimeseriesMetaData.deserializeFrom(buffer);
+      TimeseriesMetadata timeseriesMetaData = TimeseriesMetadata.deserializeFrom(buffer);
       chunkMetadataList.addAll(readChunkMetaDataList(timeseriesMetaData));
     }
     return chunkMetadataList;
@@ -328,11 +323,11 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
-    if (tsFileMetaData.getDeviceMetadataMap() == null) {
+    if (tsFileMetaData.getDeviceMetadataIndex() == null) {
       return new ArrayList<>();
     }
     List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
-    for (String deviceId : tsFileMetaData.getDeviceMetadataMap().keySet()) {
+    for (String deviceId : tsFileMetaData.getDeviceMetadataIndex().keySet()) {
       chunkMetadataList.addAll(readChunkMetadataInDevice(deviceId));
     }
     return chunkMetadataList;
@@ -349,13 +344,13 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
-    Map<String, Pair<Long, Integer>> deviceMetaDataMap = tsFileMetaData.getDeviceMetadataMap();
+    Map<String, Pair<Long, Integer>> deviceMetaDataMap = tsFileMetaData.getDeviceMetadataIndex();
     for (Map.Entry<String, Pair<Long, Integer>> entry : deviceMetaDataMap.entrySet()) {
       String deviceId = entry.getKey();
       Pair<Long, Integer> deviceMetaData = entry.getValue();
       ByteBuffer buffer = readData(deviceMetaData.left, deviceMetaData.right);
       while (buffer.hasRemaining()) {
-        TimeseriesMetaData tsMetaData = TimeseriesMetaData.deserializeFrom(buffer);
+        TimeseriesMetadata tsMetaData = TimeseriesMetadata.deserializeFrom(buffer);
         paths.add(new Path(deviceId, tsMetaData.getMeasurementId()));
       }
     }
@@ -728,16 +723,16 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
-   * get ChunkMetaDatas in given path
+   * get ChunkMetaDatas of given path
    *
-   * @param Path of timeseries
+   * @param path timeseries path
    * @return List of ChunkMetaData
    */
   public List<ChunkMetadata> getChunkMetadataList(Path path) throws IOException {
-    Map<String, TimeseriesMetaData> timeseriesMetaDataMap =
-        readAllTimeseriesMetaDataInDevice(path.getDevice());
+    Map<String, TimeseriesMetadata> timeseriesMetaDataMap =
+        readDeviceMetadata(path.getDevice());
 
-    TimeseriesMetaData timeseriesMetaData = timeseriesMetaDataMap.get(path.getMeasurement());
+    TimeseriesMetadata timeseriesMetaData = timeseriesMetaDataMap.get(path.getMeasurement());
     if (timeseriesMetaData == null) {
       return new ArrayList<>();
     }
@@ -749,10 +744,10 @@ public class TsFileSequenceReader implements AutoCloseable {
   /**
    * get ChunkMetaDatas in given TimeseriesMetaData
    *
-   * @param TimeseriesMetaData
+   * @param timeseriesMetaData
    * @return List of ChunkMetaData
    */
-  public List<ChunkMetadata> readChunkMetaDataList(TimeseriesMetaData timeseriesMetaData)
+  public List<ChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
       throws IOException {
     List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
     long startOffsetOfChunkMetadataList = timeseriesMetaData.getOffsetOfChunkMetaDataList();
@@ -770,21 +765,21 @@ public class TsFileSequenceReader implements AutoCloseable {
    *
    * @return list of TimeseriesMetaData
    */
-  public List<TimeseriesMetaData> getSortedTimeseriesMetaDataListByDeviceIds() throws IOException {
+  public List<TimeseriesMetadata> getSortedTimeseriesMetaDataListByDeviceIds() throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
-    List<TimeseriesMetaData> result = new ArrayList<>();
-    for (Map.Entry<String, Pair<Long, Integer>> entry : tsFileMetaData.getDeviceMetadataMap()
+    List<TimeseriesMetadata> result = new ArrayList<>();
+    for (Map.Entry<String, Pair<Long, Integer>> entry : tsFileMetaData.getDeviceMetadataIndex()
         .entrySet()) {
       // read TimeseriesMetaData from file
       ByteBuffer buffer = readData(entry.getValue().left, entry.getValue().right);
       while (buffer.hasRemaining()) {
-        TimeseriesMetaData timeserieMetaData = TimeseriesMetaData.deserializeFrom(buffer);
+        TimeseriesMetadata timeserieMetaData = TimeseriesMetadata.deserializeFrom(buffer);
         result.add(timeserieMetaData);
       }
     } // sort by the start offset Of the ChunkMetaDataList
-    result.sort(Comparator.comparingLong(TimeseriesMetaData::getOffsetOfChunkMetaDataList));
+    result.sort(Comparator.comparingLong(TimeseriesMetadata::getOffsetOfChunkMetaDataList));
     return result;
   }
 
@@ -802,7 +797,7 @@ public class TsFileSequenceReader implements AutoCloseable {
 
     try {
       TsFileMetadata tsFileMetaData = readFileMetadata();
-      for (Map.Entry<String, Pair<Long, Integer>> entry : tsFileMetaData.getDeviceMetadataMap()
+      for (Map.Entry<String, Pair<Long, Integer>> entry : tsFileMetaData.getDeviceMetadataIndex()
           .entrySet()) {
         List<ChunkMetadata> chunkMetadataInOneDevices = readChunkMetadataInDevice(entry.getKey());
         LocateStatus mode = checkLocateStatus(chunkMetadataInOneDevices, start,
@@ -819,22 +814,22 @@ public class TsFileSequenceReader implements AutoCloseable {
     return res;
   }
 
-  public Map<String, List<TimeseriesMetaData>> getSortedTimeseriesMetaDataMap() throws IOException {
+  public Map<String, List<TimeseriesMetadata>> getSortedTimeseriesMetaDataMap() throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
-    Map<String, List<TimeseriesMetaData>> result = new LinkedHashMap<>();
-    for (Map.Entry<String, Pair<Long, Integer>> entry : tsFileMetaData.getDeviceMetadataMap()
+    Map<String, List<TimeseriesMetadata>> result = new LinkedHashMap<>();
+    for (Map.Entry<String, Pair<Long, Integer>> entry : tsFileMetaData.getDeviceMetadataIndex()
         .entrySet()) {
       // read TimeseriesMetaData from file
       String deviceId = entry.getKey();
-      List<TimeseriesMetaData> timeseriesMetaDataList = new ArrayList<>();
+      List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
       ByteBuffer buffer = readData(entry.getValue().left, entry.getValue().right);
       while (buffer.hasRemaining()) {
-        TimeseriesMetaData timeserieMetaData = TimeseriesMetaData.deserializeFrom(buffer);
-        timeseriesMetaDataList.add(timeserieMetaData);
+        TimeseriesMetadata timeserieMetaData = TimeseriesMetadata.deserializeFrom(buffer);
+        timeseriesMetadataList.add(timeserieMetaData);
       }
-      result.put(deviceId, timeseriesMetaDataList);
+      result.put(deviceId, timeseriesMetadataList);
     }
     return result;
   }

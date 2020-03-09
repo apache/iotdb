@@ -112,7 +112,7 @@ public class MergeOverLapTest extends MergeTest {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
     for (String deviceId : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        fileWriter.addTimeseries(
+        fileWriter.registerTimeseries(
             new Path(deviceId, measurementSchema.getMeasurementId()), measurementSchema);
       }
     }

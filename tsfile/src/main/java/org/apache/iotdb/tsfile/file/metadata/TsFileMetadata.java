@@ -47,7 +47,7 @@ public class TsFileMetadata {
   // bloom filter
   private BloomFilter bloomFilter;
 
-  private Map<String, Pair<Long, Integer>> deviceMetadataMap;
+  private Map<String, Pair<Long, Integer>> deviceMetadataIndex;
   
   private Map<Long, Long> versionInfo;
 
@@ -71,7 +71,7 @@ public class TsFileMetadata {
         int length = ReadWriteIOUtils.readInt(buffer);
         deviceMetaDataMap.put(deviceId, new Pair<>(offset, length));
       }
-      fileMetaData.setDeviceMetadataMap(deviceMetaDataMap);
+      fileMetaData.setDeviceMetadataIndex(deviceMetaDataMap);
     }
 
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
@@ -100,9 +100,9 @@ public class TsFileMetadata {
    */
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
-    if (deviceMetadataMap != null) {
-      byteLen += ReadWriteIOUtils.write(deviceMetadataMap.size(), outputStream);
-      for (Map.Entry<String, Pair<Long, Integer>> entry : deviceMetadataMap.entrySet()) {
+    if (deviceMetadataIndex != null) {
+      byteLen += ReadWriteIOUtils.write(deviceMetadataIndex.size(), outputStream);
+      for (Map.Entry<String, Pair<Long, Integer>> entry : deviceMetadataIndex.entrySet()) {
         byteLen += ReadWriteIOUtils.write(entry.getKey(), outputStream);
         byteLen += ReadWriteIOUtils.write(entry.getValue().left, outputStream);
         byteLen += ReadWriteIOUtils.write(entry.getValue().right, outputStream);
@@ -120,7 +120,6 @@ public class TsFileMetadata {
    * use the given outputStream to serialize bloom filter.
    *
    * @param outputStream      -output stream to determine byte length
-   * @param schemaDescriptors
    * @return -byte length
    */
   public int serializeBloomFilter(OutputStream outputStream, Set<Path> paths)
@@ -140,7 +139,6 @@ public class TsFileMetadata {
   /**
    * build bloom filter
    *
-   * @param schemaDescriptors
    * @return bloom filter
    */
   private BloomFilter buildBloomFilter(Set<Path> paths) {
@@ -169,12 +167,12 @@ public class TsFileMetadata {
     this.invalidChunkNum = invalidChunkNum;
   }
 
-  public Map<String, Pair<Long, Integer>> getDeviceMetadataMap() {
-    return deviceMetadataMap;
+  public Map<String, Pair<Long, Integer>> getDeviceMetadataIndex() {
+    return deviceMetadataIndex;
   }
 
-  public void setDeviceMetadataMap(Map<String, Pair<Long, Integer>> deviceMetadataMap) {
-    this.deviceMetadataMap = deviceMetadataMap;
+  public void setDeviceMetadataIndex(Map<String, Pair<Long, Integer>> deviceMetadataIndex) {
+    this.deviceMetadataIndex = deviceMetadataIndex;
   }
 
   public void setVersionInfo(Map<Long, Long> versionInfo) {

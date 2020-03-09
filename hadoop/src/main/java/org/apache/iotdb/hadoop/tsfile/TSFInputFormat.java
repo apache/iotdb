@@ -30,7 +30,7 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
 import org.apache.iotdb.hadoop.tsfile.TSFInputSplit.ChunkGroupInfo;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -305,11 +305,11 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
     int currentBlockIndex = 0;
     long splitSize = 0;
     List<String> hosts = new ArrayList<>();
-    for (Map.Entry<String, List<TimeseriesMetaData>> entry : fileReader.getSortedTimeseriesMetaDataMap().entrySet()) {
+    for (Map.Entry<String, List<TimeseriesMetadata>> entry : fileReader.getSortedTimeseriesMetaDataMap().entrySet()) {
       String deviceId = entry.getKey();
-      List<TimeseriesMetaData> timeseriesMetaDataList = entry.getValue();
+      List<TimeseriesMetadata> timeseriesMetadataList = entry.getValue();
       logger.info("The device name is {}", deviceId);
-      for (TimeseriesMetaData timeseriesMetaData : timeseriesMetaDataList) {
+      for (TimeseriesMetadata timeseriesMetaData : timeseriesMetadataList) {
         List<ChunkMetadata> chunkMetadataList = fileReader.readChunkMetaDataList(timeseriesMetaData);
         for (ChunkMetadata chunkMetaData : chunkMetadataList) {
           long middle = chunkMetaData.getOffsetOfChunkHeader() 

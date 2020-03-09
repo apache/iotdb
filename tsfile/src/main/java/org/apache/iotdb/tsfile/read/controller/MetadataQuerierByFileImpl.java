@@ -30,7 +30,7 @@ import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -106,15 +106,15 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       String selectedDevice = deviceMeasurements.getKey();
       // s1, s2, s3
       Set<String> selectedMeasurements = deviceMeasurements.getValue();
-      if (fileMetaData.getDeviceMetadataMap() == null
-          || !fileMetaData.getDeviceMetadataMap().containsKey(selectedDevice)) {
+      if (fileMetaData.getDeviceMetadataIndex() == null
+          || !fileMetaData.getDeviceMetadataIndex().containsKey(selectedDevice)) {
         continue;
       }
 
-      Map<String, TimeseriesMetaData> timeseriesMetaDataInDevice = tsFileReader
-          .readAllTimeseriesMetaDataInDevice(selectedDevice);
+      Map<String, TimeseriesMetadata> timeseriesMetaDataInDevice = tsFileReader
+          .readDeviceMetadata(selectedDevice);
       List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
-      for (Map.Entry<String, TimeseriesMetaData> entry : timeseriesMetaDataInDevice.entrySet()) {
+      for (Map.Entry<String, TimeseriesMetadata> entry : timeseriesMetaDataInDevice.entrySet()) {
         if (selectedMeasurements.contains(entry.getKey())) {
           chunkMetadataList.addAll(tsFileReader.readChunkMetaDataList(entry.getValue()));
         }

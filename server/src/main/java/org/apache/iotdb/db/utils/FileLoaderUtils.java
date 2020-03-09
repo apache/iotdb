@@ -30,16 +30,13 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class FileLoaderUtils {
-
-  private FileLoaderUtils() {
-  }
 
   public static void checkTsFileResource(TsFileResource tsFileResource) throws IOException {
     if (!tsFileResource.fileExists()) {
@@ -58,10 +55,10 @@ public class FileLoaderUtils {
 
   public static void updateTsFileResource(TsFileMetadata metaData, TsFileSequenceReader reader,
       TsFileResource tsFileResource) throws IOException {
-    for (String device : metaData.getDeviceMetadataMap().keySet()) {
-      Map<String, TimeseriesMetaData> chunkMetadataListInOneDevice = reader
-          .readAllTimeseriesMetaDataInDevice(device);
-      for (TimeseriesMetaData timeseriesMetaData : chunkMetadataListInOneDevice.values()) {
+    for (String device : metaData.getDeviceMetadataIndex().keySet()) {
+      Map<String, TimeseriesMetadata> chunkMetadataListInOneDevice = reader
+          .readDeviceMetadata(device);
+      for (TimeseriesMetadata timeseriesMetaData : chunkMetadataListInOneDevice.values()) {
         tsFileResource.updateStartTime(device, timeseriesMetaData.getStatistics().getStartTime());
         tsFileResource.updateEndTime(device, timeseriesMetaData.getStatistics().getEndTime());
       }
