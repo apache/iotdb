@@ -60,7 +60,7 @@ public class RestService implements RestServiceMBean, IService {
 
   @Override
   public void start() {
-    if (!IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableHTTPService()) {
       return;
     }
     try {
@@ -73,7 +73,7 @@ public class RestService implements RestServiceMBean, IService {
 
   @Override
   public void stop() {
-    if (!IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableHTTPService()) {
       return;
     }
     stopService();
@@ -82,7 +82,7 @@ public class RestService implements RestServiceMBean, IService {
 
   @Override
   public synchronized void startService() {
-    if (!IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableHTTPService()) {
       return;
     }
     logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
@@ -114,7 +114,7 @@ public class RestService implements RestServiceMBean, IService {
 
   @Override
   public void stopService() {
-    if (!IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableHTTPService()) {
       return;
     }
     logger.info("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());

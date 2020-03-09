@@ -196,7 +196,7 @@ public class EnvironmentUtils {
     System.setProperty(IoTDBConstant.REMOTE_JMX_PORT_NAME, "31999");
     IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(0);
     //we do not start 8181 port in test.
-    IoTDBDescriptor.getInstance().getConfig().setEnableMetricService(enableRestService);
+    IoTDBDescriptor.getInstance().getConfig().setEnableHTTPService(enableRestService);
     if (daemon == null) {
       daemon = new IoTDB();
     }

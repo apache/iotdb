@@ -96,7 +96,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(MergeManager.getINSTANCE());
     registerManager.register(CacheHitRatioMonitor.getInstance());
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableHTTPService()) {
       registerManager.register(RestService.getInstance());
     }
     registerManager.register(StorageEngine.getInstance());

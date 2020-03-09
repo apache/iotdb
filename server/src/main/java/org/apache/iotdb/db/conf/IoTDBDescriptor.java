@@ -117,8 +117,8 @@ public class IoTDBDescriptor {
       conf.setRestPort(Integer.parseInt(properties.getProperty("metrics_port",
           Integer.toString(conf.getRestPort()))));
 
-      conf.setEnableMetricService(Boolean.parseBoolean(properties
-          .getProperty("enable_metric_service", Boolean.toString(conf.isEnableMetricService()))));
+      conf.setEnableHTTPService(Boolean.parseBoolean(properties
+          .getProperty("enable_metric_service", Boolean.toString(conf.isEnableHTTPService()))));
 
 
       conf.setQueryCacheSizeInMetric(Integer

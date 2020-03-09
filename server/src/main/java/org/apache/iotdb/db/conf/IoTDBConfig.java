@@ -49,7 +49,7 @@ public class IoTDBConfig {
 
   private int restPort = 8181;
 
-  private boolean enableMetricService = false;
+  private boolean enableHTTPService = false;
 
   private String rpcAddress = "0.0.0.0";
 
@@ -621,12 +621,12 @@ public class IoTDBConfig {
     this.restPort = restPort;
   }
 
-  public boolean isEnableMetricService() {
-    return enableMetricService;
+  public boolean isEnableHTTPService() {
+    return enableHTTPService;
   }
 
-  public void setEnableMetricService(boolean enableMetricService) {
-    this.enableMetricService = enableMetricService;
+  public void setEnableHTTPService(boolean enableHTTPService) {
+    this.enableHTTPService = enableHTTPService;
   }
 
   void setDataDirs(String[] dataDirs) {
