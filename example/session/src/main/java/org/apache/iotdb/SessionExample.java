@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb;
 
-import org.apache.iotdb.rpc.IoTDBRPCException;
-import org.apache.iotdb.session.IoTDBSessionException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -28,9 +28,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.thrift.TException;
-
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,7 +36,7 @@ public class SessionExample {
   private static Session session;
 
   public static void main(String[] args)
-          throws IoTDBSessionException, TException, IoTDBRPCException, SQLException {
+      throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -64,7 +61,7 @@ public class SessionExample {
     session.close();
   }
 
-  private static void insert() throws IoTDBSessionException {
+  private static void insert() throws IoTDBConnectionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -79,7 +76,7 @@ public class SessionExample {
     }
   }
 
-  private static void insertInBatch() throws IoTDBSessionException {
+  private static void insertInBatch() throws IoTDBConnectionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -126,7 +123,7 @@ public class SessionExample {
    * Users need to control the count of RowBatch and write a batch when it reaches the maxBatchSize
    *
    */
-  private static void insertRowBatch() throws IoTDBSessionException {
+  private static void insertRowBatch() throws IoTDBConnectionException {
     // The schema of sensors of one device
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
@@ -157,13 +154,13 @@ public class SessionExample {
     }
   }
 
-  private static void deleteData() throws IoTDBSessionException {
+  private static void deleteData() throws IoTDBConnectionException {
     String path = "root.sg1.d1.s1";
     long deleteTime = 99;
     session.deleteData(path, deleteTime);
   }
 
-  private static void deleteTimeseries() throws IoTDBSessionException {
+  private static void deleteTimeseries() throws IoTDBConnectionException {
     List<String> paths = new ArrayList<>();
     paths.add("root.sg1.d1.s1");
     paths.add("root.sg1.d1.s2");
@@ -171,8 +168,9 @@ public class SessionExample {
     session.deleteTimeseries(paths);
   }
 
-  private static void query() throws TException, IoTDBRPCException, SQLException {
-    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+  private static void query() throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet;
+    dataSet = session.executeQueryStatement("select * from root.sg1.d1");
     dataSet.setBatchSize(1024); // default is 512
     while (dataSet.hasNext()){
       System.out.println(dataSet.next());
@@ -181,7 +179,7 @@ public class SessionExample {
     dataSet.closeOperationHandle();
   }
 
-  private static void nonQuery() throws TException, IoTDBRPCException, SQLException {
+  private static void nonQuery() throws IoTDBConnectionException, StatementExecutionException {
     session.executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(200, 1);");
   }
 }

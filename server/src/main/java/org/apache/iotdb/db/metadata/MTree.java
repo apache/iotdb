@@ -562,7 +562,7 @@ public class MTree implements Serializable {
             parent + node.getName() + PATH_SEPARATOR, res, length);
       }
     } else {
-      if (node instanceof InternalMNode) {
+      if (node instanceof InternalMNode && node.getChildren().size() > 0) {
         for (MNode child : node.getChildren().values()) {
           if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
             continue;
@@ -575,7 +575,13 @@ public class MTree implements Serializable {
           }
         }
       } else if (idx == length) {
-        res.add(parent + node.getName());
+        String nodeName;
+        if (node.getName().contains(TsFileConstant.PATH_SEPARATOR)) {
+          nodeName = "\"" + node + "\"";
+        } else {
+          nodeName = node.getName();
+        }
+        res.add(parent + nodeName);
       }
     }
   }
