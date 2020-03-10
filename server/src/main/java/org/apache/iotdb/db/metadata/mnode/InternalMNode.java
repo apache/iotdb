@@ -51,9 +51,6 @@ public class InternalMNode extends MNode {
 
   @Override
   public MNode getChild(String name) {
-    if (!children.containsKey(name) && children.containsKey(EmptyDeviceMNode.NAME)) {
-      return children.get(EmptyDeviceMNode.NAME).getChild(name);
-    }
     return children.get(name);
   }
 

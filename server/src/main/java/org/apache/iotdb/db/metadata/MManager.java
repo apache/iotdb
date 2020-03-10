@@ -48,7 +48,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
-import org.apache.iotdb.db.metadata.mnode.DeviceMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.MonitorConstants;
@@ -542,13 +541,13 @@ public class MManager {
       throws MetadataException {
     lock.readLock().lock();
     try {
-      DeviceMNode deviceMNode = (DeviceMNode) getNodeByPath(deviceId);
+      MNode deviceNode = getNodeByPath(deviceId);
       MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurements.length];
       for (int i = 0; i < measurementSchemas.length; i++) {
-        if (!deviceMNode.hasChild(measurements[i])) {
+        if (!deviceNode.hasChild(measurements[i])) {
           throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
         }
-        measurementSchemas[i] = ((LeafMNode) deviceMNode.getChild(measurements[i])).getSchema();
+        measurementSchemas[i] = ((LeafMNode) deviceNode.getChild(measurements[i])).getSchema();
       }
       return measurementSchemas;
     } finally {
@@ -735,7 +734,7 @@ public class MManager {
    *
    * @param path path
    */
-  public DeviceMNode getDeviceNodeWithAutoCreateStorageGroup(String path, boolean autoCreateSchema,
+  public MNode getDeviceNodeWithAutoCreateStorageGroup(String path, boolean autoCreateSchema,
       int sgLevel) throws MetadataException {
     lock.readLock().lock();
     MNode node = null;
@@ -754,17 +753,14 @@ public class MManager {
         if (shouldSetStorageGroup) {
           String storageGroupName = MetaUtils.getStorageGroupNameByLevel(path, sgLevel);
           setStorageGroup(storageGroupName);
-          node = mtree.getDeviceNodeWithAutoCreating(path);
         }
+        node = mtree.getDeviceNodeWithAutoCreating(path);
       }
     }
-    if (node instanceof DeviceMNode) {
-      return (DeviceMNode) node;
-    }
-    return mtree.getDeviceNode(path);
+    return node;
   }
 
-  public DeviceMNode getDeviceNodeWithAutoCreateStorageGroup(String path) throws MetadataException {
+  public MNode getDeviceNodeWithAutoCreateStorageGroup(String path) throws MetadataException {
     return getDeviceNodeWithAutoCreateStorageGroup(path, config.isAutoCreateSchemaEnabled(),
         config.getDefaultStorageGroupLevel());
   }
