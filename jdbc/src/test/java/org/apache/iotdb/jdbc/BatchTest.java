@@ -51,10 +51,7 @@ public class BatchTest {
   private long sessionId;
   @Mock
   private IoTDBStatement statement;
-  private TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
-  private TSStatus errorStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), "");
-  private TSStatus Status_SUCCESS = new TSStatus(successStatus);
-  private TSStatus Status_ERROR = new TSStatus(errorStatus);
+  private TSStatus errorStatus = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);
   private TSExecuteBatchStatementResp resp;
   private ZoneId zoneID = ZoneId.systemDefault();
 
@@ -133,7 +130,7 @@ public class BatchTest {
   @Test
   public void testExecuteBatchSQL3() throws SQLException, TException {
     Statement statement = connection.createStatement();
-    resp = RpcUtils.getTSBatchExecuteStatementResp(Status_ERROR);
+    resp = RpcUtils.getTSBatchExecuteStatementResp(errorStatus);
     List<TSStatus> resExpected = new ArrayList<TSStatus>() {
       {
         add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));

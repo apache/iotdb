@@ -28,6 +28,8 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class RpcUtils {
 
+  public static TSStatus SUCCESS_STATUS = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
   public static TSIService.Iface newSynchronizedClient(TSIService.Iface client) {
     return (TSIService.Iface) Proxy.newProxyInstance(RpcUtils.class.getClassLoader(),
         new Class[]{TSIService.Iface.class}, new SynchronizedHandler(client));
@@ -57,7 +59,7 @@ public class RpcUtils {
    * convert from TSStatusCode to TSStatus according to status code and status message
    */
   public static TSStatus getStatus(TSStatusCode tsStatusCode) {
-    return new TSStatus(tsStatusCode.getStatusCode(), "");
+    return new TSStatus(tsStatusCode.getStatusCode());
   }
 
   /**
@@ -67,7 +69,15 @@ public class RpcUtils {
    * @param message appending message
    */
   public static TSStatus getStatus(TSStatusCode tsStatusCode, String message) {
-    return new TSStatus(tsStatusCode.getStatusCode(), message);
+    TSStatus status = new TSStatus(tsStatusCode.getStatusCode());
+    status.setMessage(message);
+    return status;
+  }
+
+  public static TSStatus getStatus(int code, String message) {
+    TSStatus status = new TSStatus(code);
+    status.setMessage(message);
+    return status;
   }
 
   public static TSExecuteStatementResp getTSExecuteStatementResp(TSStatusCode tsStatusCode) {

@@ -103,16 +103,14 @@ public class UtilsTest {
   @Test
   public void testVerifySuccess() {
     try {
-      TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
-      RpcUtils.verifySuccess(new TSStatus(successStatus));
+      RpcUtils.verifySuccess(RpcUtils.SUCCESS_STATUS);
     } catch (Exception e) {
       fail();
     }
 
     try {
-      TSStatus errorStatus = new TSStatus(
-          TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), "");
-      RpcUtils.verifySuccess(new TSStatus(errorStatus));
+      TSStatus errorStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      RpcUtils.verifySuccess(errorStatus);
     } catch (Exception e) {
       return;
     }

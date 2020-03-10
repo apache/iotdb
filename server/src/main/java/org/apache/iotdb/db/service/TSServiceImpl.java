@@ -837,8 +837,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           QueryResourceManager.getInstance().endQuery(req.queryId);
           queryId2DataSet.remove(req.queryId);
         }
-        TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(
-            TSStatusCode.SUCCESS_STATUS, "FetchResult successfully. Has more result: " + hasResultSet);
+        TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
         resp.setHasResultSet(hasResultSet);
         resp.setQueryDataSet(result);
         resp.setIsAlign(true);
@@ -857,9 +856,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         if (!hasResultSet) {
           queryId2DataSet.remove(req.queryId);
         }
-        TSFetchResultsResp resp =
-            RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS,
-                "FetchResult successfully. Has more result: " + hasResultSet);
+        TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
         resp.setHasResultSet(hasResultSet);
         resp.setNonAlignQueryDataSet(nonAlignResult);
         resp.setIsAlign(false);
@@ -1311,7 +1308,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       execRet = executeNonQuery(plan);
     } catch (QueryProcessException e) {
       logger.debug("meet error while processing non-query. ", e);
-      return new TSStatus(e.getErrorCode(), e.getMessage());
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
 
     return execRet

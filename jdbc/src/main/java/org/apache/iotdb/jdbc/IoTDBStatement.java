@@ -261,9 +261,6 @@ public class IoTDBStatement implements Statement {
     isCancelled = false;
     TSExecuteBatchStatementReq execReq = new TSExecuteBatchStatementReq(sessionId, batchSQLList);
     TSExecuteBatchStatementResp execResp = client.executeBatchStatement(execReq);
-    if (execResp.statusList == null) {
-
-    }
     int[] result = new int[execResp.statusList.size()];
     boolean allSuccess = true;
     String message = "";

@@ -21,7 +21,7 @@ namespace java org.apache.iotdb.service.rpc.thrift
 // The return status code and message in each response.
 struct TSStatus {
   1: required i32 code
-  2: required string message
+  2: optional string message
 }
 
 struct TSExecuteStatementResp {
@@ -91,8 +91,7 @@ struct TSExecuteStatementReq {
 }
 
 struct TSExecuteBatchStatementResp{
-  1: required i64 sessionId
-	2: required list<TSStatus> statusList
+	1: required list<TSStatus> statusList
 }
 
 struct TSExecuteBatchStatementReq{

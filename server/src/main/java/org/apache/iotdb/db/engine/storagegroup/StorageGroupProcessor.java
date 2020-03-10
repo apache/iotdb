@@ -69,6 +69,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.storageGroup.WriteProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -503,7 +504,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public TSStatus[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
+  public TSStatus[] insertBatch(BatchInsertPlan batchInsertPlan) throws WriteProcessException {
     writeLock();
     try {
       TSStatus[] results = new TSStatus[batchInsertPlan.getRowCount()];
@@ -540,7 +541,7 @@ public class StorageGroupProcessor {
       while (loc < batchInsertPlan.getRowCount()) {
         long time = batchInsertPlan.getTimes()[loc];
         long curTimePartition = StorageEngine.fromTimeToTimePartition(time);
-        results[loc] = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        results[loc] = RpcUtils.SUCCESS_STATUS;
         // start next partition
         if (curTimePartition != beforeTimePartition) {
           // insert last time partition
@@ -597,7 +598,7 @@ public class StorageGroupProcessor {
    */
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
       int start, int end, boolean sequence, TSStatus[] results, long timePartitionId)
-      throws QueryProcessException {
+      throws WriteProcessException {
     // return when start <= end
     if (start >= end) {
       return;
@@ -612,13 +613,12 @@ public class StorageGroupProcessor {
       return;
     }
 
-    boolean result = tsFileProcessor.insertBatch(batchInsertPlan, start, end, results);
+    tsFileProcessor.insertBatch(batchInsertPlan, start, end, results);
 
     latestTimeForEachDevice.computeIfAbsent(timePartitionId, t -> new HashMap<>())
         .putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
     // try to update the latest time of the device of this tsRecord
-    if (sequence && result
-        && latestTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId())
+    if (sequence && latestTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId())
         < batchInsertPlan.getTimes()[end - 1]) {
       latestTimeForEachDevice.get(timePartitionId)
           .put(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
@@ -638,7 +638,7 @@ public class StorageGroupProcessor {
   }
 
   public void tryToUpdateBatchInsertLastCache(BatchInsertPlan plan, Long latestFlushedTime)
-      throws QueryProcessException {
+      throws WriteProcessException {
     try {
       MNode node =
           MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(plan.getDeviceId());
@@ -650,7 +650,7 @@ public class StorageGroupProcessor {
             .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     } catch (MetadataException e) {
-      throw new QueryProcessException(e);
+      throw new WriteProcessException(e);
     }
   }
 
