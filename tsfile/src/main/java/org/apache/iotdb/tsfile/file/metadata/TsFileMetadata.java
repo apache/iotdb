@@ -49,6 +49,7 @@ public class TsFileMetadata {
   // bloom filter
   private BloomFilter bloomFilter;
 
+  // DeviceId -> offset and length of Map<String, TimeseriesMetadata>
   private Map<String, Pair<Long, Integer>> deviceMetadataIndex;
 
   // offset -> version

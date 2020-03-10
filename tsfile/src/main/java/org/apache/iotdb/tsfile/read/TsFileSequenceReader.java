@@ -330,26 +330,6 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
-   * this function reads all ChunkMetaData in this file
-   *
-   * @return ChunkMetaDataList
-   * @throws IOException io error
-   */
-  public List<ChunkMetadata> readAllChunkMetadatas() throws IOException {
-    if (tsFileMetaData == null) {
-      readFileMetadata();
-    }
-    if (tsFileMetaData.getDeviceMetadataIndex() == null) {
-      return new ArrayList<>();
-    }
-    List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
-    for (String deviceId : tsFileMetaData.getDeviceMetadataIndex().keySet()) {
-      chunkMetadataList.addAll(readChunkMetadataInDevice(deviceId));
-    }
-    return chunkMetadataList;
-  }
-
-  /**
    * this function return all timeseries names in this file
    *
    * @return list of Paths

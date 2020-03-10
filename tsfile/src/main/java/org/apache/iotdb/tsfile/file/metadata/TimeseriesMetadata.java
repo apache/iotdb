@@ -96,11 +96,11 @@ public class TimeseriesMetadata {
     this.tsDataType = tsDataType;
   }
 
-  public Statistics<?> getStatistics() {
+  public Statistics getStatistics() {
     return statistics;
   }
 
-  public void setStatistics(Statistics<?> statistics) {
+  public void setStatistics(Statistics statistics) {
     this.statistics = statistics;
   }
 
