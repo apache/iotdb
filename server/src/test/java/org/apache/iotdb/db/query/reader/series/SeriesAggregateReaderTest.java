@@ -98,8 +98,8 @@ public class SeriesAggregateReaderTest {
             assertEquals((long) loopTime * 20 + 60, aggregateResult.getResult());
           }
 
-          while (seriesReader.hasNextOverlappedPage()) {
-            BatchData nextOverlappedPageData = seriesReader.nextOverlappedPage();
+          while (seriesReader.hasNextPage()) {
+            BatchData nextOverlappedPageData = seriesReader.nextPage();
             aggregateResult.updateResultFromPageData(nextOverlappedPageData);
             nextOverlappedPageData.resetBatchData();
             assertEquals(true, nextOverlappedPageData.hasCurrent());

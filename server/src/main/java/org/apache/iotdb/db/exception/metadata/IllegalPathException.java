@@ -15,7 +15,6 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
 package org.apache.iotdb.db.exception.metadata;
@@ -23,7 +22,6 @@ package org.apache.iotdb.db.exception.metadata;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class IllegalPathException extends MetadataException {
-
   private static final long serialVersionUID = 2693272249167539978L;
 
   public IllegalPathException(String path) {

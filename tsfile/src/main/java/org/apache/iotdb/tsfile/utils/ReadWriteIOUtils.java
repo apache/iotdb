@@ -25,6 +25,7 @@ import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.DO
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.FLOAT;
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.INTEGER;
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.LONG;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.NULL;
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.STRING;
 
 import java.io.DataOutputStream;
@@ -781,7 +782,7 @@ public class ReadWriteIOUtils {
   }
 
   enum ClassSerializeId {
-    LONG, DOUBLE, INTEGER, FLOAT, BINARY, BOOLEAN, STRING
+    LONG, DOUBLE, INTEGER, FLOAT, BINARY, BOOLEAN, STRING, NULL
   }
 
   public static void writeObject(Object value, DataOutputStream outputStream) {
@@ -806,6 +807,8 @@ public class ReadWriteIOUtils {
         } else if (value instanceof Boolean) {
           outputStream.write(BOOLEAN.ordinal());
           outputStream.write(((Boolean) value) ? 1 : 0);
+        } else if (value == null) {
+          outputStream.write(NULL.ordinal());
         } else {
           outputStream.write(STRING.ordinal());
           byte[] bytes = value.toString().getBytes();
@@ -835,6 +838,8 @@ public class ReadWriteIOUtils {
         byte[] bytes = new byte[length];
         buffer.get(bytes);
         return new Binary(bytes);
+      case NULL:
+        return null;
       case STRING:
       default:
         length = buffer.getInt();

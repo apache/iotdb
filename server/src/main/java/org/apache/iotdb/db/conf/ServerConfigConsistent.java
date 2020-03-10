@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,21 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session;
 
-public class IoTDBSessionException extends Exception {
+package org.apache.iotdb.db.conf;
 
-  private static final long serialVersionUID = 2405104784097667293L;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-  public IoTDBSessionException(String msg) {
-    super(msg);
-  }
+/**
+ * Configurations using this annotation should be the same across all nodes in a cluster.
+ */
+@Target({ElementType.FIELD})
+@Retention(RetentionPolicy.SOURCE)
+public @interface ServerConfigConsistent {
+  //TODO#IOTDB-436: the restarted server should check the
+  // configuration consistency as before.
 
-  public IoTDBSessionException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public IoTDBSessionException(Throwable cause) {
-    super(cause);
-  }
 }
+

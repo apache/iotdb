@@ -154,6 +154,11 @@ public class PageReader implements IPageReader {
     return pageHeader.getStatistics();
   }
 
+  @Override
+  public void setFilter(Filter filter) {
+    this.filter = filter;
+  }
+
   public void setDeletedAt(long deletedAt) {
     this.deletedAt = deletedAt;
   }

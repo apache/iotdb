@@ -143,4 +143,10 @@ public class AvgAggrResult extends AggregateResult {
     return cnt;
   }
 
+  @Override
+  public void reset() {
+    super.reset();
+    cnt = 0;
+    avg = 0;
+  }
 }
