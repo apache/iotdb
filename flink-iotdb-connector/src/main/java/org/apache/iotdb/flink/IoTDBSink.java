@@ -21,7 +21,6 @@ package org.apache.iotdb.flink;
 import com.google.common.base.Preconditions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.slf4j.Logger;
