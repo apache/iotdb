@@ -75,7 +75,7 @@ public class BatchTest {
     resp = RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
     when(client.executeBatchStatement(any(TSExecuteBatchStatementReq.class))).thenReturn(resp);
     int[] result = statement.executeBatch();
-    assertEquals(result.length, 1);
+    assertEquals(1, result.length);
 
     List<TSStatus> resExpected = new ArrayList<TSStatus>() {
       {

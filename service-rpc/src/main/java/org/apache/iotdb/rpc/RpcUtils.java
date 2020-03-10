@@ -28,7 +28,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class RpcUtils {
 
-  public static TSStatus SUCCESS_STATUS = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  public static final TSStatus SUCCESS_STATUS = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
   public static TSIService.Iface newSynchronizedClient(TSIService.Iface client) {
     return (TSIService.Iface) Proxy.newProxyInstance(RpcUtils.class.getClassLoader(),

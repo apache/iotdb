@@ -466,12 +466,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (ParseCancellationException e) {
       logger.debug(e.getMessage());
       result.add(RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR,
-          "Statement format is not right: " + e.getMessage()));
+          ERROR_PARSING_SQL + e.getMessage()));
       return false;
     } catch (SQLParserException e) {
       logger.error("Error occurred when executing {}, check metadata error: ", statement, e);
       result.add(RpcUtils.getStatus(
-          TSStatusCode.SQL_PARSE_ERROR, "Statement format is not right: " + e.getMessage()));
+          TSStatusCode.SQL_PARSE_ERROR, ERROR_PARSING_SQL + e.getMessage()));
       return false;
     } catch (QueryProcessException e) {
       logger.info(
@@ -583,7 +583,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (ParseCancellationException e) {
       logger.debug(e.getMessage());
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR,
-          "Statement format is not right: " + e.getMessage());
+          ERROR_PARSING_SQL + e.getMessage());
     } catch (SQLParserException e) {
       logger.error("check metadata error: ", e);
       return RpcUtils.getTSExecuteStatementResp(

@@ -115,13 +115,8 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
         }
 
         convertText(event.getDevice(), event.getMeasurements(), event.getValues());
-        try {
-            session.insert(event.getDevice(), event.getTimestamp(), event.getMeasurements(),
+        session.insert(event.getDevice(), event.getTimestamp(), event.getMeasurements(),
                 event.getValues());
-        } catch (Exception e) {
-            LOG.debug("send event meets error " + e.getMessage(), e);
-            throw e;
-        }
         LOG.debug("send event successfully");
     }
 
@@ -181,12 +176,7 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
                         measurementsList.add(event.getMeasurements());
                         valuesList.add(event.getValues());
                     }
-                    try {
-                        session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
-                    } catch (Exception e) {
-                        LOG.debug("send events error " + e.getMessage(), e);
-                        throw e;
-                    }
+                    session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
                     LOG.debug("send event successfully");
                     batchList.clear();
                 }
