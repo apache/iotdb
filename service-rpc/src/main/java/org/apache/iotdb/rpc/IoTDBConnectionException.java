@@ -16,21 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session;
+package org.apache.iotdb.rpc;
 
-public class IoTDBSessionException extends Exception {
+public class IoTDBConnectionException extends Exception{
 
-  private static final long serialVersionUID = 2405104784097667293L;
+  private static final long serialVersionUID = -1268775292265203036L;
 
-  public IoTDBSessionException(String msg) {
-    super(msg);
+  public IoTDBConnectionException(String reason) {
+    super(reason);
   }
 
-  public IoTDBSessionException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public IoTDBSessionException(Throwable cause) {
+  public IoTDBConnectionException(Throwable cause) {
     super(cause);
+  }
+
+  public IoTDBConnectionException(String message, Throwable cause) {
+    super(message, cause);
   }
 }
