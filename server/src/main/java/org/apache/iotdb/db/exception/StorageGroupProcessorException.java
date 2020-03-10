@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.exception;
 
-import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class StorageGroupProcessorException extends IoTDBException {
