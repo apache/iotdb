@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
@@ -34,16 +36,25 @@ public class TestHelper {
 
   public static TsFileMetadata createSimpleFileMetaData() {
     TsFileMetadata metaData = new TsFileMetadata();
-    metaData.setDeviceMetadataIndex(generateDeviceMetaDataMap());
+    metaData.setDeviceMetadataIndex(generateDeviceMetaDataIndex());
+    metaData.setVersionInfo(generateVersionInfo());
     return metaData;
   }
 
-  private static Map<String, Pair<Long, Integer>> generateDeviceMetaDataMap() {
-    Map<String, Pair<Long, Integer>> deviceMetaDataMap = new HashMap<>();
+  private static Map<String, Pair<Long, Integer>> generateDeviceMetaDataIndex() {
+    Map<String, Pair<Long, Integer>> deviceMetaDataIndex = new HashMap<>();
     for (int i = 0; i < 5; i++) {
-      deviceMetaDataMap.put("d" + i, new Pair<Long, Integer>((long) i * 5, 5));
+      deviceMetaDataIndex.put("d" + i, new Pair<Long, Integer>((long) i * 5, 5));
     }
-    return deviceMetaDataMap;
+    return deviceMetaDataIndex;
+  }
+
+  private static List<Pair<Long, Long>> generateVersionInfo() {
+    List<Pair<Long, Long>> versionInfo = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      versionInfo.add(new Pair<Long, Long>((long) i * 5, 0L));
+    }
+    return versionInfo;
   }
 
   public static MeasurementSchema createSimpleMeasurementSchema(String measurementuid) {
