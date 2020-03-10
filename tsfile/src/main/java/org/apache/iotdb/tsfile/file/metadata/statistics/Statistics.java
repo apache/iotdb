@@ -39,7 +39,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  * version 0.0.1.<br>
  * Each data type extends this Statistic as super class.<br>
  *
- * @param <T> data type for Statistics
+ * @param T data type for Statistics
  */
 public abstract class Statistics<T> {
 
@@ -64,7 +64,7 @@ public abstract class Statistics<T> {
    * @param type - data type
    * @return Statistics
    */
-  public static Statistics<?> getStatsByType(TSDataType type) {
+  public static Statistics getStatsByType(TSDataType type) {
     switch (type) {
     case INT32:
       return new IntegerStatistics();
@@ -146,10 +146,9 @@ public abstract class Statistics<T> {
   /**
    * merge parameter to this statistic
    *
-   * @param stats input statistics
    * @throws StatisticsClassException cannot merge statistics
    */
-  public void mergeStatistics(Statistics<?> stats) {
+  public void mergeStatistics(Statistics stats) {
     if (this.getClass() == stats.getClass()) {
       if (stats.startTime < this.startTime) {
         this.startTime = stats.startTime;
