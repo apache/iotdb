@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -45,7 +46,7 @@ public class MemtableBenchmark {
     // cpu not locality
     for (int i = 0; i < numOfPoint; i++) {
       for (int j = 0; j < numOfMeasurement; j++) {
-        memTable.write(deviceId, measurementId[j], new MeasurementSchema(null, tsDataType, null), System.nanoTime(),
+        memTable.write(deviceId, measurementId[j], new MeasurementSchema(measurementId[j], tsDataType, TSEncoding.PLAIN), System.nanoTime(),
             String.valueOf(System.currentTimeMillis()));
       }
     }

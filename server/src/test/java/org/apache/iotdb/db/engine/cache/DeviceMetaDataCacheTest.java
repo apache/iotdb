@@ -38,9 +38,11 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -61,16 +63,22 @@ public class DeviceMetaDataCacheTest {
   private String systemDir = TestConstant.BASE_OUTPUT_PATH.concat("data")
           .concat(File.separator).concat("info");
 
-  static {
-    MManager.getInstance().init();
-  }
-
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup, new DirectFlushPolicy());
+//    MManager.getInstance().createTimeseries(storageGroup + "." + measurementId0,
+//        new MeasurementSchema(measurementId0, TSDataType.INT32, TSEncoding.PLAIN));
+//    MManager.getInstance().createTimeseries(storageGroup + "." + measurementId0,
+//        new MeasurementSchema(measurementId0, TSDataType.INT64, TSEncoding.PLAIN));
+//    MManager.getInstance().createTimeseries(storageGroup + "." + measurementId0,
+//        new MeasurementSchema(measurementId0, TSDataType.FLOAT, TSEncoding.PLAIN));
+//    MManager.getInstance().createTimeseries(storageGroup + "." + measurementId0,
+//        new MeasurementSchema(measurementId0, TSDataType.DOUBLE, TSEncoding.PLAIN));
+//    MManager.getInstance().createTimeseries(storageGroup + "." + measurementId0,
+//        new MeasurementSchema(measurementId0, TSDataType.BOOLEAN, TSEncoding.PLAIN));
     insertData();
   }
 

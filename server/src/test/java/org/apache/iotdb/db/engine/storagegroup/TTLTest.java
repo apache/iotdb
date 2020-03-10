@@ -126,7 +126,7 @@ public class TTLTest {
     insertPlan.setTime(System.currentTimeMillis());
     insertPlan.setMeasurements(new String[]{"s1"});
     insertPlan.setValues(new String[]{"1"});
-    insertPlan.setSchemas(new MeasurementSchema[]{new MeasurementSchema(null, TSDataType.INT64, null)});
+    insertPlan.setSchemas(new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     // ok without ttl
     storageGroupProcessor.insert(insertPlan);
@@ -151,7 +151,7 @@ public class TTLTest {
     insertPlan.setTime(System.currentTimeMillis());
     insertPlan.setMeasurements(new String[]{"s1"});
     insertPlan.setValues(new String[]{"1"});
-    insertPlan.setSchemas(new MeasurementSchema[]{new MeasurementSchema(null, TSDataType.INT64, null)});
+    insertPlan.setSchemas(new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     long initTime = System.currentTimeMillis();
     // sequence data

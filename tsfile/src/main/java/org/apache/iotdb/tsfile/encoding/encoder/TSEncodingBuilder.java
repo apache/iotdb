@@ -58,18 +58,18 @@ public abstract class TSEncodingBuilder {
    */
   public static TSEncodingBuilder getEncodingBuilder(TSEncoding type) {
     switch (type) {
-    case PLAIN:
-      return new PLAIN();
-    case RLE:
-      return new RLE();
-    case TS_2DIFF:
-      return new TS_2DIFF();
-    case GORILLA:
-      return new GORILLA();
-    case REGULAR:
-      return new REGULAR();
-    default:
-      throw new UnsupportedOperationException(type.toString());
+      case PLAIN:
+        return new PLAIN();
+      case RLE:
+        return new RLE();
+      case TS_2DIFF:
+        return new TS_2DIFF();
+      case GORILLA:
+        return new GORILLA();
+      case REGULAR:
+        return new REGULAR();
+      default:
+        throw new UnsupportedOperationException(type.toString());
     }
   }
 

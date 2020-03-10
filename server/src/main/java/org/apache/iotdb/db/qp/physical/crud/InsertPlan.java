@@ -33,6 +33,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -71,7 +72,7 @@ public class InsertPlan extends PhysicalPlan {
     this.values = new String[tsRecord.dataPointList.size()];
     for (int i = 0; i < tsRecord.dataPointList.size(); i++) {
       measurements[i] = tsRecord.dataPointList.get(i).getMeasurementId();
-      schemas[i] = new MeasurementSchema(null, tsRecord.dataPointList.get(i).getType(), null);
+      schemas[i] = new MeasurementSchema(measurements[i], tsRecord.dataPointList.get(i).getType(), TSEncoding.PLAIN);
       values[i] = tsRecord.dataPointList.get(i).getValue().toString();
     }
     canbeSplit = false;

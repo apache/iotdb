@@ -39,49 +39,49 @@ public class MetadataManagerHelper {
       CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
 
       mmanager.createTimeseries("root.vehicle.d0.s0", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType,
+          TSEncoding.PLAIN, compressionType,
           Collections.emptyMap());
       mmanager.createTimeseries("root.vehicle.d0.s1", TSDataType.valueOf("INT64"),
-          TSEncoding.valueOf("RLE"), compressionType,
+          TSEncoding.PLAIN, compressionType,
           Collections.emptyMap());
       mmanager.createTimeseries("root.vehicle.d0.s2", TSDataType.valueOf("FLOAT"),
-          TSEncoding.valueOf("RLE"), compressionType,
+          TSEncoding.PLAIN, compressionType,
           Collections.emptyMap());
       mmanager.createTimeseries("root.vehicle.d0.s3", TSDataType.valueOf("DOUBLE"),
-          TSEncoding.valueOf("RLE"), compressionType,
+          TSEncoding.PLAIN, compressionType,
           Collections.emptyMap());
       mmanager.createTimeseries("root.vehicle.d0.s4", TSDataType.valueOf("BOOLEAN"),
-          TSEncoding.valueOf("PLAIN"), compressionType,
+          TSEncoding.PLAIN, compressionType,
           Collections.emptyMap());
       mmanager.createTimeseries("root.vehicle.d0.s5", TSDataType.valueOf("TEXT"),
-          TSEncoding.valueOf("PLAIN"), compressionType,
+          TSEncoding.PLAIN, compressionType,
           Collections.emptyMap());
 
       mmanager.createTimeseries("root.vehicle.d1.s0", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.PLAIN, compressionType, Collections.emptyMap());
       mmanager.createTimeseries("root.vehicle.d1.s1", TSDataType.valueOf("INT64"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.PLAIN, compressionType, Collections.emptyMap());
       mmanager.createTimeseries("root.vehicle.d1.s2", TSDataType.valueOf("FLOAT"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.PLAIN, compressionType, Collections.emptyMap());
       mmanager.createTimeseries("root.vehicle.d1.s3", TSDataType.valueOf("DOUBLE"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.PLAIN, compressionType, Collections.emptyMap());
       mmanager.createTimeseries("root.vehicle.d1.s4", TSDataType.valueOf("BOOLEAN"),
-          TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
+          TSEncoding.PLAIN, compressionType, Collections.emptyMap());
       mmanager.createTimeseries("root.vehicle.d1.s5", TSDataType.valueOf("TEXT"),
-          TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
+          TSEncoding.PLAIN, compressionType, Collections.emptyMap());
 
       mmanager.createTimeseries("root.vehicle.d2.s0", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.PLAIN, compressionType, Collections.emptyMap());
       mmanager.createTimeseries("root.vehicle.d2.s1", TSDataType.valueOf("INT64"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.PLAIN, compressionType, Collections.emptyMap());
       mmanager.createTimeseries("root.vehicle.d2.s2", TSDataType.valueOf("FLOAT"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.PLAIN, compressionType, Collections.emptyMap());
       mmanager.createTimeseries("root.vehicle.d2.s3", TSDataType.valueOf("DOUBLE"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.PLAIN, compressionType, Collections.emptyMap());
       mmanager.createTimeseries("root.vehicle.d2.s4", TSDataType.valueOf("BOOLEAN"),
-          TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
+          TSEncoding.PLAIN, compressionType, Collections.emptyMap());
       mmanager.createTimeseries("root.vehicle.d2.s5", TSDataType.valueOf("TEXT"),
-          TSEncoding.valueOf("PLAIN"), compressionType, Collections.emptyMap());
+          TSEncoding.PLAIN, compressionType, Collections.emptyMap());
 
     } catch (Exception e) {
       throw new RuntimeException("Initialize the metadata manager failed", e);
