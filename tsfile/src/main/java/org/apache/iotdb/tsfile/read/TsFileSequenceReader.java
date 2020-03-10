@@ -48,6 +48,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileSequenceReader implements AutoCloseable {
 
@@ -63,9 +66,9 @@ public class TsFileSequenceReader implements AutoCloseable {
   private TsFileMetadata tsFileMetaData;
   private EndianType endianType = EndianType.BIG_ENDIAN;
   // device -> measurement -> TimeseriesMetadata
-  private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadata = new ConcurrentHashMap();
+  private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadata = new ConcurrentHashMap<>();
+  private final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
   private boolean cacheDeviceMetadata;
-  private ConcurrentHashMap deviceMetadataMap;
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
@@ -109,9 +112,6 @@ public class TsFileSequenceReader implements AutoCloseable {
       throws IOException {
     this(file, loadMetadata);
     this.cacheDeviceMetadata = cacheDeviceMetadata;
-    if (cacheDeviceMetadata) {
-      deviceMetadataMap = new ConcurrentHashMap<>();
-    }
   }
 
   /**
@@ -255,32 +255,52 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   /**
    * this function reads measurements and TimeseriesMetaDatas in given device
-   *
+   * Thread Safe
    * @param device name
    * @return the map measurementId -> TimeseriesMetaData in one device
    * @throws IOException io error
    */
   public Map<String, TimeseriesMetadata> readDeviceMetadata(String device) throws IOException {
-    if (cachedDeviceMetadata.containsKey(device)) {
-      return cachedDeviceMetadata.get(device);
+    try {
+      cacheLock.readLock().lock();
+      if (cachedDeviceMetadata.containsKey(device)) {
+        return cachedDeviceMetadata.get(device);
+      }
+    } finally{
+      cacheLock.readLock().unlock();
     }
 
-    if (tsFileMetaData == null) {
-      readFileMetadata();
+    Lock lock = cacheLock.writeLock();
+    try {
+      lock.lock();
+      if (cachedDeviceMetadata.containsKey(device)) {
+        try {
+          lock = cacheLock.readLock();
+          lock.lock();
+        } finally {
+          cacheLock.writeLock().unlock();
+        }
+        return cachedDeviceMetadata.get(device);
+      }
+      if (tsFileMetaData == null) {
+        readFileMetadata();
+      }
+      if (tsFileMetaData.getDeviceMetadataIndex() == null
+              || !tsFileMetaData.getDeviceMetadataIndex().containsKey(device)) {
+        return new HashMap<>();
+      }
+      Pair<Long, Integer> deviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex().get(device);
+      Map<String, TimeseriesMetadata> deviceMetadata = new HashMap<>();
+      ByteBuffer buffer = readData(deviceMetadataIndex.left, deviceMetadataIndex.right);
+      while (buffer.hasRemaining()) {
+        TimeseriesMetadata tsMetaData = TimeseriesMetadata.deserializeFrom(buffer);
+        deviceMetadata.put(tsMetaData.getMeasurementId(), tsMetaData);
+      }
+      cachedDeviceMetadata.put(device, deviceMetadata);
+      return deviceMetadata;
+    } finally {
+      lock.unlock();
     }
-    if (tsFileMetaData.getDeviceMetadataIndex() == null
-        || !tsFileMetaData.getDeviceMetadataIndex().containsKey(device)) {
-      return new HashMap<>();
-    }
-    Pair<Long, Integer> deviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex().get(device);
-    Map<String, TimeseriesMetadata> deviceMetadata = new HashMap<>();
-    ByteBuffer buffer = readData(deviceMetadataIndex.left, deviceMetadataIndex.right);
-    while (buffer.hasRemaining()) {
-      TimeseriesMetadata tsMetaData = TimeseriesMetadata.deserializeFrom(buffer);
-      deviceMetadata.put(tsMetaData.getMeasurementId(), tsMetaData);
-    }
-    cachedDeviceMetadata.put(device, deviceMetadata);
-    return deviceMetadata;
   }
 
   /**
@@ -378,18 +398,6 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
-   * After reading the footer of a ChunkGroup, call this method to set the file pointer to the start
-   * of the data of this ChunkGroup if you want to read its data next. <br> This method is not
-   * threadsafe.
-   *
-   * @param footer the chunkGroupFooter which you want to read data
-   */
-  public void setPositionToAChunkGroup(ChunkGroupFooter footer) throws IOException {
-    tsFileInput
-        .position(tsFileInput.position() - footer.getDataSize() - footer.getSerializedSize());
-  }
-
-  /**
    * read data from current position of the input, and deserialize it to a CHUNK_HEADER. <br> This
    * method is not threadsafe.
    *
@@ -410,26 +418,6 @@ public class TsFileSequenceReader implements AutoCloseable {
   private ChunkHeader readChunkHeader(long position, int chunkHeaderSize, boolean markerRead)
       throws IOException {
     return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize, markerRead);
-  }
-
-  /**
-   * notice, the position of the channel MUST be at the end of this header. <br> This method is not
-   * threadsafe.
-   *
-   * @return the pages of this chunk
-   */
-  public ByteBuffer readChunk(ChunkHeader header) throws IOException {
-    return readData(-1, header.getDataSize());
-  }
-
-  /**
-   * notice, this function will modify channel's position.
-   *
-   * @param position the offset of the chunk data
-   * @return the pages of this chunk
-   */
-  public ByteBuffer readChunk(ChunkHeader header, long position) throws IOException {
-    return readData(position, header.getDataSize());
   }
 
   /**
@@ -506,10 +494,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     markerBuffer.flip();
     return markerBuffer.get();
-  }
-
-  public byte readMarker(long position) throws IOException {
-    return readData(position, Byte.BYTES).get();
   }
 
   public void close() throws IOException {
@@ -591,22 +575,19 @@ public class TsFileSequenceReader implements AutoCloseable {
 
     List<ChunkMetadata> chunks = null;
     String deviceID;
-    long startOffsetOfChunkGroup = 0;
-    long endOffsetOfChunkGroup;
 
-    if (fileSize < TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
-        .getBytes().length) {
+    int position = TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+            .getBytes().length;
+    if (fileSize < position) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
     String magic = readHeadMagic(true);
-    tsFileInput.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
-        .getBytes().length);
+    tsFileInput.position(position);
     if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
 
-    if (fileSize == TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
-        .getBytes().length) {
+    if (fileSize == position) {
       return TsFileCheckStatus.ONLY_MAGIC_HEAD;
     } else if (readTailMagic().equals(magic)) {
       loadMetadataSize();
@@ -629,7 +610,6 @@ public class TsFileSequenceReader implements AutoCloseable {
             if (newChunkGroup) {
               newChunkGroup = false;
               chunks = new ArrayList<>();
-              startOffsetOfChunkGroup = this.position() - 1;
             }
             fileOffsetOfChunk = this.position() - 1;
             // if there is something wrong with a chunk, we will drop the whole ChunkGroup
@@ -682,7 +662,6 @@ public class TsFileSequenceReader implements AutoCloseable {
                 chunkMetadataListMap.computeIfAbsent(path, k -> new ArrayList<>()).add(chunk);
               }
             }
-            endOffsetOfChunkGroup = this.position();
             newChunkGroup = true;
             truncatedPosition = this.position();
 
@@ -761,6 +740,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    *
    * @return list of TimeseriesMetaData
    */
+  // TODO need some changes by spark-connector author
   public List<TimeseriesMetadata> getSortedTimeseriesMetaDataListByDeviceIds() throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
@@ -787,7 +767,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param end   end of the file
    * @return device names in range
    */
-
+ // TODO need some changes by spark-connector author
   public List<String> getDeviceNameInRange(long start, long end) {
     List<String> res = new ArrayList<>();
 
@@ -838,6 +818,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param spacePartitionEndPos   the end position of the space partition
    * @return LocateStatus
    */
+  // TODO need some changes by spark-connector author
   private LocateStatus checkLocateStatus(List<ChunkMetadata> chunkMetadataList,
       long spacePartitionStartPos, long spacePartitionEndPos) {
     chunkMetadataList.sort((chunkMetadata1, chunkMetadata2) -> (int) (chunkMetadata1.getOffsetOfChunkHeader() - chunkMetadata2.getOffsetOfChunkHeader()));
