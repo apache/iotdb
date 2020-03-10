@@ -67,11 +67,6 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public MeasurementSchema getSchema() {
-    return null;
-  }
-
-  @Override
   public Map<String, MNode> getChildren() {
     return children;
   }

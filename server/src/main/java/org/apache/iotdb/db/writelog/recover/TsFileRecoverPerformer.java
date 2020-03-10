@@ -57,19 +57,16 @@ public class TsFileRecoverPerformer {
 
   private String insertFilePath;
   private String logNodePrefix;
-  private Schema schema;
   private VersionController versionController;
   private LogReplayer logReplayer;
   private TsFileResource tsFileResource;
   private boolean acceptUnseq;
   private boolean isLastFile;
 
-  public TsFileRecoverPerformer(String logNodePrefix,
-      Schema schema, VersionController versionController,
+  public TsFileRecoverPerformer(String logNodePrefix, VersionController versionController,
       TsFileResource currentTsFileResource, boolean acceptUnseq, boolean isLastFile) {
     this.insertFilePath = currentTsFileResource.getPath();
     this.logNodePrefix = logNodePrefix;
-    this.schema = schema;
     this.versionController = versionController;
     this.tsFileResource = currentTsFileResource;
     this.acceptUnseq = acceptUnseq;
@@ -86,8 +83,7 @@ public class TsFileRecoverPerformer {
 
     IMemTable recoverMemTable = new PrimitiveMemTable();
     this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
-        versionController,
-        tsFileResource, schema, recoverMemTable, acceptUnseq);
+        versionController, tsFileResource, recoverMemTable, acceptUnseq);
     File insertFile = FSFactoryProducer.getFSFactory().getFile(insertFilePath);
     if (!insertFile.exists()) {
       logger.error("TsFile {} is missing, will skip its recovery.", insertFilePath);
@@ -197,14 +193,13 @@ public class TsFileRecoverPerformer {
       throws StorageGroupProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
     this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
-        versionController,
-        tsFileResource, schema, recoverMemTable, acceptUnseq);
+        versionController, tsFileResource, recoverMemTable, acceptUnseq);
     logReplayer.replayLogs();
     try {
       if (!recoverMemTable.isEmpty()) {
         // flush logs
 
-        MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, schema,
+        MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable,
             restorableTsFileIOWriter, tsFileResource.getFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
       }

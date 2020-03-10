@@ -111,7 +111,7 @@ public class MManagerAdvancedTest {
     mmanager.createTimeseries("root.vehicle.d2.s3", "TEXT", "PLAIN");
 
     MNode node = mmanager.getNodeByPath("root.vehicle.d0");
-    Assert.assertEquals(TSDataType.INT32, node.getChild("s0").getSchema().getType());
+    Assert.assertEquals(TSDataType.INT32, ((LeafMNode) node.getChild("s0")).getSchema().getType());
 
     try {
       mmanager.getNodeByPath("root.vehicle.d100");

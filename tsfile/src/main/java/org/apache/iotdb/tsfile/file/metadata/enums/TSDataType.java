@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+
 public enum TSDataType {
   BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT;
 
@@ -49,8 +55,20 @@ public enum TSDataType {
     }
   }
 
+  public static TSDataType deserializeFrom(ByteBuffer buffer) {
+    return deserialize(buffer.getShort());
+  }
+
   public static int getSerializedSize() {
     return Short.BYTES;
+  }
+
+  public void serializeTo(ByteBuffer byteBuffer) {
+    byteBuffer.putShort(serialize());
+  }
+
+  public void serializeTo(DataOutputStream outputStream) throws IOException {
+    outputStream.writeShort(serialize());
   }
 
   /**

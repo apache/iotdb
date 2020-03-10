@@ -27,7 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -114,7 +113,7 @@ public class StorageEngine implements IService {
    * Time range for dividing storage group, the time unit is the same with IoTDB's TimestampPrecision
    */
   @ServerConfigConsistent
-  static long timePartitionInterval;
+  private static long timePartitionInterval;
   static {
     // build time Interval to divide time partition
     String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
@@ -362,7 +361,7 @@ public class StorageEngine implements IService {
    */
   public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context,
       QueryFileManager filePathsManager)
-      throws StorageEngineException {
+      throws StorageEngineException, QueryProcessException {
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
@@ -427,27 +426,6 @@ public class StorageEngine implements IService {
     StorageGroupProcessor processor = processorMap.get(storageGroupName);
     processor.syncDeleteDataFiles();
   }
-
-  /**
-   * add time series.
-   */
-  public void addTimeSeries(Path path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressor, Map<String, String> props) throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(path.getDevice());
-    storageGroupProcessor
-        .addTimeseries(path, dataType, encoding, compressor, props);
-  }
-
-  public void addTimeSeries(Path path, TSDataType dataType, TSEncoding encoding)
-      throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(path.getDevice());
-    CompressionType compressor =
-        TSFileDescriptor.getInstance().getConfig().getCompressor();
-    storageGroupProcessor
-        .addTimeseries(path, dataType, encoding, compressor,
-            Collections.emptyMap());
-  }
-
 
   /**
    * delete all data of storage groups' timeseries.

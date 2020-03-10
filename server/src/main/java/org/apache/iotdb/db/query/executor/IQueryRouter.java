@@ -36,7 +36,8 @@ public interface IQueryRouter {
   /**
    * Execute physical plan.
    */
-  QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context) throws StorageEngineException;
+  QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context)
+      throws StorageEngineException, QueryProcessException;
 
   /**
    * Execute aggregation query.

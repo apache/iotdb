@@ -122,7 +122,7 @@ public class DeviceMetaDataCacheTest {
   }
 
   @Test
-  public void test1() throws IOException {
+  public void test1() throws IOException, QueryProcessException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(false);
     QueryDataSource queryDataSource = storageGroupProcessor
         .query(storageGroup, measurementId5, context, null, null);
@@ -144,7 +144,7 @@ public class DeviceMetaDataCacheTest {
   }
 
   @Test
-  public void test2() throws IOException {
+  public void test2() throws IOException, QueryProcessException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(true);
     QueryDataSource queryDataSource = storageGroupProcessor
         .query(storageGroup, measurementId5, context, null, null);

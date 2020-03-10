@@ -22,6 +22,7 @@ import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * Only used in sync flush and async close to start a flush task
@@ -30,7 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 public class NotifyFlushMemTable extends AbstractMemTable {
 
   @Override
-  protected IWritableMemChunk genMemSeries(TSDataType dataType) {
+  protected IWritableMemChunk genMemSeries(MeasurementSchema schema) {
     return null;
   }
 

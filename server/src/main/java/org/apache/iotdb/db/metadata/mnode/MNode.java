@@ -101,8 +101,6 @@ public abstract class MNode implements Serializable {
     return this.getName();
   }
 
-  public abstract MeasurementSchema getSchema();
-
   public MNode getParent() {
     return parent;
   }

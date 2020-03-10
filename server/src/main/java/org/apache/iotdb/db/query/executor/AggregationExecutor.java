@@ -228,7 +228,7 @@ public class AggregationExecutor {
    * @param context query context.
    */
   QueryDataSet executeWithValueFilter(QueryContext context)
-      throws StorageEngineException, IOException {
+      throws StorageEngineException, IOException, QueryProcessException {
 
     TimeGenerator timestampGenerator = getTimeGenerator(context);
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
@@ -254,7 +254,7 @@ public class AggregationExecutor {
   }
 
   private IReaderByTimestamp getReaderByTime(Path path, TSDataType dataType,
-      QueryContext context) throws StorageEngineException {
+      QueryContext context) throws StorageEngineException, QueryProcessException {
     return new SeriesReaderByTimestamp(path,
         dataType, context,
         QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);

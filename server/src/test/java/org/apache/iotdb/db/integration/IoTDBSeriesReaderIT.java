@@ -36,6 +36,7 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -240,7 +241,7 @@ public class IoTDBSeriesReaderIT {
   }
 
   @Test
-  public void selectAllTest() throws IOException, StorageEngineException {
+  public void selectAllTest() throws IOException, StorageEngineException, QueryProcessException {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -280,7 +281,8 @@ public class IoTDBSeriesReaderIT {
   }
 
   @Test
-  public void selectOneSeriesWithValueFilterTest() throws IOException, StorageEngineException {
+  public void selectOneSeriesWithValueFilterTest()
+      throws IOException, StorageEngineException, QueryProcessException {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -310,7 +312,8 @@ public class IoTDBSeriesReaderIT {
   }
 
   @Test
-  public void seriesTimeDigestReadTest() throws IOException, StorageEngineException {
+  public void seriesTimeDigestReadTest()
+      throws IOException, StorageEngineException, QueryProcessException {
     QueryRouter queryRouter = new QueryRouter();
     Path path = new Path(TestConstant.d0s0);
     List<TSDataType> dataTypes = Collections.singletonList(TSDataType.INT32);
@@ -336,7 +339,8 @@ public class IoTDBSeriesReaderIT {
   }
 
   @Test
-  public void crossSeriesReadUpdateTest() throws IOException, StorageEngineException {
+  public void crossSeriesReadUpdateTest()
+      throws IOException, StorageEngineException, QueryProcessException {
     QueryRouter queryRouter = new QueryRouter();
     Path path1 = new Path(TestConstant.d0s0);
     Path path2 = new Path(TestConstant.d0s1);

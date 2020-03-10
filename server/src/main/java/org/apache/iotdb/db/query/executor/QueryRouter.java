@@ -52,7 +52,7 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context)
-      throws StorageEngineException {
+      throws StorageEngineException, QueryProcessException {
     IExpression expression = queryPlan.getExpression();
     List<Path> deduplicatedPaths = queryPlan.getDeduplicatedPaths();
 
@@ -114,7 +114,7 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException {
+      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException {
     long unit = groupByPlan.getInterval();
     long slidingStep = groupByPlan.getSlidingStep();
     long startTime = groupByPlan.getStartTime();

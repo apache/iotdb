@@ -137,8 +137,7 @@ public class MManagerImproveTest {
     MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
     for (String s : measurementList) {
       assertTrue(node.hasChild(s));
-      MNode measurementNode = node.getChild(s);
-      assertTrue(measurementNode instanceof LeafMNode);
+      LeafMNode measurementNode = (LeafMNode) node.getChild(s);
       TSDataType dataType = measurementNode.getSchema().getType();
       assertEquals(TSDataType.TEXT, dataType);
     }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.fill;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -50,7 +51,7 @@ public abstract class IFill {
   public abstract IFill copy();
 
   public void constructReaders(Path path, QueryContext context)
-      throws StorageEngineException {
+      throws StorageEngineException, QueryProcessException {
     Filter timeFilter = constructFilter();
     allDataReader = new SeriesRawDataBatchReader(path, dataType, context,
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),

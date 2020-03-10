@@ -60,6 +60,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -95,8 +96,6 @@ public class TTLTest {
         .getSystemDir(), sg1, new DirectFlushPolicy());
     MManager.getInstance().createTimeseries(g1s1, TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.emptyMap());
-    storageGroupProcessor.addTimeseries(new Path(g1s1), TSDataType.INT64, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, Collections.emptyMap());
   }
 
   @Test
@@ -127,7 +126,7 @@ public class TTLTest {
     insertPlan.setTime(System.currentTimeMillis());
     insertPlan.setMeasurements(new String[]{"s1"});
     insertPlan.setValues(new String[]{"1"});
-    insertPlan.setDataTypes(new TSDataType[]{TSDataType.INT64});
+    insertPlan.setSchemas(new MeasurementSchema[]{new MeasurementSchema(null, TSDataType.INT64, null)});
 
     // ok without ttl
     storageGroupProcessor.insert(insertPlan);
@@ -152,7 +151,7 @@ public class TTLTest {
     insertPlan.setTime(System.currentTimeMillis());
     insertPlan.setMeasurements(new String[]{"s1"});
     insertPlan.setValues(new String[]{"1"});
-    insertPlan.setDataTypes(new TSDataType[]{TSDataType.INT64});
+    insertPlan.setSchemas(new MeasurementSchema[]{new MeasurementSchema(null, TSDataType.INT64, null)});
 
     long initTime = System.currentTimeMillis();
     // sequence data

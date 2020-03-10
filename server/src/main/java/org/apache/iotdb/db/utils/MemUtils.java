@@ -48,7 +48,7 @@ public class MemUtils {
   public static long getRecordSize(InsertPlan insertPlan) {
     long memSize = 0;
     for (int i = 0; i < insertPlan.getValues().length; i++) {
-      switch (insertPlan.getDataTypes()[i]) {
+      switch (insertPlan.getSchemas()[i].getType()) {
         case INT32:
           memSize += 8L + 4L; break;
         case INT64:

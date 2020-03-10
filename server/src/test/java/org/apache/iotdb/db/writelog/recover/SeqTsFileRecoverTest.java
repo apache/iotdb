@@ -37,8 +37,12 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -70,7 +74,6 @@ public class SeqTsFileRecoverTest {
 
   private String logNodePrefix = TestConstant.BASE_OUTPUT_PATH.concat("testRecover");
   private String storageGroup = "target";
-  private Schema schema;
   private TsFileResource resource;
   private VersionController versionController = new VersionController() {
     private int i;
@@ -87,12 +90,20 @@ public class SeqTsFileRecoverTest {
   };
 
   @Before
-  public void setup() throws IOException, WriteProcessException {
-    FlushSubTaskPoolManager.getInstance().start();
+  public void setup() throws IOException, WriteProcessException, MetadataException {
+    EnvironmentUtils.envSetUp();
     tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
 
-    schema = new Schema();
+    MManager.getInstance().setStorageGroup("root.sg");
+    for (int i = 0; i < 10; i++) {
+      for (int j = 0; j < 10; j++) {
+        MManager.getInstance().createTimeseries("root.sg.device" + i + ".sensor" + j,
+            new MeasurementSchema("sensor" + i, TSDataType.INT64, TSEncoding.PLAIN));
+      }
+    }
+
+    Schema schema = new Schema();
     Map<String, MeasurementSchema> template = new HashMap<>();
     for (int i = 0; i < 10; i++) {
       template.put("sensor" + i, new MeasurementSchema("sensor" + i, TSDataType.INT64,
@@ -100,21 +111,21 @@ public class SeqTsFileRecoverTest {
     }
     schema.registerDeviceTemplate("template1", template);
     for (int i = 0; i < 10; i++) {
-      schema.registerDevice("device" + i, "template1");
+      schema.registerDevice("root.sg.device" + i, "template1");
     }
-    schema.registerDevice("device99", "template1");
+    schema.registerDevice("root.sg.device99", "template1");
     writer = new TsFileWriter(tsF, schema);
 
-    TSRecord tsRecord = new TSRecord(100, "device99");
+    TSRecord tsRecord = new TSRecord(100, "root.sg.device99");
     tsRecord.addTuple(DataPoint.getDataPoint(TSDataType.INT64, "sensor4", String.valueOf(0)));
     writer.write(tsRecord);
-    tsRecord = new TSRecord(2, "device99");
+    tsRecord = new TSRecord(2, "root.sg.device99");
     tsRecord.addTuple(DataPoint.getDataPoint(TSDataType.INT64, "sensor1", String.valueOf(0)));
     writer.write(tsRecord);
 
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
-        tsRecord = new TSRecord(i, "device" + j);
+        tsRecord = new TSRecord(i, "root.sg.device" + j);
         for (int k = 0; k < 10; k++) {
           tsRecord.addTuple(DataPoint.getDataPoint(TSDataType.INT64, "sensor" + k,
               String.valueOf(k)));
@@ -134,7 +145,7 @@ public class SeqTsFileRecoverTest {
           measurements[k] = "sensor" + k;
           values[k] = String.valueOf(k);
         }
-        InsertPlan insertPlan = new InsertPlan("device" + j, i, measurements, values);
+        InsertPlan insertPlan = new InsertPlan("root.sg.device" + j, i, measurements, values);
         node.write(insertPlan);
       }
       node.notifyStartFlush();
@@ -144,33 +155,33 @@ public class SeqTsFileRecoverTest {
   }
 
   @After
-  public void tearDown() throws IOException {
+  public void tearDown() throws IOException, StorageEngineException {
+    EnvironmentUtils.cleanEnv();
     FileUtils.deleteDirectory(tsF.getParentFile());
     resource.close();
     node.delete();
-    FlushSubTaskPoolManager.getInstance().stop();
   }
 
   @Test
   public void testNonLastRecovery() throws StorageGroupProcessorException, IOException {
-    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, schema,
+    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
         versionController, resource, true, false);
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     RestorableTsFileIOWriter writer = performer.recover();
     assertFalse(writer.canWrite());
 
-    assertEquals(2, (long) resource.getStartTimeMap().get("device99"));
-    assertEquals(100, (long) resource.getEndTimeMap().get("device99"));
+    assertEquals(2, (long) resource.getStartTimeMap().get("root.sg.device99"));
+    assertEquals(100, (long) resource.getEndTimeMap().get("root.sg.device99"));
     for (int i = 0; i < 10; i++) {
-      assertEquals(0, (long) resource.getStartTimeMap().get("device" + i));
-      assertEquals(19, (long) resource.getEndTimeMap().get("device" + i));
+      assertEquals(0, (long) resource.getStartTimeMap().get("root.sg.device" + i));
+      assertEquals(19, (long) resource.getEndTimeMap().get("root.sg.device" + i));
     }
 
     ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(tsF.getPath()));
     List<Path> pathList = new ArrayList<>();
     for (int j = 0; j < 10; j++) {
       for (int k = 0; k < 10; k++) {
-        pathList.add(new Path("device" + j, "sensor" + k));
+        pathList.add(new Path("root.sg.device" + j, "sensor" + k));
       }
     }
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
@@ -186,8 +197,8 @@ public class SeqTsFileRecoverTest {
     }
 
     pathList = new ArrayList<>();
-    pathList.add(new Path("device99", "sensor1"));
-    pathList.add(new Path("device99", "sensor4"));
+    pathList.add(new Path("root.sg.device99", "sensor1"));
+    pathList.add(new Path("root.sg.device99", "sensor4"));
     queryExpression = QueryExpression.create(pathList, null);
     dataSet = readOnlyTsFile.query(queryExpression);
     Assert.assertTrue(dataSet.hasNext());
@@ -202,25 +213,25 @@ public class SeqTsFileRecoverTest {
 
   @Test
   public void testLastRecovery() throws StorageGroupProcessorException, IOException {
-    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, schema,
+    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
         versionController, resource, true, true);
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     RestorableTsFileIOWriter writer = performer.recover();
     assertTrue(writer.canWrite());
     writer.endFile();
 
-    assertEquals(2, (long) resource.getStartTimeMap().get("device99"));
-    assertEquals(100, (long) resource.getEndTimeMap().get("device99"));
+    assertEquals(2, (long) resource.getStartTimeMap().get("root.sg.device99"));
+    assertEquals(100, (long) resource.getEndTimeMap().get("root.sg.device99"));
     for (int i = 0; i < 10; i++) {
-      assertEquals(0, (long) resource.getStartTimeMap().get("device" + i));
-      assertEquals(19, (long) resource.getEndTimeMap().get("device" + i));
+      assertEquals(0, (long) resource.getStartTimeMap().get("root.sg.device" + i));
+      assertEquals(19, (long) resource.getEndTimeMap().get("root.sg.device" + i));
     }
 
     ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(tsF.getPath()));
     List<Path> pathList = new ArrayList<>();
     for (int j = 0; j < 10; j++) {
       for (int k = 0; k < 10; k++) {
-        pathList.add(new Path("device" + j, "sensor" + k));
+        pathList.add(new Path("root.sg.device" + j, "sensor" + k));
       }
     }
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
@@ -236,8 +247,8 @@ public class SeqTsFileRecoverTest {
     }
 
     pathList = new ArrayList<>();
-    pathList.add(new Path("device99", "sensor1"));
-    pathList.add(new Path("device99", "sensor4"));
+    pathList.add(new Path("root.sg.device99", "sensor1"));
+    pathList.add(new Path("root.sg.device99", "sensor4"));
     queryExpression = QueryExpression.create(pathList, null);
     dataSet = readOnlyTsFile.query(queryExpression);
     Assert.assertTrue(dataSet.hasNext());

@@ -102,14 +102,14 @@ public class LastQueryExecutor {
       throws IOException, QueryProcessException, StorageEngineException {
 
     // Retrieve last value from MNode
-    MNode node = null;
+    LeafMNode node;
     try {
-      node = MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(seriesPath.toString());
+      node = (LeafMNode) MManager.getInstance().getNodeByPath(seriesPath.toString());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
-    if (((LeafMNode) node).getCachedLast() != null) {
-      return ((LeafMNode) node).getCachedLast();
+    if (node.getCachedLast() != null) {
+      return node.getCachedLast();
     }
 
     QueryDataSource dataSource =
@@ -153,7 +153,7 @@ public class LastQueryExecutor {
     }
 
     // Update cached last value with low priority
-    ((LeafMNode) node).updateCachedLast(resultPair, false, Long.MIN_VALUE);
+    node.updateCachedLast(resultPair, false, Long.MIN_VALUE);
     return resultPair;
   }
 

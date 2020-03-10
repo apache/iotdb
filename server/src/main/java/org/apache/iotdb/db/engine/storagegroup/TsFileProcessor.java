@@ -59,7 +59,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,7 +72,6 @@ public class TsFileProcessor {
    */
   private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
   private RestorableTsFileIOWriter writer;
-  private Schema schema;
   private TsFileResource tsFileResource;
   // time range index to indicate this processor belongs to which time range
   private long timeRangeId;
@@ -104,13 +102,12 @@ public class TsFileProcessor {
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
   private static final String FLUSH_QUERY_WRITE_RELEASE = "{}: {} get flushQueryLock write lock released";
 
-  TsFileProcessor(String storageGroupName, File tsfile, Schema schema,
+  TsFileProcessor(String storageGroupName, File tsfile,
       VersionController versionController,
       CloseTsFileCallBack closeTsFileCallback,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
-    this.schema = schema;
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
@@ -131,13 +128,12 @@ public class TsFileProcessor {
     this.versionController = versionController;
   }
 
-  public TsFileProcessor(String storageGroupName, TsFileResource tsFileResource, Schema schema,
+  public TsFileProcessor(String storageGroupName, TsFileResource tsFileResource,
       VersionController versionController, CloseTsFileCallBack closeUnsealedTsFileProcessor,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence,
       RestorableTsFileIOWriter writer) {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = tsFileResource;
-    this.schema = schema;
     this.versionController = versionController;
     this.writer = writer;
     this.closeTsFileCallback = closeUnsealedTsFileProcessor;
@@ -511,7 +507,7 @@ public class TsFileProcessor {
     }
     // signal memtable only may appear when calling asyncClose()
     if (!memTableToFlush.isSignalMemTable()) {
-      MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, schema, writer,
+      MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, writer,
           storageGroupName);
       try {
         writer.mark();

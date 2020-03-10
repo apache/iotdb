@@ -18,33 +18,12 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.util.Map;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 public class DeviceMNode extends InternalMNode {
 
   private static final long serialVersionUID = -1077855539671279042L;
-  /**
-   * Map for the schema in this device
-   */
-  private Map<String, MeasurementSchema> schemaMap;
 
-  public DeviceMNode(MNode parent, String name,
-      Map<String, MeasurementSchema> schemaMap) {
+  public DeviceMNode(MNode parent, String name) {
     super(parent, name);
-    this.schemaMap = schemaMap;
-  }
-
-  public Map<String, MeasurementSchema> getSchemaMap() {
-    return schemaMap;
-  }
-
-  public void addSchema(MNode child) {
-    this.schemaMap.put(child.getName(), child.getSchema());
-  }
-
-  public void addMeasurementSchema(MeasurementSchema schema) {
-    this.schemaMap.put(schema.getMeasurementId(), schema);
   }
 
 }

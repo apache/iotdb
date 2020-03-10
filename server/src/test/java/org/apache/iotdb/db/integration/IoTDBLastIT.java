@@ -123,15 +123,14 @@ public class IoTDBLastIT {
         }
       }
 
-      MNode node = MManager.getInstance()
-              .getDeviceNodeWithAutoCreateStorageGroup("root.ln.wf01.wt01.temperature");
-      ((LeafMNode) node).resetCache();
+      LeafMNode node = (LeafMNode) MManager.getInstance().getNodeByPath("root.ln.wf01.wt01.temperature");
+      node.resetCache();
 
-      hasResultSet = statement.execute(
+      statement.execute(
               "insert into root.ln.wf01.wt01(time, temperature, status, id) values(700, 33.1, false, 3)");
 
       // Last cache is updated with above insert sql
-      long time = ((LeafMNode) node).getCachedLast().getTimestamp();
+      long time = node.getCachedLast().getTimestamp();
       Assert.assertEquals(time, 700);
 
       hasResultSet = statement.execute("select last temperature,status,id from root.ln.wf01.wt01");
@@ -147,11 +146,11 @@ public class IoTDBLastIT {
         }
       }
 
-      hasResultSet = statement.execute(
+      statement.execute(
           "insert into root.ln.wf01.wt01(time, temperature, status, id) values(600, 19.1, false, 1)");
 
       // Last cache is not updated with above insert sql
-      time = ((LeafMNode) node).getCachedLast().getTimestamp();
+      time = node.getCachedLast().getTimestamp();
       Assert.assertEquals(time, 700);
 
       hasResultSet = statement.execute("select last temperature,status,id from root.ln.wf01.wt01");
@@ -173,7 +172,7 @@ public class IoTDBLastIT {
   }
 
   @Test
-  public void lastWithUnSeqFilesTest() throws SQLException {
+  public void lastWithUnSeqFilesTest() {
     String[] retArray1 =
         new String[] {
             "500,root.ln.wf01.wt02.temperature,15.7",

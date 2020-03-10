@@ -75,14 +75,6 @@ public class FileSize implements IStatistic {
           + MonitorConstants.MONITOR_PATH_SEPARATOR
           + kind.name();
       hashMap.put(seriesPath, MonitorConstants.DATA_TYPE_INT64);
-      Path path = new Path(seriesPath);
-      try {
-        storageEngine.addTimeSeries(path, TSDataType.valueOf(MonitorConstants.DATA_TYPE_INT64),
-            TSEncoding.valueOf("RLE"), TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
-      } catch (StorageEngineException e) {
-        logger.error("Register File Size Stats into storageEngine Failed.", e);
-      }
     }
     StatMonitor.getInstance().registerStatStorageGroup(hashMap);
   }

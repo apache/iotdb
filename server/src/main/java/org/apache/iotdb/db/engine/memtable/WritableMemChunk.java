@@ -22,20 +22,21 @@ import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class WritableMemChunk implements IWritableMemChunk {
 
-  private TSDataType dataType;
+  private MeasurementSchema schema;
   private TVList list;
 
-  public WritableMemChunk(TSDataType dataType, TVList list) {
-    this.dataType = dataType;
+  public WritableMemChunk(MeasurementSchema schema, TVList list) {
+    this.schema = schema;
     this.list = list;
   }
 
   @Override
   public void write(long insertTime, Object objectValue) {
-    switch (dataType) {
+    switch (schema.getType()) {
       case BOOLEAN:
         putBoolean(insertTime, (boolean) objectValue);
         break;
@@ -55,7 +56,7 @@ public class WritableMemChunk implements IWritableMemChunk {
         putBinary(insertTime, (Binary) objectValue);
         break;
       default:
-        throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+        throw new UnSupportedDataTypeException("Unsupported data type:" + schema.getType());
     }
   }
 
@@ -199,8 +200,8 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public TSDataType getType() {
-    return dataType;
+  public MeasurementSchema getSchema() {
+    return schema;
   }
 
   @Override
@@ -223,7 +224,7 @@ public class WritableMemChunk implements IWritableMemChunk {
     int size = getSortedTVList().size();
     StringBuilder out = new StringBuilder("MemChunk Size: " + size + System.lineSeparator());
     if (size != 0) {
-      out.append("Data type:").append(dataType).append(System.lineSeparator());
+      out.append("Data type:").append(schema.getType()).append(System.lineSeparator());
       out.append("First point:").append(getSortedTVList().getTimeValuePair(0))
           .append(System.lineSeparator());
       out.append("Last point:").append(getSortedTVList().getTimeValuePair(size - 1))

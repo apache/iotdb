@@ -27,6 +27,7 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of
@@ -39,7 +40,7 @@ public interface IMemTable {
 
   Map<String, Map<String, IWritableMemChunk>> getMemTableMap();
 
-  void write(String deviceId, String measurement, TSDataType dataType,
+  void write(String deviceId, String measurement, MeasurementSchema schema,
       long insertTime, Object objectValue);
 
   void write(BatchInsertPlan batchInsertPlan, int start, int end);

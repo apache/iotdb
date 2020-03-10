@@ -49,40 +49,6 @@ public class SchemaUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
 
-  private SchemaUtils() {
-  }
-
-  /**
-   * Construct the Schema of the FileNode named processorName.
-   *
-   * @param processorName the name of a FileNode.
-   * @return the schema of the FileNode named processorName.
-   */
-  public static Schema constructSchema(String processorName) throws MetadataException {
-    Set<String> devices = MManager.getInstance().getDevices(processorName);
-    Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>();
-    for (String device : devices) {
-      Map<String, MeasurementSchema> schema = MManager.getInstance().getDeviceSchemaMap(device);
-      for (Map.Entry<String, MeasurementSchema> entry : schema.entrySet()) {
-        measurementSchemaMap.put(new Path(device, entry.getKey()), entry.getValue());
-      }
-    }
-    return getSchemaFromColumnSchema(measurementSchemaMap);
-  }
-
-  /**
-   * getSchemaFromColumnSchema construct a Schema using the schema of the columns and device type.
-   *
-   * @return a Schema contains the provided schemas.
-   */
-  public static Schema getSchemaFromColumnSchema(Map<Path, MeasurementSchema> schemaMap) {
-    Schema schema = new Schema();
-    for (Map.Entry<Path, MeasurementSchema> entry : schemaMap.entrySet()) {
-      schema.registerTimeseries(entry.getKey(), entry.getValue());
-    }
-    return schema;
-  }
-
   public static void registerTimeseries(MeasurementSchema schema) {
     try {
       logger.debug("Registering timeseries {}", schema);
@@ -92,11 +58,9 @@ public class SchemaUtils {
       CompressionType compressionType = schema.getCompressor();
       MManager.getInstance().createTimeseries(path, dataType, encoding,
           compressionType, Collections.emptyMap());
-      StorageEngine.getInstance().addTimeSeries(new Path(path), dataType, encoding,
-          compressionType, Collections.emptyMap());
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
-    } catch (MetadataException | StorageEngineException e) {
+    } catch (MetadataException e) {
       logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getMeasurementId(),
           e);
     }

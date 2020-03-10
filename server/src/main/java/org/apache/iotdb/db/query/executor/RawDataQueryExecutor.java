@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -60,7 +61,7 @@ public class RawDataQueryExecutor {
    * without filter or with global time filter.
    */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
-      throws StorageEngineException {
+      throws StorageEngineException, QueryProcessException {
 
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     try {
@@ -72,14 +73,15 @@ public class RawDataQueryExecutor {
     }
   }
 
-  public QueryDataSet executeNonAlign(QueryContext context) throws StorageEngineException {
+  public QueryDataSet executeNonAlign(QueryContext context)
+      throws StorageEngineException, QueryProcessException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     return new NonAlignEngineDataSet(deduplicatedPaths, deduplicatedDataTypes,
         readersOfSelectedSeries);
   }
 
   protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context)
-      throws StorageEngineException {
+      throws StorageEngineException, QueryProcessException {
     Filter timeFilter = null;
     if (optimizedExpression != null) {
       timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
@@ -107,7 +109,8 @@ public class RawDataQueryExecutor {
    * @return QueryDataSet object
    * @throws StorageEngineException StorageEngineException
    */
-  public QueryDataSet executeWithValueFilter(QueryContext context) throws StorageEngineException {
+  public QueryDataSet executeWithValueFilter(QueryContext context)
+      throws StorageEngineException, QueryProcessException {
 
     TimeGenerator timestampGenerator = getTimeGenerator(
         optimizedExpression, context);
@@ -124,8 +127,7 @@ public class RawDataQueryExecutor {
   }
 
   protected IReaderByTimestamp getReaderByTimestamp(Path path, TSDataType dataType,
-      QueryContext context)
-      throws StorageEngineException {
+      QueryContext context) throws StorageEngineException, QueryProcessException {
     return new SeriesReaderByTimestamp(path,
         dataType, context,
         QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);

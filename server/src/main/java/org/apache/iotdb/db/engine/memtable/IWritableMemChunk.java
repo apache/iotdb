@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.memtable;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public interface IWritableMemChunk {
 
@@ -67,7 +68,7 @@ public interface IWritableMemChunk {
 
   long count();
 
-  TSDataType getType();
+  MeasurementSchema getSchema();
 
   /**
    * using offset to mark which data is deleted: the data whose timestamp is less than offset are

@@ -83,10 +83,10 @@ public class TsFileProcessorTest {
   }
 
   @Test
-  public void testWriteAndFlush() throws IOException, QueryProcessException, MetadataException {
+  public void testWriteAndFlush() throws IOException, QueryProcessException {
     logger.info("testWriteAndFlush begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
+        SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = processor
@@ -131,11 +131,10 @@ public class TsFileProcessorTest {
   }
 
   @Test
-  public void testWriteAndRestoreMetadata()
-      throws IOException, QueryProcessException, MetadataException {
+  public void testWriteAndRestoreMetadata() throws IOException, QueryProcessException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
+        SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = processor
@@ -207,10 +206,10 @@ public class TsFileProcessorTest {
 
 
   @Test
-  public void testMultiFlush() throws IOException, QueryProcessException, MetadataException {
+  public void testMultiFlush() throws IOException, QueryProcessException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
+        SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = processor
@@ -242,11 +241,11 @@ public class TsFileProcessorTest {
 
 
   @Test
-  public void testWriteAndClose() throws IOException, QueryProcessException, MetadataException {
+  public void testWriteAndClose() throws IOException, QueryProcessException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE,
-        this::closeTsFileProcessor, (tsFileProcessor) -> true, true);
+        SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
+        (tsFileProcessor) -> true, true);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = processor
         .query(deviceId, measurementId, dataType, encoding, props, context);

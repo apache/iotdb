@@ -118,13 +118,13 @@ public class MTree implements Serializable {
         throw new PathAlreadyExistException(cur.getFullPath());
       }
       // no device node d1, create d1 and get
-      cur.addChild(new DeviceMNode(cur, deviceOrSGName, new HashMap<>()));
+      cur.addChild(new DeviceMNode(cur, deviceOrSGName));
     } else if (cur.getChild(deviceOrSGName) instanceof StorageGroupMNode) {
       // next is storage group, e.g., root.sg.s1, create an EmptyDeviceMNode under root.sg
       hasSetStorageGroup = true;
       cur = cur.getChild(deviceOrSGName);
       if (!cur.hasChild(EmptyDeviceMNode.NAME)) {
-        cur.addChild(new EmptyDeviceMNode(cur, new HashMap<>()));
+        cur.addChild(new EmptyDeviceMNode(cur));
       }
       deviceOrSGName = EmptyDeviceMNode.NAME;
     }
@@ -145,9 +145,6 @@ public class MTree implements Serializable {
     MNode leaf = new LeafMNode(deviceMNode, nodeNames[nodeNames.length - 1], dataType, encoding,
         compressor, props);
     deviceMNode.addChild(leaf);
-    deviceMNode.addMeasurementSchema(
-        new MeasurementSchema(leaf.getName(), dataType, encoding, compressor, props));
-
   }
 
   /**
@@ -185,11 +182,11 @@ public class MTree implements Serializable {
       if (cur instanceof LeafMNode) {
         throw new PathAlreadyExistException(cur.getFullPath());
       }
-      cur.addChild(new DeviceMNode(cur, deviceOrSGName, new HashMap<>()));
+      cur.addChild(new DeviceMNode(cur, deviceOrSGName));
     } else if (cur.getChild(deviceOrSGName) instanceof StorageGroupMNode) {
       // e.g., condition (2): set cur to root.sg and create EmptyDeviceMNode under root.sg
       cur = cur.getChild(deviceOrSGName);
-      cur.addChild(new EmptyDeviceMNode(cur, new HashMap<>()));
+      cur.addChild(new EmptyDeviceMNode(cur));
       deviceOrSGName = EmptyDeviceMNode.NAME;
     }
 
@@ -340,10 +337,7 @@ public class MTree implements Serializable {
    * Get measurement schema for a given path. Path must be a complete Path from root to leaf node.
    */
   MeasurementSchema getSchema(String path) throws MetadataException {
-    MNode node = getNodeByPath(path);
-    if (!(node instanceof LeafMNode)) {
-      throw new PathNotExistException(path);
-    }
+    LeafMNode node = (LeafMNode) getNodeByPath(path);
     return node.getSchema();
   }
 
@@ -614,7 +608,7 @@ public class MTree implements Serializable {
         String nodePath = parent + nodeName;
         String[] tsRow = new String[5];
         tsRow[0] = nodePath;
-        MeasurementSchema measurementSchema = node.getSchema();
+        MeasurementSchema measurementSchema = ((LeafMNode) node).getSchema();
         tsRow[1] = getStorageGroupName(nodePath);
         tsRow[2] = measurementSchema.getType().toString();
         tsRow[3] = measurementSchema.getEncodingType().toString();
@@ -829,38 +823,6 @@ public class MTree implements Serializable {
     }
   }
 
-
-  void addSchemaToDevice(String device, MeasurementSchema schema) throws MetadataException {
-    DeviceMNode deviceMNode = getDeviceNode(device);
-    deviceMNode.addMeasurementSchema(schema);
-  }
-
-  /**
-   * Get all ColumnSchemas for the device path.
-   *
-   * @return ArrayList<ColumnSchema> The list of the schema
-   */
-  List<MeasurementSchema> getDeviceSchema(String device) throws MetadataException {
-    DeviceMNode deviceMNode = getDeviceNode(device);
-    return new ArrayList<>(deviceMNode.getSchemaMap().values());
-  }
-
-  /**
-   * Get schema map for the device
-   *
-   * measurement -> measurementSchema
-   */
-  Map<String, MeasurementSchema> getDeviceSchemaMap(String device)
-      throws MetadataException {
-    DeviceMNode deviceMNode;
-    try {
-      deviceMNode = getDeviceNode(device);
-    } catch (PathNotExistException e) {
-      return new HashMap<>();
-    }
-    return deviceMNode.getSchemaMap();
-  }
-
   @Override
   public String toString() {
     JSONObject jsonObject = new JSONObject();
@@ -889,10 +851,11 @@ public class MTree implements Serializable {
         jsonObject.put(child.getName(), mNodeToJSON(child, storageGroupName));
       }
     } else if (node instanceof LeafMNode) {
-      jsonObject.put("DataType", node.getSchema().getType());
-      jsonObject.put("Encoding", node.getSchema().getEncodingType());
-      jsonObject.put("Compressor", node.getSchema().getCompressor());
-      jsonObject.put("args", node.getSchema().getProps().toString());
+      LeafMNode leafMNode = (LeafMNode) node;
+      jsonObject.put("DataType", leafMNode.getSchema().getType());
+      jsonObject.put("Encoding", leafMNode.getSchema().getEncodingType());
+      jsonObject.put("Compressor", leafMNode.getSchema().getCompressor());
+      jsonObject.put("args", leafMNode.getSchema().getProps().toString());
       jsonObject.put("StorageGroup", storageGroupName);
     }
     return jsonObject;

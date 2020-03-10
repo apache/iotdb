@@ -23,7 +23,6 @@ import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -36,7 +35,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -71,18 +69,13 @@ public class DeletionFileNodeTest {
   }
 
   @Before
-  public void setup() throws MetadataException, StorageEngineException, StartupException {
+  public void setup() throws MetadataException {
     EnvironmentUtils.envSetUp();
 
     MManager.getInstance().setStorageGroup(processorName);
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().createTimeseries(processorName + "." + measurements[i], dataType,
           encoding);
-      StorageEngine.getInstance()
-          .addTimeSeries(new Path(processorName, measurements[i]), TSDataType.valueOf(dataType),
-              TSEncoding.valueOf(encoding),
-              TSFileDescriptor.getInstance().getConfig().getCompressor(),
-              Collections.emptyMap());
     }
   }
 

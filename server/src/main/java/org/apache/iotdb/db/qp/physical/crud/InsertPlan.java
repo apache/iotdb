@@ -37,14 +37,15 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class InsertPlan extends PhysicalPlan {
 
+  private long time;
   private String deviceId;
   private String[] measurements;
-  private TSDataType[] dataTypes;
   private String[] values;
-  private long time;
+  private MeasurementSchema[] schemas;
 
   public InsertPlan() {
     super(false, OperatorType.INSERT);
@@ -66,11 +67,11 @@ public class InsertPlan extends PhysicalPlan {
     this.deviceId = tsRecord.deviceId;
     this.time = tsRecord.time;
     this.measurements = new String[tsRecord.dataPointList.size()];
-    this.dataTypes = new TSDataType[tsRecord.dataPointList.size()];
+    this.schemas = new MeasurementSchema[tsRecord.dataPointList.size()];
     this.values = new String[tsRecord.dataPointList.size()];
     for (int i = 0; i < tsRecord.dataPointList.size(); i++) {
       measurements[i] = tsRecord.dataPointList.get(i).getMeasurementId();
-      dataTypes[i] = tsRecord.dataPointList.get(i).getType();
+      schemas[i] = new MeasurementSchema(null, tsRecord.dataPointList.get(i).getType(), null);
       values[i] = tsRecord.dataPointList.get(i).getValue().toString();
     }
     canbeSplit = false;
@@ -94,12 +95,12 @@ public class InsertPlan extends PhysicalPlan {
     this.time = time;
   }
 
-  public TSDataType[] getDataTypes() {
-    return dataTypes;
+  public MeasurementSchema[] getSchemas() {
+    return schemas;
   }
 
-  public void setDataTypes(TSDataType[] dataTypes) {
-    this.dataTypes = dataTypes;
+  public void setSchemas(MeasurementSchema[] schemas) {
+    this.schemas = schemas;
   }
 
   @Override
@@ -164,11 +165,15 @@ public class InsertPlan extends PhysicalPlan {
     putString(stream, deviceId);
 
     stream.writeInt(measurements.length);
+
     for (String m : measurements) {
       putString(stream, m);
     }
 
-    stream.writeInt(values.length);
+    for (MeasurementSchema schema : schemas) {
+      schema.serializeTo(stream);
+    }
+
     for (String m : values) {
       putString(stream, m);
     }
@@ -183,11 +188,11 @@ public class InsertPlan extends PhysicalPlan {
     putString(buffer, deviceId);
 
     buffer.putInt(measurements.length);
+
     for (String m : measurements) {
       putString(buffer, m);
     }
 
-    buffer.putInt(values.length);
     for (String m : values) {
       putString(buffer, m);
     }
@@ -199,14 +204,14 @@ public class InsertPlan extends PhysicalPlan {
     this.deviceId = readString(buffer);
 
     int measurementSize = buffer.getInt();
+
     this.measurements = new String[measurementSize];
     for (int i = 0; i < measurementSize; i++) {
       measurements[i] = readString(buffer);
     }
 
-    int valueSize = buffer.getInt();
-    this.values = new String[valueSize];
-    for (int i = 0; i < valueSize; i++) {
+    this.values = new String[measurementSize];
+    for (int i = 0; i < measurementSize; i++) {
       values[i] = readString(buffer);
     }
   }
@@ -220,7 +225,7 @@ public class InsertPlan extends PhysicalPlan {
     if (measurementIndex >= values.length) {
       return null;
     }
-    Object value = CommonUtils.parseValue(dataTypes[measurementIndex], values[measurementIndex]);
-    return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[measurementIndex], value));
+    Object value = CommonUtils.parseValue(schemas[measurementIndex].getType(), values[measurementIndex]);
+    return new TimeValuePair(time, TsPrimitiveType.getByType(schemas[measurementIndex].getType(), value));
   }
 }

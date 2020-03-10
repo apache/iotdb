@@ -60,14 +60,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * constructor.
    */
   public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByPlan groupByPlan)
-      throws StorageEngineException {
+      throws StorageEngineException, QueryProcessException {
     super(context, groupByPlan);
 
     initGroupBy(context, groupByPlan);
   }
 
   private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
-      throws StorageEngineException {
+      throws StorageEngineException, QueryProcessException {
     IExpression expression = groupByPlan.getExpression();
 
     Filter timeFilter = null;
@@ -133,7 +133,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     private List<Pair<AggregateResult, Integer>> results = new ArrayList<>();
 
     GroupByExecutor(Path path, TSDataType dataType, QueryContext context, Filter timeFilter)
-        throws StorageEngineException {
+        throws StorageEngineException, QueryProcessException {
       QueryDataSource queryDataSource = QueryResourceManager.getInstance()
           .getQueryDataSource(path, context, timeFilter);
       // update filter by TTL

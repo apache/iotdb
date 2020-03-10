@@ -46,6 +46,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.DeviceMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -250,6 +251,11 @@ public class MManager {
       logWriter = new BufferedWriter(fileWriter);
     }
     return logWriter;
+  }
+
+  public void createTimeseries(String path, MeasurementSchema schema) throws MetadataException {
+    createTimeseries(path, schema.getType(), schema.getEncodingType(), schema.getCompressor(),
+        schema.getProps());
   }
 
   /**
@@ -532,6 +538,23 @@ public class MManager {
     }
   }
 
+  public MeasurementSchema[] getSchemas(String deviceId, String[] measurements)
+      throws MetadataException {
+    lock.readLock().lock();
+    try {
+      DeviceMNode deviceMNode = (DeviceMNode) getNodeByPath(deviceId);
+      MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurements.length];
+      for (int i = 0; i < measurementSchemas.length; i++) {
+        if (!deviceMNode.hasChild(measurements[i])) {
+          throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
+        }
+        measurementSchemas[i] = ((LeafMNode) deviceMNode.getChild(measurements[i])).getSchema();
+      }
+      return measurementSchemas;
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
 
   /**
    * Get all devices under given prefixPath.
@@ -566,24 +589,6 @@ public class MManager {
       lock.readLock().unlock();
     }
   }
-
-  /**
-   * Get all ColumnSchemas for the storage group seriesPath.
-   *
-   * @param storageGroup storage group name
-   */
-  
-  /*
-  public List<MeasurementSchema> getStorageGroupSchema(String storageGroup)
-      throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return mtree.getStorageGroupSchema(storageGroup);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-  */
 
   /**
    * Get storage group name by path
@@ -659,15 +664,11 @@ public class MManager {
     }
   }
 
-  /**
-   * Get schema map for the device
-   *
-   * @return a map measurementId -> measurememtSchema in the device
-   */
-  public Map<String, MeasurementSchema> getDeviceSchemaMap(String device) throws MetadataException {
+  public MeasurementSchema getSeriesSchema(String device, String measuremnet) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getDeviceSchemaMap(device);
+      InternalMNode node = (InternalMNode) mtree.getNodeByPath(device);
+      return ((LeafMNode) node.getChild(measuremnet)).getSchema();
     } finally {
       lock.readLock().unlock();
     }
@@ -707,7 +708,7 @@ public class MManager {
   /**
    * Get node by path
    */
-  MNode getNodeByPath(String path) throws MetadataException {
+  public MNode getNodeByPath(String path) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getNodeByPath(path);
@@ -763,7 +764,7 @@ public class MManager {
     return mtree.getDeviceNode(path);
   }
 
-  public MNode getDeviceNodeWithAutoCreateStorageGroup(String path) throws MetadataException {
+  public DeviceMNode getDeviceNodeWithAutoCreateStorageGroup(String path) throws MetadataException {
     return getDeviceNodeWithAutoCreateStorageGroup(path, config.isAutoCreateSchemaEnabled(),
         config.getDefaultStorageGroupLevel());
   }
@@ -849,7 +850,7 @@ public class MManager {
     while (!nodeDeque.isEmpty()) {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof LeafMNode) {
-        MeasurementSchema nodeSchema = node.getSchema();
+        MeasurementSchema nodeSchema = ((LeafMNode) node).getSchema();
         timeseriesSchemas.add(new MeasurementSchema(node.getFullPath(),
             nodeSchema.getType(), nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
       } else if (!node.getChildren().isEmpty()) {
