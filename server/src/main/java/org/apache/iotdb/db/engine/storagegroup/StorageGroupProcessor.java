@@ -631,9 +631,13 @@ public class StorageGroupProcessor {
     // sequence: check the size of work memtable and may asyncTryToFlush the flush memtable
     // unsequence: check the size of work memtable and may asyncTryToFlush it
     if (tsFileProcessor.shouldFlush()) {
-      long updateFLushTime = tsFileProcessor.adjustMemTable();
-      if (globalLatestFlushedTimeForEachDevice.get(batchInsertPlan.getDeviceId()) < updateFLushTime) {
-        globalLatestFlushedTimeForEachDevice.put(batchInsertPlan.getDeviceId(), updateFLushTime);
+      Map<String, Long> updateFLushTimeForEachDevice = tsFileProcessor.adjustMemTable();
+      for (String deviceId : updateFLushTimeForEachDevice.keySet()) {
+        if (globalLatestFlushedTimeForEachDevice.get(deviceId) <
+            updateFLushTimeForEachDevice.get(deviceId)) {
+          globalLatestFlushedTimeForEachDevice.put(deviceId,
+              updateFLushTimeForEachDevice.get(deviceId));
+        }
       }
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
@@ -689,9 +693,13 @@ public class StorageGroupProcessor {
     // sequence: check the size of work memtable and may asyncTryToFlush the flush memtable
     // unsequence: check the size of work memtable and may asyncTryToFlush it
     if (tsFileProcessor.shouldFlush()) {
-      long updateFLushTime = tsFileProcessor.adjustMemTable();
-      if (globalLatestFlushedTimeForEachDevice.get(insertPlan.getDeviceId()) < updateFLushTime) {
-        globalLatestFlushedTimeForEachDevice.put(insertPlan.getDeviceId(), updateFLushTime);
+      Map<String, Long> updateFLushTimeForEachDevice = tsFileProcessor.adjustMemTable();
+      for (String deviceId : updateFLushTimeForEachDevice.keySet()) {
+        if (globalLatestFlushedTimeForEachDevice.get(deviceId) <
+            updateFLushTimeForEachDevice.get(deviceId)) {
+          globalLatestFlushedTimeForEachDevice.put(deviceId,
+              updateFLushTimeForEachDevice.get(deviceId));
+        }
       }
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }

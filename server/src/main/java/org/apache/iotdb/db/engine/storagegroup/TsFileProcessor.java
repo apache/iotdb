@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -672,17 +673,18 @@ public class TsFileProcessor {
     }
   }
 
-  public long adjustMemTable() throws QueryProcessException {
+  public Map<String, Long> adjustMemTable() throws QueryProcessException {
     if (!sequence) {
-      return Long.MIN_VALUE;
+      return null;
     }
     flushQueryLock.writeLock().lock();
-    long updateFlushTime = Long.MIN_VALUE;
+    Map<String, Long> updateFlushTimeForEachDevice = new HashMap<>();
     try {
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       IMemTable tmpWorkMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
       flushMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
       for (String deviceId : workMemTable.getMemTableMap().keySet()) {
+        long tmpFlushTime = Long.MIN_VALUE;
         for (String measurementId : workMemTable.getMemTableMap().get(deviceId).keySet()) {
           IWritableMemChunk series = workMemTable.getMemTableMap().get(deviceId).get(measurementId);
           String[] measurements = new String[] {measurementId};
@@ -729,10 +731,11 @@ public class TsFileProcessor {
           workBatchInsertPlan.setColumns(workColumns);
           workBatchInsertPlan.setRowCount(tvList.size() - rowCount);
           tmpWorkMemTable.insertBatch(workBatchInsertPlan, 0, tvList.size() - rowCount);
-          if (flushTimes[rowCount - 1] > updateFlushTime) {
-            updateFlushTime = flushTimes[rowCount - 1];
+          if (flushTimes[rowCount - 1] > tmpFlushTime) {
+            tmpFlushTime = flushTimes[rowCount - 1];
           }
         }
+        updateFlushTimeForEachDevice.put(deviceId, tmpFlushTime);
       }
       workMemTable.release();
       MemTablePool.getInstance().putBack(workMemTable, storageGroupName);
@@ -740,7 +743,7 @@ public class TsFileProcessor {
     } finally {
       flushQueryLock.writeLock().unlock();
     }
-    return updateFlushTime;
+    return updateFlushTimeForEachDevice;
   }
 
   public int getFlushingMemTableSize() {
