@@ -192,13 +192,12 @@ class MergeFileTask {
       throws IOException {
     fileWriter.startChunkGroup(device);
     // long version = chunkGroupMetaData.getVersion();
-    long version = 0;
     for (ChunkMetadata chunkMetaData : chunkMetadataList) {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       fileWriter.writeChunk(chunk, chunkMetaData);
       context.incTotalPointWritten(chunkMetaData.getNumOfPoints());
     }
-    fileWriter.endChunkGroup(version + 1);
+    fileWriter.endChunkGroup();
   }
 
   private void moveUnmergedToNew(TsFileResource seqFile) throws IOException {
@@ -228,7 +227,7 @@ class MergeFileTask {
         fileWriter.startChunkGroup(path.getDevice());
         long maxVersion = writeUnmergedChunks(chunkStartTimes, chunkMetadataList,
             resource.getFileReader(seqFile), fileWriter);
-        fileWriter.endChunkGroup(maxVersion + 1);
+        fileWriter.endChunkGroup();
       }
     }
 

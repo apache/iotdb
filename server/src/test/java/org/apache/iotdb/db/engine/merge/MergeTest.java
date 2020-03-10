@@ -186,7 +186,7 @@ abstract class MergeTest {
         tsFileResource.updateEndTime(deviceIds[j], i);
       }
       if ((i + 1) % flushInterval == 0) {
-        fileWriter.flushForTest();
+        fileWriter.flushAllChunkGroups();
       }
     }
     fileWriter.close();

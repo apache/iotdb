@@ -179,7 +179,6 @@ public class IoTDBSimpleQueryTest {
       long count = 0;
 
       while(resultSet.next()) {
-        System.out.println(resultSet.getString(1));
         count++;
       }
 

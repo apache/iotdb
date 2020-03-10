@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
@@ -231,7 +232,7 @@ public class TsFileWriterTest {
   @Test
   public void flushForTest() throws IOException {
     //The interface is just for test
-    writer.flushForTest();
+    writer.flushAllChunkGroups();
     closeFile();
     readNothing();
   }
@@ -239,7 +240,8 @@ public class TsFileWriterTest {
   @Test
   public void flushForTestWithVersion() throws IOException {
     //The interface is just for test
-    writer.flushForTest(10L);
+    writer.flushAllChunkGroups();
+    writer.addVersionPair(new Pair<>(writer.getIOWriter().getPos(), 10L));
     closeFile();
     readNothing();
   }

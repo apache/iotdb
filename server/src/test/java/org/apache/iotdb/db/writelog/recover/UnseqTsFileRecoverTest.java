@@ -119,7 +119,7 @@ public class UnseqTsFileRecoverTest {
       }
     }
 
-    writer.flushForTest();
+    writer.flushAllChunkGroups();
     writer.getIOWriter().close();
 
     node = MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsF.getName());

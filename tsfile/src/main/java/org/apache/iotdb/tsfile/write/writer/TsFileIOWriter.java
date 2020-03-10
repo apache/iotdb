@@ -76,7 +76,7 @@ public class TsFileIOWriter {
   private long markedPosition;
   private String deviceId;
   private long currentChunkGroupStartOffset;
-  private Map<Long, Long> versionInfo = new HashMap<>();
+  private List<Pair<Long, Long>> versionInfo = new ArrayList<>();
 
   /**
    * empty construct function.
@@ -136,7 +136,7 @@ public class TsFileIOWriter {
   /**
    * end chunk and write some log. If there is no data in the chunk group, nothing will be flushed.
    */
-  public void endChunkGroup(long version) throws IOException {
+  public void endChunkGroup() throws IOException {
     if (deviceId == null || chunkMetadataList.isEmpty()) {
       return;
     }
@@ -145,7 +145,6 @@ public class TsFileIOWriter {
         chunkMetadataList.size());
     chunkGroupFooter.serializeTo(out.wrapAsStream());
     chunkGroupInfoList.add(new Pair<>(deviceId, chunkMetadataList));
-    versionInfo.put(out.getPosition(), version);
     logger.debug("end chunk group:{}", chunkMetadataList);
     deviceId = null;
     chunkMetadataList = null;
@@ -403,6 +402,9 @@ public class TsFileIOWriter {
     }
   }
 
+  public void addVersionPair(Pair<Long, Long> versionPair) {
+    versionInfo.add(versionPair);
+  }
 
   /**
    * this function is only for Test.

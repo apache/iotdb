@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkGroupWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkGroupWriter;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
@@ -289,7 +290,7 @@ public class TsFileWriter implements AutoCloseable {
       if (memSize > chunkGroupSizeThreshold) {
         LOG.debug("start to flush chunk groups, memory space occupy:{}", memSize);
         recordCountForNextMemCheck = recordCount * chunkGroupSizeThreshold / memSize;
-        return flushAllChunks();
+        return flushAllChunkGroups();
       } else {
         recordCountForNextMemCheck = recordCount * chunkGroupSizeThreshold / memSize;
         return false;
@@ -306,7 +307,7 @@ public class TsFileWriter implements AutoCloseable {
    * function just return false, the Override of IoTDB may return true.
    * @throws IOException exception in IO
    */
-  private boolean flushAllChunks() throws IOException {
+  public boolean flushAllChunkGroups() throws IOException {
     if (recordCount > 0) {
       for (Map.Entry<String, IChunkGroupWriter> entry : groupWriters.entrySet()) {
         long pos = fileWriter.getPos();
@@ -321,7 +322,7 @@ public class TsFileWriter implements AutoCloseable {
                   dataSize,
                   fileWriter.getPos() - pos));
         }
-        fileWriter.endChunkGroup(0);
+        fileWriter.endChunkGroup();
       }
       reset();
     }
@@ -342,7 +343,7 @@ public class TsFileWriter implements AutoCloseable {
   @Override
   public void close() throws IOException {
     LOG.info("start close file");
-    flushAllChunks();
+    flushAllChunkGroups();
     fileWriter.endFile();
   }
 
@@ -355,31 +356,7 @@ public class TsFileWriter implements AutoCloseable {
     return this.fileWriter;
   }
 
-  /**
-   * this function is only for Test
-   *
-   * @throws IOException exception in IO
-   */
-  public void flushForTest() throws IOException {
-    flushAllChunks();
-  }
-
-  public void flushForTest(Long version) throws IOException {
-    if (recordCount > 0) {
-      for (Map.Entry<String, IChunkGroupWriter> entry: groupWriters.entrySet()) {
-        long pos = fileWriter.getPos();
-        String deviceId = entry.getKey();
-        IChunkGroupWriter groupWriter = entry.getValue();
-        fileWriter.startChunkGroup(deviceId);
-        long dataSize = groupWriter.flushToFileWriter(fileWriter);
-        if (fileWriter.getPos() - pos != dataSize) {
-          throw new IOException(String.format(
-                  "Flushed data size is inconsistent with computation! Estimated: %d, Actual: %d",
-                  dataSize, fileWriter.getPos() - pos));
-        }
-        fileWriter.endChunkGroup(version);
-      }
-      reset();
-    }
+  public void addVersionPair(Pair<Long, Long> versionPair) {
+    fileWriter.addVersionPair(versionPair);
   }
 }

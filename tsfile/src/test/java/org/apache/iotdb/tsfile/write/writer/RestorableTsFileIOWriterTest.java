@@ -146,7 +146,7 @@ public class RestorableTsFileIOWriterTest {
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
-    writer.flushForTest();
+    writer.flushAllChunkGroups();
     long pos = writer.getIOWriter().getPos();
     // let's delete one byte.
     writer.getIOWriter().out.truncate(pos - 1);
@@ -170,7 +170,7 @@ public class RestorableTsFileIOWriterTest {
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
-    writer.flushForTest();
+    writer.flushAllChunkGroups();
     writer.getIOWriter().close();
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
@@ -208,7 +208,7 @@ public class RestorableTsFileIOWriterTest {
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
-    writer.flushForTest();
+    writer.flushAllChunkGroups();
     writer.getIOWriter().writeChunkMaskForTest();
     writer.getIOWriter().close();
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
@@ -245,7 +245,7 @@ public class RestorableTsFileIOWriterTest {
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.write(new TSRecord(2, "d2").addTuple(new FloatDataPoint("s1", 6))
         .addTuple(new FloatDataPoint("s2", 4)));
-    writer.flushForTest();
+    writer.flushAllChunkGroups();
     writer.getIOWriter().close();
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
@@ -284,7 +284,7 @@ public class RestorableTsFileIOWriterTest {
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.write(new TSRecord(2, "d2").addTuple(new FloatDataPoint("s1", 6))
         .addTuple(new FloatDataPoint("s2", 4)));
-    writer.flushForTest();
+    writer.flushAllChunkGroups();
     writer.getIOWriter().writeSeparatorMaskForTest();
     writer.getIOWriter().close();
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
@@ -325,7 +325,7 @@ public class RestorableTsFileIOWriterTest {
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.write(new TSRecord(2, "d2").addTuple(new FloatDataPoint("s1", 6))
         .addTuple(new FloatDataPoint("s2", 4)));
-    writer.flushForTest();
+    writer.flushAllChunkGroups();
     writer.getIOWriter().writeSeparatorMaskForTest();
     writer.getIOWriter().writeSeparatorMaskForTest();
     writer.getIOWriter().close();

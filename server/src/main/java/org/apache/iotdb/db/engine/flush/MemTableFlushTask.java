@@ -84,7 +84,7 @@ public class MemTableFlushTask {
         // register active time series to the ActiveTimeSeriesCounter
         ActiveTimeSeriesCounter.getInstance().offer(storageGroup, deviceId, measurementId);
       }
-      encodingTaskQueue.add(new EndChunkGroupIoTask(memTable.getVersion()));
+      encodingTaskQueue.add(new EndChunkGroupIoTask());
     }
     ActiveTimeSeriesCounter.getInstance().updateActiveRatio(storageGroup);
     noMoreEncodingTask = true;
@@ -102,6 +102,13 @@ public class MemTableFlushTask {
     }
 
     ioTaskFuture.get();
+
+    try {
+      writer.addVersionPair(new Pair<>(writer.getPos(), memTable.getVersion()));
+    } catch (IOException e) {
+      logger.error("meet error when getPos of TsFile Writer " + writer.getFile().getAbsolutePath(), e);
+      throw new ExecutionException(e);
+    }
 
     logger.info(
         "Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
@@ -224,8 +231,7 @@ public class MemTableFlushTask {
               ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
               chunkWriter.writeToFileWriter(MemTableFlushTask.this.writer);
             } else {
-              EndChunkGroupIoTask endGroupTask = (EndChunkGroupIoTask) ioMessage;
-              writer.endChunkGroup(endGroupTask.version);
+              writer.endChunkGroup();
             }
           } catch (IOException e) {
             logger.error("Storage group {} memtable {}, io task meets error.", storageGroup,
@@ -240,11 +246,6 @@ public class MemTableFlushTask {
     };
 
   static class EndChunkGroupIoTask {
-    private long version;
-
-    EndChunkGroupIoTask(long version) {
-      this.version = version;
-    }
   }
 
   static class StartFlushGroupIOTask {

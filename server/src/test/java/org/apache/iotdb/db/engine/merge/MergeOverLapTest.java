@@ -141,7 +141,7 @@ public class MergeOverLapTest extends MergeTest {
         }
       }
       if ((i + 1) % flushInterval == 0) {
-        fileWriter.flushForTest();
+        fileWriter.flushAllChunkGroups();
       }
     }
     fileWriter.close();

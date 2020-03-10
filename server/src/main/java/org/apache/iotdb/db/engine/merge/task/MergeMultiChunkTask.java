@@ -194,7 +194,7 @@ class MergeMultiChunkTask {
     boolean dataWritten = mergeChunks(seqChunkMeta, isLastFile, fileSequenceReader, unseqReaders,
         mergeFileWriter, currTsFile);
     if (dataWritten) {
-      mergeFileWriter.endChunkGroup(0);
+      mergeFileWriter.endChunkGroup();
       mergeLogger.logFilePosition(mergeFileWriter.getFile());
       currTsFile.getStartTimeMap().put(deviceId, currDeviceMinTime);
     }
