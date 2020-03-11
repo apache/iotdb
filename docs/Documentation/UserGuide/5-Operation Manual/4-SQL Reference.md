@@ -353,7 +353,7 @@ Rules:
 Correct example: select * from root.sg1 align by device  
 Correct example: select * from root.sg1 ALIGN BY DEVICE  
 
-2. GroupbyDeviceClause can only be used at the end of a query statement.  
+2. AlignbyDeviceClause can only be used at the end of a query statement.  
 Correct example: select * from root.sg1 where time > 10 align by device  
 Wrong example: select * from root.sg1 align by device where time > 10  
 
@@ -406,12 +406,19 @@ For example. "select s0,s1 from root.sg.*,root.sg.d0 align by device" is equal t
 7. The duplicated measurements in the suffix paths are not neglected.  
 For example, "select s0,s0,s1 from root.sg.* align by device" is not equal to "select s0,s1 from root.sg.* align by device".
 
-8. More correct examples: 
+8. Both time predicates and value predicates are allowed in Where Clause. The paths of the value predicates can be the leaf node or full path started with ROOT. And wildcard is not allowed here. For example:
+- select * from root.sg.* where time = 1 align by device
+- select * from root.sg.* where s0 < 100 align by device
+- select * from root.sg.* where time < 20 AND s0 > 50 align by device
+- select * from root.sg.d0 where root.sg.d0.s0 = 15 align by device
+
+9. More correct examples:
    - select * from root.vehicle align by device
    - select s0,s0,s1 from root.vehicle.* align by device
    - select s0,s1 from root.vehicle.* limit 10 offset 1 align by device
    - select * from root.vehicle slimit 10 soffset 2 align by device
    - select * from root.vehicle where time > 10 align by device
+   - select * from root.vehicle.* where time < 10 AND s0 > 25 align by device
    - select * from root.vehicle where root.vehicle.d0.s0>0 align by device
    - select count(*) from root.vehicle align by device
    - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) align by device

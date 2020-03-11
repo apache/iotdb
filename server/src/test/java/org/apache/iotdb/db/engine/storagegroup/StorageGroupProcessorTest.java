@@ -27,7 +27,8 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -150,7 +151,7 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testIoTDBRowBatchWriteAndSyncClose() throws QueryProcessException {
+  public void testIoTDBRowBatchWriteAndSyncClose() throws WriteProcessException {
 
     String[] measurements = new String[2];
     measurements[0] = "s0";

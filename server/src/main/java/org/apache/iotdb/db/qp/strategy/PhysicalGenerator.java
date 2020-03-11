@@ -312,8 +312,7 @@ public class PhysicalGenerator {
                 originAggregations.get(i) : null;
             List<TSDataType> dataTypes = getSeriesTypes(actualPaths, aggregation);
             for (int pathIdx = 0; pathIdx < actualPaths.size(); pathIdx++) {
-              String pathStr = actualPaths.get(pathIdx);
-              Path path = new Path(pathStr);
+              Path path = new Path(actualPaths.get(pathIdx));
 
               // check datatype consistency
               // a example of inconsistency: select s0 from root.sg1.d1, root.sg2.d3 align by device,

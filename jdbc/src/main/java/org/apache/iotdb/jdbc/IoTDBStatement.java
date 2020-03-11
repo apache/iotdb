@@ -31,7 +31,6 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
-
 import java.sql.*;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -265,41 +264,24 @@ public class IoTDBStatement implements Statement {
     }
   }
 
-  private int[] executeBatchSQL() throws TException, SQLException {
+  private int[] executeBatchSQL() throws TException, BatchUpdateException {
     isCancelled = false;
-    TSExecuteBatchStatementReq execReq = new TSExecuteBatchStatementReq(sessionId,
-        batchSQLList);
+    TSExecuteBatchStatementReq execReq = new TSExecuteBatchStatementReq(sessionId, batchSQLList);
     TSExecuteBatchStatementResp execResp = client.executeBatchStatement(execReq);
-    if (execResp.getStatus().getStatusType().getCode() == TSStatusCode.SUCCESS_STATUS
-        .getStatusCode()) {
-      if (execResp.getResult() == null) {
-        return new int[0];
-      } else {
-        List<Integer> result = execResp.getResult();
-        int len = result.size();
-        int[] updateArray = new int[len];
-        for (int i = 0; i < len; i++) {
-          updateArray[i] = result.get(i);
-        }
-        return updateArray;
+    int[] result = new int[execResp.statusList.size()];
+    boolean allSuccess = true;
+    String message = "";
+    for (int i = 0; i < result.length; i++) {
+      result[i] = execResp.statusList.get(i).code;
+      if (result[i] != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        allSuccess = false;
+        message = execResp.statusList.get(i).message;
       }
-    } else {
-      BatchUpdateException exception;
-      if (execResp.getResult() == null) {
-        exception = new BatchUpdateException(execResp.getStatus().getStatusType().getMessage(),
-            new int[0]);
-      } else {
-        List<Integer> result = execResp.getResult();
-        int len = result.size();
-        int[] updateArray = new int[len];
-        for (int i = 0; i < len; i++) {
-          updateArray[i] = result.get(i);
-        }
-        exception = new BatchUpdateException(execResp.getStatus().getStatusType().getMessage(),
-            updateArray);
-      }
-      throw exception;
     }
+    if (!allSuccess) {
+      throw new BatchUpdateException(message, result);
+    }
+    return result;
   }
 
   @Override

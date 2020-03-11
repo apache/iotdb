@@ -23,18 +23,18 @@ import static org.apache.iotdb.session.Config.PATH_PATTERN;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
@@ -201,8 +201,8 @@ public class Session {
    *
    * @param rowBatch data batch
    */
-  private TSExecuteBatchStatementResp insertSortedBatchIntern(RowBatch rowBatch)
-      throws IoTDBConnectionException {
+  private void insertSortedBatchIntern(RowBatch rowBatch)
+      throws IoTDBConnectionException, BatchExecutionException {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
@@ -215,7 +215,7 @@ public class Session {
     request.setSize(rowBatch.batchSize);
 
     try {
-      return checkAndReturn(client.insertBatch(request));
+      RpcUtils.verifySuccess(client.insertBatch(request).statusList);
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -227,12 +227,39 @@ public class Session {
    *
    * @param rowBatch data batch
    */
-  public TSExecuteBatchStatementResp insertSortedBatch(RowBatch rowBatch)
-      throws StatementExecutionException, IoTDBConnectionException {
+  public void insertSortedBatch(RowBatch rowBatch)
+      throws BatchExecutionException, IoTDBConnectionException {
     if(!checkSorted(rowBatch)){
-      throw new StatementExecutionException("Row batch has't been sorted when calling insertSortedBatch");
+      throw new BatchExecutionException("Row batch has't been sorted when calling insertSortedBatch");
     }
-    return insertSortedBatchIntern(rowBatch);
+    insertSortedBatchIntern(rowBatch);
+  }
+
+  /**
+   * use batch interface to insert data in multiple device
+   *
+   * @param rowBatchMap data batch in multiple device
+   */
+  public void insertMultipleDeviceBatch
+      (Map<String, RowBatch> rowBatchMap) throws IoTDBConnectionException, BatchExecutionException {
+    for(Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()){
+      sortRowBatch(dataInOneDevice.getValue());
+      insertBatch(dataInOneDevice.getValue());
+    }
+  }
+
+  /**
+   * use batch interface to insert sorted data in multiple device
+   * times in row batch must be sorted before!
+   *
+   * @param rowBatchMap data batch in multiple device
+   */
+  public void insertMultipleDeviceSortedBatch
+  (Map<String, RowBatch> rowBatchMap) throws IoTDBConnectionException, BatchExecutionException {
+    for(Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()){
+      checkSorted(dataInOneDevice.getValue());
+      insertSortedBatchIntern(dataInOneDevice.getValue());
+    }
   }
 
   /**
@@ -240,18 +267,19 @@ public class Session {
    *
    * @param rowBatch data batch
    */
-  public TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch) throws IoTDBConnectionException {
+  public void insertBatch(RowBatch rowBatch)
+      throws IoTDBConnectionException, BatchExecutionException {
 
     sortRowBatch(rowBatch);
 
-    return insertSortedBatchIntern(rowBatch);
+    insertSortedBatchIntern(rowBatch);
   }
 
   private void sortRowBatch(RowBatch rowBatch){
     /*
-       * following part of code sort the batch data by time,
-       * so we can insert continuous data in value list to get a better performance
-       */
+     * following part of code sort the batch data by time,
+     * so we can insert continuous data in value list to get a better performance
+     */
     // sort to get index, and use index to sort value list
     Integer[] index = new Integer[rowBatch.batchSize];
     for (int i = 0; i < rowBatch.batchSize; i++) {
@@ -329,9 +357,9 @@ public class Session {
    *
    * @see Session#insertBatch(RowBatch)
    */
-  public List<TSStatus> insertInBatch(List<String> deviceIds, List<Long> times,
+  public void insertInBatch(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
-      throws IoTDBConnectionException {
+      throws IoTDBConnectionException, BatchExecutionException {
     // check params size
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
@@ -347,11 +375,7 @@ public class Session {
     request.setValuesList(valuesList);
 
     try {
-      List<TSStatus> result = new ArrayList<>();
-      for (TSStatus cur : client.insertRowInBatch(request).getStatusList()) {
-        result.add(checkAndReturn(cur));
-      }
-      return result;
+      RpcUtils.verifySuccess(client.insertRowInBatch(request).statusList);
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -365,7 +389,24 @@ public class Session {
    * @see Session#insertBatch(RowBatch)
    */
   public TSStatus insert(String deviceId, long time, List<String> measurements,
-      List<String> values) throws IoTDBConnectionException {
+      Object... values) throws IoTDBConnectionException, StatementExecutionException {
+    List<String> stringValues = new ArrayList<>();
+    for (Object o : values) {
+      stringValues.add(o.toString());
+    }
+
+    return insert(deviceId, time, measurements, stringValues);
+  }
+
+  /**
+   * insert data in one row, if you want improve your performance, please use insertInBatch method
+   * or insertBatch method
+   *
+   * @see Session#insertInBatch(List, List, List, List)
+   * @see Session#insertBatch(RowBatch)
+   */
+  public TSStatus insert(String deviceId, long time, List<String> measurements,
+      List<String> values) throws IoTDBConnectionException, StatementExecutionException {
     TSInsertReq request = new TSInsertReq();
     request.setSessionId(sessionId);
     request.setDeviceId(deviceId);
@@ -373,19 +414,23 @@ public class Session {
     request.setMeasurements(measurements);
     request.setValues(values);
 
+    TSStatus result;
     try {
-      return checkAndReturn(client.insert(request));
+      result = client.insert(request);
+      RpcUtils.verifySuccess(result);
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
+
+    return result;
   }
 
   /**
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public TSExecuteBatchStatementResp testInsertBatch(RowBatch rowBatch)
-      throws IoTDBConnectionException {
+  public void testInsertBatch(RowBatch rowBatch)
+      throws IoTDBConnectionException, BatchExecutionException {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
@@ -398,7 +443,7 @@ public class Session {
     request.setSize(rowBatch.batchSize);
 
     try {
-      return client.testInsertBatch(request);
+      RpcUtils.verifySuccess(client.testInsertBatch(request).statusList);
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -408,9 +453,9 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public List<TSStatus> testInsertInBatch(List<String> deviceIds, List<Long> times,
+  public void testInsertInBatch(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
-      throws IoTDBConnectionException {
+      throws IoTDBConnectionException, BatchExecutionException {
     // check params size
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
@@ -426,8 +471,7 @@ public class Session {
     request.setValuesList(valuesList);
 
     try {
-      client.testInsertRowInBatch(request);
-      return Collections.emptyList();
+      RpcUtils.verifySuccess(client.testInsertRowInBatch(request).statusList);
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -437,8 +481,8 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public TSStatus testInsert(String deviceId, long time, List<String> measurements,
-      List<String> values) throws IoTDBConnectionException {
+  public void testInsert(String deviceId, long time, List<String> measurements,
+      List<String> values) throws IoTDBConnectionException, StatementExecutionException {
     TSInsertReq request = new TSInsertReq();
     request.setSessionId(sessionId);
     request.setDeviceId(deviceId);
@@ -447,7 +491,7 @@ public class Session {
     request.setValues(values);
 
     try {
-      return client.testInsertRow(request);
+      RpcUtils.verifySuccess(client.testInsertRow(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -458,10 +502,11 @@ public class Session {
    *
    * @param path timeseries to delete, should be a whole path
    */
-  public TSStatus deleteTimeseries(String path) throws IoTDBConnectionException {
+  public void deleteTimeseries(String path)
+      throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = new ArrayList<>();
     paths.add(path);
-    return deleteTimeseries(paths);
+    deleteTimeseries(paths);
   }
 
   /**
@@ -469,9 +514,10 @@ public class Session {
    *
    * @param paths timeseries to delete, should be a whole path
    */
-  public TSStatus deleteTimeseries(List<String> paths) throws IoTDBConnectionException {
+  public void deleteTimeseries(List<String> paths)
+      throws IoTDBConnectionException, StatementExecutionException {
     try {
-      return checkAndReturn(client.deleteTimeseries(sessionId, paths));
+      RpcUtils.verifySuccess(client.deleteTimeseries(sessionId, paths));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -483,10 +529,11 @@ public class Session {
    * @param path data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
-  public TSStatus deleteData(String path, long time) throws IoTDBConnectionException {
+  public void deleteData(String path, long time)
+      throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = new ArrayList<>();
     paths.add(path);
-    return deleteData(paths, time);
+    deleteData(paths, time);
   }
 
   /**
@@ -495,45 +542,48 @@ public class Session {
    * @param paths data in which time series to delete
    * @param time  data with time stamp less than or equal to time will be deleted
    */
-  public TSStatus deleteData(List<String> paths, long time) throws IoTDBConnectionException {
+  public void deleteData(List<String> paths, long time)
+      throws IoTDBConnectionException, StatementExecutionException {
     TSDeleteDataReq request = new TSDeleteDataReq();
     request.setSessionId(sessionId);
     request.setPaths(paths);
     request.setTimestamp(time);
 
     try {
-      return checkAndReturn(client.deleteData(request));
+      RpcUtils.verifySuccess(client.deleteData(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
   }
 
-  public TSStatus setStorageGroup(String storageGroupId)
+  public void setStorageGroup(String storageGroupId)
       throws IoTDBConnectionException, StatementExecutionException {
     checkPathValidity(storageGroupId);
     try {
-      return checkAndReturn(client.setStorageGroup(sessionId, storageGroupId));
+      RpcUtils.verifySuccess(client.setStorageGroup(sessionId, storageGroupId));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
   }
 
 
-  public TSStatus deleteStorageGroup(String storageGroup) throws IoTDBConnectionException {
+  public void deleteStorageGroup(String storageGroup)
+      throws IoTDBConnectionException, StatementExecutionException {
     List<String> groups = new ArrayList<>();
     groups.add(storageGroup);
-    return deleteStorageGroups(groups);
+    deleteStorageGroups(groups);
   }
 
-  public TSStatus deleteStorageGroups(List<String> storageGroup) throws IoTDBConnectionException {
+  public void deleteStorageGroups(List<String> storageGroup)
+      throws IoTDBConnectionException, StatementExecutionException {
     try {
-      return checkAndReturn(client.deleteStorageGroups(sessionId, storageGroup));
+      RpcUtils.verifySuccess(client.deleteStorageGroups(sessionId, storageGroup));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
   }
 
-  public TSStatus createTimeseries(String path, TSDataType dataType,
+  public void createTimeseries(String path, TSDataType dataType,
       TSEncoding encoding, CompressionType compressor)
       throws IoTDBConnectionException, StatementExecutionException {
     checkPathValidity(path);
@@ -545,7 +595,7 @@ public class Session {
     request.setCompressor(compressor.ordinal());
 
     try {
-      return checkAndReturn(client.createTimeseries(request));
+      RpcUtils.verifySuccess(client.createTimeseries(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -559,20 +609,6 @@ public class Session {
     } catch (Exception e) {
       throw new IoTDBConnectionException(e);
     }
-  }
-
-  private TSStatus checkAndReturn(TSStatus resp) {
-    if (resp.statusType.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      logger.error(resp.statusType.getMessage());
-    }
-    return resp;
-  }
-
-  private TSExecuteBatchStatementResp checkAndReturn(TSExecuteBatchStatementResp resp) {
-    if (resp.status.statusType.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      logger.error(resp.status.statusType.getMessage());
-    }
-    return resp;
   }
 
   private synchronized String getTimeZone()
