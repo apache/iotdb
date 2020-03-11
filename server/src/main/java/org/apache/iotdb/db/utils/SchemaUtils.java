@@ -100,6 +100,12 @@ public class SchemaUtils {
     return dataTypes;
   }
 
+  /**
+   *
+   * @param paths time series paths
+   * @param aggregation aggregation function, may be null
+   * @return The data type of aggregation or (data type of paths if aggregation is null)
+   */
   public static List<TSDataType> getSeriesTypesByString(Collection<String> paths,
       String aggregation) throws MetadataException {
     TSDataType dataType = getAggregationType(aggregation);
@@ -142,8 +148,8 @@ public class SchemaUtils {
 
   /**
    *
-   * @param aggregation
-   * @return the data type of the aggregation or null if it cannot be determined
+   * @param aggregation aggregation function
+   * @return the data type of the aggregation or null if it aggregation is null
    */
   public static TSDataType getAggregationType(String aggregation) throws MetadataException {
     if (aggregation == null) {
