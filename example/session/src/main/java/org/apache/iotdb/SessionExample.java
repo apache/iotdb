@@ -34,9 +34,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.thrift.TException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class SessionExample {
 
