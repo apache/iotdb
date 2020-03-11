@@ -56,6 +56,9 @@ public interface IMemTable {
 
   void insert(InsertPlan insertPlan) throws QueryProcessException;
 
+  /**
+   * [start, end)
+   */
   void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end)
       throws QueryProcessException;
 

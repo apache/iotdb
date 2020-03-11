@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb;
 
+import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -36,7 +37,7 @@ public class SessionExample {
   private static Session session;
 
   public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, BatchExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -61,7 +62,7 @@ public class SessionExample {
     session.close();
   }
 
-  private static void insert() throws IoTDBConnectionException {
+  private static void insert() throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -76,7 +77,7 @@ public class SessionExample {
     }
   }
 
-  private static void insertInBatch() throws IoTDBConnectionException {
+  private static void insertInBatch() throws IoTDBConnectionException, BatchExecutionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -123,7 +124,7 @@ public class SessionExample {
    * Users need to control the count of RowBatch and write a batch when it reaches the maxBatchSize
    *
    */
-  private static void insertRowBatch() throws IoTDBConnectionException {
+  private static void insertRowBatch() throws IoTDBConnectionException, BatchExecutionException {
     // The schema of sensors of one device
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
@@ -154,13 +155,14 @@ public class SessionExample {
     }
   }
 
-  private static void deleteData() throws IoTDBConnectionException {
+  private static void deleteData() throws IoTDBConnectionException, StatementExecutionException {
     String path = "root.sg1.d1.s1";
     long deleteTime = 99;
     session.deleteData(path, deleteTime);
   }
 
-  private static void deleteTimeseries() throws IoTDBConnectionException {
+  private static void deleteTimeseries()
+      throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = new ArrayList<>();
     paths.add("root.sg1.d1.s1");
     paths.add("root.sg1.d1.s2");
