@@ -48,7 +48,7 @@ public class IoTDBPreparedStatementTest {
   @Mock
   private Iface client;
   @Mock
-  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
+  private TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   private TSStatus Status_SUCCESS = new TSStatus(successStatus);
   private long queryId;
   private long sessionId;

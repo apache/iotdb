@@ -19,6 +19,8 @@
 package org.apache.iotdb.session;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.sql.Connection;
@@ -34,6 +36,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -66,8 +69,26 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void testAlignByDevice()
-      throws SQLException, IoTDBConnectionException, StatementExecutionException {
+  public void testInsertByObject()
+      throws IoTDBConnectionException, SQLException, ClassNotFoundException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    session.setStorageGroup("root.sg1");
+
+    createTimeseries();
+    insertInObject();
+
+    // sql test
+    insert_via_sql();
+    query3();
+
+    session.close();
+  }
+
+
+  public void testAlignByDevice() throws IoTDBConnectionException,
+      StatementExecutionException, BatchExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -82,7 +103,8 @@ public class IoTDBSessionIT {
   }
 
   // it's will output too much to travis, so ignore it
-  public void testTime() throws IoTDBConnectionException, StatementExecutionException {
+  public void testTime()
+      throws IoTDBConnectionException, StatementExecutionException, BatchExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -94,8 +116,8 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void testBatchInsertSeqAndUnseq()
-      throws SQLException, ClassNotFoundException, IoTDBConnectionException, StatementExecutionException {
+  public void testBatchInsertSeqAndUnseq() throws SQLException, ClassNotFoundException,
+      IoTDBConnectionException, StatementExecutionException, BatchExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -118,8 +140,8 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void testBatchInsert()
-      throws StatementExecutionException, SQLException, ClassNotFoundException, IoTDBConnectionException {
+  public void testBatchInsert() throws StatementExecutionException, SQLException,
+      ClassNotFoundException, IoTDBConnectionException, BatchExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -132,12 +154,14 @@ public class IoTDBSessionIT {
     queryForBatch();
   }
 
-  public void testTestMethod() throws StatementExecutionException, IoTDBConnectionException {
+  public void testTestMethod()
+      throws StatementExecutionException, IoTDBConnectionException, BatchExecutionException {
 
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
     session.setStorageGroup("root.sg1");
+    String deviceId = "root.sg1.d1";
 
     createTimeseries();
 
@@ -152,7 +176,6 @@ public class IoTDBSessionIT {
     session.testInsertBatch(rowBatch);
 
     // test insert row
-    String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
@@ -199,7 +222,7 @@ public class IoTDBSessionIT {
 
   @Test
   public void test() throws ClassNotFoundException, SQLException,
-      IoTDBConnectionException, StatementExecutionException {
+      IoTDBConnectionException, StatementExecutionException, BatchExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     try {
       session.open();
@@ -312,7 +335,7 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
   }
 
-  private void insertInBatch() throws IoTDBConnectionException {
+  private void insertInBatch() throws IoTDBConnectionException, BatchExecutionException {
     String deviceId = "root.sg1.d2";
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -345,7 +368,18 @@ public class IoTDBSessionIT {
     session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
   }
 
-  private void insert() throws IoTDBConnectionException {
+  private void insertInObject() throws IoTDBConnectionException, StatementExecutionException {
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    for (long time = 0; time < 100; time++) {
+      session.insert(deviceId, time, measurements, 1L, 2L, 3L);
+    }
+  }
+
+  private void insert() throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -360,7 +394,8 @@ public class IoTDBSessionIT {
     }
   }
 
-  private void insertRowBatchTest1(String deviceId) throws IoTDBConnectionException {
+  private void insertRowBatchTest1(String deviceId)
+      throws IoTDBConnectionException, BatchExecutionException {
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
@@ -390,7 +425,7 @@ public class IoTDBSessionIT {
     }
   }
 
-  private void deleteData() throws IoTDBConnectionException {
+  private void deleteData() throws IoTDBConnectionException, StatementExecutionException {
     String path1 = "root.sg1.d1.s1";
     String path2 = "root.sg1.d1.s2";
     String path3 = "root.sg1.d1.s3";
@@ -403,12 +438,8 @@ public class IoTDBSessionIT {
     session.deleteData(paths, deleteTime);
   }
 
-  private void deleteTimeseries() throws IoTDBConnectionException {
+  private void deleteTimeseries() throws IoTDBConnectionException, StatementExecutionException {
     session.deleteTimeseries("root.sg1.d1.s1");
-    session.deleteTimeseries("root.laptop.d1.1_2");
-    session.deleteTimeseries("root.laptop.d1.\"1.2.3\"");
-    session.deleteTimeseries("root.laptop.d1.\'1.2.4\'");
-    session.deleteTimeseries("root.1.2.3");
   }
 
   private void query() throws ClassNotFoundException, SQLException {
@@ -424,7 +455,7 @@ public class IoTDBSessionIT {
       final int colCount = metaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
       for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1) + "\n");
+        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
       }
       while (resultSet.next()) {
         for (int i = 1; i <= colCount; i++) {
@@ -436,8 +467,7 @@ public class IoTDBSessionIT {
     }
   }
 
-  private void queryForAlignByDevice()
-      throws SQLException, StatementExecutionException, IoTDBConnectionException {
+  private void queryForAlignByDevice() throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet sessionDataSet = session
         .executeQueryStatement("select '11', s1, '11' from root.sg1.d1 align by device");
     sessionDataSet.setBatchSize(1024);
@@ -455,8 +485,7 @@ public class IoTDBSessionIT {
     sessionDataSet.closeOperationHandle();
   }
 
-  private void queryForAlignByDevice2()
-      throws SQLException, IoTDBConnectionException, StatementExecutionException {
+  private void queryForAlignByDevice2() throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet sessionDataSet = session.executeQueryStatement(
         "select '11', s1, '11', s5, s1, s5 from root.sg1.d1 align by device");
     sessionDataSet.setBatchSize(1024);
@@ -488,7 +517,7 @@ public class IoTDBSessionIT {
       final int colCount = metaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
       for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1) + "\n");
+        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
       }
       while (resultSet.next()) {
         for (int i = 1; i <= colCount; i++) {
@@ -504,12 +533,12 @@ public class IoTDBSessionIT {
       IoTDBConnectionException, StatementExecutionException {
     try {
       session.deleteStorageGroup("root.sg1.d1.s1");
-    } catch (IoTDBConnectionException e) {
-      assertEquals("The path root.sg1.d1.s1 is not a deletable storage group", e.getMessage());
+    } catch (StatementExecutionException e) {
+      assertTrue(e.getMessage().contains("Path [root.sg1.d1.s1] does not exist"));
     }
     session.deleteStorageGroup("root.sg1");
     File folder = new File("data/system/storage_groups/root.sg1/");
-    assertEquals(folder.exists(), false);
+    assertFalse(folder.exists());
     session.setStorageGroup("root.sg1.d1");
     session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
@@ -524,7 +553,7 @@ public class IoTDBSessionIT {
       final int colCount = metaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
       for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1) + "\n");
+        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
       }
       while (resultSet.next()) {
         for (int i = 1; i <= colCount; i++) {
@@ -565,7 +594,7 @@ public class IoTDBSessionIT {
       long index = 1;
       count++;
       for (Field f : sessionDataSet.next().getFields()) {
-        Assert.assertEquals(f.getLongV(), index);
+        Assert.assertEquals(index, f.getLongV());
         index++;
       }
     }
@@ -635,7 +664,8 @@ public class IoTDBSessionIT {
     assertEquals(correctStatus, status);
   }
 
-  private void insertRowBatchTest2(String deviceId) throws IoTDBConnectionException {
+  private void insertRowBatchTest2(String deviceId)
+      throws IoTDBConnectionException, BatchExecutionException {
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
@@ -665,7 +695,8 @@ public class IoTDBSessionIT {
     }
   }
 
-  private void insertRowBatchTest3(String deviceId) throws IoTDBConnectionException {
+  private void insertRowBatchTest3(String deviceId)
+      throws IoTDBConnectionException, BatchExecutionException {
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
@@ -695,15 +726,15 @@ public class IoTDBSessionIT {
     }
   }
 
-  private void insertRowBatchTestForTime(String deviceId) throws IoTDBConnectionException {
+  private void insertRowBatchTestForTime(String deviceId)
+      throws IoTDBConnectionException, BatchExecutionException {
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
     schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s5", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s6", TSDataType.INT64, TSEncoding.RLE));
-    long countTime = 0;
+    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
     long count = 10000000;
     long begin = 0;
     //long begin = 1579414903000L;
@@ -724,13 +755,11 @@ public class IoTDBSessionIT {
         long start = System.currentTimeMillis();
         session.insertBatch(rowBatch);
         long val = System.currentTimeMillis() - start;
-        countTime += val;
         rowBatch.reset();
       }
     }
 
     if (rowBatch.batchSize != 0) {
-      long start = System.currentTimeMillis();
       session.insertBatch(rowBatch);
       rowBatch.reset();
     }
@@ -750,7 +779,7 @@ public class IoTDBSessionIT {
       final int colCount = metaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
       for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1) + "\n");
+        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
       }
 
       int count = 0;
@@ -778,7 +807,7 @@ public class IoTDBSessionIT {
       final int colCount = metaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
       for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1) + "\n");
+        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
       }
 
       int count = 0;
@@ -818,7 +847,7 @@ public class IoTDBSessionIT {
       final int colCount = metaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
       for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1) + "\n");
+        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
       }
 
       int count = 0;
