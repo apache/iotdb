@@ -119,7 +119,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     if(!isAlignByDevice){
       sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter, filterPaths));
     }
-    filter.setPathSet(filterPaths);
+    sfwOperator.getFilterOperator().setPathSet(filterPaths);
     // GROUP_BY_DEVICE leaves the concatFilter to PhysicalGenerator to optimize filter without prefix first
 
     return sfwOperator;

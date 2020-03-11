@@ -33,6 +33,9 @@ public abstract class QueryDataSet {
   protected int rowOffset = 0;
   protected int alreadyReturnedRowNum = 0;
 
+  public QueryDataSet() {
+  }
+
   public QueryDataSet(List<Path> paths, List<TSDataType> dataTypes) {
     this.paths = paths;
     this.dataTypes = dataTypes;
