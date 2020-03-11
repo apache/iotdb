@@ -93,8 +93,7 @@ public class PhysicalPlanTest {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=INT32,encoding=RLE";
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals(String.format("seriesPath: root.vehicle.d1.s2%n" + "resultDataType: INT32%n" +
-        "encoding: RLE%nnamespace type: ADD_PATH%n" + "args: "), plan.toString());
+    assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
   }
 
   @Test
@@ -102,8 +101,7 @@ public class PhysicalPlanTest {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=int32,encoding=rle";
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals(String.format("seriesPath: root.vehicle.d1.s2%n" + "resultDataType: INT32%n" +
-        "encoding: RLE%nnamespace type: ADD_PATH%n" + "args: "), plan.toString());
+    assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
   }
 
   @Test
@@ -612,7 +610,7 @@ public class PhysicalPlanTest {
   @Test
   public void testLastPlanPaths() throws QueryProcessException {
     String sqlStr1 = "SELECT last s1 FROM root.vehicle.d1";
-    String sqlStr2 = "SELECT last s1 FROM root.vehicle.d1, root.vehicle.d2";
+    String sqlStr2 = "SELECT last s1 FROM root.vehicle.d1, root.vehicle.d2 disable align";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
     PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr2);
     Path path1 = new Path("root.vehicle.d1.s1");
@@ -626,11 +624,19 @@ public class PhysicalPlanTest {
 
   @Test
   public void testLastPlanDataTypes() throws QueryProcessException {
-    String sqlStr = "SELECT last s1 FROM root.vehicle.d1";
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    String sqlStr1 = "SELECT last s1 FROM root.vehicle.d1";
+    String sqlStr2 = "SELECT last s1 FROM root.vehicle.d2, root.vehicle.d3, root.vehicle.d4";
 
-    assertEquals(1, ((LastQueryPlan) plan).getDataTypes().size());
-    TSDataType dataType = ((LastQueryPlan) plan).getDataTypes().get(0);
+    PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
+    PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr2);
+
+    assertEquals(1, ((LastQueryPlan) plan1).getDataTypes().size());
+    TSDataType dataType = ((LastQueryPlan) plan1).getDataTypes().get(0);
     assertEquals(TSDataType.FLOAT, dataType);
+
+    assertEquals(3, ((LastQueryPlan) plan2).getDataTypes().size());
+    for (TSDataType dt : ((LastQueryPlan) plan2).getDataTypes()) {
+      assertEquals(TSDataType.FLOAT, dt);
+    }
   }
 }

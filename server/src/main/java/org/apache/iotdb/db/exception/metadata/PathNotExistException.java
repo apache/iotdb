@@ -15,14 +15,11 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
 package org.apache.iotdb.db.exception.metadata;
 
 public class PathNotExistException extends MetadataException {
-
-  private static final long serialVersionUID = 2693272249167539978L;
 
   public PathNotExistException(String path) {
     super(String.format("Path [%s] does not exist", path));

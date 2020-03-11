@@ -113,7 +113,7 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     }
     List<Field> fields = record.getFields();
     for (Field field : fields) {
-      if (field.getDataType() == null) {
+      if (field == null || field.getDataType() == null) {
         continue;
       }
       TSDataType dataType = field.getDataType();

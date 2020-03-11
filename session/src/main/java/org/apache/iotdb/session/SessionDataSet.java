@@ -24,8 +24,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
@@ -83,8 +84,7 @@ public class SessionDataSet {
       String name = columnNameList.get(i);
       if (columnMap.containsKey(name)) {
         duplicateLocation.put(i, columnMap.get(name));
-      }
-      else{
+      } else {
         columnMap.put(name, i);
         columnTypeDeduplicatedList.add(columnTypeList.get(i));
       }
@@ -101,9 +101,10 @@ public class SessionDataSet {
     this.batchSize = batchSize;
   }
 
-  public boolean hasNext() throws SQLException, IoTDBRPCException {
-    if (hasCachedRecord)
+  public boolean hasNext() throws IoTDBConnectionException, StatementExecutionException {
+    if (hasCachedRecord) {
       return true;
+    }
     if (tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining()) {
       TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, batchSize, queryId, true);
       try {
@@ -117,8 +118,8 @@ public class SessionDataSet {
           rowsIndex = 0;
         }
       } catch (TException e) {
-        throw new SQLException(
-                "Cannot fetch result from server, because of network connection: {} ", e);
+        throw new IoTDBConnectionException(
+            "Cannot fetch result from server, because of network connection: {} ", e);
       }
 
     }
@@ -134,7 +135,7 @@ public class SessionDataSet {
     for (int i = 0; i < columnSize; i++) {
       Field field;
 
-      if(duplicateLocation.containsKey(i)){
+      if (duplicateLocation.containsKey(i)) {
         field = Field.copy(outFields.get(duplicateLocation.get(i)));
       } else {
         ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(loc);
@@ -143,7 +144,7 @@ public class SessionDataSet {
           currentBitmap[loc] = bitmapBuffer.get();
         }
 
-        if(!isNull(loc, rowsIndex)){
+        if (!isNull(loc, rowsIndex)) {
           ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(loc);
           TSDataType dataType = TSDataType.valueOf(columnTypeDeduplicatedList.get(loc));
           field = new Field(dataType);
@@ -175,11 +176,10 @@ public class SessionDataSet {
               field.setBinaryV(new Binary(binaryValue));
               break;
             default:
-              throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+              throw new UnSupportedDataTypeException(String
+                  .format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
           }
-        }
-        else {
+        } else {
           field = new Field(null);
         }
         loc++;
@@ -193,8 +193,8 @@ public class SessionDataSet {
 
   /**
    * judge whether the specified column value is null in the current position
+   *
    * @param index column index
-   * @return
    */
   private boolean isNull(int index, int rowNum) {
     byte bitmap = currentBitmap[index];
@@ -202,26 +202,25 @@ public class SessionDataSet {
     return ((flag >>> shift) & bitmap) == 0;
   }
 
-  public RowRecord next() throws SQLException, IoTDBRPCException {
+  public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {
     if (!hasCachedRecord) {
-      if (!hasNext())
+      if (!hasNext()) {
         return null;
+      }
     }
 
     hasCachedRecord = false;
     return rowRecord;
   }
 
-  public void closeOperationHandle() throws SQLException {
+  public void closeOperationHandle() throws StatementExecutionException, IoTDBConnectionException {
     try {
       TSCloseOperationReq closeReq = new TSCloseOperationReq(sessionId);
       closeReq.setQueryId(queryId);
       TSStatus closeResp = client.closeOperation(closeReq);
       RpcUtils.verifySuccess(closeResp);
-    } catch (IoTDBRPCException e) {
-      throw new SQLException("Error occurs for close opeation in server side. The reason is " + e);
     } catch (TException e) {
-      throw new SQLException(
+      throw new IoTDBConnectionException(
           "Error occurs when connecting to server for close operation, because: " + e);
     }
   }

@@ -143,6 +143,40 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       this.preCachedData = null;
     }
 
+    private List<Pair<AggregateResult, Integer>> calcResult()
+        throws IOException, QueryProcessException {
+      if (calcFromCacheData()) {
+        return results;
+      }
+
+      //read page data firstly
+      if (readAndCalcFromPage()) {
+        return results;
+      }
+
+      //read chunk finally
+      while (reader.hasNextChunk()) {
+        Statistics chunkStatistics = reader.currentChunkStatistics();
+        if (chunkStatistics.getStartTime() >= curEndTime) {
+          return results;
+        }
+        //calc from chunkMetaData
+        if (reader.canUseCurrentChunkStatistics() && timeRange.contains(
+            new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
+          calcFromStatistics(chunkStatistics);
+          reader.skipCurrentChunk();
+          if(isEndCalc()){
+            return results;
+          }
+          continue;
+        }
+        if (readAndCalcFromPage()) {
+          return results;
+        }
+      }
+      return results;
+    }
+
     private void addAggregateResult(AggregateResult aggrResult, int index) {
       results.add(new Pair<>(aggrResult, index));
     }
@@ -193,46 +227,15 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
     }
 
-    private void calcFromStatistics(Statistics pageStatistics)
+    private void calcFromStatistics(Statistics statistics)
         throws QueryProcessException {
       for (Pair<AggregateResult, Integer> result : results) {
         //cacl is compile
         if (result.left.isCalculatedAggregationResult()) {
           continue;
         }
-        result.left.updateResultFromStatistics(pageStatistics);
+        result.left.updateResultFromStatistics(statistics);
       }
-    }
-
-    private List<Pair<AggregateResult, Integer>> calcResult()
-        throws IOException, QueryProcessException {
-      if (calcFromCacheData()) {
-        return results;
-      }
-
-      //read page data firstly
-      if (readAndCalcFromPage()) {
-        return results;
-      }
-
-      //read chunk finally
-      while (reader.hasNextChunk()) {
-        Statistics chunkStatistics = reader.currentChunkStatistics();
-        if (chunkStatistics.getStartTime() >= curEndTime) {
-          return results;
-        }
-        //calc from chunkMetaData
-        if (reader.canUseCurrentChunkStatistics() && timeRange.contains(
-            new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
-          calcFromStatistics(chunkStatistics);
-          reader.skipCurrentChunk();
-          continue;
-        }
-        if (readAndCalcFromPage()) {
-          return results;
-        }
-      }
-      return results;
     }
 
     // clear all results

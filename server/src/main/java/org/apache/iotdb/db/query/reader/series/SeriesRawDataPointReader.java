@@ -24,6 +24,9 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
 
+/**
+ * only for test now
+ */
 public class SeriesRawDataPointReader implements IPointReader {
 
   private final SeriesRawDataBatchReader batchReader;

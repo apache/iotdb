@@ -18,25 +18,20 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
-import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -143,7 +138,11 @@ class SeriesReader {
   }
 
 
-  boolean isChunkOverlapped() {
+  boolean isChunkOverlapped() throws IOException {
+    if (firstChunkMetaData == null) {
+      throw new IOException("no first chunk");
+    }
+
     Statistics chunkStatistics = firstChunkMetaData.getStatistics();
     return !seqChunkMetadatas.isEmpty()
         && chunkStatistics.getEndTime() >= seqChunkMetadatas.get(0).getStartTime()
@@ -276,6 +275,17 @@ class SeriesReader {
         firstPageStatistics.getEndTime() >= cachedPageReaders.peek().getStartTime();
   }
 
+  Statistics currentPageStatistics() {
+    if (firstPageReader == null) {
+      return null;
+    }
+    return firstPageReader.getStatistics();
+  }
+
+  void skipCurrentPage() {
+    firstPageReader = null;
+  }
+
   /**
    * This method should only be used when the method isPageOverlapped() return true.
    */
@@ -301,17 +311,6 @@ class SeriesReader {
 
       return batchData;
     }
-  }
-
-  Statistics currentPageStatistics() {
-    if (firstPageReader == null) {
-      return null;
-    }
-    return firstPageReader.getStatistics();
-  }
-
-  void skipCurrentPage() {
-    firstPageReader = null;
   }
 
   /**
@@ -445,46 +444,6 @@ class SeriesReader {
     return chunkReader;
   }
 
-  private List<ChunkMetaData> loadSatisfiedChunkMetadatas(TsFileResource resource)
-      throws IOException {
-    List<ChunkMetaData> currentChunkMetaDataList;
-    if (resource == null) {
-      return new ArrayList<>();
-    }
-    if (resource.isClosed()) {
-      currentChunkMetaDataList = DeviceMetaDataCache.getInstance().get(resource, seriesPath);
-    } else {
-      currentChunkMetaDataList = resource.getChunkMetaDataList();
-    }
-    List<Modification> pathModifications =
-        context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
-
-    if (!pathModifications.isEmpty()) {
-      QueryUtils.modifyChunkMetaData(currentChunkMetaDataList, pathModifications);
-    }
-
-    for (ChunkMetaData chunkMetaData : currentChunkMetaDataList) {
-      TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
-          .get(resource, resource.isClosed());
-      chunkMetaData.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
-    }
-    List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
-    if (memChunks != null) {
-      for (ReadOnlyMemChunk readOnlyMemChunk : memChunks) {
-        if (!memChunks.isEmpty()) {
-          currentChunkMetaDataList.add(readOnlyMemChunk.getChunkMetaData());
-        }
-      }
-    }
-
-    /*
-     * remove empty and not satisfied ChunkMetaData
-     */
-    currentChunkMetaDataList.removeIf(chunkMetaData -> (timeFilter != null && !timeFilter
-        .satisfyStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
-        || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
-    return currentChunkMetaDataList;
-  }
 
   private PriorityQueue<TsFileResource> sortUnSeqFileResources(
       List<TsFileResource> tsFileResources) {
@@ -516,14 +475,18 @@ class SeriesReader {
      * Fill sequence chunkMetadatas until it is not empty
      */
     while (seqChunkMetadatas.isEmpty() && !seqFileResource.isEmpty()) {
-      seqChunkMetadatas.addAll(loadSatisfiedChunkMetadatas(seqFileResource.remove(0)));
+      seqChunkMetadatas.addAll(FileLoaderUtils
+          .loadChunkMetadataFromTsFileResource(seqFileResource.remove(0), seriesPath, context,
+              timeFilter));
     }
 
     /*
      * Fill unsequence chunkMetadatas until it is not empty
      */
     while (unseqChunkMetadatas.isEmpty() && !unseqFileResource.isEmpty()) {
-      unseqChunkMetadatas.addAll(loadSatisfiedChunkMetadatas(unseqFileResource.poll()));
+      unseqChunkMetadatas.addAll(FileLoaderUtils
+          .loadChunkMetadataFromTsFileResource(unseqFileResource.poll(), seriesPath, context,
+              timeFilter));
     }
 
     /*
@@ -555,11 +518,15 @@ class SeriesReader {
   private void unpackAllOverlappedTsFilesToChunkMetadatas(long endTime) throws IOException {
     while (!unseqFileResource.isEmpty() && endTime >=
         unseqFileResource.peek().getStartTimeMap().get(seriesPath.getDevice())) {
-      unseqChunkMetadatas.addAll(loadSatisfiedChunkMetadatas(unseqFileResource.poll()));
+      unseqChunkMetadatas.addAll(FileLoaderUtils
+          .loadChunkMetadataFromTsFileResource(unseqFileResource.poll(), seriesPath, context,
+              timeFilter));
     }
     while (!seqFileResource.isEmpty() && endTime >=
         seqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
-      seqChunkMetadatas.addAll(loadSatisfiedChunkMetadatas(seqFileResource.remove(0)));
+      seqChunkMetadatas.addAll(FileLoaderUtils
+          .loadChunkMetadataFromTsFileResource(seqFileResource.remove(0), seriesPath, context,
+              timeFilter));
     }
   }
 

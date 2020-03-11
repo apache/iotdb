@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,14 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.rpc;
 
-public class IoTDBRPCException extends Exception{
+package org.apache.iotdb.db.exception;
 
-  private static final long serialVersionUID = -1268775292265203036L;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public IoTDBRPCException(String reason) {
-    super(reason);
+public class WriteProcessException extends IoTDBException {
+
+  private static final long serialVersionUID = 7082567513626836322L;
+
+  public WriteProcessException(String message) {
+    super(message, TSStatusCode.STORAGE_GROUP_ERROR.getStatusCode());
+  }
+
+  public WriteProcessException(Exception exception) {
+    super(exception, TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode());
   }
 
 }

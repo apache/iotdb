@@ -35,6 +35,6 @@ public class QueryProcessException extends IoTDBException {
   }
 
   public QueryProcessException(IoTDBException e) {
-    super(e.getMessage(), e.getErrorCode());
+    super(e, e.getErrorCode());
   }
 }

@@ -118,7 +118,7 @@ public class IoTDBDataDirViewer {
   private static void printResource(String filename, PrintWriter pw) throws IOException {
     filename = filename.substring(0, filename.length() - 9);
     TsFileResource resource = new TsFileResource(SystemFileFactory.INSTANCE.getFile(filename));
-    resource.deSerialize();
+    resource.deserialize();
     // sort device strings
     SortedSet<String> keys = new TreeSet<>(resource.getStartTimeMap().keySet());
     for (String device : keys) {
