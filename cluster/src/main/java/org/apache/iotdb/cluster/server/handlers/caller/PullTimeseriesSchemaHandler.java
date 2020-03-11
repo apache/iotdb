@@ -35,13 +35,13 @@ public class PullTimeseriesSchemaHandler implements AsyncMethodCallback<PullSche
   private static final Logger logger = LoggerFactory.getLogger(PullTimeseriesSchemaHandler.class);
 
   private Node owner;
-  private String prefixPath;
+  private List<String> prefixPaths;
   private AtomicReference<List<MeasurementSchema>> timeseriesSchemas;
 
-  public PullTimeseriesSchemaHandler(Node owner, String prefixPath,
+  public PullTimeseriesSchemaHandler(Node owner, List<String> prefixPaths,
       AtomicReference<List<MeasurementSchema>> timeseriesSchemas) {
     this.owner = owner;
-    this.prefixPath = prefixPath;
+    this.prefixPaths = prefixPaths;
     this.timeseriesSchemas = timeseriesSchemas;
   }
 
@@ -61,7 +61,7 @@ public class PullTimeseriesSchemaHandler implements AsyncMethodCallback<PullSche
 
   @Override
   public void onError(Exception exception) {
-    logger.error("Cannot pull time series schema of {} from {}", prefixPath, owner, exception);
+    logger.error("Cannot pull time series schema of {} from {}", prefixPaths, owner, exception);
     synchronized (timeseriesSchemas) {
       timeseriesSchemas.notifyAll();
     }

@@ -82,7 +82,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -450,10 +449,10 @@ public class DataGroupMemberTest extends MemberTest {
       enableSyncLeader = false;
 
       PullSchemaRequest request = new PullSchemaRequest();
-      request.setPrefixPath(TestUtils.getTestSg(0));
+      request.setPrefixPaths(Collections.singletonList(TestUtils.getTestSg(0)));
       AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
       PullTimeseriesSchemaHandler handler = new PullTimeseriesSchemaHandler(TestUtils.getNode(1),
-          request.getPrefixPath(), result);
+          request.getPrefixPaths(), result);
       synchronized (result) {
         dataGroupMember.pullTimeSeriesSchema(request, handler);
         result.wait(500);
@@ -466,7 +465,7 @@ public class DataGroupMemberTest extends MemberTest {
       dataGroupMember.setCharacter(NodeCharacter.LEADER);
       result.set(null);
       handler = new PullTimeseriesSchemaHandler(TestUtils.getNode(1),
-          request.getPrefixPath(), result);
+          request.getPrefixPaths(), result);
       synchronized (result) {
         dataGroupMember.pullTimeSeriesSchema(request, handler);
         result.wait(500);

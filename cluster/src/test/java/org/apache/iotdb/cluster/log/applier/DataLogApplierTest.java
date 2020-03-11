@@ -25,7 +25,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -52,19 +51,19 @@ public class DataLogApplierTest extends IoTDBTest {
 
   private TestMetaGroupMember testMetaGroupMember = new TestMetaGroupMember() {
     @Override
-    public List<MeasurementSchema> pullTimeSeriesSchemas(String prefixPath)
+    public List<MeasurementSchema> pullTimeSeriesSchemas(List<String> prefixPaths)
         throws StorageGroupNotSetException {
-      if (prefixPath.equals(TestUtils.getTestSg(4))) {
-        List<MeasurementSchema> ret = new ArrayList<>();
-        for (int i = 0; i < 10; i++) {
-          ret.add(TestUtils.getTestSchema(4, i));
+      List<MeasurementSchema> ret = new ArrayList<>();
+      for (String prefixPath : prefixPaths) {
+        if (prefixPath.equals(TestUtils.getTestSg(4))) {
+          for (int i = 0; i < 10; i++) {
+            ret.add(TestUtils.getTestSchema(4, i));
+          }
+        } else if (!prefixPath.equals(TestUtils.getTestSg(5))) {
+          throw new StorageGroupNotSetException(prefixPath);
         }
-        return ret;
-      } else if (prefixPath.equals(TestUtils.getTestSg(5))) {
-        return Collections.emptyList();
-      } else {
-        throw new StorageGroupNotSetException(prefixPath);
       }
+      return ret;
     }
   };
 

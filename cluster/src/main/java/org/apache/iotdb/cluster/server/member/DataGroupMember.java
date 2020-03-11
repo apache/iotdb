@@ -585,9 +585,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
 
     // collect local timeseries schemas and send to the requester
-    String prefixPath = request.getPrefixPath();
+    List<String> prefixPaths = request.getPrefixPaths();
     List<MeasurementSchema> timeseriesSchemas = new ArrayList<>();
-    MManager.getInstance().collectSeries(prefixPath, timeseriesSchemas);
+    for (String prefixPath : prefixPaths) {
+      MManager.getInstance().collectSeries(prefixPath, timeseriesSchemas);
+    }
 
     PullSchemaResp resp = new PullSchemaResp();
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();

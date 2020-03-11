@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.server.member;
 
 import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -131,7 +132,6 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
-import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -1013,54 +1013,72 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   /**
    * Pull the all timeseries schemas of a given prefixPath from a remote node.
    */
-  public List<MeasurementSchema> pullTimeSeriesSchemas(String prefixPath)
+  public List<MeasurementSchema> pullTimeSeriesSchemas(List<String> prefixPaths)
       throws MetadataException {
-    logger.debug("{}: Pulling timeseries schemas of {}", name, prefixPath);
-    PartitionGroup partitionGroup;
-    try {
-      partitionGroup = partitionTable.partitionByPathTime(prefixPath, 0);
-    } catch (StorageGroupNotSetException e) {
-      // the storage group is not found locally, but may be found in the leader, retry after
-      // synchronizing with the leader
-      if (syncLeader()) {
+    logger.debug("{}: Pulling timeseries schemas of {}", name, prefixPaths);
+    Map<PartitionGroup, List<String>> partitionGroupPathMap = new HashMap<>();
+    for (String prefixPath : prefixPaths) {
+      PartitionGroup partitionGroup;
+      try {
         partitionGroup = partitionTable.partitionByPathTime(prefixPath, 0);
-      } else {
-        throw e;
+      } catch (StorageGroupNotSetException e) {
+        // the storage group is not found locally, but may be found in the leader, retry after
+        // synchronizing with the leader
+        if (syncLeader()) {
+          partitionGroup = partitionTable.partitionByPathTime(prefixPath, 0);
+        } else {
+          throw e;
+        }
       }
+      partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>()).add(prefixPath);
     }
+
+    List<MeasurementSchema> schemas = new ArrayList<>();
+    for (Entry<PartitionGroup, List<String>> partitionGroupListEntry : partitionGroupPathMap
+        .entrySet()) {
+      PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
+      List<String> paths = partitionGroupListEntry.getValue();
+      pullTimeSeriesSchemas(partitionGroup, paths, schemas);
+    }
+    return schemas;
+  }
+
+  public void pullTimeSeriesSchemas(PartitionGroup partitionGroup,
+      List<String> prefixPaths, List<MeasurementSchema> results) {
     if (partitionGroup.contains(thisNode)) {
       // the node is in the target group, synchronize with leader should be enough
       getLocalDataMember(partitionGroup.getHeader(), null,
-          "Pull timeseries of " + prefixPath).syncLeader();
-      List<MeasurementSchema> timeseriesSchemas = new ArrayList<>();
-      MManager.getInstance().collectSeries(prefixPath, timeseriesSchemas);
-      return timeseriesSchemas;
+          "Pull timeseries of " + prefixPaths).syncLeader();
+      for (String prefixPath : prefixPaths) {
+        MManager.getInstance().collectSeries(prefixPath, results);
+      }
+      return;
     }
 
     PullSchemaRequest pullSchemaRequest = new PullSchemaRequest();
     pullSchemaRequest.setHeader(partitionGroup.getHeader());
-    pullSchemaRequest.setPrefixPath(prefixPath);
+    pullSchemaRequest.setPrefixPaths(prefixPaths);
     AtomicReference<List<MeasurementSchema>> timeseriesSchemas = new AtomicReference<>();
     for (Node node : partitionGroup) {
-      logger.debug("{}: Pulling timeseries schemas of {} from {}", name, prefixPath, node);
+      logger.debug("{}: Pulling timeseries schemas of {} from {}", name, prefixPaths, node);
       AsyncClient client = (AsyncClient) connectNode(node);
       synchronized (timeseriesSchemas) {
         try {
           client.pullTimeSeriesSchema(pullSchemaRequest, new PullTimeseriesSchemaHandler(node,
-              prefixPath, timeseriesSchemas));
+              prefixPaths, timeseriesSchemas));
           timeseriesSchemas.wait(connectionTimeoutInMS);
         } catch (TException | InterruptedException e) {
           logger
-              .error("{}: Cannot pull timeseries schemas of {} from {}", name, prefixPath, node, e);
+              .error("{}: Cannot pull timeseries schemas of {} from {}", name, prefixPaths, node, e);
           continue;
         }
       }
       List<MeasurementSchema> schemas = timeseriesSchemas.get();
       if (schemas != null) {
-        return schemas;
+        results.addAll(schemas);
+        break;
       }
     }
-    return Collections.emptyList();
   }
 
   @Override
@@ -1078,17 +1096,52 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     dataGroupMember.pullTimeSeriesSchema(request, resultHandler);
   }
 
-  public TSDataType getSeriesType(String pathStr) throws MetadataException {
+  public List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations) throws MetadataException {
     try {
-      return SchemaUtils.getSeriesType(pathStr);
+      return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
     } catch (PathNotExistException e) {
+      List<String> pathStr = new ArrayList<>();
+      for (Path path : paths) {
+        pathStr.add(path.getFullPath());
+      }
       List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStr);
       // TODO-Cluster: should we register the schemas locally?
       if (schemas.isEmpty()) {
         throw e;
       }
-      SchemaUtils.registerTimeseries(schemas.get(0));
-      return schemas.get(0).getType();
+
+      List<TSDataType> result = new ArrayList<>();
+      for (int i = 0; i < schemas.size(); i++) {
+        String aggregation = aggregations.get(i);
+        TSDataType dataType = getAggregationType(aggregation);
+        if (dataType == null) {
+          MeasurementSchema schema = schemas.get(i);
+          result.add(schema.getType());
+          SchemaUtils.registerTimeseries(schema);
+        } else {
+          result.add(dataType);
+        }
+      }
+      return result;
+    }
+  }
+
+  public List<TSDataType> getSeriesTypesByString(List<String> pathStrs, String aggregation) throws MetadataException {
+    try {
+      return SchemaUtils.getSeriesTypesByString(pathStrs, aggregation);
+    } catch (PathNotExistException e) {
+      List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStrs);
+      // TODO-Cluster: should we register the schemas locally?
+      if (schemas.isEmpty()) {
+        throw e;
+      }
+
+      List<TSDataType> result = new ArrayList<>();
+      for (MeasurementSchema schema : schemas) {
+        result.add(schema.getType());
+        SchemaUtils.registerTimeseries(schema);
+      }
+      return result;
     }
   }
 

@@ -129,7 +129,7 @@ struct ExecutNonQueryReq {
 }
 
 struct PullSchemaRequest {
-  1: required string prefixPath
+  1: required list<string> prefixPaths
   2: optional Node header
 }
 

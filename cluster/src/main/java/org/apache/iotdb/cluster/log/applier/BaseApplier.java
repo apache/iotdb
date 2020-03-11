@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
@@ -68,7 +70,7 @@ abstract class BaseApplier implements LogApplier {
             e.getCause().getMessage());
         try {
           List<MeasurementSchema> schemas = metaGroupMember
-              .pullTimeSeriesSchemas(plan.getDeviceId());
+              .pullTimeSeriesSchemas(Collections.singletonList(plan.getDeviceId()));
           for (MeasurementSchema schema : schemas) {
             registerMeasurement(schema);
           }

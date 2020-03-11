@@ -180,19 +180,19 @@ public class MetaGroupMemberTest extends MemberTest {
     new Thread(() -> {
       try {
         List<MeasurementSchema> schemas = new ArrayList<>();
-        String prefixPath = request.getPrefixPath();
+        List<String> prefixPaths = request.getPrefixPaths();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-        if (!prefixPath.equals(TestUtils.getTestSeries(10, 0))) {
-          MManager.getInstance().collectSeries(prefixPath, schemas);
-          dataOutputStream.writeInt(schemas.size());
-          for (MeasurementSchema schema : schemas) {
-            schema.serializeTo(dataOutputStream);
-          }
-        } else {
-          dataOutputStream.writeInt(10);
-          for (int i = 0; i < 10; i++) {
-            TestUtils.getTestSchema(10, i).serializeTo(dataOutputStream);
+        for (String prefixPath : prefixPaths) {
+          if (!prefixPath.equals(TestUtils.getTestSeries(10, 0))) {
+            MManager.getInstance().collectSeries(prefixPath, schemas);
+            dataOutputStream.writeInt(schemas.size());
+            for (MeasurementSchema schema : schemas) {
+              schema.serializeTo(dataOutputStream);
+            }
+          } else {
+            dataOutputStream.writeInt(1);
+            TestUtils.getTestSchema(10, 0).serializeTo(dataOutputStream);
           }
         }
         PullSchemaResp resp = new PullSchemaResp();
@@ -507,7 +507,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
     for (int i = 0; i < 10; i++) {
       List<MeasurementSchema> schemas =
-          metaGroupMember.pullTimeSeriesSchemas(TestUtils.getTestSg(i));
+          metaGroupMember.pullTimeSeriesSchemas(Collections.singletonList(TestUtils.getTestSg(i)));
       assertEquals(20, schemas.size());
       for (int j = 0; j < 10; j++) {
         assertEquals(TestUtils.getTestSchema(i, j), schemas.get(j));
@@ -529,7 +529,7 @@ public class MetaGroupMemberTest extends MemberTest {
     PullSchemaRequest request = new PullSchemaRequest();
     request.setHeader(TestUtils.getNode(0));
     for (int i = 0; i < 10; i++) {
-      request.setPrefixPath(TestUtils.getTestSg(i));
+      request.setPrefixPaths(Collections.singletonList(TestUtils.getTestSg(i)));
       AtomicReference<PullSchemaResp> result = new AtomicReference<>();
       GenericHandler<PullSchemaResp> handler = new GenericHandler<>(TestUtils.getNode(0)
           , result);
@@ -555,19 +555,23 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testGetSeriesType() throws MetadataException {
     // a local series
-    assertEquals(TSDataType.DOUBLE, metaGroupMember.getSeriesType(TestUtils.getTestSeries(0, 0)));
+    assertEquals(Collections.singletonList(TSDataType.DOUBLE),
+        metaGroupMember.getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(0, 0)), null));
     // a remote series that can be fetched
     MManager.getInstance().setStorageGroup(TestUtils.getTestSg(10));
-    assertEquals(TSDataType.DOUBLE, metaGroupMember.getSeriesType(TestUtils.getTestSeries(10, 0)));
+    assertEquals(Collections.singletonList(TSDataType.DOUBLE),
+        metaGroupMember.getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(10, 0)), null));
     // a non-existent series
     try {
-      metaGroupMember.getSeriesType(TestUtils.getTestSeries(10, 100));
+      metaGroupMember.getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(10
+          , 100)), null);
     } catch (PathNotExistException e) {
       assertEquals("Path [root.test10.s100] does not exist", e.getMessage());
     }
     // a non-existent group
     try {
-      metaGroupMember.getSeriesType(TestUtils.getTestSeries(11, 100));
+      metaGroupMember.getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(11
+          , 100)), null);
     } catch (StorageGroupNotSetException e) {
       assertEquals("Storage group is not set for current seriesPath: [root.test11.s100]",
           e.getMessage());
