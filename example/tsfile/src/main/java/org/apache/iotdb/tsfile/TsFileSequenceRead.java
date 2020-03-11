@@ -86,7 +86,7 @@ public class TsFileSequenceRead {
                 defaultTimeDecoder, null);
             BatchData batchData = reader1.getAllSatisfiedPageData();
             while (batchData.hasCurrent()) {
-               System.out.println(
+              System.out.println(
                   "\t\t\ttime, value: " + batchData.currentTime() + ", " + batchData
                       .currentValue());
               batchData.next();
@@ -106,13 +106,15 @@ public class TsFileSequenceRead {
     Map<String, Pair<Long, Integer>> deviceOffsetsMap = metaData.getDeviceMetadataIndex();
     for (Map.Entry<String, Pair<Long, Integer>>  entry: deviceOffsetsMap.entrySet()) {
       String deviceId = entry.getKey();
-      List<ChunkMetadata> chunkMetadataList =
+      Map<String, List<ChunkMetadata>> seriesMetaData =
           reader.readChunkMetadataInDevice(deviceId);
       System.out.println(String
-          .format("\t[Device]Device %s, Number of Chunk %d", deviceId, chunkMetadataList.size()));
-      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        System.out.println("\t\tMeasurement:" + chunkMetadata.getMeasurementUid());
-        System.out.println("\t\tFile offset:" + chunkMetadata.getOffsetOfChunkHeader());
+          .format("\t[Device]Device %s, Number of Measurements %d", deviceId, seriesMetaData.size()));
+      for (Map.Entry<String, List<ChunkMetadata>> serie : seriesMetaData.entrySet()) {
+        System.out.println("\t\tMeasurement:" + serie.getKey());
+        for (ChunkMetadata chunkMetadata : serie.getValue()) {
+          System.out.println("\t\tFile offset:" + chunkMetadata.getOffsetOfChunkHeader());
+        }
       }
     }
     reader.close();
