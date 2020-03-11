@@ -406,6 +406,13 @@ public class TsFileIOWriter {
     versionInfo.add(versionPair);
   }
 
+  public void setDefaultVersionPair() {
+    // only happen when using tsfile module write api
+    if (versionInfo.isEmpty()) {
+      versionInfo.add(new Pair<>(Long.MAX_VALUE, 0L));
+    }
+  }
+
   /**
    * this function is only for Test.
    *

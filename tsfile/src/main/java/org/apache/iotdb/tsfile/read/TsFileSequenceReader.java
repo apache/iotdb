@@ -336,19 +336,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     buffer = readData(start, size);
 
     List<Pair<Long, Long>> versionInfo = tsFileMetaData.getVersionInfo();
-    while (buffer.hasRemaining()) {
-      chunkMetadataList.add(ChunkMetadata.deserializeFrom(buffer));
-    }
-
-    // set version
-    int versionIndex = 0;
-    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-      while (chunkMetadata.getOffsetOfChunkHeader() >= versionInfo.get(versionIndex).left) {
-        versionIndex++;
-      }
-      chunkMetadata.setVersion(versionInfo.get(versionIndex).right);
-    }
-    return chunkMetadataList;
+    return extractChunkMetadata(versionInfo, chunkMetadataList, buffer);
   }
 
   /**
@@ -731,6 +719,10 @@ public class TsFileSequenceReader implements AutoCloseable {
     long startOffsetOfChunkMetadataList = timeseriesMetaData.getOffsetOfChunkMetaDataList();
     int dataSizeOfChunkMetadataList = timeseriesMetaData.getDataSizeOfChunkMetaDataList();
     ByteBuffer buffer = readData(startOffsetOfChunkMetadataList, dataSizeOfChunkMetadataList);
+    return extractChunkMetadata(versionInfo, chunkMetadataList, buffer);
+  }
+
+  private List<ChunkMetadata> extractChunkMetadata(List<Pair<Long, Long>> versionInfo, List<ChunkMetadata> chunkMetadataList, ByteBuffer buffer) {
     while (buffer.hasRemaining()) {
       chunkMetadataList.add(ChunkMetadata.deserializeFrom(buffer));
     }
