@@ -23,6 +23,8 @@ import org.apache.spark.sql.{DataFrame, DataFrameReader, DataFrameWriter}
 
 package object tsfile {
 
+  val myPackage = "org.apache.iotdb.spark.tsfile"
+
   /**
     * add a method 'tsfile' to DataFrameReader to read tsfile
     *
@@ -33,10 +35,10 @@ package object tsfile {
                isNarrowForm: Boolean = false): DataFrame = {
       if (isNarrowForm) {
         reader.option(DefaultSource.path, path).option(DefaultSource.isNarrowForm, "narrow_form").
-          format("org.apache.iotdb.spark.tsfile").load
+          format(myPackage).load
       }
       else {
-        reader.option(DefaultSource.path, path).format("org.apache.iotdb.spark.tsfile").load
+        reader.option(DefaultSource.path, path).format(myPackage).load
       }
     }
   }
@@ -52,7 +54,7 @@ package object tsfile {
           format("org.apache.iotdb.spark.tsfile").save
       }
       else {
-        writer.option(DefaultSource.path, path).format("org.apache.iotdb.tsfile").save
+        writer.option(DefaultSource.path, path).format("org.apache.iotdb.spark.tsfile").save
       }
     }
   }

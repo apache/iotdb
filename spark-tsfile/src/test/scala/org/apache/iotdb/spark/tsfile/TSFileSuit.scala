@@ -258,7 +258,7 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
   }
 
   test("testQuerySchema") {
-    val df = spark.read.format("org.apache.iotdb.tsfile").load(tsfile1)
+    val df = spark.read.format("org.apache.iotdb.spark.tsfile").load(tsfile1)
 
     val expected = StructType(Seq(
       StructField(QueryConstant.RESERVED_TIME, LongType, nullable = true),

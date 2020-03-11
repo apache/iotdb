@@ -194,9 +194,9 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
         }
 
         // time range of this partition of this measurement
-        TimeRange inPartitionTimeRange = new TimeRange(Long.MAX_VALUE, Long.MIN_VALUE);
+        TimeRange inPartitionTimeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
         // time range of the previous partition of this measurement
-        TimeRange previousPartitionTimeRange = new TimeRange(Long.MAX_VALUE, Long.MIN_VALUE);
+        TimeRange previousPartitionTimeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
 
         for (ChunkMetadata chunkMetadata : seriesMetadata.getValue()) {
           LocateStatus location = checkLocateStatus(chunkMetadata, spacePartitionStartPos,
@@ -207,14 +207,14 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
           if (location == LocateStatus.in) {
             // init min time
-            if (inPartitionTimeRange.getMin() == Long.MAX_VALUE) {
+            if (inPartitionTimeRange.getMin() == Long.MIN_VALUE) {
               inPartitionTimeRange.setMin(chunkMetadata.getStartTime());
             }
             // update max time
             inPartitionTimeRange.setMax(chunkMetadata.getEndTime());
           } else {
             // init min time
-            if (previousPartitionTimeRange.getMin() == Long.MAX_VALUE) {
+            if (previousPartitionTimeRange.getMin() == Long.MIN_VALUE) {
               previousPartitionTimeRange.setMin(chunkMetadata.getStartTime());
             }
             // update max time
