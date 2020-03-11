@@ -152,7 +152,7 @@ public class MetaGroupMemberTest extends MemberTest {
           return StatusUtils.OK;
         } catch (QueryProcessException e) {
           TSStatus status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-          status.getStatusType().setMessage(e.getMessage());
+          status.setMessage(e.getMessage());
           return status;
         }
       }
@@ -481,7 +481,7 @@ public class MetaGroupMemberTest extends MemberTest {
       SetStorageGroupPlan setStorageGroupPlan =
           new SetStorageGroupPlan(new Path(TestUtils.getTestSg(i)));
       TSStatus status = metaGroupMember.executeNonQuery(setStorageGroupPlan);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.statusType.code);
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
       assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSg(i)));
 
       // process a partitioned plan
@@ -490,7 +490,7 @@ public class MetaGroupMemberTest extends MemberTest {
           new Path(schema.getMeasurementId()), schema.getType(),
           schema.getEncodingType(), schema.getCompressor(), schema.getProps());
       status = metaGroupMember.executeNonQuery(createTimeSeriesPlan);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.statusType.code);
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
       assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSeries(i, 0)));
     }
   }

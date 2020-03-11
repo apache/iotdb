@@ -54,7 +54,7 @@ public class ForwardPlanHandler implements AsyncMethodCallback<TSStatus> {
     logger.error("Cannot send plan {} to node {}", plan, node, exception);
     synchronized (result) {
       TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
-      status.getStatusType().setMessage(exception.getMessage());
+      status.setMessage(exception.getMessage());
       result.set(status);
       result.notifyAll();
     }

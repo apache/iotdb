@@ -239,10 +239,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     for (long statementId : statementIds) {
       Set<Long> queryIds = statementId2QueryId.getOrDefault(statementId, Collections.emptySet());
       for (long queryId : queryIds) {
-        queryId2DataSet.remove(queryId);
-
         try {
-          QueryResourceManager.getInstance().endQuery(queryId);
+          releaseQueryResource(queryId);
         } catch (StorageEngineException e) {
           // release as many as resources as possible, so do not break as soon as one exception is
           // raised
@@ -300,7 +298,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * release single operation resource
    */
-  private void releaseQueryResource(long queryId) throws StorageEngineException {
+  protected void releaseQueryResource(long queryId) throws StorageEngineException {
     // remove the corresponding Physical Plan
     queryId2DataSet.remove(queryId);
     QueryResourceManager.getInstance().endQuery(queryId);
@@ -831,8 +829,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             fillRpcReturnData(req.fetchSize, queryDataSet, sessionIdUsernameMap.get(req.sessionId));
         boolean hasResultSet = result.bufferForTime().limit() != 0;
         if (!hasResultSet) {
-          QueryResourceManager.getInstance().endQuery(req.queryId);
-          queryId2DataSet.remove(req.queryId);
+          releaseQueryResource(req.queryId);
         }
         TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
         resp.setHasResultSet(hasResultSet);
@@ -942,7 +939,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return queryDataSet;
   }
 
-  private QueryContext genQueryContext(long queryId) {
+  protected QueryContext genQueryContext(long queryId) {
     return new QueryContext(queryId);
   }
 
@@ -1019,7 +1016,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
   }
 
-  void handleClientExit() {
+  protected void handleClientExit() {
     Long sessionId = currSessionId.get();
     if (sessionId != null) {
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
@@ -1299,7 +1296,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return null;
   }
 
-  private TSStatus executePlan(PhysicalPlan plan) {
+  protected TSStatus executePlan(PhysicalPlan plan) {
     boolean execRet;
     try {
       execRet = executeNonQuery(plan);

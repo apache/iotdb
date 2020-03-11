@@ -916,7 +916,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         return processPartitionedPlan(plan);
       } catch (UnsupportedPlanException e) {
         TSStatus status = StatusUtils.UNSUPPORTED_OPERATION.deepCopy();
-        status.getStatusType().setMessage(e.getMessage());
+        status.setMessage(e.getMessage());
         return status;
       }
     }
@@ -972,10 +972,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         // forward the query to the group that should handle it
         subStatus = forwardPlan(entry.getKey(), entry.getValue());
       }
-      if (subStatus.getStatusType().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
-            subStatus.getStatusType().getCode(), entry.getValue().getHeader(),
-            subStatus.getStatusType().getMessage()));
+            subStatus.getCode(), entry.getValue().getHeader(),
+            subStatus.getMessage()));
       } else {
         succeededEntries.add(entry);
       }
@@ -984,7 +984,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       status = StatusUtils.OK;
     } else {
       status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-      status.getStatusType().setMessage("The following errors occurred when executing the query, "
+      status.setMessage("The following errors occurred when executing the query, "
           + "please retry or contact the DBA: " + errorCodePartitionGroups.toString());
       //TODO-Cluster: abort the succeeded ones if necessary.
     }
@@ -1000,7 +1000,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         status = forwardPlan(plan, getDataClient(node), node, group.getHeader());
       } catch (IOException e) {
         status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-        status.getStatusType().setMessage(e.getMessage());
+        status.setMessage(e.getMessage());
       }
       if (status != StatusUtils.TIME_OUT) {
         return status;
