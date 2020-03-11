@@ -111,7 +111,7 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
       case OR:
         return getBinaryOperator(SQLConstant.KW_OR, ((RexCall) filter).getOperands());
       default:
-        return null;
+        throw new AssertionError("cannot get IoTDBOperator from " + filter);
     }
   }
 
@@ -142,9 +142,12 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
       case INPUT_REF:
         String name = fieldNames.get(((RexInputRef) left).getIndex());
         return new BasicFunctionOperator(tokenIntType, new Path(name), literalValue(rightLiteral));
+      case CAST:
+        return getBasicOperator2(tokenIntType, ((RexCall) left).getOperands().get(0), right);
       default:
         return null;
     }
+
   }
 
   private FilterOperator getBinaryOperator(int tokenIntType, List<RexNode> operands) {
@@ -305,10 +308,14 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
    * @return String representation of the literal
    */
   private static String literalValue(RexLiteral literal) {
-    Object value = literal.getValue2();
-    StringBuilder buf = new StringBuilder();
-    buf.append(value);
-    return buf.toString();
+    switch (literal.getType().getSqlTypeName()){
+      case DOUBLE:
+        return String.valueOf(literal.getValueAs(Double.class));
+      default:
+        return String.valueOf(literal.getValue2());
+    }
   }
 
 }
+
+// End IoTDBFilter.java

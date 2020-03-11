@@ -24,4 +24,5 @@ public class IoTDBConstant {
   public static final String TimeColumn = "time";
   public static final String DeviceColumn = "device";
   public static final String PATH_SEPARATOR = ".";
+  public static final String UnQuotedCasing = "UNCHANGED";
 }

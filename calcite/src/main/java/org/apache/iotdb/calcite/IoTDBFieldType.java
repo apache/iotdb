@@ -55,3 +55,5 @@ enum IoTDBFieldType {
     return MAP.get(typeString);
   }
 }
+
+// End IoTDBFieldType.java

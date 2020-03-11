@@ -49,4 +49,3 @@ public enum IoTDBMethod {
 }
 
 // End IoTDBMethod.java
-

@@ -160,6 +160,9 @@ public class IoTDBTable extends AbstractQueryableTable
         }
       }
       selectString = selectBuilder.toString();
+      if (selectString.equals("")) {
+        selectString = "*";
+      }
     }
 
     List<String> queryList = new ArrayList<>();
@@ -297,3 +300,5 @@ public class IoTDBTable extends AbstractQueryableTable
     }
   }
 }
+
+// End IoTDBTable.java

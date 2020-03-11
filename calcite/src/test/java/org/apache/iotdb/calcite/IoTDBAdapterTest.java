@@ -24,7 +24,6 @@ import java.sql.DriverManager;
 import java.sql.Statement;
 import org.apache.calcite.test.CalciteAssert;
 import org.apache.calcite.util.Sources;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
@@ -37,7 +36,6 @@ public class IoTDBAdapterTest {
       ImmutableMap.of("model",
           Sources.of(IoTDBAdapterTest.class.getResource("/model.json"))
               .file().getAbsolutePath());
-  private static IoTDB daemon;
   private static String[] sqls = new String[]{
 
       "SET STORAGE GROUP TO root.vehicle",
@@ -122,8 +120,6 @@ public class IoTDBAdapterTest {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertData();
@@ -131,7 +127,6 @@ public class IoTDBAdapterTest {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -153,6 +148,7 @@ public class IoTDBAdapterTest {
   public void testSelect() {
     CalciteAssert.that()
         .with(MODEL)
+        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
         .query("select * from \"root.vehicle\"")
         .returnsCount(25)
         .returnsStartingWith(
@@ -168,7 +164,8 @@ public class IoTDBAdapterTest {
   public void testProject1() {
     CalciteAssert.that()
         .with(MODEL)
-        .query("select \"s0\" from \"root.vehicle\"")
+        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .query("select s0 from \"root.vehicle\"")
         .limit(1)
         .returns("s0=101\n")
         .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
@@ -183,7 +180,8 @@ public class IoTDBAdapterTest {
   public void testProject2() {
     CalciteAssert.that()
         .with(MODEL)
-        .query("select \"time\", \"device\", \"s2\" from \"root.vehicle\"")
+        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .query("select \"time\", device, s2 from \"root.vehicle\"")
         .limit(1)
         .returns("time=2; device=root.vehicle.d0; s2=2.22\n")
         .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
@@ -195,7 +193,8 @@ public class IoTDBAdapterTest {
   public void testProjectAlias() {
     CalciteAssert.that()
         .with(MODEL)
-        .query("select \"time\" AS \"t\", \"device\" AS \"d\", \"s2\" from \"root.vehicle\"")
+        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .query("select \"time\" AS t, device AS d, s2 from \"root.vehicle\"")
         .returnsStartingWith("t=2; d=root.vehicle.d0; s2=2.22")
         .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
             "  IoTDBProject(t=[$0], d=[$1], s2=[$4])\n" +
@@ -206,7 +205,8 @@ public class IoTDBAdapterTest {
   public void testLimitOffset() {
     CalciteAssert.that()
         .with(MODEL)
-        .query("select \"time\", \"s2\" from \"root.vehicle\" limit 3 offset 2")
+        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .query("select \"time\", s2 from \"root.vehicle\" limit 3 offset 2")
         .explainContains("IoTDBLimit(limit=[3], offset=[2])\n")
         .returns("time=3; s2=3.33\n" +
             "time=4; s2=4.44\n" +
@@ -217,8 +217,9 @@ public class IoTDBAdapterTest {
   public void testFilter1() {
     CalciteAssert.that()
         .with(MODEL)
+        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
         .query("select * from \"root.vehicle\" " +
-            "where \"s0\" <= 10")
+            "where s0 <= 10")
         .limit(1)
         .returns("time=1000; device=root.vehicle.d1; s0=10; s1=5; s2=null; s3=thousand; s4=null\n")
         .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
@@ -230,8 +231,9 @@ public class IoTDBAdapterTest {
   public void testFilter2() {
     CalciteAssert.that()
         .with(MODEL)
+        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
         .query("select * from \"root.vehicle\" " +
-            "where \"device\" = 'root.vehicle.d1'")
+            "where device = 'root.vehicle.d1'")
         .limit(2)
         .returns("time=1; device=root.vehicle.d1; s0=999; s1=null; s2=null; s3=null; s4=null\n"
             + "time=2; device=root.vehicle.d1; s0=null; s1=9999; s2=12345.6; s3=null; s4=null\n")
@@ -244,8 +246,9 @@ public class IoTDBAdapterTest {
   public void testFilter3() {
     CalciteAssert.that()
         .with(MODEL)
+        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
         .query("select * from \"root.vehicle\" " +
-            "where \"time\" < 10 AND \"s0\" >= 150")
+            "where \"time\" < 10 AND s0 >= 150")
         .limit(2)
         .returns("time=2; device=root.vehicle.d0; s0=10000; s1=40000; s2=2.22; s3=null; s4=null\n" +
             "time=1; device=root.vehicle.d1; s0=999; s1=null; s2=null; s3=null; s4=null\n")
@@ -258,8 +261,9 @@ public class IoTDBAdapterTest {
   public void testFilter4() {
     CalciteAssert.that()
         .with(MODEL)
+        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
         .query("select * from \"root.vehicle\" " +
-            "where \"device\" = 'root.vehicle.d0' AND \"time\" > 10 AND \"s0\" <= 100")
+            "where device = 'root.vehicle.d0' AND \"time\" > 10 AND s0 <= 100")
         .limit(2)
         .returns("time=100; device=root.vehicle.d0; s0=99; s1=199; s2=null; s3=null; s4=true\n" +
             "time=101; device=root.vehicle.d0; s0=99; s1=199; s2=null; s3=ddddd; s4=null\n")
@@ -272,9 +276,10 @@ public class IoTDBAdapterTest {
   public void testFilter5() {
     CalciteAssert.that()
         .with(MODEL)
+        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
         .query("select * from \"root.vehicle\" " +
-            "where (\"device\" = 'root.vehicle.d0' AND \"time\" <= 1)" +
-            " OR (\"device\" = 'root.vehicle.d1' AND \"s0\" < 100)")
+            "where (device = 'root.vehicle.d0' AND \"time\" <= 1)" +
+            " OR (device = 'root.vehicle.d1' AND s0 < 100)")
         .limit(2)
         .returns("time=1; device=root.vehicle.d0; s0=101; s1=1101; s2=null; s3=null; s4=null\n" +
             "time=1000; device=root.vehicle.d1; s0=10; s1=5; s2=null; s3=thousand; s4=null\n")
@@ -288,9 +293,10 @@ public class IoTDBAdapterTest {
   public void testFilter6() {
     CalciteAssert.that()
         .with(MODEL)
+        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
         .query("select * from \"root.vehicle\" " +
-            "where (\"device\" = 'root.vehicle.d0' AND \"time\" <= 1)" +
-            " OR (\"device\" = 'root.vehicle.d0' AND \"s0\" < 100)")
+            "where (device = 'root.vehicle.d0' AND \"time\" <= 1)" +
+            " OR (device = 'root.vehicle.d0' AND s0 < 100)")
         .limit(2)
         .returns("time=1; device=root.vehicle.d0; s0=101; s1=1101; s2=null; s3=null; s4=null\n" +
             "time=100; device=root.vehicle.d0; s0=99; s1=199; s2=null; s3=null; s4=true\n")
@@ -304,14 +310,14 @@ public class IoTDBAdapterTest {
   public void testFilter7() {
     CalciteAssert.that()
         .with(MODEL)
+        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
         .query("select * from \"root.vehicle\" " +
-            "where (\"device\" = 'root.vehicle.d0' AND \"time\" <= 1) OR \"s4\" = true")
+            "where (device = 'root.vehicle.d0' AND \"time\" <= 1) OR s2 = 2.22")
         .returns("time=1; device=root.vehicle.d0; s0=101; s1=1101; s2=null; s3=null; s4=null\n" +
-            "time=100; device=root.vehicle.d0; s0=99; s1=199; s2=null; s3=null; s4=true\n" +
-            "time=10000; device=root.vehicle.d1; s0=null; s1=null; s2=null; s3=null; s4=true\n")
+            "time=2; device=root.vehicle.d0; s0=10000; s1=40000; s2=2.22; s3=null; s4=null\n" +
+            "time=2222; device=root.vehicle.d1; s0=null; s1=null; s2=2.22; s3=null; s4=null\n")
         .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
-            "  IoTDBFilter(condition=[OR(AND(=($1, 'root.vehicle.d0'), <=($0, 1)), =($6, true))])\n"
-            +
+            "  IoTDBFilter(condition=[OR(AND(=($1, 'root.vehicle.d0'), <=($0, 1)), =(CAST($4):DOUBLE NOT NULL, 2.22))])\n" +
             "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
   }
 
