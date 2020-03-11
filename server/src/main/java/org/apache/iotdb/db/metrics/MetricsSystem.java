@@ -114,8 +114,8 @@ public class MetricsSystem {
     for (SqlArgument sqlArgument : sqlArgumentsList) {
       JSONObject sql = new JSONObject();
       TSExecuteStatementResp resp = sqlArgument.getTSExecuteStatementResp();
-      String errMsg = resp.getStatus().getStatusType().getMessage();
-      int statusCode = resp.getStatus().getStatusType().getCode();
+      String errMsg = resp.getStatus().getMessage();
+      int statusCode = resp.getStatus().getCode();
       String status;
       if (statusCode == 200) {
         status = "FINISHED";
