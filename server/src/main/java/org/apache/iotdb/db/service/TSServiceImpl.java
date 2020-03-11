@@ -331,9 +331,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return new TSStatus(statusCodeAndMessage);
   }
 
-  protected TSDataType getSeriesType(String path) throws QueryProcessException, MetadataException {
+  protected List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations) throws QueryProcessException {
     try {
-      return SchemaUtils.getSeriesType(path);
+      return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+  }
+
+  protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation) throws QueryProcessException {
+    try {
+      return SchemaUtils.getSeriesTypesByString(paths, aggregation);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -357,7 +365,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
-          resp.setDataType(getSeriesType(req.getColumnPath()).toString());
+          resp.setDataType(getSeriesTypesByString(Collections.singletonList(req.getColumnPath()), null).get(0).toString());
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "ALL_COLUMNS":
@@ -778,12 +786,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     // Restore column header of aggregate to func(column_name), only
     // support single aggregate function for now
     List<Path> paths = plan.getPaths();
+    List<TSDataType> seriesTypes;
     switch (plan.getOperatorType()) {
       case QUERY:
       case FILL:
         for (Path p : paths) {
           respColumns.add(p.getFullPath());
         }
+        seriesTypes = getSeriesTypesByString(respColumns, null);
         break;
       case AGGREGATION:
       case GROUPBY:
@@ -796,17 +806,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         for (int i = 0; i < paths.size(); i++) {
           respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
         }
+        seriesTypes = getSeriesTypesByPath(paths, aggregations);
         break;
       default:
         throw new TException("unsupported query type: " + plan.getOperatorType());
     }
 
-    for (String column : respColumns) {
-      try {
-        columnTypes.add(getSeriesType(column).toString());
-      } catch (MetadataException e) {
-        throw new QueryProcessException(e);
-      }
+    for (TSDataType seriesType : seriesTypes) {
+      columnTypes.add(seriesType.toString());
     }
   }
 
