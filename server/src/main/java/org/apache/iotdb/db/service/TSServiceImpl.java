@@ -334,22 +334,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return new TSStatus(statusCodeAndMessage);
   }
 
-  protected List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations) throws QueryProcessException {
-    try {
-      return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
-  }
-
-  protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation) throws QueryProcessException {
-    try {
-      return SchemaUtils.getSeriesTypesByString(paths, aggregation);
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
-  }
-
   @Override
   public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) {
     TSStatus status;
@@ -368,7 +352,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
-          resp.setDataType(getSeriesTypesByString(Collections.singletonList(req.getColumnPath()), null).get(0).toString());
+          List<TSDataType> dataTypes = SchemaUtils
+              .getSeriesTypesByString(Collections.singletonList(req.getColumnPath()), null);
+          resp.setDataType(dataTypes.get(0).toString());
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "ALL_COLUMNS":
@@ -379,7 +365,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = getStatus(TSStatusCode.METADATA_ERROR, req.getType());
           break;
       }
-    } catch (MetadataException | OutOfMemoryError | QueryProcessException e) {
+    } catch (MetadataException | OutOfMemoryError e) {
       logger.error(
           String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()), e);
       status = getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
@@ -686,7 +672,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private TSExecuteStatementResp getQueryResp(PhysicalPlan plan, String username)
-      throws QueryProcessException, AuthException, TException {
+      throws QueryProcessException, AuthException, TException, MetadataException {
     if (plan instanceof AuthorPlan) {
       return getAuthQueryColumnHeaders(plan);
     } else if (plan instanceof ShowPlan) {
@@ -753,7 +739,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * get ResultSet schema
    */
   private TSExecuteStatementResp getQueryColumnHeaders(PhysicalPlan physicalPlan, String username)
-      throws AuthException, TException, QueryProcessException {
+      throws AuthException, TException, QueryProcessException, MetadataException {
 
     List<String> respColumns = new ArrayList<>();
     List<String> columnsTypes = new ArrayList<>();
@@ -785,7 +771,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // wide means not align by device
   private void getWideQueryHeaders(
       QueryPlan plan, List<String> respColumns, List<String> columnTypes)
-      throws TException, QueryProcessException {
+      throws TException, QueryProcessException, MetadataException {
     // Restore column header of aggregate to func(column_name), only
     // support single aggregate function for now
     List<Path> paths = plan.getPaths();
@@ -796,7 +782,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         for (Path p : paths) {
           respColumns.add(p.getFullPath());
         }
-        seriesTypes = getSeriesTypesByString(respColumns, null);
+        seriesTypes = SchemaUtils.getSeriesTypesByString(respColumns, null);
         break;
       case AGGREGATION:
       case GROUPBY:
@@ -809,7 +795,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         for (int i = 0; i < paths.size(); i++) {
           respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
         }
-        seriesTypes = getSeriesTypesByPath(paths, aggregations);
+        seriesTypes = SchemaUtils.getSeriesTypesByPath(paths, aggregations);
         break;
       default:
         throw new TException("unsupported query type: " + plan.getOperatorType());
@@ -1009,7 +995,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return queryDataSet;
   }
 
-  protected QueryContext genQueryContext(long queryId) {
+  private QueryContext genQueryContext(long queryId) {
     return new QueryContext(queryId);
   }
 
@@ -1395,7 +1381,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return null;
   }
 
-  protected TSStatus executePlan(PhysicalPlan plan) {
+  private TSStatus executePlan(PhysicalPlan plan) {
     boolean execRet;
     try {
       execRet = executeNonQuery(plan);
