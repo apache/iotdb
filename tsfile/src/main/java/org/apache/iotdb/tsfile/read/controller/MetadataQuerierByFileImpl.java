@@ -209,10 +209,10 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
           if (location == LocateStatus.in) {
             // init min time
             if (inPartitionTimeRange.getMin() == Long.MAX_VALUE) {
-              previousPartitionTimeRange.setMin(chunkMetadata.getStartTime());
+              inPartitionTimeRange.setMin(chunkMetadata.getStartTime());
             }
             // update max time
-            previousPartitionTimeRange.setMax(chunkMetadata.getEndTime());
+            inPartitionTimeRange.setMax(chunkMetadata.getEndTime());
           } else {
             // init min time
             if (previousPartitionTimeRange.getMin() == Long.MAX_VALUE) {
