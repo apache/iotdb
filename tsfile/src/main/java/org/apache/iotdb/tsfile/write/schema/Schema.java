@@ -83,6 +83,9 @@ public class Schema {
   }
 
   public void extendTemplate(String templateName, MeasurementSchema descriptor) {
+    if (deviceTemplates == null) {
+      deviceTemplates = new HashMap<>();
+    }
     Map<String, MeasurementSchema> template = this.deviceTemplates
         .getOrDefault(templateName, new HashMap<>());
     template.put(descriptor.getMeasurementId(), descriptor);

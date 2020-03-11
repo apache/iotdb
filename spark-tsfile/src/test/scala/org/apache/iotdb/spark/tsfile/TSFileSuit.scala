@@ -29,7 +29,7 @@ import org.apache.iotdb.hadoop.fileSystem.HDFSInput
 import org.apache.iotdb.spark.constant.TestConstant
 import org.apache.iotdb.spark.tool.TsFileWriteTool
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader
+import org.apache.iotdb.tsfile.read.{TsFileSequenceReader, common}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types._
 import org.junit.Assert
@@ -343,10 +343,8 @@ device_2: 400000 rows, time range [0,799998], interval 2
     val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
     val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
     val tsFileMetaData = reader.readFileMetadata
-    val tsDeviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex("device_1")
-    val tsDeviceMetadata = reader.readTsDeviceMetaData(tsDeviceMetadataIndex)
-    val chunkGroupMetaData = tsDeviceMetadata.getChunkGroupMetaDataList.get(0)
-    val endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup
+    val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
+    val endOffsetOfChunkGroup = chunkMetadataList.get(1).getOffsetOfChunkHeader
 
     val tmp = spark.conf.get("spark.sql.files.maxPartitionBytes")
     spark.conf.set("spark.sql.files.maxPartitionBytes", endOffsetOfChunkGroup - 100)
@@ -408,10 +406,8 @@ device_2: 400000 rows, time range [0,799998], interval 2
     val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
     val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
     val tsFileMetaData = reader.readFileMetadata
-    val tsDeviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex("device_1")
-    val tsDeviceMetadata = reader.readTsDeviceMetaData(tsDeviceMetadataIndex)
-    val chunkGroupMetaData = tsDeviceMetadata.getChunkGroupMetaDataList.get(1)
-    val endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup
+    val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
+    val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
 
     val tmp = spark.conf.get("spark.sql.files.maxPartitionBytes")
     spark.conf.set("spark.sql.files.maxPartitionBytes", endOffsetOfChunkGroup + 100)
@@ -458,10 +454,8 @@ device_2: 400000 rows, time range [0,799998], interval 2
     val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
     val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
     val tsFileMetaData = reader.readFileMetadata
-    val tsDeviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex("device_1")
-    val tsDeviceMetadata = reader.readTsDeviceMetaData(tsDeviceMetadataIndex)
-    val chunkGroupMetaData = tsDeviceMetadata.getChunkGroupMetaDataList.get(1)
-    val endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup
+    val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
+    val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
 
     val tmp = spark.conf.get("spark.sql.files.maxPartitionBytes")
     spark.conf.set("spark.sql.files.maxPartitionBytes", endOffsetOfChunkGroup + 100)
@@ -483,10 +477,8 @@ device_2: 400000 rows, time range [0,799998], interval 2
     val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
     val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
     val tsFileMetaData = reader.readFileMetadata
-    val tsDeviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex("device_1")
-    val tsDeviceMetadata = reader.readTsDeviceMetaData(tsDeviceMetadataIndex)
-    val chunkGroupMetaData = tsDeviceMetadata.getChunkGroupMetaDataList.get(1)
-    val endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup
+    val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
+    val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
 
     val tmp = spark.conf.get("spark.sql.files.maxPartitionBytes")
     spark.conf.set("spark.sql.files.maxPartitionBytes", endOffsetOfChunkGroup + 100)
@@ -509,10 +501,8 @@ device_2: 400000 rows, time range [0,799998], interval 2
     val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
     val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
     val tsFileMetaData = reader.readFileMetadata
-    val tsDeviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex("device_1")
-    val tsDeviceMetadata = reader.readTsDeviceMetaData(tsDeviceMetadataIndex)
-    val chunkGroupMetaData = tsDeviceMetadata.getChunkGroupMetaDataList.get(1)
-    val endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup
+    val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
+    val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
 
     val tmp = spark.conf.get("spark.sql.files.maxPartitionBytes")
     spark.conf.set("spark.sql.files.maxPartitionBytes", endOffsetOfChunkGroup + 100)
@@ -534,10 +524,8 @@ device_2: 400000 rows, time range [0,799998], interval 2
     val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
     val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
     val tsFileMetaData = reader.readFileMetadata
-    val tsDeviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex("device_1")
-    val tsDeviceMetadata = reader.readTsDeviceMetaData(tsDeviceMetadataIndex)
-    val chunkGroupMetaData = tsDeviceMetadata.getChunkGroupMetaDataList.get(1)
-    val endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup
+    val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
+    val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
 
     val tmp = spark.conf.get("spark.sql.files.maxPartitionBytes")
     spark.conf.set("spark.sql.files.maxPartitionBytes", endOffsetOfChunkGroup + 100)
@@ -559,10 +547,8 @@ device_2: 400000 rows, time range [0,799998], interval 2
     val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
     val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
     val tsFileMetaData = reader.readFileMetadata
-    val tsDeviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex("device_1")
-    val tsDeviceMetadata = reader.readTsDeviceMetaData(tsDeviceMetadataIndex)
-    val chunkGroupMetaData = tsDeviceMetadata.getChunkGroupMetaDataList.get(1)
-    val endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup
+    val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
+    val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
 
     val tmp = spark.conf.get("spark.sql.files.maxPartitionBytes")
     spark.conf.set("spark.sql.files.maxPartitionBytes", endOffsetOfChunkGroup + 100)
@@ -584,10 +570,8 @@ device_2: 400000 rows, time range [0,799998], interval 2
     val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
     val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
     val tsFileMetaData = reader.readFileMetadata
-    val tsDeviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex("device_1")
-    val tsDeviceMetadata = reader.readTsDeviceMetaData(tsDeviceMetadataIndex)
-    val chunkGroupMetaData = tsDeviceMetadata.getChunkGroupMetaDataList.get(1)
-    val endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup
+    val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
+    val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
 
     val tmp = spark.conf.get("spark.sql.files.maxPartitionBytes")
     spark.conf.set("spark.sql.files.maxPartitionBytes", endOffsetOfChunkGroup + 100)
@@ -610,10 +594,8 @@ device_2: 400000 rows, time range [0,799998], interval 2
     val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
     val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
     val tsFileMetaData = reader.readFileMetadata
-    val tsDeviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex("device_1")
-    val tsDeviceMetadata = reader.readTsDeviceMetaData(tsDeviceMetadataIndex)
-    val chunkGroupMetaData = tsDeviceMetadata.getChunkGroupMetaDataList.get(1)
-    val endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup
+    val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
+    val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
 
     val tmp = spark.conf.get("spark.sql.files.maxPartitionBytes")
     spark.conf.set("spark.sql.files.maxPartitionBytes", endOffsetOfChunkGroup + 100)
@@ -636,10 +618,8 @@ device_2: 400000 rows, time range [0,799998], interval 2
     val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
     val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
     val tsFileMetaData = reader.readFileMetadata
-    val tsDeviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex("device_1")
-    val tsDeviceMetadata = reader.readTsDeviceMetaData(tsDeviceMetadataIndex)
-    val chunkGroupMetaData = tsDeviceMetadata.getChunkGroupMetaDataList.get(1)
-    val endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup
+    val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
+    val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
 
     val tmp = spark.conf.get("spark.sql.files.maxPartitionBytes")
     spark.conf.set("spark.sql.files.maxPartitionBytes", endOffsetOfChunkGroup + 100)

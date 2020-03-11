@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 
 /**
  * An example of writing data to TsFile
@@ -39,21 +40,20 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 public class TsFileWriteTool {
 
   public static int largeNum = 1024 * 1024;
+  private static final String DEFAULT_TEMPLATE = "template";
 
   public void create1(String tsfilePath) throws Exception {
     File f = new File(tsfilePath);
     if (f.exists()) {
       f.delete();
     }
-    TsFileWriter tsFileWriter = new TsFileWriter(f);
 
-    // add measurements into file schema
-    tsFileWriter
-        .registerTimeseries(new Path("device_1", "sensor_1"), new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
-    tsFileWriter
-        .registerTimeseries(new Path("device_1", "sensor_2"), new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
-    tsFileWriter
-        .registerTimeseries(new Path("device_1", "sensor_3"), new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
+    Schema schema = new Schema();
+    schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+    schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+    schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
+
+    TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
 
     // construct TSRecord
     TSRecord tsRecord = new TSRecord(1, "device_1");
@@ -146,8 +146,7 @@ public class TsFileWriteTool {
     TsFileWriter tsFileWriter = new TsFileWriter(f);
 
     // add measurements into file schema
-    tsFileWriter
-        .registerTimeseries(new Path("device_1","sensor_1"),
+    tsFileWriter.registerTimeseries(new Path("device_1","sensor_1"),
             new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
     for (long i = 0; i < largeNum; i++) {
       // construct TSRecord
