@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read;
 
+import java.util.Map.Entry;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
@@ -36,6 +37,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -303,24 +305,23 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
   }
 
+
   /**
    * read all ChunkMetaDatas of given device
-   * The result is ordered by sensor
    *
    * @param device name
-   * @return ChunkMetaDataList
+   * @return measurement -> ChunkMetadata list
    * @throws IOException io error
    */
-  public List<ChunkMetadata> readChunkMetadataInDevice(String device) throws IOException {
+  public Map<String, List<ChunkMetadata>> readChunkMetadataInDevice(String device) throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
     if (tsFileMetaData.getDeviceMetadataIndex() == null
         || !tsFileMetaData.getDeviceMetadataIndex().containsKey(device)) {
-      return new ArrayList<>();
+      return new HashMap<>();
     }
 
-    List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
     Pair<Long, Integer> deviceMetaData = tsFileMetaData.getDeviceMetadataIndex().get(device);
     ByteBuffer buffer = readData(deviceMetaData.left, deviceMetaData.right);
     long start = 0;
@@ -335,8 +336,31 @@ public class TsFileSequenceReader implements AutoCloseable {
     // read buffer of all ChunkMetadatas of this device
     buffer = readData(start, size);
 
+    Map<String, List<ChunkMetadata>> seriesMetadata = new HashMap<>();
+
+    while (buffer.hasRemaining()) {
+      ChunkMetadata chunkMetadata = ChunkMetadata.deserializeFrom(buffer);
+      seriesMetadata.computeIfAbsent(chunkMetadata.getMeasurementUid(), (key) -> new ArrayList<>())
+          .add(chunkMetadata);
+    }
+
+    // set version in ChunkMetadata
     List<Pair<Long, Long>> versionInfo = tsFileMetaData.getVersionInfo();
-    return extractChunkMetadata(versionInfo, chunkMetadataList, buffer);
+    for (Entry<String, List<ChunkMetadata>> entry : seriesMetadata.entrySet()) {
+      setVersion(entry.getValue(), versionInfo);
+    }
+    return seriesMetadata;
+  }
+
+
+  private void setVersion(List<ChunkMetadata> chunkMetadataList, List<Pair<Long, Long>> versionInfo) {
+    int versionIndex = 0;
+    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+      while (chunkMetadata.getOffsetOfChunkHeader() >= versionInfo.get(versionIndex).left) {
+        versionIndex++;
+      }
+      chunkMetadata.setVersion(versionInfo.get(versionIndex).right);
+    }
   }
 
   /**
@@ -718,24 +742,16 @@ public class TsFileSequenceReader implements AutoCloseable {
     List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
     long startOffsetOfChunkMetadataList = timeseriesMetaData.getOffsetOfChunkMetaDataList();
     int dataSizeOfChunkMetadataList = timeseriesMetaData.getDataSizeOfChunkMetaDataList();
-    ByteBuffer buffer = readData(startOffsetOfChunkMetadataList, dataSizeOfChunkMetadataList);
-    return extractChunkMetadata(versionInfo, chunkMetadataList, buffer);
-  }
 
-  private List<ChunkMetadata> extractChunkMetadata(List<Pair<Long, Long>> versionInfo, List<ChunkMetadata> chunkMetadataList, ByteBuffer buffer) {
+    ByteBuffer buffer = readData(startOffsetOfChunkMetadataList, dataSizeOfChunkMetadataList);
     while (buffer.hasRemaining()) {
       chunkMetadataList.add(ChunkMetadata.deserializeFrom(buffer));
     }
-    int versionIndex = 0;
-    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-      while (chunkMetadata.getOffsetOfChunkHeader() >= versionInfo.get(versionIndex).left) {
-        versionIndex++;
-      }
-      chunkMetadata.setVersion(versionInfo.get(versionIndex).right);
-    }
+
+    setVersion(chunkMetadataList, versionInfo);
+
     return chunkMetadataList;
   }
-
 
   /**
    * get all TimeseriesMetaData in file, sorted by device Ids
@@ -769,7 +785,6 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param end   end of the file
    * @return device names in range
    */
- // TODO need some changes by spark-connector author
   public List<String> getDeviceNameInRange(long start, long end) {
     List<String> res = new ArrayList<>();
 
@@ -777,12 +792,11 @@ public class TsFileSequenceReader implements AutoCloseable {
       TsFileMetadata tsFileMetaData = readFileMetadata();
       for (Map.Entry<String, Pair<Long, Integer>> entry : tsFileMetaData.getDeviceMetadataIndex()
           .entrySet()) {
-        List<ChunkMetadata> chunkMetadataInOneDevices = readChunkMetadataInDevice(entry.getKey());
-        LocateStatus mode = checkLocateStatus(chunkMetadataInOneDevices, start,
-            end);
-        if (mode == LocateStatus.in) {
+
+        Map<String, List<ChunkMetadata>> seriesMetadataMap = readChunkMetadataInDevice(entry.getKey());
+
+        if (isDeviceInPartition(seriesMetadataMap, start, end)) {
           res.add(entry.getKey());
-          break;
         }
       }
     } catch (IOException e) {
@@ -793,27 +807,25 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
-   * Check the location of a given chunkGroupMetaData with respect to a space partition constraint.
+   * Check if the device has at least one Chunk in this partition
    *
-   * @param chunkMetadataList     the given chunkMetaDataList In one device
-   * @param spacePartitionStartPos the start position of the space partition
-   * @param spacePartitionEndPos   the end position of the space partition
-   * @return LocateStatus
+   * @param seriesMetadataMap     chunkMetaDataList of each measurement
+   * @param start the start position of the space partition
+   * @param end   the end position of the space partition
    */
-  // TODO need some changes by spark-connector author
-  private LocateStatus checkLocateStatus(List<ChunkMetadata> chunkMetadataList,
-      long spacePartitionStartPos, long spacePartitionEndPos) {
-    chunkMetadataList.sort((chunkMetadata1, chunkMetadata2) -> (int) (chunkMetadata1.getOffsetOfChunkHeader() - chunkMetadata2.getOffsetOfChunkHeader()));
-    long middleOffset = chunkMetadataList.get(chunkMetadataList.size() / 2)
-        .getOffsetOfChunkHeader();
-    if (spacePartitionStartPos <= middleOffset && middleOffset < spacePartitionEndPos) {
-      return LocateStatus.in;
-    } else if (middleOffset < spacePartitionStartPos) {
-      return LocateStatus.before;
-    } else {
-      return LocateStatus.after;
+  private boolean isDeviceInPartition(Map<String, List<ChunkMetadata>> seriesMetadataMap,
+      long start, long end) {
+    for (List<ChunkMetadata> chunkMetadataList : seriesMetadataMap.values()) {
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        LocateStatus location = MetadataQuerierByFileImpl.checkLocateStatus(chunkMetadata, start, end);
+        if (location == LocateStatus.in) {
+          return true;
+        }
+      }
     }
+    return false;
   }
+
 
   /**
    * The location of a chunkGroupMetaData with respect to a space partition constraint.
@@ -823,7 +835,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * partition. after - the middle point of the chunkGroupMetaData is located after the current
    * space partition.
    */
-  private enum LocateStatus {
+  public enum LocateStatus {
     in, before, after
   }
 }

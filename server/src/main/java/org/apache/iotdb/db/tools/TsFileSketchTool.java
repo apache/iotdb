@@ -75,7 +75,7 @@ public class TsFileSketchTool {
             .stream()
             .collect(Collectors.toList());
         tsDeviceTimeseriesMetaDataMap.put(deviceId, timeseriesMetadataList);
-        List<ChunkMetadata> chunkMetadataListInOneDevice =
+        Map<String, List<ChunkMetadata>> seriesMetadataMap =
             reader.readChunkMetadataInDevice(deviceId);
         tsDeviceChunkMetaDataMap.put(deviceId, chunkMetadataListInOneDevice);
       }
