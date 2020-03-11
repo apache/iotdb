@@ -396,7 +396,7 @@ root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT.
 
 7. 在Select子句中重复写列名是生效的。例如, "select s0,s0,s1 from root.sg.* align by device" 不等于 "select s0,s1 from root.sg.* align by device".
 
-8. 在Where子句中时间过滤条件和值过滤条件均可以使用，值过滤条件可以使用单层 path，或以 root 开头的整个 path，不允许存在通配符。例如，
+8. 在Where子句中时间过滤条件和值过滤条件均可以使用，值过滤条件可以使用叶子节点 path，或以 root 开头的整个 path，不允许存在通配符。例如，
 - select * from root.sg.* where time = 1 align by device
 - select * from root.sg.* where s0 < 100 align by device
 - select * from root.sg.* where time < 20 AND s0 > 50 align by device
@@ -889,4 +889,3 @@ eg. root.ln.wf01.wt01.*
 eg. *.wt01.*
 eg. *
 ```
-
