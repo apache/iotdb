@@ -45,9 +45,9 @@ public class MemTableFlushTaskTest {
 
   @Before
   public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-    EnvironmentUtils.envSetUp();
     writer = new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(filePath));
     memTable = new PrimitiveMemTable();
   }

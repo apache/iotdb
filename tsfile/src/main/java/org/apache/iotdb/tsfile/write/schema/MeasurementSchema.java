@@ -54,6 +54,13 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   public MeasurementSchema() {
   }
 
+  public MeasurementSchema(String measurementId, TSDataType tsDataType) {
+    this(measurementId, tsDataType,
+        TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
+  }
+
   /**
    * set properties as an empty Map.
    */
