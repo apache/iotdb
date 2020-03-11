@@ -319,12 +319,34 @@ public class TsFileSequenceReader implements AutoCloseable {
         || !tsFileMetaData.getDeviceMetadataIndex().containsKey(device)) {
       return new ArrayList<>();
     }
+
     List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
     Pair<Long, Integer> deviceMetaData = tsFileMetaData.getDeviceMetadataIndex().get(device);
     ByteBuffer buffer = readData(deviceMetaData.left, deviceMetaData.right);
+    long start = 0;
+    int size = 0;
     while (buffer.hasRemaining()) {
       TimeseriesMetadata timeseriesMetaData = TimeseriesMetadata.deserializeFrom(buffer);
-      chunkMetadataList.addAll(readChunkMetaDataList(timeseriesMetaData));
+      if (start == 0) {
+        start = timeseriesMetaData.getOffsetOfChunkMetaDataList();
+      }
+      size += timeseriesMetaData.getDataSizeOfChunkMetaDataList();
+    }
+    // read buffer of all ChunkMetadatas of this device
+    buffer = readData(start, size);
+
+    List<Pair<Long, Long>> versionInfo = tsFileMetaData.getVersionInfo();
+    while (buffer.hasRemaining()) {
+      chunkMetadataList.add(ChunkMetadata.deserializeFrom(buffer));
+    }
+
+    // set version
+    int versionIndex = 0;
+    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+      while (chunkMetadata.getOffsetOfChunkHeader() >= versionInfo.get(versionIndex).left) {
+        versionIndex++;
+      }
+      chunkMetadata.setVersion(versionInfo.get(versionIndex).right);
     }
     return chunkMetadataList;
   }
