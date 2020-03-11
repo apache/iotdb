@@ -100,8 +100,8 @@ public class MetricsPage {
     for (int i = (list.size() - 1); i >= 0; i--) {
       sqlArgument = list.get(i);
       resp = sqlArgument.getTSExecuteStatementResp();
-      errMsg = resp.getStatus().getStatusType().getMessage();
-      statusCode = resp.getStatus().getStatusType().getCode();
+      errMsg = resp.getStatus().message;
+      statusCode = resp.getStatus().code;
       String status;
       if (statusCode == 200) {
         status = "FINISHED";

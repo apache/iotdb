@@ -36,10 +36,10 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VERSION;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -131,7 +131,7 @@ class StaticResps {
   private static TSExecuteStatementResp getExecuteResp(List<String> columns,
       List<String> dataTypes, boolean ignoreTimeStamp) {
     TSExecuteStatementResp resp =
-        TSServiceImpl.getTSExecuteStatementResp(TSServiceImpl.getStatus(TSStatusCode.SUCCESS_STATUS));
+        RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
     resp.setIgnoreTimeStamp(ignoreTimeStamp);
     resp.setColumns(columns);
     resp.setDataTypeList(dataTypes);
