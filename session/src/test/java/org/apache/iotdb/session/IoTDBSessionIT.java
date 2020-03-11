@@ -69,6 +69,24 @@ public class IoTDBSessionIT {
   }
 
   @Test
+  public void testInsertByObject()
+      throws IoTDBConnectionException, SQLException, ClassNotFoundException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    session.setStorageGroup("root.sg1");
+
+    createTimeseries();
+    insertInObject();
+
+    // sql test
+    insert_via_sql();
+    query3();
+
+    session.close();
+  }
+
+
   public void testAlignByDevice() throws IoTDBConnectionException,
       StatementExecutionException, BatchExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
@@ -350,6 +368,17 @@ public class IoTDBSessionIT {
     session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
   }
 
+  private void insertInObject() throws IoTDBConnectionException, StatementExecutionException {
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    for (long time = 0; time < 100; time++) {
+      session.insert(deviceId, time, measurements, 1L, 2L, 3L);
+    }
+  }
+
   private void insert() throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
@@ -565,7 +594,7 @@ public class IoTDBSessionIT {
       long index = 1;
       count++;
       for (Field f : sessionDataSet.next().getFields()) {
-        Assert.assertEquals(f.getLongV(), index);
+        Assert.assertEquals(index, f.getLongV());
         index++;
       }
     }

@@ -24,7 +24,9 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -234,6 +236,33 @@ public class Session {
   }
 
   /**
+   * use batch interface to insert data in multiple device
+   *
+   * @param rowBatchMap data batch in multiple device
+   */
+  public void insertMultipleDeviceBatch
+      (Map<String, RowBatch> rowBatchMap) throws IoTDBConnectionException, BatchExecutionException {
+    for(Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()){
+      sortRowBatch(dataInOneDevice.getValue());
+      insertBatch(dataInOneDevice.getValue());
+    }
+  }
+
+  /**
+   * use batch interface to insert sorted data in multiple device
+   * times in row batch must be sorted before!
+   *
+   * @param rowBatchMap data batch in multiple device
+   */
+  public void insertMultipleDeviceSortedBatch
+  (Map<String, RowBatch> rowBatchMap) throws IoTDBConnectionException, BatchExecutionException {
+    for(Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()){
+      checkSorted(dataInOneDevice.getValue());
+      insertSortedBatchIntern(dataInOneDevice.getValue());
+    }
+  }
+
+  /**
    * use batch interface to insert data
    *
    * @param rowBatch data batch
@@ -359,7 +388,24 @@ public class Session {
    * @see Session#insertInBatch(List, List, List, List)
    * @see Session#insertBatch(RowBatch)
    */
-  public void insert(String deviceId, long time, List<String> measurements,
+  public TSStatus insert(String deviceId, long time, List<String> measurements,
+      Object... values) throws IoTDBConnectionException, StatementExecutionException {
+    List<String> stringValues = new ArrayList<>();
+    for (Object o : values) {
+      stringValues.add(o.toString());
+    }
+
+    return insert(deviceId, time, measurements, stringValues);
+  }
+
+  /**
+   * insert data in one row, if you want improve your performance, please use insertInBatch method
+   * or insertBatch method
+   *
+   * @see Session#insertInBatch(List, List, List, List)
+   * @see Session#insertBatch(RowBatch)
+   */
+  public TSStatus insert(String deviceId, long time, List<String> measurements,
       List<String> values) throws IoTDBConnectionException, StatementExecutionException {
     TSInsertReq request = new TSInsertReq();
     request.setSessionId(sessionId);
@@ -368,11 +414,15 @@ public class Session {
     request.setMeasurements(measurements);
     request.setValues(values);
 
+    TSStatus result;
     try {
-      RpcUtils.verifySuccess(client.insert(request));
+      result = client.insert(request);
+      RpcUtils.verifySuccess(result);
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
+
+    return result;
   }
 
   /**
