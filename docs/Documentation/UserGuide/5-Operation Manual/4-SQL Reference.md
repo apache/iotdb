@@ -406,7 +406,7 @@ For example. "select s0,s1 from root.sg.*,root.sg.d0 align by device" is equal t
 7. The duplicated measurements in the suffix paths are not neglected.  
 For example, "select s0,s0,s1 from root.sg.* align by device" is not equal to "select s0,s1 from root.sg.* align by device".
 
-8. Both time predicates and value predicates are allowed in Where Clause. The paths of the value predicates can be single level or full path started with ROOT. And wildcard is not allowed here. For example:
+8. Both time predicates and value predicates are allowed in Where Clause. The paths of the value predicates can be the leaf node or full path started with ROOT. And wildcard is not allowed here. For example:
 - select * from root.sg.* where time = 1 align by device
 - select * from root.sg.* where s0 < 100 align by device
 - select * from root.sg.* where time < 20 AND s0 > 50 align by device
