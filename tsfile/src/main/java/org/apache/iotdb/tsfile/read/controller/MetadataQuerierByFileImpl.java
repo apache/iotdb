@@ -177,10 +177,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
     TreeMap<String, Set<String>> deviceMeasurementsMap = new TreeMap<>();
     for (Path path : paths) {
-      if (!deviceMeasurementsMap.containsKey(path.getDevice())) {
-        deviceMeasurementsMap.put(path.getDevice(), new HashSet<>());
-      }
-      deviceMeasurementsMap.get(path.getDevice()).add(path.getMeasurement());
+      deviceMeasurementsMap.computeIfAbsent(path.getDevice(), (key) -> new HashSet<>()).add(path.getMeasurement());
     }
     for (Map.Entry<String, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
       String selectedDevice = deviceMeasurements.getKey();
@@ -242,12 +239,10 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   private LocateStatus checkLocateStatus(ChunkMetadata chunkMetaData,
       long spacePartitionStartPos, long spacePartitionEndPos) {
     long startOffsetOfChunk = chunkMetaData.getOffsetOfChunkHeader();
-    long endOffsetOfChunk = chunkMetaData.getOffsetOfChunkHeader() + 30;
-    long middleOffsetOfChunk = (startOffsetOfChunk + endOffsetOfChunk) / 2;
-    if (spacePartitionStartPos <= middleOffsetOfChunk
-        && middleOffsetOfChunk < spacePartitionEndPos) {
+    if (spacePartitionStartPos <= startOffsetOfChunk
+        && startOffsetOfChunk < spacePartitionEndPos) {
       return LocateStatus.in;
-    } else if (middleOffsetOfChunk < spacePartitionStartPos) {
+    } else if (startOffsetOfChunk < spacePartitionStartPos) {
       return LocateStatus.before;
     } else {
       return LocateStatus.after;

@@ -800,26 +800,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     return res;
   }
 
-  public Map<String, List<TimeseriesMetadata>> getSortedTimeseriesMetaDataMap() throws IOException {
-    if (tsFileMetaData == null) {
-      readFileMetadata();
-    }
-    Map<String, List<TimeseriesMetadata>> result = new LinkedHashMap<>();
-    for (Map.Entry<String, Pair<Long, Integer>> entry : tsFileMetaData.getDeviceMetadataIndex()
-        .entrySet()) {
-      // read TimeseriesMetaData from file
-      String deviceId = entry.getKey();
-      List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
-      ByteBuffer buffer = readData(entry.getValue().left, entry.getValue().right);
-      while (buffer.hasRemaining()) {
-        TimeseriesMetadata timeserieMetaData = TimeseriesMetadata.deserializeFrom(buffer);
-        timeseriesMetadataList.add(timeserieMetaData);
-      }
-      result.put(deviceId, timeseriesMetadataList);
-    }
-    return result;
-  }
-
   /**
    * Check the location of a given chunkGroupMetaData with respect to a space partition constraint.
    *
