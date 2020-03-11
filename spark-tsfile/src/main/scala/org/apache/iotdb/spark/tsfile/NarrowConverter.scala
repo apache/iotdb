@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.read.expression.{IExpression, QueryExpression}
 import org.apache.iotdb.tsfile.read.filter.{TimeFilter, ValueFilter}
 import org.apache.iotdb.tsfile.write.record.TSRecord
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
-import org.apache.iotdb.tsfile.write.schema.{MeasurementSchema, Schema, SchemaBuilder}
+import org.apache.iotdb.tsfile.write.schema.{MeasurementSchema, Schema}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
@@ -52,6 +52,7 @@ import scala.collection.mutable.ListBuffer
   */
 object NarrowConverter extends Converter {
 
+  val TEMPLATE_NAME = "spark_template"
   val DEVICE_NAME = "device_name"
 
   /**
@@ -70,12 +71,12 @@ object NarrowConverter extends Converter {
       val in = new HDFSInput(f.getPath, conf)
       val reader = new TsFileSequenceReader(in)
       val tsFileMetaData = reader.readFileMetadata
-      val measurements = tsFileMetaData.getMeasurementSchema
+      val measurements = reader.getAllMeasurements
 
       measurements.foreach(m => {
         if (!seriesSet.contains(m._1)) {
           seriesSet += m._1
-          unionSeries.add(new Series(m._1, m._2.getType)
+          unionSeries.add(new Series(m._1, m._2)
           )
         }
       })
@@ -118,6 +119,7 @@ object NarrowConverter extends Converter {
     fields
   }
 
+
   /**
     * Prepare queriedSchema from requiredSchema.
     *
@@ -125,7 +127,8 @@ object NarrowConverter extends Converter {
     * @param tsFileMetaData tsFileMetaData
     * @return
     */
-  def prepSchema(requiredSchema: StructType, tsFileMetaData: TsFileMetadata): StructType = {
+  def prepSchema(requiredSchema: StructType, tsFileMetaData: TsFileMetadata,
+                 reader: TsFileSequenceReader): StructType = {
     var queriedSchema: StructType = new StructType()
 
     if (requiredSchema.isEmpty
@@ -133,14 +136,14 @@ object NarrowConverter extends Converter {
       QueryConstant.RESERVED_TIME)) {
       // for example, (i) select count(*) from table; (ii) select time from table
 
-      val fileSchema = WideConverter.getSeries(tsFileMetaData)
+      val fileSchema = WideConverter.getSeries(tsFileMetaData, reader)
       queriedSchema = StructType(toSqlField(fileSchema, false).toList)
 
     } else {
       // Remove nonexistent schema according to the current file's metadata.
       // This may happen when queried TsFiles in the same folder do not have the same schema.
 
-      val measurementIds = tsFileMetaData.getMeasurementSchema.keySet()
+      val measurementIds = reader.getAllMeasurements.keySet()
       requiredSchema.foreach(f => {
         if (!QueryConstant.RESERVED_TIME.equals(f.name) && !DEVICE_NAME.equals(f.name)) {
           if (measurementIds.contains(f.name)) {
@@ -571,14 +574,14 @@ object NarrowConverter extends Converter {
     * @return TsFile schema
     */
   def toTsFileSchema(structType: StructType, options: Map[String, String]): Schema = {
-    val schemaBuilder = new SchemaBuilder()
+    val schema = new Schema()
     structType.fields.filter(f => {
       (!QueryConstant.RESERVED_TIME.equals(f.name)).&&(!DEVICE_NAME.equals(f.name))
     }).foreach(f => {
       val seriesSchema = getSeriesSchema(f, options)
-      schemaBuilder.addSeries(seriesSchema)
+      schema.extendTemplate(TEMPLATE_NAME, seriesSchema)
     })
-    schemaBuilder.build()
+    schema
   }
 
   /**

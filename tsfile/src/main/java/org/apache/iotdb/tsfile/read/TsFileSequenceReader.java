@@ -753,54 +753,48 @@ public class TsFileSequenceReader implements AutoCloseable {
     return chunkMetadataList;
   }
 
+
   /**
-   * get all TimeseriesMetaData in file, sorted by device Ids
-   *
-   * @return list of TimeseriesMetaData
+   * get all measurements in this file
+   * @return measurement -> datatype
    */
-  // TODO need some changes by spark-connector author
-  public List<TimeseriesMetadata> getSortedTimeseriesMetaDataListByDeviceIds() throws IOException {
+  public HashMap<String, TSDataType> getAllMeasurements() throws IOException{
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
-    List<TimeseriesMetadata> result = new ArrayList<>();
+    HashMap<String, TSDataType> result = new HashMap<>();
     for (Map.Entry<String, Pair<Long, Integer>> entry : tsFileMetaData.getDeviceMetadataIndex()
         .entrySet()) {
       // read TimeseriesMetaData from file
       ByteBuffer buffer = readData(entry.getValue().left, entry.getValue().right);
       while (buffer.hasRemaining()) {
         TimeseriesMetadata timeserieMetaData = TimeseriesMetadata.deserializeFrom(buffer);
-        result.add(timeserieMetaData);
+        result.put(timeserieMetaData.getMeasurementId(), timeserieMetaData.getTSDataType());
       }
-    } // sort by the start offset Of the ChunkMetaDataList
-    result.sort(Comparator.comparingLong(TimeseriesMetadata::getOffsetOfChunkMetaDataList));
+    }
     return result;
   }
 
-
   /**
-   * get device names in range
+   * get device names which has valid chunks in [start, end)
    *
-   * @param start start of the file
-   * @param end   end of the file
+   * @param start start of the partition
+   * @param end   end of the partition
    * @return device names in range
    */
-  public List<String> getDeviceNameInRange(long start, long end) {
+  public List<String> getDeviceNameInRange(long start, long end) throws IOException {
     List<String> res = new ArrayList<>();
 
-    try {
-      TsFileMetadata tsFileMetaData = readFileMetadata();
-      for (Map.Entry<String, Pair<Long, Integer>> entry : tsFileMetaData.getDeviceMetadataIndex()
-          .entrySet()) {
+    TsFileMetadata tsFileMetaData = readFileMetadata();
+    for (Map.Entry<String, Pair<Long, Integer>> entry : tsFileMetaData.getDeviceMetadataIndex()
+        .entrySet()) {
 
-        Map<String, List<ChunkMetadata>> seriesMetadataMap = readChunkMetadataInDevice(entry.getKey());
+      Map<String, List<ChunkMetadata>> seriesMetadataMap = readChunkMetadataInDevice(
+          entry.getKey());
 
-        if (isDeviceInPartition(seriesMetadataMap, start, end)) {
-          res.add(entry.getKey());
-        }
+      if (hasDataInPartition(seriesMetadataMap, start, end)) {
+        res.add(entry.getKey());
       }
-    } catch (IOException e) {
-      e.printStackTrace();
     }
 
     return res;
@@ -813,7 +807,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param start the start position of the space partition
    * @param end   the end position of the space partition
    */
-  private boolean isDeviceInPartition(Map<String, List<ChunkMetadata>> seriesMetadataMap,
+  private boolean hasDataInPartition(Map<String, List<ChunkMetadata>> seriesMetadataMap,
       long start, long end) {
     for (List<ChunkMetadata> chunkMetadataList : seriesMetadataMap.values()) {
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {

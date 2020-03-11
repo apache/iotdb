@@ -111,6 +111,10 @@ public class Schema {
     return registeredTimeseries.get(path).getType();
   }
 
+  public Map<String, Map<String, MeasurementSchema>> getDeviceTemplates() {
+    return deviceTemplates;
+  }
+
   /**
    * check if this schema contains a measurement named measurementId.
    */

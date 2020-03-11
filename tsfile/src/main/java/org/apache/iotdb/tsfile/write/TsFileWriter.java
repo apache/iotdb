@@ -193,6 +193,10 @@ public class TsFileWriter implements AutoCloseable {
       Path path = new Path(record.deviceId, measurementId);
       if (schema.containsTimeseries(path)) {
         groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(path), pageSize);
+      } else if (schema.getDeviceTemplates().size() == 1 && schema.getDeviceTemplates().containsKey(path.getMeasurement())) {
+        // use the default template without needing to register device
+        Map<String, MeasurementSchema> template = schema.getDeviceTemplates().entrySet().iterator().next().getValue();
+        groupWriter.tryToAddSeriesWriter(template.get(path.getMeasurement()), pageSize);
       } else {
         throw new NoMeasurementException("input path is invalid: " + path);
       }

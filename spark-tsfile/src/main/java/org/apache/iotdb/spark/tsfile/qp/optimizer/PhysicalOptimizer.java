@@ -31,12 +31,13 @@ import org.apache.iotdb.spark.tsfile.qp.common.SQLConstant;
 import org.apache.iotdb.spark.tsfile.qp.common.SingleQuery;
 import org.apache.iotdb.spark.tsfile.qp.common.TSQueryPlan;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 public class PhysicalOptimizer {
 
-  //determine whether to query all delta_objects from TSFile. true means do query.
+  // determine whether to query all delta_objects from TsFile. true means do query.
   private boolean flag;
   private List<String> validDeltaObjects = new ArrayList<>();
   private List<String> columnNames;
@@ -47,8 +48,8 @@ public class PhysicalOptimizer {
 
   public List<TSQueryPlan> optimize(SingleQuery singleQuery, List<String> paths,
       TsFileSequenceReader in, Long start, Long end) throws IOException {
-    List<String> actualDeltaObjects = in.getDeviceNameInRange(start, end);
-    List<TimeseriesMetadata> actualSeries = in.getSortedTimeseriesMetaDataListByDeviceIds();
+
+    HashMap<String, TSDataType> allMeasurementsInFile = in.getAllMeasurements();
 
     List<String> selectedSeries = new ArrayList<>();
     for (String path : paths) {
@@ -64,13 +65,11 @@ public class PhysicalOptimizer {
       valueFilter = singleQuery.getValueFilterOperator();
       if (valueFilter != null) {
         List<String> filterPaths = valueFilter.getAllPaths();
-        List<String> actualPaths = new ArrayList<>();
-        for (TimeseriesMetadata series : actualSeries) {
-          actualPaths.add(series.getMeasurementId());
-        }
-        //if filter paths doesn't in tsfile, don't query
-        if (!actualPaths.containsAll(filterPaths)) {
-          return new ArrayList<>();
+        // if filter paths doesn't in tsfile, don't query
+        for (String filterPath : filterPaths) {
+          if (!allMeasurementsInFile.containsKey(filterPath)) {
+            return new ArrayList<>();
+          }
         }
       }
 
@@ -81,8 +80,9 @@ public class PhysicalOptimizer {
         return new ArrayList<>();
       }
 
-      //if select deltaObject, then match with measurement
+      // if select deltaObject, then match with measurement
       if (!selectColumns.isEmpty()) {
+        List<String> actualDeltaObjects = in.getDeviceNameInRange(start, end);
         combination(actualDeltaObjects, selectColumns, selectColumns.keySet().toArray(), 0,
             new String[selectColumns.size()]);
       } else {
@@ -92,20 +92,12 @@ public class PhysicalOptimizer {
       validDeltaObjects.addAll(in.getDeviceNameInRange(start, end));
     }
 
-    List<TimeseriesMetadata> fileSeries = in.getSortedTimeseriesMetaDataListByDeviceIds();
-    Set<String> seriesSet = new HashSet<>();
-    for (TimeseriesMetadata series : fileSeries) {
-      seriesSet.add(series.getMeasurementId());
-    }
-
-    //query all measurements from TSFile
+    // query all measurements from TSFile
     if (selectedSeries.size() == 0) {
-      for (TimeseriesMetadata series : actualSeries) {
-        selectedSeries.add(series.getMeasurementId());
-      }
+      selectedSeries.addAll(allMeasurementsInFile.keySet());
     } else {
-      //remove paths that doesn't exist in file
-      selectedSeries.removeIf(path -> !seriesSet.contains(path));
+      // remove paths that doesn't exist in file
+      selectedSeries.removeIf(path -> !allMeasurementsInFile.containsKey(path));
     }
 
     List<TSQueryPlan> tsFileQueries = new ArrayList<>();

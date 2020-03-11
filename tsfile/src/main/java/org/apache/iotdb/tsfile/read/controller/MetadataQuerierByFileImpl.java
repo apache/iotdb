@@ -146,10 +146,9 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   }
 
   @Override
-  public TSDataType getDataType(Path path) throws NoMeasurementException, IOException {
+  public TSDataType getDataType(Path path) throws IOException {
     if (tsFileReader.getChunkMetadataList(path) == null || tsFileReader.getChunkMetadataList(path)
         .isEmpty()) {
-      // throw new NoMeasurementException(String.format("%s not found.", path));
       return null;
     }
     return tsFileReader.getChunkMetadataList(path).get(0).getDataType();
