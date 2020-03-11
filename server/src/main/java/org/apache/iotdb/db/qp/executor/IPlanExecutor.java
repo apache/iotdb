@@ -28,6 +28,7 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -90,5 +91,5 @@ public interface IPlanExecutor {
    *
    * @return result of each row
    */
-  Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException;
+  TSStatus[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException;
 }

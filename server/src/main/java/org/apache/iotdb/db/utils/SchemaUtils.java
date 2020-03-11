@@ -18,15 +18,10 @@
  */
 package org.apache.iotdb.db.utils;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
-
-import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.StorageEngineException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -38,12 +33,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
 
 public class SchemaUtils {
 
@@ -66,46 +55,85 @@ public class SchemaUtils {
     }
 
   }
-
-  public static TSDataType getSeriesType(String path)
-      throws MetadataException {
-    switch (path.toLowerCase()) {
-      // authorization queries
-      case COLUMN_ROLE:
-      case COLUMN_USER:
-      case COLUMN_PRIVILEGE:
-      case COLUMN_STORAGE_GROUP:
-        return TSDataType.TEXT;
-      case SQLConstant.RESERVED_TIME:
-      case COLUMN_TTL:
-        return TSDataType.INT64;
-      default:
-        // do nothing
+  public static List<TSDataType> getSeriesTypesByPath(Collection<Path> paths) throws MetadataException {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (Path path : paths) {
+      dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
     }
+    return dataTypes;
+  }
 
-    if (path.contains("(") && !path.startsWith("(") && path.endsWith(")")) {
-      // aggregation
-      int leftBracketIndex = path.indexOf('(');
-      String aggrType = path.substring(0, leftBracketIndex);
-      String innerPath = path.substring(leftBracketIndex + 1, path.length() - 1);
-      switch (aggrType.toLowerCase()) {
-        case SQLConstant.MIN_TIME:
-        case SQLConstant.MAX_TIME:
-        case SQLConstant.COUNT:
-          return TSDataType.INT64;
-        case SQLConstant.LAST_VALUE:
-        case SQLConstant.FIRST_VALUE:
-        case SQLConstant.MIN_VALUE:
-        case SQLConstant.MAX_VALUE:
-          return getSeriesType(innerPath);
-        case SQLConstant.AVG:
-        case SQLConstant.SUM:
-          return TSDataType.DOUBLE;
-        default:
-          throw new MetadataException(
-              "aggregate does not support " + aggrType + " function.");
+  /**
+   *
+   * @param paths time series paths
+   * @param aggregation aggregation function, may be null
+   * @return The data type of aggregation or (data type of paths if aggregation is null)
+   */
+  public static List<TSDataType> getSeriesTypesByString(Collection<String> paths,
+      String aggregation) throws MetadataException {
+    TSDataType dataType = getAggregationType(aggregation);
+    if (dataType != null) {
+      return Collections.nCopies(paths.size(), dataType);
+    }
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (String path : paths) {
+      dataTypes.add(MManager.getInstance().getSeriesType(path));
+    }
+    return dataTypes;
+  }
+
+  public static List<TSDataType> getSeriesTypesByPath(Collection<Path> paths,
+      String aggregation) throws MetadataException {
+    TSDataType dataType = getAggregationType(aggregation);
+    if (dataType != null) {
+      return Collections.nCopies(paths.size(), dataType);
+    }
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (Path path : paths) {
+      dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+    }
+    return dataTypes;
+  }
+
+  public static List<TSDataType> getSeriesTypesByPath(List<Path> paths,
+      List<String> aggregations) throws MetadataException {
+    List<TSDataType> tsDataTypes = new ArrayList<>();
+    for (int i = 0; i < paths.size(); i++) {
+      TSDataType dataType = getAggregationType(aggregations.get(i));
+      if (dataType != null) {
+        tsDataTypes.add(dataType);
+      } else {
+        tsDataTypes.add(MManager.getInstance().getSeriesType(paths.get(i).getFullPath()));
       }
     }
-    return MManager.getInstance().getSeriesType(path);
+    return tsDataTypes;
+  }
+
+  /**
+   *
+   * @param aggregation aggregation function
+   * @return the data type of the aggregation or null if it aggregation is null
+   */
+  public static TSDataType getAggregationType(String aggregation) throws MetadataException {
+    if (aggregation == null) {
+      return null;
+    }
+    switch (aggregation.toLowerCase()) {
+      case SQLConstant.MIN_TIME:
+      case SQLConstant.MAX_TIME:
+      case SQLConstant.COUNT:
+        return TSDataType.INT64;
+      case SQLConstant.LAST_VALUE:
+      case SQLConstant.FIRST_VALUE:
+      case SQLConstant.MIN_VALUE:
+      case SQLConstant.MAX_VALUE:
+        return null;
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+        return TSDataType.DOUBLE;
+      default:
+        throw new MetadataException(
+            "aggregate does not support " + aggregation + " function.");
+    }
   }
 }
