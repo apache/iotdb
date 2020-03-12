@@ -101,7 +101,9 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
     getAllFilteredPaths(expression, filteredPaths);
 
     for (Path selectedPath : selectedPaths) {
-      cached.add(filteredPaths.contains(selectedPath));
+      // TODO: add cache
+//      cached.add(filteredPaths.contains(selectedPath));
+      cached.add(false);
     }
 
     return cached;
