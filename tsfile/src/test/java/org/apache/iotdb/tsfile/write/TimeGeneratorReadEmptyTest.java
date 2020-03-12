@@ -55,7 +55,43 @@ public class TimeGeneratorReadEmptyTest {
 
   @Before
   public void before() throws IOException, WriteProcessException {
-    writeFile(tsfilePath);
+    /*
+     * s1 -> 1, 3
+     * s2 ->     5, 6
+     */
+    Schema schema = new Schema();
+    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+
+    TsFileWriter tsFileWriter = new TsFileWriter(new File(tsfilePath), schema);
+
+    // s1 -> 1, 3
+    TSRecord tsRecord = new TSRecord(1, "d1");
+    DataPoint dPoint1 = new FloatDataPoint("s1", 1.2f);
+    tsRecord.addTuple(dPoint1);
+    tsFileWriter.write(tsRecord);
+
+    tsRecord = new TSRecord(3, "d1");
+    dPoint1 = new FloatDataPoint("s1", 1.2f);
+    tsRecord.addTuple(dPoint1);
+    tsFileWriter.write(tsRecord);
+
+    tsFileWriter.flushAllChunkGroups();
+
+
+    // s2 -> 5, 6
+    tsRecord = new TSRecord(5, "d1");
+    DataPoint dPoint2 = new IntDataPoint("s2", 20);
+    tsRecord.addTuple(dPoint2);
+    tsFileWriter.write(tsRecord);
+
+    tsRecord = new TSRecord(6, "d1");
+    dPoint2 = new IntDataPoint("s2", 20);
+    tsRecord.addTuple(dPoint2);
+    tsFileWriter.write(tsRecord);
+
+    // close TsFile
+    tsFileWriter.close();
   }
 
   @After
@@ -90,49 +126,4 @@ public class TimeGeneratorReadEmptyTest {
     }
     Assert.assertEquals(0, i);
   }
-
-
-  /**
-   * s1 -> 1, 3
-   * s2 ->     5, 6
-   */
-  private void writeFile(String tsfilePath) throws IOException, WriteProcessException {
-    File f = new File(tsfilePath);
-    f.getParentFile().mkdirs();
-
-    Schema schema = new Schema();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
-
-    TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
-
-    // s1 -> 1, 3
-    TSRecord tsRecord = new TSRecord(1, "d1");
-    DataPoint dPoint1 = new FloatDataPoint("s1", 1.2f);
-    tsRecord.addTuple(dPoint1);
-    tsFileWriter.write(tsRecord);
-
-    tsRecord = new TSRecord(3, "d1");
-    dPoint1 = new FloatDataPoint("s1", 1.2f);
-    tsRecord.addTuple(dPoint1);
-    tsFileWriter.write(tsRecord);
-
-    tsFileWriter.flushAllChunkGroups();
-
-
-    // s2 -> 5, 6
-    tsRecord = new TSRecord(5, "d1");
-    DataPoint dPoint2 = new IntDataPoint("s2", 20);
-    tsRecord.addTuple(dPoint2);
-    tsFileWriter.write(tsRecord);
-
-    tsRecord = new TSRecord(6, "d1");
-    dPoint2 = new IntDataPoint("s2", 20);
-    tsRecord.addTuple(dPoint2);
-    tsFileWriter.write(tsRecord);
-
-    // close TsFile
-    tsFileWriter.close();
-  }
-
 }
