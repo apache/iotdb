@@ -31,6 +31,7 @@ import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -823,11 +824,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     List<Path> paths = plan.getPaths();
     List<String> respColumns = new ArrayList<>();
 
-    // check seriesPath exists
-    if (paths.isEmpty()) {
-      return getTSExecuteStatementResp(getStatus(TSStatusCode.TIMESERIES_NOT_EXIST_ERROR));
-    }
-
     // check file level set
     try {
       checkFileLevelSet(paths);
@@ -843,6 +839,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     TSExecuteStatementResp resp = getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS));
+
+    // check seriesPath exists
+    if (paths.isEmpty()) {
+      resp.setColumns(Collections.emptyList());
+      return resp;
+    }
 
     if (((QueryPlan) plan).isGroupByDevice()) {
       // set columns in TSExecuteStatementResp. Note this is without deduplication.

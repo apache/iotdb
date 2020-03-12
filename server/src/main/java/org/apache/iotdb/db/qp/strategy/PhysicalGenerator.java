@@ -279,10 +279,6 @@ public class PhysicalGenerator {
         measurementColumnList.addAll(measurementSetOfGivenSuffix);
       }
 
-      if (measurementColumnList.isEmpty()) {
-        throw new QueryProcessException("do not select any existing series");
-      }
-
       // slimit trim on the measurementColumnList
       if (queryOperator.hasSlimit()) {
         int seriesSlimit = queryOperator.getSeriesLimit();
