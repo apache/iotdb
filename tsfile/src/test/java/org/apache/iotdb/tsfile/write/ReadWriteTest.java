@@ -84,8 +84,14 @@ public class ReadWriteTest {
     ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(fileReader);
     QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
     int i = 0;
+    String[] expected = new String[]{
+        "1\t1.2\t20",
+        "3\t1.4\t21",
+        "4\t1.2\t20",
+        "6\t7.2\t10",
+        "7\t6.2\t20"};
     while (dataSet.hasNext()) {
-      dataSet.next();
+      Assert.assertEquals(expected[i], dataSet.next().toString());
       i++;
     }
     Assert.assertEquals(5, i);
