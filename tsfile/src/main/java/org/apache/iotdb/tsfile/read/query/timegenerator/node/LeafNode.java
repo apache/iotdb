@@ -67,10 +67,7 @@ public class LeafNode implements Node {
    * Function for getting the value at the given time.
    */
   public Object currentValue(long time) {
-    while (true) {
-      if (batchDataList.isEmpty()) {
-        return null;
-      }
+    while (!batchDataList.isEmpty()) {
       BatchData oldestBatch = batchDataList.get(0);
       Object value = oldestBatch.getValueInTimestamp(time);
       if (value != null) {
@@ -78,8 +75,11 @@ public class LeafNode implements Node {
       }
       if (!oldestBatch.hasCurrent()) {
         batchDataList.remove(0);
+      } else {
+        return null;
       }
     }
+    return null;
   }
 
   @Override
