@@ -90,7 +90,7 @@ public class TsFileSketchTool {
       // device begins
       for (
           Entry<String, Map<String, List<ChunkMetadata>>> entry : tsDeviceSeriesMetadataMap.entrySet()) {
-        printlnBoth(pw, str1.toString() + "\t [Device] of "+ entry.getKey() + 
+        printlnBoth(pw, str1.toString() + "\t[Chunks] of "+ entry.getKey() + 
             ", num of Chunks:" + entry.getValue().size());
         // chunk begins
         long chunkEndPos = 0;
@@ -122,7 +122,7 @@ public class TsFileSketchTool {
             String.format("%20s", "") + "|\t\t[dataSize] " + chunkGroupFooter.getDataSize());
         printlnBoth(pw, String.format("%20s", "") + "|\t\t[num of chunks] " + chunkGroupFooter
             .getNumberOfChunks());
-        printlnBoth(pw, str1.toString() + "\t[Device] of "
+        printlnBoth(pw, str1.toString() + "\t[Chunks] of "
             + entry.getKey() + " ends");
       }
 
@@ -139,7 +139,7 @@ public class TsFileSketchTool {
       for (Entry<String, Pair<Long,Integer>> entry 
           : tsFileMetaData.getDeviceMetadataIndex().entrySet()) {
         printlnBoth(pw,
-            String.format("%20s", "") + entry.getValue().left
+            String.format("%20s", entry.getValue().left)
                 + "|\t[DeviceMetadata] of " + entry.getKey());
       }
 
