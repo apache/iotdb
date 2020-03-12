@@ -30,7 +30,6 @@ public class LeafNode implements Node {
   private IBatchReader reader;
 
   private List<BatchData> batchDataList = new LinkedList<>();
-//  private BatchData cacheData;
   private TimeColumn cachedTimeSeries;
   private boolean hasCached;
 
