@@ -45,7 +45,9 @@ import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +62,7 @@ public class IoTDBConnection implements Connection {
   private IoTDBConnectionParams params;
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
-  private TSocket transport;
+  private TTransport transport;
   private ZoneId zoneId;
   private boolean autoCommit;
 
@@ -404,7 +406,8 @@ public class IoTDBConnection implements Connection {
   }
 
   private void openTransport() throws TTransportException {
-    transport = new TSocket(params.getHost(), params.getPort(), Config.connectionTimeoutInMs);
+    transport = new TFastFramedTransport(new TSocket(params.getHost(), params.getPort(),
+        Config.connectionTimeoutInMs));
     if (!transport.isOpen()) {
       transport.open();
     }
