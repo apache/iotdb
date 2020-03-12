@@ -503,7 +503,7 @@ public abstract class AbstractClient {
       } else {
         blockLine.append("+");
       }
-      if (resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
+      if (resultSetMetaData.getColumnCount() > 1 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
         maxValueLength = measurementColumnLength;
       } else {
         int tmp = Integer.MIN_VALUE;

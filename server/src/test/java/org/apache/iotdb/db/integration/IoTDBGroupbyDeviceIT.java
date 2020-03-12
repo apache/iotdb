@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.Connection;
@@ -594,7 +595,7 @@ public class IoTDBGroupbyDeviceIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
           "select s0 from root.nonexistent.noneixtsent group by device");
-      fail("No exception thrown.");
+      assertTrue(hasResultSet);
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains("do not select any existing series"));
     }

@@ -533,7 +533,7 @@
                         <id>enforce-version-convergence</id>
                         <configuration>
                             <rules>
-                                <dependencyConvergence />
+                                <dependencyConvergence/>
                             </rules>
                         </configuration>
                         <goals>
@@ -579,7 +579,7 @@
                                 </requireJavaVersion>
                                 <!-- Disabled for now as it breaks the ability to build single modules -->
                                 <!--reactorModuleConvergence/-->
-                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies" />
+                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies"/>
                             </rules>
                         </configuration>
                     </execution>
@@ -727,7 +727,7 @@
                     <instrumentation>
                         <ignoreTrivial>true</ignoreTrivial>
                     </instrumentation>
-                    <check />
+                    <check/>
                 </configuration>
                 <executions>
                     <execution>
@@ -883,7 +883,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.4.0</version>
+                        <version>1.3.0</version>
                         <executions>
                             <execution>
                                 <id>get-thrift-executable</id>
