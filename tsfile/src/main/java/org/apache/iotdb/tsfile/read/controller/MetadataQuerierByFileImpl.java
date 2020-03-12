@@ -193,11 +193,6 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
           continue;
         }
 
-        // time range of this partition of this measurement
-        TimeRange inPartitionTimeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
-        // time range of the previous partition of this measurement
-        TimeRange previousPartitionTimeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
-
         for (ChunkMetadata chunkMetadata : seriesMetadata.getValue()) {
           LocateStatus location = checkLocateStatus(chunkMetadata, spacePartitionStartPos,
               spacePartitionEndPos);
@@ -206,29 +201,14 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
           }
 
           if (location == LocateStatus.in) {
-            // init min time
-            if (inPartitionTimeRange.getMin() == Long.MIN_VALUE) {
-              inPartitionTimeRange.setMin(chunkMetadata.getStartTime());
-            }
-            // update max time
-            inPartitionTimeRange.setMax(chunkMetadata.getEndTime());
+            timeRangesInCandidates
+                .add(new TimeRange(chunkMetadata.getStartTime(), chunkMetadata.getEndTime()));
           } else {
-            // init min time
-            if (previousPartitionTimeRange.getMin() == Long.MIN_VALUE) {
-              previousPartitionTimeRange.setMin(chunkMetadata.getStartTime());
-            }
-            // update max time
-            previousPartitionTimeRange.setMax(chunkMetadata.getEndTime());
+            timeRangesBeforeCandidates
+                .add(new TimeRange(chunkMetadata.getStartTime(), chunkMetadata.getEndTime()));
           }
         }
 
-        if (previousPartitionTimeRange.getMin() != Long.MAX_VALUE) {
-          timeRangesBeforeCandidates.add(previousPartitionTimeRange);
-        }
-
-        if (inPartitionTimeRange.getMin() != Long.MAX_VALUE) {
-          timeRangesInCandidates.add(inPartitionTimeRange);
-        }
       }
     }
 
