@@ -95,14 +95,24 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
         Thread.currentThread().interrupt();
         reader.setHasRemaining(false);
       } catch (IOException e) {
-        LOGGER.error(String
-            .format("Something gets wrong while reading from the series reader %s: ", pathName), e);
-        reader.setHasRemaining(false);
+        putExceptionBatchData(e, String.format("Something gets wrong while reading from the series reader %s: ", pathName));
       } catch (Exception e) {
-        LOGGER.error("Something gets wrong: ", e);
-        reader.setHasRemaining(false);
+        putExceptionBatchData(e, "Something gets wrong: ");
       }
     }
+
+    private void putExceptionBatchData(Exception e, String logMessage) {
+      try {
+        LOGGER.error(logMessage, e);
+        reader.setHasRemaining(false);
+        blockingQueue.put(new ExceptionBatchData(e));
+      } catch (InterruptedException ex) {
+        ex.printStackTrace();
+        LOGGER.error("Interrupted while putting ExceptionBatchData into the blocking queue: ", ex);
+        Thread.currentThread().interrupt();
+      }
+    }
+
   }
 
   private List<ManagedSeriesReader> seriesReaderList;
@@ -141,7 +151,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
    * @param readers   readers in List(IPointReader) structure
    */
   public RawQueryDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-      List<ManagedSeriesReader> readers) throws InterruptedException {
+      List<ManagedSeriesReader> readers) throws IOException, InterruptedException {
     super(paths, dataTypes);
     this.seriesReaderList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
@@ -153,7 +163,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
     init();
   }
 
-  private void init() throws InterruptedException {
+  private void init() throws IOException, InterruptedException {
     timeHeap = new TreeSet<>();
     for (int i = 0; i < seriesReaderList.size(); i++) {
       ManagedSeriesReader reader = seriesReaderList.get(i);
@@ -177,8 +187,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
    * for RPC in RawData query between client and server fill time buffer, value buffers and bitmap
    * buffers
    */
-  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
-      throws IOException, InterruptedException {
+  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder) throws IOException, InterruptedException {
     int seriesNum = seriesReaderList.size();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
 
@@ -339,14 +348,22 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
     return tsQueryDataSet;
   }
 
-  private void fillCache(int seriesIndex) throws InterruptedException {
+  private void fillCache(int seriesIndex) throws IOException, InterruptedException {
     BatchData batchData = blockingQueueArray[seriesIndex].take();
     // no more batch data in this time series queue
     if (batchData instanceof SignalBatchData) {
       noMoreDataInQueueArray[seriesIndex] = true;
-    }
-    // there are more batch data in this time series queue
-    else {
+    } else if (batchData instanceof ExceptionBatchData) {
+      // exception happened in producer thread
+      ExceptionBatchData exceptionBatchData = (ExceptionBatchData) batchData;
+      LOGGER.error("exception happened in producer thread", exceptionBatchData.exception);
+      if (exceptionBatchData.exception instanceof IOException) {
+        throw (IOException)exceptionBatchData.exception;
+      } else if (exceptionBatchData.exception instanceof RuntimeException) {
+        throw (RuntimeException)exceptionBatchData.exception;
+      }
+
+    } else {   // there are more batch data in this time series queue
       cachedBatchDataArray[seriesIndex] = batchData;
 
       synchronized (seriesReaderList.get(seriesIndex)) {
@@ -387,7 +404,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
    * for spark/hadoop/hive integration and test
    */
   @Override
-  protected RowRecord nextWithoutConstraint() {
+  protected RowRecord nextWithoutConstraint() throws IOException {
     int seriesNum = seriesReaderList.size();
 
     long minTime = timeHeap.pollFirst();
@@ -414,6 +431,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
           } catch (InterruptedException e) {
             LOGGER.error("Interrupted while taking from the blocking queue: ", e);
             Thread.currentThread().interrupt();
+          } catch (IOException e) {
+            LOGGER.error("Got IOException", e);
+            throw e;
           }
         }
 
