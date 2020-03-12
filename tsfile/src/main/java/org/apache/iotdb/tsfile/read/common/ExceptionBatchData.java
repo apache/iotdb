@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.read.common;
 
 public class ExceptionBatchData extends BatchData {
 
-  public Exception exception;
+  private Exception exception;
 
   public ExceptionBatchData(Exception exception) {
     this.exception = exception;
@@ -29,5 +29,9 @@ public class ExceptionBatchData extends BatchData {
   @Override
   public boolean hasCurrent() {
     throw new UnsupportedOperationException("hasCurrent is not supported for ExceptionBatchData");
+  }
+
+  public Exception getException() {
+    return exception;
   }
 }

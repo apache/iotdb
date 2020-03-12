@@ -107,7 +107,6 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
         reader.setHasRemaining(false);
         blockingQueue.put(new ExceptionBatchData(e));
       } catch (InterruptedException ex) {
-        ex.printStackTrace();
         LOGGER.error("Interrupted while putting ExceptionBatchData into the blocking queue: ", ex);
         Thread.currentThread().interrupt();
       }
@@ -356,11 +355,11 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
     } else if (batchData instanceof ExceptionBatchData) {
       // exception happened in producer thread
       ExceptionBatchData exceptionBatchData = (ExceptionBatchData) batchData;
-      LOGGER.error("exception happened in producer thread", exceptionBatchData.exception);
-      if (exceptionBatchData.exception instanceof IOException) {
-        throw (IOException)exceptionBatchData.exception;
-      } else if (exceptionBatchData.exception instanceof RuntimeException) {
-        throw (RuntimeException)exceptionBatchData.exception;
+      LOGGER.error("exception happened in producer thread", exceptionBatchData.getException());
+      if (exceptionBatchData.getException() instanceof IOException) {
+        throw (IOException)exceptionBatchData.getException();
+      } else if (exceptionBatchData.getException() instanceof RuntimeException) {
+        throw (RuntimeException)exceptionBatchData.getException();
       }
 
     } else {   // there are more batch data in this time series queue
