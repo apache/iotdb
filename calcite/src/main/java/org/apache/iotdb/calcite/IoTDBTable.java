@@ -69,8 +69,6 @@ public class IoTDBTable extends AbstractQueryableTable
     return "IoTDBTable {" + storageGroup + "}";
   }
 
-  ;
-
   @Override
   public RelDataType getRowType(RelDataTypeFactory typeFactory) {
     try {
