@@ -64,7 +64,7 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
 
     // the size of hasFilter is equal to selectedPathList, if a series has a filter, it is true,
     // otherwise false
-    List<Boolean> cached = removeFilteredPaths(expression, selectedPathList);
+    List<Boolean> cached = markFilterdPaths(expression, selectedPathList);
     List<FileSeriesReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
@@ -94,7 +94,7 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
         readersOfSelectedSeries);
   }
 
-  private List<Boolean> removeFilteredPaths(IExpression expression, List<Path> selectedPaths) {
+  private List<Boolean> markFilterdPaths(IExpression expression, List<Path> selectedPaths) {
 
     List<Boolean> cached = new ArrayList<>();
     HashSet<Path> filteredPaths = new HashSet<>();

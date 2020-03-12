@@ -73,7 +73,7 @@ public class ReadWriteTest {
 
     IExpression valueExpression = BinaryExpression
         .and(new SingleSeriesExpression(new Path("d1.s1"), ValueFilter.gt(1.0f)),
-            new SingleSeriesExpression(new Path("d1.s2"), ValueFilter.lt(20)));
+            new SingleSeriesExpression(new Path("d1.s2"), ValueFilter.lt(22)));
 
     IExpression finalExpression = BinaryExpression.and(valueExpression, timeExpression);
 
@@ -85,7 +85,7 @@ public class ReadWriteTest {
     QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
     int i = 0;
     while (dataSet.hasNext()) {
-      System.out.println(dataSet.next());
+      dataSet.next();
       i++;
     }
     Assert.assertEquals(5, i);
@@ -167,23 +167,6 @@ public class ReadWriteTest {
     tsRecord.addTuple(dPoint3);
     tsFileWriter.write(tsRecord);
 
-    tsRecord = new TSRecord(1, "d2");
-    dPoint1 = new FloatDataPoint("s1", 2.3f);
-    dPoint2 = new IntDataPoint("s2", 11);
-    dPoint3 = new IntDataPoint("s3", 19);
-    tsRecord.addTuple(dPoint1);
-    tsRecord.addTuple(dPoint2);
-    tsRecord.addTuple(dPoint3);
-    tsFileWriter.write(tsRecord);
-
-    tsRecord = new TSRecord(2, "d2");
-    dPoint1 = new FloatDataPoint("s1", 25.4f);
-    dPoint2 = new IntDataPoint("s2", 10);
-    dPoint3 = new IntDataPoint("s3", 21);
-    tsRecord.addTuple(dPoint1);
-    tsRecord.addTuple(dPoint2);
-    tsRecord.addTuple(dPoint3);
-    tsFileWriter.write(tsRecord);
 
     // close TsFile
     tsFileWriter.close();

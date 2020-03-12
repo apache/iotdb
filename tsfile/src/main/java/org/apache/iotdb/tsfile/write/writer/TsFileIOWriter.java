@@ -276,16 +276,18 @@ public class TsFileIOWriter {
       // create TimeseriesMetaData
       TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
       timeseriesMetaData.setMeasurementId(path.getMeasurement());
-      timeseriesMetaData.setTSDataType(entry.getValue().get(0).getDataType());
+      TSDataType dataType = entry.getValue().get(0).getDataType();
+      timeseriesMetaData.setTSDataType(dataType);
       timeseriesMetaData.setOffsetOfChunkMetaDataList(out.getPosition());
-      Statistics<?> statistics = entry.getValue().get(0).getStatistics();
+
+      Statistics seriesStatistics = Statistics.getStatsByType(dataType);
       int chunkMetadataListLength = 0;
       // flush chunkMetadataList one by one
       for (ChunkMetadata chunkMetadata : entry.getValue()) {
-        statistics.mergeStatistics(chunkMetadata.getStatistics());
         chunkMetadataListLength += chunkMetadata.serializeTo(out.wrapAsStream());
+        seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
       }
-      timeseriesMetaData.setStatistics(statistics);
+      timeseriesMetaData.setStatistics(seriesStatistics);
       timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetadataListLength);
       deviceTimeseriesMetadataMap.computeIfAbsent(deviceId, k -> new ArrayList<>())
           .add(timeseriesMetaData);
