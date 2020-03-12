@@ -361,17 +361,17 @@ device_2: 400000 rows, time range [0,799998], interval 2
     val actual = outCapture.toByteArray.map(_.toChar)
 
     val expect =
-      "+------+-----------+--------+--------+--------+\n" +
+        "+------+-----------+--------+--------+--------+\n" +
         "|time  |device_name|sensor_3|sensor_1|sensor_2|\n" +
         "+------+-----------+--------+--------+--------+\n" +
-        "|131041|device_1   |null    |131041  |null    |\n" +
-        "|131042|device_1   |null    |131042  |null    |\n" +
-        "|131043|device_1   |null    |131043  |null    |\n" +
-        "|131044|device_1   |null    |131044  |null    |\n" +
         "|131042|device_2   |true    |131042  |131042.0|\n" +
         "|131044|device_2   |true    |131044  |131044.0|\n" +
         "|131046|device_2   |true    |131046  |131046.0|\n" +
         "|131048|device_2   |true    |131048  |131048.0|\n" +
+        "|131041|device_1   |null    |131041  |null    |\n" +
+        "|131042|device_1   |null    |131042  |null    |\n" +
+        "|131043|device_1   |null    |131043  |null    |\n" +
+        "|131044|device_1   |null    |131044  |null    |\n" +
         "|131045|device_1   |null    |131045  |null    |\n" +
         "|131046|device_1   |null    |131046  |null    |\n" +
         "|131047|device_1   |null    |131047  |null    |\n" +
@@ -417,6 +417,8 @@ device_2: 400000 rows, time range [0,799998], interval 2
     val newDf = spark.sql("select * from tsfile_table where " +
       "time > 131040 and time < 131050")
 
+    newDf.show()
+
     val outCapture = new ByteArrayOutputStream
     Console.withOut(outCapture) {
       newDf.show(newDf.count.toInt, false)
@@ -440,7 +442,7 @@ device_2: 400000 rows, time range [0,799998], interval 2
         "|131047|device_1   |null    |131047  |null    |\n" +
         "|131048|device_1   |null    |131048  |null    |\n" +
         "|131049|device_1   |null    |131049  |null    |\n" +
-        "+------+-----------+--------+--------+--------+\n"
+        "+------+-----------+--------+--------+--------+"
 
     Assert.assertArrayEquals(expect.toCharArray, actual.dropRight(2))
 
