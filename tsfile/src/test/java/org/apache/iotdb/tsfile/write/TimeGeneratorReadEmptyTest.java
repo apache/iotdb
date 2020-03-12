@@ -93,8 +93,8 @@ public class TimeGeneratorReadEmptyTest {
 
 
   /**
-   * s1 -> 1, 2, 3, 4, 5
-   * s2 ->    2, 3, 4, 5, 6
+   * s1 -> 1, 3
+   * s2 ->     5, 6
    */
   private void writeFile(String tsfilePath) throws IOException, WriteProcessException {
     File f = new File(tsfilePath);
