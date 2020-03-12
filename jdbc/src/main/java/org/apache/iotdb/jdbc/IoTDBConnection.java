@@ -38,13 +38,16 @@ import java.time.ZoneId;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
-import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,7 +62,7 @@ public class IoTDBConnection implements Connection {
   private IoTDBConnectionParams params;
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
-  private TSocket transport;
+  private TTransport transport;
   private ZoneId zoneId;
   private boolean autoCommit;
 
@@ -403,7 +406,8 @@ public class IoTDBConnection implements Connection {
   }
 
   private void openTransport() throws TTransportException {
-    transport = new TSocket(params.getHost(), params.getPort(), Config.connectionTimeoutInMs);
+    transport = new TFastFramedTransport(new TSocket(params.getHost(), params.getPort(),
+        Config.connectionTimeoutInMs));
     if (!transport.isOpen()) {
       transport.open();
     }
@@ -448,7 +452,7 @@ public class IoTDBConnection implements Connection {
       }
       throw new SQLException(String.format("Can not establish connection with %s : %s. ",
           params.getJdbcUriString(), e.getMessage()), e);
-    } catch (IoTDBRPCException e) {
+    } catch (StatementExecutionException e) {
       // failed to connect, disconnect from the server
       transport.close();
       throw new IoTDBSQLException(e.getMessage(), openResp.getStatus());
@@ -493,7 +497,7 @@ public class IoTDBConnection implements Connection {
     TSGetTimeZoneResp resp = getClient().getTimeZone(sessionId);
     try {
       RpcUtils.verifySuccess(resp.getStatus());
-    } catch (IoTDBRPCException e) {
+    } catch (StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
     }
     return resp.getTimeZone();
@@ -504,7 +508,7 @@ public class IoTDBConnection implements Connection {
     TSStatus resp = getClient().setTimeZone(req);
     try {
       RpcUtils.verifySuccess(resp);
-    } catch (IoTDBRPCException e) {
+    } catch (StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), resp);
     }
     this.zoneId = ZoneId.of(zoneId);

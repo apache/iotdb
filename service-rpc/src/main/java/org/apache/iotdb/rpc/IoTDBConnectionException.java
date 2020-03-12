@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,16 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.rpc;
 
-package org.apache.iotdb.db.query.executor;
+public class IoTDBConnectionException extends Exception{
 
-import java.util.List;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
+  private static final long serialVersionUID = -1268775292265203036L;
 
-public interface DataQueryExecutorFactory {
+  public IoTDBConnectionException(String reason) {
+    super(reason);
+  }
 
-  DataQueryExecutor getExecutor(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
-      IExpression optimizedExpression);
+  public IoTDBConnectionException(Throwable cause) {
+    super(cause);
+  }
+
+  public IoTDBConnectionException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

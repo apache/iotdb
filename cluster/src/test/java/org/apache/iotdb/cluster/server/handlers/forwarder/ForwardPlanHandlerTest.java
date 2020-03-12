@@ -51,6 +51,6 @@ public class ForwardPlanHandlerTest {
     ForwardPlanHandler handler = new ForwardPlanHandler(result, plan, TestUtils.getNode(0));
 
     handler.onError(new TestException());
-    assertEquals("Don't worry, this exception is faked", result.get().statusType.getMessage());
+    assertEquals("Don't worry, this exception is faked", result.get().getMessage());
   }
 }

@@ -645,7 +645,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       return status.get() == null ? StatusUtils.TIME_OUT : status.get();
     } catch (IOException | TException e) {
       TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
-      status.getStatusType().setMessage(e.getMessage());
+      status.setMessage(e.getMessage());
       return status;
     } catch (InterruptedException e) {
       return StatusUtils.TIME_OUT;
@@ -691,7 +691,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
               logger.info("{}: The log {} is not successfully applied, reverting", name, log, e);
               logManager.removeLastLog();
               TSStatus status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-              status.getStatusType().setMessage(e.getMessage());
+              status.setMessage(e.getMessage());
               return status;
             }
             return StatusUtils.OK;

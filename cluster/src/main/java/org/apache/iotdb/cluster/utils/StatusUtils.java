@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.utils;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TSStatusType;
 
 public class StatusUtils {
 
@@ -42,25 +41,23 @@ public class StatusUtils {
   public static final TSStatus NODE_READ_ONLY = getStatus(TSStatusCode.NODE_READ_ONLY);
 
   private static TSStatus getStatus(TSStatusCode statusCode) {
-    TSStatusType tsStatusType = new TSStatusType();
-    tsStatusType.setCode(statusCode.getStatusCode());
     TSStatus status = new TSStatus();
-    status.setStatusType(tsStatusType);
+    status.setCode(statusCode.getStatusCode());
     switch (statusCode) {
       case TIME_OUT:
-        tsStatusType.setMessage("Request timed out");
+        status.setMessage("Request timed out");
         break;
       case NO_LEADER:
-        tsStatusType.setMessage("Leader cannot be found");
+        status.setMessage("Leader cannot be found");
         break;
       case PARTITION_NOT_READY:
-        tsStatusType.setMessage("Partition table is not ready");
+        status.setMessage("Partition table is not ready");
         break;
       case NODE_READ_ONLY:
-        tsStatusType.setMessage("Current node is read-only, please retry to find another available node");
+        status.setMessage("Current node is read-only, please retry to find another available node");
         break;
       default:
-        tsStatusType.setMessage("");
+        status.setMessage("");
         break;
     }
     return status;

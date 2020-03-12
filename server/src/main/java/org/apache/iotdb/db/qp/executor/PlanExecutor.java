@@ -107,6 +107,7 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -762,7 +763,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
+  public TSStatus[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
     try {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
@@ -780,14 +781,10 @@ public class PlanExecutor implements IPlanExecutor {
           }
           Path path = new Path(deviceId, measurementList[i]);
           TSDataType dataType = dataTypes[i];
-          boolean result = mManager
-              .createTimeseries(path.getFullPath(), dataType, getDefaultEncoding(dataType),
-                  TSFileDescriptor.getInstance().getConfig().getCompressor(),
-                  Collections.emptyMap());
-          if (result) {
-            StorageEngine.getInstance()
-                .addTimeSeries(path, dataType, getDefaultEncoding(dataType));
-          }
+          mManager.createTimeseries(path.getFullPath(), dataType, getDefaultEncoding(dataType),
+              TSFileDescriptor.getInstance().getConfig().getCompressor(),
+              Collections.emptyMap());
+          StorageEngine.getInstance().addTimeSeries(path, dataType, getDefaultEncoding(dataType));
         }
         MNode measurementNode = node.getChild(measurementList[i]);
         if (measurementNode instanceof InternalMNode) {

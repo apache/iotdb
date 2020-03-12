@@ -16,20 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.storageGroup;
+package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.db.exception.IoTDBException;
-import org.apache.iotdb.rpc.TSStatusCode;
+import java.util.List;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-public class StorageGroupProcessorException extends IoTDBException {
+public class BatchExecutionException extends Exception{
 
-  private static final long serialVersionUID = 7373978140952977661L;
+  private List<TSStatus> statusList;
 
-  public StorageGroupProcessorException(Exception exception) {
-    super(exception, TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode());
+  public BatchExecutionException(String message) {
+    super(message);
   }
 
-  public StorageGroupProcessorException(String message) {
-    super(message, TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode());
+  public BatchExecutionException(List<TSStatus> statusList) {
+    this.statusList = statusList;
   }
+
+  public BatchExecutionException(List<TSStatus> statusList, String message) {
+    super(message);
+    this.statusList = statusList;
+  }
+
+  public List<TSStatus> getStatusList() {
+    return statusList;
+  }
+
 }

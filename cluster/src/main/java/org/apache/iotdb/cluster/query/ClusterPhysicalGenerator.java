@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.cluster.query;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ClusterPhysicalGenerator extends PhysicalGenerator {
 
@@ -35,8 +37,18 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  protected TSDataType getSeriesType(String path) throws MetadataException {
-    return metaGroupMember.getSeriesType(path);
+  protected List<TSDataType> getSeriesTypes(List<String> paths,
+      String aggregation) throws MetadataException {
+    return metaGroupMember.getSeriesTypesByString(paths, aggregation);
+  }
+
+  @Override
+  protected List<TSDataType> getSeriesTypes(List<Path> paths) throws MetadataException {
+    List<String> pathStrs = new ArrayList<>(paths.size());
+    for (Path path : paths) {
+      pathStrs.add(path.getFullPath());
+    }
+    return metaGroupMember.getSeriesTypesByString(pathStrs, null);
   }
 
   @Override

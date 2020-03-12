@@ -138,9 +138,9 @@ public class QueryRouter implements IQueryRouter {
     groupByPlan.setExpression(optimizedExpression);
 
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-      return new GroupByWithoutValueFilterDataSet(context, groupByPlan);
+      return getGroupByWithoutValueFilterDataSet(context, groupByPlan);
     } else {
-      return new GroupByWithValueFilterDataSet(context, groupByPlan);
+      return getGroupByWithValueFilterDataSet(context, groupByPlan);
     }
   }
 

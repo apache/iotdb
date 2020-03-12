@@ -13,8 +13,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MergeGroupByExecutor implements GroupByExecutor {
+  private static final Logger logger = LoggerFactory.getLogger(MergeGroupByExecutor.class);
 
   private List<Pair<AggregateResult, Integer>> results = new ArrayList<>();
   private List<Integer> aggregationTypes = new ArrayList<>();
@@ -62,6 +65,7 @@ public class MergeGroupByExecutor implements GroupByExecutor {
         results.get(i).left.merge(pairs.get(i).left);
       }
     }
+    logger.debug("Aggregation result of {}@[{}, {}] is {}", path, curStartTime, curEndTime, results);
     return results;
   }
 

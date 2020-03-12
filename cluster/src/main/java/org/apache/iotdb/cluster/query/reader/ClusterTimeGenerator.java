@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.query.reader;
 
 import java.io.IOException;
+import java.util.Collections;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -60,7 +61,9 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
     Path path = expression.getSeriesPath();
     TSDataType dataType;
     try {
-      dataType = metaGroupMember.getSeriesType(path.getFullPath());
+      dataType =
+          metaGroupMember.getSeriesTypesByString(Collections.singletonList(path.getFullPath()),
+              null).get(0);
       return metaGroupMember.getSeriesReader(path, dataType, null, filter, context);
     } catch (Exception e) {
       throw new IOException(e);

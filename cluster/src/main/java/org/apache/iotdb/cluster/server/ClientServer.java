@@ -21,7 +21,9 @@ package org.apache.iotdb.cluster.server;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -48,9 +50,11 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -163,9 +167,20 @@ public class ClientServer extends TSServiceImpl {
     }
   }
 
-  @Override
-  public TSDataType getSeriesType(String pathStr) throws MetadataException {
-    return metaGroupMember.getSeriesType(pathStr);
+  protected List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations) throws QueryProcessException {
+    try {
+      return metaGroupMember.getSeriesTypesByPath(paths, aggregations);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+  }
+
+  protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation) throws QueryProcessException {
+    try {
+      return metaGroupMember.getSeriesTypesByString(paths, aggregation);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
   }
 
   @Override

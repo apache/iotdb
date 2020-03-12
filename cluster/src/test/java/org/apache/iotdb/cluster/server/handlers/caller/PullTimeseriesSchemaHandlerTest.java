@@ -26,6 +26,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.common.TestException;
@@ -47,7 +48,8 @@ public class PullTimeseriesSchemaHandlerTest {
       measurementSchemas.add(TestUtils.getTestSchema(0, i));
     }
 
-    PullTimeseriesSchemaHandler handler = new PullTimeseriesSchemaHandler(owner, prefixPath,
+    PullTimeseriesSchemaHandler handler = new PullTimeseriesSchemaHandler(owner,
+        Collections.singletonList(prefixPath),
         result);
     synchronized (result) {
       new Thread(() -> {
@@ -76,8 +78,8 @@ public class PullTimeseriesSchemaHandlerTest {
     String prefixPath = "root";
     AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
 
-    PullTimeseriesSchemaHandler handler = new PullTimeseriesSchemaHandler(owner, prefixPath,
-        result);
+    PullTimeseriesSchemaHandler handler = new PullTimeseriesSchemaHandler(owner,
+        Collections.singletonList(prefixPath), result);
     synchronized (result) {
       new Thread(() -> handler.onError(new TestException())).start();
       result.wait(10 * 1000);

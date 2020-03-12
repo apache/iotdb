@@ -51,6 +51,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
@@ -158,8 +159,15 @@ public class MemberTest {
       }
 
       @Override
-      public TSDataType getSeriesType(String pathStr) throws MetadataException {
-        return MManager.getInstance().getSeriesType(pathStr);
+      public List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
+          throws MetadataException {
+        return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+      }
+
+      @Override
+      public List<TSDataType> getSeriesTypesByString(List<String> pathStrs, String aggregation)
+          throws MetadataException {
+        return SchemaUtils.getSeriesTypesByString(pathStrs, aggregation);
       }
 
       @Override
