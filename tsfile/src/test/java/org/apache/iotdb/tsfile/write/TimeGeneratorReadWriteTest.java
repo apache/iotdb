@@ -103,9 +103,7 @@ public class TimeGeneratorReadWriteTest {
    */
   private void writeFile(String tsfilePath) throws IOException, WriteProcessException {
     File f = new File(tsfilePath);
-    if (f.exists()) {
-      f.delete();
-    }
+    f.getParentFile().mkdirs();
 
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
