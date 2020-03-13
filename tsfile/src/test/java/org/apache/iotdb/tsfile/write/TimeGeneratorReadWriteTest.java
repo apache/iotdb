@@ -51,14 +51,62 @@ import org.junit.Test;
 
 public class TimeGeneratorReadWriteTest {
 
-  private String tsfilePath = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
+  private String tsfilePath = TestConstant.BASE_OUTPUT_PATH.concat("TimegeneratorReadWrite.tsfile");
 
   @Before
   public void before() throws IOException, WriteProcessException {
-    /*
-     * s1 -> 1, 2, 3, 4, 5
-     * s2 ->    2, 3, 4, 5, 6
-     */
+    writeTsFile(tsfilePath);
+  }
+
+  @After
+  public void after() {
+    File file = new File(tsfilePath);
+    if (file.exists()) {
+      file.delete();
+    }
+  }
+
+  @Test
+  public void testFilterAnd() throws IOException {
+    Filter timeFilter = FilterFactory.and(TimeFilter.gtEq(1L), TimeFilter.ltEq(8L));
+    IExpression timeExpression = new GlobalTimeExpression(timeFilter);
+
+    IExpression valueExpression = BinaryExpression
+        .and(new SingleSeriesExpression(new Path("d1.s1"), ValueFilter.gt(1.0f)),
+            new SingleSeriesExpression(new Path("d1.s2"), ValueFilter.lt(22)));
+
+    IExpression finalExpression = BinaryExpression.and(valueExpression, timeExpression);
+
+    QueryExpression queryExpression = QueryExpression.create().addSelectedPath(new Path("d1.s1"))
+        .addSelectedPath(new Path("d1.s2")).setExpression(finalExpression);
+
+    TsFileSequenceReader fileReader = new TsFileSequenceReader(tsfilePath);
+    ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(fileReader);
+    QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+    int i = 0;
+    String[] expected = new String[]{
+        "2\t1.2\t20",
+        "3\t1.2\t20",
+        "4\t1.2\t20",
+        "5\t1.2\t20"};
+    while (dataSet.hasNext()) {
+      Assert.assertEquals(expected[i], dataSet.next().toString());
+      i++;
+    }
+    Assert.assertEquals(4, i);
+  }
+
+
+  /**
+   * s1 -> 1, 2, 3, 4, 5
+   * s2 ->    2, 3, 4, 5, 6
+   */
+  private void writeTsFile(String tsfilePath) throws IOException, WriteProcessException {
+    File f = new File(tsfilePath);
+    if (f.exists()) {
+      f.delete();
+    }
+
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
@@ -129,43 +177,5 @@ public class TimeGeneratorReadWriteTest {
 
     // close TsFile
     tsFileWriter.close();
-  }
-
-  @After
-  public void after() {
-    File file = new File(tsfilePath);
-    if (file.exists()) {
-      file.delete();
-    }
-  }
-
-  @Test
-  public void testFilterAnd() throws IOException {
-    Filter timeFilter = FilterFactory.and(TimeFilter.gtEq(1L), TimeFilter.ltEq(8L));
-    IExpression timeExpression = new GlobalTimeExpression(timeFilter);
-
-    IExpression valueExpression = BinaryExpression
-        .and(new SingleSeriesExpression(new Path("d1.s1"), ValueFilter.gt(1.0f)),
-            new SingleSeriesExpression(new Path("d1.s2"), ValueFilter.lt(22)));
-
-    IExpression finalExpression = BinaryExpression.and(valueExpression, timeExpression);
-
-    QueryExpression queryExpression = QueryExpression.create().addSelectedPath(new Path("d1.s1"))
-        .addSelectedPath(new Path("d1.s2")).setExpression(finalExpression);
-
-    TsFileSequenceReader fileReader = new TsFileSequenceReader(tsfilePath);
-    ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(fileReader);
-    QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
-    int i = 0;
-    String[] expected = new String[]{
-        "2\t1.2\t20",
-        "3\t1.2\t20",
-        "4\t1.2\t20",
-        "5\t1.2\t20"};
-    while (dataSet.hasNext()) {
-      Assert.assertEquals(expected[i], dataSet.next().toString());
-      i++;
-    }
-    Assert.assertEquals(4, i);
   }
 }

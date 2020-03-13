@@ -50,7 +50,7 @@ import org.junit.Test;
 
 public class ReadWriteTest {
 
-  private String tsfilePath = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
+  private String tsfilePath = TestConstant.BASE_OUTPUT_PATH.concat("TestValueFilter.tsfile");
 
   @Before
   public void before() throws IOException, WriteProcessException {
