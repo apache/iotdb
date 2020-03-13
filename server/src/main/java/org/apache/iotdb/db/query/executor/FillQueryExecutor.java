@@ -29,11 +29,9 @@ import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-
 import javax.activation.UnsupportedDataTypeException;
 import java.io.IOException;
 import java.util.List;
@@ -88,9 +86,7 @@ public class FillQueryExecutor {
       } else {
         fill = typeIFillMap.get(dataType).copy();
       }
-      fill.setDataType(dataType);
-      fill.setQueryTime(queryTime);
-      fill.constructReaders(path, context);
+      configureFill(fill, dataType, path, context, queryTime);
 
       TimeValuePair timeValuePair = fill.getFillResult();
       if (timeValuePair == null || timeValuePair.getValue() == null) {
@@ -103,5 +99,12 @@ public class FillQueryExecutor {
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
     dataSet.setRecord(record);
     return dataSet;
+  }
+
+  protected void configureFill(IFill fill, TSDataType dataType, Path path, QueryContext context,
+      long queryTime) throws StorageEngineException, QueryProcessException {
+    fill.setDataType(dataType);
+    fill.setQueryTime(queryTime);
+    fill.constructReaders(path, context);
   }
 }
