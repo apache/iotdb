@@ -534,8 +534,9 @@ public class StorageEngine implements IService {
   public Map<String, Map<Long, List<TsFileResource>>> getAllClosedStorageGroupTsFile() {
     Map<String, Map<Long, List<TsFileResource>>> ret = new HashMap<>();
     for (Entry<String, StorageGroupProcessor> entry : processorMap.entrySet()) {
-      List<TsFileResource> sequenceFiles = entry.getValue().getSequenceFileTreeSet();
-      for (TsFileResource sequenceFile : sequenceFiles) {
+      List<TsFileResource> allResources = entry.getValue().getSequenceFileTreeSet();
+      allResources.addAll(entry.getValue().getUnSequenceFileList());
+      for (TsFileResource sequenceFile : allResources) {
         if (!sequenceFile.isClosed()) {
           continue;
         }

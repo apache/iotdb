@@ -885,7 +885,7 @@ public class MManager {
    * and the wildcard will be removed.
    * If the wildcard is at the tail, then the inference will go on until the storage groups are found
    * and the wildcard will be kept.
-   * (2) Suppose the path of the path is a substring that begin after the storage group name. (e.g.,
+   * (2) Suppose the part of the path is a substring that begin after the storage group name. (e.g.,
    *  For "root.*.sg1.a.*.b.*" and "root.x.sg1" is a storage group, then this part is "a.*.b.*").
    *  For this part, keep what it is.
    *
