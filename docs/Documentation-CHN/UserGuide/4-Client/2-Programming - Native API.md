@@ -23,6 +23,8 @@
 
 # 编程 - 原生接口
 
+## 使用
+
 ## 依赖
 
 * JDK >= 1.8
@@ -52,8 +54,8 @@
 
 * 初始化Session
   ​	Session(String host, int port)
-  	Session(String host, String port, String username, String password)
-  	Session(String host, int port, String username, String password)
+  ​	Session(String host, String port, String username, String password)
+  ​	Session(String host, int port, String username, String password)
 
 * 开启Session
   ​	Session.open()
@@ -70,7 +72,7 @@
 * 删除单个或多个存储组
 
   ​	TSStatus deleteStorageGroup(String storageGroup)
-  	TSStatus deleteStorageGroups(List<String> storageGroups)
+  ​	TSStatus deleteStorageGroups(List<String> storageGroups)
 
 * 创建单个时间序列
 
@@ -79,12 +81,12 @@
 * 删除一个或多个时间序列
 
   ​	TSStatus deleteTimeseries(String path)
-  	TSStatus deleteTimeseries(List<String> paths)
+  ​	TSStatus deleteTimeseries(List<String> paths)
 
 * 删除某一特定时间前的时间序列
 
   ​	TSStatus deleteData(String path, long time)
-  	TSStatus deleteData(List<String> paths, long time)
+  ​	TSStatus deleteData(List<String> paths, long time)
 
 * 插入时序数据
 

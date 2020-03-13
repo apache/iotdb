@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.session.pool;
 
-import java.sql.SQLException;
-import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -48,15 +48,28 @@ public class SessionDataSetWrapper {
     sessionDataSet.setBatchSize(batchSize);
   }
 
-  public boolean hasNext() throws SQLException, IoTDBRPCException {
-    boolean next = sessionDataSet.hasNext();
-    if (!next) {
-      pool.closeResultSet(this);
-    }
-    return next;
+  /**
+   * If there is an Exception, and you do not want to use the resultset anymore,
+   * you have to release the resultset manually by calling closeResultSet
+   * @return
+   * @throws IoTDBConnectionException
+   * @throws StatementExecutionException
+   */
+  public boolean hasNext() throws IoTDBConnectionException, StatementExecutionException {
+      boolean next = sessionDataSet.hasNext();
+      if (!next) {
+        pool.closeResultSet(this);
+      }
+      return next;
   }
-
-  public RowRecord next() throws SQLException, IoTDBRPCException {
+  /**
+   * If there is an Exception, and you do not want to use the resultset anymore,
+   * you have to release the resultset manually by calling closeResultSet
+   * @return
+   * @throws IoTDBConnectionException
+   * @throws StatementExecutionException
+   */
+  public RowRecord next() throws IoTDBConnectionException, StatementExecutionException {
     return sessionDataSet.next();
   }
 }

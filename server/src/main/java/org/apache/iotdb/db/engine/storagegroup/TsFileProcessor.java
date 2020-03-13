@@ -46,6 +46,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTi
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -54,7 +55,9 @@ import org.apache.iotdb.db.rescon.MemTablePool;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -182,15 +185,23 @@ public class TsFileProcessor {
     return true;
   }
 
-  public boolean insertBatch(BatchInsertPlan batchInsertPlan, int start, int end,
-      Integer[] results) throws QueryProcessException {
+  public void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end,
+      TSStatus[] results) throws WriteProcessException {
 
     if (workMemTable == null) {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
 
     // insert insertPlan to the work memtable
-    workMemTable.insertBatch(batchInsertPlan, start, end);
+    try {
+      workMemTable.insertBatch(batchInsertPlan, start, end);
+      for (int i = start; i < end; i++) {
+        results[i] = RpcUtils.SUCCESS_STATUS;
+      }
+    } catch (Exception e) {
+      setErrorResult(start, end, results, e);
+      return;
+    }
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
@@ -200,10 +211,7 @@ public class TsFileProcessor {
       } catch (IOException e) {
         logger.error("{}: {} write WAL failed", storageGroupName,
             tsFileResource.getFile().getName(), e);
-        for (int i = start; i < end; i++) {
-          results[i] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
-        }
-        return false;
+        setErrorResult(start, end, results, e);
       }
     }
 
@@ -216,8 +224,14 @@ public class TsFileProcessor {
       tsFileResource
           .updateEndTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
     }
+  }
 
-    return true;
+  private void setErrorResult(int start, int end, TSStatus[] results, Exception e)
+      throws WriteProcessException {
+    for (int i = start; i < end; i++) {
+      results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+    throw new WriteProcessException(e);
   }
 
   /**

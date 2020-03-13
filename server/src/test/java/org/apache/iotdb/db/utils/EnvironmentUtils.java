@@ -24,7 +24,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketAddress;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
@@ -40,7 +39,6 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -187,12 +185,12 @@ public class EnvironmentUtils {
   /**
    * disable memory control</br> this function should be called before all code in the setup
    */
-  public static void envSetUp() throws StartupException {
+  public static void envSetUp() {
     logger.warn("EnvironmentUtil setup...");
     System.setProperty(IoTDBConstant.REMOTE_JMX_PORT_NAME, "31999");
     IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(0);
     //we do not start 8181 port in test.
-    IoTDBDescriptor.getInstance().getConfig().setEnableMetricsWebService(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableMetricService(false);
     if (daemon == null) {
       daemon = new IoTDB();
     }

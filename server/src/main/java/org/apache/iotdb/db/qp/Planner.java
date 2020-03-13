@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp;
 
 import java.time.ZoneId;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
@@ -35,13 +36,14 @@ import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * provide a integration method for other user.
  */
 public class Planner {
 
-  private ParseDriver parseDriver;
+  protected ParseDriver parseDriver;
 
   public Planner() {
     this.parseDriver = new ParseDriver();
@@ -70,7 +72,7 @@ public class Planner {
    * @return optimized logical operator
    * @throws LogicalOptimizeException exception in logical optimizing
    */
-  private Operator logicalOptimize(Operator operator)
+  protected Operator logicalOptimize(Operator operator)
       throws LogicalOperatorException {
     switch (operator.getType()) {
       case AUTHOR:
@@ -111,12 +113,13 @@ public class Planner {
    */
   private SFWOperator optimizeSFWOperator(SFWOperator root)
       throws LogicalOperatorException {
-    ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
+    ConcatPathOptimizer concatPathOptimizer = getConcatPathOptimizer();
     root = (SFWOperator) concatPathOptimizer.transform(root);
     FilterOperator filter = root.getFilterOperator();
     if (filter == null) {
       return root;
     }
+    Set<Path> pathSet = filter.getPathSet();
     RemoveNotOptimizer removeNot = new RemoveNotOptimizer();
     filter = removeNot.optimize(filter);
     DnfFilterOptimizer dnf = new DnfFilterOptimizer();
@@ -124,7 +127,11 @@ public class Planner {
     MergeSingleFilterOptimizer merge = new MergeSingleFilterOptimizer();
     filter = merge.optimize(filter);
     root.setFilterOperator(filter);
+    filter.setPathSet(pathSet);
     return root;
   }
 
+  protected ConcatPathOptimizer getConcatPathOptimizer() {
+    return new ConcatPathOptimizer();
+  }
 }

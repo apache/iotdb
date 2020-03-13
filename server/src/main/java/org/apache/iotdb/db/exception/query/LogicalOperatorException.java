@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.exception.query;
 
+import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
@@ -43,5 +44,9 @@ public class LogicalOperatorException extends QueryProcessException {
   public LogicalOperatorException(String type, String message) {
     super(String.format("Unsupported type: [%s]. %s", type, message),
         TSStatusCode.LOGICAL_OPERATOR_ERROR.getStatusCode());
+  }
+
+  public LogicalOperatorException(IoTDBException e) {
+    super(e);
   }
 }

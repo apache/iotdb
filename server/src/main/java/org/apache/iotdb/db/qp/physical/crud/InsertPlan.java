@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,6 +48,7 @@ public class InsertPlan extends PhysicalPlan {
 
   public InsertPlan() {
     super(false, OperatorType.INSERT);
+    canbeSplit = false;
   }
 
   @TestOnly
@@ -55,6 +58,7 @@ public class InsertPlan extends PhysicalPlan {
     this.deviceId = deviceId;
     this.measurements = new String[] {measurement};
     this.values = new String[] {insertValue};
+    canbeSplit = false;
   }
 
   public InsertPlan(TSRecord tsRecord) {
@@ -69,6 +73,7 @@ public class InsertPlan extends PhysicalPlan {
       dataTypes[i] = tsRecord.dataPointList.get(i).getType();
       values[i] = tsRecord.dataPointList.get(i).getValue().toString();
     }
+    canbeSplit = false;
   }
 
   public InsertPlan(String deviceId, long insertTime, String[] measurementList,
@@ -78,6 +83,7 @@ public class InsertPlan extends PhysicalPlan {
     this.deviceId = deviceId;
     this.measurements = measurementList;
     this.values = insertValues;
+    canbeSplit = false;
   }
 
   public long getTime() {
@@ -147,6 +153,25 @@ public class InsertPlan extends PhysicalPlan {
   @Override
   public int hashCode() {
     return Objects.hash(deviceId, time);
+  }
+
+  @Override
+  public void serializeTo(DataOutputStream stream) throws IOException {
+    int type = PhysicalPlanType.INSERT.ordinal();
+    stream.writeByte((byte) type);
+    stream.writeLong(time);
+
+    putString(stream, deviceId);
+
+    stream.writeInt(measurements.length);
+    for (String m : measurements) {
+      putString(stream, m);
+    }
+
+    stream.writeInt(values.length);
+    for (String m : values) {
+      putString(stream, m);
+    }
   }
 
   @Override

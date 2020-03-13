@@ -29,10 +29,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.rpc.IoTDBRPCException;
-import org.apache.iotdb.session.IoTDBSessionException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.thrift.TException;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -62,7 +61,7 @@ public class SessionPoolTest {
       service.submit(() -> {
         try {
           pool.insert("root.sg1.d1", 1, Collections.singletonList("s" + no), Collections.singletonList("3"));
-        } catch (IoTDBSessionException e) {
+        } catch (IoTDBConnectionException | StatementExecutionException e) {
           fail();
         }
       });
@@ -85,7 +84,7 @@ public class SessionPoolTest {
     assertEquals(0, pool.currentAvailableSize());
     try {
       pool.insert(".root.sg1.d1", 1, Collections.singletonList("s" ), Collections.singletonList("3"));
-    } catch (IoTDBSessionException e) {
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
       //do nothing
     }
     assertEquals(1, pool.currentAvailableSize());
@@ -100,7 +99,7 @@ public class SessionPoolTest {
     for (int i = 0; i < 10; i++) {
       try {
         pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
-      } catch (IoTDBSessionException e) {
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
         fail();
       }
     }
@@ -112,10 +111,8 @@ public class SessionPoolTest {
           SessionDataSetWrapper wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
           //this is incorrect becasue wrapper is not closed.
           //so all other 7 queries will be blocked
-        } catch (IoTDBSessionException e) {
+        } catch (IoTDBConnectionException | StatementExecutionException e) {
           fail();
-        } catch (IoTDBRPCException e) {
-          e.printStackTrace();
         }
       });
     }
@@ -143,7 +140,7 @@ public class SessionPoolTest {
     for (int i = 0; i < 10; i++) {
       try {
         pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
-      } catch (IoTDBSessionException e) {
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
         fail();
       }
     }
@@ -178,7 +175,7 @@ public class SessionPoolTest {
     for (int i = 0; i < 10; i++) {
       try {
         pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
-      } catch (IoTDBSessionException e) {
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
         fail();
       }
     }
@@ -190,27 +187,19 @@ public class SessionPoolTest {
       while(wrapper.hasNext()) {
         wrapper.next();
       }
-    } catch (IoTDBRPCException e) {
-      e.printStackTrace();
-      fail();
-    } catch (IoTDBSessionException e) {
-      e.printStackTrace();
-      fail();
-    } catch (SQLException e) {
-      if (e.getCause() instanceof TException) {
-        try {
-          pool.closeResultSet(wrapper);
-        } catch (SQLException ex) {
-          ex.printStackTrace();
-          fail();
-        }
-      } else {
-        fail("should be TTransportException but get an exception: " + e.getMessage());
+    } catch (IoTDBConnectionException  e) {
+      try {
+        pool.closeResultSet(wrapper);
+      } catch (StatementExecutionException ex) {
+        ex.printStackTrace();
+        fail();
       }
       EnvironmentUtils.reactiveDaemon();
       correctQuery(pool);
       pool.close();
       return;
+    } catch (StatementExecutionException e) {
+      fail("should be TTransportException but get an exception: " + e.getMessage());
     }
     fail("should throw exception but not");
   }
@@ -221,7 +210,7 @@ public class SessionPoolTest {
     for (int i = 0; i < 10; i++) {
       try {
         pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
-      } catch (IoTDBSessionException e) {
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
         fail();
       }
     }
@@ -237,13 +226,7 @@ public class SessionPoolTest {
       }
       assertEquals(1, pool.currentAvailableSize());
       assertEquals(0, pool.currentOccupiedSize());
-    } catch (IoTDBRPCException e) {
-      e.printStackTrace();
-      fail();
-    } catch (IoTDBSessionException e) {
-      e.printStackTrace();
-      fail();
-    } catch (SQLException e) {
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
       fail();
     }

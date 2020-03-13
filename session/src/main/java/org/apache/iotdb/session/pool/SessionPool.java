@@ -18,23 +18,21 @@
  */
 package org.apache.iotdb.session.pool;
 
-import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
-import org.apache.iotdb.rpc.IoTDBRPCException;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.rpc.BatchExecutionException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.Config;
-import org.apache.iotdb.session.IoTDBSessionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,14 +74,15 @@ public class SessionPool {
 
   private int fetchSize;
 
-  private long timeout = 60*1000; //ms
+  private long timeout = 60 * 1000; //ms
   private static int RETRY = 3;
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
     this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000);
   }
 
-  public SessionPool(String ip, int port, String user, String password, int maxSize, int fetchSize, long timeout) {
+  public SessionPool(String ip, int port, String user, String password, int maxSize, int fetchSize,
+      long timeout) {
     this.maxSize = maxSize;
     this.ip = ip;
     this.port = port;
@@ -95,7 +94,7 @@ public class SessionPool {
 
   //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
   //TODO: we can add a mechanism that if the user waits too long time, throw exception.
-  private Session getSession() throws IoTDBSessionException {
+  private Session getSession() throws IoTDBConnectionException {
     Session session = queue.poll();
     if (session != null) {
       return session;
@@ -117,7 +116,8 @@ public class SessionPool {
                     "the SessionPool has wait for {} seconds to get a new connection: {}:{} with {}, {}",
                     (System.currentTimeMillis() - start) / 1000, ip, port, user, password);
                 if (System.currentTimeMillis() - start > timeout) {
-                  throw new IoTDBSessionException(String.format("timeout to get a connection from %s:%s", ip, port));
+                  throw new IoTDBConnectionException(
+                      String.format("timeout to get a connection from %s:%s", ip, port));
                 }
               }
             } catch (InterruptedException e) {
@@ -166,14 +166,14 @@ public class SessionPool {
     for (Session session : queue) {
       try {
         session.close();
-      } catch (IoTDBSessionException e) {
+      } catch (IoTDBConnectionException e) {
         //do nothing
       }
     }
     for (Session session : occupied.keySet()) {
       try {
         session.close();
-      } catch (IoTDBSessionException e) {
+      } catch (IoTDBConnectionException e) {
         //do nothing
       }
     }
@@ -181,18 +181,13 @@ public class SessionPool {
     occupied.clear();
   }
 
-  public void closeResultSet(SessionDataSetWrapper wrapper) throws SQLException {
+  public void closeResultSet(SessionDataSetWrapper wrapper) throws StatementExecutionException {
     boolean putback = true;
     try {
       wrapper.sessionDataSet.closeOperationHandle();
-    } catch (SQLException e) {
-      if (e.getCause() instanceof TException) {
-        // the connection is broken.
-        removeSession();
-        putback = false;
-      } else {
-        throw e;
-      }
+    } catch (IoTDBConnectionException e) {
+      removeSession();
+      putback = false;
     } finally {
       Session session = occupied.remove(wrapper.session);
       if (putback && session != null) {
@@ -223,28 +218,25 @@ public class SessionPool {
    *
    * @param rowBatch data batch
    */
-  public TSExecuteBatchStatementResp insertSortedBatch(RowBatch rowBatch)
-      throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+  public void insertSortedBatch(RowBatch rowBatch)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        TSExecuteBatchStatementResp resp = session.insertSortedBatch(rowBatch);
+        session.insertSortedBatch(rowBatch);
         putBack(session);
-        return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (BatchExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
-
 
 
   /**
@@ -252,25 +244,25 @@ public class SessionPool {
    *
    * @param rowBatch data batch
    */
-  public TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch) throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+  public void insertBatch(RowBatch rowBatch)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        TSExecuteBatchStatementResp resp = session.insertBatch(rowBatch);
+        session.insertBatch(rowBatch);
         putBack(session);
-        return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (BatchExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -280,27 +272,26 @@ public class SessionPool {
    *
    * @see Session#insertBatch(RowBatch)
    */
-  public List<TSStatus> insertInBatch(List<String> deviceIds, List<Long> times,
+  public void insertInBatch(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
-      throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        List<TSStatus> resp = session.insertInBatch(deviceIds, times, measurementsList, valuesList);
+        session.insertInBatch(deviceIds, times, measurementsList, valuesList);
         putBack(session);
-        return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (BatchExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -311,105 +302,101 @@ public class SessionPool {
    * @see Session#insertBatch(RowBatch)
    */
   public TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
-      throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
         TSStatus resp = session.insert(deviceId, time, measurements, values);
         putBack(session);
         return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
-      }
-    }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
-  }
-
-  /**
-   * This method NOT insert data into database and the server just return after accept the request,
-   * this method should be used to test other time cost in client
-   */
-  public TSExecuteBatchStatementResp testInsertBatch(RowBatch rowBatch)
-      throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
-      Session session = getSession();
-      try {
-        TSExecuteBatchStatementResp resp = session.testInsertBatch(rowBatch);
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (StatementExecutionException e) {
         putBack(session);
-        return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public List<TSStatus> testInsertInBatch(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<String>> valuesList)
-      throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+  public void testInsertBatch(RowBatch rowBatch)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        List<TSStatus> resp = session
+        session.testInsertBatch(rowBatch);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (BatchExecutionException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+  }
+
+  /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
+  public void testInsertInBatch(List<String> deviceIds, List<Long> times,
+      List<List<String>> measurementsList, List<List<String>> valuesList)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session
             .testInsertInBatch(deviceIds, times, measurementsList, valuesList);
         putBack(session);
-        return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (BatchExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public TSStatus testInsert(String deviceId, long time, List<String> measurements,
-      List<String> values) throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+  public void testInsert(String deviceId, long time, List<String> measurements,
+      List<String> values) throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        TSStatus resp = session.testInsert(deviceId, time, measurements, values);
+        session.testInsert(deviceId, time, measurements, values);
         putBack(session);
-        return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -417,25 +404,25 @@ public class SessionPool {
    *
    * @param path timeseries to delete, should be a whole path
    */
-  public TSStatus deleteTimeseries(String path) throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+  public void deleteTimeseries(String path)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        TSStatus resp = session.deleteTimeseries(path);
+        session.deleteTimeseries(path);
         putBack(session);
-        return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -443,25 +430,25 @@ public class SessionPool {
    *
    * @param paths timeseries to delete, should be a whole path
    */
-  public TSStatus deleteTimeseries(List<String> paths) throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+  public void deleteTimeseries(List<String> paths)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        TSStatus resp = session.deleteTimeseries(paths);
+        session.deleteTimeseries(paths);
         putBack(session);
-        return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -470,25 +457,25 @@ public class SessionPool {
    * @param path data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
-  public TSStatus deleteData(String path, long time) throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+  public void deleteData(String path, long time)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        TSStatus resp = session.deleteData(path, time);
+        session.deleteData(path, time);
         putBack(session);
-        return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -497,131 +484,130 @@ public class SessionPool {
    * @param paths data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
-  public TSStatus deleteData(List<String> paths, long time) throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+  public void deleteData(List<String> paths, long time)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        TSStatus resp = session.deleteData(paths, time);
+        session.deleteData(paths, time);
         putBack(session);
-        return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
-  public TSStatus setStorageGroup(String storageGroupId) throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+  public void setStorageGroup(String storageGroupId)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        TSStatus resp = session.setStorageGroup(storageGroupId);
+        session.setStorageGroup(storageGroupId);
         putBack(session);
-        return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
-  public TSStatus deleteStorageGroup(String storageGroup) throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+  public void deleteStorageGroup(String storageGroup)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        TSStatus resp = session.deleteStorageGroup(storageGroup);
+        session.deleteStorageGroup(storageGroup);
         putBack(session);
-        return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
-  public TSStatus deleteStorageGroups(List<String> storageGroup) throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+  public void deleteStorageGroups(List<String> storageGroup)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        TSStatus resp = session.deleteStorageGroups(storageGroup);
+        session.deleteStorageGroups(storageGroup);
         putBack(session);
-        return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
-  public TSStatus createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressor) throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+  public void createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor) throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        TSStatus resp = session.createTimeseries(path, dataType, encoding, compressor);
+        session.createTimeseries(path, dataType, encoding, compressor);
         putBack(session);
-        return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
-  public boolean checkTimeseriesExists(String path) throws IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+  public boolean checkTimeseriesExists(String path)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
         boolean resp = session.checkTimeseriesExists(path);
         putBack(session);
         return resp;
-      } catch (IoTDBSessionException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -630,33 +616,29 @@ public class SessionPool {
    * more.
    *
    * @param sql query statement
-   * @return result set Notice that you must get the result instance. Otherwise a data leakage will happen
+   * @return result set Notice that you must get the result instance. Otherwise a data leakage will
+   * happen
    */
   public SessionDataSetWrapper executeQueryStatement(String sql)
-      throws IoTDBRPCException, IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
         SessionDataSet resp = session.executeQueryStatement(sql);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
-      } catch (TException e) {
+      } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         closeSession(session);
         removeSession();
-      } catch (IoTDBRPCException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -665,28 +647,23 @@ public class SessionPool {
    * @param sql non query statement
    */
   public void executeNonQueryStatement(String sql)
-      throws IoTDBRPCException, IoTDBSessionException {
-    for (int i=0; i< RETRY; i ++){
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
         session.executeNonQueryStatement(sql);
         putBack(session);
         return;
-      } catch (TException e) {
+      } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         closeSession(session);
         removeSession();
-      } catch (IoTDBRPCException e) {
-        if (e.getCause() instanceof TException) {
-          // TException means the connection is broken, remove it and get a new one.
-          closeSession(session);
-          removeSession();
-        } else {
-          putBack(session);
-          throw e;
-        }
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
-    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 }
