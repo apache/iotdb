@@ -41,6 +41,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -161,8 +162,13 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
+    MeasurementSchema[] schemas = new MeasurementSchema[2];
+    schemas[0] = new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN);
+    schemas[1] = new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
+
     BatchInsertPlan batchInsertPlan1 = new BatchInsertPlan("root.vehicle.d0", measurements,
         dataTypes);
+    batchInsertPlan1.setSchemas(schemas);
 
     long[] times = new long[100];
     Object[] columns = new Object[2];
@@ -183,6 +189,7 @@ public class StorageGroupProcessorTest {
 
     BatchInsertPlan batchInsertPlan2 = new BatchInsertPlan("root.vehicle.d0", measurements,
         dataTypes);
+    batchInsertPlan2.setSchemas(schemas);
 
     for (int r = 50; r < 149; r++) {
       times[r - 50] = r;
