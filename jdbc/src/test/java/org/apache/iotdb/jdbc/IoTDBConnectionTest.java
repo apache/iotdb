@@ -21,10 +21,9 @@ package org.apache.iotdb.jdbc;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
-
 import java.util.ArrayList;
 import java.util.List;
-
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
@@ -40,8 +39,7 @@ public class IoTDBConnectionTest {
   private TSIService.Iface client;
 
   private IoTDBConnection connection = new IoTDBConnection();
-  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
-  private TSStatus Status_SUCCESS = new TSStatus(successStatus);
+  private TSStatus successStatus = RpcUtils.SUCCESS_STATUS;
   private long sessionId;
 
   @Before
@@ -57,7 +55,7 @@ public class IoTDBConnectionTest {
   public void testSetTimeZone() throws TException, IoTDBSQLException {
     String timeZone = "Asia/Shanghai";
     when(client.setTimeZone(any(TSSetTimeZoneReq.class)))
-        .thenReturn(new TSStatus(Status_SUCCESS));
+        .thenReturn(new TSStatus(successStatus));
     connection.setClient(client);
     connection.setTimeZone(timeZone);
     assertEquals(connection.getTimeZone(), timeZone);
@@ -67,13 +65,13 @@ public class IoTDBConnectionTest {
   public void testGetTimeZone() throws IoTDBSQLException, TException {
     String timeZone = "GMT+:08:00";
     sessionId = connection.getSessionId();
-    when(client.getTimeZone(sessionId)).thenReturn(new TSGetTimeZoneResp(Status_SUCCESS, timeZone));
+    when(client.getTimeZone(sessionId)).thenReturn(new TSGetTimeZoneResp(successStatus, timeZone));
     connection.setClient(client);
     assertEquals(connection.getTimeZone(), timeZone);
   }
 
   @Test
-  public void testGetServerProperties() throws IoTDBSQLException, TException {
+  public void testGetServerProperties() throws TException {
     final String version = "v0.1";
     @SuppressWarnings("serial") final List<String> supportedAggregationTime = new ArrayList<String>() {
       {

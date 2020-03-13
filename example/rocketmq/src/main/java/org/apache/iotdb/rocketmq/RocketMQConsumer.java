@@ -70,12 +70,12 @@ public class RocketMQConsumer {
       createTimeseries(sql);
     }
   }
-  
+
   private void addStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
     session.setStorageGroup(storageGroup);
   }
-  
+
   private void createTimeseries(String[] sql) throws StatementExecutionException, IoTDBConnectionException {
     String timeseries = sql[0];
     TSDataType dataType = TSDataType.valueOf(sql[1]);
@@ -83,8 +83,8 @@ public class RocketMQConsumer {
     CompressionType compressionType = CompressionType.valueOf(sql[3]);
     session.createTimeseries(timeseries, dataType, encoding, compressionType);
   }
-  
-  private void insert(String data) throws IoTDBConnectionException {
+
+  private void insert(String data) throws IoTDBConnectionException, StatementExecutionException {
     String[] dataArray = data.split(",");
     String device = dataArray[0];
     long time = Long.parseLong(dataArray[1]);
@@ -120,7 +120,7 @@ public class RocketMQConsumer {
             new String(msg.getBody())));
         try {
           insert(new String(msg.getBody()));
-        } catch (IoTDBConnectionException e) {
+        } catch (Exception e) {
           logger.error(e.getMessage());
         }
       }
@@ -153,8 +153,8 @@ public class RocketMQConsumer {
     /**
      *Instantiate with specified consumer group name and specify name server addresses.
      */
-    RocketMQConsumer consumer = new RocketMQConsumer(Constant.CONSUMER_GROUP, 
-        Constant.SERVER_ADDRESS, 
+    RocketMQConsumer consumer = new RocketMQConsumer(Constant.CONSUMER_GROUP,
+        Constant.SERVER_ADDRESS,
         Constant.IOTDB_CONNECTION_HOST,
         Constant.IOTDB_CONNECTION_PORT,
         Constant.IOTDB_CONNECTION_USER,

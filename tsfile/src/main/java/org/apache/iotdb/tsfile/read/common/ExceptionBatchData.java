@@ -16,26 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.read.common;
 
-package org.apache.iotdb.jdbc;
+public class ExceptionBatchData extends BatchData {
 
-import java.sql.SQLException;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+  private Exception exception;
 
-public class IoTDBSQLException extends SQLException {
-
-  private static final long serialVersionUID = -3306001287342258977L;
-
-  public IoTDBSQLException(String reason) {
-    super(reason);
+  public ExceptionBatchData(Exception exception) {
+    this.exception = exception;
   }
 
-  public IoTDBSQLException(String reason, TSStatus status) {
-    super(reason, status.message, status.code);
+  @Override
+  public boolean hasCurrent() {
+    throw new UnsupportedOperationException("hasCurrent is not supported for ExceptionBatchData");
   }
 
-  public IoTDBSQLException(Throwable cause) {
-    super(cause);
+  public Exception getException() {
+    return exception;
   }
-
 }

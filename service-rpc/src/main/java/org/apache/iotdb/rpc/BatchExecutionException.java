@@ -16,26 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.rpc;
 
-package org.apache.iotdb.jdbc;
-
-import java.sql.SQLException;
+import java.util.List;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-public class IoTDBSQLException extends SQLException {
+public class BatchExecutionException extends Exception{
 
-  private static final long serialVersionUID = -3306001287342258977L;
+  private List<TSStatus> statusList;
 
-  public IoTDBSQLException(String reason) {
-    super(reason);
+  public BatchExecutionException(String message) {
+    super(message);
   }
 
-  public IoTDBSQLException(String reason, TSStatus status) {
-    super(reason, status.message, status.code);
+  public BatchExecutionException(List<TSStatus> statusList) {
+    this.statusList = statusList;
   }
 
-  public IoTDBSQLException(Throwable cause) {
-    super(cause);
+  public BatchExecutionException(List<TSStatus> statusList, String message) {
+    super(message);
+    this.statusList = statusList;
+  }
+
+  public List<TSStatus> getStatusList() {
+    return statusList;
   }
 
 }

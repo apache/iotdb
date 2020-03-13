@@ -18,28 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
-import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -62,13 +40,10 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.MergeException;
-import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -80,7 +55,9 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -95,6 +72,17 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 
 /**
@@ -501,10 +489,10 @@ public class StorageGroupProcessor {
     }
   }
 
-  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
+  public TSStatus[] insertBatch(BatchInsertPlan batchInsertPlan) throws WriteProcessException {
     writeLock();
     try {
-      Integer[] results = new Integer[batchInsertPlan.getRowCount()];
+      TSStatus[] results = new TSStatus[batchInsertPlan.getRowCount()];
 
       /*
        * assume that batch has been sorted by client
@@ -514,7 +502,8 @@ public class StorageGroupProcessor {
         long currTime = batchInsertPlan.getTimes()[loc];
         // skip points that do not satisfy TTL
         if (!checkTTL(currTime)) {
-          results[loc] = TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode();
+          results[loc] = RpcUtils.getStatus(TSStatusCode.OUT_OF_TTL_ERROR,
+              "time " + currTime + " in current line is out of TTL: " + dataTTL);
           loc++;
         } else {
           break;
@@ -537,7 +526,7 @@ public class StorageGroupProcessor {
       while (loc < batchInsertPlan.getRowCount()) {
         long time = batchInsertPlan.getTimes()[loc];
         long curTimePartition = StorageEngine.fromTimeToTimePartition(time);
-        results[loc] = TSStatusCode.SUCCESS_STATUS.getStatusCode();
+        results[loc] = RpcUtils.SUCCESS_STATUS;
         // start next partition
         if (curTimePartition != beforeTimePartition) {
           // insert last time partition
@@ -593,29 +582,28 @@ public class StorageGroupProcessor {
    * @param timePartitionId time partition id
    */
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
-      int start, int end, boolean sequence, Integer[] results, long timePartitionId)
-      throws QueryProcessException {
+      int start, int end, boolean sequence, TSStatus[] results, long timePartitionId)
+      throws WriteProcessException {
     // return when start <= end
     if (start >= end) {
       return;
     }
 
-    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId,
-        sequence);
+    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
     if (tsFileProcessor == null) {
       for (int i = start; i < end; i++) {
-        results[i] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
+        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR,
+            "can not create TsFileProcessor, timePartitionId: " + timePartitionId);
       }
       return;
     }
 
-    boolean result = tsFileProcessor.insertBatch(batchInsertPlan, start, end, results);
+    tsFileProcessor.insertBatch(batchInsertPlan, start, end, results);
 
     latestTimeForEachDevice.computeIfAbsent(timePartitionId, t -> new HashMap<>())
         .putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
     // try to update the latest time of the device of this tsRecord
-    if (sequence && result
-        && latestTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId())
+    if (sequence && latestTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId())
         < batchInsertPlan.getTimes()[end - 1]) {
       latestTimeForEachDevice.get(timePartitionId)
           .put(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
@@ -644,7 +632,7 @@ public class StorageGroupProcessor {
   }
 
   public void tryToUpdateBatchInsertLastCache(BatchInsertPlan plan, Long latestFlushedTime)
-      throws QueryProcessException {
+      throws WriteProcessException {
     try {
       MNode node =
           MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(plan.getDeviceId());
@@ -656,7 +644,7 @@ public class StorageGroupProcessor {
             .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     } catch (MetadataException e) {
-      throw new QueryProcessException(e);
+      throw new WriteProcessException(e);
     }
   }
 
@@ -1708,9 +1696,15 @@ public class StorageGroupProcessor {
       if (resource.getHistoricalVersions().containsAll(seqFile.getHistoricalVersions())
           && !resource.getHistoricalVersions().equals(seqFile.getHistoricalVersions())
           && seqFile.getWriteQueryLock().writeLock().tryLock()) {
-        iterator.remove();
-        seqFile.remove();
-        seqFile.getWriteQueryLock().writeLock().unlock();
+        try {
+          iterator.remove();
+          seqFile.remove();
+        } catch (Exception e) {
+          logger.error("Something gets wrong while removing FullyOverlapFiles ", e);
+          throw e;
+        } finally {
+          seqFile.getWriteQueryLock().writeLock().unlock();
+        }
       }
     }
   }

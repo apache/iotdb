@@ -16,17 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.exception;
 
-package org.apache.iotdb.db.exception.storageGroup;
-
-import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class StorageGroupException extends IoTDBException {
+public class StorageGroupProcessorException extends IoTDBException {
 
-  private static final long serialVersionUID = 7082567513626836322L;
+  private static final long serialVersionUID = 7373978140952977661L;
 
-  public StorageGroupException(String message) {
-    super(message, TSStatusCode.STORAGE_GROUP_ERROR.getStatusCode());
+  public StorageGroupProcessorException(Exception exception) {
+    super(exception, TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode());
+  }
+
+  public StorageGroupProcessorException(String message) {
+    super(message, TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode());
   }
 }
