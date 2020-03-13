@@ -239,10 +239,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     for (long statementId : statementIds) {
       Set<Long> queryIds = statementId2QueryId.getOrDefault(statementId, Collections.emptySet());
       for (long queryId : queryIds) {
-        queryId2DataSet.remove(queryId);
-
         try {
-          QueryResourceManager.getInstance().endQuery(queryId);
+          releaseQueryResource(queryId);
         } catch (StorageEngineException e) {
           // release as many as resources as possible, so do not break as soon as one exception is
           // raised
@@ -300,7 +298,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * release single operation resource
    */
-  private void releaseQueryResource(long queryId) throws StorageEngineException {
+  protected void releaseQueryResource(long queryId) throws StorageEngineException {
     // remove the corresponding Physical Plan
     queryId2DataSet.remove(queryId);
     QueryResourceManager.getInstance().endQuery(queryId);
@@ -324,8 +322,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
-          List<TSDataType> dataTypes = SchemaUtils
-              .getSeriesTypesByString(Collections.singletonList(req.getColumnPath()), null);
+          List<TSDataType> dataTypes =
+              getSeriesTypesByString(Collections.singletonList(req.getColumnPath()), null);
           resp.setDataType(dataTypes.get(0).toString());
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
@@ -753,7 +751,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         for (Path p : paths) {
           respColumns.add(p.getFullPath());
         }
-        seriesTypes = SchemaUtils.getSeriesTypesByString(respColumns, null);
+        seriesTypes = getSeriesTypesByString(respColumns, null);
         break;
       case AGGREGATION:
       case GROUPBY:
@@ -766,7 +764,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         for (int i = 0; i < paths.size(); i++) {
           respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
         }
-        seriesTypes = SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+        seriesTypes = getSeriesTypesByPath(paths, aggregations);
         break;
       default:
         throw new TException("unsupported query type: " + plan.getOperatorType());
@@ -786,6 +784,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     columnTypes.add(TSDataType.TEXT.toString()); // the DEVICE column of ALIGN_BY_DEVICE result
     List<TSDataType> deduplicatedColumnsType = new ArrayList<>();
     deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of ALIGN_BY_DEVICE result
+
     Set<String> deduplicatedMeasurements = new LinkedHashSet<>();
     Map<String, TSDataType> checker = plan.getMeasurementDataTypeMap();
 
@@ -820,7 +819,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     plan.setPaths(null);
   }
 
-
   @Override
   public TSFetchResultsResp fetchResults(TSFetchResultsReq req) {
     try {
@@ -839,8 +837,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             fillRpcReturnData(req.fetchSize, queryDataSet, sessionIdUsernameMap.get(req.sessionId));
         boolean hasResultSet = result.bufferForTime().limit() != 0;
         if (!hasResultSet) {
-          QueryResourceManager.getInstance().endQuery(req.queryId);
-          queryId2DataSet.remove(req.queryId);
+          releaseQueryResource(req.queryId);
         }
         TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
         resp.setHasResultSet(hasResultSet);
@@ -955,7 +952,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return queryDataSet;
   }
 
-  private QueryContext genQueryContext(long queryId) {
+  protected QueryContext genQueryContext(long queryId) {
     return new QueryContext(queryId);
   }
 
@@ -1032,7 +1029,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
   }
 
-  void handleClientExit() {
+  protected void handleClientExit() {
     Long sessionId = currSessionId.get();
     if (sessionId != null) {
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
@@ -1312,7 +1309,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return null;
   }
 
-  private TSStatus executePlan(PhysicalPlan plan) {
+  protected TSStatus executePlan(PhysicalPlan plan) {
     boolean execRet;
     try {
       execRet = executeNonQuery(plan);
@@ -1328,5 +1325,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private long generateQueryId(boolean isDataQuery) {
     return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
+  }
+
+  protected List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
+      throws MetadataException {
+    return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+  }
+
+  protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation)
+      throws MetadataException {
+    return SchemaUtils.getSeriesTypesByString(paths, aggregation);
   }
 }

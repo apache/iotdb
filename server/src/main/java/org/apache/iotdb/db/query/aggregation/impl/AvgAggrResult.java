@@ -45,6 +45,11 @@ public class AvgAggrResult extends AggregateResult {
   }
 
   @Override
+  protected boolean hasResult() {
+    return cnt > 0;
+  }
+
+  @Override
   public Double getResult() {
     if (cnt > 0) {
       setDoubleValue(avg);
@@ -120,6 +125,10 @@ public class AvgAggrResult extends AggregateResult {
   @Override
   public void merge(AggregateResult another) {
     AvgAggrResult anotherAvg = (AvgAggrResult) another;
+    if (anotherAvg.cnt == 0) {
+      // avoid two empty results producing an NaN
+      return;
+    }
     avg = avg * ((double) cnt / (cnt + anotherAvg.cnt)) +
         anotherAvg.avg * ((double) anotherAvg.cnt / (cnt + anotherAvg.cnt));
     cnt += anotherAvg.cnt;

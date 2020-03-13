@@ -713,7 +713,7 @@ public class MManager {
   /**
    * Get node by path
    */
-  MNode getNodeByPath(String path) throws MetadataException {
+  public MNode getNodeByPath(String path) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getNodeByPath(path);
