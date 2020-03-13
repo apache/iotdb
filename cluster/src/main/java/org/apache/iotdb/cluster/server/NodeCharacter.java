@@ -19,10 +19,10 @@
 package org.apache.iotdb.cluster.server;
 
 public enum NodeCharacter {
-  // the leader in this quorum is unknown
+  // the leader in this group is unknown
   ELECTOR,
-  // this node has known the leader in the quorum
+  // this node has known the leader in the group
   FOLLOWER,
-  // this node is the leader in the quorum
+  // this node is the leader in the group
   LEADER
 }

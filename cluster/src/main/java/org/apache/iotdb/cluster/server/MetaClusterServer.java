@@ -44,15 +44,16 @@ import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
 
 /**
- * MetaCluster manages the whole cluster metadata, such as what nodes are in the cluster and
- * the data partition. Each node has one metaClusterServer instance,
- * the single-node IoTDB instance is startup at the same time.
+ * MetaCluster manages the whole cluster's metadata, such as what nodes are in the cluster and
+ * the data partition. Each node has one MetaClusterServer instance,
+ * the single-node IoTDB instance is started-up at the same time.
  */
 public class MetaClusterServer extends RaftServer implements TSMetaService.AsyncIface {
 
   // each node only contains one MetaGroupMember
   private MetaGroupMember member;
   private IoTDB ioTDB;
+  // to register the ClusterMonitor that helps monitoring the cluster
   private RegisterManager registerManager = new RegisterManager();
 
   public MetaClusterServer() throws QueryProcessException {
@@ -62,6 +63,12 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     //  #replication
   }
 
+  /**
+   * Besides the standard RaftServer start-up, the IoTDB instance, a MetaGroupMember and the
+   * ClusterMonitor are also started.
+   * @throws TTransportException
+   * @throws StartupException
+   */
   @Override
   public void start() throws TTransportException, StartupException {
     super.start();
@@ -71,6 +78,9 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     registerManager.register(ClusterMonitor.INSTANCE);
   }
 
+  /**
+   * Also stops the IoTDB instance, the MetaGroupMember and the ClusterMonitor.
+   */
   @Override
   public void stop() {
     super.stop();
@@ -80,14 +90,26 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     registerManager.deregisterAll();
   }
 
+  /**
+   * Build a initial cluster with other nodes on the seed list.
+   */
   public void buildCluster() {
     member.buildCluster();
   }
 
+  /**
+   * Pick up a node from the seed list and send a join request to it.
+   * @return whether the node has joined the cluster.
+   */
   public boolean joinCluster() {
     return member.joinCluster();
   }
 
+  /**
+   * MetaClusterServer uses the meta port to create the socket.
+   * @return
+   * @throws TTransportException
+   */
   @Override
   TNonblockingServerSocket getServerSocket() throws TTransportException {
     return  new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
@@ -106,8 +128,12 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
 
   @Override
   AsyncProcessor getProcessor() {
+    // this one is from TSMetaIService
     return new AsyncProcessor(this);
   }
+
+  // Request forwarding. There is only one MetaGroupMember each node, so all requests will be
+  // directly sent to that member. See the methods in MetaGroupMember for details
 
   @Override
   public void addNode(Node node, AsyncMethodCallback resultHandler) {

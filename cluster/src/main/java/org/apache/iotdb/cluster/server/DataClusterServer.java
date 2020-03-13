@@ -72,6 +72,12 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     this.dataMemberFactory = dataMemberFactory;
   }
 
+
+  /**
+   * Add a DataGroupMember into this server, if a member with the same header exists, the old
+   * member will be stopped and replaced by the new one.
+   * @param dataGroupMember
+   */
   public void addDataGroupMember(DataGroupMember dataGroupMember) {
     DataGroupMember removedMember = headerGroupMap.remove(dataGroupMember.getHeader());
     if (removedMember != null) {
@@ -90,6 +96,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    */
   public DataGroupMember getDataMember(Node header, AsyncMethodCallback resultHandler,
       Object request) {
+    // if the resultHandler is not null, then the request is a external one and must be with a
+    // header
     if (header == null) {
       if (resultHandler != null) {
         resultHandler.onError(new NoHeaderNodeException());
@@ -120,12 +128,17 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     }
   }
 
+  /**
+   *
+   * @param header
+   * @return A DataGroupMember representing this node in the data group of the header.
+   * @throws NotInSameGroupException If this node is not in the group of the header.
+   * @throws TTransportException
+   */
   private DataGroupMember createNewMember(Node header)
       throws NotInSameGroupException, TTransportException {
     DataGroupMember member;
     synchronized (partitionTable) {
-      // it may be that the header and this node are in the same group, but it is the first time
-      // the header contacts this node
       PartitionGroup partitionGroup = partitionTable.getHeaderGroup(header);
       if (partitionGroup.contains(thisNode)) {
         // the two nodes are in the same group, create a new data member
@@ -144,6 +157,9 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     }
     return member;
   }
+
+  // Forward requests. Find the DataGroupMember that is in the group of the header of the
+  // request, and forward the request to it. See methods in DataGroupMember for details.
 
   @Override
   public void sendHeartBeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
@@ -284,6 +300,50 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
+  public void pullTimeSeriesSchema(PullSchemaRequest request,
+      AsyncMethodCallback<PullSchemaResp> resultHandler) {
+    Node header = request.getHeader();
+    DataGroupMember member = getDataMember(header, resultHandler, request);
+    if (member != null) {
+      member.pullTimeSeriesSchema(request, resultHandler);
+    }
+  }
+
+  @Override
+  public void getAllDevices(Node header, String path,
+      AsyncMethodCallback<Set<String>> resultHandler) {
+    DataGroupMember dataMember = getDataMember(header, resultHandler, "Get all devices");
+    dataMember.getAllDevices(header, path, resultHandler);
+  }
+
+  @Override
+  public void getNodeList(Node header, String path, int nodeLevel,
+      AsyncMethodCallback<List<String>> resultHandler) {
+    DataGroupMember dataMember = getDataMember(header, resultHandler, "Get node list");
+    dataMember.getNodeList(header, path, nodeLevel, resultHandler);
+  }
+
+  @Override
+  public void getAggrResult(GetAggrResultRequest request,
+      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+    DataGroupMember dataMember = getDataMember(request.getHeader(), resultHandler, request);
+    dataMember.getAggrResult(request, resultHandler);
+  }
+
+  @Override
+  public void getGroupByExecutor(GroupByRequest request, AsyncMethodCallback<Long> resultHandler) {
+    DataGroupMember dataMember = getDataMember(request.getHeader(), resultHandler, request);
+    dataMember.getGroupByExecutor(request, resultHandler);
+  }
+
+  @Override
+  public void getGroupByResult(Node header, long executorId, long startTime, long endTime,
+      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+    DataGroupMember dataMember = getDataMember(header, resultHandler, "Fetch group by");
+    dataMember.getGroupByResult(header, executorId, startTime, endTime, resultHandler);
+  }
+
+  @Override
   AsyncProcessor getProcessor() {
     return new AsyncProcessor(this);
   }
@@ -304,12 +364,18 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     return "DataServerThread-";
   }
 
+  /**
+   * Try adding the node into the group of each DataGroupMember, and if the DataGroupMember no
+   * longer stays in that group, also remove and stop it.
+   * @param node
+   */
   public void addNode(Node node) {
     Iterator<Entry<Node, DataGroupMember>> entryIterator = headerGroupMap.entrySet().iterator();
     synchronized (headerGroupMap) {
       while (entryIterator.hasNext()) {
         Entry<Node, DataGroupMember> entry = entryIterator.next();
         DataGroupMember dataGroupMember = entry.getValue();
+        // the member may be extruded from the group, remove and stop it if so
         boolean shouldLeave = dataGroupMember.addNode(node);
         if (shouldLeave) {
           logger.info("This node does not belong to {} any more", dataGroupMember.getAllNodes());
@@ -320,6 +386,16 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     }
   }
 
+  /**
+   * Try removing a node from the groups of each DataGroupMember.
+   * If the node is the header of some group, set the member to read only so that it can still
+   * provide data for other nodes that has not yet pulled its data.
+   * If the node is the local node, remove all members whose group is not headed by this node.
+   * Otherwise, just change the node list of the member and pull new data.
+   * And create a new DataGroupMember if this node should join a new group because of this removal.
+   * @param node
+   * @param removalResult cluster changes due to the node removal
+   */
   public void removeNode(Node node, NodeRemovalResult removalResult) {
     Iterator<Entry<Node, DataGroupMember>> entryIterator = headerGroupMap.entrySet().iterator();
     synchronized (headerGroupMap) {
@@ -357,65 +433,29 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     }
   }
 
-  @Override
-  public void pullTimeSeriesSchema(PullSchemaRequest request,
-      AsyncMethodCallback<PullSchemaResp> resultHandler) {
-    Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header, resultHandler, request);
-    if (member != null) {
-      member.pullTimeSeriesSchema(request, resultHandler);
-    }
-  }
-
   public void setPartitionTable(PartitionTable partitionTable) {
     this.partitionTable = partitionTable;
   }
 
+  /**
+   * When the node joins a cluster, it also creates a new data group and a corresponding member
+   * which has no data. This is to make that member pull data from other nodes.
+   */
   public void pullSnapshots() {
     List<Integer> slots = partitionTable.getNodeSlots(thisNode);
     DataGroupMember dataGroupMember = headerGroupMap.get(thisNode);
     dataGroupMember.pullNodeAdditionSnapshots(slots, thisNode);
   }
 
+  /**
+   *
+   * @return The reports of every DataGroupMember in this node.
+   */
   public List<DataMemberReport> genMemberReports() {
     List<DataMemberReport> dataMemberReports = new ArrayList<>();
     for (DataGroupMember value : headerGroupMap.values()) {
       dataMemberReports.add(value.genReport());
     }
     return dataMemberReports;
-  }
-
-  @Override
-  public void getAllDevices(Node header, String path,
-      AsyncMethodCallback<Set<String>> resultHandler) {
-    DataGroupMember dataMember = getDataMember(header, resultHandler, "Get all devices");
-    dataMember.getAllDevices(header, path, resultHandler);
-  }
-
-  @Override
-  public void getNodeList(Node header, String path, int nodeLevel,
-      AsyncMethodCallback<List<String>> resultHandler) {
-    DataGroupMember dataMember = getDataMember(header, resultHandler, "Get node list");
-    dataMember.getNodeList(header, path, nodeLevel, resultHandler);
-  }
-
-  @Override
-  public void getAggrResult(GetAggrResultRequest request,
-      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
-    DataGroupMember dataMember = getDataMember(request.getHeader(), resultHandler, request);
-    dataMember.getAggrResult(request, resultHandler);
-  }
-
-  @Override
-  public void getGroupByExecutor(GroupByRequest request, AsyncMethodCallback<Long> resultHandler) {
-    DataGroupMember dataMember = getDataMember(request.getHeader(), resultHandler, request);
-    dataMember.getGroupByExecutor(request, resultHandler);
-  }
-
-  @Override
-  public void getGroupByResult(Node header, long executorId, long startTime, long endTime,
-      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
-    DataGroupMember dataMember = getDataMember(header, resultHandler, "Fetch group by");
-    dataMember.getGroupByResult(header, executorId, startTime, endTime, resultHandler);
   }
 }

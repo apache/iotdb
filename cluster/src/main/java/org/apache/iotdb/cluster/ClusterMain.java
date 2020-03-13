@@ -47,7 +47,8 @@ public class ClusterMain {
   private static final String MODE_START = "-s";
   // join an established cluster
   private static final String MODE_ADD = "-a";
-  // join an established cluster
+  // send a request to remove a node, more arguments: {ip-of-removed-node}
+  // {metaport-of-removed-node}
   private static final String MODE_REMOVE = "-r";
 
   public static MetaClusterServer metaServer;
