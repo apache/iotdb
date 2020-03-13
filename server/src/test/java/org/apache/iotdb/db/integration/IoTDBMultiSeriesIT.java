@@ -374,20 +374,6 @@ public class IoTDBMultiSeriesIT {
   }
 
   @Test
-  public void selectUnknownTimeSeries() throws ClassNotFoundException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute("select s10 from root.vehicle.d0");
-      fail("not throw exception when select unknown time series");
-    } catch (SQLException e) {
-      assertEquals("Statement format is not right: Path: \"root.vehicle.d0.s10\" doesn't correspond to any known time series", e.getMessage());
-    }
-  }
-
-  @Test
   public void selectWhereUnknownTimeSeries() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
 
