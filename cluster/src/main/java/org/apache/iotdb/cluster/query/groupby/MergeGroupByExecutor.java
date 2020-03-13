@@ -12,14 +12,13 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MergeGroupByExecutor implements GroupByExecutor {
   private static final Logger logger = LoggerFactory.getLogger(MergeGroupByExecutor.class);
 
-  private List<Pair<AggregateResult, Integer>> results = new ArrayList<>();
+  private List<AggregateResult> results = new ArrayList<>();
   private List<Integer> aggregationTypes = new ArrayList<>();
   private Path path;
   private TSDataType dataType;
@@ -39,30 +38,29 @@ public class MergeGroupByExecutor implements GroupByExecutor {
   }
 
   @Override
-  public void addAggregateResult(AggregateResult aggrResult, int index) {
-    results.add(new Pair<>(aggrResult, index));
+  public void addAggregateResult(AggregateResult aggrResult) {
+    results.add(aggrResult);
     aggregationTypes.add(aggrResult.getAggregationType().ordinal());
   }
 
-  @Override
-  public void resetAggregateResults() {
-    for (Pair<AggregateResult, Integer> result : results) {
-      result.left.reset();
+  private void resetAggregateResults() {
+    for (AggregateResult result : results) {
+      result.reset();
     }
   }
 
   @Override
-  public List<Pair<AggregateResult, Integer>> calcResult(long curStartTime, long curEndTime)
+  public List<AggregateResult> calcResult(long curStartTime, long curEndTime)
       throws QueryProcessException, IOException {
     if (groupByExecutors == null) {
       initExecutors();
     }
+    resetAggregateResults();
     for (GroupByExecutor groupByExecutor : groupByExecutors) {
-      groupByExecutor.resetAggregateResults();
-      List<Pair<AggregateResult, Integer>> pairs = groupByExecutor
+      List<AggregateResult> subResults = groupByExecutor
           .calcResult(curStartTime, curEndTime);
-      for (int i = 0; i < pairs.size(); i++) {
-        results.get(i).left.merge(pairs.get(i).left);
+      for (int i = 0; i < subResults.size(); i++) {
+        results.get(i).merge(subResults.get(i));
       }
     }
     logger.debug("Aggregation result of {}@[{}, {}] is {}", path, curStartTime, curEndTime, results);
