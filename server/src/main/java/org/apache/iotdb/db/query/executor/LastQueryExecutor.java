@@ -111,7 +111,7 @@ public class LastQueryExecutor {
     // Retrieve last value from MNode
     MNode node = null;
     try {
-      node = MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(seriesPath.toString());
+      node = MManager.getInstance().getNodeByPath(seriesPath.toString());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
