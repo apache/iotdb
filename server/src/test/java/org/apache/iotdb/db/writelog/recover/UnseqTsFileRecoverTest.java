@@ -25,10 +25,14 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.reader.chunk.ChunkDataIterator;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -81,7 +85,8 @@ public class UnseqTsFileRecoverTest {
   };
 
   @Before
-  public void setup() throws IOException, WriteProcessException {
+  public void setup() throws IOException, WriteProcessException, MetadataException {
+    EnvironmentUtils.envSetUp();
     FlushSubTaskPoolManager.getInstance().start();
     tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
@@ -89,28 +94,36 @@ public class UnseqTsFileRecoverTest {
     schema = new Schema();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
-        schema.registerTimeseries(new Path(("device" + i), ("sensor" + j)),
-            new MeasurementSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN));
+        Path path = new Path(("root.sg.device" + i), ("sensor" + j));
+        MeasurementSchema measurementSchema = new MeasurementSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN);
+        schema.registerTimeseries(path, measurementSchema);
+        MManager.getInstance().createTimeseries(path.getFullPath(), measurementSchema);
       }
     }
-    schema.registerTimeseries(new Path(("device99"), ("sensor4")),
+    schema.registerTimeseries(new Path(("root.sg.device99"), ("sensor4")),
         new MeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path(("device99"), ("sensor2")),
+    MManager.getInstance().createTimeseries("root.sg.device99.sensor4",
+        new MeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path(("root.sg.device99"), ("sensor2")),
         new MeasurementSchema("sensor2", TSDataType.INT64, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path(("device99"), ("sensor1")),
+    MManager.getInstance().createTimeseries("root.sg.device99.sensor2",
+        new MeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path(("root.sg.device99"), ("sensor1")),
         new MeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
+    MManager.getInstance().createTimeseries("root.sg.device99.sensor1",
+        new MeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
     writer = new TsFileWriter(tsF, schema);
 
-    TSRecord tsRecord = new TSRecord(100, "device99");
+    TSRecord tsRecord = new TSRecord(100, "root.sg.device99");
     tsRecord.addTuple(DataPoint.getDataPoint(TSDataType.INT64, "sensor4", String.valueOf(0)));
     writer.write(tsRecord);
-    tsRecord = new TSRecord(2, "device99");
+    tsRecord = new TSRecord(2, "root.sg.device99");
     tsRecord.addTuple(DataPoint.getDataPoint(TSDataType.INT64, "sensor1", String.valueOf(0)));
     writer.write(tsRecord);
 
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
-        tsRecord = new TSRecord(i, "device" + j);
+        tsRecord = new TSRecord(i, "root.sg.device" + j);
         for (int k = 0; k < 10; k++) {
           tsRecord.addTuple(DataPoint.getDataPoint(TSDataType.INT64, "sensor" + k,
               String.valueOf(k)));
@@ -131,14 +144,14 @@ public class UnseqTsFileRecoverTest {
           measurements[k] = "sensor" + k;
           values[k] = String.valueOf(k + 10);
         }
-        InsertPlan insertPlan = new InsertPlan("device" + j, i, measurements, values);
+        InsertPlan insertPlan = new InsertPlan("root.sg.device" + j, i, measurements, values);
         node.write(insertPlan);
       }
       node.notifyStartFlush();
     }
-    InsertPlan insertPlan = new InsertPlan("device99", 1, "sensor4", "4");
+    InsertPlan insertPlan = new InsertPlan("root.sg.device99", 1, "sensor4", "4");
     node.write(insertPlan);
-    insertPlan = new InsertPlan("device99", 300, "sensor2", "2");
+    insertPlan = new InsertPlan("root.sg.device99", 300, "sensor2", "2");
     node.write(insertPlan);
     node.close();
 
@@ -146,11 +159,12 @@ public class UnseqTsFileRecoverTest {
   }
 
   @After
-  public void tearDown() throws IOException {
+  public void tearDown() throws IOException, StorageEngineException {
     FileUtils.deleteDirectory(tsF.getParentFile());
     resource.close();
     node.delete();
     FlushSubTaskPoolManager.getInstance().stop();
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test
@@ -160,18 +174,18 @@ public class UnseqTsFileRecoverTest {
     ActiveTimeSeriesCounter.getInstance().init(resource.getFile().getParentFile().getParentFile().getName());
     performer.recover();
 
-    assertEquals(1, (long) resource.getStartTimeMap().get("device99"));
-    assertEquals(300, (long) resource.getEndTimeMap().get("device99"));
+    assertEquals(1, (long) resource.getStartTimeMap().get("root.sg.device99"));
+    assertEquals(300, (long) resource.getEndTimeMap().get("root.sg.device99"));
     for (int i = 0; i < 10; i++) {
-      assertEquals(0, (long) resource.getStartTimeMap().get("device" + i));
-      assertEquals(9, (long) resource.getEndTimeMap().get("device" + i));
+      assertEquals(0, (long) resource.getStartTimeMap().get("root.sg.device" + i));
+      assertEquals(9, (long) resource.getEndTimeMap().get("root.sg.device" + i));
     }
 
     TsFileSequenceReader fileReader = new TsFileSequenceReader(tsF.getPath(), true);
     IMetadataQuerier metadataQuerier = new MetadataQuerierByFileImpl(fileReader);
     IChunkLoader chunkLoader = new CachedChunkLoaderImpl(fileReader);
 
-    Path path = new Path("device1", "sensor1");
+    Path path = new Path("root.sg.device1", "sensor1");
 
     PriorityMergeReader unSeqMergeReader = new PriorityMergeReader();
     int priorityValue = 1;
