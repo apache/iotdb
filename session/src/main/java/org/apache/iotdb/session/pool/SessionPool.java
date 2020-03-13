@@ -76,17 +76,21 @@ public class SessionPool {
 
   private int fetchSize;
 
+  private long timeout = 60*1000; //ms
+  private static int RETRY = 3;
+
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE);
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000);
   }
 
-  public SessionPool(String ip, int port, String user, String password, int maxSize, int fetchSize) {
+  public SessionPool(String ip, int port, String user, String password, int maxSize, int fetchSize, long timeout) {
     this.maxSize = maxSize;
     this.ip = ip;
     this.port = port;
     this.user = user;
     this.password = password;
     this.fetchSize = fetchSize;
+    this.timeout = timeout;
   }
 
   //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
@@ -112,6 +116,9 @@ public class SessionPool {
                 logger.warn(
                     "the SessionPool has wait for {} seconds to get a new connection: {}:{} with {}, {}",
                     (System.currentTimeMillis() - start) / 1000, ip, port, user, password);
+                if (System.currentTimeMillis() - start > timeout) {
+                  throw new IoTDBSessionException(String.format("timeout to get a connection from %s:%s", ip, port));
+                }
               }
             } catch (InterruptedException e) {
               logger.error("the SessionPool is damaged", e);
@@ -218,7 +225,7 @@ public class SessionPool {
    */
   public TSExecuteBatchStatementResp insertSortedBatch(RowBatch rowBatch)
       throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         TSExecuteBatchStatementResp resp = session.insertSortedBatch(rowBatch);
@@ -235,6 +242,7 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
 
@@ -245,7 +253,7 @@ public class SessionPool {
    * @param rowBatch data batch
    */
   public TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch) throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         TSExecuteBatchStatementResp resp = session.insertBatch(rowBatch);
@@ -262,6 +270,7 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -274,7 +283,7 @@ public class SessionPool {
   public List<TSStatus> insertInBatch(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
       throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         List<TSStatus> resp = session.insertInBatch(deviceIds, times, measurementsList, valuesList);
@@ -291,6 +300,7 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -302,7 +312,7 @@ public class SessionPool {
    */
   public TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         TSStatus resp = session.insert(deviceId, time, measurements, values);
@@ -319,6 +329,7 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -327,7 +338,7 @@ public class SessionPool {
    */
   public TSExecuteBatchStatementResp testInsertBatch(RowBatch rowBatch)
       throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         TSExecuteBatchStatementResp resp = session.testInsertBatch(rowBatch);
@@ -344,6 +355,7 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -353,7 +365,7 @@ public class SessionPool {
   public List<TSStatus> testInsertInBatch(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
       throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         List<TSStatus> resp = session
@@ -371,6 +383,7 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -379,7 +392,7 @@ public class SessionPool {
    */
   public TSStatus testInsert(String deviceId, long time, List<String> measurements,
       List<String> values) throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         TSStatus resp = session.testInsert(deviceId, time, measurements, values);
@@ -396,6 +409,7 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -404,7 +418,7 @@ public class SessionPool {
    * @param path timeseries to delete, should be a whole path
    */
   public TSStatus deleteTimeseries(String path) throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         TSStatus resp = session.deleteTimeseries(path);
@@ -421,6 +435,7 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -429,7 +444,7 @@ public class SessionPool {
    * @param paths timeseries to delete, should be a whole path
    */
   public TSStatus deleteTimeseries(List<String> paths) throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         TSStatus resp = session.deleteTimeseries(paths);
@@ -446,6 +461,7 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -455,7 +471,7 @@ public class SessionPool {
    * @param time data with time stamp less than or equal to time will be deleted
    */
   public TSStatus deleteData(String path, long time) throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         TSStatus resp = session.deleteData(path, time);
@@ -472,6 +488,7 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -481,7 +498,7 @@ public class SessionPool {
    * @param time data with time stamp less than or equal to time will be deleted
    */
   public TSStatus deleteData(List<String> paths, long time) throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         TSStatus resp = session.deleteData(paths, time);
@@ -498,10 +515,11 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   public TSStatus setStorageGroup(String storageGroupId) throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         TSStatus resp = session.setStorageGroup(storageGroupId);
@@ -518,10 +536,11 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   public TSStatus deleteStorageGroup(String storageGroup) throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         TSStatus resp = session.deleteStorageGroup(storageGroup);
@@ -538,10 +557,11 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   public TSStatus deleteStorageGroups(List<String> storageGroup) throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         TSStatus resp = session.deleteStorageGroups(storageGroup);
@@ -558,11 +578,12 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   public TSStatus createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor) throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         TSStatus resp = session.createTimeseries(path, dataType, encoding, compressor);
@@ -579,10 +600,11 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   public boolean checkTimeseriesExists(String path) throws IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         boolean resp = session.checkTimeseriesExists(path);
@@ -599,6 +621,7 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -611,7 +634,7 @@ public class SessionPool {
    */
   public SessionDataSetWrapper executeQueryStatement(String sql)
       throws IoTDBRPCException, IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         SessionDataSet resp = session.executeQueryStatement(sql);
@@ -633,6 +656,7 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
   /**
@@ -642,7 +666,7 @@ public class SessionPool {
    */
   public void executeNonQueryStatement(String sql)
       throws IoTDBRPCException, IoTDBSessionException {
-    while (true) {
+    for (int i=0; i< RETRY; i ++){
       Session session = getSession();
       try {
         session.executeNonQueryStatement(sql);
@@ -663,5 +687,6 @@ public class SessionPool {
         }
       }
     }
+    throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 }
