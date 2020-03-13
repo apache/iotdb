@@ -41,6 +41,27 @@ public class SeriesAggregateReader implements IAggregateReader {
   }
 
   @Override
+  public boolean hasNextFile() {
+    return seriesReader.hasNextFile();
+  }
+
+  @Override
+  public boolean canUseCurrentFileStatistics() throws IOException {
+    Statistics fileStatistics = currentFileStatistics();
+    return !seriesReader.isFileOverlapped() && containedByTimeFilter(fileStatistics);
+  }
+
+  @Override
+  public Statistics currentFileStatistics() {
+    return seriesReader.currentFileStatistics();
+  }
+
+  @Override
+  public void skipCurrentFile() {
+    seriesReader.skipCurrentFile();
+  }
+
+  @Override
   public boolean hasNextChunk() throws IOException {
     return seriesReader.hasNextChunk();
   }

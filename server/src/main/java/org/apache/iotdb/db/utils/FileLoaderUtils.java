@@ -66,6 +66,22 @@ public class FileLoaderUtils {
     }
   }
 
+  public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, Path seriesPath, QueryContext context) throws IOException {
+    if (resource.isClosed()) {
+      TsFileSequenceReader reader = FileReaderManager.getInstance().get(resource.getPath(), resource.isClosed());
+      return reader.readDeviceMetadata(seriesPath.getDevice()).get(seriesPath.getMeasurement());
+    } else {
+      List<Modification> pathModifications =
+              context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
+
+      if (!pathModifications.isEmpty()) {
+        return null;
+      }
+      return resource.getTimeSeriesMetadata();
+
+    }
+  }
+
   /**
    * load all ChunkMetadatas belong to the seriesPath and satisfy filter
    */
@@ -103,9 +119,9 @@ public class FileLoaderUtils {
       QueryUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
     }
 
+    TsFileSequenceReader tsFileSequenceReader =
+            FileReaderManager.getInstance().get(resource.getPath(), resource.isClosed());
     for (ChunkMetadata data : chunkMetadataList) {
-      TsFileSequenceReader tsFileSequenceReader =
-          FileReaderManager.getInstance().get(resource.getPath(), resource.isClosed());
       data.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
     }
     List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();

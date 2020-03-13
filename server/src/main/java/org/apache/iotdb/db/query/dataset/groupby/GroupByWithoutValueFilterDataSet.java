@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -47,6 +41,13 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -154,26 +155,43 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         return results;
       }
 
-      //read chunk finally
-      while (reader.hasNextChunk()) {
-        Statistics chunkStatistics = reader.currentChunkStatistics();
-        if (chunkStatistics.getStartTime() >= curEndTime) {
+      // read file finally
+      while (reader.hasNextFile()) {
+        Statistics fileStatistics = reader.currentFileStatistics();
+        if (fileStatistics.getStartTime() >= curEndTime) {
           return results;
         }
-        //calc from chunkMetaData
-        if (reader.canUseCurrentChunkStatistics() && timeRange.contains(
-            new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
-          calcFromStatistics(chunkStatistics);
-          reader.skipCurrentChunk();
-          if(isEndCalc()){
+        if (reader.canUseCurrentFileStatistics() && timeRange.contains(
+                new TimeRange(fileStatistics.getStartTime(), fileStatistics.getEndTime()))) {
+          calcFromStatistics(fileStatistics);
+          reader.skipCurrentFile();
+          if (isEndCalc()) {
             return results;
           }
           continue;
         }
-        if (readAndCalcFromPage()) {
-          return results;
+        //read chunk
+        while (reader.hasNextChunk()) {
+          Statistics chunkStatistics = reader.currentChunkStatistics();
+          if (chunkStatistics.getStartTime() >= curEndTime) {
+            return results;
+          }
+          //calc from chunkMetaData
+          if (reader.canUseCurrentChunkStatistics() && timeRange.contains(
+                  new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
+            calcFromStatistics(chunkStatistics);
+            reader.skipCurrentChunk();
+            if(isEndCalc()){
+              return results;
+            }
+            continue;
+          }
+          if (readAndCalcFromPage()) {
+            return results;
+          }
         }
       }
+
       return results;
     }
 

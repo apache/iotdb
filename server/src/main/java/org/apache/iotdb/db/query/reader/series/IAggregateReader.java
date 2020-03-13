@@ -25,6 +25,14 @@ import java.io.IOException;
 
 public interface IAggregateReader {
 
+  boolean hasNextFile();
+
+  boolean canUseCurrentFileStatistics() throws IOException;
+
+  Statistics currentFileStatistics();
+
+  void skipCurrentFile();
+
   boolean hasNextChunk() throws IOException;
 
   boolean canUseCurrentChunkStatistics() throws IOException;

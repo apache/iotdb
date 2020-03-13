@@ -18,20 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -40,11 +26,23 @@ import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileResource {
 
@@ -97,14 +95,24 @@ public class TsFileResource {
    */
   private List<ReadOnlyMemChunk> readOnlyMemChunk;
 
+  /**
+   * used for unsealed file to get TimeseriesMetadata
+   */
+  private TimeseriesMetadata timeSeriesMetadata;
+
   private ReentrantReadWriteLock writeQueryLock = new ReentrantReadWriteLock();
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
+  /**
+   * set to false if we failed to get TimeSeriesMetadata
+   */
+  private boolean canGetTimeSeriesMetadata = true;
+
   public TsFileResource() {
   }
 
-  public TsFileResource(TsFileResource other) {
+  public TsFileResource(TsFileResource other) throws IOException {
     this.file = other.file;
     this.startTimeMap = other.startTimeMap;
     this.endTimeMap = other.endTimeMap;
@@ -115,6 +123,7 @@ public class TsFileResource {
     this.isMerging = other.isMerging;
     this.chunkMetadataList = other.chunkMetadataList;
     this.readOnlyMemChunk = other.readOnlyMemChunk;
+    generateTimeSeriesMetadata();
     this.writeQueryLock = other.writeQueryLock;
     this.fsFactory = other.fsFactory;
     this.historicalVersions = other.historicalVersions;
@@ -146,12 +155,44 @@ public class TsFileResource {
       Map<String, Long> startTimeMap,
       Map<String, Long> endTimeMap,
       List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<ChunkMetadata> chunkMetadataList) {
+      List<ChunkMetadata> chunkMetadataList) throws IOException {
     this.file = file;
     this.startTimeMap = startTimeMap;
     this.endTimeMap = endTimeMap;
     this.chunkMetadataList = chunkMetadataList;
     this.readOnlyMemChunk = readOnlyMemChunk;
+    generateTimeSeriesMetadata();
+  }
+
+  private void generateTimeSeriesMetadata() throws IOException {
+    if (chunkMetadataList.isEmpty() && readOnlyMemChunk.isEmpty()) {
+      timeSeriesMetadata = null;
+    }
+    timeSeriesMetadata = new TimeseriesMetadata();
+    timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
+    timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
+
+    if (!chunkMetadataList.isEmpty()) {
+      timeSeriesMetadata.setMeasurementId(chunkMetadataList.get(0).getMeasurementUid());
+      TSDataType dataType = chunkMetadataList.get(0).getDataType();
+      timeSeriesMetadata.setTSDataType(dataType);
+    } else if (!readOnlyMemChunk.isEmpty()) {
+      timeSeriesMetadata.setMeasurementId(readOnlyMemChunk.get(0).getMeasurementUid());
+      TSDataType dataType = readOnlyMemChunk.get(0).getDataType();
+      timeSeriesMetadata.setTSDataType(dataType);
+    }
+    Statistics seriesStatistics = Statistics.getStatsByType(timeSeriesMetadata.getTSDataType());
+    // flush chunkMetadataList one by one
+    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+      seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+    }
+
+    for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
+      if (!memChunk.isEmpty()) {
+        seriesStatistics.mergeStatistics(memChunk.getChunkMetaData().getStatistics());
+      }
+    }
+    timeSeriesMetadata.setStatistics(seriesStatistics);
   }
 
   public void serialize() throws IOException {
@@ -427,5 +468,17 @@ public class TsFileResource {
 
   public void setProcessor(TsFileProcessor processor) {
     this.processor = processor;
+  }
+
+  public boolean canGetTimeSeriesMetadata() {
+    return canGetTimeSeriesMetadata;
+  }
+
+  public void setCanGetTimeSeriesMetadata(boolean canGetTimeSeriesMetadata) {
+    this.canGetTimeSeriesMetadata = canGetTimeSeriesMetadata;
+  }
+
+  public TimeseriesMetadata getTimeSeriesMetadata() {
+    return timeSeriesMetadata;
   }
 }
