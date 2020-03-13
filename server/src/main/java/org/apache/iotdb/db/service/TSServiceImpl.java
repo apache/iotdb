@@ -322,8 +322,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
-          List<TSDataType> dataTypes = SchemaUtils
-              .getSeriesTypesByString(Collections.singletonList(req.getColumnPath()), null);
+          List<TSDataType> dataTypes =
+              getSeriesTypesByString(Collections.singletonList(req.getColumnPath()), null);
           resp.setDataType(dataTypes.get(0).toString());
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
@@ -751,7 +751,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         for (Path p : paths) {
           respColumns.add(p.getFullPath());
         }
-        seriesTypes = SchemaUtils.getSeriesTypesByString(respColumns, null);
+        seriesTypes = getSeriesTypesByString(respColumns, null);
         break;
       case AGGREGATION:
       case GROUPBY:
@@ -764,7 +764,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         for (int i = 0; i < paths.size(); i++) {
           respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
         }
-        seriesTypes = SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+        seriesTypes = getSeriesTypesByPath(paths, aggregations);
         break;
       default:
         throw new TException("unsupported query type: " + plan.getOperatorType());
@@ -1325,5 +1325,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private long generateQueryId(boolean isDataQuery) {
     return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
+  }
+
+  protected List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
+      throws MetadataException {
+    return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+  }
+
+  protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation)
+      throws MetadataException {
+    return SchemaUtils.getSeriesTypesByString(paths, aggregation);
   }
 }
