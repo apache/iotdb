@@ -80,15 +80,16 @@ public class TimeGeneratorReadEmptyTest {
     QueryExpression queryExpression = QueryExpression.create().addSelectedPath(new Path("d1.s1"))
         .addSelectedPath(new Path("d1.s2")).setExpression(finalExpression);
 
-    TsFileSequenceReader fileReader = new TsFileSequenceReader(tsfilePath);
-    ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(fileReader);
-    QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
-    int i = 0;
-    while (dataSet.hasNext()) {
-      dataSet.next();
-      i++;
+    try (TsFileSequenceReader fileReader = new TsFileSequenceReader(tsfilePath)) {
+      ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(fileReader);
+      QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+      int i = 0;
+      while (dataSet.hasNext()) {
+        dataSet.next();
+        i++;
+      }
+      Assert.assertEquals(0, i);
     }
-    Assert.assertEquals(0, i);
   }
 
 
