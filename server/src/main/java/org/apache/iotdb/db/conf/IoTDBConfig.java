@@ -55,7 +55,7 @@ public class IoTDBConfig {
   /**
    * whether to use thrift compression.
    */
-  private boolean rpcThriftCompressionEnable = false;
+  private boolean rpcThriftCompressionEnable = true;
 
   /**
    * Port which the JDBC server listens to.

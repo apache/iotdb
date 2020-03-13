@@ -35,6 +35,7 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.server.TThreadPoolServer.Args;
+import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -217,6 +218,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
             ThreadName.JDBC_CLIENT.getName());
         poolArgs.processor(processor);
         poolArgs.protocolFactory(protocolFactory);
+        poolArgs.transportFactory(new TFastFramedTransport.Factory());
         poolServer = new TThreadPoolServer(poolArgs);
         poolServer.setServerEventHandler(new JDBCServiceEventHandler(impl, threadStartLatch));
         poolServer.serve();
