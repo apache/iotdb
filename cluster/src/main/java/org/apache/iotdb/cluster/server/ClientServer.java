@@ -167,20 +167,14 @@ public class ClientServer extends TSServiceImpl {
     }
   }
 
-  protected List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations) throws QueryProcessException {
-    try {
-      return metaGroupMember.getSeriesTypesByPath(paths, aggregations);
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
+  protected List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
+      throws MetadataException {
+    return metaGroupMember.getSeriesTypesByPath(paths, aggregations);
   }
 
-  protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation) throws QueryProcessException {
-    try {
-      return metaGroupMember.getSeriesTypesByString(paths, aggregation);
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
+  protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation)
+      throws MetadataException {
+    return metaGroupMember.getSeriesTypesByString(paths, aggregation);
   }
 
   @Override
