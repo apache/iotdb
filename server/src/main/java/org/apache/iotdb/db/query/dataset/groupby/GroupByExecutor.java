@@ -23,12 +23,20 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+
+/**
+ * Each executor calculates results of all aggregations on this series
+ */
 public interface GroupByExecutor {
-  void addAggregateResult(AggregateResult aggrResult, int index);
 
-  void resetAggregateResults();
+  /**
+   * add reusable result cache in executor
+   */
+  void addAggregateResult(AggregateResult aggrResult);
 
-  List<Pair<AggregateResult, Integer>> calcResult(long curStartTime, long curEndTime) throws IOException, QueryProcessException;
+  /**
+   * calculate result in [curStartTime, curEndTime)
+   */
+  List<AggregateResult> calcResult(long curStartTime, long curEndTime) throws IOException, QueryProcessException;
 }

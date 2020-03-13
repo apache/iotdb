@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.dataset.groupby;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +38,6 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +47,20 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       .getLogger(GroupByWithoutValueFilterDataSet.class);
 
   private Map<Path, GroupByExecutor> pathExecutors = new HashMap<>();
+
+
+  /**
+   * path -> result index for each aggregation
+   *
+   * e.g.,
+   *
+   * deduplicated paths : s1, s2, s1
+   * deduplicated aggregations : count, count, sum
+   *
+   * s1 -> 0, 2
+   * s2 -> 1
+   */
+  private Map<Path, List<Integer>> resultIndexes = new HashMap<>();
 
   public GroupByWithoutValueFilterDataSet() {
   }
@@ -70,17 +84,19 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
 
+    // init resultIndexes, group result indexes by path
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
       if (!pathExecutors.containsKey(path)) {
         //init GroupByExecutor
         pathExecutors.put(path,
-           getGroupByExecutor(path, dataTypes.get(i), context, timeFilter, null));
+            getGroupByExecutor(path, dataTypes.get(i), context, timeFilter, null));
+        resultIndexes.put(path, new ArrayList<>());
       }
+      resultIndexes.get(path).add(i);
       AggregateResult aggrResult = AggregateResultFactory
-          .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(i),
-              dataTypes.get(i));
-      pathExecutors.get(path).addAggregateResult(aggrResult, i);
+          .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(i), dataTypes.get(i));
+      pathExecutors.get(path).addAggregateResult(aggrResult);
     }
   }
 
@@ -96,12 +112,12 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     AggregateResult[] fields = new AggregateResult[paths.size()];
 
     try {
-      for (Entry<Path, GroupByExecutor> pathGroupByExecutorEntry : pathExecutors.entrySet()) {
-        GroupByExecutor executor = pathGroupByExecutorEntry.getValue();
-        executor.resetAggregateResults();
-        List<Pair<AggregateResult, Integer>> aggregations = executor.calcResult(curStartTime, curEndTime);
-        for (Pair<AggregateResult, Integer> aggregation : aggregations) {
-          fields[aggregation.right] = aggregation.left;
+      for (Entry<Path, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
+        GroupByExecutor executor = pathToExecutorEntry.getValue();
+        List<AggregateResult> aggregations = executor.calcResult(curStartTime, curEndTime);
+        for (int i = 0; i < aggregations.size(); i++) {
+          int resultIndex = resultIndexes.get(pathToExecutorEntry.getKey()).get(i);
+          fields[resultIndex] = aggregations.get(i);
         }
       }
     } catch (QueryProcessException e) {
