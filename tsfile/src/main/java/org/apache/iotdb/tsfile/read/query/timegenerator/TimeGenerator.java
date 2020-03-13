@@ -77,12 +77,11 @@ public abstract class TimeGenerator {
 
   public Object getValue(Path path, long time) {
     for (LeafNode leafNode : leafCache.get(path)) {
-      if (!leafNode.currentTimeIs(time)) {
-        continue;
+      Object value = leafNode.currentValue(time);
+      if (value != null) {
+        return value;
       }
-      return leafNode.currentValue(time);
     }
-
     return null;
   }
 
