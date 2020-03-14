@@ -79,29 +79,26 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
   }
 
   /**
-   * Select merge candidates from seqFiles and unseqFiles under the given memoryBudget.
-   * This process iteratively adds the next unseqFile from unseqFiles and its overlapping seqFiles
-   * as newly-added candidates and computes their estimated memory cost. If the current cost
-   * pluses the new cost is still under the budget, accept the unseqFile and the seqFiles as
-   * candidates, otherwise go to the next iteration.
-   * The memory cost of a file is calculated in two ways:
-   *    The rough estimation: for a seqFile, the size of its metadata is used for estimation.
-   *    Since in the worst case, the file only contains one timeseries and all its metadata will
-   *    be loaded into memory with at most one actual data chunk (which is negligible) and writing
-   *    the timeseries into a new file generate metadata of the similar size, so the size of all
-   *    seqFiles' metadata (generated when writing new chunks) pluses the largest one (loaded
-   *    when reading a timeseries from the seqFiles) is the total estimation of all seqFiles; for
-   *    an unseqFile, since the merge reader may read all chunks of a series to perform a merge
-   *    read, the whole file may be loaded into memory, so we use the file's length as the
-   *    maximum estimation.
-   *    The tight estimation: based on the rough estimation, we scan the file's metadata to
-   *    count the number of chunks for each series, find the series which have the most
-   *    chunks in the file and use its chunk proportion to refine the rough estimation.
-   * The rough estimation is performed first, if no candidates can be found using rough
+   * Select merge candidates from seqFiles and unseqFiles under the given memoryBudget. This process
+   * iteratively adds the next unseqFile from unseqFiles and its overlapping seqFiles as newly-added
+   * candidates and computes their estimated memory cost. If the current cost pluses the new cost is
+   * still under the budget, accept the unseqFile and the seqFiles as candidates, otherwise go to
+   * the next iteration. The memory cost of a file is calculated in two ways: The rough estimation:
+   * for a seqFile, the size of its metadata is used for estimation. Since in the worst case, the
+   * file only contains one timeseries and all its metadata will be loaded into memory with at most
+   * one actual data chunk (which is negligible) and writing the timeseries into a new file generate
+   * metadata of the similar size, so the size of all seqFiles' metadata (generated when writing new
+   * chunks) pluses the largest one (loaded when reading a timeseries from the seqFiles) is the
+   * total estimation of all seqFiles; for an unseqFile, since the merge reader may read all chunks
+   * of a series to perform a merge read, the whole file may be loaded into memory, so we use the
+   * file's length as the maximum estimation. The tight estimation: based on the rough estimation,
+   * we scan the file's metadata to count the number of chunks for each series, find the series
+   * which have the most chunks in the file and use its chunk proportion to refine the rough
+   * estimation. The rough estimation is performed first, if no candidates can be found using rough
    * estimation, we run the selection again with tight estimation.
-   * @return two lists of TsFileResource, the former is selected seqFiles and the latter is
-   * selected unseqFiles or an empty array if there are no proper candidates by the budget.
-   * @throws MergeException
+   *
+   * @return two lists of TsFileResource, the former is selected seqFiles and the latter is selected
+   * unseqFiles or an empty array if there are no proper candidates by the budget.
    */
   @Override
   public List[] select() throws MergeException {
@@ -154,7 +151,8 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
       // select next unseq files
       TsFileResource unseqFile = resource.getUnseqFiles().get(unseqIndex);
 
-      if (seqSelectedNum != resource.getSeqFiles().size() && !UpgradeUtils.isNeedUpgrade(unseqFile)) {
+      if (seqSelectedNum != resource.getSeqFiles().size() && !UpgradeUtils
+          .isNeedUpgrade(unseqFile)) {
         selectOverlappedSeqFiles(unseqFile);
       }
 

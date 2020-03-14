@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 /**
@@ -116,4 +117,6 @@ public interface IChunkWriter {
   int getNumOfPages();
 
   TSDataType getDataType();
+
+  MeasurementSchema getMeasurementSchema();
 }

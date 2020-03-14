@@ -172,8 +172,8 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   /**
-   * check occupied memory size, if it exceeds the PageSize threshold, construct a page and 
-   * put it to pageBuffer
+   * check occupied memory size, if it exceeds the PageSize threshold, construct a page and put it
+   * to pageBuffer
    */
   private void checkPageSizeAndMayOpenANewPage() {
     if (pageWriter.getPointNumber() == maxNumberOfPointsInPage) {
@@ -235,7 +235,8 @@ public class ChunkWriterImpl implements IChunkWriter {
       return 0;
     }
     // return the serialized size of the chunk header + all pages
-    return ChunkHeader.getSerializedSize(measurementSchema.getMeasurementId()) + (long) pageBuffer.size();
+    return ChunkHeader.getSerializedSize(measurementSchema.getMeasurementId()) + (long) pageBuffer
+        .size();
   }
 
   @Override
@@ -255,6 +256,11 @@ public class ChunkWriterImpl implements IChunkWriter {
     return measurementSchema.getType();
   }
 
+  @Override
+  public MeasurementSchema getMeasurementSchema() {
+    return measurementSchema;
+  }
+
   /**
    * write the page header and data into the PageWriter's output stream.
    *
@@ -266,10 +272,12 @@ public class ChunkWriterImpl implements IChunkWriter {
 
     // write the page header to pageBuffer
     try {
-      logger.debug("start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
+      logger.debug("start to flush a page header into buffer, buffer position {} ",
+          pageBuffer.size());
       header.serializeTo(pageBuffer);
-      logger.debug("finish to flush a page header {} of {} into buffer, buffer position {} ", header,
-          measurementSchema.getMeasurementId(), pageBuffer.size());
+      logger
+          .debug("finish to flush a page header {} of {} into buffer, buffer position {} ", header,
+              measurementSchema.getMeasurementId(), pageBuffer.size());
 
       statistics.mergeStatistics(header.getStatistics());
 
@@ -289,7 +297,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   /**
    * write the page to specified IOWriter.
    *
-   * @param writer     the specified IOWriter
+   * @param writer the specified IOWriter
    * @param statistics the chunk statistics
    * @throws IOException exception in IO
    */

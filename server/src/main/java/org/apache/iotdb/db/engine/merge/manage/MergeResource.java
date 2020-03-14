@@ -49,8 +49,8 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 /**
- * MergeResource manages files and caches of readers, writers, MeasurementSchemas and
- * modifications to avoid unnecessary object creations and file openings.
+ * MergeResource manages files and caches of readers, writers, MeasurementSchemas and modifications
+ * to avoid unnecessary object creations and file openings.
  */
 public class MergeResource {
 
@@ -60,8 +60,7 @@ public class MergeResource {
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
-  private Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>(); //is this too waste?
-  private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
+  private Map<Path, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
   private long timeLowerBound = Long.MIN_VALUE;
 
@@ -98,17 +97,17 @@ public class MergeResource {
     fileReaderCache.clear();
     fileWriterCache.clear();
     modificationCache.clear();
-    measurementSchemaMap.clear();
     chunkWriterCache.clear();
   }
 
-  public MeasurementSchema getSchema(Path path) {
-    return measurementSchemaMap.get(path);
+  public IChunkWriter getChunkWriter(Path path) {
+    return chunkWriterCache.get(path);
   }
 
   /**
-   * Construct a new or get an existing RestorableTsFileIOWriter of a merge temp file for a
-   * SeqFile. The path of the merge temp file will be the seqFile's + ".merge".
+   * Construct a new or get an existing RestorableTsFileIOWriter of a merge temp file for a SeqFile.
+   * The path of the merge temp file will be the seqFile's + ".merge".
+   *
    * @return A RestorableTsFileIOWriter of a merge temp file for a SeqFile.
    */
   public RestorableTsFileIOWriter getMergeFileWriter(TsFileResource resource) throws IOException {
@@ -122,8 +121,9 @@ public class MergeResource {
   }
 
   /**
-   * Query ChunkMetadata of a timeseries from the given TsFile (seq or unseq). The ChunkMetadata
-   * is not cached since it is usually huge.
+   * Query ChunkMetadata of a timeseries from the given TsFile (seq or unseq). The ChunkMetadata is
+   * not cached since it is usually huge.
+   *
    * @param path name of the time series
    */
   public List<ChunkMetadata> queryChunkMetadata(Path path, TsFileResource seqFile)
@@ -134,6 +134,7 @@ public class MergeResource {
 
   /**
    * Construct the a new or get an existing TsFileSequenceReader of a TsFile.
+   *
    * @return a TsFileSequenceReader
    */
   public TsFileSequenceReader getFileReader(TsFileResource tsFileResource) throws IOException {
@@ -148,6 +149,7 @@ public class MergeResource {
   /**
    * Construct UnseqResourceMergeReaders of for each timeseries over all seqFiles. The readers are
    * not cached since the method is only called once for each timeseries.
+   *
    * @param paths names of the timeseries
    * @return an array of UnseqResourceMergeReaders each corresponding to a timeseries in paths
    */
@@ -155,24 +157,17 @@ public class MergeResource {
     List<Chunk>[] pathChunks = MergeUtils.collectUnseqChunks(paths, unseqFiles, this);
     IPointReader[] ret = new IPointReader[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
-      TSDataType dataType = getSchema(paths.get(i)).getType();
+      TSDataType dataType = getChunkWriter(paths.get(i)).getDataType();
       ret[i] = new CachedUnseqResourceMergeReader(pathChunks[i], dataType);
     }
     return ret;
   }
 
   /**
-   * Construct the a new or get an existing ChunkWriter of a measurement. Different timeseries of
-   * the same measurement and data type shares the same instance.
-   */
-  public IChunkWriter getChunkWriter(MeasurementSchema measurementSchema) {
-    return chunkWriterCache.computeIfAbsent(measurementSchema, ChunkWriterImpl::new);
-  }
-
-  /**
    * Get the modifications of a timeseries in the ModificationFile of a TsFile. Once the
-   * modifications of the timeseries are found out, they will be removed from the list to boost
-   * the next query, so two calls of the same file and timeseries are forbidden.
+   * modifications of the timeseries are found out, they will be removed from the list to boost the
+   * next query, so two calls of the same file and timeseries are forbidden.
+   *
    * @param path name of the time series
    */
   public List<Modification> getModifications(TsFileResource tsFileResource, Path path) {
@@ -195,6 +190,7 @@ public class MergeResource {
   /**
    * Remove and close the writer of the merge temp file of a SeqFile. The merge temp file is also
    * deleted.
+   *
    * @param tsFileResource the SeqFile
    */
   public void removeFileAndWriter(TsFileResource tsFileResource) throws IOException {
@@ -207,6 +203,7 @@ public class MergeResource {
 
   /**
    * Remove and close the reader of the TsFile. The TsFile is NOT deleted.
+   *
    * @param resource the SeqFile
    */
   public void removeFileReader(TsFileResource resource) throws IOException {
@@ -251,8 +248,8 @@ public class MergeResource {
     this.cacheDeviceMeta = cacheDeviceMeta;
   }
 
-  public void setMeasurementSchemaMap(Map<Path, MeasurementSchema> measurementSchemaMap) {
-    this.measurementSchemaMap = measurementSchemaMap;
+  public void setChunkWriterCache(Map<Path, IChunkWriter> chunkWriterCache) {
+    this.chunkWriterCache = chunkWriterCache;
   }
 
 }

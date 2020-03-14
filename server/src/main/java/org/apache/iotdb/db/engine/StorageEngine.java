@@ -111,29 +111,6 @@ public class StorageEngine implements IService {
   private ScheduledExecutorService ttlCheckThread;
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
 
-  /**
-   * Time range for dividing storage group, the time unit is the same with IoTDB's TimestampPrecision
-   */
-  @ServerConfigConsistent
-  private static long timePartitionInterval;
-  static {
-    // build time Interval to divide time partition
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        timePartitionInterval = IoTDBDescriptor.getInstance().
-            getConfig().getPartitionInterval() * 1000_000_000L;
-        break;
-      case "us":
-        timePartitionInterval = IoTDBDescriptor.getInstance().
-            getConfig().getPartitionInterval() * 1000_000L;
-        break;
-      default:
-        timePartitionInterval = IoTDBDescriptor.getInstance().
-            getConfig().getPartitionInterval() * 1000;
-        break;
-    }
-  }
 
   private StorageEngine() {
     logger = LoggerFactory.getLogger(StorageEngine.class);
@@ -497,7 +474,6 @@ public class StorageEngine implements IService {
   }
 
   /**
-   *
    * @return TsFiles (seq or unseq) grouped by their storage group and partition number.
    */
   public Map<String, Map<Long, List<TsFileResource>>> getAllClosedStorageGroupTsFile() {
@@ -512,7 +488,7 @@ public class StorageEngine implements IService {
         String[] fileSplits = FilePathUtils.splitTsFilePath(sequenceFile);
         long partitionNum = Long.parseLong(fileSplits[fileSplits.length - 2]);
         Map<Long, List<TsFileResource>> storageGroupFiles = ret.computeIfAbsent(entry.getKey()
-            ,n -> new HashMap<>());
+            , n -> new HashMap<>());
         storageGroupFiles.computeIfAbsent(partitionNum, n -> new ArrayList<>()).add(sequenceFile);
       }
     }
@@ -530,11 +506,18 @@ public class StorageEngine implements IService {
   }
 
   public static long getTimePartitionInterval() {
-    return timePartitionInterval;
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        return IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() * 1000_000_000L;
+      case "us":
+        return IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() * 1000_000L;
+      default:
+        return IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() * 1000;
+    }
   }
 
   public static long fromTimeToTimePartition(long time) {
-
-    return time / timePartitionInterval;
+    return time / getTimePartitionInterval();
   }
 }

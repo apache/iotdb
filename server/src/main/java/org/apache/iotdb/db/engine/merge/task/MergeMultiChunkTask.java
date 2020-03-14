@@ -52,6 +52,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -188,8 +189,8 @@ class MergeMultiChunkTask {
 
     RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(currTsFile);
     for (Path path : currMergingPaths) {
-      MeasurementSchema schema = resource.getSchema(path);
-      mergeFileWriter.addSchema(path, schema);
+      IChunkWriter chunkWriter = resource.getChunkWriter(path);
+      mergeFileWriter.addSchema(path, chunkWriter.getMeasurementSchema());
     }
     // merge unseq data with seq data in this file or small chunks in this file into a larger chunk
     mergeFileWriter.startChunkGroup(deviceId);
@@ -282,8 +283,7 @@ class MergeMultiChunkTask {
       int pathIdx = metaListEntry.getPathId();
       boolean isLastChunk = !metaListEntry.hasNext();
       Path path = currMergingPaths.get(pathIdx);
-      MeasurementSchema measurementSchema = resource.getSchema(path);
-      IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
+      IChunkWriter chunkWriter = resource.getChunkWriter(path);
 
       boolean chunkOverflowed = MergeUtils.isChunkOverflowed(currTimeValuePairs[pathIdx], currMeta);
       boolean chunkTooSmall = MergeUtils
