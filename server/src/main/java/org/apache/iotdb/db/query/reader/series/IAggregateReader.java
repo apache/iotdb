@@ -25,11 +25,11 @@ import java.io.IOException;
 
 public interface IAggregateReader {
 
-  boolean hasNextFile();
+  boolean hasNextFile() throws IOException;
 
   boolean canUseCurrentFileStatistics() throws IOException;
 
-  Statistics currentFileStatistics();
+  Statistics currentFileStatistics() throws IOException;
 
   void skipCurrentFile();
 

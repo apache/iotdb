@@ -41,7 +41,7 @@ public class SeriesAggregateReader implements IAggregateReader {
   }
 
   @Override
-  public boolean hasNextFile() {
+  public boolean hasNextFile() throws IOException {
     return seriesReader.hasNextFile();
   }
 
@@ -52,7 +52,7 @@ public class SeriesAggregateReader implements IAggregateReader {
   }
 
   @Override
-  public Statistics currentFileStatistics() {
+  public Statistics currentFileStatistics() throws IOException {
     return seriesReader.currentFileStatistics();
   }
 

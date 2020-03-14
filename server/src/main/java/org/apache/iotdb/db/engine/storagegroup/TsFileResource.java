@@ -181,18 +181,23 @@ public class TsFileResource {
       TSDataType dataType = readOnlyMemChunk.get(0).getDataType();
       timeSeriesMetadata.setTSDataType(dataType);
     }
-    Statistics seriesStatistics = Statistics.getStatsByType(timeSeriesMetadata.getTSDataType());
-    // flush chunkMetadataList one by one
-    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-      seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+    if (timeSeriesMetadata.getTSDataType() != null) {
+      Statistics seriesStatistics = Statistics.getStatsByType(timeSeriesMetadata.getTSDataType());
+      // flush chunkMetadataList one by one
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+      }
+
+      for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
+        if (!memChunk.isEmpty()) {
+          seriesStatistics.mergeStatistics(memChunk.getChunkMetaData().getStatistics());
+        }
+      }
+      timeSeriesMetadata.setStatistics(seriesStatistics);
+    } else {
+      timeSeriesMetadata = null;
     }
 
-    for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
-      if (!memChunk.isEmpty()) {
-        seriesStatistics.mergeStatistics(memChunk.getChunkMetaData().getStatistics());
-      }
-    }
-    timeSeriesMetadata.setStatistics(seriesStatistics);
   }
 
   public void serialize() throws IOException {

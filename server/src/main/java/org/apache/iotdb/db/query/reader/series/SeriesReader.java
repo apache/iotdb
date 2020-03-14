@@ -72,8 +72,8 @@ class SeriesReader {
   /*
    * file cache
    */
-  private boolean isFirstFileSeq;
-  private TimeseriesMetadata firstTimeSeriesMetadata;
+  // the List where FirstTimeSeriesMetadata is in, seqFileResource or unseqFileResource
+  private List<TsFileResource> listOfFirstTimeSeriesMetadata;
   private final List<TsFileResource> seqFileResource;
   private final List<TsFileResource> unseqFileResource;
 
@@ -104,7 +104,6 @@ class SeriesReader {
   private BatchData cachedBatchData;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SeriesReader.class);
-  private Stream<TsFileResource> stream;
 
   SeriesReader(
       Path seriesPath,
@@ -118,8 +117,8 @@ class SeriesReader {
     this.dataType = dataType;
     this.context = context;
     QueryUtils.filterQueryDataSource(dataSource, fileFilter);
-    this.seqFileResource = sortAndFilterFileResources(dataSource.getSeqResources(), true);
-    this.unseqFileResource = sortAndFilterFileResources(dataSource.getUnseqResources(), false);
+    this.seqFileResource = sortAndFilterFileResources(dataSource.getSeqResources(), false);
+    this.unseqFileResource = sortAndFilterFileResources(dataSource.getUnseqResources(), true);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
   }
@@ -136,86 +135,65 @@ class SeriesReader {
     this.seriesPath = seriesPath;
     this.dataType = dataType;
     this.context = context;
-    this.seqFileResource = sortAndFilterFileResources(seqFileResource, true);
-    this.unseqFileResource = sortAndFilterFileResources(unseqFileResource, false);
+    this.seqFileResource = sortAndFilterFileResources(seqFileResource, false);
+    this.unseqFileResource = sortAndFilterFileResources(unseqFileResource, true);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
   }
 
-  boolean hasNextFile() {
-    return !seqFileResource.isEmpty() || !unseqFileResource.isEmpty();
-  }
-
-  boolean isFileOverlapped() throws IOException {
+  boolean hasNextFile() throws IOException {
+    if (listOfFirstTimeSeriesMetadata != null) {
+      return true;
+    }
     /*
      * find first file
      */
-    TsFileResource firstFile;
     if (!seqFileResource.isEmpty() && unseqFileResource.isEmpty()) {
       // only has seq
-      firstFile = seqFileResource.remove(0);
-      isFirstFileSeq = true;
+      listOfFirstTimeSeriesMetadata = seqFileResource;
     } else if (seqFileResource.isEmpty() && !unseqFileResource.isEmpty()) {
       // only has unseq
-      firstFile = unseqFileResource.remove(0);
-      isFirstFileSeq = false;
+      listOfFirstTimeSeriesMetadata = unseqFileResource;
     } else if (!seqFileResource.isEmpty()) {
       // has seq and unseq
-      if (seqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())
-          <= unseqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
-        firstFile = seqFileResource.remove(0);
-        isFirstFileSeq = true;
+      if (FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.get(0), seriesPath, context).getStatistics().getStartTime()
+              <= FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.get(0), seriesPath, context).getStatistics().getStartTime()) {
+        listOfFirstTimeSeriesMetadata = seqFileResource;
       } else {
-        firstFile = unseqFileResource.remove(0);
-        isFirstFileSeq = false;
+        listOfFirstTimeSeriesMetadata = unseqFileResource;
       }
-    } else {
-      throw new IOException("No First File.");
     }
-    firstTimeSeriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(firstFile, seriesPath, context);
+
+    return listOfFirstTimeSeriesMetadata != null;
+  }
+
+  boolean isFileOverlapped() throws IOException {
+    TsFileResource tsFileResource = listOfFirstTimeSeriesMetadata.remove(0);
+    TimeseriesMetadata firstTimeSeriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(tsFileResource, seriesPath, context);
     Statistics fileStatistics = firstTimeSeriesMetadata.getStatistics();
-    boolean res;
-    if (isFirstFileSeq) {
-      res =
-          !unseqFileResource.isEmpty()
-              && fileStatistics.getEndTime()
-                  >= FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.get(0), seriesPath, context)
-                      .getStatistics()
-                      .getStartTime();
-      seqFileResource.add(0, firstFile);
-    } else {
-      res =
-          !seqChunkMetadata.isEmpty()
-                  && fileStatistics.getEndTime()
-                      >= FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.get(0), seriesPath, context)
-                          .getStatistics()
-                          .getStartTime()
-              || !unseqFileResource.isEmpty()
-                  && fileStatistics.getEndTime()
-                      >= FileLoaderUtils.loadTimeSeriesMetadata(
-                              unseqFileResource.get(0), seriesPath, context)
-                          .getStatistics()
-                          .getStartTime();
-      unseqFileResource.add(firstFile);
-    }
+
+    boolean res = !seqFileResource.isEmpty()
+            && fileStatistics.getEndTime()
+            >= FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.get(0), seriesPath, context).getStatistics().getStartTime()
+            || !unseqFileResource.isEmpty()
+            && fileStatistics.getEndTime()
+            >= FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.get(0), seriesPath, context).getStatistics().getStartTime();
+
+    listOfFirstTimeSeriesMetadata.add(0, tsFileResource);
     return res;
   }
 
-  Statistics currentFileStatistics() {
-    return firstTimeSeriesMetadata.getStatistics();
+  Statistics currentFileStatistics() throws IOException {
+    return FileLoaderUtils.loadTimeSeriesMetadata(listOfFirstTimeSeriesMetadata.get(0), seriesPath, context).getStatistics();
   }
 
   void skipCurrentFile() {
-    if (isFirstFileSeq) {
-      seqFileResource.remove(0);
-    } else {
-      unseqFileResource.remove(0);
-    }
-    firstTimeSeriesMetadata = null;
+    listOfFirstTimeSeriesMetadata.remove(0);
+    listOfFirstTimeSeriesMetadata = null;
   }
 
   boolean hasNextChunk() throws IOException {
-
+    listOfFirstTimeSeriesMetadata = null;
     if (!cachedPageReaders.isEmpty()
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
@@ -600,22 +578,28 @@ class SeriesReader {
    */
   private void tryToUnpackAllOverlappedFilesToChunkMetadatas() throws IOException {
 
-    /*
-     * Fill sequence chunkMetadatas until it is not empty
-     */
-    while (seqChunkMetadata.isEmpty() && !seqFileResource.isEmpty()) {
-      seqChunkMetadata.addAll(
-          FileLoaderUtils.loadChunkMetadataFromTsFileResource(
-              seqFileResource.remove(0), seriesPath, context, timeFilter));
-    }
+    if (!seqFileResource.isEmpty() && unseqFileResource.isEmpty()) {
+      // only has seq
+      tryToFillSeqChunkMetadata();
+    } else if (seqFileResource.isEmpty() && !unseqFileResource.isEmpty()) {
+      // only has unseq
+      tryToFillUnSeqChunkMetadata();
+    } else if (!seqFileResource.isEmpty()) {
+      // has seq and unseq
+      TimeseriesMetadata seqTimeSeriesMetadata =
+              FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.get(0), seriesPath, context);
+      TimeseriesMetadata unSeqTimeSeriesMetadata =
+              FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.get(0), seriesPath, context);
+      long seqStartTime = seqTimeSeriesMetadata != null ?
+              seqTimeSeriesMetadata.getStatistics().getStartTime() : seqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice());
+      long unSeqStartTime = unSeqTimeSeriesMetadata != null ?
+              unSeqTimeSeriesMetadata.getStatistics().getStartTime() : unseqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice());
 
-    /*
-     * Fill unsequence chunkMetadatas until it is not empty
-     */
-    while (unseqChunkMetadata.isEmpty() && !unseqFileResource.isEmpty()) {
-      unseqChunkMetadata.addAll(
-          FileLoaderUtils.loadChunkMetadataFromTsFileResource(
-              unseqFileResource.remove(0), seriesPath, context, timeFilter));
+      if (seqStartTime <= unSeqStartTime) {
+        tryToFillSeqChunkMetadata();
+      } else {
+        tryToFillUnSeqChunkMetadata();
+      }
     }
 
     /*
@@ -641,6 +625,28 @@ class SeriesReader {
      */
     if (firstChunkMetadata != null) {
       unpackAllOverlappedTsFilesToChunkMetadatas(firstChunkMetadata.getEndTime());
+    }
+  }
+
+  /**
+   * Fill sequence chunkMetadatas until it is not empty
+   */
+  private void tryToFillSeqChunkMetadata() throws IOException {
+    while (seqChunkMetadata.isEmpty() && !seqFileResource.isEmpty()) {
+      seqChunkMetadata.addAll(
+              FileLoaderUtils.loadChunkMetadataFromTsFileResource(
+                      seqFileResource.remove(0), seriesPath, context, timeFilter));
+    }
+  }
+
+  /**
+   * Fill unsequence chunkMetadatas until it is not empty
+   */
+  private void tryToFillUnSeqChunkMetadata() throws IOException {
+    while (unseqChunkMetadata.isEmpty() && !unseqFileResource.isEmpty()) {
+      unseqChunkMetadata.addAll(
+              FileLoaderUtils.loadChunkMetadataFromTsFileResource(
+                      unseqFileResource.remove(0), seriesPath, context, timeFilter));
     }
   }
 

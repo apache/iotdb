@@ -71,6 +71,8 @@ public class FileLoaderUtils {
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(resource.getPath(), resource.isClosed());
       return reader.readDeviceMetadata(seriesPath.getDevice()).get(seriesPath.getMeasurement());
     } else {
+
+      TimeseriesMetadata timeSeriesMetadata = resource.getTimeSeriesMetadata();
       List<Modification> pathModifications =
               context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
 
