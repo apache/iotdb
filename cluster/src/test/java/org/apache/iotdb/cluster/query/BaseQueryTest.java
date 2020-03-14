@@ -27,19 +27,15 @@ import static org.junit.Assert.assertNull;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.server.member.MemberTest;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -54,11 +50,11 @@ public class BaseQueryTest extends MemberTest {
   List<Path> pathList;
   List<TSDataType> dataTypes;
 
-  protected static void checkAggregations(List<Pair<AggregateResult, Integer>> aggregationResults
+  protected static void checkAggregations(List<AggregateResult> aggregationResults
       , Object[] answer) {
     Assert.assertEquals(answer.length, aggregationResults.size());
     for (int i = 0; i < aggregationResults.size(); i++) {
-      AggregateResult aggregateResult = aggregationResults.get(i).left;
+      AggregateResult aggregateResult = aggregationResults.get(i);
       if (answer[i] != null) {
         Assert.assertEquals((double) answer[i],
             Double.parseDouble(aggregateResult.getResult().toString()),
