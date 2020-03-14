@@ -16,33 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.utils;
 
-import java.io.File;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+package org.apache.iotdb.db.query.dataset.groupby;
 
-public class FilePathUtils {
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 
-  private static final String PATH_SPLIT_STRING = File.separator.equals("\\") ? "\\\\" : "/";
+import java.io.IOException;
+import java.util.List;
 
-  private FilePathUtils() {
-    // forbidding instantiation
-  }
+
+/**
+ * Each executor calculates results of all aggregations on this series
+ */
+public interface GroupByExecutor {
 
   /**
-   * Format file path to end with File.separator
-   * @param filePath origin file path
-   * @return Regularized Path
+   * add reusable result cache in executor
    */
-  public static String regularizePath(String filePath){
-    if (filePath.length() > 0
-        && filePath.charAt(filePath.length() - 1) != File.separatorChar) {
-      filePath = filePath + File.separatorChar;
-    }
-    return filePath;
-  }
+  void addAggregateResult(AggregateResult aggrResult);
 
-  public static String[] splitTsFilePath(TsFileResource resource) {
-    return resource.getFile().getAbsolutePath().split(PATH_SPLIT_STRING);
-  }
+  /**
+   * calculate result in [curStartTime, curEndTime)
+   */
+  List<AggregateResult> calcResult(long curStartTime, long curEndTime) throws IOException, QueryProcessException;
 }

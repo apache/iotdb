@@ -75,10 +75,12 @@ public class FileLoaderUtils {
       List<Modification> pathModifications =
               context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
 
-      if (!pathModifications.isEmpty()) {
-        resource.getTimeSeriesMetadata().setCanUseStatistics(false);
-      } else {
-        resource.getTimeSeriesMetadata().setCanUseStatistics(true);
+      if (resource.getTimeSeriesMetadata() != null) {
+        if (!pathModifications.isEmpty()) {
+          resource.getTimeSeriesMetadata().setCanUseStatistics(false);
+        } else {
+          resource.getTimeSeriesMetadata().setCanUseStatistics(true);
+        }
       }
       return resource.getTimeSeriesMetadata();
 

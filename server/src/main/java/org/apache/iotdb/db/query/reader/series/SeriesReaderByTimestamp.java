@@ -74,16 +74,27 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     }
 
     /*
-     * consume chunk secondly
+     * consume file secondly
      */
-    while (seriesReader.hasNextChunk()) {
-      Statistics statistics = seriesReader.currentChunkStatistics();
+    while (seriesReader.hasNextFile()) {
+      Statistics statistics = seriesReader.currentFileStatistics();
       if (!satisfyTimeFilter(statistics)) {
-        seriesReader.skipCurrentChunk();
+        seriesReader.skipCurrentFile();
         continue;
       }
-      if (readPageData(timestamp)) {
-        return true;
+
+      /*
+       * consume chunk thirdly
+       */
+      while (seriesReader.hasNextChunk()) {
+        statistics = seriesReader.currentChunkStatistics();
+        if (!satisfyTimeFilter(statistics)) {
+          seriesReader.skipCurrentChunk();
+          continue;
+        }
+        if (readPageData(timestamp)) {
+          return true;
+        }
       }
     }
     return false;

@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.aggregation;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -31,6 +28,10 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 public abstract class AggregateResult {
 
@@ -44,7 +45,7 @@ public abstract class AggregateResult {
   private double doubleValue;
   private Binary binaryValue;
 
-  private boolean hasResult;
+  protected boolean hasResult;
 
   /**
    * construct.
@@ -110,29 +111,32 @@ public abstract class AggregateResult {
     TSDataType dataType = TSDataType.deserialize(buffer.getShort());
     AggregateResult aggregateResult = AggregateResultFactory
         .getAggrResultByType(aggregationType, dataType);
-    switch (dataType) {
-      case BOOLEAN:
-        aggregateResult.setBooleanValue(ReadWriteIOUtils.readBool(buffer));
-        break;
-      case INT32:
-        aggregateResult.setIntValue(buffer.getInt());
-        break;
-      case INT64:
-        aggregateResult.setLongValue(buffer.getLong());
-        break;
-      case FLOAT:
-        aggregateResult.setFloatValue(buffer.getFloat());
-        break;
-      case DOUBLE:
-        aggregateResult.setDoubleValue(buffer.getDouble());
-        break;
-      case TEXT:
-        aggregateResult.setBinaryValue(ReadWriteIOUtils.readBinary(buffer));
-        break;
-      default:
-        throw new IllegalArgumentException("Invalid Aggregation Type: " + dataType.name());
+    boolean hasResult = ReadWriteIOUtils.readBool(buffer);
+    if (hasResult) {
+      switch (dataType) {
+        case BOOLEAN:
+          aggregateResult.setBooleanValue(ReadWriteIOUtils.readBool(buffer));
+          break;
+        case INT32:
+          aggregateResult.setIntValue(buffer.getInt());
+          break;
+        case INT64:
+          aggregateResult.setLongValue(buffer.getLong());
+          break;
+        case FLOAT:
+          aggregateResult.setFloatValue(buffer.getFloat());
+          break;
+        case DOUBLE:
+          aggregateResult.setDoubleValue(buffer.getDouble());
+          break;
+        case TEXT:
+          aggregateResult.setBinaryValue(ReadWriteIOUtils.readBinary(buffer));
+          break;
+        default:
+          throw new IllegalArgumentException("Invalid Aggregation Type: " + dataType.name());
+      }
+      aggregateResult.deserializeSpecificFields(buffer);
     }
-    aggregateResult.deserializeSpecificFields(buffer);
     return aggregateResult;
   }
 
@@ -141,29 +145,32 @@ public abstract class AggregateResult {
   public void serializeTo(OutputStream outputStream) throws IOException {
     aggregationType.serializeTo(outputStream);
     ReadWriteIOUtils.write(resultDataType, outputStream);
-    switch (resultDataType) {
-      case BOOLEAN:
-        ReadWriteIOUtils.write(booleanValue, outputStream);
-        break;
-      case INT32:
-        ReadWriteIOUtils.write(intValue, outputStream);
-        break;
-      case INT64:
-        ReadWriteIOUtils.write(longValue, outputStream);
-        break;
-      case FLOAT:
-        ReadWriteIOUtils.write(floatValue, outputStream);
-        break;
-      case DOUBLE:
-        ReadWriteIOUtils.write(doubleValue, outputStream);
-        break;
-      case TEXT:
-        ReadWriteIOUtils.write(binaryValue, outputStream);
-        break;
-      default:
-        throw new IllegalArgumentException("Invalid Aggregation Type: " + resultDataType.name());
+    ReadWriteIOUtils.write(hasResult(), outputStream);
+    if (hasResult()) {
+      switch (resultDataType) {
+        case BOOLEAN:
+          ReadWriteIOUtils.write(booleanValue, outputStream);
+          break;
+        case INT32:
+          ReadWriteIOUtils.write(intValue, outputStream);
+          break;
+        case INT64:
+          ReadWriteIOUtils.write(longValue, outputStream);
+          break;
+        case FLOAT:
+          ReadWriteIOUtils.write(floatValue, outputStream);
+          break;
+        case DOUBLE:
+          ReadWriteIOUtils.write(doubleValue, outputStream);
+          break;
+        case TEXT:
+          ReadWriteIOUtils.write(binaryValue, outputStream);
+          break;
+        default:
+          throw new IllegalArgumentException("Invalid Aggregation Type: " + resultDataType.name());
+      }
+      serializeSpecificFields(outputStream);
     }
-    serializeSpecificFields(outputStream);
   }
 
   protected abstract void serializeSpecificFields(OutputStream outputStream) throws IOException;
@@ -293,5 +300,9 @@ public abstract class AggregateResult {
   @Override
   public String toString() {
     return String.valueOf(getResult());
+  }
+
+  public AggregationType getAggregationType() {
+    return aggregationType;
   }
 }

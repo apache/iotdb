@@ -498,15 +498,23 @@ public class StorageEngine implements IService {
 
   /**
    *
-   * @return TsFiles (seq or unseq) grouped by their storage group.
+   * @return TsFiles (seq or unseq) grouped by their storage group and partition number.
    */
-  public Map<String, List<TsFileResource>> getAllClosedStorageGroupTsFile() {
-    Map<String, List<TsFileResource>> ret = new HashMap<>();
-    for (Entry<String, StorageGroupProcessor> entry : processorMap
-        .entrySet()) {
-      ret.computeIfAbsent(entry.getKey(), sg -> new ArrayList<>()).addAll(entry.getValue().getSequenceFileTreeSet());
-      ret.get(entry.getKey()).addAll(entry.getValue().getUnSequenceFileList());
-      ret.get(entry.getKey()).removeIf(file -> !file.isClosed());
+  public Map<String, Map<Long, List<TsFileResource>>> getAllClosedStorageGroupTsFile() {
+    Map<String, Map<Long, List<TsFileResource>>> ret = new HashMap<>();
+    for (Entry<String, StorageGroupProcessor> entry : processorMap.entrySet()) {
+      List<TsFileResource> allResources = entry.getValue().getSequenceFileTreeSet();
+      allResources.addAll(entry.getValue().getUnSequenceFileList());
+      for (TsFileResource sequenceFile : allResources) {
+        if (!sequenceFile.isClosed()) {
+          continue;
+        }
+        String[] fileSplits = FilePathUtils.splitTsFilePath(sequenceFile);
+        long partitionNum = Long.parseLong(fileSplits[fileSplits.length - 2]);
+        Map<Long, List<TsFileResource>> storageGroupFiles = ret.computeIfAbsent(entry.getKey()
+            ,n -> new HashMap<>());
+        storageGroupFiles.computeIfAbsent(partitionNum, n -> new ArrayList<>()).add(sequenceFile);
+      }
     }
     return ret;
   }
