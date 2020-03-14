@@ -145,5 +145,6 @@ For query operations:
 you have to call `SessionPool.closeResultSet(wrapper)` manually;
 3. When you call `hasNext()` and `next()` of a `SessionDataSetWrapper` and there is an exception, then
 you have to call `SessionPool.closeResultSet(wrapper)` manually;
+4. You can call `getColumnNames()` of `SessionDataSetWrapper` to get the column names of query result;
 
 Examples: ```session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest.java```
