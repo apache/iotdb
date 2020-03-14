@@ -22,6 +22,8 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.CheckStatusRequest;
+import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
@@ -39,14 +41,15 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
 
 /**
- * MetaCluster manages the whole cluster's metadata, such as what nodes are in the cluster and
- * the data partition. Each node has one MetaClusterServer instance,
- * the single-node IoTDB instance is started-up at the same time.
+ * MetaCluster manages the whole cluster's metadata, such as what nodes are in the cluster and the
+ * data partition. Each node has one MetaClusterServer instance, the single-node IoTDB instance is
+ * started-up at the same time.
  */
 public class MetaClusterServer extends RaftServer implements TSMetaService.AsyncIface {
 
@@ -56,16 +59,22 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   // to register the ClusterMonitor that helps monitoring the cluster
   private RegisterManager registerManager = new RegisterManager();
 
-  public MetaClusterServer() throws QueryProcessException {
+  public MetaClusterServer() throws QueryProcessException, StartupException {
     super();
     member = new MetaGroupMember(protocolFactory, thisNode);
-    // TODO-Cluster#355: check the initial cluster size and refuse to start when the size <
-    //  #replication
+    // check the initial cluster size and refuse to start when the size < quorum
+    int quorum = config.getReplicationNum() / 2 + 1;
+    if (config.getSeedNodeUrls().size() < quorum) {
+      String message = String.format("Seed number less than quorum, seed number: {}, quorum: {}.",
+          config.getSeedNodeUrls().size(), quorum);
+      throw new StartupException(member.getName(), message);
+    }
   }
 
   /**
    * Besides the standard RaftServer start-up, the IoTDB instance, a MetaGroupMember and the
    * ClusterMonitor are also started.
+   *
    * @throws TTransportException
    * @throws StartupException
    */
@@ -74,6 +83,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     super.start();
     ioTDB = new IoTDB();
     ioTDB.active();
+    System.out.println("--------------------start connecting");
     member.start();
     registerManager.register(ClusterMonitor.INSTANCE);
   }
@@ -99,6 +109,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
 
   /**
    * Pick up a node from the seed list and send a join request to it.
+   *
    * @return whether the node has joined the cluster.
    */
   public boolean joinCluster() {
@@ -107,12 +118,13 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
 
   /**
    * MetaClusterServer uses the meta port to create the socket.
+   *
    * @return
    * @throws TTransportException
    */
   @Override
   TNonblockingServerSocket getServerSocket() throws TTransportException {
-    return  new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
+    return new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
         config.getLocalMetaPort()), connectionTimeoutInMS);
   }
 
@@ -188,9 +200,15 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
+  public void checkStatus(CheckStatusRequest status,
+      AsyncMethodCallback<CheckStatusResponse> resultHandler) {
+    member.checkStatus(status, resultHandler);
+  }
+
+  @Override
   public void readFile(String filePath, long offset, int length, Node header,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    member.readFile(filePath, offset ,length, header, resultHandler);
+    member.readFile(filePath, offset, length, header, resultHandler);
   }
 
   @Override
@@ -211,4 +229,6 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   public void exile(AsyncMethodCallback<Void> resultHandler) {
     member.exile(resultHandler);
   }
+
+
 }

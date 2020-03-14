@@ -87,6 +87,8 @@ import org.apache.iotdb.cluster.query.reader.RemoteSeriesReaderByTimestamp;
 import org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.CheckStatusRequest;
+import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
@@ -107,6 +109,7 @@ import org.apache.iotdb.cluster.server.NodeReport.MetaMemberReport;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.CheckStatusHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
@@ -118,6 +121,7 @@ import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -623,6 +627,50 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         return true;
       }
 
+      // check status of the new node
+//      AsyncClient client = (AsyncClient) connectNode(node);
+//      try {
+//        AsyncMethodCallback<String> result = new AsyncMethodCallback<String>() {
+//          String words;
+//          @Override
+//          public void onComplete(String s) {
+//            this.words = s;
+//          }
+//          @Override
+//          public void onError(Exception e) {
+//            System.out.println("some error happens");
+//          }
+//          public String getWords() {
+//            return words;
+//          }
+//        };
+//        System.out.println(result);
+//        client.echo("hello world", result);
+//      } catch (TException e) {
+//        e.printStackTrace();
+//      }
+      CheckStatusRequest checkStatusRequest = new CheckStatusRequest();
+      checkStatusRequest.setHashSalt(ClusterConstant.HASH_SALT);
+      checkStatusRequest
+          .setPartitionInterval(IoTDBDescriptor.getInstance().getConfig().getPartitionInterval());
+      checkStatusRequest.setReplicationNumber(config.getReplicationNum());
+      CheckStatusHandler checkStatusHandler = new CheckStatusHandler();
+      try {
+        sendStatusToNewNode(node, checkStatusRequest, checkStatusHandler);
+      } catch (TException exception) {
+        logger.error("Failed to send current state to the new node {}", node, exception);
+      }
+      if (!checkStatusHandler.getCheckStatusResponse().isPartitionalIntervalEquals()) {
+        logger.info("The partition interval of the new node {} conflicts.", node);
+        return true;
+      } else if (!checkStatusHandler.getCheckStatusResponse().isHashSaltIntervalEquals()) {
+        logger.info("The hash salt of the new node {} conflicts.", node);
+        return true;
+      } else if (!checkStatusHandler.getCheckStatusResponse().isReplicationNumEquals()) {
+        logger.info("The replication number of the new node {} conflicts.", node);
+        return true;
+      }
+
       // node adding must be serialized
       synchronized (logManager) {
         AddNodeLog addNodeLog = new AddNodeLog();
@@ -661,6 +709,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
     }
     return false;
+  }
+
+
+  private void sendStatusToNewNode(Node node, CheckStatusRequest checkStatusRequest,
+      AsyncMethodCallback<CheckStatusResponse> response)
+      throws TException {
+    AsyncClient client = (AsyncClient) connectNode(node);
+    client.checkStatus(checkStatusRequest, response);
   }
 
   /**
@@ -1612,6 +1668,31 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     resultHandler.onComplete(thisNode);
   }
 
+  @Override
+  public void checkStatus(CheckStatusRequest status,
+      AsyncMethodCallback<CheckStatusResponse> resultHandler) {
+    long partitionInterval = status.getPartitionInterval();
+    int hashSalt = status.getHashSalt();
+    int replicationNum = status.getReplicationNumber();
+    boolean partitionIntervalEquals = true;
+    boolean hashSaltEquals = true;
+    boolean replicationNumEquals = true;
+    if (IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() != partitionInterval) {
+      partitionIntervalEquals = false;
+    }
+    if (ClusterConstant.HASH_SALT != hashSalt) {
+      hashSaltEquals = false;
+    }
+    if (ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum() != replicationNum) {
+      replicationNumEquals = false;
+    }
+    CheckStatusResponse response = new CheckStatusResponse();
+    response.setPartitionalIntervalEquals(partitionIntervalEquals);
+    response.setHashSaltIntervalEquals(hashSaltEquals);
+    response.setReplicationNumEquals(replicationNumEquals);
+    resultHandler.onComplete(response);
+  }
+
   @TestOnly
   public void setPartitionTable(PartitionTable partitionTable) {
     this.partitionTable = partitionTable;
@@ -1889,4 +1970,5 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     throw new StorageEngineException(
         new RequestTimeOutException("Query " + path + " in " + partitionGroup));
   }
+
 }

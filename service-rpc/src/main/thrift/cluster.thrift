@@ -103,6 +103,20 @@ struct Node {
   4: required int dataPort
 }
 
+// leader -> follower
+struct CheckStatusRequest{
+ 1: required long partitionInterval
+ 2: required int hashSalt
+ 3: required int replicationNumber
+}
+
+// follower -> leader
+struct CheckStatusResponse{
+ 1: required bool partitionalIntervalEquals
+ 2: required bool hashSaltIntervalEquals
+ 3: required bool replicationNumEquals
+}
+
 struct SendSnapshotRequest {
   1: required binary snapshotBytes
   // for data group
@@ -333,4 +347,10 @@ service TSMetaService extends RaftService {
   TNodeStatus queryNodeStatus()
 
   Node checkAlive()
+
+  /**
+  * Before broadcasting adding node message to all followers, the leader will send check status
+  * request to the new node, which contains current cluster status.
+  **/
+  CheckStatusResponse checkStatus(1:CheckStatusRequest status)
 }
