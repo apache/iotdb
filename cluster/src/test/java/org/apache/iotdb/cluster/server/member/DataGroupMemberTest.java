@@ -828,7 +828,7 @@ public class DataGroupMemberTest extends MemberTest {
       }
 
       assertEquals(NodeCharacter.ELECTOR, dataGroupMember.getCharacter());
-      assertEquals(Long.MIN_VALUE, dataGroupMember.getLastHeartBeatReceivedTime());
+      assertEquals(Long.MIN_VALUE, dataGroupMember.getLastHeartbeatReceivedTime());
       assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));
       assertFalse(dataGroupMember.getAllNodes().contains(nodeToRemove));
       List<Integer> newSlots = nodeRemovalResult.getNewSlotOwners().get(TestUtils.getNode(0));
@@ -855,7 +855,7 @@ public class DataGroupMemberTest extends MemberTest {
         dataGroupMember.wait(500);
       }
 
-      assertEquals(0, dataGroupMember.getLastHeartBeatReceivedTime());
+      assertEquals(0, dataGroupMember.getLastHeartbeatReceivedTime());
       assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));
       assertFalse(dataGroupMember.getAllNodes().contains(nodeToRemove));
       List<Integer> newSlots = nodeRemovalResult.getNewSlotOwners().get(TestUtils.getNode(0));

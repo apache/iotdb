@@ -28,14 +28,14 @@ import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.LogManager;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.junit.Before;
 import org.junit.Test;
 
-public class HeartBeatHandlerTest {
+public class HeartbeatHandlerTest {
 
   private MetaGroupMember metaGroupMember;
   private boolean catchUpFlag;
@@ -60,8 +60,8 @@ public class HeartBeatHandlerTest {
 
   @Test
   public void testComplete() throws InterruptedException {
-    HeartBeatHandler handler = new HeartBeatHandler(metaGroupMember, TestUtils.getNode(1));
-    HeartBeatResponse response = new HeartBeatResponse();
+    HeartbeatHandler handler = new HeartbeatHandler(metaGroupMember, TestUtils.getNode(1));
+    HeartbeatResponse response = new HeartbeatResponse();
     response.setTerm(Response.RESPONSE_AGREE);
     response.setLastLogIndex(-1);
     catchUpFlag = false;
@@ -74,8 +74,8 @@ public class HeartBeatHandlerTest {
 
   @Test
   public void testLeaderShipStale() throws InterruptedException {
-    HeartBeatHandler handler = new HeartBeatHandler(metaGroupMember, TestUtils.getNode(1));
-    HeartBeatResponse response = new HeartBeatResponse();
+    HeartbeatHandler handler = new HeartbeatHandler(metaGroupMember, TestUtils.getNode(1));
+    HeartbeatResponse response = new HeartbeatResponse();
     response.setTerm(10);
     synchronized (metaGroupMember.getTerm()) {
       new Thread(() -> handler.onComplete(response)).start();
@@ -86,7 +86,7 @@ public class HeartBeatHandlerTest {
 
   @Test
   public void testError() throws InterruptedException {
-    HeartBeatHandler handler = new HeartBeatHandler(metaGroupMember, TestUtils.getNode(1));
+    HeartbeatHandler handler = new HeartbeatHandler(metaGroupMember, TestUtils.getNode(1));
     catchUpFlag = false;
     new Thread(() -> handler.onError(new TestException())).start();
     Thread.sleep(1000);

@@ -36,8 +36,8 @@ import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.Response;
@@ -48,7 +48,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 
-public class MetaHeartBeatThreadTest extends HeartBeatThreadTest {
+public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
 
   private Set<Node> idConflictNodes = new HashSet<>();
   private ByteBuffer partitionTableBuffer;
@@ -140,7 +140,7 @@ public class MetaHeartBeatThreadTest extends HeartBeatThreadTest {
 
       @Override
       public LogManager getLogManager() {
-        return MetaHeartBeatThreadTest.this.logManager;
+        return MetaHeartbeatThreadTest.this.logManager;
       }
 
       @Override
@@ -150,7 +150,7 @@ public class MetaHeartBeatThreadTest extends HeartBeatThreadTest {
 
       @Override
       public Set<Node> getIdConflictNodes() {
-        return MetaHeartBeatThreadTest.this.idConflictNodes;
+        return MetaHeartbeatThreadTest.this.idConflictNodes;
       }
 
       @Override
@@ -160,7 +160,7 @@ public class MetaHeartBeatThreadTest extends HeartBeatThreadTest {
 
       @Override
       public PartitionTable getPartitionTable() {
-        return MetaHeartBeatThreadTest.this.partitionTable;
+        return MetaHeartbeatThreadTest.this.partitionTable;
       }
     };
   }
@@ -169,11 +169,11 @@ public class MetaHeartBeatThreadTest extends HeartBeatThreadTest {
   AsyncClient getClient(Node node) {
     return new TestClient(node.nodeIdentifier) {
       @Override
-      public void sendHeartBeat(HeartBeatRequest request,
-          AsyncMethodCallback<HeartBeatResponse> resultHandler) {
-        HeartBeatRequest requestCopy = new HeartBeatRequest(request);
+      public void sendHeartbeat(HeartbeatRequest request,
+          AsyncMethodCallback<HeartbeatResponse> resultHandler) {
+        HeartbeatRequest requestCopy = new HeartbeatRequest(request);
         new Thread(() -> {
-          if (testHeartBeat) {
+          if (testHeartbeat) {
             assertEquals(TestUtils.getNode(0), requestCopy.getLeader());
             assertEquals(7, requestCopy.getCommitLogIndex());
             assertEquals(10, requestCopy.getTerm());
@@ -235,7 +235,7 @@ public class MetaHeartBeatThreadTest extends HeartBeatThreadTest {
   }
 
   @Override
-  HeartBeatThread getHeartBeatThread(RaftMember member) {
-    return new MetaHeartBeatThread((MetaGroupMember) member);
+  HeartbeatThread getHeartbeatThread(RaftMember member) {
+    return new MetaHeartbeatThread((MetaGroupMember) member);
   }
 }

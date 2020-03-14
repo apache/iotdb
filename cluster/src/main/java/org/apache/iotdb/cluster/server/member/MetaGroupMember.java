@@ -89,8 +89,8 @@ import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
@@ -112,7 +112,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
-import org.apache.iotdb.cluster.server.heartbeat.MetaHeartBeatThread;
+import org.apache.iotdb.cluster.server.heartbeat.MetaHeartbeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
@@ -337,7 +337,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   public void buildCluster() {
     // just establish the heart beat thread and it will do the remaining
-    heartBeatService.submit(new MetaHeartBeatThread(this));
+    heartBeatService.submit(new MetaHeartbeatThread(this));
   }
 
   /**
@@ -358,8 +358,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         if (joinCluster(node, response, handler)) {
           logger.info("Joined a cluster, starting the heartbeat thread");
           setCharacter(NodeCharacter.FOLLOWER);
-          setLastHeartBeatReceivedTime(System.currentTimeMillis());
-          heartBeatService.submit(new MetaHeartBeatThread(this));
+          setLastHeartbeatReceivedTime(System.currentTimeMillis());
+          heartBeatService.submit(new MetaHeartbeatThread(this));
           return true;
         }
         // wait a heartbeat to start the next try
@@ -428,7 +428,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   @Override
-  void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response) {
+  void processValidHeartbeatReq(HeartbeatRequest request, HeartbeatResponse response) {
     if (request.isRequireIdentifier()) {
       // the leader wants to know who the node is
       if (request.isRegenerateIdentifier()) {
@@ -469,7 +469,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   @Override
-  public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {
+  public void processValidHeartbeatResp(HeartbeatResponse response, Node receiver) {
     // register the id of the node
     if (response.isSetFollowerIdentifier()) {
       registerNodeIdentifier(receiver, response.getFollowerIdentifier());
@@ -1069,7 +1069,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           timeseriesSchemas.wait(connectionTimeoutInMS);
         } catch (TException | InterruptedException e) {
           logger
-              .error("{}: Cannot pull timeseries schemas of {} from {}", name, prefixPaths, node, e);
+              .error("{}: Cannot pull timeseries schemas of {} from {}", name, prefixPaths, node,
+                  e);
           continue;
         }
       }
@@ -1096,7 +1097,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     dataGroupMember.pullTimeSeriesSchema(request, resultHandler);
   }
 
-  public List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations) throws MetadataException {
+  public List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
+      throws MetadataException {
     try {
       return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
     } catch (PathNotExistException e) {
@@ -1126,7 +1128,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
   }
 
-  public List<TSDataType> getSeriesTypesByString(List<String> pathStrs, String aggregation) throws MetadataException {
+  public List<TSDataType> getSeriesTypesByString(List<String> pathStrs, String aggregation)
+      throws MetadataException {
     try {
       return SchemaUtils.getSeriesTypesByString(pathStrs, aggregation);
     } catch (PathNotExistException e) {
@@ -1368,7 +1371,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   // get SeriesReader from a PartitionGroup
   private IPointReader getSeriesReader(PartitionGroup partitionGroup, Path path,
-      Filter timeFilter, Filter valueFilter, QueryContext context, TSDataType dataType) throws IOException,
+      Filter timeFilter, Filter valueFilter, QueryContext context, TSDataType dataType)
+      throws IOException,
       StorageEngineException {
     if (partitionGroup.contains(thisNode)) {
       // the target storage group contains this node, perform a local query
@@ -1445,7 +1449,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   /**
    * Get all paths after removing wildcards in the path
    *
-   * @param originPath       a path potentially with wildcard
+   * @param originPath a path potentially with wildcard
    * @return all paths after removing wildcards in the path
    */
   public List<String> getMatchedPaths(String originPath) throws MetadataException {
@@ -1472,7 +1476,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   /**
    * Get all devices after removing wildcards in the path
    *
-   * @param originPath       a path potentially with wildcard
+   * @param originPath a path potentially with wildcard
    * @return all paths after removing wildcards in the path
    */
   public Set<String> getMatchedDevices(String originPath) throws MetadataException {
@@ -1724,7 +1728,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         getDataClusterServer().removeNode(oldNode, result);
         if (oldNode.equals(leader)) {
           setCharacter(NodeCharacter.ELECTOR);
-          lastHeartBeatReceivedTime = Long.MIN_VALUE;
+          lastHeartbeatReceivedTime = Long.MIN_VALUE;
         }
 
         if (oldNode.equals(thisNode)) {
@@ -1823,7 +1827,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       DataGroupMember dataGroupMember = getLocalDataMember(partitionGroup.getHeader());
       logger.debug("{}: creating a local group by executor for {}#{}", name,
           path.getFullPath(), context.getQueryId());
-      return dataGroupMember.getGroupByExecutor(path, dataType, timeFilter, aggregationTypes, context);
+      return dataGroupMember
+          .getGroupByExecutor(path, dataType, timeFilter, aggregationTypes, context);
     } else {
       return getRemoteGroupByExecutor(timeFilter, aggregationTypes, dataType, path, partitionGroup,
           context);

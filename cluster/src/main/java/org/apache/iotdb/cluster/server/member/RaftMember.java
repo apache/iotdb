@@ -53,8 +53,8 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
@@ -90,7 +90,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   volatile NodeCharacter character = NodeCharacter.ELECTOR;
   AtomicLong term = new AtomicLong(0);
   volatile Node leader;
-  volatile long lastHeartBeatReceivedTime;
+  volatile long lastHeartbeatReceivedTime;
 
   LogManager logManager;
 
@@ -125,7 +125,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     heartBeatService =
         Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
-            name + "-HeartBeatThread@" + System.currentTimeMillis()));
+            name + "-HeartbeatThread@" + System.currentTimeMillis()));
     catchUpService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
   }
 
@@ -150,12 +150,12 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   @Override
-  public void sendHeartBeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
+  public void sendHeartbeat(HeartbeatRequest request, AsyncMethodCallback resultHandler) {
     logger.trace("{} received a heartbeat", name);
     synchronized (term) {
       long thisTerm = term.get();
       long leaderTerm = request.getTerm();
-      HeartBeatResponse response = new HeartBeatResponse();
+      HeartbeatResponse response = new HeartbeatResponse();
 
       if (leaderTerm < thisTerm) {
         // the leader is invalid
@@ -185,7 +185,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         if (character != NodeCharacter.FOLLOWER) {
           setCharacter(NodeCharacter.FOLLOWER);
         }
-        setLastHeartBeatReceivedTime(System.currentTimeMillis());
+        setLastHeartbeatReceivedTime(System.currentTimeMillis());
         if (logger.isTraceEnabled()) {
           logger.trace("{} received heartbeat from a valid leader {}", name, request.getLeader());
         }
@@ -208,7 +208,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         return;
       }
       long response = processElectionRequest(electionRequest);
-      logger.info("{} sending response {} to the elector {}", name, response, electionRequest.getElector());
+      logger.info("{} sending response {} to the elector {}", name, response,
+          electionRequest.getElector());
       resultHandler.onComplete(response);
     }
   }
@@ -234,7 +235,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         }
       }
     }
-    logger.debug("{} accepted the AppendEntryRequest for term: {}",name, localTerm);
+    logger.debug("{} accepted the AppendEntryRequest for term: {}", name, localTerm);
     return true;
   }
 
@@ -245,7 +246,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       long previousLogIndex = log.getPreviousLogIndex();
       long previousLogTerm = log.getPreviousLogTerm();
 
-      if (logManager.getLastLogIndex() == previousLogIndex && logManager.getLastLogTerm() == previousLogTerm) {
+      if (logManager.getLastLogIndex() == previousLogIndex
+          && logManager.getLastLogTerm() == previousLogTerm) {
         // the incoming log points to the local last log, append it
         logManager.appendLog(log);
         if (logger.isDebugEnabled()) {
@@ -312,16 +314,17 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   /**
    * Send the given log to all the followers and decide the result according to the specified
    * quorum.
+   *
    * @param log
-   * @param requiredQuorum the number of votes needed to make the log valid, when requiredQuorum
-   *                       <= 0, half of the cluster size will be used.
+   * @param requiredQuorum the number of votes needed to make the log valid, when requiredQuorum <=
+   *                       0, half of the cluster size will be used.
    * @return an AppendLogResult
    */
   private AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
     if (requiredQuorum <= 0) {
       return sendLogToFollowers(log, new AtomicInteger(allNodes.size() / 2));
     } else {
-      return sendLogToFollowers(log ,new AtomicInteger(requiredQuorum));
+      return sendLogToFollowers(log, new AtomicInteger(requiredQuorum));
     }
   }
 
@@ -422,8 +425,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return term;
   }
 
-  public long getLastHeartBeatReceivedTime() {
-    return lastHeartBeatReceivedTime;
+  public long getLastHeartbeatReceivedTime() {
+    return lastHeartbeatReceivedTime;
   }
 
   public Node getLeader() {
@@ -434,8 +437,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     this.term = term;
   }
 
-  public void setLastHeartBeatReceivedTime(long lastHeartBeatReceivedTime) {
-    this.lastHeartBeatReceivedTime = lastHeartBeatReceivedTime;
+  public void setLastHeartbeatReceivedTime(long lastHeartbeatReceivedTime) {
+    this.lastHeartbeatReceivedTime = lastHeartbeatReceivedTime;
   }
 
   public void setLeader(Node leader) {
@@ -458,7 +461,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
 
-  public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {
+  public void processValidHeartbeatResp(HeartbeatResponse response, Node receiver) {
 
   }
 
@@ -469,7 +472,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   }
 
-  void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response) {
+  void processValidHeartbeatReq(HeartbeatRequest request, HeartbeatResponse response) {
 
   }
 
@@ -481,7 +484,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         term.set(newTerm);
         setCharacter(NodeCharacter.FOLLOWER);
         setLeader(null);
-        setLastHeartBeatReceivedTime(System.currentTimeMillis());
+        setLastHeartbeatReceivedTime(System.currentTimeMillis());
       }
     }
   }
@@ -504,11 +507,12 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     synchronized (term) {
       long thisTerm = term.get();
-      long resp = verifyElector(thisTerm, lastLogIndex, lastLogTerm, thatTerm, thatLastLogId, thatLastLogTerm);
+      long resp = verifyElector(thisTerm, lastLogIndex, lastLogTerm, thatTerm, thatLastLogId,
+          thatLastLogTerm);
       if (resp == Response.RESPONSE_AGREE) {
         term.set(thatTerm);
         setCharacter(NodeCharacter.FOLLOWER);
-        lastHeartBeatReceivedTime = System.currentTimeMillis();
+        lastHeartbeatReceivedTime = System.currentTimeMillis();
         leader = electionRequest.getElector();
         // interrupt election
         term.notifyAll();
@@ -542,6 +546,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * Update the followers' log by sending logs whose index >= followerLastLogIndex to the follower.
    * If some of the logs are not in memory, also send the snapshot.
    * <br>notice that if a part of data is in the snapshot, then it is not in the logs</>
+   *
    * @param follower
    * @param followerLastLogIndex
    */
@@ -597,7 +602,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   /**
-   *
    * @return the header of the data raft group or null if this is in a meta group.
    */
   public Node getHeader() {
@@ -606,6 +610,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   /**
    * Forward a plan to a node using the default client.
+   *
    * @param plan
    * @param node
    * @param header must be set for data group communication, set to null for meta group
@@ -622,7 +627,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     AsyncClient client = connectNode(node);
     if (client != null) {
-     return forwardPlan(plan, client, node, header);
+      return forwardPlan(plan, client, node, header);
     }
     return StatusUtils.TIME_OUT;
   }
@@ -653,8 +658,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   /**
-   * Only the group leader can call this method.
-   * Will commit the log locally and send it to followers
+   * Only the group leader can call this method. Will commit the log locally and send it to
+   * followers
+   *
    * @param plan
    * @return
    */
@@ -712,9 +718,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   /**
-   * if the node is not a leader, will send it to the leader.
-   * Otherwise do it locally (whether to send it to followers depends on the implementation of
-   * executeNonQuery()).
+   * if the node is not a leader, will send it to the leader. Otherwise do it locally (whether to
+   * send it to followers depends on the implementation of executeNonQuery()).
+   *
    * @param request
    * @param resultHandler
    */
@@ -743,8 +749,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   /**
-   * Request and check the leader's commitId to see whether this node has caught up.
-   * If not, wait until this node catches up.
+   * Request and check the leader's commitId to see whether this node has caught up. If not, wait
+   * until this node catches up.
+   *
    * @return true if the node has caught up, false otherwise
    */
   public boolean syncLeader() {

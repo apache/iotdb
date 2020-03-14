@@ -27,8 +27,8 @@ import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.LogManager;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.Response;
@@ -38,7 +38,7 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 
-public class DataHeartBeatThreadTest extends HeartBeatThreadTest {
+public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
 
   private TestLogManager dataLogManager;
 
@@ -57,7 +57,7 @@ public class DataHeartBeatThreadTest extends HeartBeatThreadTest {
 
       @Override
       public MetaGroupMember getMetaGroupMember() {
-        return (MetaGroupMember) DataHeartBeatThreadTest.super.getMember();
+        return (MetaGroupMember) DataHeartbeatThreadTest.super.getMember();
       }
     };
   }
@@ -66,10 +66,10 @@ public class DataHeartBeatThreadTest extends HeartBeatThreadTest {
   AsyncClient getClient(Node node) {
     return new TestClient(node.nodeIdentifier) {
       @Override
-      public void sendHeartBeat(HeartBeatRequest request,
-          AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+      public void sendHeartbeat(HeartbeatRequest request,
+          AsyncMethodCallback<HeartbeatResponse> resultHandler) {
         new Thread(() -> {
-          if (testHeartBeat) {
+          if (testHeartbeat) {
             assertEquals(TestUtils.getNode(0), request.getLeader());
             assertEquals(13, request.getCommitLogIndex());
             assertEquals(10, request.getTerm());
@@ -120,7 +120,7 @@ public class DataHeartBeatThreadTest extends HeartBeatThreadTest {
   }
 
   @Override
-  HeartBeatThread getHeartBeatThread(RaftMember member) {
-    return new DataHeartBeatThread((DataGroupMember) member);
+  HeartbeatThread getHeartbeatThread(RaftMember member) {
+    return new DataHeartbeatThread((DataGroupMember) member);
   }
 }

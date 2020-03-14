@@ -59,8 +59,8 @@ import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
@@ -245,10 +245,10 @@ public class MetaGroupMemberTest extends MemberTest {
             }
 
             @Override
-            public void sendHeartBeat(HeartBeatRequest request,
-                AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+            public void sendHeartbeat(HeartbeatRequest request,
+                AsyncMethodCallback<HeartbeatResponse> resultHandler) {
               new Thread(() -> {
-                HeartBeatResponse response = new HeartBeatResponse();
+                HeartbeatResponse response = new HeartbeatResponse();
                 response.setTerm(Response.RESPONSE_AGREE);
                 resultHandler.onComplete(response);
               }).start();
@@ -678,12 +678,12 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testProcessValidHeartBeatReq() throws QueryProcessException {
+  public void testProcessValidHeartbeatReq() throws QueryProcessException {
     MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(10));
     try {
-      HeartBeatRequest request = new HeartBeatRequest();
+      HeartbeatRequest request = new HeartbeatRequest();
       request.setRequireIdentifier(true);
-      HeartBeatResponse response = new HeartBeatResponse();
+      HeartbeatResponse response = new HeartbeatResponse();
       metaGroupMember.processValidHeartbeatReq(request, response);
       assertEquals(10, response.getFollowerIdentifier());
 
@@ -701,14 +701,14 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testProcessValidHeartBeatResp()
+  public void testProcessValidHeartbeatResp()
       throws TTransportException, QueryProcessException {
     MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(10));
     metaGroupMember.start();
     metaGroupMember.onElectionWins();
     try {
       for (int i = 0; i < 10; i++) {
-        HeartBeatResponse response = new HeartBeatResponse();
+        HeartbeatResponse response = new HeartbeatResponse();
         response.setFollowerIdentifier(i);
         response.setRequirePartitionTable(true);
         metaGroupMember.processValidHeartbeatResp(response, TestUtils.getNode(i));
@@ -911,7 +911,7 @@ public class MetaGroupMemberTest extends MemberTest {
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
     assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(40)));
     assertEquals(ELECTOR, metaGroupMember.getCharacter());
-    assertEquals(Long.MIN_VALUE, metaGroupMember.getLastHeartBeatReceivedTime());
+    assertEquals(Long.MIN_VALUE, metaGroupMember.getLastHeartbeatReceivedTime());
   }
 
   @Test
@@ -922,7 +922,7 @@ public class MetaGroupMemberTest extends MemberTest {
     doRemoveNode(resultRef, TestUtils.getNode(20));
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
     assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(20)));
-    assertEquals(0, metaGroupMember.getLastHeartBeatReceivedTime());
+    assertEquals(0, metaGroupMember.getLastHeartbeatReceivedTime());
   }
 
   @Test
