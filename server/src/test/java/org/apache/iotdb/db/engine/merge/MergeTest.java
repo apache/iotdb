@@ -50,23 +50,23 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 
-abstract class MergeTest {
+public abstract class MergeTest {
 
-  static final String MERGE_TEST_SG = "root.mergeTest";
+  protected static final String MERGE_TEST_SG = "root.mergeTest";
 
-  int seqFileNum = 5;
-  int unseqFileNum = 5;
-  int measurementNum = 10;
-  int deviceNum = 10;
-  long ptNum = 100;
-  long flushInterval = 20;
-  TSEncoding encoding = TSEncoding.PLAIN;
+  protected int seqFileNum = 5;
+  protected int unseqFileNum = 5;
+  protected int measurementNum = 10;
+  protected int deviceNum = 10;
+  protected long ptNum = 100;
+  protected long flushInterval = 20;
+  protected TSEncoding encoding = TSEncoding.PLAIN;
 
-  String[] deviceIds;
-  MeasurementSchema[] measurementSchemas;
+  protected String[] deviceIds;
+  protected MeasurementSchema[] measurementSchemas;
 
-  List<TsFileResource> seqResources = new ArrayList<>();
-  List<TsFileResource> unseqResources = new ArrayList<>();
+  protected List<TsFileResource> seqResources = new ArrayList<>();
+  protected List<TsFileResource> unseqResources = new ArrayList<>();
 
   private int prevMergeChunkThreshold;
 

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.selector;
+package org.apache.iotdb.db.engine.merge;
 
 import java.io.IOException;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -30,6 +30,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
  * @return
  * @throws IOException
  */
-interface IFileQueryMemMeasurement {
+public interface IFileQueryMemMeasurement {
   long measure(TsFileResource resource) throws IOException;
 }

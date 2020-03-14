@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge;
+package org.apache.iotdb.db.engine.merge.inplace;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -29,11 +29,12 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.merge.MergeTest;
+import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.junit.After;
 import org.junit.Before;
@@ -41,7 +42,7 @@ import org.junit.Test;
 
 public class MergeLogTest extends MergeTest {
 
-  File tempSGDir;
+  private File tempSGDir;
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
@@ -53,24 +54,26 @@ public class MergeLogTest extends MergeTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
-    FileUtils.deleteDirectory(tempSGDir);FileUtils.deleteDirectory(tempSGDir);
+    FileUtils.deleteDirectory(tempSGDir);
+    FileUtils.deleteDirectory(tempSGDir);
   }
 
   @Test
   public void testMergeLog() throws Exception {
-    MergeTask mergeTask =
-        new MergeTask(new MergeResource(seqResources.subList(0, 1), unseqResources.subList(0, 1)),
+    InplaceMergeTask mergeTask =
+        new InplaceMergeTask(
+            new MergeResource(seqResources.subList(0, 1), unseqResources.subList(0, 1)),
             tempSGDir.getPath(), this::testCallBack, "test", false, 1, MERGE_TEST_SG);
     mergeTask.call();
   }
 
   private void testCallBack(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
-      File mergeLog) {
+      File mergeLog, TsFileResource newFile) {
     int lineCnt = 0;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(mergeLog))) {
       String line;
       while ((line = bufferedReader.readLine()) != null) {
-        lineCnt ++;
+        lineCnt++;
       }
     } catch (IOException e) {
       e.printStackTrace();

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.task;
+package org.apache.iotdb.db.engine.merge.inplace.task;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,9 +29,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.merge.MergeCallback;
+import org.apache.iotdb.db.engine.merge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -52,15 +54,15 @@ import org.slf4j.LoggerFactory;
  * merged chunks in the temp files back to the seqFiles or move the unmerged chunks in the seqFiles
  * into temp files and replace the seqFiles with the temp files. 3. remove unseqFiles
  */
-public class MergeTask implements Callable<Void> {
+public class InplaceMergeTask implements Callable<Void> {
 
-  public static final String MERGE_SUFFIX = ".merge";
-  private static final Logger logger = LoggerFactory.getLogger(MergeTask.class);
+  public static final String MERGE_SUFFIX = ".merge.inplace";
+  private static final Logger logger = LoggerFactory.getLogger(InplaceMergeTask.class);
 
   MergeResource resource;
   String storageGroupSysDir;
   String storageGroupName;
-  MergeLogger mergeLogger;
+  InplaceMergeLogger mergeLogger;
   MergeContext mergeContext = new MergeContext();
 
   private MergeCallback callback;
@@ -68,7 +70,7 @@ public class MergeTask implements Callable<Void> {
   String taskName;
   boolean fullMerge;
 
-  MergeTask(List<TsFileResource> seqFiles,
+  InplaceMergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupSysDir, MergeCallback callback,
       String taskName, boolean fullMerge, String storageGroupName) {
     this.resource = new MergeResource(seqFiles, unseqFiles);
@@ -80,7 +82,8 @@ public class MergeTask implements Callable<Void> {
     this.storageGroupName = storageGroupName;
   }
 
-  public MergeTask(MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
+  public InplaceMergeTask(MergeResource mergeResource, String storageGroupSysDir,
+      MergeCallback callback,
       String taskName, boolean fullMerge, int concurrentMergeSeriesNum, String storageGroupName) {
     this.resource = mergeResource;
     this.storageGroupSysDir = storageGroupSysDir;
@@ -101,7 +104,8 @@ public class MergeTask implements Callable<Void> {
       // call the callback to make sure the StorageGroup exit merging status, but passing 2
       // empty file lists to avoid files being deleted.
       callback.call(Collections.emptyList(), Collections.emptyList(),
-          new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
+          SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, InplaceMergeLogger.MERGE_LOG_NAME),
+          null);
       throw e;
     }
     return null;
@@ -115,7 +119,7 @@ public class MergeTask implements Callable<Void> {
     long startTime = System.currentTimeMillis();
     long totalFileSize = MergeUtils.collectFileSizes(resource.getSeqFiles(),
         resource.getUnseqFiles());
-    mergeLogger = new MergeLogger(storageGroupSysDir);
+    mergeLogger = new InplaceMergeLogger(storageGroupSysDir);
 
     mergeLogger.logFiles(resource);
 
@@ -183,11 +187,11 @@ public class MergeTask implements Callable<Void> {
       unseqFile.setMerging(false);
     }
 
-    File logFile = new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);
+    File logFile = new File(storageGroupSysDir, InplaceMergeLogger.MERGE_LOG_NAME);
     if (executeCallback) {
       // make sure merge.log is not deleted until unseqFiles are cleared so that when system
       // reboots, the undeleted files can be deleted again
-      callback.call(resource.getSeqFiles(), resource.getUnseqFiles(), logFile);
+      callback.call(resource.getSeqFiles(), resource.getUnseqFiles(), logFile, null);
     } else {
       logFile.delete();
     }

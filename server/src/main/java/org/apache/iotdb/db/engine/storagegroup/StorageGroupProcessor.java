@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -37,6 +37,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.Callable;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
@@ -46,14 +47,11 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.MergeFileStrategy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
-import org.apache.iotdb.db.engine.merge.task.RecoverMergeTask;
+import org.apache.iotdb.db.engine.merge.inplace.task.RecoverInplaceMergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -160,10 +158,10 @@ public class StorageGroupProcessor {
   private Map<Long, Map<String, Long>> latestTimeForEachDevice = new HashMap<>();
   /**
    * time partition id -> map, which contains device -> largest timestamp of the latest memtable to
-   * be submitted to asyncTryToFlush partitionLatestFlushedTimeForEachDevice determines whether a data point
-   * should be put into a sequential file or an unsequential file. Data of some device with
-   * timestamp less than or equals to the device's latestFlushedTime should go into an unsequential
-   * file.
+   * be submitted to asyncTryToFlush partitionLatestFlushedTimeForEachDevice determines whether a
+   * data point should be put into a sequential file or an unsequential file. Data of some device
+   * with timestamp less than or equals to the device's latestFlushedTime should go into an
+   * unsequential file.
    */
   private Map<Long, Map<String, Long>> partitionLatestFlushedTimeForEachDevice = new HashMap<>();
   /**
@@ -255,11 +253,12 @@ public class StorageGroupProcessor {
       if (mergingMods.exists()) {
         mergingModification = new ModificationFile(mergingMods.getPath());
       }
-      RecoverMergeTask recoverMergeTask = new RecoverMergeTask(seqTsFiles, unseqTsFiles,
+      RecoverInplaceMergeTask recoverInplaceMergeTask = new RecoverInplaceMergeTask(seqTsFiles,
+          unseqTsFiles,
           storageGroupSysDir.getPath(), this::mergeEndAction, taskName,
           IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), storageGroupName);
-      logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
-      recoverMergeTask
+      logger.info("{} a RecoverInplaceMergeTask {} starts...", storageGroupName, taskName);
+      recoverInplaceMergeTask
           .recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
@@ -273,13 +272,14 @@ public class StorageGroupProcessor {
       if (timePartitionId != -1) {
         latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>())
             .putAll(resource.getEndTimeMap());
-        partitionLatestFlushedTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>())
+        partitionLatestFlushedTimeForEachDevice
+            .computeIfAbsent(timePartitionId, id -> new HashMap<>())
             .putAll(resource.getEndTimeMap());
 
         for (Map.Entry<String, Long> mapEntry : resource.getEndTimeMap().entrySet()) {
           if (!globalLatestFlushedTimeForEachDevice.containsKey(mapEntry.getKey())
               || globalLatestFlushedTimeForEachDevice.get(mapEntry.getKey())
-                  < mapEntry.getValue()) {
+              < mapEntry.getValue()) {
             globalLatestFlushedTimeForEachDevice.put(mapEntry.getKey(), mapEntry.getValue());
           }
         }
@@ -445,7 +445,8 @@ public class StorageGroupProcessor {
       long timePartitionId = StorageEngine.fromTimeToTimePartition(insertPlan.getTime());
       latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>())
           .putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
-      partitionLatestFlushedTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>())
+      partitionLatestFlushedTimeForEachDevice
+          .computeIfAbsent(timePartitionId, id -> new HashMap<>())
           .putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
 
       // insert to sequence or unSequence file
@@ -484,7 +485,8 @@ public class StorageGroupProcessor {
       // before is first start point
       int before = loc;
       // before time partition
-      long beforeTimePartition = StorageEngine.fromTimeToTimePartition(batchInsertPlan.getTimes()[before]);
+      long beforeTimePartition = StorageEngine
+          .fromTimeToTimePartition(batchInsertPlan.getTimes()[before]);
       // init map
       long lastFlushTime = partitionLatestFlushedTimeForEachDevice.
           computeIfAbsent(beforeTimePartition, id -> new HashMap<>()).
@@ -580,9 +582,10 @@ public class StorageGroupProcessor {
         globalLatestFlushedTimeForEachDevice.computeIfAbsent(
             batchInsertPlan.getDeviceId(), k -> Long.MIN_VALUE);
     tryToUpdateBatchInsertLastCache(batchInsertPlan, globalLatestFlushedTime);
-    if (globalLatestFlushedTime < batchInsertPlan.getMaxTime())
+    if (globalLatestFlushedTime < batchInsertPlan.getMaxTime()) {
       globalLatestFlushedTimeForEachDevice.put(
           batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
+    }
 
     // check memtable size and may async try to flush the work memtable
     if (tsFileProcessor.shouldFlush()) {
@@ -732,7 +735,6 @@ public class StorageGroupProcessor {
 
     return res;
   }
-
 
 
   private TsFileProcessor createTsFileProcessor(boolean sequence, long timePartitionId)
@@ -973,7 +975,7 @@ public class StorageGroupProcessor {
           closeStorageGroupCondition.wait(60_000);
           if (System.currentTimeMillis() - startTime > 60_000) {
             logger.warn("{} has spent {}s to wait for closing all TsFiles.", this.storageGroupName,
-                (System.currentTimeMillis() - startTime)/1000);
+                (System.currentTimeMillis() - startTime) / 1000);
           }
         }
       } catch (InterruptedException e) {
@@ -1068,8 +1070,8 @@ public class StorageGroupProcessor {
           // left: in-memory data, right: meta of disk data
           Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair =
               tsFileResource.getUnsealedFileProcessor()
-              .query(deviceId, measurementId, schema.getType(), schema.getEncodingType(),
-                  schema.getProps(), context);
+                  .query(deviceId, measurementId, schema.getType(), schema.getEncodingType(),
+                      schema.getProps(), context);
 
           tsfileResourcesForQuery.add(new TsFileResource(tsFileResource.getFile(),
               tsFileResource.getStartTimeMap(), tsFileResource.getEndTimeMap(), pair.left,
@@ -1325,10 +1327,12 @@ public class StorageGroupProcessor {
       MergeResource mergeResource = new MergeResource(sequenceFileTreeSet, unSequenceFileList,
           timeLowerBound);
 
-      IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
+      MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
+      IMergeFileSelector fileSelector = strategy.getFileSelector(mergeResource, budget);
       try {
-        List[] mergeFiles = fileSelector.select();
-        if (mergeFiles.length == 0) {
+        fileSelector.select();
+        if (fileSelector.getSelectedSeqFiles().size() + fileSelector.getSelectedUnseqFiles().size()
+            <= 1) {
           logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
               budget);
           return;
@@ -1347,15 +1351,17 @@ public class StorageGroupProcessor {
           tsFileResource.setMerging(true);
         }
 
-        MergeTask mergeTask = new MergeTask(mergeResource, storageGroupSysDir.getPath(),
-            this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum(),
-            storageGroupName);
+        Callable<Void> mergeTask = strategy
+            .getMergeTask(mergeResource, storageGroupSysDir.getPath(),
+                this::mergeEndAction, taskName, fileSelector.getConcurrentMergeNum(),
+                storageGroupName, fullMerge);
         mergingModification = new ModificationFile(
             storageGroupSysDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
         MergeManager.getINSTANCE().submitMainTask(mergeTask);
         if (logger.isInfoEnabled()) {
           logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
-              storageGroupName, taskName, mergeFiles[0].size(), mergeFiles[1].size());
+              storageGroupName, taskName, mergeResource.getSeqFiles().size(),
+              mergeResource.getUnseqFiles().size());
         }
         isMerging = true;
         mergeStartTime = System.currentTimeMillis();
@@ -1365,18 +1371,6 @@ public class StorageGroupProcessor {
       }
     } finally {
       writeUnlock();
-    }
-  }
-
-  private IMergeFileSelector getMergeFileSelector(long budget, MergeResource resource) {
-    MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
-    switch (strategy) {
-      case MAX_FILE_NUM:
-        return new MaxFileMergeFileSelector(resource, budget);
-      case MAX_SERIES_NUM:
-        return new MaxSeriesMergeFileSelector(resource, budget);
-      default:
-        throw new UnsupportedOperationException("Unknown MergeFileStrategy " + strategy);
     }
   }
 
@@ -1435,18 +1429,40 @@ public class StorageGroupProcessor {
   }
 
   protected void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
-      File mergeLog) {
+      File mergeLog, TsFileResource newFile) {
     logger.info("{} a merge task is ending...", storageGroupName);
 
-    if (unseqFiles.isEmpty()) {
+    if (seqFiles.isEmpty() && unseqFiles.isEmpty()) {
       // merge runtime exception arose, just end this merge
-      isMerging = false;
-      logger.info("{} a merge task abnormally ends", storageGroupName);
+      mergeLock.writeLock().lock();
+      try {
+        if (mergingModification != null) {
+          logger.debug("{} is updating the merged file's modification file", storageGroupName);
+          mergingModification.remove();
+          mergingModification = null;
+        }
+      } catch (IOException e) {
+        logger.error("{} cannot remove merge modifications after merge abnormally ends",
+            storageGroupName, e);
+      } finally {
+        isMerging = false;
+        logger.debug("{} a merge task abnormally ends", storageGroupName);
+        mergeLock.writeLock().unlock();
+      }
       return;
     }
 
-    removeUnseqFiles(unseqFiles);
+    if (newFile == null) {
+      handleInplaceMerge(seqFiles, unseqFiles, mergeLog);
+    } else {
 
+    }
+  }
+
+  private void handleInplaceMerge(List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles, File mergeLog) {
+
+    removeUnseqFiles(unseqFiles);
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);
       mergeLock.writeLock().lock();
@@ -1462,7 +1478,7 @@ public class StorageGroupProcessor {
         mergeLock.writeLock().unlock();
       }
     }
-    logger.info("{} a merge task ends", storageGroupName);
+    logger.debug("{} a merge task ends", storageGroupName);
   }
 
   /**
@@ -1473,6 +1489,7 @@ public class StorageGroupProcessor {
    * Secondly, execute the loading process by the type.
    * <p>
    * Finally, update the latestTimeForEachDevice and partitionLatestFlushedTimeForEachDevice.
+   *
    * @param newTsFileResource tsfile resource
    * @UsedBy sync module.
    */
@@ -1594,9 +1611,8 @@ public class StorageGroupProcessor {
 
   /**
    * If the historical versions of a file is a sub-set of the given file's, remove it to reduce
-   * unnecessary merge. Only used when the file sender and the receiver share the same file
-   * close policy.
-   * @param resource
+   * unnecessary merge. Only used when the file sender and the receiver share the same file close
+   * policy.
    */
   public void removeFullyOverlapFiles(TsFileResource resource) {
     writeLock();

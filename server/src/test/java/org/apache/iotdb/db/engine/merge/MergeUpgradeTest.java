@@ -28,8 +28,10 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.MaxSeriesMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.inplace.selector.InplaceMaxFileSelector;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -77,10 +79,10 @@ public class MergeUpgradeTest {
   @Test
   public void testMergeUpgradeSelect() throws MergeException {
     MergeResource resource = new MergeResource(seqResources, unseqResources);
-    MaxFileMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource,
-        Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    assertEquals(0, result.length);
+    IMergeFileSelector mergeFileSelector = new MaxSeriesMergeFileSelector<>(new InplaceMaxFileSelector(resource,
+        Long.MAX_VALUE));
+    mergeFileSelector.select();
+    assertEquals(0, mergeFileSelector.getSelectedSeqFiles().size());
   }
 
   private void prepareFiles() throws IOException, WriteProcessException {

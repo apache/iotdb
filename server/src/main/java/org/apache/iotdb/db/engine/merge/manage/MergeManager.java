@@ -29,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -57,7 +56,7 @@ public class MergeManager implements IService {
     return INSTANCE;
   }
 
-  public void submitMainTask(MergeTask mergeTask) {
+  public void submitMainTask(Callable mergeTask) {
     mergeTaskPool.submit(mergeTask);
   }
 
@@ -86,7 +85,7 @@ public class MergeManager implements IService {
               r -> new Thread(r, "MergeChunkSubThread-" + threadCnt.getAndIncrement()));
       long mergeInterval = IoTDBDescriptor.getInstance().getConfig().getMergeIntervalSec();
       if (mergeInterval > 0) {
-        timedMergeThreadPool = Executors.newSingleThreadScheduledExecutor( r -> new Thread(r,
+        timedMergeThreadPool = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
             "TimedMergeThread"));
         timedMergeThreadPool.scheduleAtFixedRate(this::mergeAll, mergeInterval,
             mergeInterval, TimeUnit.SECONDS);
@@ -106,11 +105,11 @@ public class MergeManager implements IService {
       mergeChunkSubTaskPool.shutdownNow();
       logger.info("Waiting for task pool to shut down");
       long startTime = System.currentTimeMillis();
-      while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated() ) {
+      while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated()) {
         // wait
         long time = System.currentTimeMillis() - startTime;
         if (time % 60_000 == 0) {
-          logger.warn("MergeManager has wait for {} seconds to stop", time/1000);
+          logger.warn("MergeManager has wait for {} seconds to stop", time / 1000);
         }
       }
       mergeTaskPool = null;
@@ -129,11 +128,11 @@ public class MergeManager implements IService {
       awaitTermination(mergeChunkSubTaskPool, millseconds);
       logger.info("Waiting for task pool to shut down");
       long startTime = System.currentTimeMillis();
-      while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated() ) {
+      while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated()) {
         // wait
         long time = System.currentTimeMillis() - startTime;
         if (time % 60_000 == 0) {
-          logger.warn("MergeManager has wait for {} seconds to stop", time/1000);
+          logger.warn("MergeManager has wait for {} seconds to stop", time / 1000);
         }
       }
       mergeTaskPool = null;
@@ -159,7 +158,8 @@ public class MergeManager implements IService {
 
   private void mergeAll() {
     try {
-      StorageEngine.getInstance().mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+      StorageEngine.getInstance()
+          .mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
     } catch (StorageEngineException e) {
       logger.error("Cannot perform a global merge because", e);
     }

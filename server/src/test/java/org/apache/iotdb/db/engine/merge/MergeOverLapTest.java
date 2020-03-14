@@ -20,11 +20,12 @@
 
 package org.apache.iotdb.db.engine.merge;
 
+import java.util.concurrent.Callable;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -149,9 +150,9 @@ public class MergeOverLapTest extends MergeTest {
 
   @Test
   public void testFullMerge() throws Exception {
-    MergeTask mergeTask =
-        new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
-            (k, v, l) -> {
+    Callable mergeTask =
+        new InplaceMergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
+            (k, v, l, n) -> {
             }, "test",
             true, 1, MERGE_TEST_SG);
     mergeTask.call();

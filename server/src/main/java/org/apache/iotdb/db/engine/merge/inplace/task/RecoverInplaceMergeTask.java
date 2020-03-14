@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.task;
+package org.apache.iotdb.db.engine.merge.inplace.task;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,10 +28,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.merge.recover.LogAnalyzer;
-import org.apache.iotdb.db.engine.merge.recover.LogAnalyzer.Status;
-import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
-import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.MaxSeriesMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.MergeCallback;
+import org.apache.iotdb.db.engine.merge.inplace.recover.InplaceMergeLogger;
+import org.apache.iotdb.db.engine.merge.inplace.recover.LogAnalyzer;
+import org.apache.iotdb.db.engine.merge.inplace.recover.LogAnalyzer.Status;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.utils.MergeUtils;
@@ -42,24 +43,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * RecoverMergeTask is an extension of MergeTask, which resumes the last merge progress by
+ * RecoverInplaceMergeTask is an extension of MergeTask, which resumes the last merge progress by
  * scanning merge.log using LogAnalyzer and continue the unfinished merge.
  */
-public class RecoverMergeTask extends MergeTask {
+public class RecoverInplaceMergeTask extends InplaceMergeTask {
 
-  private static final Logger logger = LoggerFactory.getLogger(RecoverMergeTask.class);
+  private static final Logger logger = LoggerFactory.getLogger(RecoverInplaceMergeTask.class);
 
   private LogAnalyzer analyzer;
 
-  public RecoverMergeTask(List<TsFileResource> seqFiles,
+  public RecoverInplaceMergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupSysDir,
       MergeCallback callback, String taskName,
       boolean fullMerge, String storageGroupName) {
-    super(seqFiles, unseqFiles, storageGroupSysDir, callback, taskName, fullMerge, storageGroupName);
+    super(seqFiles, unseqFiles, storageGroupSysDir, callback, taskName, fullMerge,
+        storageGroupName);
   }
 
   public void recoverMerge(boolean continueMerge) throws IOException, MetadataException {
-    File logFile = new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);
+    File logFile = new File(storageGroupSysDir, InplaceMergeLogger.MERGE_LOG_NAME);
     if (!logFile.exists()) {
       logger.info("{} no merge.log, merge recovery ends", taskName);
       return;
@@ -103,7 +105,8 @@ public class RecoverMergeTask extends MergeTask {
             + "increase the budget or disable continueMergeAfterReboot");
       }
 
-      MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName, mergeLogger, resource,
+      MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName,
+          mergeLogger, resource,
           fullMerge, analyzer.getUnmergedPaths(), concurrentMergeSeriesNum);
       analyzer.setUnmergedPaths(null);
       mergeChunkTask.mergeSeries();
@@ -131,7 +134,7 @@ public class RecoverMergeTask extends MergeTask {
   }
 
   private void resumeMergeProgress() throws IOException {
-    mergeLogger = new MergeLogger(storageGroupSysDir);
+    mergeLogger = new InplaceMergeLogger(storageGroupSysDir);
     truncateFiles();
     recoverChunkCounts();
   }
@@ -157,7 +160,7 @@ public class RecoverMergeTask extends MergeTask {
       long totalChunkNum = chunkNums[0];
       long maxChunkNum = chunkNums[1];
       long fileMetaSize = MergeUtils.getFileMetaSize(seqFile, resource.getFileReader(seqFile));
-      long newSingleSeriesSeqReadCost =  fileMetaSize * maxChunkNum / totalChunkNum;
+      long newSingleSeriesSeqReadCost = fileMetaSize * maxChunkNum / totalChunkNum;
       singleSeriesSeqReadCost = newSingleSeriesSeqReadCost > singleSeriesSeqReadCost ?
           newSingleSeriesSeqReadCost : singleSeriesSeqReadCost;
       maxSeqReadCost = fileMetaSize > maxSeqReadCost ? fileMetaSize : maxSeqReadCost;
@@ -198,7 +201,7 @@ public class RecoverMergeTask extends MergeTask {
       List<Path> pathsToRecover = analyzer.getMergedPaths();
       int cnt = 0;
       double progress = 0.0;
-      for(Path path : pathsToRecover) {
+      for (Path path : pathsToRecover) {
         recoverChunkCounts(path, tsFileResource, mergeFileWriter);
         if (logger.isInfoEnabled()) {
           cnt += 1.0;
@@ -232,17 +235,18 @@ public class RecoverMergeTask extends MergeTask {
       ChunkMetadata mergedChunk = mergeFileChunks.get(mergeChunkIndex);
       if (seqChunk.getStartTime() < mergedChunk.getStartTime()) {
         // this seqChunk is unmerged
-        unmergedCnt ++;
-        seqChunkIndex ++;
-        mergeContext.getUnmergedChunkStartTimes().get(tsFileResource).get(path).add(seqChunk.getStartTime());
+        unmergedCnt++;
+        seqChunkIndex++;
+        mergeContext.getUnmergedChunkStartTimes().get(tsFileResource).get(path)
+            .add(seqChunk.getStartTime());
       } else if (mergedChunk.getStartTime() <= seqChunk.getStartTime() &&
           seqChunk.getStartTime() <= mergedChunk.getEndTime()) {
         // this seqChunk is merged
-        seqChunkIndex ++;
+        seqChunkIndex++;
       } else {
         // seqChunk.startTime > mergeChunk.endTime, find next mergedChunk that may cover the
         // seqChunk
-        mergeChunkIndex ++;
+        mergeChunkIndex++;
       }
     }
     int finalUnmergedCnt = unmergedCnt;

@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.selector;
+package org.apache.iotdb.db.engine.merge;
 
-public enum MergeFileStrategy {
-  MAX_SERIES_NUM,
-  MAX_FILE_NUM,
-  // TODO: HOW?
-  TRADE_OFF,
+import java.io.IOException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+
+public interface IRecoverMergeTask {
+  void recoverMerge(boolean continueMerge) throws IOException, MetadataException;
 }

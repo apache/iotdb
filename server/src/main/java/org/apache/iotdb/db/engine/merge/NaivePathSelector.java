@@ -17,18 +17,36 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.selector;
+package org.apache.iotdb.db.engine.merge;
 
 import java.util.List;
-import org.apache.iotdb.db.exception.MergeException;
+import java.util.NoSuchElementException;
+import org.apache.iotdb.tsfile.read.common.Path;
 
-/**
- * IMergeFileSelector selects a set of files from given seqFiles and unseqFiles which can be
- * merged without exceeding given memory budget.
- */
-public interface IMergeFileSelector {
+public class NaivePathSelector implements IMergePathSelector {
 
-  List[] select() throws MergeException;
+  private List<Path> paths;
+  private int idx;
+  private int maxSeriesNum;
 
-  int getConcurrentMergeNum();
+  public NaivePathSelector(List<Path> paths, int maxSeriesNum) {
+    this.paths = paths;
+    this.maxSeriesNum = maxSeriesNum;
+  }
+
+  @Override
+  public boolean hasNext() {
+    return idx < paths.size();
+  }
+
+  @Override
+  public List<Path> next() {
+    if (!hasNext()) {
+      throw new NoSuchElementException();
+    }
+    List<Path> ret = idx + maxSeriesNum <= paths.size() ? paths.subList(idx, idx + maxSeriesNum) :
+        paths.subList(idx, paths.size());
+    idx += maxSeriesNum;
+    return ret;
+  }
 }

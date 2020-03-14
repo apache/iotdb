@@ -17,13 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.recover;
+package org.apache.iotdb.db.engine.merge.inplace.recover;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -31,9 +32,9 @@ import org.apache.iotdb.tsfile.read.common.Path;
 /**
  * MergeLogger records the progress of a merge in file "merge.log" as text lines.
  */
-public class MergeLogger {
+public class InplaceMergeLogger {
 
-  public static final String MERGE_LOG_NAME = "merge.log";
+  public static final String MERGE_LOG_NAME = "merge.log.inplace";
 
   static final String STR_SEQ_FILES = "seqFiles";
   static final String STR_UNSEQ_FILES = "unseqFiles";
@@ -46,8 +47,9 @@ public class MergeLogger {
 
   private BufferedWriter logStream;
 
-  public MergeLogger(String storageGroupDir) throws IOException {
-    logStream = new BufferedWriter(new FileWriter(new File(storageGroupDir, MERGE_LOG_NAME), true));
+  public InplaceMergeLogger(String storageGroupDir) throws IOException {
+    logStream = new BufferedWriter(new FileWriter(SystemFileFactory.INSTANCE.getFile(storageGroupDir,
+      MERGE_LOG_NAME), true));
   }
 
   public void close() throws IOException {
