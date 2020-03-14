@@ -172,7 +172,6 @@ class MergeFileTask {
               new File(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
       seqFile.setFile(nextMergeVersionFile);
     } catch (Exception e) {
-      e.printStackTrace();
       logger.error(e.getMessage(), e);
     } finally {
       seqFile.getWriteQueryLock().writeLock().unlock();

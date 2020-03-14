@@ -39,8 +39,6 @@ import org.slf4j.LoggerFactory;
  */
 public class ForceAppendTsFileWriter extends TsFileIOWriter {
 
-  private Map<Path, MeasurementSchema> knownSchemas;
-  private Map<Path, List<ChunkMetadata>> chunkMetadataListMap;
   private long truncatePosition;
   private static Logger logger = LoggerFactory.getLogger(ForceAppendTsFileWriter.class);
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
@@ -84,7 +82,4 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
     return truncatePosition;
   }
 
-  public Map<Path, MeasurementSchema> getKnownSchema() {
-    return knownSchemas;
-  }
 }
