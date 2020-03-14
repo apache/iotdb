@@ -173,7 +173,7 @@ public class DatabaseConnectController {
     JSONArray dataPoints = new JSONArray();
     for (TimeValues tv : timeValues) {
       long time = tv.getTime();
-      float value = tv.getValue();
+      Object value = tv.getValue();
       JSONArray jsonArray = new JSONArray();
       jsonArray.add(value);
       jsonArray.add(time);
