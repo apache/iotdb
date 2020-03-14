@@ -59,6 +59,7 @@ public class Session {
   private ZoneId zoneId;
   private TSOperationHandle operationHandle;
   private long statementId;
+  private int fetchSize;
 
 
   public Session(String host, int port) {
@@ -74,6 +75,15 @@ public class Session {
     this.port = port;
     this.username = username;
     this.password = password;
+    this.fetchSize = 10000;
+  }
+
+  public Session(String host, int port, String username, String password, int fetchSize) {
+    this.host = host;
+    this.port = port;
+    this.username = username;
+    this.password = password;
+    this.fetchSize = fetchSize;
   }
 
   public synchronized void open() throws IoTDBSessionException {
@@ -346,8 +356,10 @@ public class Session {
 
     RpcUtils.verifySuccess(execResp.getStatus());
     operationHandle = execResp.getOperationHandle();
-    return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
+    SessionDataSet dataSet = new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
             operationHandle.getOperationId().getQueryId(), client, operationHandle);
+    dataSet.setBatchSize(fetchSize);
+    return dataSet;
   }
 
   /**

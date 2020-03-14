@@ -47,6 +47,7 @@ public class SessionDataSet {
   private TSOperationHandle operationHandle;
   private int batchSize = 512;
   private List<String> columnTypeDeduplicatedList;
+  private List<String> columnNames;
 
   public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
       long queryId, TSIService.Iface client, TSOperationHandle operationHandle) {
@@ -54,7 +55,7 @@ public class SessionDataSet {
     this.queryId = queryId;
     this.client = client;
     this.operationHandle = operationHandle;
-
+    this.columnNames = columnNameList;
     // deduplicate columnTypeList according to columnNameList
     this.columnTypeDeduplicatedList = new ArrayList<>();
     Set<String> columnSet = new HashSet<>(); // for deduplication
@@ -65,6 +66,10 @@ public class SessionDataSet {
         columnTypeDeduplicatedList.add(columnTypeList.get(i));
       }
     }
+  }
+
+  public List<String> getColumnNames() {
+    return columnNames;
   }
 
   public int getBatchSize() {
@@ -127,10 +132,10 @@ public class SessionDataSet {
         RpcUtils.verifySuccess(closeResp);
       }
     } catch (IoTDBRPCException e) {
-      throw new SQLException("Error occurs for close opeation in server side. The reason is " + e);
+      throw new SQLException("Error occurs for close opeation in server side. The reason is " + e, e);
     } catch (TException e) {
       throw new SQLException(
-          "Error occurs when connecting to server for close operation, because: " + e);
+          "Error occurs when connecting to server for close operation, because: " + e, e);
     }
   }
 }
