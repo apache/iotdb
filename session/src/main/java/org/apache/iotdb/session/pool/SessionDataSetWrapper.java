@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.session.pool;
 
+import java.util.List;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -25,6 +26,7 @@ import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 public class SessionDataSetWrapper {
+
   SessionDataSet sessionDataSet;
   Session session;
   SessionPool pool;
@@ -71,5 +73,9 @@ public class SessionDataSetWrapper {
    */
   public RowRecord next() throws IoTDBConnectionException, StatementExecutionException {
     return sessionDataSet.next();
+  }
+
+  public List<String> getColumnNames() {
+    return sessionDataSet.getColumnNames();
   }
 }

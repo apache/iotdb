@@ -74,7 +74,7 @@ public class SessionPool {
 
   private int fetchSize;
 
-  private long timeout = 60 * 1000; //ms
+  private long timeout; //ms
   private static int RETRY = 3;
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
