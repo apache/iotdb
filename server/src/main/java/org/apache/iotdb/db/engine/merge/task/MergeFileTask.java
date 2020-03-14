@@ -23,11 +23,9 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
@@ -42,6 +40,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.ForceAppendTsFileWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -49,9 +48,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * MergeFileTask merges the merge temporary files with the seqFiles, either move the merged
- * chunks in the temp files into the seqFiles or move the unmerged chunks into the merge temp
- * files, depending on which one is the majority.
+ * MergeFileTask merges the merge temporary files with the seqFiles, either move the merged chunks
+ * in the temp files into the seqFiles or move the unmerged chunks into the merge temp files,
+ * depending on which one is the majority.
  */
 class MergeFileTask {
 
@@ -87,24 +86,27 @@ class MergeFileTask {
         // move the unmerged data to the new file
         if (logger.isInfoEnabled()) {
           logger.info("{} moving unmerged data of {} to the merged file, {} merged chunks, {} "
-              + "unmerged chunks", taskName, seqFile.getFile().getName(), mergedChunkNum, unmergedChunkNum);
+                  + "unmerged chunks", taskName, seqFile.getFile().getName(), mergedChunkNum,
+              unmergedChunkNum);
         }
         moveUnmergedToNew(seqFile);
       } else {
         // move the merged data to the old file
         if (logger.isInfoEnabled()) {
           logger.info("{} moving merged data of {} to the old file {} merged chunks, {} "
-              + "unmerged chunks", taskName, seqFile.getFile().getName(), mergedChunkNum, unmergedChunkNum);
+                  + "unmerged chunks", taskName, seqFile.getFile().getName(), mergedChunkNum,
+              unmergedChunkNum);
         }
         moveMergedToOld(seqFile);
       }
-      cnt ++;
+      cnt++;
       if (logger.isInfoEnabled()) {
         logger.debug("{} has merged {}/{} files", taskName, cnt, unmergedFiles.size());
       }
     }
     if (logger.isInfoEnabled()) {
-      logger.info("{} has merged all files after {}ms", taskName, System.currentTimeMillis() - startTime);
+      logger.info("{} has merged all files after {}ms", taskName,
+          System.currentTimeMillis() - startTime);
     }
     mergeLogger.logMergeEnd();
   }
@@ -126,7 +128,8 @@ class MergeFileTask {
       TsFileIOWriter oldFileWriter;
       try {
         oldFileWriter = new ForceAppendTsFileWriter(seqFile.getFile());
-        mergeLogger.logFileMergeStart(seqFile.getFile(), ((ForceAppendTsFileWriter) oldFileWriter).getTruncatePosition());
+        mergeLogger.logFileMergeStart(seqFile.getFile(),
+            ((ForceAppendTsFileWriter) oldFileWriter).getTruncatePosition());
         logger.debug("{} moving merged chunks of {} to the old file", taskName, seqFile);
         ((ForceAppendTsFileWriter) oldFileWriter).doTruncate();
       } catch (TsFileNotCompleteException e) {
@@ -143,9 +146,11 @@ class MergeFileTask {
         Map<String, List<ChunkMetadata>> chunkMetadataListInChunkGroups =
             newFileWriter.getDeviceChunkMetadataMap();
         if (logger.isDebugEnabled()) {
-          logger.debug("{} find {} merged chunk groups", taskName, chunkMetadataListInChunkGroups.size());
+          logger.debug("{} find {} merged chunk groups", taskName,
+              chunkMetadataListInChunkGroups.size());
         }
-        for (Map.Entry<String, List<ChunkMetadata>> entry : chunkMetadataListInChunkGroups.entrySet()) {
+        for (Map.Entry<String, List<ChunkMetadata>> entry : chunkMetadataListInChunkGroups
+            .entrySet()) {
           String deviceId = entry.getKey();
           List<ChunkMetadata> chunkMetadataList = entry.getValue();
           writeMergedChunkGroup(chunkMetadataList, deviceId, newFileReader, oldFileWriter);
@@ -191,12 +196,15 @@ class MergeFileTask {
       TsFileSequenceReader reader, TsFileIOWriter fileWriter)
       throws IOException {
     fileWriter.startChunkGroup(device);
-    // long version = chunkGroupMetaData.getVersion();
+    long maxVersion = 0;
     for (ChunkMetadata chunkMetaData : chunkMetadataList) {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       fileWriter.writeChunk(chunk, chunkMetaData);
+      maxVersion =
+          chunkMetaData.getVersion() > maxVersion ? chunkMetaData.getVersion() : maxVersion;
       context.incTotalPointWritten(chunkMetaData.getNumOfPoints());
     }
+    fileWriter.addVersionPair(new Pair<>(fileWriter.getPos(), maxVersion));
     fileWriter.endChunkGroup();
   }
 
@@ -227,6 +235,8 @@ class MergeFileTask {
         fileWriter.startChunkGroup(path.getDevice());
         long maxVersion = writeUnmergedChunks(chunkStartTimes, chunkMetadataList,
             resource.getFileReader(seqFile), fileWriter);
+        Pair<Long, Long> versionPair = new Pair<>(fileWriter.getPos(), maxVersion + 1);
+        fileWriter.addVersionPair(versionPair);
         fileWriter.endChunkGroup();
       }
     }
@@ -254,7 +264,7 @@ class MergeFileTask {
       seqFile.setFile(nextMergeVersionFile);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-    }  finally {
+    } finally {
       seqFile.getWriteQueryLock().writeLock().unlock();
     }
   }
@@ -274,7 +284,7 @@ class MergeFileTask {
     long maxVersion = 0;
     int chunkIdx = 0;
     for (Long startTime : chunkStartTimes) {
-      for (; chunkIdx < chunkMetadataList.size(); chunkIdx ++) {
+      for (; chunkIdx < chunkMetadataList.size(); chunkIdx++) {
         ChunkMetadata metaData = chunkMetadataList.get(chunkIdx);
         if (metaData.getStartTime() == startTime) {
           Chunk chunk = reader.readMemChunk(metaData);

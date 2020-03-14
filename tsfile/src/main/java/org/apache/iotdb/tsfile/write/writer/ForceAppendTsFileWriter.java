@@ -24,8 +24,10 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
@@ -37,11 +39,10 @@ import org.slf4j.LoggerFactory;
  */
 public class ForceAppendTsFileWriter extends TsFileIOWriter {
 
-  private Map<Path, MeasurementSchema> knownSchemas;
-  private Map<Path, List<ChunkMetadata>> chunkMetadataListMap;
   private long truncatePosition;
   private static Logger logger = LoggerFactory.getLogger(ForceAppendTsFileWriter.class);
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
+
   public ForceAppendTsFileWriter(File file) throws IOException {
     if (resourceLogger.isInfoEnabled()) {
       resourceLogger.info("{} writer is opened.", file.getName());
@@ -61,8 +62,15 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
         throw new TsFileNotCompleteException(
             "File " + file.getPath() + " is not a complete TsFile");
       }
+      TsFileMetadata tsFileMetadata = reader.readFileMetadata();
+      Map<String, Pair<Long, Integer>> deviceMap = tsFileMetadata.getDeviceMetadataIndex();
+      long firstDeviceMetaPos = Long.MAX_VALUE;
+      for (Pair<Long, Integer> deviceMetadataIndex : deviceMap.values()) {
+        firstDeviceMetaPos = firstDeviceMetaPos > deviceMetadataIndex.left ?
+            deviceMetadataIndex.left : firstDeviceMetaPos;
+      }
       // truncate metadata and marker
-      truncatePosition = reader.selfCheck(knownSchemas, chunkMetadataListMap, true);
+      truncatePosition = firstDeviceMetaPos - 1;
     }
   }
 
@@ -74,7 +82,4 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
     return truncatePosition;
   }
 
-  public Map<Path, MeasurementSchema> getKnownSchema() {
-    return knownSchemas;
-  }
 }
