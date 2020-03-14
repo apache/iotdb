@@ -69,15 +69,16 @@ public class FileLoaderUtils {
   public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, Path seriesPath, QueryContext context) throws IOException {
     if (resource.isClosed()) {
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(resource.getPath(), resource.isClosed());
-      return reader.readDeviceMetadata(seriesPath.getDevice()).get(seriesPath.getMeasurement());
+      TimeseriesMetadata timeseriesMetadata = reader.readDeviceMetadata(seriesPath.getDevice()).get(seriesPath.getMeasurement());
+      return timeseriesMetadata;
     } else {
-
-      TimeseriesMetadata timeSeriesMetadata = resource.getTimeSeriesMetadata();
       List<Modification> pathModifications =
               context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
 
       if (!pathModifications.isEmpty()) {
-        return null;
+        resource.getTimeSeriesMetadata().setCanUseStatistics(false);
+      } else {
+        resource.getTimeSeriesMetadata().setCanUseStatistics(true);
       }
       return resource.getTimeSeriesMetadata();
 

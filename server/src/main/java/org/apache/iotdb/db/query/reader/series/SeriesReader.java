@@ -156,8 +156,7 @@ class SeriesReader {
       listOfFirstTimeSeriesMetadata = unseqFileResource;
     } else if (!seqFileResource.isEmpty()) {
       // has seq and unseq
-      if (FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.get(0), seriesPath, context).getStatistics().getStartTime()
-              <= FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.get(0), seriesPath, context).getStatistics().getStartTime()) {
+      if (getStartTimeOfTsFileResource(seqFileResource.get(0)) <= getStartTimeOfTsFileResource(unseqFileResource.get(0))) {
         listOfFirstTimeSeriesMetadata = seqFileResource;
       } else {
         listOfFirstTimeSeriesMetadata = unseqFileResource;
@@ -173,14 +172,12 @@ class SeriesReader {
     Statistics fileStatistics = firstTimeSeriesMetadata.getStatistics();
 
     boolean res = !seqFileResource.isEmpty()
-            && fileStatistics.getEndTime()
-            >= FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.get(0), seriesPath, context).getStatistics().getStartTime()
+            && fileStatistics.getEndTime() >= getStartTimeOfTsFileResource(seqFileResource.get(0))
             || !unseqFileResource.isEmpty()
-            && fileStatistics.getEndTime()
-            >= FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.get(0), seriesPath, context).getStatistics().getStartTime();
+            && fileStatistics.getEndTime() >= getStartTimeOfTsFileResource(unseqFileResource.get(0));
 
     listOfFirstTimeSeriesMetadata.add(0, tsFileResource);
-    return res;
+    return res && firstTimeSeriesMetadata.canUseStatistics();
   }
 
   Statistics currentFileStatistics() throws IOException {
@@ -520,16 +517,20 @@ class SeriesReader {
         tsFileResources.stream()
             .filter(
                 tsFileResource -> {
-                  if (timeFilter == null) {
-                    return true;
-                  }
                   try {
                     TimeseriesMetadata timeseriesMetadata =
                         FileLoaderUtils.loadTimeSeriesMetadata(tsFileResource, seriesPath, context);
                     tsFileResource.setCanGetTimeSeriesMetadata(timeseriesMetadata != null);
-                    return timeseriesMetadata != null && timeFilter.satisfy(
-                            timeseriesMetadata.getStatistics().getStartTime(),
-                            timeseriesMetadata.getStatistics().getEndTime());
+                    // filter all the files that don't contain this sensor
+                    if (timeseriesMetadata == null) {
+                      return false;
+                    }
+                    if (timeFilter == null) {
+                      return true;
+                    }
+                    return timeFilter.satisfy(
+                        timeseriesMetadata.getStatistics().getStartTime(),
+                        timeseriesMetadata.getStatistics().getEndTime());
                   } catch (IOException e) {
                     tsFileResource.setCanGetTimeSeriesMetadata(false);
                     LOGGER.error(
@@ -586,16 +587,8 @@ class SeriesReader {
       tryToFillUnSeqChunkMetadata();
     } else if (!seqFileResource.isEmpty()) {
       // has seq and unseq
-      TimeseriesMetadata seqTimeSeriesMetadata =
-              FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.get(0), seriesPath, context);
-      TimeseriesMetadata unSeqTimeSeriesMetadata =
-              FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.get(0), seriesPath, context);
-      long seqStartTime = seqTimeSeriesMetadata != null ?
-              seqTimeSeriesMetadata.getStatistics().getStartTime() : seqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice());
-      long unSeqStartTime = unSeqTimeSeriesMetadata != null ?
-              unSeqTimeSeriesMetadata.getStatistics().getStartTime() : unseqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice());
 
-      if (seqStartTime <= unSeqStartTime) {
+      if (getStartTimeOfTsFileResource(seqFileResource.get(0)) <= getStartTimeOfTsFileResource(unseqFileResource.get(0))) {
         tryToFillSeqChunkMetadata();
       } else {
         tryToFillUnSeqChunkMetadata();
@@ -651,24 +644,23 @@ class SeriesReader {
   }
 
   private void unpackAllOverlappedTsFilesToChunkMetadatas(long endTime) throws IOException {
-    while (!unseqFileResource.isEmpty()
-        && endTime
-            >= FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.get(0), seriesPath, context)
-                .getStatistics()
-                .getStartTime()) {
+    while (!unseqFileResource.isEmpty() && endTime >= getStartTimeOfTsFileResource(unseqFileResource.get(0))) {
       unseqChunkMetadata.addAll(
           FileLoaderUtils.loadChunkMetadataFromTsFileResource(
               unseqFileResource.remove(0), seriesPath, context, timeFilter));
     }
-    while (!seqFileResource.isEmpty()
-        && endTime
-            >= FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.get(0), seriesPath, context)
-                .getStatistics()
-                .getStartTime()) {
+    while (!seqFileResource.isEmpty() && endTime >= getStartTimeOfTsFileResource(seqFileResource.get(0))) {
       seqChunkMetadata.addAll(
           FileLoaderUtils.loadChunkMetadataFromTsFileResource(
               seqFileResource.remove(0), seriesPath, context, timeFilter));
     }
+  }
+
+  private long getStartTimeOfTsFileResource(TsFileResource tsFileResource) throws IOException {
+    TimeseriesMetadata timeSeriesMetadata =
+            FileLoaderUtils.loadTimeSeriesMetadata(tsFileResource, seriesPath, context);
+    return timeSeriesMetadata != null ?
+            timeSeriesMetadata.getStatistics().getStartTime() : tsFileResource.getStartTimeMap().get(seriesPath.getDevice());
   }
 
   void setTimeFilter(long timestamp) {

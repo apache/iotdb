@@ -40,7 +40,7 @@ public class TimeseriesMetadata {
   /**
    * If the file has been modified, it can't be used.
    */
-  private boolean canUseStatistics;
+  private boolean canUseStatistics = true;
 
   public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer) {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
@@ -109,4 +109,11 @@ public class TimeseriesMetadata {
     this.statistics = statistics;
   }
 
+  public boolean canUseStatistics() {
+    return canUseStatistics;
+  }
+
+  public void setCanUseStatistics(boolean canUseStatistics) {
+    this.canUseStatistics = canUseStatistics;
+  }
 }

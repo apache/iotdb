@@ -197,7 +197,6 @@ public class TsFileResource {
     } else {
       timeSeriesMetadata = null;
     }
-
   }
 
   public void serialize() throws IOException {
