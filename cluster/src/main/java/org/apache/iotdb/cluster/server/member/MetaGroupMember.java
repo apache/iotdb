@@ -1865,10 +1865,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
                 aggregationTypes, path, node);
             RemoteGroupByExecutor remoteGroupByExecutor = new RemoteGroupByExecutor(executorId,
                 this, node, partitionGroup.getHeader());
-            for (int i = 0; i < aggregationTypes.size(); i++) {
-              Integer aggregationType = aggregationTypes.get(i);
+            for (Integer aggregationType : aggregationTypes) {
               remoteGroupByExecutor.addAggregateResult(AggregateResultFactory.getAggrResultByType(
-                  AggregationType.values()[aggregationType], dataType), i);
+                  AggregationType.values()[aggregationType], dataType));
             }
             return remoteGroupByExecutor;
           } else {

@@ -10,7 +10,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 /**
  * A placeholder when the remote node does not contain satisfying data of a series.
@@ -21,7 +20,7 @@ public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPoin
   private volatile boolean managedByPool;
   private volatile boolean hasRemaining;
 
-  private List<Pair<AggregateResult, Integer>> aggregationResults = new ArrayList<>();
+  private List<AggregateResult> aggregationResults = new ArrayList<>();
 
   @Override
   public boolean isManagedByQueryManager() {
@@ -119,17 +118,13 @@ public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPoin
   }
 
   @Override
-  public void addAggregateResult(AggregateResult aggrResult, int index) {
-    aggregationResults.add(new Pair<>(aggrResult, index));
+  public void addAggregateResult(AggregateResult aggrResult) {
+    aggregationResults.add(aggrResult);
   }
 
-  @Override
-  public void resetAggregateResults() {
-
-  }
 
   @Override
-  public List<Pair<AggregateResult, Integer>> calcResult(long curStartTime, long curEndTime) {
+  public List<AggregateResult> calcResult(long curStartTime, long curEndTime) {
     return aggregationResults;
   }
 }

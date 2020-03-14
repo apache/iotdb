@@ -86,14 +86,14 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     //  some of them are removed during two snapshots. Incremental addition or removal may be
     //  used to optimize
 
-    Map<String, Map<Integer, List<TsFileResource>>> allClosedStorageGroupTsFile = StorageEngine
+    Map<String, Map<Long, List<TsFileResource>>> allClosedStorageGroupTsFile = StorageEngine
         .getInstance().getAllClosedStorageGroupTsFile();
-    for (Entry<String, Map<Integer, List<TsFileResource>>> entry :
+    for (Entry<String, Map<Long, List<TsFileResource>>> entry :
         allClosedStorageGroupTsFile.entrySet()) {
       String storageGroupName = entry.getKey();
-      Map<Integer, List<TsFileResource>> storageGroupsFiles = entry.getValue();
-      for (Entry<Integer, List<TsFileResource>> storageGroupFiles : storageGroupsFiles.entrySet()) {
-        Integer partitionNum = storageGroupFiles.getKey();
+      Map<Long, List<TsFileResource>> storageGroupsFiles = entry.getValue();
+      for (Entry<Long, List<TsFileResource>> storageGroupFiles : storageGroupsFiles.entrySet()) {
+        Long partitionNum = storageGroupFiles.getKey();
         int slotNum = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName,
             partitionNum, partitionTable.getTotalSlotNumbers());
         FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
