@@ -16,33 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.utils;
+package org.apache.iotdb.tsfile.read.common;
 
-import java.io.File;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+public class ExceptionBatchData extends BatchData {
 
-public class FilePathUtils {
+  private Exception exception;
 
-  private static final String PATH_SPLIT_STRING = File.separator.equals("\\") ? "\\\\" : "/";
-
-  private FilePathUtils() {
-    // forbidding instantiation
+  public ExceptionBatchData(Exception exception) {
+    this.exception = exception;
   }
 
-  /**
-   * Format file path to end with File.separator
-   * @param filePath origin file path
-   * @return Regularized Path
-   */
-  public static String regularizePath(String filePath){
-    if (filePath.length() > 0
-        && filePath.charAt(filePath.length() - 1) != File.separatorChar) {
-      filePath = filePath + File.separatorChar;
-    }
-    return filePath;
+  @Override
+  public boolean hasCurrent() {
+    throw new UnsupportedOperationException("hasCurrent is not supported for ExceptionBatchData");
   }
 
-  public static String[] splitTsFilePath(TsFileResource resource) {
-    return resource.getFile().getAbsolutePath().split(PATH_SPLIT_STRING);
+  public Exception getException() {
+    return exception;
   }
 }

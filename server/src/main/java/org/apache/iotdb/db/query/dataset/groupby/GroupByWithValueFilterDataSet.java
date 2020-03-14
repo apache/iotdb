@@ -29,11 +29,14 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
@@ -53,7 +56,10 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * group by batch calculation size.
    */
-  private int timeStampFetchSize;
+  protected int timeStampFetchSize;
+
+  public GroupByWithValueFilterDataSet() {
+  }
 
   /**
    * constructor.
@@ -74,16 +80,26 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * init reader and aggregate function.
    */
-  private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
+  protected void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
       throws StorageEngineException {
-    this.timestampGenerator = new ServerTimeGenerator(groupByPlan.getExpression(), context);
+    this.timestampGenerator = getTimeGenerator(groupByPlan.getExpression(), context);
     this.allDataReaderList = new ArrayList<>();
     this.groupByPlan = groupByPlan;
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-      allDataReaderList.add(new SeriesReaderByTimestamp(path, dataTypes.get(i), context,
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null));
+      allDataReaderList.add(getReaderByTime(path, dataTypes.get(i), context, null));
     }
+  }
+
+  protected TimeGenerator getTimeGenerator(IExpression expression, QueryContext context)
+      throws StorageEngineException {
+    return new ServerTimeGenerator(expression, context);
+  }
+
+  protected IReaderByTimestamp getReaderByTime(Path path,
+      TSDataType dataType, QueryContext context, TsFileFilter fileFilter) throws StorageEngineException {
+    return new SeriesReaderByTimestamp(path, dataType, context,
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter);
   }
 
   @Override

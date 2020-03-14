@@ -24,6 +24,10 @@ import org.apache.iotdb.db.qp.logical.Operator;
 
 public class AggregationPlan extends RawDataQueryPlan {
 
+  // e.g., for select count(s1), count(s1), count(s2), count(s2), sum (s1)
+  // aggregations are count, count, count, count, sum
+  // deduplicatedAggregations are count, count, sum
+
   private List<String> aggregations = new ArrayList<>();
   private List<String> deduplicatedAggregations = new ArrayList<>();
 
