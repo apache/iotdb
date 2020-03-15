@@ -90,6 +90,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteInsertRowInBatchResp;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
@@ -99,6 +100,7 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSHandleIdentifier;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSInsertInBatchReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
@@ -510,6 +512,33 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       default:
         return false;
     }
+  }
+
+  @Override
+  public TSExecuteInsertRowInBatchResp insertRowInBatch(TSInsertInBatchReq req) {
+    TSExecuteInsertRowInBatchResp resp = new TSExecuteInsertRowInBatchResp();
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      resp.addToStatusList(new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR)));
+      return resp;
+    }
+
+    InsertPlan plan = new InsertPlan();
+    for (int i = 0; i < req.deviceIds.size(); i++) {
+      plan.setDeviceId(req.getDeviceIds().get(i));
+      plan.setTime(req.getTimestamps().get(i));
+      plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
+      plan.setValues(req.getValuesList().get(i).toArray(new String[0]));
+      TSStatus status = checkAuthority(plan);
+      if (status != null) {
+        resp.addToStatusList(new TSStatus(status));
+      }
+      else{
+        resp.addToStatusList(executePlan(plan));
+      }
+    }
+
+    return resp;
   }
 
   @Override
