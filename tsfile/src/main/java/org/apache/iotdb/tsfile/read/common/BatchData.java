@@ -554,7 +554,7 @@ public class BatchData implements Serializable {
   }
 
   public TimeColumn getTimeColumn() {
-    return new TimeColumn(timeRet, count, capacity).asReadOnlyTimeColumn();
+    return new TimeColumn(timeRet, count).asReadOnlyTimeColumn();
   }
 
   public BatchDataIterator getBatchDataIterator() {

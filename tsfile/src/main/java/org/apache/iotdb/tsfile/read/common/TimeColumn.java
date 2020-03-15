@@ -53,14 +53,17 @@ public class TimeColumn {
     count = 0;
   }
 
-  public TimeColumn(ArrayList<long[]> timeRet, int count, int capacity) {
+  public TimeColumn(ArrayList<long[]> timeRet, int count) {
     this.count = count;
-    this.capacity = capacity;
     this.readCurListIndex = 0;
     this.readCurArrayIndex = 0;
 
+    while (capacity < capacityThreshold) {
+      capacity <<= 1;
+    }
+
     this.writeCurListIndex = count / capacity;
-    this.writeCurArrayIndex = count % capacity;
+    this.writeCurArrayIndex = count & (capacity - 1);
     this.timeRet = timeRet;
   }
 
@@ -112,13 +115,13 @@ public class TimeColumn {
   }
 
   public TimeColumnR asReadOnlyTimeColumn() {
-    return new TimeColumnR(timeRet, count, capacity);
+    return new TimeColumnR(timeRet, count);
   }
 
   private class TimeColumnR extends TimeColumn {
 
-    public TimeColumnR(ArrayList<long[]> timeRet, int count, int capacity) {
-      super(timeRet, count, capacity);
+    public TimeColumnR(ArrayList<long[]> timeRet, int count) {
+      super(timeRet, count);
     }
 
     @Override
