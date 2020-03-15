@@ -85,16 +85,16 @@ public class IoTDBAggregationIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.envSetUp();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
+    EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
   }
 
   @After
   public void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(604800);
   }
 
   //add test for part of points in page don't satisfy filter

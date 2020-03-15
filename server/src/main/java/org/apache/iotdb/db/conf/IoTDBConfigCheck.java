@@ -32,12 +32,12 @@ public class IoTDBConfigCheck {
   // If user delete folder "data", system_properties can reset.
   public static final String PROPERTIES_FILE_NAME = "system.properties";
   public static final String SCHEMA_DIR =
-          IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
+      IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
   private static final IoTDBConfigCheck INSTANCE = new IoTDBConfigCheck();
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
   // this is a initial parameter.
   private static String timestampPrecision = "ms";
-  private static long partitionInterval = 86400;
+  private static long partitionInterval = 604800;
   private static String tsfileFileSystem = "LOCAL";
   private Properties properties = new Properties();
 
@@ -50,14 +50,14 @@ public class IoTDBConfigCheck {
 
     // check time stamp precision
     if (!(timestampPrecision.equals("ms") || timestampPrecision.equals("us")
-            || timestampPrecision.equals("ns"))) {
+        || timestampPrecision.equals("ns"))) {
       logger.error("Wrong timestamp precision, please set as: ms, us or ns ! Current is: "
-              + timestampPrecision);
+          + timestampPrecision);
       System.exit(-1);
     }
 
     partitionInterval = IoTDBDescriptor.getInstance().getConfig()
-            .getPartitionInterval();
+        .getPartitionInterval();
 
     // check partition interval
     if (partitionInterval <= 0) {
@@ -84,7 +84,7 @@ public class IoTDBConfigCheck {
     // create file : read timestamp precision from engine.properties, create system_properties.txt
     // use output stream to write timestamp precision to file.
     File file = SystemFileFactory.INSTANCE
-            .getFile(filepath + File.separator + PROPERTIES_FILE_NAME);
+        .getFile(filepath + File.separator + PROPERTIES_FILE_NAME);
     try {
       if (!file.exists()) {
         file.createNewFile();
@@ -101,18 +101,18 @@ public class IoTDBConfigCheck {
     }
     // get existed properties from system_properties.txt
     File inputFile = SystemFileFactory.INSTANCE
-            .getFile(filepath + File.separator + PROPERTIES_FILE_NAME);
+        .getFile(filepath + File.separator + PROPERTIES_FILE_NAME);
     try (FileInputStream inputStream = new FileInputStream(inputFile.toString())) {
       properties.load(new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET));
       if (!properties.getProperty("timestamp_precision").equals(timestampPrecision)) {
         logger.error("Wrong timestamp precision, please set as: " + properties
-                .getProperty("timestamp_precision") + " !");
+            .getProperty("timestamp_precision") + " !");
         System.exit(-1);
       }
       if (!(Long.parseLong(properties.getProperty("storage_group_time_range"))
-              == partitionInterval)) {
+          == partitionInterval)) {
         logger.error("Wrong storage group time range, please set as: " + properties
-                .getProperty("storage_group_time_range") + " !");
+            .getProperty("storage_group_time_range") + " !");
         System.exit(-1);
       }
       if (!(properties.getProperty("tsfile_storage_fs").equals(tsfileFileSystem))) {

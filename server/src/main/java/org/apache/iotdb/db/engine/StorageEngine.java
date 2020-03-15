@@ -111,6 +111,11 @@ public class StorageEngine implements IService {
   private ScheduledExecutorService ttlCheckThread;
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
 
+  /**
+   * Time range for dividing storage group, the time unit is the same with IoTDB's
+   * TimestampPrecision
+   */
+  private static long timePartitionInterval;
 
   private StorageEngine() {
     logger = LoggerFactory.getLogger(StorageEngine.class);
@@ -126,6 +131,23 @@ public class StorageEngine implements IService {
     /*
      * recover all storage group processors.
      */
+
+    // build time Interval to divide time partition
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        timePartitionInterval = IoTDBDescriptor.getInstance().
+            getConfig().getPartitionInterval() * 1000_000_000L;
+        break;
+      case "us":
+        timePartitionInterval = IoTDBDescriptor.getInstance().
+            getConfig().getPartitionInterval() * 1000_000L;
+        break;
+      default:
+        timePartitionInterval = IoTDBDescriptor.getInstance().
+            getConfig().getPartitionInterval() * 1000;
+        break;
+    }
 
     List<StorageGroupMNode> sgNodes = MManager.getInstance().getAllStorageGroupNodes();
     List<Future> futures = new ArrayList<>();
@@ -505,19 +527,7 @@ public class StorageEngine implements IService {
     return processor != null && processor.isFileAlreadyExist(tsFileResource);
   }
 
-  public static long getTimePartitionInterval() {
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        return IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() * 1000_000_000L;
-      case "us":
-        return IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() * 1000_000L;
-      default:
-        return IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() * 1000;
-    }
-  }
-
-  public static long fromTimeToTimePartition(long time) {
-    return time / getTimePartitionInterval();
+  public long fromTimeToTimePartition(long time) {
+    return time / timePartitionInterval;
   }
 }

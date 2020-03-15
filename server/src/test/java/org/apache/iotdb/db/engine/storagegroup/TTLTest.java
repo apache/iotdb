@@ -86,6 +86,7 @@ public class TTLTest {
   public void tearDown() throws IOException, StorageEngineException {
     storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(604800);
   }
 
   private void createSchemas()
@@ -126,7 +127,8 @@ public class TTLTest {
     insertPlan.setTime(System.currentTimeMillis());
     insertPlan.setMeasurements(new String[]{"s1"});
     insertPlan.setValues(new String[]{"1"});
-    insertPlan.setSchemas(new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
+    insertPlan.setSchemas(
+        new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     // ok without ttl
     storageGroupProcessor.insert(insertPlan);
@@ -151,7 +153,8 @@ public class TTLTest {
     insertPlan.setTime(System.currentTimeMillis());
     insertPlan.setMeasurements(new String[]{"s1"});
     insertPlan.setValues(new String[]{"1"});
-    insertPlan.setSchemas(new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
+    insertPlan.setSchemas(
+        new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     long initTime = System.currentTimeMillis();
     // sequence data
