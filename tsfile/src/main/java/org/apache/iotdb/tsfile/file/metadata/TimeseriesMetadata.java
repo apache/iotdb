@@ -37,6 +37,11 @@ public class TimeseriesMetadata {
   
   private Statistics<?> statistics;
 
+  /**
+   * If the file has been modified, it can't be used.
+   */
+  private boolean canUseStatistics = true;
+
   public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer) {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readString(buffer));
@@ -104,4 +109,11 @@ public class TimeseriesMetadata {
     this.statistics = statistics;
   }
 
+  public boolean canUseStatistics() {
+    return canUseStatistics;
+  }
+
+  public void setCanUseStatistics(boolean canUseStatistics) {
+    this.canUseStatistics = canUseStatistics;
+  }
 }

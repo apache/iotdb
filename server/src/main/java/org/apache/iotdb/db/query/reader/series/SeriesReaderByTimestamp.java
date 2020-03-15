@@ -76,6 +76,27 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     /*
      * consume chunk secondly
      */
+    if (readChunkData(timestamp)) {
+      return true;
+    }
+
+    /*
+     * consume file thirdly
+     */
+    while (seriesReader.hasNextFile()) {
+      Statistics statistics = seriesReader.currentFileStatistics();
+      if (!satisfyTimeFilter(statistics)) {
+        seriesReader.skipCurrentFile();
+        continue;
+      }
+      if (readChunkData(timestamp)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean readChunkData(long timestamp) throws IOException {
     while (seriesReader.hasNextChunk()) {
       Statistics statistics = seriesReader.currentChunkStatistics();
       if (!satisfyTimeFilter(statistics)) {

@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
@@ -41,10 +35,17 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   private static final Logger logger = LoggerFactory
-      .getLogger(GroupByWithoutValueFilterDataSet.class);
+          .getLogger(GroupByWithoutValueFilterDataSet.class);
 
   private Map<Path, GroupByExecutor> pathExecutors = new HashMap<>();
 
@@ -68,14 +69,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * constructor.
    */
   public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByPlan groupByPlan)
-      throws StorageEngineException, QueryProcessException {
+          throws StorageEngineException, QueryProcessException {
     super(context, groupByPlan);
 
     initGroupBy(context, groupByPlan);
   }
 
   protected void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
-      throws StorageEngineException, QueryProcessException {
+          throws StorageEngineException, QueryProcessException {
     IExpression expression = groupByPlan.getExpression();
 
     Filter timeFilter = null;
@@ -89,12 +90,12 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       if (!pathExecutors.containsKey(path)) {
         //init GroupByExecutor
         pathExecutors.put(path,
-            getGroupByExecutor(path, dataTypes.get(i), context, timeFilter, null));
+                getGroupByExecutor(path, dataTypes.get(i), context, timeFilter, null));
         resultIndexes.put(path, new ArrayList<>());
       }
       resultIndexes.get(path).add(i);
       AggregateResult aggrResult = AggregateResultFactory
-          .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(i), dataTypes.get(i));
+              .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(i), dataTypes.get(i));
       pathExecutors.get(path).addAggregateResult(aggrResult);
     }
   }
@@ -103,7 +104,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   protected RowRecord nextWithoutConstraint() throws IOException {
     if (!hasCachedTimeInterval) {
       throw new IOException("need to call hasNext() before calling next() "
-          + "in GroupByWithoutValueFilterDataSet.");
+              + "in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
     RowRecord record = new RowRecord(curStartTime);
@@ -135,8 +136,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   protected GroupByExecutor getGroupByExecutor(Path path, TSDataType dataType,
-      QueryContext context, Filter timeFilter, TsFileFilter fileFilter)
-      throws StorageEngineException, QueryProcessException {
+                                               QueryContext context, Filter timeFilter, TsFileFilter fileFilter)
+          throws StorageEngineException, QueryProcessException {
     return new LocalGroupByExecutor(path, dataType, context, timeFilter, fileFilter);
   }
 }

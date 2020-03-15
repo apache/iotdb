@@ -29,6 +29,7 @@ import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -41,11 +42,18 @@ import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.PriorityQueue;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-public class SeriesReader {
+class SeriesReader {
 
   private final Path seriesPath;
   private final TSDataType dataType;
@@ -64,8 +72,10 @@ public class SeriesReader {
   /*
    * file cache
    */
+  // the List where FirstTimeSeriesMetadata is in, seqFileResource or unseqFileResource
+  private List<TsFileResource> listOfFirstTimeSeriesMetadata;
   private final List<TsFileResource> seqFileResource;
-  private final PriorityQueue<TsFileResource> unseqFileResource;
+  private final List<TsFileResource> unseqFileResource;
 
   /*
    * chunk cache
@@ -80,8 +90,7 @@ public class SeriesReader {
    */
   private VersionPageReader firstPageReader;
   private PriorityQueue<VersionPageReader> cachedPageReaders =
-      new PriorityQueue<>(
-          Comparator.comparingLong(VersionPageReader::getStartTime));
+      new PriorityQueue<>(Comparator.comparingLong(VersionPageReader::getStartTime));
 
   /*
    * point cache
@@ -94,36 +103,97 @@ public class SeriesReader {
   private boolean hasCachedNextOverlappedPage;
   private BatchData cachedBatchData;
 
-  public SeriesReader(Path seriesPath, TSDataType dataType, QueryContext context,
-      QueryDataSource dataSource, Filter timeFilter, Filter valueFilter, TsFileFilter fileFilter) {
+  private static final Logger LOGGER = LoggerFactory.getLogger(SeriesReader.class);
+
+  SeriesReader(
+      Path seriesPath,
+      TSDataType dataType,
+      QueryContext context,
+      QueryDataSource dataSource,
+      Filter timeFilter,
+      Filter valueFilter,
+      TsFileFilter fileFilter) {
     this.seriesPath = seriesPath;
     this.dataType = dataType;
     this.context = context;
     QueryUtils.filterQueryDataSource(dataSource, fileFilter);
-    this.seqFileResource = dataSource.getSeqResources();
-    this.unseqFileResource = sortUnSeqFileResources(dataSource.getUnseqResources());
+    this.seqFileResource = sortAndFilterFileResources(dataSource.getSeqResources(), false);
+    this.unseqFileResource = sortAndFilterFileResources(dataSource.getUnseqResources(), true);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
   }
 
   @TestOnly
-  SeriesReader(Path seriesPath, TSDataType dataType, QueryContext context,
-      List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
-      Filter timeFilter, Filter valueFilter) {
+  SeriesReader(
+      Path seriesPath,
+      TSDataType dataType,
+      QueryContext context,
+      List<TsFileResource> seqFileResource,
+      List<TsFileResource> unseqFileResource,
+      Filter timeFilter,
+      Filter valueFilter) {
     this.seriesPath = seriesPath;
     this.dataType = dataType;
     this.context = context;
-    this.seqFileResource = seqFileResource;
-    this.unseqFileResource = sortUnSeqFileResources(unseqFileResource);
+    this.seqFileResource = sortAndFilterFileResources(seqFileResource, false);
+    this.unseqFileResource = sortAndFilterFileResources(unseqFileResource, true);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
   }
 
+  boolean hasNextFile() throws IOException {
+    if (listOfFirstTimeSeriesMetadata != null) {
+      return true;
+    }
+    /*
+     * find first file
+     */
+    if (!seqFileResource.isEmpty() && unseqFileResource.isEmpty()) {
+      // only has seq
+      listOfFirstTimeSeriesMetadata = seqFileResource;
+    } else if (seqFileResource.isEmpty() && !unseqFileResource.isEmpty()) {
+      // only has unseq
+      listOfFirstTimeSeriesMetadata = unseqFileResource;
+    } else if (!seqFileResource.isEmpty()) {
+      // has seq and unseq
+      if (getStartTimeOfTsFileResource(seqFileResource.get(0)) <= getStartTimeOfTsFileResource(unseqFileResource.get(0))) {
+        listOfFirstTimeSeriesMetadata = seqFileResource;
+      } else {
+        listOfFirstTimeSeriesMetadata = unseqFileResource;
+      }
+    }
+
+    return listOfFirstTimeSeriesMetadata != null;
+  }
+
+  boolean isFileOverlapped() throws IOException {
+    TsFileResource tsFileResource = listOfFirstTimeSeriesMetadata.remove(0);
+    TimeseriesMetadata firstTimeSeriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(tsFileResource, seriesPath, context);
+    Statistics fileStatistics = firstTimeSeriesMetadata.getStatistics();
+
+    boolean res = !seqFileResource.isEmpty()
+            && fileStatistics.getEndTime() >= getStartTimeOfTsFileResource(seqFileResource.get(0))
+            || !unseqFileResource.isEmpty()
+            && fileStatistics.getEndTime() >= getStartTimeOfTsFileResource(unseqFileResource.get(0));
+
+    listOfFirstTimeSeriesMetadata.add(0, tsFileResource);
+    return res && firstTimeSeriesMetadata.canUseStatistics();
+  }
+
+  Statistics currentFileStatistics() throws IOException {
+    return FileLoaderUtils.loadTimeSeriesMetadata(listOfFirstTimeSeriesMetadata.get(0), seriesPath, context).getStatistics();
+  }
+
+  void skipCurrentFile() {
+    listOfFirstTimeSeriesMetadata.remove(0);
+    listOfFirstTimeSeriesMetadata = null;
+  }
 
   boolean hasNextChunk() throws IOException {
-
-    if (!cachedPageReaders.isEmpty() || firstPageReader != null || mergeReader
-        .hasNextTimeValuePair()) {
+    listOfFirstTimeSeriesMetadata = null;
+    if (!cachedPageReaders.isEmpty()
+        || firstPageReader != null
+        || mergeReader.hasNextTimeValuePair()) {
       throw new IOException("all cached pages should be consumed first");
     }
 
@@ -137,7 +207,6 @@ public class SeriesReader {
     return firstChunkMetadata != null;
   }
 
-
   boolean isChunkOverlapped() throws IOException {
     if (firstChunkMetadata == null) {
       throw new IOException("no first chunk");
@@ -145,9 +214,9 @@ public class SeriesReader {
 
     Statistics chunkStatistics = firstChunkMetadata.getStatistics();
     return !seqChunkMetadata.isEmpty()
-        && chunkStatistics.getEndTime() >= seqChunkMetadata.get(0).getStartTime()
+            && chunkStatistics.getEndTime() >= seqChunkMetadata.get(0).getStartTime()
         || !unseqChunkMetadata.isEmpty()
-        && chunkStatistics.getEndTime() >= unseqChunkMetadata.peek().getStartTime();
+            && chunkStatistics.getEndTime() >= unseqChunkMetadata.peek().getStartTime();
   }
 
   Statistics currentChunkStatistics() {
@@ -159,8 +228,8 @@ public class SeriesReader {
   }
 
   /**
-   * This method should be called after hasNextChunk() until no next page,
-   * make sure that all overlapped pages are consumed
+   * This method should be called after hasNextChunk() until no next page, make sure that all
+   * overlapped pages are consumed
    */
   boolean hasNextPage() throws IOException {
 
@@ -200,8 +269,9 @@ public class SeriesReader {
       }
     }
 
-    if (firstPageReader != null && !cachedPageReaders.isEmpty() &&
-        firstPageReader.getEndTime() >= cachedPageReaders.peek().getStartTime()) {
+    if (firstPageReader != null
+        && !cachedPageReaders.isEmpty()
+        && firstPageReader.getEndTime() >= cachedPageReaders.peek().getStartTime()) {
       /*
        * next page is overlapped, read overlapped data and cache it
        */
@@ -216,7 +286,6 @@ public class SeriesReader {
 
     return firstPageReader != null;
   }
-
 
   private void unpackAllOverlappedChunkMetadataToCachedPageReaders(long endTime)
       throws IOException {
@@ -249,9 +318,8 @@ public class SeriesReader {
   /**
    * This method should be called after calling hasNextPage.
    *
-   * hasNextPage may cache firstPageReader if it is not overlapped
-   * or cached a BatchData if the first page is overlapped
-   *
+   * <p>hasNextPage may cache firstPageReader if it is not overlapped or cached a BatchData if the
+   * first page is overlapped
    */
   boolean isPageOverlapped() throws IOException {
 
@@ -271,8 +339,8 @@ public class SeriesReader {
 
     Statistics firstPageStatistics = firstPageReader.getStatistics();
 
-    return !cachedPageReaders.isEmpty() &&
-        firstPageStatistics.getEndTime() >= cachedPageReaders.peek().getStartTime();
+    return !cachedPageReaders.isEmpty()
+        && firstPageStatistics.getEndTime() >= cachedPageReaders.peek().getStartTime();
   }
 
   Statistics currentPageStatistics() {
@@ -286,9 +354,7 @@ public class SeriesReader {
     firstPageReader = null;
   }
 
-  /**
-   * This method should only be used when the method isPageOverlapped() return true.
-   */
+  /** This method should only be used when the method isPageOverlapped() return true. */
   BatchData nextPage() throws IOException {
 
     if (!hasNextPage()) {
@@ -314,8 +380,8 @@ public class SeriesReader {
   }
 
   /**
-   * read overlapped data till currentLargestEndTime in mergeReader,
-   * if current batch does not contain data, read till next currentLargestEndTime again
+   * read overlapped data till currentLargestEndTime in mergeReader, if current batch does not
+   * contain data, read till next currentLargestEndTime again
    */
   private boolean hasNextOverlappedPage() throws IOException {
 
@@ -352,12 +418,12 @@ public class SeriesReader {
            */
           timeValuePair = mergeReader.nextTimeValuePair();
 
-          if (valueFilter == null || valueFilter
-              .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+          if (valueFilter == null
+              || valueFilter.satisfy(
+                  timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
             cachedBatchData.putAnObject(
                 timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
           }
-
         }
         hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
         /*
@@ -403,8 +469,8 @@ public class SeriesReader {
   }
 
   private void unpackAllOverlappedCachedPageReadersToMergeReader(long endTime) throws IOException {
-    while (!cachedPageReaders.isEmpty() && endTime >= cachedPageReaders.peek().data
-        .getStatistics().getStartTime()) {
+    while (!cachedPageReaders.isEmpty()
+        && endTime >= cachedPageReaders.peek().data.getStatistics().getStartTime()) {
       putPageReaderToMergeReader(cachedPageReaders.poll());
     }
     if (firstPageReader != null && endTime >= firstPageReader.getStartTime()) {
@@ -416,7 +482,8 @@ public class SeriesReader {
   private void putPageReaderToMergeReader(VersionPageReader pageReader) throws IOException {
     mergeReader.addReader(
         pageReader.getAllSatisfiedPageData().getBatchDataIterator(),
-        pageReader.version, pageReader.getEndTime());
+        pageReader.version,
+        pageReader.getEndTime());
   }
 
   private BatchData nextOverlappedPage() throws IOException {
@@ -444,49 +511,88 @@ public class SeriesReader {
     return chunkReader;
   }
 
-
-  private PriorityQueue<TsFileResource> sortUnSeqFileResources(
-      List<TsFileResource> tsFileResources) {
-    PriorityQueue<TsFileResource> unseqTsFilesSet =
-        new PriorityQueue<>(
-            (o1, o2) -> {
-              Map<String, Long> startTimeMap = o1.getStartTimeMap();
-              Long minTimeOfO1 = startTimeMap.get(seriesPath.getDevice());
-              Map<String, Long> startTimeMap2 = o2.getStartTimeMap();
-              Long minTimeOfO2 = startTimeMap2.get(seriesPath.getDevice());
-
-              return Long.compare(minTimeOfO1, minTimeOfO2);
-            });
-    unseqTsFilesSet.addAll(tsFileResources);
-    return unseqTsFilesSet;
+  private LinkedList<TsFileResource> sortAndFilterFileResources(
+      List<TsFileResource> tsFileResources, boolean isUnSeq) {
+    Stream<TsFileResource> stream =
+        tsFileResources.stream()
+            .filter(
+                tsFileResource -> {
+                  try {
+                    TimeseriesMetadata timeseriesMetadata =
+                        FileLoaderUtils.loadTimeSeriesMetadata(tsFileResource, seriesPath, context);
+                    tsFileResource.setCanGetTimeSeriesMetadata(timeseriesMetadata != null);
+                    // filter all the files that don't contain this sensor
+                    if (timeseriesMetadata == null) {
+                      return false;
+                    }
+                    if (timeFilter == null) {
+                      return true;
+                    }
+                    return timeFilter.satisfy(
+                        timeseriesMetadata.getStatistics().getStartTime(),
+                        timeseriesMetadata.getStatistics().getEndTime());
+                  } catch (IOException e) {
+                    tsFileResource.setCanGetTimeSeriesMetadata(false);
+                    LOGGER.error(
+                        String.format(
+                            "Error happened while reading timeseriesMetadata of %s in file %s",
+                            seriesPath, tsFileResource.getPath()),
+                        e);
+                    return false;
+                  }
+                });
+    if (isUnSeq) {
+      stream =
+          stream
+              .sorted(
+                  Comparator.comparingLong(
+                      tsFileResource -> {
+                        try {
+                          TimeseriesMetadata timeseriesMetadata =
+                              FileLoaderUtils.loadTimeSeriesMetadata(
+                                  tsFileResource, seriesPath, context);
+                          tsFileResource.setCanGetTimeSeriesMetadata(timeseriesMetadata != null);
+                          return timeseriesMetadata != null
+                              ? timeseriesMetadata.getStatistics().getStartTime()
+                              : -1L;
+                        } catch (IOException e) {
+                          tsFileResource.setCanGetTimeSeriesMetadata(false);
+                          LOGGER.error(
+                              String.format(
+                                  "Error happened while reading timeseriesMetadata of %s in file %s",
+                                  seriesPath, tsFileResource.getPath()),
+                              e);
+                          return -1L;
+                        }
+                      }))
+              .filter(TsFileResource::canGetTimeSeriesMetadata);
+    }
+    return stream.collect(Collectors.toCollection(LinkedList::new));
   }
-
 
   /**
    * unpack all overlapped seq/unseq files and find the first chunk metadata
-   * <p>
-   * Because there may be too many files in the scenario used by the user, we cannot open all the
+   *
+   * <p>Because there may be too many files in the scenario used by the user, we cannot open all the
    * chunks at once, which may cause OOM, so we can only unpack one file at a time when needed. This
    * approach is likely to be ubiquitous, but it keeps the system running smoothly
    */
   private void tryToUnpackAllOverlappedFilesToChunkMetadatas() throws IOException {
 
-    /*
-     * Fill sequence chunkMetadatas until it is not empty
-     */
-    while (seqChunkMetadata.isEmpty() && !seqFileResource.isEmpty()) {
-      seqChunkMetadata.addAll(FileLoaderUtils
-          .loadChunkMetadataFromTsFileResource(seqFileResource.remove(0), seriesPath, context,
-              timeFilter));
-    }
+    if (!seqFileResource.isEmpty() && unseqFileResource.isEmpty()) {
+      // only has seq
+      tryToFillSeqChunkMetadata();
+    } else if (seqFileResource.isEmpty() && !unseqFileResource.isEmpty()) {
+      // only has unseq
+      tryToFillUnSeqChunkMetadata();
+    } else if (!seqFileResource.isEmpty()) {
+      // has seq and unseq
 
-    /*
-     * Fill unsequence chunkMetadatas until it is not empty
-     */
-    while (unseqChunkMetadata.isEmpty() && !unseqFileResource.isEmpty()) {
-      unseqChunkMetadata.addAll(FileLoaderUtils
-          .loadChunkMetadataFromTsFileResource(unseqFileResource.poll(), seriesPath, context,
-              timeFilter));
+      if (getStartTimeOfTsFileResource(seqFileResource.get(0)) <= getStartTimeOfTsFileResource(unseqFileResource.get(0))) {
+        tryToFillSeqChunkMetadata();
+      } else {
+        tryToFillUnSeqChunkMetadata();
+      }
     }
 
     /*
@@ -515,19 +621,46 @@ public class SeriesReader {
     }
   }
 
+  /**
+   * Fill sequence chunkMetadatas until it is not empty
+   */
+  private void tryToFillSeqChunkMetadata() throws IOException {
+    while (seqChunkMetadata.isEmpty() && !seqFileResource.isEmpty()) {
+      seqChunkMetadata.addAll(
+              FileLoaderUtils.loadChunkMetadataFromTsFileResource(
+                      seqFileResource.remove(0), seriesPath, context, timeFilter));
+    }
+  }
+
+  /**
+   * Fill unsequence chunkMetadatas until it is not empty
+   */
+  private void tryToFillUnSeqChunkMetadata() throws IOException {
+    while (unseqChunkMetadata.isEmpty() && !unseqFileResource.isEmpty()) {
+      unseqChunkMetadata.addAll(
+              FileLoaderUtils.loadChunkMetadataFromTsFileResource(
+                      unseqFileResource.remove(0), seriesPath, context, timeFilter));
+    }
+  }
+
   private void unpackAllOverlappedTsFilesToChunkMetadatas(long endTime) throws IOException {
-    while (!unseqFileResource.isEmpty() && endTime >=
-        unseqFileResource.peek().getStartTimeMap().get(seriesPath.getDevice())) {
-      unseqChunkMetadata.addAll(FileLoaderUtils
-          .loadChunkMetadataFromTsFileResource(unseqFileResource.poll(), seriesPath, context,
-              timeFilter));
+    while (!unseqFileResource.isEmpty() && endTime >= getStartTimeOfTsFileResource(unseqFileResource.get(0))) {
+      unseqChunkMetadata.addAll(
+          FileLoaderUtils.loadChunkMetadataFromTsFileResource(
+              unseqFileResource.remove(0), seriesPath, context, timeFilter));
     }
-    while (!seqFileResource.isEmpty() && endTime >=
-        seqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
-      seqChunkMetadata.addAll(FileLoaderUtils
-          .loadChunkMetadataFromTsFileResource(seqFileResource.remove(0), seriesPath, context,
-              timeFilter));
+    while (!seqFileResource.isEmpty() && endTime >= getStartTimeOfTsFileResource(seqFileResource.get(0))) {
+      seqChunkMetadata.addAll(
+          FileLoaderUtils.loadChunkMetadataFromTsFileResource(
+              seqFileResource.remove(0), seriesPath, context, timeFilter));
     }
+  }
+
+  private long getStartTimeOfTsFileResource(TsFileResource tsFileResource) throws IOException {
+    TimeseriesMetadata timeSeriesMetadata =
+            FileLoaderUtils.loadTimeSeriesMetadata(tsFileResource, seriesPath, context);
+    return timeSeriesMetadata != null ?
+            timeSeriesMetadata.getStatistics().getStartTime() : tsFileResource.getStartTimeMap().get(seriesPath.getDevice());
   }
 
   void setTimeFilter(long timestamp) {
@@ -567,6 +700,5 @@ public class SeriesReader {
     void setFilter(Filter filter) {
       data.setFilter(filter);
     }
-
   }
 }

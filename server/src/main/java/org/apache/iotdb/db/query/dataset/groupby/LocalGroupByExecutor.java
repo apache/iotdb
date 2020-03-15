@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -37,6 +34,10 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class LocalGroupByExecutor implements GroupByExecutor {
 
@@ -141,23 +142,39 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       return results;
     }
 
-    //read chunk finally
-    while (reader.hasNextChunk()) {
-      Statistics chunkStatistics = reader.currentChunkStatistics();
-      if (chunkStatistics.getStartTime() >= curEndTime) {
+    // read from file first
+    while (reader.hasNextFile()) {
+      Statistics fileStatistics = reader.currentFileStatistics();
+      if (fileStatistics.getStartTime() >= curEndTime) {
         return results;
       }
-      //calc from chunkMetaData
-      if (reader.canUseCurrentChunkStatistics()
-          && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
-        calcFromStatistics(chunkStatistics);
-        reader.skipCurrentChunk();
+      // calc from fileMetaData
+      if (reader.canUseCurrentFileStatistics()
+          && timeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
+        calcFromStatistics(fileStatistics);
+        reader.skipCurrentFile();
         continue;
       }
-      if (readAndCalcFromPage(curStartTime, curEndTime)) {
-        return results;
+
+      //read chunk
+      while (reader.hasNextChunk()) {
+        Statistics chunkStatistics = reader.currentChunkStatistics();
+        if (chunkStatistics.getStartTime() >= curEndTime) {
+          return results;
+        }
+        //calc from chunkMetaData
+        if (reader.canUseCurrentChunkStatistics()
+                && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
+          calcFromStatistics(chunkStatistics);
+          reader.skipCurrentChunk();
+          continue;
+        }
+        if (readAndCalcFromPage(curStartTime, curEndTime)) {
+          return results;
+        }
       }
     }
+
     return results;
   }
 

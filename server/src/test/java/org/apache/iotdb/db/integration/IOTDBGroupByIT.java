@@ -19,22 +19,6 @@
 
 package org.apache.iotdb.db.integration;
 
-import static org.apache.iotdb.db.constant.TestConstant.avg;
-import static org.apache.iotdb.db.constant.TestConstant.count;
-import static org.apache.iotdb.db.constant.TestConstant.first_value;
-import static org.apache.iotdb.db.constant.TestConstant.last_value;
-import static org.apache.iotdb.db.constant.TestConstant.max_time;
-import static org.apache.iotdb.db.constant.TestConstant.max_value;
-import static org.apache.iotdb.db.constant.TestConstant.min_time;
-import static org.apache.iotdb.db.constant.TestConstant.min_value;
-import static org.apache.iotdb.db.constant.TestConstant.sum;
-import static org.junit.Assert.fail;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -42,6 +26,11 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.sql.*;
+
+import static org.apache.iotdb.db.constant.TestConstant.*;
+import static org.junit.Assert.fail;
 
 public class IOTDBGroupByIT {
 
@@ -126,7 +115,7 @@ public class IOTDBGroupByIT {
   }
 
   @Test
-  public void countSumAvgTest() throws SQLException {
+  public void countSumAvgTest() {
     String[] retArray1 = new String[]{
         "5,3,35.8,11.933333333333332",
         "25,2,70.7,35.35",
@@ -235,7 +224,7 @@ public class IOTDBGroupByIT {
   }
 
   @Test
-  public void maxMinValeTimeTest() throws SQLException {
+  public void maxMinValeTimeTest() {
     String[] retArray1 = new String[]{
         "2,null,null,null,null",
         "4,5.5,4.4,5,4",
@@ -320,7 +309,7 @@ public class IOTDBGroupByIT {
   }
 
   @Test
-  public void firstLastTest() throws SQLException {
+  public void firstLastTest() {
     String[] retArray1 = new String[]{
         "2,5.5,4.4",
         "6,null,null",
@@ -393,7 +382,7 @@ public class IOTDBGroupByIT {
   }
 
   @Test
-  public void largeIntervalTest() throws SQLException {
+  public void largeIntervalTest() {
     String[] retArray1 = new String[]{
         "0,4.4,12,300,4",
         "340,100.1,10,620,500"
