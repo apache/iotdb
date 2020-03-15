@@ -19,60 +19,91 @@
 package org.apache.iotdb.tsfile.read.common;
 
 
+import java.util.ArrayList;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+
 public class TimeColumn {
 
-  private static final int DEFAULT_INIT_SIZE = 1000;
+  private int capacity = 16;
+  private int capacityThreshold = TSFileConfig.DYNAMIC_DATA_SIZE;
 
+  // outer list index for read
+  private int readCurListIndex;
+  // inner array index for read
+  private int readCurArrayIndex;
 
-  private long[] times;
+  // outer list index for write
+  private int writeCurListIndex;
+  // inner array index for write
+  private int writeCurArrayIndex;
 
-  private int size;
+  // the insert timestamp number of timeRet
+  private int count;
 
-  private int cur;
+  private ArrayList<long[]> timeRet;
 
   public TimeColumn() {
-    this(DEFAULT_INIT_SIZE);
+    this.readCurListIndex = 0;
+    this.readCurArrayIndex = 0;
+    this.writeCurListIndex = 0;
+    this.writeCurArrayIndex = 0;
+    timeRet = new ArrayList<>();
+    timeRet.add(new long[capacity]);
+    count = 0;
   }
 
-  public TimeColumn(int initSize) {
-    times = new long[initSize];
-  }
+  public TimeColumn(ArrayList<long[]> timeRet, int count, int capacity) {
+    this.count = count;
+    this.capacity = capacity;
+    this.readCurListIndex = 0;
+    this.readCurArrayIndex = 0;
 
-
-  public TimeColumn(long[] times) {
-    this.times = times;
+    this.writeCurListIndex = count / capacity;
+    this.writeCurArrayIndex = count % capacity;
+    this.timeRet = timeRet;
   }
 
   public void add(long time) {
-    if (size == times.length) {
-      long[] newArray = new long[times.length * 2];
-      System.arraycopy(times, 0, newArray, 0, times.length);
-      times = newArray;
+    if (writeCurArrayIndex == capacity) {
+      if (capacity >= capacityThreshold) {
+        timeRet.add(new long[capacity]);
+        writeCurListIndex++;
+        writeCurArrayIndex = 0;
+      } else {
+        long[] newTimeData = new long[capacity * 2];
+        System.arraycopy(timeRet.get(0), 0, newTimeData, 0, capacity);
+        timeRet.set(0, newTimeData);
+        capacity = capacity * 2;
+      }
     }
-    times[size++] = time;
-  }
-
-  public long[] getTimes() {
-    return times;
+    (timeRet.get(writeCurListIndex))[writeCurArrayIndex] = time;
+    writeCurArrayIndex++;
+    count++;
   }
 
   public boolean hasCurrent() {
-    return size > 0 && cur < size;
+    if (readCurListIndex < writeCurListIndex) {
+      return readCurArrayIndex < capacity;
+    } else if (readCurListIndex == writeCurListIndex) {
+      return readCurArrayIndex < writeCurArrayIndex;
+    } else {
+      return false;
+    }
   }
 
   public long currentTime() {
-    return times[cur];
+    return this.timeRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
   public void next() {
-    cur++;
-  }
-
-  public long getLastTime() {
-    return times[size - 1];
+    readCurArrayIndex++;
+    if (readCurArrayIndex == capacity) {
+      readCurArrayIndex = 0;
+      readCurListIndex++;
+    }
   }
 
   public int size() {
-    return size;
+    return this.count;
   }
 }
