@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -52,6 +46,9 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+
+import java.io.IOException;
+import java.util.*;
 
 public class AggregationExecutor {
 
@@ -151,21 +148,36 @@ public class AggregationExecutor {
     int remainingToCalculate = aggregateResultList.size();
     boolean[] isCalculatedArray = new boolean[aggregateResultList.size()];
 
-    while (seriesReader.hasNextChunk()) {
-      // cal by chunk statistics
-      if (seriesReader.canUseCurrentChunkStatistics()) {
-        Statistics chunkStatistics = seriesReader.currentChunkStatistics();
+    while (seriesReader.hasNextFile()) {
+      // cal by file statistics
+      if (seriesReader.canUseCurrentFileStatistics()) {
+        Statistics fileStatistics = seriesReader.currentFileStatistics();
         remainingToCalculate = aggregateStatistics(aggregateResultList, isCalculatedArray,
-            remainingToCalculate, chunkStatistics);
+                remainingToCalculate, fileStatistics);
         if (remainingToCalculate == 0) {
           return;
         }
-        seriesReader.skipCurrentChunk();
+        seriesReader.skipCurrentFile();
         continue;
       }
-      remainingToCalculate = aggregateOverlappedPages(seriesReader, aggregateResultList,
-          isCalculatedArray, remainingToCalculate);
+
+      while (seriesReader.hasNextChunk()) {
+        // cal by chunk statistics
+        if (seriesReader.canUseCurrentChunkStatistics()) {
+          Statistics chunkStatistics = seriesReader.currentChunkStatistics();
+          remainingToCalculate = aggregateStatistics(aggregateResultList, isCalculatedArray,
+                  remainingToCalculate, chunkStatistics);
+          if (remainingToCalculate == 0) {
+            return;
+          }
+          seriesReader.skipCurrentChunk();
+          continue;
+        }
+        remainingToCalculate = aggregateOverlappedPages(seriesReader, aggregateResultList,
+                isCalculatedArray, remainingToCalculate);
+      }
     }
+
   }
 
   /**

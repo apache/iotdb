@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.engine.querycontext;
 
-import java.io.IOException;
-import java.util.Map;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -29,8 +27,11 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+
+import java.io.IOException;
+import java.util.Map;
 
 public class ReadOnlyMemChunk {
 
@@ -121,5 +122,9 @@ public class ReadOnlyMemChunk {
 
   public long getVersion() {
     return version;
+  }
+
+  public String getMeasurementUid() {
+    return measurementUid;
   }
 }

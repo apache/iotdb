@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -39,6 +36,10 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 

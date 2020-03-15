@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.db.query.reader.series;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -44,6 +37,14 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class SeriesAggregateReaderTest {
 
@@ -75,36 +76,45 @@ public class SeriesAggregateReaderTest {
       AggregateResult aggregateResult = AggregateResultFactory
           .getAggrResultByName("count", TSDataType.INT32);
       int loopTime = 0;
-      while (seriesReader.hasNextChunk()) {
-        if (seriesReader.canUseCurrentChunkStatistics()) {
-          Statistics chunkStatistics = seriesReader.currentChunkStatistics();
-          aggregateResult.updateResultFromStatistics(chunkStatistics);
-          seriesReader.skipCurrentChunk();
+      while (seriesReader.hasNextFile()) {
+        if (seriesReader.canUseCurrentFileStatistics()) {
+          Statistics fileStatistics = seriesReader.currentFileStatistics();
+          aggregateResult.updateResultFromStatistics(fileStatistics);
+          seriesReader.skipCurrentFile();
           continue;
         }
-        while (seriesReader.hasNextPage()) {
-          if (seriesReader.canUseCurrentPageStatistics()) {
-            Statistics pageStatistic = seriesReader.currentPageStatistics();
-            aggregateResult.updateResultFromStatistics(pageStatistic);
-            seriesReader.skipCurrentPage();
+
+        while (seriesReader.hasNextChunk()) {
+          if (seriesReader.canUseCurrentChunkStatistics()) {
+            Statistics chunkStatistics = seriesReader.currentChunkStatistics();
+            aggregateResult.updateResultFromStatistics(chunkStatistics);
+            seriesReader.skipCurrentChunk();
             continue;
           }
-
-          if (loopTime >= 0 && loopTime < 13) {
-            assertEquals((long) loopTime * 20, aggregateResult.getResult());
-          } else if (loopTime >= 13 && loopTime < 17) {
-            assertEquals((long) loopTime * 20 + 40, aggregateResult.getResult());
-          } else if (loopTime >= 17) {
-            assertEquals((long) loopTime * 20 + 60, aggregateResult.getResult());
-          }
-
           while (seriesReader.hasNextPage()) {
-            BatchData nextOverlappedPageData = seriesReader.nextPage();
-            aggregateResult.updateResultFromPageData(nextOverlappedPageData);
-            nextOverlappedPageData.resetBatchData();
-            assertEquals(true, nextOverlappedPageData.hasCurrent());
+            if (seriesReader.canUseCurrentPageStatistics()) {
+              Statistics pageStatistic = seriesReader.currentPageStatistics();
+              aggregateResult.updateResultFromStatistics(pageStatistic);
+              seriesReader.skipCurrentPage();
+              continue;
+            }
+
+            if (loopTime >= 0 && loopTime < 13) {
+              assertEquals((long) loopTime * 20, aggregateResult.getResult());
+            } else if (loopTime >= 13 && loopTime < 17) {
+              assertEquals((long) loopTime * 20 + 40, aggregateResult.getResult());
+            } else if (loopTime >= 17) {
+              assertEquals((long) loopTime * 20 + 60, aggregateResult.getResult());
+            }
+
+            while (seriesReader.hasNextPage()) {
+              BatchData nextOverlappedPageData = seriesReader.nextPage();
+              aggregateResult.updateResultFromPageData(nextOverlappedPageData);
+              nextOverlappedPageData.resetBatchData();
+              assertEquals(true, nextOverlappedPageData.hasCurrent());
+            }
+            loopTime++;
           }
-          loopTime++;
         }
       }
       assertEquals(500L, aggregateResult.getResult());
