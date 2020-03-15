@@ -74,7 +74,14 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     }
 
     /*
-     * consume file secondly
+     * consume chunk secondly
+     */
+    if (readChunkData(timestamp)) {
+      return true;
+    }
+
+    /*
+     * consume file thirdly
      */
     while (seriesReader.hasNextFile()) {
       Statistics statistics = seriesReader.currentFileStatistics();
@@ -82,19 +89,22 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
         seriesReader.skipCurrentFile();
         continue;
       }
+      if (readChunkData(timestamp)) {
+        return true;
+      }
+    }
+    return false;
+  }
 
-      /*
-       * consume chunk thirdly
-       */
-      while (seriesReader.hasNextChunk()) {
-        statistics = seriesReader.currentChunkStatistics();
-        if (!satisfyTimeFilter(statistics)) {
-          seriesReader.skipCurrentChunk();
-          continue;
-        }
-        if (readPageData(timestamp)) {
-          return true;
-        }
+  private boolean readChunkData(long timestamp) throws IOException {
+    while (seriesReader.hasNextChunk()) {
+      Statistics statistics = seriesReader.currentChunkStatistics();
+      if (!satisfyTimeFilter(statistics)) {
+        seriesReader.skipCurrentChunk();
+        continue;
+      }
+      if (readPageData(timestamp)) {
+        return true;
       }
     }
     return false;
