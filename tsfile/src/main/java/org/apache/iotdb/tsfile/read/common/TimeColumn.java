@@ -19,13 +19,14 @@
 package org.apache.iotdb.tsfile.read.common;
 
 
+import java.nio.ReadOnlyBufferException;
 import java.util.ArrayList;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 public class TimeColumn {
 
+  private static final int capacityThreshold = TSFileConfig.DYNAMIC_DATA_SIZE;
   private int capacity = 16;
-  private int capacityThreshold = TSFileConfig.DYNAMIC_DATA_SIZE;
 
   // outer list index for read
   private int readCurListIndex;
@@ -70,13 +71,16 @@ public class TimeColumn {
         writeCurListIndex++;
         writeCurArrayIndex = 0;
       } else {
-        long[] newTimeData = new long[capacity * 2];
+        int newCapacity = capacity << 1;
+
+        long[] newTimeData = new long[newCapacity];
         System.arraycopy(timeRet.get(0), 0, newTimeData, 0, capacity);
         timeRet.set(0, newTimeData);
-        capacity = capacity * 2;
+
+        capacity = newCapacity;
       }
     }
-    (timeRet.get(writeCurListIndex))[writeCurArrayIndex] = time;
+    timeRet.get(writeCurListIndex)[writeCurArrayIndex] = time;
     writeCurArrayIndex++;
     count++;
   }
@@ -105,5 +109,21 @@ public class TimeColumn {
 
   public int size() {
     return this.count;
+  }
+
+  public TimeColumnR asReadOnlyTimeColumn() {
+    return new TimeColumnR(timeRet, count, capacity);
+  }
+
+  private class TimeColumnR extends TimeColumn {
+
+    public TimeColumnR(ArrayList<long[]> timeRet, int count, int capacity) {
+      super(timeRet, count, capacity);
+    }
+
+    @Override
+    public void add(long time) {
+      throw new ReadOnlyBufferException();
+    }
   }
 }
