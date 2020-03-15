@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.common;
 import java.io.Serializable;
 import java.util.ArrayList;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
@@ -50,7 +51,8 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 public class BatchData implements Serializable {
 
   private static final long serialVersionUID = -4620310601188394839L;
-  private static final int capacityThreshold = TSFileConfig.DYNAMIC_DATA_SIZE;
+  private static final int capacityThreshold = TSFileDescriptor.getInstance().getConfig()
+      .getBatchSize();
   private int capacity = 16;
 
   private TSDataType dataType;

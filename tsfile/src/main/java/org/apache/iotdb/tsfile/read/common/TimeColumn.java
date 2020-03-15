@@ -21,11 +21,12 @@ package org.apache.iotdb.tsfile.read.common;
 
 import java.nio.ReadOnlyBufferException;
 import java.util.ArrayList;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 public class TimeColumn {
 
-  private static final int capacityThreshold = TSFileConfig.DYNAMIC_DATA_SIZE;
+  private static final int capacityThreshold = TSFileDescriptor.getInstance().getConfig()
+      .getBatchSize();
   private int capacity = 16;
 
   // outer list index for read
