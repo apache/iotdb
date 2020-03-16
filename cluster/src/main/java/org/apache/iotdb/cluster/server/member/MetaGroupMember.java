@@ -239,7 +239,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     return dataClusterServer;
   }
 
-  @Override
   void initLogManager() {
     logManager = new MetaSingleSnapshotLogManager(metaLogApplier);
     super.logManager = logManager;
