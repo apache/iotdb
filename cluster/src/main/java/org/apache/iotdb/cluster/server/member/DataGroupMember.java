@@ -934,9 +934,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
       LocalGroupByExecutor executor = new LocalGroupByExecutor(path, dataType, context,
           timeFilter, new SlotTsFileFilter(nodeSlots));
-      for (int i = 0; i < aggregationTypes.size(); i++) {
+      for (Integer aggregationType : aggregationTypes) {
         executor.addAggregateResult(AggregateResultFactory
-            .getAggrResultByType(AggregationType.values()[aggregationTypes.get(i)], dataType), i);
+            .getAggrResultByType(AggregationType.values()[aggregationType], dataType));
       }
       return executor;
     } else {
@@ -979,12 +979,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       return;
     }
     try {
-      executor.resetAggregateResults();
-      List<Pair<AggregateResult, Integer>> results = executor.calcResult(startTime, endTime);
+      List<AggregateResult> results = executor.calcResult(startTime, endTime);
       List<ByteBuffer> resultBuffers = new ArrayList<>();
       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-      for (Pair<AggregateResult, Integer> result : results) {
-        result.left.serializeTo(byteArrayOutputStream);
+      for (AggregateResult result : results) {
+        result.serializeTo(byteArrayOutputStream);
         resultBuffers.add(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
         byteArrayOutputStream.reset();
       }

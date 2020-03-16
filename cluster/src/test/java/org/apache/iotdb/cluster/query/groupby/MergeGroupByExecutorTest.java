@@ -31,19 +31,17 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
     MergeGroupByExecutor groupByExecutor = new MergeGroupByExecutor(path, dataType, context,
         timeFilter, testMetaMember);
     AggregationType[] types = AggregationType.values();
-    for (int i = 0; i < types.length; i++) {
-      AggregationType type = types[i];
+    for (AggregationType type : types) {
       groupByExecutor.addAggregateResult(AggregateResultFactory.getAggrResultByType(type,
-          TSDataType.DOUBLE), i);
+          TSDataType.DOUBLE));
     }
 
     Object[] answers;
-    List<Pair<AggregateResult, Integer>> aggregateResults;
+    List<AggregateResult> aggregateResults;
     answers = new Object[] {5.0, 2.0, 10.0, 0.0, 4.0, 4.0, 0.0, 4.0, 0.0};
     aggregateResults = groupByExecutor.calcResult(0, 5);
     checkAggregations(aggregateResults, answers);
 
-    groupByExecutor.resetAggregateResults();
     answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0};
     aggregateResults = groupByExecutor.calcResult(5, 10);
     checkAggregations(aggregateResults, answers);
@@ -60,19 +58,17 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
     MergeGroupByExecutor groupByExecutor = new MergeGroupByExecutor(path, dataType, context,
         timeFilter, testMetaMember);
     AggregationType[] types = AggregationType.values();
-    for (int i = 0; i < types.length; i++) {
-      AggregationType type = types[i];
+    for (AggregationType type : types) {
       groupByExecutor.addAggregateResult(AggregateResultFactory.getAggrResultByType(type,
-          TSDataType.DOUBLE), i);
+          TSDataType.DOUBLE));
     }
 
     Object[] answers;
-    List<Pair<AggregateResult, Integer>> aggregateResults;
+    List<AggregateResult> aggregateResults;
     answers = new Object[] {2.0, 3.5, 7.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0};
     aggregateResults = groupByExecutor.calcResult(0, 5);
     checkAggregations(aggregateResults, answers);
 
-    groupByExecutor.resetAggregateResults();
     answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0};
     aggregateResults = groupByExecutor.calcResult(5, 10);
     checkAggregations(aggregateResults, answers);
