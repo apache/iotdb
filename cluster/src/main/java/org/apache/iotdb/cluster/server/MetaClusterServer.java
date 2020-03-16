@@ -83,7 +83,6 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     super.start();
     ioTDB = new IoTDB();
     ioTDB.active();
-    System.out.println("--------------------start connecting");
     member.start();
     registerManager.register(ClusterMonitor.INSTANCE);
   }

@@ -60,7 +60,7 @@ public class IoTDBConfig {
   /**
    * Port which the JDBC server listens to.
    */
-  private int rpcPort = 6667;
+  private int rpcPort = 6670;
 
   /**
    * Max concurrent client number
