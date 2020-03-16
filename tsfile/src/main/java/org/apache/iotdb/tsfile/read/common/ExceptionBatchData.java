@@ -16,13 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.server;
+package org.apache.iotdb.tsfile.read.common;
 
-public enum NodeCharacter {
-  // the leader in this group is unknown
-  ELECTOR,
-  // this node has known the leader in the group
-  FOLLOWER,
-  // this node is the leader in the group
-  LEADER
+public class ExceptionBatchData extends BatchData {
+
+  private Exception exception;
+
+  public ExceptionBatchData(Exception exception) {
+    this.exception = exception;
+  }
+
+  @Override
+  public boolean hasCurrent() {
+    throw new UnsupportedOperationException("hasCurrent is not supported for ExceptionBatchData");
+  }
+
+  public Exception getException() {
+    return exception;
+  }
 }

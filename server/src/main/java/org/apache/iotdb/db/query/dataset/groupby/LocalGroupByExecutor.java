@@ -37,14 +37,14 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public class LocalGroupByExecutor implements GroupByExecutor {
 
   private IAggregateReader reader;
   private BatchData preCachedData;
-  //<aggFunction - indexForRecord> of path
-  private List<Pair<AggregateResult, Integer>> results = new ArrayList<>();
+
+  // Aggregate result buffer of this path
+  private List<AggregateResult> results = new ArrayList<>();
   private TimeRange timeRange;
 
   public LocalGroupByExecutor(Path path, TSDataType dataType, QueryContext context, Filter timeFilter,
@@ -61,13 +61,13 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   }
 
   @Override
-  public void addAggregateResult(AggregateResult aggrResult, int index) {
-    results.add(new Pair<>(aggrResult, index));
+  public void addAggregateResult(AggregateResult aggrResult) {
+    results.add(aggrResult);
   }
 
   private boolean isEndCalc() {
-    for (Pair<AggregateResult, Integer> result : results) {
-      if (!result.left.isCalculatedAggregationResult()) {
+    for (AggregateResult result : results) {
+      if (!result.isCalculatedAggregationResult()) {
         return false;
       }
     }
@@ -90,9 +90,9 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       return;
     }
 
-    for (Pair<AggregateResult, Integer> result : results) {
+    for (AggregateResult result : results) {
       //current agg method has been calculated
-      if (result.left.isCalculatedAggregationResult()) {
+      if (result.isCalculatedAggregationResult()) {
         continue;
       }
       //lazy reset batch data for calculation
@@ -102,7 +102,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         batchData.next();
       }
       if (batchData.hasCurrent()) {
-        result.left.updateResultFromPageData(batchData, curEndTime);
+        result.updateResultFromPageData(batchData, curEndTime);
       }
     }
     //can calc for next interval
@@ -113,18 +113,24 @@ public class LocalGroupByExecutor implements GroupByExecutor {
 
   private void calcFromStatistics(Statistics pageStatistics)
       throws QueryProcessException {
-    for (Pair<AggregateResult, Integer> result : results) {
+    for (AggregateResult result : results) {
       //cacl is compile
-      if (result.left.isCalculatedAggregationResult()) {
+      if (result.isCalculatedAggregationResult()) {
         continue;
       }
-      result.left.updateResultFromStatistics(pageStatistics);
+      result.updateResultFromStatistics(pageStatistics);
     }
   }
 
   @Override
-  public List<Pair<AggregateResult, Integer>> calcResult(long curStartTime, long curEndTime)
+  public List<AggregateResult> calcResult(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException {
+
+    // clear result cache
+    for (AggregateResult result : results) {
+      result.reset();
+    }
+
     timeRange.set(curStartTime, curEndTime - 1);
     if (calcFromCacheData(curStartTime, curEndTime)) {
       return results;
@@ -154,15 +160,6 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     }
     return results;
   }
-
-  // clear all results
-  @Override
-  public void resetAggregateResults() {
-    for (Pair<AggregateResult, Integer> result : results) {
-      result.left.reset();
-    }
-  }
-
 
   private boolean readAndCalcFromPage(long curStartTime, long curEndTime) throws IOException,
       QueryProcessException {

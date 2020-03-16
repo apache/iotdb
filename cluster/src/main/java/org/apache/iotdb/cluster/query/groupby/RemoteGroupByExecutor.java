@@ -13,7 +13,6 @@ import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +26,7 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
   private Node source;
   private Node header;
 
-  private List<Pair<AggregateResult, Integer>> results = new ArrayList<>();
+  private List<AggregateResult> results = new ArrayList<>();
   private AtomicReference<List<ByteBuffer>> fetchResult = new AtomicReference<>();
   private GenericHandler<List<ByteBuffer>> handler;
 
@@ -41,19 +40,18 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
   }
 
   @Override
-  public void addAggregateResult(AggregateResult aggrResult, int index) {
-    results.add(new Pair<>(aggrResult, index));
+  public void addAggregateResult(AggregateResult aggrResult) {
+    results.add(aggrResult);
   }
 
-  @Override
-  public void resetAggregateResults() {
-    for (Pair<AggregateResult, Integer> result : results) {
-      result.left.reset();
+  private void resetAggregateResults() {
+    for (AggregateResult result : results) {
+      result.reset();
     }
   }
 
   @Override
-  public List<Pair<AggregateResult, Integer>> calcResult(long curStartTime, long curEndTime)
+  public List<AggregateResult> calcResult(long curStartTime, long curEndTime)
       throws IOException {
     DataClient client = metaGroupMember.getDataClient(source);
     synchronized (fetchResult) {
@@ -66,10 +64,11 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
       }
     }
     List<ByteBuffer> aggrBuffers = fetchResult.get();
+    resetAggregateResults();
     if (aggrBuffers != null) {
       for (int i = 0; i < aggrBuffers.size(); i++) {
         AggregateResult result = AggregateResult.deserializeFrom(aggrBuffers.get(i));
-        results.get(i).left.merge(result);
+        results.get(i).merge(result);
       }
     }
     logger.debug("Fetched group by result from {} of [{}, {}]: {}", source, curStartTime,

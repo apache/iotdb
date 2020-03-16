@@ -63,6 +63,9 @@ public class NodeReport {
     }
   }
 
+  /**
+   * MetaMemberReport has no additional fields currently.
+   */
   public static class MetaMemberReport extends RaftMemberReport {
 
     public MetaMemberReport(NodeCharacter character, Node leader, long term, long lastLogTerm,
@@ -84,7 +87,8 @@ public class NodeReport {
   }
 
   /**
-   * A DataMemberReport additionally contains header.
+   * A DataMemberReport additionally contains the header, so it can be told which group this
+   * member belongs to.
    */
   public static class DataMemberReport extends RaftMemberReport {
     Node header;

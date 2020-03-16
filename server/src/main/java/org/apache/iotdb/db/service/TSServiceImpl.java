@@ -322,8 +322,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
-          List<TSDataType> dataTypes = SchemaUtils
-              .getSeriesTypesByString(Collections.singletonList(req.getColumnPath()), null);
+          List<TSDataType> dataTypes =
+              getSeriesTypesByString(Collections.singletonList(req.getColumnPath()), null);
           resp.setDataType(dataTypes.get(0).toString());
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
@@ -590,6 +590,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private TSExecuteStatementResp internalExecuteQueryStatement(
       long statementId, PhysicalPlan plan, int fetchSize, String username) {
     long t1 = System.currentTimeMillis();
+    long queryId = -1;
     try {
       TSExecuteStatementResp resp = getQueryResp(plan, username); // column headers
 
@@ -609,7 +610,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } // else default ignoreTimeStamp is false
       resp.setOperationType(plan.getOperatorType().toString());
       // generate the queryId for the operation
-      long queryId = generateQueryId(true);
+      queryId = generateQueryId(true);
       // put it into the corresponding Set
 
       statementId2QueryId.computeIfAbsent(statementId, k -> new HashSet<>()).add(queryId);
@@ -627,6 +628,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return resp;
     } catch (Exception e) {
       logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      if (queryId != -1) {
+        try {
+          releaseQueryResource(queryId);
+        } catch (StorageEngineException ex) {
+          logger.error("Error happened while releasing query resource: ", ex);
+        }
+      }
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, t1);
@@ -743,7 +751,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         for (Path p : paths) {
           respColumns.add(p.getFullPath());
         }
-        seriesTypes = SchemaUtils.getSeriesTypesByString(respColumns, null);
+        seriesTypes = getSeriesTypesByString(respColumns, null);
         break;
       case AGGREGATION:
       case GROUPBY:
@@ -756,7 +764,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         for (int i = 0; i < paths.size(); i++) {
           respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
         }
-        seriesTypes = SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+        seriesTypes = getSeriesTypesByPath(paths, aggregations);
         break;
       default:
         throw new TException("unsupported query type: " + plan.getOperatorType());
@@ -858,6 +866,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
     } catch (Exception e) {
       logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      try {
+        releaseQueryResource(req.queryId);
+      } catch (StorageEngineException ex) {
+        logger.error("Error happened while releasing query resource: ", ex);
+      }
       return RpcUtils.getTSFetchResultsResp(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
   }
@@ -1312,5 +1325,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private long generateQueryId(boolean isDataQuery) {
     return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
+  }
+
+  protected List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
+      throws MetadataException {
+    return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+  }
+
+  protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation)
+      throws MetadataException {
+    return SchemaUtils.getSeriesTypesByString(paths, aggregation);
   }
 }
