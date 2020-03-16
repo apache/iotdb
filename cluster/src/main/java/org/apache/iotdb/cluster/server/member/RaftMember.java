@@ -75,31 +75,45 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * RaftMember process the common raft logic like leader election, log appending, catch-up and so on.
+ */
 public abstract class RaftMember implements RaftService.AsyncIface {
 
   ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
+  // As a leader, when sending the logs to the followers fails, this member will retry up to
+  // "SEND_LOG_RETRY" times before reporting an error to the client.
   private static final int SEND_LOG_RETRY = 3;
 
+  // the name of the member, to distinguish several members from the logs
   String name;
 
+  // to choose nodes to join cluster request randomly
   Random random = new Random();
   protected Node thisNode;
+  // the nodes known by this node
   protected volatile List<Node> allNodes;
 
-  volatile NodeCharacter character = NodeCharacter.ELECTOR;
   AtomicLong term = new AtomicLong(0);
+  volatile NodeCharacter character = NodeCharacter.ELECTOR;
   volatile Node leader;
   volatile long lastHeartBeatReceivedTime;
 
+  // the raft logs are all stored and maintained in the log manager
   LogManager logManager;
 
+  // the single thread pool that runs the heartbeat thread
   ExecutorService heartBeatService;
+  // the thread pool that runs catch-up tasks
   private ExecutorService catchUpService;
 
+  // lastCatchUpResponseTime records when is the latest response of each node's catch-up. There
+  // should be only one catch-up task for each node to avoid duplication, but the task may
+  // time out and in that case, the next catch up should be enabled.
   private Map<Node, Long> lastCatchUpResponseTime = new ConcurrentHashMap<>();
 
-  //will be initialized as different implementations in the subclasses
+  // will be initialized as different implementations in the subclasses
   private ClientPool clientPool;
   // when the commit progress is updated by a heart beat, this object is notified so that we may
   // know if this node is synchronized with the leader
