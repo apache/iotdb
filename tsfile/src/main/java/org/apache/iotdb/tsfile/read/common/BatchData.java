@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.read.common;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -71,13 +71,13 @@ public class BatchData implements Serializable {
   private int count;
 
 
-  private ArrayList<long[]> timeRet;
-  private ArrayList<boolean[]> booleanRet;
-  private ArrayList<int[]> intRet;
-  private ArrayList<long[]> longRet;
-  private ArrayList<float[]> floatRet;
-  private ArrayList<double[]> doubleRet;
-  private ArrayList<Binary[]> binaryRet;
+  private List<long[]> timeRet;
+  private List<boolean[]> booleanRet;
+  private List<int[]> intRet;
+  private List<long[]> longRet;
+  private List<float[]> floatRet;
+  private List<double[]> doubleRet;
+  private List<Binary[]> binaryRet;
 
   public BatchData() {
     dataType = null;
@@ -97,13 +97,11 @@ public class BatchData implements Serializable {
   }
 
   public boolean hasCurrent() {
-    if (readCurListIndex < writeCurListIndex) {
-      return readCurArrayIndex < capacity;
-    } else if (readCurListIndex == writeCurListIndex) {
+    if (readCurListIndex == writeCurListIndex) {
       return readCurArrayIndex < writeCurArrayIndex;
-    } else {
-      return false;
     }
+
+    return readCurListIndex < writeCurListIndex && readCurArrayIndex < capacity;
   }
 
   public void next() {

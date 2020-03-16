@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.common;
 
 import java.nio.ReadOnlyBufferException;
 import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 public class TimeColumn {
@@ -42,7 +43,7 @@ public class TimeColumn {
   // the insert timestamp number of timeRet
   private int count;
 
-  private ArrayList<long[]> timeRet;
+  private List<long[]> timeRet;
 
   public TimeColumn() {
     this.readCurListIndex = 0;
@@ -54,7 +55,7 @@ public class TimeColumn {
     count = 0;
   }
 
-  public TimeColumn(ArrayList<long[]> timeRet, int count) {
+  public TimeColumn(List<long[]> timeRet, int count) {
     this.count = count;
     this.readCurListIndex = 0;
     this.readCurArrayIndex = 0;
@@ -90,13 +91,11 @@ public class TimeColumn {
   }
 
   public boolean hasCurrent() {
-    if (readCurListIndex < writeCurListIndex) {
-      return readCurArrayIndex < capacity;
-    } else if (readCurListIndex == writeCurListIndex) {
+    if (readCurListIndex == writeCurListIndex) {
       return readCurArrayIndex < writeCurArrayIndex;
-    } else {
-      return false;
     }
+
+    return readCurListIndex < writeCurListIndex && readCurArrayIndex < capacity;
   }
 
   public long currentTime() {
@@ -121,7 +120,7 @@ public class TimeColumn {
 
   private class TimeColumnR extends TimeColumn {
 
-    public TimeColumnR(ArrayList<long[]> timeRet, int count) {
+    public TimeColumnR(List<long[]> timeRet, int count) {
       super(timeRet, count);
     }
 
