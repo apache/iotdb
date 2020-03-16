@@ -49,6 +49,7 @@ public class SessionExample {
 
     insert();
     insertRowBatch();
+    insertInBatch();
     nonQuery();
     query();
     deleteData();
@@ -99,6 +100,39 @@ public class SessionExample {
       session.insertBatch(rowBatch);
       rowBatch.reset();
     }
+  }
+
+  private static void insertInBatch() throws IoTDBSessionException {
+    String deviceId = "root.sg1.d2";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    List<String> deviceIds = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<String>> valuesList = new ArrayList<>();
+    List<Long> timestamps = new ArrayList<>();
+
+    for (long time = 0; time < 500; time++) {
+      List<String> values = new ArrayList<>();
+      values.add("1");
+      values.add("2");
+      values.add("3");
+
+      deviceIds.add(deviceId);
+      measurementsList.add(measurements);
+      valuesList.add(values);
+      timestamps.add(time);
+      if (time != 0 && time % 100 == 0) {
+        session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+        deviceIds.clear();
+        measurementsList.clear();
+        valuesList.clear();
+        timestamps.clear();
+      }
+    }
+
+    session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
   }
 
   private static void deleteData() throws IoTDBSessionException {

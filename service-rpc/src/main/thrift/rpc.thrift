@@ -233,6 +233,18 @@ struct TSBatchInsertionReq {
     6: required i32 size
 }
 
+struct TSExecuteInsertRowInBatchResp{
+	1: required list<TSStatus> statusList
+}
+
+
+struct TSInsertInBatchReq {
+    1: required list<string> deviceIds
+    2: required list<list<string>> measurementsList
+    3: required list<list<string>> valuesList
+    4: required list<i64> timestamps
+}
+
 struct TSInsertReq {
     1: required string deviceId
     2: required list<string> measurements
@@ -288,6 +300,8 @@ service TSIService {
 	TSExecuteStatementResp insert(1:TSInsertionReq req);
 
 	TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
+
+  TSExecuteInsertRowInBatchResp insertRowInBatch(1:TSInsertInBatchReq req);
 
 	TSStatus setStorageGroup(1:string storageGroup);
 
