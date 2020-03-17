@@ -58,12 +58,6 @@ public interface LogManager {
   void commitLog(long maxLogIndex);
 
   /**
-   * Commit a single log and set the commit index to its index.
-   * @param log
-   */
-  void commitLog(Log log) throws QueryProcessException;
-
-  /**
    * Get all logs whose index in [startIndex, endIndex).
    * @param startIndex
    * @param endIndex

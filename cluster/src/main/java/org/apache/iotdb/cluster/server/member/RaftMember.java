@@ -82,9 +82,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
-  // As a leader, when sending the logs to the followers fails, this member will retry up to
-  // "SEND_LOG_RETRY" times before reporting an error to the client.
-  private static final int SEND_LOG_RETRY = 3;
 
   // the name of the member, to distinguish several members from the logs
   String name;
@@ -569,6 +566,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   }
 
+  /**
+   * If "newTerm" is larger than the local term, give up the leadership, become a follower and
+   * reset heartbeat timer.
+   * @param newTerm
+   */
   public void retireFromLeader(long newTerm) {
     synchronized (term) {
       long currTerm = term.get();
@@ -582,12 +584,15 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
+  /**
+   * Verify the validity of an ElectionRequest, and make itself a follower of the elector if the
+   * request is valid.
+   * @param electionRequest
+   * @return Response.RESPONSE_AGREE if the elector is valid or the local term if the elector has
+   *   a smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
+   */
   long processElectionRequest(ElectionRequest electionRequest) {
-    // reject the election if one of the four holds:
-    // 1. the term of the candidate is no bigger than the voter's
-    // 2. the lastLogIndex of the candidate is smaller than the voter's
-    // 3. the lastLogIndex of the candidate equals to the voter's but its lastLogTerm is
-    // smaller than the voter's
+
     long thatTerm = electionRequest.getTerm();
     long thatLastLogId = electionRequest.getLastLogIndex();
     long thatLastLogTerm = electionRequest.getLastLogTerm();
@@ -613,6 +618,22 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
+  /**
+   *  Reject the election if one of the four holds:
+   *   1. the term of the candidate is no bigger than the voter's
+   *   2. the lastLogTerm of the candidate is smaller than the voter's
+   *   3. the lastLogTerm of the candidate equals to the voter's but its lastLogIndex is
+   *      smaller than the voter's
+   *   Otherwise accept the election.
+   * @param thisTerm
+   * @param thisLastLogIndex
+   * @param thisLastLogTerm
+   * @param thatTerm
+   * @param thatLastLogId
+   * @param thatLastLogTerm
+   * @return Response.RESPONSE_AGREE if the elector is valid or the local term if the elector has
+   * a smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
+   */
   long verifyElector(long thisTerm, long thisLastLogIndex, long thisLastLogTerm,
       long thatTerm, long thatLastLogId, long thatLastLogTerm) {
     long response;
@@ -635,13 +656,14 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   /**
-   * Update the followers' log by sending logs whose index >= followerLastLogIndex to the follower.
-   * If some of the logs are not in memory, also send the snapshot.
+   * Update the followers' log by sending logs whose index >= followerLastMatchedLogIndex to the
+   * follower. If some of the logs are not in memory, also send the snapshot.
    * <br>notice that if a part of data is in the snapshot, then it is not in the logs</>
    * @param follower
    * @param followerLastLogIndex
    */
   public void catchUp(Node follower, long followerLastLogIndex) {
+    // TODO-Cluster: use lastMatchLogIndex instead of lastLogIndex
     // for one follower, there is at most one ongoing catch-up
     synchronized (follower) {
       // check if the last catch-up is still ongoing
@@ -666,9 +688,12 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       boolean allLogsValid;
       Snapshot snapshot = null;
       synchronized (logManager) {
+        // check if the very first log has been snapshot
         allLogsValid = logManager.logValid(followerLastLogIndex);
         logs = logManager.getLogs(followerLastLogIndex, Long.MAX_VALUE);
         if (!allLogsValid) {
+          // if the first log has been snapshot, the snapshot should also be sent to the
+          // follower, otherwise some data will be missing
           snapshot = logManager.getSnapshot();
         }
       }
@@ -701,12 +726,12 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   /**
-   * Forward a plan to a node using the default client.
-   * @param plan
-   * @param node
+   * Forward a non-query plan to a node using the default client.
+   * @param plan a non-query plan
+   * @param node cannot be the local node
    * @param header must be set for data group communication, set to null for meta group
    *               communication
-   * @return
+   * @return a TSStatus indicating if the forwarding is successful.
    */
   TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
     if (node == thisNode || node == null) {
@@ -723,6 +748,14 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return StatusUtils.TIME_OUT;
   }
 
+  /**
+   * Forward a non-query plan to "receiver" using "client".
+   * @param plan a non-query plan
+   * @param client
+   * @param receiver
+   * @param header to determine which DataGroupMember of "receiver" will process the request.
+   * @return a TSStatus indicating if the forwarding is successful.
+   */
   TSStatus forwardPlan(PhysicalPlan plan, AsyncClient client, Node receiver, Node header) {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -742,6 +775,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     } catch (IOException | TException e) {
       TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
       status.setMessage(e.getMessage());
+      logger.error("{}: encountered an error when forwarding {} to {}", name, plan, receiver, e);
       return status;
     } catch (InterruptedException e) {
       return StatusUtils.TIME_OUT;
@@ -749,19 +783,22 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   /**
+   * Create a log for "plan" and append it locally and to all followers.
    * Only the group leader can call this method.
    * Will commit the log locally and send it to followers
    * @param plan
-   * @return
+   * @return OK if over half of the followers accept the log or null if the leadership is lost
+   * during the appending
    */
   TSStatus processPlanLocally(PhysicalPlan plan) {
     logger.debug("{}: Processing plan {}", name, plan);
-    synchronized (logManager) {
-      if (readOnly) {
-        return StatusUtils.NODE_READ_ONLY;
-      }
+    if (readOnly) {
+      return StatusUtils.NODE_READ_ONLY;
+    }
 
-      PhysicalPlanLog log = new PhysicalPlanLog();
+    PhysicalPlanLog log = new PhysicalPlanLog();
+    // assign term and index to the new log and append it
+    synchronized (logManager) {
       log.setCurrLogTerm(getTerm().get());
       log.setPreviousLogIndex(logManager.getLastLogIndex());
       log.setPreviousLogTerm(logManager.getLastLogTerm());
@@ -769,54 +806,43 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
       log.setPlan(plan);
       logManager.appendLog(log);
+    }
 
-      retry:
-      for (int i = SEND_LOG_RETRY; i >= 0; i--) {
-        logger.debug("{}: Send plan {} to other nodes, retry remaining {}", name, plan, i);
-        AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
-        switch (result) {
-          case OK:
-            logger.debug("{}: Plan {} is accepted", name, plan);
-            try {
-              logManager.commitLog(log);
-            } catch (QueryProcessException e) {
-              if (e.getCause() instanceof PathAlreadyExistException) {
-                // ignore duplicated creation
-                return StatusUtils.OK;
-              }
-              logger.info("{}: The log {} is not successfully applied, reverting", name, log, e);
-              logManager.removeLastLog();
-              TSStatus status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-              status.setMessage(e.getMessage());
-              return status;
-            }
-            return StatusUtils.OK;
-          case TIME_OUT:
-            logger.debug("{}: Plan {} timed out", name, plan);
-            if (i == 1) {
-              return StatusUtils.TIME_OUT;
-            }
-            break;
-          case LEADERSHIP_STALE:
-          default:
-            logManager.removeLastLog();
-            break retry;
-        }
+    int retryTime = 0;
+    retry:
+    while (true) {
+      logger.debug("{}: Send plan {} to other nodes, retry times: {}", name, plan, retryTime);
+      AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
+      switch (result) {
+        case OK:
+          logger.debug("{}: Plan {} is accepted", name, plan);
+          logManager.commitLog(log.getCurrLogIndex());
+          return StatusUtils.OK;
+        case TIME_OUT:
+          logger.debug("{}: Plan {} timed out, retrying...", name, plan);
+          retryTime++;
+          break;
+        case LEADERSHIP_STALE:
+          // abort the appending, the new leader will fix the local logs by catch-up
+        default:
+          break retry;
       }
     }
     return null;
   }
 
   /**
-   * if the node is not a leader, will send it to the leader.
-   * Otherwise do it locally (whether to send it to followers depends on the implementation of
-   * executeNonQuery()).
+   * If the node is not a leader, the request will be sent to the leader or reports an error if
+   * there is no leader.
+   * Otherwise execute the plan locally (whether to send it to followers depends on the
+   * type of the plan).
    * @param request
    * @param resultHandler
    */
   public void executeNonQueryPlan(ExecutNonQueryReq request,
       AsyncMethodCallback<TSStatus> resultHandler) {
     if (character != NodeCharacter.LEADER) {
+      // forward the plan to the leader
       AsyncClient client = connectNode(leader);
       if (client != null) {
         try {
@@ -830,6 +856,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       return;
     }
     try {
+      // process the plan locally
       PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
       logger.debug("{}: Received a plan {}", name, plan);
       resultHandler.onComplete(executeNonQuery(plan));
@@ -848,15 +875,17 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       return true;
     }
     if (leader == null) {
+      // the leader has not been elected, we must assume the node falls behind
       return false;
     }
-    logger.debug("{}: try synchronizing with leader {}", name, leader);
+    logger.debug("{}: try synchronizing with the leader {}", name, leader);
     long startTime = System.currentTimeMillis();
     long waitedTime = 0;
     AtomicReference<Long> commitIdResult = new AtomicReference<>(Long.MAX_VALUE);
     while (waitedTime < RaftServer.syncLeaderMaxWaitMs) {
       AsyncClient client = connectNode(leader);
       if (client == null) {
+        // cannot connect to the leader
         return false;
       }
       try {
@@ -868,10 +897,19 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         long localCommitId = logManager.getCommitLogIndex();
         logger.debug("{}: synchronizing commitIndex {}/{}", name, localCommitId, leaderCommitId);
         if (leaderCommitId <= localCommitId) {
+          // before the response comes, the leader may commit new logs and the localCommitId may be
+          // updated by catching up, so it is possible that localCommitId > leaderCommitId at
+          // this time
           // this node has caught up
+          if (logger.isDebugEnabled()) {
+            waitedTime = System.currentTimeMillis() - startTime;
+            logger.debug("{}: synchronized with the leader after {}ms", name, waitedTime);
+          }
           return true;
         }
         // wait for next heartbeat to catch up
+        // the local node will not perform a commit here according to the leaderCommitId because
+        // the node may have some inconsistent logs with the leader
         waitedTime = System.currentTimeMillis() - startTime;
         synchronized (syncLock) {
           syncLock.wait(RaftServer.heartBeatIntervalMs);
@@ -883,8 +921,19 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return false;
   }
 
+  /**
+   * Execute a non-query plan.
+   * @param plan a non-query plan.
+   * @return A TSStatus indicating the execution result.
+   */
   abstract TSStatus executeNonQuery(PhysicalPlan plan);
 
+  /**
+   * Tell the requester the current commit index if the local node is the leader of the group
+   * headed by header. Or forward it to the leader. Otherwise report an error.
+   * @param header to determine the DataGroupMember in data groups
+   * @param resultHandler
+   */
   @Override
   public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
     if (character == NodeCharacter.LEADER) {
@@ -903,6 +952,14 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
+  /**
+   * An ftp-like interface that is used for a node to pull chunks of files like TsFiles.
+   * @param filePath
+   * @param offset
+   * @param length
+   * @param header to determine the DataGroupMember in data groups
+   * @param resultHandler
+   */
   @Override
   public void readFile(String filePath, long offset, int length, Node header,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
