@@ -170,7 +170,7 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public PartitionGroup route(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
-      Node node = routeToHeader(storageGroupName, timestamp);
+      Node node = routeToHeaderByTime(storageGroupName, timestamp);
       return getHeaderGroup(node);
     }
   }
@@ -191,11 +191,23 @@ public class SlotPartitionTable implements PartitionTable {
   }
 
   @Override
-  public Node routeToHeader(String storageGroupName, long timestamp) {
+  public Node routeToHeaderByTime(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
       int slot = PartitionUtils.calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
       Node node = slotNodeMap.get(slot);
       logger.debug("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp,
+          slot, node);
+      return node;
+    }
+  }
+
+  @Override
+  public Node routeToHeaderByPartition(String storageGroupName, long partitionId) {
+    synchronized (nodeRing) {
+      int slot = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName, partitionId,
+          getTotalSlotNumbers());
+      Node node = slotNodeMap.get(slot);
+      logger.debug("The slot of {}#{} is {}, held by {}", storageGroupName, partitionId,
           slot, node);
       return node;
     }

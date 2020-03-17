@@ -383,7 +383,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    *                       <= 0, half of the cluster size will be used.
    * @return an AppendLogResult
    */
-  private AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
+  protected AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
     if (requiredQuorum <= 0) {
       return sendLogToFollowers(log, new AtomicInteger(allNodes.size() / 2));
     } else {
@@ -808,18 +808,31 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       logManager.appendLog(log);
     }
 
+    if (appendLogInGroup(log)) {
+      return StatusUtils.OK;
+    }
+    return null;
+  }
+
+  /**
+   * Append a log to all followers in the group until half of them accept the log or the
+   * leadership is lost.
+   * @param log
+   * @return true if the log is accepted by the quorum of the group, false otherwise
+   */
+  protected boolean appendLogInGroup(Log log) {
     int retryTime = 0;
     retry:
     while (true) {
-      logger.debug("{}: Send plan {} to other nodes, retry times: {}", name, plan, retryTime);
+      logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
       AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
       switch (result) {
         case OK:
-          logger.debug("{}: Plan {} is accepted", name, plan);
+          logger.debug("{}: log {} is accepted", name, log);
           logManager.commitLog(log.getCurrLogIndex());
-          return StatusUtils.OK;
+          return  true;
         case TIME_OUT:
-          logger.debug("{}: Plan {} timed out, retrying...", name, plan);
+          logger.debug("{}: log {} timed out, retrying...", name, log);
           retryTime++;
           break;
         case LEADERSHIP_STALE:
@@ -828,7 +841,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           break retry;
       }
     }
-    return null;
+    return false;
   }
 
   /**

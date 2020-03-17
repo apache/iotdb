@@ -43,6 +43,7 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.manage.FilePartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
@@ -550,6 +551,33 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   public MetaGroupMember getMetaGroupMember() {
     return metaGroupMember;
+  }
+
+  /**
+   * If the member is the leader, let all members in the group close the specified partition of a
+   * storage group, else just return false.
+   * @param storageGroupName
+   * @param partitionId
+   * @param isSeq
+   * @return false if the member is not a leader, true if the close request is accepted by the
+   * quorum
+   */
+  public boolean closePartition(String storageGroupName, long partitionId, boolean isSeq) {
+    if (character != NodeCharacter.LEADER) {
+      return false;
+    }
+    CloseFileLog log = new CloseFileLog(storageGroupName, partitionId, isSeq);
+    synchronized (logManager) {
+      log.setCurrLogTerm(getTerm().get());
+      log.setPreviousLogIndex(logManager.getLastLogIndex());
+      log.setPreviousLogTerm(logManager.getLastLogTerm());
+      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+
+      logManager.appendLog(log);
+
+      logger.info("Send the close file request of {} to other nodes", log);
+    }
+    return appendLogInGroup(log);
   }
 
   TSStatus executeNonQuery(PhysicalPlan plan) {

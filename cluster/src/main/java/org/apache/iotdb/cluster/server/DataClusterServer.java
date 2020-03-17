@@ -51,6 +51,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
@@ -367,9 +368,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   /**
    * Try adding the node into the group of each DataGroupMember, and if the DataGroupMember no
    * longer stays in that group, also remove and stop it.
+   * If the new group contains this node, also create and add a new DataGroupMember for it.
    * @param node
+   * @param newGroup
    */
-  public void addNode(Node node) {
+  public void addNode(Node node, PartitionGroup newGroup) {
     Iterator<Entry<Node, DataGroupMember>> entryIterator = headerGroupMap.entrySet().iterator();
     synchronized (headerGroupMap) {
       while (entryIterator.hasNext()) {
@@ -383,7 +386,33 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
           dataGroupMember.stop();
         }
       }
+
+      if (newGroup.contains(thisNode)) {
+        try {
+          logger.info("Adding this node into a new group {}", newGroup);
+          DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup, thisNode);
+          addDataGroupMember(dataGroupMember);
+          dataGroupMember.start();
+          dataGroupMember
+              .pullNodeAdditionSnapshots(partitionTable.getNodeSlots(node), node);
+        } catch (TTransportException e) {
+          logger.error("Fail to create data newMember for new header {}", node, e);
+        }
+      }
     }
+  }
+
+  public void bulidDataGroupMembers(PartitionTable partitionTable)
+      throws TTransportException {
+    setPartitionTable(partitionTable);
+    List<PartitionGroup> partitionGroups = partitionTable.getLocalGroups();
+    for (PartitionGroup partitionGroup : partitionGroups) {
+      logger.debug("Building member of data group: {}", partitionGroup);
+      DataGroupMember dataGroupMember = dataMemberFactory.create(partitionGroup, thisNode);
+      dataGroupMember.start();
+      addDataGroupMember(dataGroupMember);
+    }
+    logger.info("Data group members are ready");
   }
 
   /**

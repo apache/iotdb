@@ -351,7 +351,7 @@ public class MetaGroupMemberTest extends MemberTest {
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
     }
-    metaGroupMember.closePartition(TestUtils.getTestSg(0), true);
+    metaGroupMember.closePartition(TestUtils.getTestSg(0), 0,true);
 
     StorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(TestUtils.getTestSg(0));
@@ -368,12 +368,12 @@ public class MetaGroupMemberTest extends MemberTest {
         PlanExecutor planExecutor = new PlanExecutor();
         planExecutor.processNonQuery(insertPlan);
       }
-      metaGroupMember.closePartition(TestUtils.getTestSg(0), true);
+      metaGroupMember.closePartition(TestUtils.getTestSg(0), 0,true);
       assertFalse(processor.getWorkSequenceTsFileProcessors().isEmpty());
 
       // indicating the leader is stale
       dummyResponse.set(100);
-      metaGroupMember.closePartition(TestUtils.getTestSg(0), true);
+      metaGroupMember.closePartition(TestUtils.getTestSg(0), 0,true);
       assertFalse(processor.getWorkSequenceTsFileProcessors().isEmpty());
     } finally {
       RaftServer.connectionTimeoutInMS = prevTimeout;
@@ -723,7 +723,7 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testAppendEntry() throws InterruptedException {
     metaGroupMember.setPartitionTable(null);
-    CloseFileLog log = new CloseFileLog(TestUtils.getTestSg(0), true);
+    CloseFileLog log = new CloseFileLog(TestUtils.getTestSg(0), 0,  true);
     log.setCurrLogIndex(0);
     log.setCurrLogTerm(0);
     log.setPreviousLogIndex(-1);
