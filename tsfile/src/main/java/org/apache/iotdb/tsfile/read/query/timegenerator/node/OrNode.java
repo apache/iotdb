@@ -64,7 +64,7 @@ public class OrNode implements Node {
       return true;
     }
 
-    cachedTimeColumn = new TimeColumn(fetchSize);
+    cachedTimeColumn = new TimeColumn();
 
     while (hasLeftValue() && hasRightValue()) {
       long leftValue = leftTimeColumn.currentTime();
