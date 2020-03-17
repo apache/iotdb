@@ -451,19 +451,15 @@ public class MManager {
    * @param storageGroup root.node.(node)*
    */
   public void setStorageGroup(String storageGroup) throws MetadataException {
-    if (mtree.checkStorageGroupByPath(storageGroup)) {
-      throw new MetadataException(
-          String.format("Storage group <%s> has already existed.", storageGroup));
-    }
     lock.writeLock().lock();
     try {
+      mtree.setStorageGroup(storageGroup);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
         writer.write(MetadataOperationType.SET_STORAGE_GROUP + "," + storageGroup);
         writer.newLine();
         writer.flush();
       }
-      mtree.setStorageGroup(storageGroup);
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
       ActiveTimeSeriesCounter.getInstance().init(storageGroup);
       seriesNumberInStorageGroups.put(storageGroup, 0);
