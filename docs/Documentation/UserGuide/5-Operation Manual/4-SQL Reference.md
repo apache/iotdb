@@ -274,9 +274,9 @@ GroupByClause : LPAREN <TimeInterval> COMMA <TimeUnit> (COMMA <TimeUnit>)? RPARE
 TimeInterval: LBRACKET <TimeValue> COMMA <TimeValue> RBRACKET
 TimeUnit : Integer <DurationUnit>
 DurationUnit : "ms" | "s" | "m" | "h" | "d" | "w"
-Eg: SELECT COUNT(status), COUNT(temperature) FROM root.ln.wf01.wt01 where temperature < 24 GROUP BY([1509465720000, 1509466380000], 5m)
-Eg. SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY([1509465720000, 1509466380000], 5m, 10m)
-Eg. SELECT MIN_TIME(status), MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE temperature < 25 GROUP BY ([1509466140000, 1509466380000], 3m, 5ms)
+Eg: SELECT COUNT(status), COUNT(temperature) FROM root.ln.wf01.wt01 where temperature < 24 GROUP BY([1509465720000, 1509466380000), 5m)
+Eg. SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY([1509465720000, 1509466380000), 5m, 10m)
+Eg. SELECT MIN_TIME(status), MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE temperature < 25 GROUP BY ([1509466140000, 1509466380000), 3m, 5ms)
 Note: the statement needs to satisfy this constraint: <Path>(SelectClause) + <PrefixPath>(FromClause) = <Timeseries>
 Note: If the <SensorExpr>(WhereClause) is started with <Path> and not with ROOT, the statement needs to satisfy this constraint: <PrefixPath>(FromClause) + <Path>(SensorExpr) = <Timeseries>
 Note: <TimeValue>(TimeInterval) needs to be greater than 0
@@ -353,7 +353,7 @@ Rules:
 Correct example: select * from root.sg1 align by device  
 Correct example: select * from root.sg1 ALIGN BY DEVICE  
 
-2. GroupbyDeviceClause can only be used at the end of a query statement.  
+2. AlignbyDeviceClause can only be used at the end of a query statement.  
 Correct example: select * from root.sg1 where time > 10 align by device  
 Wrong example: select * from root.sg1 align by device where time > 10  
 
@@ -406,12 +406,19 @@ For example. "select s0,s1 from root.sg.*,root.sg.d0 align by device" is equal t
 7. The duplicated measurements in the suffix paths are not neglected.  
 For example, "select s0,s0,s1 from root.sg.* align by device" is not equal to "select s0,s1 from root.sg.* align by device".
 
-8. More correct examples: 
+8. Both time predicates and value predicates are allowed in Where Clause. The paths of the value predicates can be the leaf node or full path started with ROOT. And wildcard is not allowed here. For example:
+- select * from root.sg.* where time = 1 align by device
+- select * from root.sg.* where s0 < 100 align by device
+- select * from root.sg.* where time < 20 AND s0 > 50 align by device
+- select * from root.sg.d0 where root.sg.d0.s0 = 15 align by device
+
+9. More correct examples:
    - select * from root.vehicle align by device
    - select s0,s0,s1 from root.vehicle.* align by device
    - select s0,s1 from root.vehicle.* limit 10 offset 1 align by device
    - select * from root.vehicle slimit 10 soffset 2 align by device
    - select * from root.vehicle where time > 10 align by device
+   - select * from root.vehicle.* where time < 10 AND s0 > 25 align by device
    - select * from root.vehicle where root.vehicle.d0.s0>0 align by device
    - select count(*) from root.vehicle align by device
    - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) align by device
@@ -454,6 +461,39 @@ You could expect a table like:
    - select s0,s1 from root.vehicle.* limit 10 offset 1 disable align
    - select * from root.vehicle slimit 10 soffset 2 disable align
    - select * from root.vehicle where time > 10 disable align
+
+```
+
+* Select Last Record Statement
+
+The LAST function returns the last time-value pair of the given timeseries. Currently filters are not supported in LAST queries.
+
+```
+SELECT LAST <SelectClause> FROM <FromClause> <DisableAlignClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+DisableAlignClause : [DISABLE ALIGN]
+
+Eg. SELECT LAST s1 FROM root.sg.d1 disable align
+Eg. SELECT LAST s1, s2 FROM root.sg.d1 disable align
+Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2 disable align
+
+Rules:
+1. the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
+
+2. The result set of last query will always be displayed in a "disable-aligned" format showed below.
+For example, "select last s1, s2 from root.sg.d1, root.sg.d2 disable align", the query result would be:
+
+| Time | Path         | Value |
+| ---  | ------------ | ----- |
+|  5   | root.sg.d1.s1| 100   |
+|  2   | root.sg.d1.s2| 400   |
+|  4   | root.sg.d2.s1| 250   |
+|  9   | root.sg.d2.s2| 600   |
+
+3. LAST query syntax is expecting users to write a "diable align" keyword at the end of the query. 
+However, as it is a unique SQL syntax in IoTDB, IoTDB accepts LAST queries without "disable align" and treats them as "disable align" ones.
+Query like "select last s1 from root.sg.d1" will be parsed exactly the same as "select last s1 from root.sg.d1 disable align". 
 
 ```
 

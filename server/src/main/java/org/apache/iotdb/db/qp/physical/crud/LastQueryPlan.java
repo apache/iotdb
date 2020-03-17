@@ -16,20 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.storageGroup;
 
-import org.apache.iotdb.db.exception.IoTDBException;
-import org.apache.iotdb.rpc.TSStatusCode;
+package org.apache.iotdb.db.qp.physical.crud;
 
-public class StorageGroupProcessorException extends IoTDBException {
+import org.apache.iotdb.db.qp.logical.Operator;
 
-  private static final long serialVersionUID = 7373978140952977661L;
+public class LastQueryPlan extends RawDataQueryPlan {
 
-  public StorageGroupProcessorException(Exception exception) {
-    super(exception.getMessage(), TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode());
-  }
-
-  public StorageGroupProcessorException(String message) {
-    super(message, TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode());
+  public LastQueryPlan() {
+    super();
+    setOperatorType(Operator.OperatorType.LAST);
   }
 }

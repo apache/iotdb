@@ -36,10 +36,10 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VERSION;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -118,11 +118,21 @@ class StaticResps {
       Collections.singletonList(COLUMN_PRIVILEGE),
       Collections.singletonList(TSDataType.TEXT.toString()));
 
+  static final TSExecuteStatementResp LAST_RESP = getExecuteResp(
+      Arrays.asList(COLUMN_TIMESERIES, COLUMN_VALUE),
+      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()), false
+  );
+
   private static TSExecuteStatementResp getNoTimeExecuteResp(List<String> columns,
       List<String> dataTypes) {
+    return getExecuteResp(columns, dataTypes, true);
+  }
+
+  private static TSExecuteStatementResp getExecuteResp(List<String> columns,
+      List<String> dataTypes, boolean ignoreTimeStamp) {
     TSExecuteStatementResp resp =
-        TSServiceImpl.getTSExecuteStatementResp(TSServiceImpl.getStatus(TSStatusCode.SUCCESS_STATUS));
-    resp.setIgnoreTimeStamp(true);
+        RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+    resp.setIgnoreTimeStamp(ignoreTimeStamp);
     resp.setColumns(columns);
     resp.setDataTypeList(dataTypes);
     return resp;

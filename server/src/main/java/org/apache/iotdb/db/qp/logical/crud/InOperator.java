@@ -22,11 +22,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -75,9 +75,10 @@ public class InOperator extends FunctionOperator {
   }
 
   @Override
-  protected Pair<IUnaryExpression, String> transformToSingleQueryFilter()
+  protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
+      Map<Path, TSDataType> pathTSDataTypeHashMap)
       throws LogicalOperatorException, MetadataException {
-    TSDataType type = MManager.getInstance().getSeriesType(singlePath.toString());
+    TSDataType type = pathTSDataTypeHashMap.get(singlePath);
     if (type == null) {
       throw new MetadataException(
           "given seriesPath:{" + singlePath.getFullPath() + "} don't exist in metadata");
@@ -154,6 +155,7 @@ public class InOperator extends FunctionOperator {
     ret.tokenSymbol = tokenSymbol;
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
+    ret.pathSet = pathSet;
     return ret;
   }
 

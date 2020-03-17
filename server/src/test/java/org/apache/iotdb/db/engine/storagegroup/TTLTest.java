@@ -21,6 +21,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -37,10 +38,8 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
-import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.Planner;
@@ -76,7 +75,7 @@ public class TTLTest {
 
   @Before
   public void setUp()
-      throws MetadataException, IOException, StartupException, PathException, StorageGroupProcessorException {
+      throws MetadataException, IOException, StartupException, StorageGroupProcessorException {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
     createSchemas();
@@ -84,7 +83,7 @@ public class TTLTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
+    storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -161,7 +160,7 @@ public class TTLTest {
       insertPlan.setTime(initTime - 2000 + i);
       storageGroupProcessor.insert(insertPlan);
       if ((i + 1) % 300 == 0) {
-        storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
+        storageGroupProcessor.asyncCloseAllWorkingTsFileProcessors();
       }
     }
     // unsequence data
@@ -169,7 +168,7 @@ public class TTLTest {
       insertPlan.setTime(initTime - 2000 + i);
       storageGroupProcessor.insert(insertPlan);
       if ((i + 1) % 300 == 0) {
-        storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
+        storageGroupProcessor.asyncCloseAllWorkingTsFileProcessors();
       }
     }
   }
@@ -226,7 +225,7 @@ public class TTLTest {
   public void testTTLRemoval() throws StorageEngineException, QueryProcessException {
     prepareData();
 
-    storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
+    storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
     // files before ttl
     File seqDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile(), sg1);
@@ -330,13 +329,13 @@ public class TTLTest {
 
     rowRecord = queryDataSet.next();
     assertEquals(sg2, rowRecord.getFields().get(0).getStringValue());
-    assertEquals("null", rowRecord.getFields().get(1).getStringValue());
+    assertNull(rowRecord.getFields().get(1));
   }
 
   @Test
   public void testTTLCleanFile() throws QueryProcessException {
     prepareData();
-    storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
+    storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
     assertEquals(4, storageGroupProcessor.getSequenceFileTreeSet().size());
     assertEquals(4, storageGroupProcessor.getUnSequenceFileList().size());

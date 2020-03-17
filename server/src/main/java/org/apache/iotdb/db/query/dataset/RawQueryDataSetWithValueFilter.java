@@ -26,7 +26,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
-import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -35,9 +34,11 @@ import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 public class RawQueryDataSetWithValueFilter extends QueryDataSet {
 
+  private TimeGenerator timeGenerator;
   private static final Logger LOGGER = LoggerFactory
       .getLogger(RawQueryDataSetWithValueFilter.class);
 
@@ -55,7 +56,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
    * @param readers       readers in List(IReaderByTimeStamp) structure
    */
   public RawQueryDataSetWithValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-      ServerTimeGenerator timeGenerator, List<IReaderByTimestamp> readers) {
+      TimeGenerator timeGenerator, List<IReaderByTimestamp> readers) {
     super(paths, dataTypes);
     this.timeGenerator = timeGenerator;
     this.seriesReaderByTimestampList = readers;

@@ -106,17 +106,17 @@ public class DeviceMetaDataCacheTest {
     for (int j = 11; j <= 20; j++) {
       insertOneRecord(j, j);
     }
-    storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
+    storageGroupProcessor.asyncCloseAllWorkingTsFileProcessors();
 
     for (int j = 21; j <= 30; j += 2) {
       insertOneRecord(j, 0); // will be covered when read
     }
-    storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
+    storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 21; j <= 30; j += 2) {
       insertOneRecord(j, j);
     }
-    storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
+    storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
     insertOneRecord(2, 100);
   }

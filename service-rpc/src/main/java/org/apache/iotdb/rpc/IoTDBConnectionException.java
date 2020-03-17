@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,17 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.rpc;
 
-package org.apache.iotdb.db.exception.storageGroup;
+public class IoTDBConnectionException extends Exception{
 
-import org.apache.iotdb.db.exception.IoTDBException;
-import org.apache.iotdb.rpc.TSStatusCode;
+  private static final long serialVersionUID = -1268775292265203036L;
 
-public class StorageGroupException extends IoTDBException {
+  public IoTDBConnectionException(String reason) {
+    super(reason);
+  }
 
-  private static final long serialVersionUID = 7082567513626836322L;
+  public IoTDBConnectionException(Throwable cause) {
+    super(cause);
+  }
 
-  public StorageGroupException(String message) {
-    super(message, TSStatusCode.STORAGE_GROUP_ERROR.getStatusCode());
+  public IoTDBConnectionException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

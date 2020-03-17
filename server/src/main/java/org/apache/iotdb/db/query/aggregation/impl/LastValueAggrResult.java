@@ -41,6 +41,12 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   @Override
+  public void reset() {
+    super.reset();
+    timestamp = Long.MIN_VALUE;
+  }
+
+  @Override
   public Object getResult() {
     return hasResult() ? getValue() : null;
   }

@@ -396,12 +396,19 @@ root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT.
 
 7. 在Select子句中重复写列名是生效的。例如, "select s0,s0,s1 from root.sg.* align by device" 不等于 "select s0,s1 from root.sg.* align by device".
 
-8. 更多正例: 
+8. 在Where子句中时间过滤条件和值过滤条件均可以使用，值过滤条件可以使用叶子节点 path，或以 root 开头的整个 path，不允许存在通配符。例如，
+- select * from root.sg.* where time = 1 align by device
+- select * from root.sg.* where s0 < 100 align by device
+- select * from root.sg.* where time < 20 AND s0 > 50 align by device
+- select * from root.sg.d0 where root.sg.d0.s0 = 15 align by device
+
+9. 更多正例:
    - select * from root.vehicle align by device
    - select s0,s0,s1 from root.vehicle.* align by device
    - select s0,s1 from root.vehicle.* limit 10 offset 1 align by device
    - select * from root.vehicle slimit 10 soffset 2 align by device
    - select * from root.vehicle where time > 10 align by device
+   - select * from root.vehicle.* where time < 10 AND s0 > 25 align by device
    - select * from root.vehicle where root.vehicle.d0.s0>0 align by device
    - select count(*) from root.vehicle align by device
    - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) align by device
@@ -443,6 +450,40 @@ root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT.
    - select s0,s1 from root.vehicle.* limit 10 offset 1 disable align
    - select * from root.vehicle slimit 10 soffset 2 disable align
    - select * from root.vehicle where time > 10 disable align
+
+```
+
+* Last语句
+
+Last 语句返回所要查询时间序列的最近时间戳的一条数据
+
+```
+SELECT LAST <SelectClause> FROM <FromClause> <DisableAlignClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+DisableAlignClause : [DISABLE ALIGN]
+
+Eg. SELECT LAST s1 FROM root.sg.d1 disable align
+Eg. SELECT LAST s1, s2 FROM root.sg.d1 disable align
+Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2 disable align
+
+规则:
+1. 需要满足PrefixPath.Path 为一条完整的时间序列，即 <PrefixPath> + <Path> = <Timeseries>
+
+2. SELECT LAST 语句不支持过滤条件.
+
+3. 结果集以"disable align"的形式返回，表现为总是包含三列的表格。
+例如 "select last s1, s2 from root.sg.d1, root.sg.d2 disable align", 结果集返回如下：
+
+| Time | Path         | Value |
+| ---  | ------------ | ----- |
+|  5   | root.sg.d1.s1| 100   |
+|  2   | root.sg.d1.s2| 400   |
+|  4   | root.sg.d2.s1| 250   |
+|  9   | root.sg.d2.s2| 600   |
+
+4. SELECT LAST 查询语句要是总是和末尾的disable align在一起使用。如果用户不熟悉SELECT LAST的语法或者忘记在末尾添加"disable align"，IoTDB 也会接受不包含"disable align"的SQL语句并且仍以"disable align"的形式返回结果集。
+例如用户输入 "select last s1 from root.sg.d1" 所得到的查询结果与 "select last s1 from root.sg.d1 disable align". 的结果是完全相同的。
 
 ```
 
@@ -848,4 +889,3 @@ eg. root.ln.wf01.wt01.*
 eg. *.wt01.*
 eg. *
 ```
-
