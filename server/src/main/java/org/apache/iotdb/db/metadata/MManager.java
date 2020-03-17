@@ -451,6 +451,10 @@ public class MManager {
    * @param storageGroup root.node.(node)*
    */
   public void setStorageGroup(String storageGroup) throws MetadataException {
+    if (mtree.checkStorageGroupByPath(storageGroup)) {
+      throw new MetadataException(
+          String.format("Storage group <%s> has already existed.", storageGroup));
+    }
     lock.writeLock().lock();
     try {
       if (writeToLog) {
