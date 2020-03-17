@@ -62,13 +62,6 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   public MetaClusterServer() throws QueryProcessException, StartupException {
     super();
     member = new MetaGroupMember(protocolFactory, thisNode);
-    // check the initial cluster size and refuse to start when the size < quorum
-    int quorum = config.getReplicationNum() / 2 + 1;
-    if (config.getSeedNodeUrls().size() < quorum) {
-      String message = String.format("Seed number less than quorum, seed number: {}, quorum: {}.",
-          config.getSeedNodeUrls().size(), quorum);
-      throw new StartupException(member.getName(), message);
-    }
   }
 
   /**

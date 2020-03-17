@@ -64,6 +64,14 @@ public class ClusterMain {
     try {
       if (MODE_START.equals(mode)) {
         metaServer = new MetaClusterServer();
+        // check the initial cluster size and refuse to start when the size < quorum
+        ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
+        int quorum = config.getReplicationNum() / 2 + 1;
+        if (config.getSeedNodeUrls().size() < quorum) {
+          String message = String.format("Seed number less than quorum, seed number: {}, quorum: {}.",
+              config.getSeedNodeUrls().size(), quorum);
+          throw new StartupException(metaServer.getMember().getName(), message);
+        }
         metaServer.start();
         metaServer.buildCluster();
       } else if (MODE_ADD.equals(mode)) {
