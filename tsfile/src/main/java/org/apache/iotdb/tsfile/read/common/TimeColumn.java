@@ -61,7 +61,7 @@ public class TimeColumn {
     this.capacity = capacity;
 
     this.writeCurListIndex = count / capacity;
-    this.writeCurArrayIndex = count & (capacity - 1);
+    this.writeCurArrayIndex = count % capacity;
     this.timeRet = timeRet;
   }
 
