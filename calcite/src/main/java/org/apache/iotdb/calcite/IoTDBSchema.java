@@ -149,7 +149,7 @@ public class IoTDBSchema extends AbstractSchema {
     if (hasResultSet) {
       ResultSet resultSet = statement.getResultSet();
       while (resultSet.next()) {
-        storageGroups.add(resultSet.getString(1).toLowerCase());
+        storageGroups.add(resultSet.getString(1));
       }
     }
     for (String storageGroup : storageGroups) {
