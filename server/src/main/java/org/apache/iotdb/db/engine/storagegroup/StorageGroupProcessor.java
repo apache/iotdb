@@ -94,7 +94,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
  * (1) when inserting data into the TsFileProcessor, and the TsFileProcessor shouldFlush() (or
  * shouldClose())<br/>
  * <p>
- * (2) someone calls waitForAllCurrentTsFileProcessorsClosed(). (up to now, only flush command from
+ * (2) someone calls syncCloseAllWorkingTsFileProcessors(). (up to now, only flush command from
  * cli will call this method)<br/>
  * <p>
  * UnSequence data has the similar process as above.
@@ -102,7 +102,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
  * When a sequence TsFileProcessor is submitted to be flushed, the updateLatestFlushTimeCallback()
  * method will be called as a callback.<br/>
  * <p>
- * When a TsFileProcessor is closed, the closeUnsealedTsFileProcessor() method will be called as a
+ * When a TsFileProcessor is closed, the closeUnsealedTsFileProcessorCallBack() method will be called as a
  * callback.
  */
 public class StorageGroupProcessor {
@@ -386,7 +386,7 @@ public class StorageGroupProcessor {
         // the last file is not closed, continue writing to in
         TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
             schema, getVersionControllerByTimePartitionId(timePartitionId),
-            this::closeUnsealedTsFileProcessor,
+            this::closeUnsealedTsFileProcessorCallBack,
             this::updateLatestFlushTimeCallback, true, writer);
         workUnsequenceTsFileProcessors
             .put(timePartitionId, tsFileProcessor);
@@ -415,7 +415,7 @@ public class StorageGroupProcessor {
         // the last file is not closed, continue writing to in
         TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
             schema, getVersionControllerByTimePartitionId(timePartitionId),
-            this::closeUnsealedTsFileProcessor,
+            this::closeUnsealedTsFileProcessorCallBack,
             this::unsequenceFlushCallback, false, writer);
         tsFileResource.setProcessor(tsFileProcessor);
         tsFileProcessor.setTimeRangeId(timePartitionId);
@@ -764,7 +764,7 @@ public class StorageGroupProcessor {
               tsFileProcessorTreeMap.size(),
               IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() / 2,
               storageGroupName);
-          moveOneWorkProcessorToClosingList(sequence, processorEntry.getValue());
+          asyncCloseOneTsFileProcessor(sequence, processorEntry.getValue());
         }
 
         // build new processor
@@ -806,12 +806,12 @@ public class StorageGroupProcessor {
     if (sequence) {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
           fsFactory.getFileWithParent(filePath),
-          schema, versionController, this::closeUnsealedTsFileProcessor,
+          schema, versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::updateLatestFlushTimeCallback, true);
     } else {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
           fsFactory.getFileWithParent(filePath),
-          schema, versionController, this::closeUnsealedTsFileProcessor,
+          schema, versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::unsequenceFlushCallback, false);
     }
 
@@ -839,8 +839,7 @@ public class StorageGroupProcessor {
   /**
    * thread-safety should be ensured by caller
    */
-  public void moveOneWorkProcessorToClosingList(boolean sequence,
-      TsFileProcessor tsFileProcessor) {
+  public void asyncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
     //for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
     //for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
     if (sequence) {
@@ -871,8 +870,8 @@ public class StorageGroupProcessor {
    */
   public void deleteFolder(String systemDir) {
     logger.info("{} will close all files for deleting data folder {}", storageGroupName, systemDir);
-    waitForAllCurrentTsFileProcessorsClosed();
     writeLock();
+    syncCloseAllWorkingTsFileProcessors();
     try {
       File storageGroupFolder = SystemFileFactory.INSTANCE.getFile(systemDir, storageGroupName);
       if (storageGroupFolder.exists()) {
@@ -904,7 +903,8 @@ public class StorageGroupProcessor {
 
   public void syncDeleteDataFiles() {
     logger.info("{} will close all files for deleting data files", storageGroupName);
-    waitForAllCurrentTsFileProcessorsClosed();
+    writeLock();
+    syncCloseAllWorkingTsFileProcessors();
     //normally, mergingModification is just need to be closed by after a merge task is finished.
     //we close it here just for IT test.
     if (this.mergingModification != null) {
@@ -915,7 +915,6 @@ public class StorageGroupProcessor {
       }
 
     }
-    writeLock();
     try {
       closeAllResources();
       List<String> folder = DirectoryManager.getInstance().getAllSequenceFileFolders();
@@ -1014,17 +1013,17 @@ public class StorageGroupProcessor {
   /**
    * This method will be blocked until all tsfile processors are closed.
    */
-  public void waitForAllCurrentTsFileProcessorsClosed() {
+  public void syncCloseAllWorkingTsFileProcessors() {
     synchronized (closeStorageGroupCondition) {
       try {
-        putAllWorkingTsFileProcessorIntoClosingList();
+        asyncCloseAllWorkingTsFileProcessors();
         long startTime = System.currentTimeMillis();
         while (!closingSequenceTsFileProcessor.isEmpty() || !closingUnSequenceTsFileProcessor
             .isEmpty()) {
           closeStorageGroupCondition.wait(60_000);
           if (System.currentTimeMillis() - startTime > 60_000) {
             logger.warn("{} has spent {}s to wait for closing all TsFiles.", this.storageGroupName,
-                (System.currentTimeMillis() - startTime)/1000);
+                (System.currentTimeMillis() - startTime) / 1000);
           }
         }
       } catch (InterruptedException e) {
@@ -1034,19 +1033,19 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void putAllWorkingTsFileProcessorIntoClosingList() {
+  public void asyncCloseAllWorkingTsFileProcessors() {
     writeLock();
     try {
       logger.info("async force close all files in storage group: {}", storageGroupName);
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor : new ArrayList<>(
           workSequenceTsFileProcessors.values())) {
-        moveOneWorkProcessorToClosingList(true, tsFileProcessor);
+        asyncCloseOneTsFileProcessor(true, tsFileProcessor);
       }
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor : new ArrayList<>(
           workUnsequenceTsFileProcessors.values())) {
-        moveOneWorkProcessorToClosingList(false, tsFileProcessor);
+        asyncCloseOneTsFileProcessor(false, tsFileProcessor);
       }
     } finally {
       writeUnlock();
@@ -1331,7 +1330,7 @@ public class StorageGroupProcessor {
    * put the memtable back to the MemTablePool and make the metadata in writer visible
    */
   // TODO please consider concurrency with query and insert method.
-  private void closeUnsealedTsFileProcessor(
+  private void closeUnsealedTsFileProcessorCallBack(
       TsFileProcessor tsFileProcessor) throws TsFileProcessorException {
     closeQueryLock.writeLock().lock();
     try {
@@ -1392,7 +1391,7 @@ public class StorageGroupProcessor {
       }
       logger.info("{} will close all files for starting a merge (fullmerge = {})", storageGroupName,
           fullMerge);
-      waitForAllCurrentTsFileProcessorsClosed();
+      syncCloseAllWorkingTsFileProcessors();
       if (unSequenceFileList.isEmpty() || sequenceFileTreeSet.isEmpty()) {
         logger.info("{} no files to be merged", storageGroupName);
         return;

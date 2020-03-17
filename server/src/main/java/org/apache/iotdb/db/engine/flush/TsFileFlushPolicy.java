@@ -47,7 +47,7 @@ public interface TsFileFlushPolicy {
           tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
 
       if (tsFileProcessor.shouldClose()) {
-        storageGroupProcessor.moveOneWorkProcessorToClosingList(isSeq, tsFileProcessor);
+        storageGroupProcessor.asyncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
       } else {
         tsFileProcessor.asyncFlush();
       }

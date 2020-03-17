@@ -49,6 +49,7 @@ public class SessionDataSet {
   private long sessionId;
   private TSIService.Iface client;
   private int batchSize = 1024;
+  private List<String> columnNameList;
   private List<String> columnTypeDeduplicatedList;
   // duplicated column index -> origin index
   Map<Integer, Integer> duplicateLocation;
@@ -71,6 +72,7 @@ public class SessionDataSet {
     this.sql = sql;
     this.queryId = queryId;
     this.client = client;
+    this.columnNameList = columnNameList;
     currentBitmap = new byte[columnNameList.size()];
     columnSize = columnNameList.size();
 
@@ -101,6 +103,10 @@ public class SessionDataSet {
     this.batchSize = batchSize;
   }
 
+  public List<String> getColumnNames() {
+    return columnNameList;
+  }
+
   public boolean hasNext() throws IoTDBConnectionException, StatementExecutionException {
     if (hasCachedRecord) {
       return true;
@@ -128,6 +134,8 @@ public class SessionDataSet {
     hasCachedRecord = true;
     return true;
   }
+
+
 
   private void constructOneRow() {
     List<Field> outFields = new ArrayList<>();
@@ -221,7 +229,7 @@ public class SessionDataSet {
       RpcUtils.verifySuccess(closeResp);
     } catch (TException e) {
       throw new IoTDBConnectionException(
-          "Error occurs when connecting to server for close operation, because: " + e);
+          "Error occurs when connecting to server for close operation, because: " + e, e);
     }
   }
 }

@@ -241,6 +241,7 @@ public class SessionExample {
   private static void query() throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet dataSet;
     dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    System.out.println(dataSet.getColumnNames());
     dataSet.setBatchSize(1024); // default is 512
     while (dataSet.hasNext()){
       System.out.println(dataSet.next());
