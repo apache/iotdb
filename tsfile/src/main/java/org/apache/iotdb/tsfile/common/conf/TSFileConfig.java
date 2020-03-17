@@ -66,9 +66,9 @@ public class TSFileConfig {
   public static final double MAX_BLOOM_FILTER_ERROR_RATE = 0.1;
 
   /**
-   * The default grow size of class BatchData.
+   * The primitive array capacity threshold.
    */
-  public static final int DYNAMIC_DATA_SIZE = 1000;
+  public static final int ARRAY_CAPACITY_THRESHOLD = 1000;
   /**
    * Memory size threshold for flushing to disk, default value is 128MB.
    */

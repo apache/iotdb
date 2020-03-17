@@ -84,7 +84,7 @@ public class TTLTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
+    storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -159,7 +159,7 @@ public class TTLTest {
       insertPlan.setTime(initTime - 2000 + i);
       storageGroupProcessor.insert(insertPlan);
       if ((i + 1) % 300 == 0) {
-        storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
+        storageGroupProcessor.asyncCloseAllWorkingTsFileProcessors();
       }
     }
     // unsequence data
@@ -167,7 +167,7 @@ public class TTLTest {
       insertPlan.setTime(initTime - 2000 + i);
       storageGroupProcessor.insert(insertPlan);
       if ((i + 1) % 300 == 0) {
-        storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
+        storageGroupProcessor.asyncCloseAllWorkingTsFileProcessors();
       }
     }
   }
@@ -224,7 +224,7 @@ public class TTLTest {
   public void testTTLRemoval() throws StorageEngineException, QueryProcessException {
     prepareData();
 
-    storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
+    storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
     // files before ttl
     File seqDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile(), sg1);
@@ -334,7 +334,7 @@ public class TTLTest {
   @Test
   public void testTTLCleanFile() throws QueryProcessException {
     prepareData();
-    storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
+    storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
     assertEquals(4, storageGroupProcessor.getSequenceFileTreeSet().size());
     assertEquals(4, storageGroupProcessor.getUnSequenceFileList().size());

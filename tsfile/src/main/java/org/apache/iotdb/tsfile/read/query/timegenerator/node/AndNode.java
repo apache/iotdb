@@ -53,7 +53,7 @@ public class AndNode implements Node {
     if (hasCachedValue) {
       return true;
     }
-    cachedTimeColumn = new TimeColumn(fetchSize);
+    cachedTimeColumn = new TimeColumn();
     //fill data
     fillLeftCache();
     fillRightCache();
