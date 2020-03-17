@@ -303,7 +303,7 @@ public class StorageEngine implements IService {
   public void syncCloseAllProcessor() {
     logger.info("Start closing all storage group processor");
     for (StorageGroupProcessor processor : processorMap.values()) {
-      processor.syncCloseAllTsFileProcessors();
+      processor.syncCloseAllWorkingTsFileProcessors();
     }
   }
 

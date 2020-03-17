@@ -94,7 +94,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
  * (1) when inserting data into the TsFileProcessor, and the TsFileProcessor shouldFlush() (or
  * shouldClose())<br/>
  * <p>
- * (2) someone calls syncCloseAllTsFileProcessors(). (up to now, only flush command from
+ * (2) someone calls syncCloseAllWorkingTsFileProcessors(). (up to now, only flush command from
  * cli will call this method)<br/>
  * <p>
  * UnSequence data has the similar process as above.
@@ -852,7 +852,7 @@ public class StorageGroupProcessor {
   public void deleteFolder(String systemDir) {
     logger.info("{} will close all files for deleting data folder {}", storageGroupName, systemDir);
     writeLock();
-    syncCloseAllTsFileProcessors();
+    syncCloseAllWorkingTsFileProcessors();
     try {
       File storageGroupFolder = SystemFileFactory.INSTANCE.getFile(systemDir, storageGroupName);
       if (storageGroupFolder.exists()) {
@@ -885,7 +885,7 @@ public class StorageGroupProcessor {
   public void syncDeleteDataFiles() {
     logger.info("{} will close all files for deleting data files", storageGroupName);
     writeLock();
-    syncCloseAllTsFileProcessors();
+    syncCloseAllWorkingTsFileProcessors();
     //normally, mergingModification is just need to be closed by after a merge task is finished.
     //we close it here just for IT test.
     if (this.mergingModification != null) {
@@ -994,32 +994,27 @@ public class StorageGroupProcessor {
   /**
    * This method will be blocked until all tsfile processors are closed.
    */
-  public void syncCloseAllTsFileProcessors() {
-    writeLock();
-    try {
-      synchronized (closeStorageGroupCondition) {
-        try {
-          asyncCloseAllTsFileProcessors();
-          long startTime = System.currentTimeMillis();
-          while (!closingSequenceTsFileProcessor.isEmpty() || !closingUnSequenceTsFileProcessor
-              .isEmpty()) {
-            closeStorageGroupCondition.wait(60_000);
-            if (System.currentTimeMillis() - startTime > 60_000) {
-              logger.warn("{} has spent {}s to wait for closing all TsFiles.", this.storageGroupName,
-                  (System.currentTimeMillis() - startTime)/1000);
-            }
+  public void syncCloseAllWorkingTsFileProcessors() {
+    synchronized (closeStorageGroupCondition) {
+      try {
+        asyncCloseAllWorkingTsFileProcessors();
+        long startTime = System.currentTimeMillis();
+        while (!closingSequenceTsFileProcessor.isEmpty() || !closingUnSequenceTsFileProcessor
+            .isEmpty()) {
+          closeStorageGroupCondition.wait(60_000);
+          if (System.currentTimeMillis() - startTime > 60_000) {
+            logger.warn("{} has spent {}s to wait for closing all TsFiles.", this.storageGroupName,
+                (System.currentTimeMillis() - startTime) / 1000);
           }
-        } catch (InterruptedException e) {
-          logger.error("CloseFileNodeCondition error occurs while waiting for closing the storage "
-              + "group {}", storageGroupName, e);
         }
+      } catch (InterruptedException e) {
+        logger.error("CloseFileNodeCondition error occurs while waiting for closing the storage "
+            + "group {}", storageGroupName, e);
       }
-    } finally {
-      writeUnlock();
     }
   }
 
-  public void asyncCloseAllTsFileProcessors() {
+  public void asyncCloseAllWorkingTsFileProcessors() {
     writeLock();
     try {
       logger.info("async force close all files in storage group: {}", storageGroupName);
@@ -1374,7 +1369,7 @@ public class StorageGroupProcessor {
       }
       logger.info("{} will close all files for starting a merge (fullmerge = {})", storageGroupName,
           fullMerge);
-      syncCloseAllTsFileProcessors();
+      syncCloseAllWorkingTsFileProcessors();
       if (unSequenceFileList.isEmpty() || sequenceFileTreeSet.isEmpty()) {
         logger.info("{} no files to be merged", storageGroupName);
         return;
