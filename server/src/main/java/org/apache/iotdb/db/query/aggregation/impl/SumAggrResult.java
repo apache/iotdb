@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class SumAggrResult extends AggregateResult {
@@ -70,20 +71,10 @@ public class SumAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException {
-    for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
-        updateSum(value);
-      }
-    }
-  }
-
-  @Override
-  public void updateResultUsingTimestamps(long[] timestamps, IReaderByTimestamp dataReader)
+  public void updateResultUsingTimestamps(TimeColumn timestamps, long bound,
+      IReaderByTimestamp dataReader)
       throws IOException {
-    Object[] value = dataReader.getValuesInTimestamps(timestamps);
+    Object[] value = dataReader.getValuesInTimestamps(timestamps, bound);
     for (int i = 0; i < value.length; i++) {
       if (value[i] != null) {
         updateSum(value[i]);

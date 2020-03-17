@@ -45,24 +45,12 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   private List<IReaderByTimestamp> allDataReaderList;
   private GroupByPlan groupByPlan;
   private TimeGenerator timestampGenerator;
-  /**
-   * cached timestamp for next group by partition.
-   */
-  private long timestamp;
 
-  private TimeColumn timeColumn;
-  /**
-   * if this object has cached timestamp for next group by partition.
-   */
-  private boolean hasCachedTimestamp;
-
+  private TimeColumn timeColumn = new TimeColumn();
   /**
    * group by batch calculation size.
    */
   protected int timeStampFetchSize;
-
-  public GroupByWithValueFilterDataSet() {
-  }
 
   /**
    * constructor.
@@ -100,7 +88,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   protected IReaderByTimestamp getReaderByTime(Path path,
-      TSDataType dataType, QueryContext context, TsFileFilter fileFilter) throws StorageEngineException {
+      TSDataType dataType, QueryContext context, TsFileFilter fileFilter)
+      throws StorageEngineException {
     return new SeriesReaderByTimestamp(path, dataType, context,
         QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter);
   }
@@ -119,68 +108,38 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
           groupByPlan.getDeduplicatedDataTypes().get(i)));
     }
 
-    long[] timestampArray = new long[timeStampFetchSize];
-    int timeArrayLength = 0;
-    if (hasCachedTimestamp) {
-      if (timestamp < curEndTime) {
-        if (timestamp >= curStartTime) {
-          hasCachedTimestamp = false;
-          timestampArray[timeArrayLength++] = timestamp;
-        }
-      } else {
+    if (timeColumn != null && timeColumn.hasCurrent()) {
+      //skip early time
+      while (timeColumn.currentTime() < curStartTime && timeColumn.hasCurrent()) {
+        timeColumn.next();
+      }
+      if (timeColumn.currentTime() >= curEndTime) {
         return constructRowRecord(aggregateResultList);
       }
     }
+
     while (timestampGenerator.hasNextTimeColumn() || timeColumn.hasCurrent()) {
-      timeArrayLength = constructTimeArrayForOneCal(timestampArray, timeArrayLength);
-      // cal result using timestamp array
-      for (int i = 0; i < paths.size(); i++) {
-        aggregateResultList.get(i).updateResultUsingTimestamps(
-            timestampArray, timeArrayLength, allDataReaderList.get(i));
-      }
-
-      timeArrayLength = 0;
-      // judge if it's end
-      if (timestamp >= curEndTime) {
-        hasCachedTimestamp = true;
-        break;
-      }
-    }
-
-    if (timeArrayLength > 0) {
-      // cal result using timestamp array
-      for (int i = 0; i < paths.size(); i++) {
-        aggregateResultList.get(i).updateResultUsingTimestamps(
-            timestampArray, timeArrayLength, allDataReaderList.get(i));
-      }
-    }
-    return constructRowRecord(aggregateResultList);
-  }
-
-  /**
-   * construct an array of timestamps for one batch of a group by partition calculating.
-   *
-   * @param timestampArray  timestamp array
-   * @param timeArrayLength the current size of timestamp array
-   * @return time array size
-   */
-  private int constructTimeArrayForOneCal(long[] timestampArray, int timeArrayLength)
-      throws IOException {
-    for (int cnt = 1; cnt < timeStampFetchSize
-        && (timestampGenerator.hasNextTimeColumn() || timeColumn.hasCurrent()); cnt++) {
       if (timeColumn == null || !timeColumn.hasCurrent()) {
         timeColumn = timestampGenerator.nextTimeColumn();
+        if (timeColumn.currentTime() >= curEndTime) {
+          break;
+        }
       }
-      timestamp = timeColumn.currentTime();
-      timeColumn.next();
-      if (timestamp < curEndTime) {
-        timestampArray[timeArrayLength++] = timestamp;
-      } else {
-        hasCachedTimestamp = true;
+      int index = timeColumn.currentIndex();
+      // cal result using timestamp array
+      for (int i = 0; i < paths.size(); i++) {
+        AggregateResult result = aggregateResultList.get(i);
+        if (!result.isCalculatedAggregationResult()) {
+          timeColumn.resetIndex(index);
+          result.updateResultUsingTimestamps(timeColumn, curEndTime, allDataReaderList.get(i));
+        }
+      }
+      if (timeColumn.currentTime() >= curEndTime) {
         break;
       }
     }
-    return timeArrayLength;
+
+    return constructRowRecord(aggregateResultList);
   }
 
   private RowRecord constructRowRecord(List<AggregateResult> aggregateResultList) {

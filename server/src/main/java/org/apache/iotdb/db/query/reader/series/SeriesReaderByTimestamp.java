@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import java.io.IOException;
 
@@ -45,14 +46,19 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   }
 
   @Override
-  public Object[] getValuesInTimestamps(long[] timestamps) throws IOException {
-    Object[] result = new Object[timestamps.length];
+  public Object[] getValuesInTimestamps(TimeColumn timestamps, long bound) throws IOException {
+    Object[] result = new Object[timestamps.size()];
 
-    for (int i = 0; i < timestamps.length; i++) {
-      if (timestamps[i] < currentTime) {
+    for (int i = 0; i < timestamps.size(); i++) {
+      if (timestamps.currentTime() >= bound || !timestamps.hasCurrent()) {
+        return result;
+      }
+      if (timestamps.currentTime() < currentTime) {
         throw new IOException("time must be increasing when use ReaderByTimestamp");
       }
-      currentTime = timestamps[i];
+
+      currentTime = timestamps.currentTime();
+      timestamps.next();
       seriesReader.setTimeFilter(currentTime);
       if ((batchData == null || batchData.getMaxTimestamp() < currentTime)
           && !hasNext(currentTime)) {

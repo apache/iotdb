@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -89,16 +90,7 @@ public abstract class AggregateResult {
    *
    * @throws IOException TsFile data read error
    */
-  public abstract void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException;
-
-  /**
-   * <p> This method calculates the aggregation using common timestamps of the cross series
-   * filter. </p>
-   *
-   * @throws IOException TsFile data read error
-   */
-  public abstract void updateResultUsingTimestamps(long[] timestamps,
+  public abstract void updateResultUsingTimestamps(TimeColumn timestamps, long bound,
       IReaderByTimestamp dataReader) throws IOException;
 
   /**

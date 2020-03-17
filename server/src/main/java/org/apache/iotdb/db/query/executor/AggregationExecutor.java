@@ -171,6 +171,7 @@ public class AggregationExecutor {
 
   /**
    * Aggregate each result in the list with the statistics
+   *
    * @param aggregateResultList
    * @param isCalculatedArray
    * @param remainingToCalculate
@@ -199,7 +200,8 @@ public class AggregationExecutor {
   }
 
   private static int aggregateOverlappedPages(IAggregateReader seriesReader,
-      List<AggregateResult> aggregateResultList, boolean[] isCalculatedArray, int remainingToCalculate)
+      List<AggregateResult> aggregateResultList, boolean[] isCalculatedArray,
+      int remainingToCalculate)
       throws IOException {
     // cal by page data
     int newRemainingToCalculate = remainingToCalculate;
@@ -272,9 +274,14 @@ public class AggregationExecutor {
     while (timestampGenerator.hasNextTimeColumn()) {
       TimeColumn timeColumn = timestampGenerator.nextTimeColumn();
       // cal part of aggregate result
+      int index = timeColumn.currentIndex();
       for (int i = 0; i < readersOfSelectedSeries.size(); i++) {
-        aggregateResults.get(i)
-            .updateResultUsingTimestamps(timeColumn.getTimes(), readersOfSelectedSeries.get(i));
+        AggregateResult result = aggregateResults.get(i);
+        if (!result.isCalculatedAggregationResult()) {
+          timeColumn.resetIndex(index);
+          result.updateResultUsingTimestamps(timeColumn, Integer.MAX_VALUE,
+              readersOfSelectedSeries.get(i));
+        }
       }
     }
   }

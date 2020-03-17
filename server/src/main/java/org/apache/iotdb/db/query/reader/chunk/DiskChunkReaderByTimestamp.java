@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.query.reader.chunk;
 
+import java.io.IOException;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
-
-import java.io.IOException;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 /**
  * To read chunk data on disk by timestamp, this class implements an interface {@link
@@ -40,21 +41,25 @@ public class DiskChunkReaderByTimestamp implements IReaderByTimestamp {
   }
 
   @Override
-  public Object[] getValuesInTimestamps(long[] timestamps) throws IOException {
-    Object[] result = new Object[timestamps.length];
+  public Pair[] getValuesInTimestamps(TimeColumn timestamps, long bound) throws IOException {
+    Pair[] result = new Pair[timestamps.size()];
 
-    for (int i = 0; i < timestamps.length; i++) {
-      if (timestamps[i] < currentTime) {
+    for (int i = 0; i < timestamps.size(); i++) {
+      if (timestamps.currentTime() < currentTime) {
         throw new IOException("time must be increasing when use ReaderByTimestamp");
       }
-      currentTime = timestamps[i];
+      if (timestamps.currentTime() >= bound) {
+        return result;
+      }
+      currentTime = timestamps.currentTime();
+      timestamps.next();
       while (hasNext()) {
         data = next();
         if (data.getMaxTimestamp() > currentTime) {
           result[i] = null;
           break;
         }
-        result[i] = data.getValueInTimestamp(currentTime);
+        result[i] = new Pair(currentTime, data.getValueInTimestamp(currentTime));
         //fill cache
         if (!data.hasCurrent() && chunkReaderByTimestamp.hasNextSatisfiedPage()) {
           data = next();

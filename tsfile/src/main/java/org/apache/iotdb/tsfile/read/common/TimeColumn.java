@@ -105,7 +105,24 @@ public class TimeColumn {
     }
   }
 
+  public long getTimeByIndex(int idx) {
+    return this.timeRet.get(idx / capacity)[idx % capacity];
+  }
+
   public int size() {
     return this.count;
+  }
+
+  public int currentIndex() {
+    return capacity * readCurListIndex + readCurArrayIndex;
+  }
+
+  public void resetIndex(int index) {
+    this.readCurListIndex = index / capacity;
+    this.readCurArrayIndex = index % capacity;
+  }
+
+  public TimeColumn duplicate() {
+    return new TimeColumn(timeRet, count, capacity);
   }
 }

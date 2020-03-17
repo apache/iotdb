@@ -42,7 +42,6 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
   private static final Logger LOGGER = LoggerFactory
       .getLogger(RawQueryDataSetWithValueFilter.class);
 
-  private ServerTimeGenerator timeGenerator;
   private List<IReaderByTimestamp> seriesReaderByTimestampList;
   private boolean hasCachedRowRecord;
   private List<RowRecord> cachedRecords;
@@ -89,8 +88,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
   private boolean cacheRowRecord() throws IOException {
     int seriesNum = seriesReaderByTimestampList.size();
     while (timeGenerator.hasNextTimeColumn()) {
-      TimeColumn timeColumn = timeGenerator.nextTimeColumn();
-      final long[] columnTimes = timeColumn.getTimes();
+      final TimeColumn timeColumn = timeGenerator.nextTimeColumn();
 
       Future<List<Field>>[] futures = new Future[seriesNum];
       for (int i = 0; i < seriesNum; i++) {
@@ -98,7 +96,8 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
         final TSDataType tsDataType = dataTypes.get(i);
         futures[i] = QueryTaskPoolManager.getInstance().submit(() -> {
           List<Field> fields = new ArrayList<>();
-          Object[] values = readerByTimestamp.getValuesInTimestamps(columnTimes);
+          Object[] values = readerByTimestamp
+              .getValuesInTimestamps(timeColumn.duplicate(), Long.MAX_VALUE);
           for (Object value : values) {
             if (value == null) {
               fields.add(null);
@@ -121,8 +120,8 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
         }
       }
 
-      for (int i = 0; i < columnTimes.length; i++) {
-        RowRecord rowRecord = new RowRecord(columnTimes[i]);
+      for (int i = 0; i < timeColumn.size(); i++) {
+        RowRecord rowRecord = new RowRecord(timeColumn.getTimeByIndex(i));
         boolean hasField = false;
         for (List<Field> result : results) {
           rowRecord.addField(result.get(i));

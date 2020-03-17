@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.externalsort.adapter;
 
 import java.io.IOException;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -40,14 +41,18 @@ public class ByTimestampReaderAdapter implements IReaderByTimestamp {
   }
 
   @Override
-  public Object[] getValuesInTimestamps(long[] timestamps) throws IOException {
-    Object[] result = new Object[timestamps.length];
+  public Object[] getValuesInTimestamps(TimeColumn timestamps, long bound) throws IOException {
+    Object[] result = new Object[timestamps.size()];
 
-    for (int i = 0; i < timestamps.length; i++) {
-      if (timestamps[i] < currentTime) {
+    for (int i = 0; i < timestamps.size(); i++) {
+      if (timestamps.currentTime() < currentTime) {
         throw new IOException("time must be increasing when use ReaderByTimestamp");
       }
-      currentTime = timestamps[i];
+      if (timestamps.currentTime() >= bound) {
+        return result;
+      }
+      currentTime = timestamps.currentTime();
+      timestamps.next();
       //search cache
       if (hasCached && pair.getTimestamp() >= currentTime) {
         if (pair.getTimestamp() == currentTime) {

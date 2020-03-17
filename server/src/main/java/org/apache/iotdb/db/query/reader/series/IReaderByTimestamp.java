@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.reader.series;
 
 import java.io.IOException;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 
 public interface IReaderByTimestamp {
 
@@ -34,10 +35,9 @@ public interface IReaderByTimestamp {
    * of correctness with any other way of calling. For example, DO NOT call this method twice with
    * the same timestamp.
    */
-  default Object getValueInTimestamp(long timestamp) throws IOException {
-    Object[] values = getValuesInTimestamps(new long[]{timestamp});
-    return values[0];
+  default Object[] getValuesInTimestamps(TimeColumn timestamps) throws IOException {
+    return getValuesInTimestamps(timestamps, Long.MAX_VALUE);
   }
 
-  Object[] getValuesInTimestamps(long[] timestamps) throws IOException;
+  Object[] getValuesInTimestamps(TimeColumn timestamps, long bound) throws IOException;
 }

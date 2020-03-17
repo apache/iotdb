@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class LastValueAggrResult extends AggregateResult {
@@ -80,33 +81,15 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultUsingTimestamps(long[] timestamps, int length,
+  public void updateResultUsingTimestamps(TimeColumn timestamps, long bound,
       IReaderByTimestamp dataReader) throws IOException {
-
     long time = Long.MIN_VALUE;
     Object lastVal = null;
-    for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
-        time = timestamps[i];
-        lastVal = value;
-      }
-    }
-    if (time != Long.MIN_VALUE) {
-      setValue(lastVal);
-      timestamp = time;
-    }
-  }
-
-  @Override
-  public void updateResultUsingTimestamps(long[] timestamps, IReaderByTimestamp dataReader)
-      throws IOException {
-    long time = Long.MIN_VALUE;
-    Object lastVal = null;
-    Object[] value = dataReader.getValuesInTimestamps(timestamps);
+    int index = timestamps.currentIndex();
+    Object[] value = dataReader.getValuesInTimestamps(timestamps, bound);
     for (int i = value.length - 1; i >= 0; i--) {
       if (value[i] != null) {
-        time = timestamps[i];
+        time = timestamps.getTimeByIndex(index + i);
         lastVal = value[i];
         break;
       }

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -36,6 +37,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class SeriesReaderByTimestampTest {
@@ -60,22 +62,29 @@ public class SeriesReaderByTimestampTest {
   @Test
   public void test() throws IOException {
     QueryDataSource dataSource = new QueryDataSource(
-      new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
-      seqResources, unseqResources);
+        new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
+        seqResources, unseqResources);
 
     SeriesReaderByTimestamp seriesReader = new SeriesReaderByTimestamp(
-      new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
-      TSDataType.INT32, new QueryContext(), dataSource, null);
+        new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
+        TSDataType.INT32, new QueryContext(), dataSource, null);
 
+    TimeColumn column = new TimeColumn();
     for (int time = 0; time < 500; time++) {
-      Integer value = (Integer) seriesReader.getValueInTimestamp(time);
+      column.add(time);
+    }
 
+    Object[] value = seriesReader.getValuesInTimestamps(column, Long.MAX_VALUE);
+    column.resetIndex(0);
+    for (int i = 0; i < column.size(); i++) {
+      int time = (int) column.currentTime();
+      column.next();
       if (time < 200) {
-        Assert.assertEquals(time + 20000, value.intValue());
+        Assert.assertEquals(time + 20000, value[i]);
       } else if (time < 260 || (time >= 300 && time < 380) || (time >= 400)) {
-        Assert.assertEquals(time + 10000, value.intValue());
+        Assert.assertEquals(time + 10000, value[i]);
       } else {
-        Assert.assertEquals(time, value.intValue());
+        Assert.assertEquals(time, value[i]);
       }
     }
   }

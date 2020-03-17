@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 
 public class MaxValueAggrResult extends AggregateResult {
 
@@ -66,26 +67,11 @@ public class MaxValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException {
-    Comparable<Object> maxVal = null;
-    for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value == null) {
-        continue;
-      }
-      if (maxVal == null || maxVal.compareTo(value) < 0) {
-        maxVal = (Comparable<Object>) value;
-      }
-    }
-    updateResult(maxVal);
-  }
-
-  @Override
-  public void updateResultUsingTimestamps(long[] timestamps, IReaderByTimestamp dataReader)
+  public void updateResultUsingTimestamps(TimeColumn timestamps, long bound,
+      IReaderByTimestamp dataReader)
       throws IOException {
     Comparable<Object> maxVal = null;
-    Object[] value = dataReader.getValuesInTimestamps(timestamps);
+    Object[] value = dataReader.getValuesInTimestamps(timestamps, bound);
     for (int i = value.length - 1; i >= 0; i--) {
       if (value[i] == null) {
         continue;

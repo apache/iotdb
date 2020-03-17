@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 
 public class MaxTimeAggrResult extends AggregateResult {
 
@@ -66,30 +67,14 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultUsingTimestamps(long[] timestamps, int length,
+  public void updateResultUsingTimestamps(TimeColumn timestamps, long bound,
       IReaderByTimestamp dataReader) throws IOException {
     long time = -1;
-    for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
-        time = timestamps[i];
-      }
-    }
-
-    if (time == -1) {
-      return;
-    }
-    updateMaxTimeResult(time);
-  }
-
-  @Override
-  public void updateResultUsingTimestamps(long[] timestamps, IReaderByTimestamp dataReader)
-      throws IOException {
-    long time = -1;
-    Object[] value = dataReader.getValuesInTimestamps(timestamps);
+    int index = timestamps.currentIndex();
+    Object[] value = dataReader.getValuesInTimestamps(timestamps, bound);
     for (int i = value.length - 1; i >= 0; i--) {
       if (value[i] != null) {
-        time = timestamps[i];
+        time = timestamps.getTimeByIndex(index + i);
         break;
       }
     }
