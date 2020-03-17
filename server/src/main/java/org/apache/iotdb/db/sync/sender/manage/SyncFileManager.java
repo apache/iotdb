@@ -102,16 +102,6 @@ public class SyncFileManager implements ISyncFileManager {
           .equals(TsFileConstant.PATH_UPGRADE)) {
         continue;
       }
-      try {
-        if (!MManager.getInstance().getStorageGroupName(sgFolder.getName())
-            .equals(sgFolder.getName())) {
-          // the folder is not a sg folder
-          continue;
-        }
-      } catch (MetadataException e) {
-        // the folder is not a sg folder
-        continue;
-      }
       allSGs.putIfAbsent(sgFolder.getName(), new HashSet<>());
       currentAllLocalFiles.putIfAbsent(sgFolder.getName(), new HashMap<>());
       for (File timeRangeFolder : sgFolder.listFiles()) {
