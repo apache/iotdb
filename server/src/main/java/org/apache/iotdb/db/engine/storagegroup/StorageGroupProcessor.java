@@ -617,7 +617,7 @@ public class StorageGroupProcessor {
       globalLatestFlushedTimeForEachDevice.put(
           batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
 
-    // sequence: check the size of work memtable and may asyncTryToFlush the flush memtable
+    // sequence: check the size of work memtable and may asyncTryToFlush flush memtable
     // unsequence: check the size of work memtable and may asyncTryToFlush it
     if (tsFileProcessor.shouldFlush()) {
       Map<String, Long> updateFLushTimeForEachDevice = tsFileProcessor.adjustMemTable();
@@ -679,7 +679,7 @@ public class StorageGroupProcessor {
       globalLatestFlushedTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
     }
 
-    // sequence: check the size of work memtable and may asyncTryToFlush the flush memtable
+    // sequence: check the size of work memtable and may asyncTryToFlush flush memtable
     // unsequence: check the size of work memtable and may asyncTryToFlush it
     if (tsFileProcessor.shouldFlush()) {
       Map<String, Long> updateFLushTimeForEachDevice = tsFileProcessor.adjustMemTable();

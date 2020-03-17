@@ -687,6 +687,10 @@ public class TsFileProcessor {
     }
   }
 
+  /**
+   * Split the filled workMemTable into two parts, respectively flushMemTable to be flushed and the
+   * new workMemTable which continues to accept insertions.
+   */
   public Map<String, Long> adjustMemTable() throws QueryProcessException {
     if (!sequence) {
       return null;
@@ -740,6 +744,7 @@ public class TsFileProcessor {
           flushBatchInsertPlan.setColumns(flushColumns);
           flushBatchInsertPlan.setRowCount(rowCount);
           flushMemTable.insertBatch(flushBatchInsertPlan, 0, rowCount);
+
           BatchInsertPlan workBatchInsertPlan = new BatchInsertPlan(deviceId, measurements, dataTypes);
           workBatchInsertPlan.setTimes(workTimes);
           workBatchInsertPlan.setColumns(workColumns);
