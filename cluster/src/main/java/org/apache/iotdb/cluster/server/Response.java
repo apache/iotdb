@@ -48,6 +48,9 @@ public class Response {
   // the operation is rejected because the cluster will not be able to have enough replicas after
   // this operation
   public static final long RESPONSE_CLUSTER_TOO_SMALL = -9;
+  // the new node, which tries to join the cluster, contains conflicted parameters with the
+  // cluster, so the operation is rejected.
+  public static final long RESPONSE_NEW_NODE_PARAMETER_CONFLICT = -10;
 
   private Response() {
     // enum-like class

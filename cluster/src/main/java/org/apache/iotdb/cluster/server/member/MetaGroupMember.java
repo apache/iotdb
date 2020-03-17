@@ -648,12 +648,18 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       CheckStatusResponse checkStatusResult = checkStatusResponseReference.get();
       if (!checkStatusResult.isPartitionalIntervalEquals()) {
         logger.info("The partition interval of the new node {} conflicts.", node);
+        response.setRespNum((int) Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT);
+        resultHandler.onComplete(response);
         return true;
       } else if (!checkStatusResult.isHashSaltIntervalEquals()) {
         logger.info("The hash salt of the new node {} conflicts.", node);
+        response.setRespNum((int) Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT);
+        resultHandler.onComplete(response);
         return true;
       } else if (!checkStatusResult.isReplicationNumEquals()) {
         logger.info("The replication number of the new node {} conflicts.", node);
+        response.setRespNum((int) Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT);
+        resultHandler.onComplete(response);
         return true;
       }
 
