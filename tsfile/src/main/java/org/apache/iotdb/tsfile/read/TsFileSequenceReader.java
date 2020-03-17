@@ -696,7 +696,6 @@ public class TsFileSequenceReader implements AutoCloseable {
       // complete.
       truncatedPosition = this.position() - 1;
     } catch (Exception e2) {
-      e2.printStackTrace();
       logger.info("TsFile {} self-check cannot proceed at position {} " + "recovered, because : {}",
           file,
           this.position(), e2.getMessage());
