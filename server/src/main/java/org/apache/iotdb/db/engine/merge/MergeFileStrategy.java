@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.merge;
 
 import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.merge.inplace.selector.InplaceMaxFileSelector;
+import org.apache.iotdb.db.engine.merge.inplace.selector.InplaceMaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 
@@ -36,7 +37,7 @@ public enum MergeFileStrategy {
       case INPLACE_MAX_FILE_NUM:
         return new InplaceMaxFileSelector(resource, budget);
       case INPLACE_MAX_SERIES_NUM:
-        return new MaxSeriesMergeFileSelector<>(new InplaceMaxFileSelector(resource, budget));
+        return new InplaceMaxSeriesMergeFileSelector(new InplaceMaxFileSelector(resource, budget));
     }
     return null;
   }

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.inplace.selector.InplaceMaxFileSelector;
+import org.apache.iotdb.db.engine.merge.inplace.selector.InplaceMaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
@@ -79,8 +80,9 @@ public class MergeUpgradeTest {
   @Test
   public void testMergeUpgradeSelect() throws MergeException {
     MergeResource resource = new MergeResource(seqResources, unseqResources);
-    IMergeFileSelector mergeFileSelector = new MaxSeriesMergeFileSelector<>(new InplaceMaxFileSelector(resource,
-        Long.MAX_VALUE));
+    IMergeFileSelector mergeFileSelector = new InplaceMaxSeriesMergeFileSelector(
+        new InplaceMaxFileSelector(resource,
+            Long.MAX_VALUE));
     mergeFileSelector.select();
     assertEquals(0, mergeFileSelector.getSelectedSeqFiles().size());
   }
@@ -89,7 +91,7 @@ public class MergeUpgradeTest {
     // prepare seqFiles
     for (int i = 0; i < seqFileNum; i++) {
       File seqfile = FSFactoryProducer.getFSFactory().getFile(TestConstant.BASE_OUTPUT_PATH.concat(
-              "seq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
+          "seq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
               + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
               + ".tsfile"));
       TsFileResource seqTsFileResource = new TsFileResource(seqfile);
@@ -98,7 +100,7 @@ public class MergeUpgradeTest {
     }
     // prepare unseqFile
     File unseqfile = FSFactoryProducer.getFSFactory().getFile(TestConstant.BASE_OUTPUT_PATH.concat(
-            "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0 + IoTDBConstant.TSFILE_NAME_SEPARATOR
+        "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0 + IoTDBConstant.TSFILE_NAME_SEPARATOR
             + 0 + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
             + ".tsfile"));
     TsFileResource unseqTsFileResource = new TsFileResource(unseqfile);
@@ -148,7 +150,8 @@ public class MergeUpgradeTest {
   private void prepareData(TsFileResource tsFileResource, TsFileWriter fileWriter, long timeOffset,
       long ptNum, long valueOffset) throws WriteProcessException, IOException {
     for (MeasurementSchema MeasurementSchema : measurementSchemas) {
-      fileWriter.registerTimeseries(new Path(deviceName, MeasurementSchema.getMeasurementId()), MeasurementSchema);
+      fileWriter.registerTimeseries(new Path(deviceName, MeasurementSchema.getMeasurementId()),
+          MeasurementSchema);
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       TSRecord record = new TSRecord(i, deviceName);

@@ -261,6 +261,11 @@ public class ChunkWriterImpl implements IChunkWriter {
     return measurementSchema;
   }
 
+  @Override
+  public long getPtNum() {
+    return statistics.getCount() + pageWriter.getPointNumber();
+  }
+
   /**
    * write the page header and data into the PageWriter's output stream.
    *

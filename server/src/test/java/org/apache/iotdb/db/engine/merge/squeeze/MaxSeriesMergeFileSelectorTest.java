@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.inplace;
+package org.apache.iotdb.db.engine.merge.squeeze;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -26,9 +26,9 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.engine.merge.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.MergeTest;
-import org.apache.iotdb.db.engine.merge.inplace.selector.InplaceMaxFileSelector;
-import org.apache.iotdb.db.engine.merge.inplace.selector.InplaceMaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.squeeze.selector.SqueezeMaxFileSelector;
+import org.apache.iotdb.db.engine.merge.squeeze.selector.SqueezeMaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.junit.Test;
@@ -39,7 +39,7 @@ public class MaxSeriesMergeFileSelectorTest extends MergeTest {
   public void testFullSelection() throws MergeException, IOException {
     MergeResource resource = new MergeResource(seqResources, unseqResources);
     MaxSeriesMergeFileSelector mergeFileSelector =
-        new InplaceMaxSeriesMergeFileSelector(new InplaceMaxFileSelector(resource, Long.MAX_VALUE));
+        new SqueezeMaxSeriesMergeFileSelector(new SqueezeMaxFileSelector(resource, Long.MAX_VALUE));
     mergeFileSelector.select();
     List<TsFileResource> seqSelected = mergeFileSelector.getSelectedSeqFiles();
     List<TsFileResource> unseqSelected = mergeFileSelector.getSelectedUnseqFiles();
@@ -50,7 +50,7 @@ public class MaxSeriesMergeFileSelectorTest extends MergeTest {
     resource.clear();
 
     resource = new MergeResource(seqResources.subList(0, 1), unseqResources);
-    mergeFileSelector = new InplaceMaxSeriesMergeFileSelector(new InplaceMaxFileSelector(resource,
+    mergeFileSelector = new SqueezeMaxSeriesMergeFileSelector(new SqueezeMaxFileSelector(resource,
         Long.MAX_VALUE));
     mergeFileSelector.select();
     seqSelected = mergeFileSelector.getSelectedSeqFiles();
@@ -62,7 +62,7 @@ public class MaxSeriesMergeFileSelectorTest extends MergeTest {
     resource.clear();
 
     resource = new MergeResource(seqResources, unseqResources.subList(0, 1));
-    mergeFileSelector = new InplaceMaxSeriesMergeFileSelector(new InplaceMaxFileSelector(resource,
+    mergeFileSelector = new SqueezeMaxSeriesMergeFileSelector(new SqueezeMaxFileSelector(resource,
         Long.MAX_VALUE));
     mergeFileSelector.select();
     seqSelected = mergeFileSelector.getSelectedSeqFiles();
@@ -78,7 +78,7 @@ public class MaxSeriesMergeFileSelectorTest extends MergeTest {
   public void testNonSelection() throws MergeException, IOException {
     MergeResource resource = new MergeResource(seqResources, unseqResources);
     MaxSeriesMergeFileSelector mergeFileSelector =
-        new InplaceMaxSeriesMergeFileSelector(new InplaceMaxFileSelector(resource, 1));
+        new SqueezeMaxSeriesMergeFileSelector(new SqueezeMaxFileSelector(resource, 1));
     mergeFileSelector.select();
     assertTrue(mergeFileSelector.getSelectedSeqFiles().isEmpty());
     assertTrue(mergeFileSelector.getSelectedUnseqFiles().isEmpty());
@@ -89,7 +89,7 @@ public class MaxSeriesMergeFileSelectorTest extends MergeTest {
   public void testRestrictedSelection() throws MergeException, IOException {
     MergeResource resource = new MergeResource(seqResources, unseqResources);
     MaxSeriesMergeFileSelector mergeFileSelector =
-        new InplaceMaxSeriesMergeFileSelector(new InplaceMaxFileSelector(resource, 400000));
+        new SqueezeMaxSeriesMergeFileSelector(new SqueezeMaxFileSelector(resource, 400000));
     mergeFileSelector.select();
     List<TsFileResource> seqSelected = mergeFileSelector.getSelectedSeqFiles();
     List<TsFileResource> unseqSelected = mergeFileSelector.getSelectedUnseqFiles();
@@ -103,13 +103,14 @@ public class MaxSeriesMergeFileSelectorTest extends MergeTest {
   @Test
   public void testRestrictedSelection2() throws MergeException, IOException {
     MergeResource resource = new MergeResource(seqResources, unseqResources);
-    MaxSeriesMergeFileSelector mergeFileSelector = new InplaceMaxSeriesMergeFileSelector(
-        new InplaceMaxFileSelector(resource, 100000));
+    MaxSeriesMergeFileSelector mergeFileSelector = new SqueezeMaxSeriesMergeFileSelector(
+        new SqueezeMaxFileSelector(resource, 100000));
     mergeFileSelector.select();
     List<TsFileResource> seqSelected = mergeFileSelector.getSelectedSeqFiles();
     List<TsFileResource> unseqSelected = mergeFileSelector.getSelectedUnseqFiles();
     assertEquals(seqResources.subList(0, 1), seqSelected);
     assertEquals(unseqResources.subList(0, 1), unseqSelected);
+    assertEquals(256, mergeFileSelector.getConcurrentMergeNum());
     resource.clear();
   }
 }

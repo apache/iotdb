@@ -29,11 +29,8 @@ import org.apache.iotdb.db.exception.MergeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * MaxSeriesMergeFileSelector is an extension of IMergeFileSelector which tries to maximize the
- * number of timeseries that can be merged at the same time.
- */
-public class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> implements IMergeFileSelector {
+public abstract class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> implements
+    IMergeFileSelector {
 
   private T baseSelector;
   private MergeResource resource;
@@ -85,7 +82,8 @@ public class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> implements
     if (logger.isInfoEnabled()) {
       logger.debug("Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, "
               + "concurrent merge num {}" + "time consumption {}ms",
-          resource.getSeqFiles().size(), resource.getUnseqFiles().size(), baseSelector.getTotalCost(),
+          resource.getSeqFiles().size(), resource.getUnseqFiles().size(),
+          baseSelector.getTotalCost(),
           baseSelector.getConcurrentMergeNum(),
           System.currentTimeMillis() - startTime);
     }
@@ -140,10 +138,12 @@ public class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> implements
       }
       baseSelector.setConcurrentMergeNum(mid);
       baseSelector.select(false);
-      if (baseSelector.getSelectedUnseqFiles().size() + baseSelector.getSelectedSeqFiles().size() <= 1) {
+      if (baseSelector.getSelectedUnseqFiles().size() + baseSelector.getSelectedSeqFiles().size()
+          <= 1) {
         baseSelector.select(true);
       }
-      if (baseSelector.getSelectedUnseqFiles().size() + baseSelector.getSelectedSeqFiles().size() <= 1) {
+      if (baseSelector.getSelectedUnseqFiles().size() + baseSelector.getSelectedSeqFiles().size()
+          <= 1) {
         // did not find candidates, lower concurrent merge number and retry
         ub = mid;
       } else if (baseSelector.getSelectedUnseqFiles().size() == 0 && lastSelectedUnseqFiles != null

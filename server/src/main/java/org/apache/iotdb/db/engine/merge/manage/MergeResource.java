@@ -47,6 +47,7 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 /**
  * MergeResource manages files and caches of readers, writers, MeasurementSchemas and modifications
@@ -250,6 +251,12 @@ public class MergeResource {
 
   public void setChunkWriterCache(Map<Path, IChunkWriter> chunkWriterCache) {
     this.chunkWriterCache = chunkWriterCache;
+  }
+
+  public void flushChunks(TsFileIOWriter writer) throws IOException {
+    for (IChunkWriter chunkWriter : chunkWriterCache.values()) {
+      chunkWriter.writeToFileWriter(writer);
+    }
   }
 
 }

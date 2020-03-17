@@ -119,4 +119,6 @@ public interface IChunkWriter {
   TSDataType getDataType();
 
   MeasurementSchema getMeasurementSchema();
+
+  long getPtNum();
 }
