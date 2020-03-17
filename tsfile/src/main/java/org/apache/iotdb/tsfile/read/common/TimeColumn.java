@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.read.common;
 
 
-import java.nio.ReadOnlyBufferException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -55,14 +54,11 @@ public class TimeColumn {
     count = 0;
   }
 
-  public TimeColumn(List<long[]> timeRet, int count) {
+  public TimeColumn(List<long[]> timeRet, int count, int capacity) {
     this.count = count;
     this.readCurListIndex = 0;
     this.readCurArrayIndex = 0;
-
-    while (capacity < capacityThreshold) {
-      capacity <<= 1;
-    }
+    this.capacity = capacity;
 
     this.writeCurListIndex = count / capacity;
     this.writeCurArrayIndex = count & (capacity - 1);
@@ -112,21 +108,5 @@ public class TimeColumn {
 
   public int size() {
     return this.count;
-  }
-
-  public TimeColumnR asReadOnlyTimeColumn() {
-    return new TimeColumnR(timeRet, count);
-  }
-
-  private class TimeColumnR extends TimeColumn {
-
-    public TimeColumnR(List<long[]> timeRet, int count) {
-      super(timeRet, count);
-    }
-
-    @Override
-    public void add(long time) {
-      throw new ReadOnlyBufferException();
-    }
   }
 }
