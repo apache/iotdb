@@ -40,6 +40,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -220,7 +221,9 @@ public class MManager {
             props);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
-        deleteTimeseries(args[1]);
+        for (String deleteStorageGroup : deleteTimeseries(args[1])) {
+          StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
+        }
         break;
       case MetadataOperationType.SET_STORAGE_GROUP:
         setStorageGroup(args[1]);
@@ -422,13 +425,13 @@ public class MManager {
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
+      String storageGroupName = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
         writer.write(MetadataOperationType.DELETE_TIMESERIES + "," + path);
         writer.newLine();
         writer.flush();
       }
-      String storageGroupName = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
       // TODO: delete the path node and all its ancestors
       mNodeCache.clear();
       try {
