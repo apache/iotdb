@@ -444,7 +444,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         parameters += checkStatusResponse.isReplicationNumEquals() ? "" : ", replication number";
         logger.info(
             "The start up configuration {} conflicts the cluster. Please reset the configurations. ",
-            parameters);
+            parameters.substring(1));
       } else {
         logger
             .warn("Joining the cluster is rejected by {} for response {}", node, resp.getRespNum());

@@ -856,6 +856,58 @@ public class MetaGroupMemberTest extends MemberTest {
       response = result.get();
       assertNull(response);
 
+      // cannot add a node due to configuration conflict, partition interval
+      metaGroupMember.setCharacter(LEADER);
+      result.set(null);
+      metaGroupMember.setPartitionTable(partitionTable);
+      synchronized (result) {
+        Node node = TestUtils.getNode(12);
+        StartUpStatus startUpStatus = TestUtils.getStartUpStatus();
+        startUpStatus.setPartitionInterval(0);
+        metaGroupMember.addNode(node, startUpStatus, handler);
+        result.wait(200);
+      }
+      response = result.get();
+      assertEquals(Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT, response.getRespNum());
+      assertFalse(response.getCheckStatusResponse().isPartitionalIntervalEquals());
+      assertTrue(response.getCheckStatusResponse().isHashSaltEquals());
+      assertTrue(response.getCheckStatusResponse().isReplicationNumEquals());
+
+      // cannot add a node due to configuration conflict, hash salt
+      metaGroupMember.setCharacter(LEADER);
+      result.set(null);
+      metaGroupMember.setPartitionTable(partitionTable);
+      synchronized (result) {
+        Node node = TestUtils.getNode(12);
+        StartUpStatus startUpStatus = TestUtils.getStartUpStatus();
+        startUpStatus.setHashSalt(0);
+        metaGroupMember.addNode(node, startUpStatus, handler);
+        result.wait(200);
+      }
+      response = result.get();
+      assertEquals(Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT, response.getRespNum());
+      assertTrue(response.getCheckStatusResponse().isPartitionalIntervalEquals());
+      assertFalse(response.getCheckStatusResponse().isHashSaltEquals());
+      assertTrue(response.getCheckStatusResponse().isReplicationNumEquals());
+
+      // cannot add a node due to configuration conflict, replication number
+      metaGroupMember.setCharacter(LEADER);
+      result.set(null);
+      metaGroupMember.setPartitionTable(partitionTable);
+      synchronized (result) {
+        Node node = TestUtils.getNode(12);
+        StartUpStatus startUpStatus = TestUtils.getStartUpStatus();
+        startUpStatus.setReplicationNumber(0);
+        metaGroupMember.addNode(node, startUpStatus, handler);
+        result.wait(200);
+      }
+      response = result.get();
+      assertEquals(Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT, response.getRespNum());
+      assertTrue(response.getCheckStatusResponse().isPartitionalIntervalEquals());
+      assertTrue(response.getCheckStatusResponse().isHashSaltEquals());
+      assertFalse(response.getCheckStatusResponse().isReplicationNumEquals());
+
+
     } finally {
       metaGroupMember.stop();
       RaftServer.connectionTimeoutInMS = prevTimeout;
