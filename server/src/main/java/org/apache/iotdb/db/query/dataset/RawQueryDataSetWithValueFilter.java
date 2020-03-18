@@ -21,8 +21,6 @@ package org.apache.iotdb.db.query.dataset;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -32,9 +30,9 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 public class RawQueryDataSetWithValueFilter extends QueryDataSet {
 
@@ -96,8 +94,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
         final TSDataType tsDataType = dataTypes.get(i);
         futures[i] = QueryTaskPoolManager.getInstance().submit(() -> {
           List<Field> fields = new ArrayList<>();
-          Object[] values = readerByTimestamp
-              .getValuesInTimestamps(timeColumn.duplicate(), Long.MAX_VALUE);
+          Object[] values = readerByTimestamp.getValuesInTimestamps(timeColumn.duplicate());
           for (Object value : values) {
             if (value == null) {
               fields.add(null);
@@ -105,7 +102,6 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
               fields.add(Field.getField(value, tsDataType));
             }
           }
-          values = null;
           return fields;
         });
       }

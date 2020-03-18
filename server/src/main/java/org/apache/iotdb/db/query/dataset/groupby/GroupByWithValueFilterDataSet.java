@@ -47,10 +47,6 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   private TimeGenerator timestampGenerator;
 
   private TimeColumn timeColumn = new TimeColumn();
-  /**
-   * group by batch calculation size.
-   */
-  protected int timeStampFetchSize;
 
   /**
    * constructor.
@@ -58,20 +54,18 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   public GroupByWithValueFilterDataSet(QueryContext context, GroupByPlan groupByPlan)
       throws StorageEngineException {
     super(context, groupByPlan);
-    this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
     initGroupBy(context, groupByPlan);
   }
 
   public GroupByWithValueFilterDataSet(long queryId, GroupByPlan groupByPlan) {
     super(new QueryContext(queryId), groupByPlan);
     this.allDataReaderList = new ArrayList<>();
-    this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
   }
 
   /**
    * init reader and aggregate function.
    */
-  protected void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
+  private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
       throws StorageEngineException {
     this.timestampGenerator = getTimeGenerator(groupByPlan.getExpression(), context);
     this.allDataReaderList = new ArrayList<>();
@@ -82,14 +76,13 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     }
   }
 
-  protected TimeGenerator getTimeGenerator(IExpression expression, QueryContext context)
+  private TimeGenerator getTimeGenerator(IExpression expression, QueryContext context)
       throws StorageEngineException {
     return new ServerTimeGenerator(expression, context);
   }
 
-  protected IReaderByTimestamp getReaderByTime(Path path,
-      TSDataType dataType, QueryContext context, TsFileFilter fileFilter)
-      throws StorageEngineException {
+  private IReaderByTimestamp getReaderByTime(Path path, TSDataType dataType, QueryContext context,
+      TsFileFilter fileFilter) throws StorageEngineException {
     return new SeriesReaderByTimestamp(path, dataType, context,
         QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter);
   }

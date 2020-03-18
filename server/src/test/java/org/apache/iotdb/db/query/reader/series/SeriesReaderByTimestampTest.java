@@ -74,7 +74,7 @@ public class SeriesReaderByTimestampTest {
       column.add(time);
     }
 
-    Object[] value = seriesReader.getValuesInTimestamps(column, Long.MAX_VALUE);
+    Object[] value = seriesReader.getValuesInTimestamps(column);
     column.resetIndex(0);
     for (int i = 0; i < column.size(); i++) {
       int time = (int) column.currentTime();

@@ -71,13 +71,13 @@ public class MaxValueAggrResult extends AggregateResult {
       IReaderByTimestamp dataReader)
       throws IOException {
     Comparable<Object> maxVal = null;
-    Object[] value = dataReader.getValuesInTimestamps(timestamps, bound);
-    for (int i = value.length - 1; i >= 0; i--) {
-      if (value[i] == null) {
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, bound);
+    for (Object value : values) {
+      if (value == null) {
         continue;
       }
-      if (maxVal == null || maxVal.compareTo(value[i]) < 0) {
-        maxVal = (Comparable<Object>) value[i];
+      if (maxVal == null || maxVal.compareTo(value) < 0) {
+        maxVal = (Comparable<Object>) value;
       }
     }
     updateResult(maxVal);

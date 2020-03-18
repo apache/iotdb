@@ -61,17 +61,11 @@ public class AggregationExecutor {
   protected List<String> aggregations;
   protected IExpression expression;
 
-  /**
-   * aggregation batch calculation size.
-   **/
-  private int aggregateFetchSize;
-
   protected AggregationExecutor(AggregationPlan aggregationPlan) {
     this.selectedSeries = aggregationPlan.getDeduplicatedPaths();
     this.dataTypes = aggregationPlan.getDeduplicatedDataTypes();
     this.aggregations = aggregationPlan.getDeduplicatedAggregations();
     this.expression = aggregationPlan.getExpression();
-    this.aggregateFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
   }
 
   /**

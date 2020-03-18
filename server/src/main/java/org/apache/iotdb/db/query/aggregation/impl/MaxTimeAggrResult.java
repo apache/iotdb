@@ -71,9 +71,9 @@ public class MaxTimeAggrResult extends AggregateResult {
       IReaderByTimestamp dataReader) throws IOException {
     long time = -1;
     int index = timestamps.currentIndex();
-    Object[] value = dataReader.getValuesInTimestamps(timestamps, bound);
-    for (int i = value.length - 1; i >= 0; i--) {
-      if (value[i] != null) {
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, bound);
+    for (int i = values.length - 1; i >= 0; i--) {
+      if (values[i] != null) {
         time = timestamps.getTimeByIndex(index + i);
         break;
       }

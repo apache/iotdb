@@ -86,11 +86,11 @@ public class LastValueAggrResult extends AggregateResult {
     long time = Long.MIN_VALUE;
     Object lastVal = null;
     int index = timestamps.currentIndex();
-    Object[] value = dataReader.getValuesInTimestamps(timestamps, bound);
-    for (int i = value.length - 1; i >= 0; i--) {
-      if (value[i] != null) {
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, bound);
+    for (int i = values.length - 1; i >= 0; i--) {
+      if (values[i] != null) {
         time = timestamps.getTimeByIndex(index + i);
-        lastVal = value[i];
+        lastVal = values[i];
         break;
       }
     }

@@ -86,10 +86,10 @@ public class AvgAggrResult extends AggregateResult {
   public void updateResultUsingTimestamps(TimeColumn timestamps, long bound,
       IReaderByTimestamp dataReader)
       throws IOException {
-    Object[] value = dataReader.getValuesInTimestamps(timestamps, bound);
-    for (int i = 0; i < value.length; i++) {
-      if (value[i] != null) {
-        updateAvg(seriesDataType, value[i]);
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, bound);
+    for (Object value : values) {
+      if (value != null) {
+        updateAvg(seriesDataType, value);
       }
     }
   }
