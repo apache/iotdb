@@ -453,13 +453,13 @@ public class MManager {
   public void setStorageGroup(String storageGroup) throws MetadataException {
     lock.writeLock().lock();
     try {
+      mtree.setStorageGroup(storageGroup);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
         writer.write(MetadataOperationType.SET_STORAGE_GROUP + "," + storageGroup);
         writer.newLine();
         writer.flush();
       }
-      mtree.setStorageGroup(storageGroup);
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
       ActiveTimeSeriesCounter.getInstance().init(storageGroup);
       seriesNumberInStorageGroups.put(storageGroup, 0);
