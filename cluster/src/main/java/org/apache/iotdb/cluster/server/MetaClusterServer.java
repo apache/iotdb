@@ -22,7 +22,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.CheckStatusRequest;
+import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
@@ -41,7 +41,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -140,8 +139,8 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   // directly sent to that member. See the methods in MetaGroupMember for details
 
   @Override
-  public void addNode(Node node, AsyncMethodCallback resultHandler) {
-    member.addNode(node, resultHandler);
+  public void addNode(Node node, StartUpStatus startUpStatus, AsyncMethodCallback resultHandler) {
+    member.addNode(node, startUpStatus, resultHandler);
   }
 
   @Override
@@ -189,12 +188,6 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   @Override
   public void checkAlive(AsyncMethodCallback<Node> resultHandler) {
     member.checkAlive(resultHandler);
-  }
-
-  @Override
-  public void checkStatus(CheckStatusRequest status,
-      AsyncMethodCallback<CheckStatusResponse> resultHandler) {
-    member.checkStatus(status, resultHandler);
   }
 
   @Override

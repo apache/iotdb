@@ -24,7 +24,7 @@ import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.MetaClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.rpc.thrift.CheckStatusRequest;
+import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -53,28 +53,4 @@ public class TestMetaClient extends MetaClient {
     this.node = node;
   }
 
-  @Override
-  public void checkStatus(CheckStatusRequest status,
-      AsyncMethodCallback<CheckStatusResponse> resultHandler) throws TException {
-    long partitionInterval = status.getPartitionInterval();
-    int hashSalt = status.getHashSalt();
-    int replicationNum = status.getReplicationNumber();
-    boolean partitionIntervalEquals = true;
-    boolean hashSaltEquals = true;
-    boolean replicationNumEquals = true;
-    if (IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() != partitionInterval) {
-      partitionIntervalEquals = false;
-    }
-    if (ClusterConstant.HASH_SALT != hashSalt) {
-      hashSaltEquals = false;
-    }
-    if (ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum() != replicationNum) {
-      replicationNumEquals = false;
-    }
-    CheckStatusResponse response = new CheckStatusResponse();
-    response.setPartitionalIntervalEquals(partitionIntervalEquals);
-    response.setHashSaltIntervalEquals(hashSaltEquals);
-    response.setReplicationNumEquals(replicationNumEquals);
-    resultHandler.onComplete(response);
-  }
 }

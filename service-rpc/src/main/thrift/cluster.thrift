@@ -94,6 +94,7 @@ struct AddNodeResponse {
   // add new node
   1: required int respNum
   2: optional binary partitionTableBytes
+  3: optional CheckStatusResponse checkStatusResponse
 }
 
 struct Node {
@@ -104,7 +105,7 @@ struct Node {
 }
 
 // leader -> follower
-struct CheckStatusRequest{
+struct StartUpStatus{
  1: required long partitionInterval
  2: required int hashSalt
  3: required int replicationNumber
@@ -113,7 +114,7 @@ struct CheckStatusRequest{
 // follower -> leader
 struct CheckStatusResponse{
  1: required bool partitionalIntervalEquals
- 2: required bool hashSaltIntervalEquals
+ 2: required bool hashSaltEquals
  3: required bool replicationNumEquals
 }
 
@@ -328,7 +329,7 @@ service TSMetaService extends RaftService {
   *
   * @param node a new node that needs to be added
   **/
-  AddNodeResponse addNode(1: Node node)
+  AddNodeResponse addNode(1: Node node, 2: StartUpStatus startUpStatus)
 
   /**
   * Remove a node from the cluster. If the node is not in the cluster or the cluster size will
@@ -352,5 +353,5 @@ service TSMetaService extends RaftService {
   * Before broadcasting adding node message to all followers, the leader will send check status
   * request to the new node, which contains current cluster status.
   **/
-  CheckStatusResponse checkStatus(1:CheckStatusRequest status)
+//  CheckStatusResponse checkStatus(1:CheckStatusRequest status)
 }

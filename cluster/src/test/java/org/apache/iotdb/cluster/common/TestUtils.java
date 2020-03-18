@@ -22,11 +22,13 @@ package org.apache.iotdb.cluster.common;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -42,6 +44,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class TestUtils {
+
   private TestUtils() {
     // util class
   }
@@ -53,6 +56,16 @@ public class TestUtils {
     node.setDataPort(ClusterDescriptor.getINSTANCE().getConfig().getLocalDataPort());
     node.setNodeIdentifier(nodeNum);
     return node;
+  }
+
+  public static StartUpStatus getStartUpStatus() {
+    StartUpStatus startUpStatus = new StartUpStatus();
+    startUpStatus
+        .setPartitionInterval(IoTDBDescriptor.getInstance().getConfig().getPartitionInterval());
+    startUpStatus.setHashSalt(ClusterConstant.HASH_SALT);
+    startUpStatus
+        .setReplicationNumber(ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum());
+    return startUpStatus;
   }
 
   public static List<Log> prepareTestLogs(int logNum) {
@@ -244,13 +257,13 @@ public class TestUtils {
 
     // data for fill
     insertPlan.setDeviceId(getTestSg(0));
-    String[] measurements = new String[] {getTestMeasurement(10)};
-    TSDataType[] tsDataTypes = new TSDataType[] {TSDataType.DOUBLE};
+    String[] measurements = new String[]{getTestMeasurement(10)};
+    TSDataType[] tsDataTypes = new TSDataType[]{TSDataType.DOUBLE};
     insertPlan.setMeasurements(measurements);
     insertPlan.setDataTypes(tsDataTypes);
     for (int i : new int[]{0, 10}) {
       insertPlan.setTime(i);
-      String[] values = new String[] {String.valueOf(i)};
+      String[] values = new String[]{String.valueOf(i)};
       insertPlan.setValues(values);
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
