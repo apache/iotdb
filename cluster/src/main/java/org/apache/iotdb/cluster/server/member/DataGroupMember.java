@@ -599,7 +599,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     if (!syncLeader()) {
       // if this node cannot synchronize with the leader with in a given time, forward the
       // request to the leader
-      AsyncClient client = connectNode(leader);
+      DataClient client = (DataClient) connectNode(leader);
       if (client == null) {
         resultHandler.onError(new LeaderUnknownException(getAllNodes()));
         return;

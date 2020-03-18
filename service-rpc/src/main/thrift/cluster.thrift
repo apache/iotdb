@@ -229,11 +229,6 @@ service RaftService {
   **/
   long requestCommitIndex(1:Node header)
 
-  /**
-  * Pull all timeseries schemas prefixed by a given path.
-  **/
-  PullSchemaResp pullTimeSeriesSchema(1: PullSchemaRequest request)
-
   binary readFile(1:string filePath, 2:i64 offset, 3:i32 length, 4:Node header)
 }
 
@@ -303,6 +298,12 @@ service TSDataService extends RaftService {
   * required aggregations, and their orders are the same.
   **/
   list<binary> getGroupByResult(1:Node header, 2:long executorId, 3:long startTime, 4:long endTime)
+
+
+  /**
+  * Pull all timeseries schemas prefixed by a given path.
+  **/
+  PullSchemaResp pullTimeSeriesSchema(1: PullSchemaRequest request)
 }
 
 service TSMetaService extends RaftService {
