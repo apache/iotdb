@@ -128,15 +128,18 @@ public class LastQueryExecutor {
     TimeValuePair resultPair = new TimeValuePair(Long.MIN_VALUE, null);
 
     if (!seqFileResources.isEmpty()) {
-      List<ChunkMetaData> chunkMetadata =
-          FileLoaderUtils.loadChunkMetadataFromTsFileResource(
-              seqFileResources.get(seqFileResources.size() - 1), seriesPath, context);
-      if (!chunkMetadata.isEmpty()) {
-        ChunkMetaData lastChunkMetaData = chunkMetadata.get(chunkMetadata.size() - 1);
-        Statistics chunkStatistics = lastChunkMetaData.getStatistics();
-        resultPair =
-            constructLastPair(
-                chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+      for (int i = seqFileResources.size() - 1; i >= 0; i--) {
+        List<ChunkMetaData> chunkMetadata =
+            FileLoaderUtils.loadChunkMetadataFromTsFileResource(
+                seqFileResources.get(i), seriesPath, context);
+        if (!chunkMetadata.isEmpty()) {
+          ChunkMetaData lastChunkMetaData = chunkMetadata.get(chunkMetadata.size() - 1);
+          Statistics chunkStatistics = lastChunkMetaData.getStatistics();
+          resultPair =
+              constructLastPair(
+                  chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+          break;
+        }
       }
     }
 
