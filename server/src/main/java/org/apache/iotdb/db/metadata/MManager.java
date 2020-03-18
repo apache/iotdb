@@ -170,8 +170,8 @@ public class MManager {
         while ((cmd = br.readLine()) != null) {
           try {
             operation(cmd);
-          } catch (MetadataException exception) {
-            logger.error("Can not operate cmd {}", cmd);
+          } catch (Exception e) {
+            logger.error("Can not operate cmd {}", cmd, e);
           }
         }
       }
