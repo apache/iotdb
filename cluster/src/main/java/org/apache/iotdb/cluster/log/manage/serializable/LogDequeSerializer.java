@@ -13,8 +13,16 @@ public interface LogDequeSerializer {
 
   /**
    * remove last log
+   * @param meta metadata
    */
   public void removeLast(LogManagerMeta meta);
+
+  /**
+   * truncate num of logs
+   * @param num num of logs
+   * @param meta metadata
+   */
+  public void truncateLog(int num, LogManagerMeta meta);
 
   /**
    * remove 'num' of logs from first

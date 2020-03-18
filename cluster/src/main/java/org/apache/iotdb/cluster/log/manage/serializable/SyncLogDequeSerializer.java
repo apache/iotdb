@@ -103,14 +103,31 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
 
   @Override
   public void removeLast(LogManagerMeta meta) {
-    int size = logSizeDeque.removeLast();
+    truncateLogIntern(1);
+    serializeMeta(meta);
+  }
+
+  @Override
+  public void truncateLog(int count, LogManagerMeta meta){
+    truncateLogIntern(count);
+    serializeMeta(meta);
+  }
+
+  private void truncateLogIntern(int count){
+    if(logSizeDeque.size() > count){
+      throw new IllegalArgumentException("truncate log count is bigger than total log count");
+    }
+
+    int size = 0;
+    for (int i = 0; i < count; i++) {
+      size += logSizeDeque.removeLast();
+    }
     // write into disk
     try {
       logOutputStream.getChannel().truncate(logFile.length() - size);
     } catch (IOException e) {
       e.printStackTrace();
     }
-    serializeMeta(meta);
   }
 
   @Override

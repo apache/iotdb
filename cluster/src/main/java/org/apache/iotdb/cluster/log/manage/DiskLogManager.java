@@ -73,6 +73,14 @@ public abstract class DiskLogManager extends MemoryLogManager {
     }
   }
 
+  public void truncateLog(int count) {
+    if (logBuffer.size() > count) {
+      // do super truncate log
+      // super.truncateLog();
+      logDequeSerializer.truncateLog(count, getMeta());
+    }
+  }
+
   @Override
   public void replaceLastLog(Log log) {
     super.replaceLastLog(log);
