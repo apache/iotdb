@@ -267,10 +267,11 @@ public class AggregationExecutor {
     while (timestampGenerator.hasNextTimeColumn()) {
       TimeColumn timeColumn = timestampGenerator.nextTimeColumn();
       // cal part of aggregate result
+      int position = timeColumn.position();
       for (int i = 0; i < readersOfSelectedSeries.size(); i++) {
         AggregateResult result = aggregateResults.get(i);
         if (!result.isCalculatedAggregationResult()) {
-          timeColumn.position(0);
+          timeColumn.position(position);
           result.updateResultUsingTimestamps(timeColumn, Long.MAX_VALUE,
               readersOfSelectedSeries.get(i));
         }

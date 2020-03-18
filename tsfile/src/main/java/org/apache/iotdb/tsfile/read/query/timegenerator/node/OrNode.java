@@ -55,17 +55,13 @@ public class OrNode implements Node {
     }
 
     if (hasLeftValue() && !hasRightValue()) {
-      while (leftTimeColumn.hasCurrent()) {
-        cachedTimeColumn.add(leftTimeColumn.currentTime());
-        leftTimeColumn.next();
-      }
+      cachedTimeColumn = leftTimeColumn;
+      leftTimeColumn = null;
       hasCachedValue = true;
       return true;
     } else if (!hasLeftValue() && hasRightValue()) {
-      while (rightTimeColumn.hasCurrent()) {
-        cachedTimeColumn.add(rightTimeColumn.currentTime());
-        rightTimeColumn.next();
-      }
+      cachedTimeColumn = rightTimeColumn;
+      rightTimeColumn = null;
       hasCachedValue = true;
       return true;
     }
