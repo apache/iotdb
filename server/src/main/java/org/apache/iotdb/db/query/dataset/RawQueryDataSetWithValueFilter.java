@@ -21,8 +21,6 @@ package org.apache.iotdb.db.query.dataset;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Future;
-import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -31,15 +29,10 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class RawQueryDataSetWithValueFilter extends QueryDataSet {
 
   private TimeGenerator timeGenerator;
-  private static final Logger LOGGER = LoggerFactory
-      .getLogger(RawQueryDataSetWithValueFilter.class);
-
   private List<IReaderByTimestamp> seriesReaderByTimestampList;
   private boolean hasCachedRowRecord;
   private List<RowRecord> cachedRecords;
@@ -84,54 +77,62 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
    * @return if there has next row record.
    */
   private boolean cacheRowRecord() throws IOException {
-    int seriesNum = seriesReaderByTimestampList.size();
+    Object[][] results = new Object[seriesReaderByTimestampList.size()][];
     while (timeGenerator.hasNextTimeColumn()) {
-      final TimeColumn timeColumn = timeGenerator.nextTimeColumn();
+      initResults(results);
 
-      Future<List<Field>>[] futures = new Future[seriesNum];
-      for (int i = 0; i < seriesNum; i++) {
-        final IReaderByTimestamp readerByTimestamp = seriesReaderByTimestampList.get(i);
-        final TSDataType tsDataType = dataTypes.get(i);
-        futures[i] = QueryTaskPoolManager.getInstance().submit(() -> {
-          List<Field> fields = new ArrayList<>();
-          Object[] values = readerByTimestamp.getValuesInTimestamps(timeColumn.duplicate());
-          for (Object value : values) {
-            if (value == null) {
-              fields.add(null);
-            } else {
-              fields.add(Field.getField(value, tsDataType));
-            }
-          }
-          return fields;
-        });
-      }
+      TimeColumn timeColumn = timeGenerator.nextTimeColumn();
 
-      List<Field>[] results = new List[seriesNum];
-      for (int i = 0; i < futures.length; i++) {
-        try {
-          results[i] = futures[i].get();
-        } catch (Exception e) {
-          LOGGER.error("get futures data has InterruptedException :{}", e);
-          throw new IOException(e);
-        }
-      }
-
-      for (int i = 0; i < timeColumn.size(); i++) {
-        RowRecord rowRecord = new RowRecord(timeColumn.getTimeByIndex(i));
-        boolean hasField = false;
-        for (List<Field> result : results) {
-          rowRecord.addField(result.get(i));
-          if (result.get(i) != null) {
-            hasField = true;
-          }
-        }
-        if (hasField) {
-          cachedRecords.add(rowRecord);
-        }
-      }
+      fillResults(results, timeColumn);
+      flatAndCache(results, timeColumn);
     }
-
     hasCachedRowRecord = !cachedRecords.isEmpty();
     return hasCachedRowRecord;
+  }
+
+  private void flatAndCache(Object[][] results, TimeColumn timeColumn) {
+    int resultSize = timeColumn.size() - timeColumn.position();
+    for (int i = 0; i < resultSize; i++) {
+      RowRecord rowRecord = new RowRecord(timeColumn.getTimeByIndex(i + timeColumn.position()));
+      boolean hasField = false;
+      for (Object[] result : results) {
+        if (result[i] == null) {
+          rowRecord.addField(null);
+          continue;
+        }
+        hasField = true;
+        rowRecord.addField((Field) result[i]);
+      }
+      if (hasField) {
+        cachedRecords.add(rowRecord);
+      }
+    }
+  }
+
+  private void fillResults(Object[][] results, TimeColumn timeColumn) throws IOException {
+    int position = timeColumn.position();
+    for (int i = 0; i < seriesReaderByTimestampList.size(); i++) {
+      IReaderByTimestamp reader = seriesReaderByTimestampList.get(i);
+      if (results[i] == null) {
+        results[i] = new Object[timeColumn.size() - position];
+      }
+
+      TSDataType tsDataType = dataTypes.get(i);
+      Object[] values = reader.getValuesInTimestamps(timeColumn);
+      for (int j = 0; j < values.length; j++) {
+        if (values[j] == null) {
+          results[i][j] = null;
+        } else {
+          results[i][j] = Field.getField(values[j], tsDataType);
+        }
+      }
+      timeColumn.position(position);
+    }
+  }
+
+  private void initResults(Object[][] results) {
+    for (int i = 0; i < results.length; i++) {
+      results[i] = null;
+    }
   }
 }

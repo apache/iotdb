@@ -121,8 +121,4 @@ public class TimeColumn {
     this.readCurListIndex = newPosition / capacity;
     this.readCurArrayIndex = newPosition % capacity;
   }
-
-  public TimeColumn duplicate() {
-    return new TimeColumn(timeRet, count, capacity);
-  }
 }
