@@ -103,6 +103,9 @@ public class MTree implements Serializable {
     }
     MNode leaf = new LeafMNode(cur, nodeNames[nodeNames.length - 1], dataType, encoding,
         compressor, props);
+    if (cur.hasChild(leaf.getName())) {
+      throw new MetadataException(String.format("The timeseries %s has already existed.", path));
+    }
     cur.addChild(leaf);
   }
 

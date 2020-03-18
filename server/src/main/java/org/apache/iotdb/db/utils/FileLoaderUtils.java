@@ -52,6 +52,7 @@ public class FileLoaderUtils {
     } else {
       tsFileResource.deserialize();
     }
+    tsFileResource.setClosed(true);
   }
 
   public static void updateTsFileResource(TsFileMetadata metaData, TsFileSequenceReader reader,
