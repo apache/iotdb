@@ -29,7 +29,7 @@ import org.apache.iotdb.db.exception.MergeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> implements
+public abstract class MaxSeriesMergeFileSelector<T extends BaseFileSelector> implements
     IMergeFileSelector {
 
   private T baseSelector;
@@ -89,7 +89,6 @@ public abstract class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> i
     }
   }
 
-  @Override
   public void select(boolean useTightBound) throws MergeException {
     select();
   }
@@ -99,12 +98,6 @@ public abstract class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> i
     return concurrentMergeNum;
   }
 
-  @Override
-  public void setConcurrentMergeNum(int concurrentMergeNum) {
-
-  }
-
-  @Override
   public MergeResource getResource() {
     return resource;
   }
@@ -117,11 +110,6 @@ public abstract class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> i
   @Override
   public List<TsFileResource> getSelectedUnseqFiles() {
     return lastSelectedUnseqFiles;
-  }
-
-  @Override
-  public long getTotalCost() {
-    return totalCost;
   }
 
   private void searchMaxSeriesNum() throws IOException, MergeException {

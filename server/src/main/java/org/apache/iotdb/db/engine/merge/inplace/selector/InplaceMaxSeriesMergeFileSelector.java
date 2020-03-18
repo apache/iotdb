@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.merge.BaseFileSelector;
 import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
@@ -37,7 +38,7 @@ import org.slf4j.LoggerFactory;
  */
 public class InplaceMaxSeriesMergeFileSelector extends MaxSeriesMergeFileSelector {
 
-  public InplaceMaxSeriesMergeFileSelector(IMergeFileSelector baseSelector) {
+  public InplaceMaxSeriesMergeFileSelector(BaseFileSelector baseSelector) {
     super(baseSelector);
   }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.merge.squeeze.selector;
 
+import org.apache.iotdb.db.engine.merge.BaseFileSelector;
 import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.MaxSeriesMergeFileSelector;
 
@@ -28,7 +29,7 @@ import org.apache.iotdb.db.engine.merge.MaxSeriesMergeFileSelector;
  */
 public class SqueezeMaxSeriesMergeFileSelector extends MaxSeriesMergeFileSelector {
 
-  public SqueezeMaxSeriesMergeFileSelector(IMergeFileSelector baseSelector) {
+  public SqueezeMaxSeriesMergeFileSelector(BaseFileSelector baseSelector) {
     super(baseSelector);
   }
 
