@@ -113,9 +113,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     while (timestampGenerator.hasNextTimeColumn() || timeColumn.hasCurrent()) {
       if (timeColumn == null || !timeColumn.hasCurrent()) {
         timeColumn = timestampGenerator.nextTimeColumn();
-        if (timeColumn.currentTime() >= curEndTime) {
-          break;
-        }
+      }
+      if (timeColumn.currentTime() >= curEndTime) {
+        break;
       }
       int index = timeColumn.position();
       // cal result using timestamp array
@@ -125,9 +125,6 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
           timeColumn.position(index);
           result.updateResultUsingTimestamps(timeColumn, curEndTime, allDataReaderList.get(i));
         }
-      }
-      if (timeColumn.currentTime() >= curEndTime) {
-        break;
       }
     }
 
