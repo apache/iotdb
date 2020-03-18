@@ -91,6 +91,9 @@ public class FileLoaderUtils {
       } else {
         timeSeriesMetadata.getStatistics().setCanUseStatistics(true);
       }
+      if (timeSeriesMetadata.getStatistics().getStartTime() > timeSeriesMetadata.getStatistics().getEndTime()) {
+        return null;
+      }
       if (timeFilter != null && !timeFilter.satisfyStartEndTime(timeSeriesMetadata.getStatistics().getStartTime(), timeSeriesMetadata.getStatistics().getEndTime())) {
         return null;
       }

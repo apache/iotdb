@@ -208,6 +208,7 @@ class SeriesReader {
       /*
        * try to unpack all overlapped TimeSeriesMetadata to cachedChunkMetadata
        */
+      unpackAllOverlappedTsFilesToTimeSeriesMetadata(firstTimeSeriesMetadata.getStatistics().getEndTime());
       unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(firstTimeSeriesMetadata.getStatistics().getEndTime(), true);
     } else {
       /*
@@ -215,6 +216,8 @@ class SeriesReader {
        */
       if (!cachedChunkMetadata.isEmpty()) {
         firstChunkMetadata = cachedChunkMetadata.poll();
+        unpackAllOverlappedTsFilesToTimeSeriesMetadata(firstChunkMetadata.getEndTime());
+        unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(firstChunkMetadata.getEndTime(), false);
       }
 
     }
@@ -630,6 +633,7 @@ class SeriesReader {
     while (!unseqFileResource.isEmpty()) {
       TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.get(0), seriesPath, context, timeFilter);
       if (timeseriesMetadata == null) {
+        unseqFileResource.remove(0);
         continue;
       }
       if (endTime >= timeseriesMetadata.getStatistics().getStartTime()) {
@@ -642,6 +646,7 @@ class SeriesReader {
     while (!seqFileResource.isEmpty()) {
       TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.get(0), seriesPath, context, timeFilter);
       if (timeseriesMetadata == null) {
+        seqFileResource.remove(0);
         continue;
       }
       if (endTime >= timeseriesMetadata.getStatistics().getStartTime()) {
