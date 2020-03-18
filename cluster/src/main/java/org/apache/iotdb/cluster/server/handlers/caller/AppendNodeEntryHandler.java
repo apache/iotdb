@@ -42,7 +42,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
   private AtomicLong receiverTerm;
   private Log log;
-  private AtomicInteger quorum;
+  private AtomicInteger voteCounter;
   private AtomicBoolean leaderShipStale;
   private Node receiver;
 
@@ -54,14 +54,14 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
       return;
     }
     long resp = response;
-    synchronized (quorum) {//this synchronized codes are just for calling quorum.wait.
+    synchronized (voteCounter) {//this synchronized codes are just for calling quorum.wait.
       if (resp == RESPONSE_AGREE) {
-        int remaining = quorum.decrementAndGet();
+        int remaining = voteCounter.decrementAndGet();
         logger.debug("Received an agreement from {} for {}, remaining votes to succeed: {}",
             receiver, log, remaining);
         if (remaining == 0) {
           logger.debug("Log {} is accepted by the quorum", log);
-          quorum.notifyAll();
+          voteCounter.notifyAll();
         }
       } else if (resp > 0) {
         // the leader ship is stale, wait for the new leader's heartbeat
@@ -72,7 +72,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
           receiverTerm.set(resp);
         }
         leaderShipStale.set(true);
-        quorum.notifyAll();
+        voteCounter.notifyAll();
       } else {
         //e.g., Response.RESPONSE_LOG_MISMATCH
         //But it is impossible that more than quorum nodes return RESPONSE_LOG_MISMATCH.
@@ -96,8 +96,8 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
     this.log = log;
   }
 
-  public void setQuorum(AtomicInteger quorum) {
-    this.quorum = quorum;
+  public void setVoteCounter(AtomicInteger voteCounter) {
+    this.voteCounter = voteCounter;
   }
 
   public void setLeaderShipStale(AtomicBoolean leaderShipStale) {

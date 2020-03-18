@@ -111,12 +111,6 @@ public abstract class MemoryLogManager implements LogManager {
   }
 
   @Override
-  public void commitLog(Log log) throws QueryProcessException {
-    logApplier.apply(log);
-    commitLogIndex = log.getCurrLogIndex();
-  }
-
-  @Override
   public List<Log> getLogs(long startIndex, long endIndex) {
     if (startIndex > endIndex) {
       return Collections.emptyList();

@@ -45,7 +45,7 @@ public class AppendNodeEntryHandlerTest {
       for (int i = 0; i < 10; i++) {
         AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
         handler.setLeaderShipStale(leadershipStale);
-        handler.setQuorum(quorum);
+        handler.setVoteCounter(quorum);
         handler.setLog(log);
         handler.setReceiverTerm(receiverTerm);
         handler.setReceiver(TestUtils.getNode(i));
@@ -69,7 +69,7 @@ public class AppendNodeEntryHandlerTest {
       for (int i = 0; i < 3; i++) {
         AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
         handler.setLeaderShipStale(leadershipStale);
-        handler.setQuorum(quorum);
+        handler.setVoteCounter(quorum);
         handler.setLog(log);
         handler.setReceiverTerm(receiverTerm);
         handler.setReceiver(TestUtils.getNode(i));
@@ -91,7 +91,7 @@ public class AppendNodeEntryHandlerTest {
     synchronized (quorum) {
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
       handler.setLeaderShipStale(leadershipStale);
-      handler.setQuorum(quorum);
+      handler.setVoteCounter(quorum);
       handler.setLog(log);
       handler.setReceiverTerm(receiverTerm);
       handler.setReceiver(TestUtils.getNode(0));
@@ -112,7 +112,7 @@ public class AppendNodeEntryHandlerTest {
     synchronized (quorum) {
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
       handler.setLeaderShipStale(leadershipStale);
-      handler.setQuorum(quorum);
+      handler.setVoteCounter(quorum);
       handler.setLog(log);
       handler.setReceiverTerm(receiverTerm);
       handler.setReceiver(TestUtils.getNode(0));

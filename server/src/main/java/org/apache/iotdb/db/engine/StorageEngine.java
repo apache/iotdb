@@ -338,6 +338,41 @@ public class StorageEngine implements IService {
     }
   }
 
+  public void asyncCloseProcessor(String storageGroupName, long partitionId, boolean isSeq)
+      throws StorageGroupNotSetException {
+    StorageGroupProcessor processor = processorMap.get(storageGroupName);
+    if (processor != null) {
+      logger.info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
+          storageGroupName, isSeq, partitionId);
+      processor.writeLock();
+      try {
+        if (isSeq) {
+          // to avoid concurrent modification problem, we need a new array list
+          for (TsFileProcessor tsfileProcessor : new ArrayList<>(
+              processor.getWorkSequenceTsFileProcessors())) {
+            if (tsfileProcessor.getTimeRangeId() == partitionId) {
+              processor.moveOneWorkProcessorToClosingList(true, tsfileProcessor);
+              break;
+            }
+          }
+        } else {
+          // to avoid concurrent modification problem, we need a new array list
+          for (TsFileProcessor tsfileProcessor : new ArrayList<>(
+              processor.getWorkUnsequenceTsFileProcessor())) {
+            if (tsfileProcessor.getTimeRangeId() == partitionId) {
+              processor.moveOneWorkProcessorToClosingList(false, tsfileProcessor);
+              break;
+            }
+          }
+        }
+      } finally {
+        processor.writeUnlock();
+      }
+    } else {
+      throw new StorageGroupNotSetException(storageGroupName);
+    }
+  }
+
   /**
    * update data.
    */

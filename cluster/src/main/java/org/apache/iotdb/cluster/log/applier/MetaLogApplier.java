@@ -54,15 +54,6 @@ public class MetaLogApplier extends BaseApplier {
       member.applyAddNode(newNode);
     } else if (log instanceof PhysicalPlanLog) {
       applyPhysicalPlan(((PhysicalPlanLog) log).getPlan());
-    } else if (log instanceof CloseFileLog) {
-      CloseFileLog closeFileLog = ((CloseFileLog) log);
-      try {
-        StorageEngine.getInstance().asyncCloseProcessor(closeFileLog.getStorageGroupName(),
-            closeFileLog.isSeq());
-      } catch (StorageGroupNotSetException e) {
-        logger.error("Cannot close {} file in {}", closeFileLog.isSeq() ? "seq" : "unseq",
-            closeFileLog.getStorageGroupName());
-      }
     } else if (log instanceof RemoveNodeLog) {
       RemoveNodeLog removeNodeLog = ((RemoveNodeLog) log);
       member.applyRemoveNode(removeNodeLog.getRemovedNode());

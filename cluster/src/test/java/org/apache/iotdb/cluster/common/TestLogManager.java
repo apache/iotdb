@@ -67,11 +67,6 @@ public class TestLogManager implements LogManager {
   }
 
   @Override
-  public void commitLog(Log log) {
-    commitLog(log.getCurrLogIndex());
-  }
-
-  @Override
   public List<Log> getLogs(long startIndex, long endIndex) {
     return null;
   }

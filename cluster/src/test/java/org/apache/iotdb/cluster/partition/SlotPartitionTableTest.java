@@ -114,10 +114,10 @@ public class SlotPartitionTableTest {
     for (int i = 0; i < 20; i ++) {
       storageNames[i] = String.format("root.sg.l2.l3.%d", i);
       //determine which node the sg belongs to
-      Node node = localTable.routeToHeader(storageNames[i], 0);
+      Node node = localTable.routeToHeaderByTime(storageNames[i], 0);
       nodeSGs[node.getMetaPort() - 30000].add(storageNames[i]);
       storageNames[i + 20] = String.format("root.sg.l2.l3.l4.%d", i + 20);
-      node = localTable.routeToHeader(storageNames[i + 20], 0);
+      node = localTable.routeToHeaderByTime(storageNames[i + 20], 0);
       nodeSGs[node.getMetaPort() - 30000].add(storageNames[i + 20]);
     }
     for (int i = 0; i < 20; i ++) {
@@ -223,9 +223,9 @@ public class SlotPartitionTableTest {
 
   @Test
   public void routeToHeader() {
-    Node node1 = localTable.routeToHeader("root.sg.l2.l3.l4.28", 0);
-    Node node2 = localTable.routeToHeader("root.sg.l2.l3.l4.28", 1);
-    Node node3 = localTable.routeToHeader("root.sg.l2.l3.l4.28", 1 + StorageEngine.getTimePartitionInterval());
+    Node node1 = localTable.routeToHeaderByTime("root.sg.l2.l3.l4.28", 0);
+    Node node2 = localTable.routeToHeaderByTime("root.sg.l2.l3.l4.28", 1);
+    Node node3 = localTable.routeToHeaderByTime("root.sg.l2.l3.l4.28", 1 + StorageEngine.getTimePartitionInterval());
     assertEquals(node1, node2);
     assertNotEquals(node2, node3);
   }

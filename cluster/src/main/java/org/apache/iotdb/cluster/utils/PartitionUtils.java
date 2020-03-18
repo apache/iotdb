@@ -358,7 +358,7 @@ public class PartitionUtils {
     long partitionInterval = StorageEngine.getTimePartitionInterval();
     long currPartitionStart = timeLowerBound / partitionInterval * partitionInterval;
     while (currPartitionStart <= timeUpperBound) {
-      result.add(partitionTable.routeToHeader(storageGroupName, currPartitionStart));
+      result.add(partitionTable.routeToHeaderByTime(storageGroupName, currPartitionStart));
       currPartitionStart += partitionInterval;
     }
   }

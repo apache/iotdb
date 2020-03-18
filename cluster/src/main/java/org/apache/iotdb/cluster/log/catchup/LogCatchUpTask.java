@@ -84,7 +84,7 @@ public class LogCatchUpTask implements Runnable {
         if (client == null) {
           return;
         }
-        //TODO why not sendEntries
+        //TODO use appendEntries
         client.appendEntry(request, handler);
         raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
         appendSucceed.wait(RaftServer.connectionTimeoutInMS);
