@@ -86,21 +86,20 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
   @Override
   protected RowRecord nextWithoutConstraint() throws IOException {
     hasCache = false;
-    long timestamp = cacheTime;
-    RowRecord rowRecord = new RowRecord(timestamp);
+    RowRecord rowRecord = new RowRecord(cacheTime);
 
     for (int i = 0; i < paths.size(); i++) {
 
       // get value from readers in time generator
       if (cached.get(i)) {
-        Object value = timeGenerator.getValue(paths.get(i), timestamp);
+        Object value = timeGenerator.getValue(paths.get(i), cacheTime);
         rowRecord.addField(value, dataTypes.get(i));
         continue;
       }
 
       // get value from series reader without filter
       FileSeriesReaderByTimestamp fileSeriesReaderByTimestamp = readers.get(i);
-      Object value = fileSeriesReaderByTimestamp.getValueInTimestamp(timestamp);
+      Object value = fileSeriesReaderByTimestamp.getValueInTimestamp(cacheTime);
       rowRecord.addField(value, dataTypes.get(i));
     }
     return rowRecord;
