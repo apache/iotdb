@@ -160,7 +160,7 @@ public class MManager {
     initialized = true;
   }
 
-  private void initFromLog(File logFile) throws IOException, MetadataException {
+  private void initFromLog(File logFile) throws IOException {
     // init the metadata from the operation log
     mtree = new MTree();
     if (logFile.exists()) {
@@ -168,7 +168,11 @@ public class MManager {
           BufferedReader br = new BufferedReader(fr)) {
         String cmd;
         while ((cmd = br.readLine()) != null) {
-          operation(cmd);
+          try {
+            operation(cmd);
+          } catch (MetadataException exception) {
+            logger.error("Can not operate cmd {}", cmd);
+          }
         }
       }
     }
@@ -481,23 +485,16 @@ public class MManager {
   public void deleteStorageGroups(List<String> storageGroups) throws MetadataException {
     lock.writeLock().lock();
     try {
-      if (writeToLog) {
-        StringBuilder jointPath = new StringBuilder();
-        for (String storagePath : storageGroups) {
-          jointPath.append(",").append(storagePath);
-        }
-        BufferedWriter writer = getLogWriter();
-        writer.write(MetadataOperationType.DELETE_STORAGE_GROUP + jointPath);
-        writer.newLine();
-        writer.flush();
-      }
+      BufferedWriter writer = getLogWriter();
       for (String storageGroup : storageGroups) {
-        try {
-          // try to delete storage group
-          mtree.deleteStorageGroup(storageGroup);
-        } catch (MetadataException e) {
-          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
-          throw new MetadataException(e);
+        // try to delete storage group
+        mtree.deleteStorageGroup(storageGroup);
+
+        // if success
+        if (writeToLog) {
+          writer.write(MetadataOperationType.DELETE_STORAGE_GROUP + storageGroup);
+          writer.newLine();
+          writer.flush();
         }
         mNodeCache.clear();
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
