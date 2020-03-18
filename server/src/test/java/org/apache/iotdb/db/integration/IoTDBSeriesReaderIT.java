@@ -100,10 +100,10 @@ public class IoTDBSeriesReaderIT {
     tsFileConfig.setMaxNumberOfPointsInPage(1024 * 1024 * 150);
     tsFileConfig.setPageSizeInByte(pageSizeInByte);
     tsFileConfig.setGroupSizeInByte(groupSizeInByte);
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(604800);
 
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(604800);
   }
 
   private static void insertData() throws ClassNotFoundException {

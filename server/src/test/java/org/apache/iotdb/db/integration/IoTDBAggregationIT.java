@@ -93,8 +93,8 @@ public class IoTDBAggregationIT {
 
   @After
   public void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(604800);
   }
 
   //add test for part of points in page don't satisfy filter
@@ -492,7 +492,8 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("500: Unsupported data type in aggregation AVG : BOOLEAN", e.getMessage());
+        Assert.assertEquals("500: Unsupported data type in aggregation AVG : BOOLEAN",
+            e.getMessage());
       }
       try {
         statement.execute("SELECT sum(s4)" +
@@ -501,7 +502,8 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("500: Unsupported data type in aggregation SUM : BOOLEAN", e.getMessage());
+        Assert.assertEquals("500: Unsupported data type in aggregation SUM : BOOLEAN",
+            e.getMessage());
       }
     } catch (Exception e) {
       e.printStackTrace();

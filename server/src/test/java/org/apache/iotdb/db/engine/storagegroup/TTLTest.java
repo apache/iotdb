@@ -86,6 +86,7 @@ public class TTLTest {
   public void tearDown() throws IOException, StorageEngineException {
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(604800);
   }
 
   private void createSchemas()

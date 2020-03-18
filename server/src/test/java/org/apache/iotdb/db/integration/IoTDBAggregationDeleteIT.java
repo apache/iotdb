@@ -16,13 +16,13 @@ public class IoTDBAggregationDeleteIT {
 
 
   private static String[] dataSet = new String[]{
-          "INSERT INTO root.turbine.d1(timestamp,s1) values(1,1)",
-          "INSERT INTO root.turbine.d1(timestamp,s1) values(2,2)",
-          "INSERT INTO root.turbine.d1(timestamp,s1) values(3,3)",
-          "INSERT INTO root.turbine.d1(timestamp,s1) values(4,4)",
-          "INSERT INTO root.turbine.d1(timestamp,s1) values(5,5)",
-          "flush",
-          "delete from root.turbine.d1.s1 where time < 3"
+      "INSERT INTO root.turbine.d1(timestamp,s1) values(1,1)",
+      "INSERT INTO root.turbine.d1(timestamp,s1) values(2,2)",
+      "INSERT INTO root.turbine.d1(timestamp,s1) values(3,3)",
+      "INSERT INTO root.turbine.d1(timestamp,s1) values(4,4)",
+      "INSERT INTO root.turbine.d1(timestamp,s1) values(5,5)",
+      "flush",
+      "delete from root.turbine.d1.s1 where time < 3"
   };
 
   @Before
@@ -36,14 +36,14 @@ public class IoTDBAggregationDeleteIT {
 
   @After
   public void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(604800);
   }
 
   @Test
   public void countAfterDeleteTest() {
     try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute("select count(*) from root");
@@ -63,9 +63,9 @@ public class IoTDBAggregationDeleteIT {
 
   private void prepareData() {
     try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-                    "root");
-         Statement statement = connection.createStatement()) {
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()) {
 
       for (String sql : dataSet) {
         statement.execute(sql);

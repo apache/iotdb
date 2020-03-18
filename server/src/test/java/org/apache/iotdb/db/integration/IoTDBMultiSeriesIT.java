@@ -79,10 +79,9 @@ public class IoTDBMultiSeriesIT {
     tsFileConfig.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
     tsFileConfig.setPageSizeInByte(pageSizeInByte);
     tsFileConfig.setGroupSizeInByte(groupSizeInByte);
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
-
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(604800);
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
   }
 
   private static void insertData()
