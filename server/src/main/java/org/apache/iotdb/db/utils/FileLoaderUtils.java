@@ -25,6 +25,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
+import org.apache.iotdb.db.query.reader.chunk.metadata.DiskChunkMetadataLoader;
+import org.apache.iotdb.db.query.reader.chunk.metadata.MemChunkMetadataLoader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -66,41 +68,34 @@ public class FileLoaderUtils {
     }
   }
 
-  public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, Path seriesPath, QueryContext context) throws IOException {
+  public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, Path seriesPath, QueryContext context, Filter timeFilter) throws IOException {
+    TimeseriesMetadata timeSeriesMetadata;
     if (resource.isClosed()) {
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(resource.getPath(), resource.isClosed());
-      TimeseriesMetadata timeseriesMetadata = reader.readDeviceMetadata(seriesPath.getDevice()).get(seriesPath.getMeasurement());
-      return timeseriesMetadata;
+      timeSeriesMetadata = reader.readDeviceMetadata(seriesPath.getDevice()).get(seriesPath.getMeasurement());
+      if (timeSeriesMetadata != null) {
+        timeSeriesMetadata.setChunkMetadataLoader(new DiskChunkMetadataLoader(resource, seriesPath, context, timeFilter));
+      }
     } else {
+      timeSeriesMetadata = resource.getTimeSeriesMetadata();
+      if (timeSeriesMetadata != null) {
+        timeSeriesMetadata.setChunkMetadataLoader(new MemChunkMetadataLoader(resource, seriesPath, context, timeFilter));
+      }
+    }
+
+    if (timeSeriesMetadata != null) {
       List<Modification> pathModifications =
               context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
-
-      if (resource.getTimeSeriesMetadata() != null) {
-        if (!pathModifications.isEmpty()) {
-          resource.getTimeSeriesMetadata().setCanUseStatistics(false);
-        } else {
-          resource.getTimeSeriesMetadata().setCanUseStatistics(true);
-        }
+      if (!pathModifications.isEmpty()) {
+        timeSeriesMetadata.getStatistics().setCanUseStatistics(false);
+      } else {
+        timeSeriesMetadata.getStatistics().setCanUseStatistics(true);
       }
-      return resource.getTimeSeriesMetadata();
-
+      if (timeFilter != null && !timeFilter.satisfyStartEndTime(timeSeriesMetadata.getStatistics().getStartTime(), timeSeriesMetadata.getStatistics().getEndTime())) {
+        return null;
+      }
     }
-  }
-
-  /**
-   * load all ChunkMetadatas belong to the seriesPath and satisfy filter
-   */
-  public static List<ChunkMetadata> loadChunkMetadataFromTsFileResource(
-      TsFileResource resource, Path seriesPath, QueryContext context, Filter timeFilter) throws IOException {
-    List<ChunkMetadata> chunkMetadataList = loadChunkMetadataFromTsFileResource(resource, seriesPath, context);
-
-    /*
-     * remove not satisfied ChunkMetaData
-     */
-    chunkMetadataList.removeIf(chunkMetaData -> (timeFilter != null && !timeFilter
-        .satisfyStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
-        || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
-    return chunkMetadataList;
+    return timeSeriesMetadata;
   }
 
   /**

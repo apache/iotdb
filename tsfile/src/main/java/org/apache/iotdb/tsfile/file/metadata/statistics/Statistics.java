@@ -18,19 +18,18 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 /**
  * This class is used for recording statistic information of each measurement in
@@ -39,7 +38,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  * version 0.0.1.<br>
  * Each data type extends this Statistic as super class.<br>
  *
- * @param T data type for Statistics
  */
 public abstract class Statistics<T> {
 
@@ -57,6 +55,11 @@ public abstract class Statistics<T> {
 
   private long startTime = Long.MAX_VALUE;
   private long endTime = Long.MIN_VALUE;
+
+  /**
+   * If the statistics has been modified, it can't be used.
+   */
+  private boolean canUseStatistics = true;
 
   /**
    * static method providing statistic instance for respective data type.
@@ -412,6 +415,14 @@ public abstract class Statistics<T> {
 
   public void setCount(long count) {
     this.count = count;
+  }
+
+  public boolean canUseStatistics() {
+    return canUseStatistics;
+  }
+
+  public void setCanUseStatistics(boolean canUseStatistics) {
+    this.canUseStatistics = canUseStatistics;
   }
 
   @Override

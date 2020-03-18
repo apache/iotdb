@@ -79,10 +79,18 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     }
 
     /*
-     * consume next chunk finally
+     * consume chunk data secondly
      */
-    while (seriesReader.hasNextChunk()) {
-      if (readPageData()) {
+    if (readChunkData()) {
+      hasCachedBatchData = true;
+      return true;
+    }
+
+    /*
+     * consume next file finally
+     */
+    while (seriesReader.hasNextFile()) {
+      if (readChunkData()) {
         hasCachedBatchData = true;
         return true;
       }
@@ -125,6 +133,14 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     this.hasRemaining = hasRemaining;
   }
 
+  private boolean readChunkData() throws IOException {
+    while (seriesReader.hasNextChunk()) {
+      if (readPageData()) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   private boolean readPageData() throws IOException {
     while (seriesReader.hasNextPage()) {

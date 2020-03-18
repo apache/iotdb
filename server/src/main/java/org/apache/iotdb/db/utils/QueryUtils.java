@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.utils;
 
-import java.util.List;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+
+import java.util.List;
 
 public class QueryUtils {
 
@@ -63,7 +64,16 @@ public class QueryUtils {
       }
     }
     // remove chunks that are completely deleted
-    chunkMetaData.removeIf(metaData -> metaData.getDeletedAt() >= metaData.getEndTime());
+    chunkMetaData.removeIf(metaData -> {
+      if (metaData.getDeletedAt() >= metaData.getEndTime()) {
+        return true;
+      } else {
+        if (metaData.getDeletedAt() >= metaData.getStartTime()) {
+          metaData.getStatistics().setCanUseStatistics(false);
+        }
+        return false;
+      }
+    });
   }
 
   private static boolean doModifyChunkMetaData(Modification modification, ChunkMetadata metaData) {

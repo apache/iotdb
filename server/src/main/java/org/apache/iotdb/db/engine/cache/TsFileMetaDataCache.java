@@ -103,10 +103,10 @@ public class TsFileMetaDataCache {
     }
     synchronized (path) {
       synchronized (cache) {
-        if (cache.containsKey(tsFileResource)) {
+        if (cache.containsKey(tsFileResource.getPath())) {
           cacheHitNum.incrementAndGet();
           printCacheLog(true);
-          return cache.get(tsFileResource);
+          return cache.get(tsFileResource.getPath());
         }
       }
       printCacheLog(false);

@@ -21,11 +21,13 @@ package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class TimeseriesMetadata {
 
@@ -37,10 +39,8 @@ public class TimeseriesMetadata {
   
   private Statistics<?> statistics;
 
-  /**
-   * If the file has been modified, it can't be used.
-   */
-  private boolean canUseStatistics = true;
+
+  private IChunkMetadataLoader chunkMetadataLoader;
 
   public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer) {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
@@ -109,11 +109,11 @@ public class TimeseriesMetadata {
     this.statistics = statistics;
   }
 
-  public boolean canUseStatistics() {
-    return canUseStatistics;
+  public void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader) {
+    this.chunkMetadataLoader = chunkMetadataLoader;
   }
 
-  public void setCanUseStatistics(boolean canUseStatistics) {
-    this.canUseStatistics = canUseStatistics;
+  public List<ChunkMetadata> getChunkMetadataList() throws IOException {
+    return chunkMetadataLoader.getChunkMetadataList();
   }
 }
