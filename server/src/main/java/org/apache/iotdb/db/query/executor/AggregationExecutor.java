@@ -273,7 +273,7 @@ public class AggregationExecutor {
         AggregateResult result = aggregateResults.get(i);
         if (!result.isCalculatedAggregationResult()) {
           timeColumn.resetIndex(index);
-          result.updateResultUsingTimestamps(timeColumn, Integer.MAX_VALUE,
+          result.updateResultUsingTimestamps(timeColumn, Long.MAX_VALUE,
               readersOfSelectedSeries.get(i));
         }
       }

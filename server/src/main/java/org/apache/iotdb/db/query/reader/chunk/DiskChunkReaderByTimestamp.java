@@ -41,8 +41,8 @@ public class DiskChunkReaderByTimestamp implements IReaderByTimestamp {
   }
 
   @Override
-  public Pair[] getValuesInTimestamps(TimeColumn timestamps, long bound) throws IOException {
-    Pair[] result = new Pair[timestamps.size()];
+  public Object[] getValuesInTimestamps(TimeColumn timestamps, long bound) throws IOException {
+    Object[] result = new Object[timestamps.size()];
 
     for (int i = 0; i < timestamps.size(); i++) {
       if (timestamps.currentTime() < currentTime) {
@@ -59,7 +59,7 @@ public class DiskChunkReaderByTimestamp implements IReaderByTimestamp {
           result[i] = null;
           break;
         }
-        result[i] = new Pair(currentTime, data.getValueInTimestamp(currentTime));
+        result[i] = data.getValueInTimestamp(currentTime);
         //fill cache
         if (!data.hasCurrent() && chunkReaderByTimestamp.hasNextSatisfiedPage()) {
           data = next();
