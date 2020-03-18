@@ -349,9 +349,4 @@ service TSMetaService extends RaftService {
 
   Node checkAlive()
 
-  /**
-  * Before broadcasting adding node message to all followers, the leader will send check status
-  * request to the new node, which contains current cluster status.
-  **/
-//  CheckStatusResponse checkStatus(1:CheckStatusRequest status)
 }
