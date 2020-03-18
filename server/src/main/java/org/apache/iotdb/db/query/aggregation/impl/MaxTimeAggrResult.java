@@ -70,7 +70,7 @@ public class MaxTimeAggrResult extends AggregateResult {
   public void updateResultUsingTimestamps(TimeColumn timestamps, long bound,
       IReaderByTimestamp dataReader) throws IOException {
     long time = -1;
-    int index = timestamps.currentIndex();
+    int index = timestamps.position();
     Object[] values = dataReader.getValuesInTimestamps(timestamps, bound);
     for (int i = values.length - 1; i >= 0; i--) {
       if (values[i] != null) {

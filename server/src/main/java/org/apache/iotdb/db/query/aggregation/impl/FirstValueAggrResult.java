@@ -93,7 +93,7 @@ public class FirstValueAggrResult extends AggregateResult {
       return;
     }
 
-    int index = timestamps.currentIndex();
+    int index = timestamps.position();
     Object[] values = dataReader.getValuesInTimestamps(timestamps, bound);
     for (int i = 0; i < values.length; i++) {
       if (values[i] != null) {

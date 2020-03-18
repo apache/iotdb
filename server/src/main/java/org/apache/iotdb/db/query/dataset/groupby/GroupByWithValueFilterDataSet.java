@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.dataset.groupby;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -118,12 +117,12 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
           break;
         }
       }
-      int index = timeColumn.currentIndex();
+      int index = timeColumn.position();
       // cal result using timestamp array
       for (int i = 0; i < paths.size(); i++) {
         AggregateResult result = aggregateResultList.get(i);
         if (!result.isCalculatedAggregationResult()) {
-          timeColumn.resetIndex(index);
+          timeColumn.position(index);
           result.updateResultUsingTimestamps(timeColumn, curEndTime, allDataReaderList.get(i));
         }
       }

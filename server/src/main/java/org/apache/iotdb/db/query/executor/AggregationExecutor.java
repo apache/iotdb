@@ -25,7 +25,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -268,11 +267,10 @@ public class AggregationExecutor {
     while (timestampGenerator.hasNextTimeColumn()) {
       TimeColumn timeColumn = timestampGenerator.nextTimeColumn();
       // cal part of aggregate result
-      int index = timeColumn.currentIndex();
       for (int i = 0; i < readersOfSelectedSeries.size(); i++) {
         AggregateResult result = aggregateResults.get(i);
         if (!result.isCalculatedAggregationResult()) {
-          timeColumn.resetIndex(index);
+          timeColumn.position(0);
           result.updateResultUsingTimestamps(timeColumn, Long.MAX_VALUE,
               readersOfSelectedSeries.get(i));
         }

@@ -75,10 +75,10 @@ public class SeriesReaderByTimestampTest {
     }
 
     Object[] value = seriesReader.getValuesInTimestamps(column);
-    column.resetIndex(0);
+    column.position(0);
     for (int i = 0; i < column.size(); i++) {
-      int time = (int) column.currentTime();
-      column.next();
+      //mock time not start with 0
+      Integer time = (int) column.getTimeByIndex(column.position() + i);
       if (time < 200) {
         Assert.assertEquals(time + 20000, value[i]);
       } else if (time < 260 || (time >= 300 && time < 380) || (time >= 400)) {

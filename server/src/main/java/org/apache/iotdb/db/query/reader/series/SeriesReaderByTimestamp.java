@@ -47,7 +47,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
   @Override
   public Object[] getValuesInTimestamps(TimeColumn timestamps, long bound) throws IOException {
-    Object[] result = new Object[timestamps.size()];
+    Object[] result = new Object[timestamps.size() - timestamps.position()];
 
     for (int i = 0; i < timestamps.size(); i++) {
       if (timestamps.currentTime() >= bound || !timestamps.hasCurrent()) {

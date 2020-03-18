@@ -72,7 +72,7 @@ public class MinTimeAggrResult extends AggregateResult {
     if (hasResult()) {
       return;
     }
-    int index = timestamps.currentIndex();
+    int index = timestamps.position();
 
     Object[] values = dataReader.getValuesInTimestamps(timestamps, bound);
     for (int i = 0; i < values.length; i++) {

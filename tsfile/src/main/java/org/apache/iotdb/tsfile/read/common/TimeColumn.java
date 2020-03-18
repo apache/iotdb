@@ -113,13 +113,13 @@ public class TimeColumn {
     return this.count;
   }
 
-  public int currentIndex() {
+  public int position() {
     return capacity * readCurListIndex + readCurArrayIndex;
   }
 
-  public void resetIndex(int index) {
-    this.readCurListIndex = index / capacity;
-    this.readCurArrayIndex = index % capacity;
+  public void position(int newPosition) {
+    this.readCurListIndex = newPosition / capacity;
+    this.readCurArrayIndex = newPosition % capacity;
   }
 
   public TimeColumn duplicate() {

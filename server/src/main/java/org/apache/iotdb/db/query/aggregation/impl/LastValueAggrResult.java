@@ -85,7 +85,7 @@ public class LastValueAggrResult extends AggregateResult {
       IReaderByTimestamp dataReader) throws IOException {
     long time = Long.MIN_VALUE;
     Object lastVal = null;
-    int index = timestamps.currentIndex();
+    int index = timestamps.position();
     Object[] values = dataReader.getValuesInTimestamps(timestamps, bound);
     for (int i = values.length - 1; i >= 0; i--) {
       if (values[i] != null) {
