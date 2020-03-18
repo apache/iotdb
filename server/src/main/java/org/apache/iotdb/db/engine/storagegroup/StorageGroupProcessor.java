@@ -1474,8 +1474,9 @@ public class StorageGroupProcessor {
     writeLock();
     mergeLock.writeLock().lock();
     try {
-      loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource);
-      updateLatestTimeMap(newTsFileResource);
+      if (loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource)){
+        updateLatestTimeMap(newTsFileResource);
+      }
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
@@ -1717,8 +1718,9 @@ public class StorageGroupProcessor {
    * @param type load type
    * @param tsFileResource tsfile resource to be loaded
    * @UsedBy sync module, load external tsfile module.
+   * @return load the file successfully
    */
-  private void loadTsFileByType(LoadTsFileType type, File syncedTsFile,
+  private boolean loadTsFileByType(LoadTsFileType type, File syncedTsFile,
       TsFileResource tsFileResource)
       throws TsFileProcessorException, DiskSpaceInsufficientException {
     File targetFile;
@@ -1730,6 +1732,10 @@ public class StorageGroupProcessor {
             storageGroupName + File.separatorChar + timeRangeId + File.separator + tsFileResource
                 .getFile().getName());
         tsFileResource.setFile(targetFile);
+        if(unSequenceFileList.contains(tsFileResource)){
+          logger.error("The file {} has already been loaded in unsequence list", tsFileResource);
+          return false;
+        }
         unSequenceFileList.add(tsFileResource);
         logger.info("Load tsfile in unsequence list, move file from {} to {}",
             syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath());
@@ -1740,6 +1746,10 @@ public class StorageGroupProcessor {
                 storageGroupName + File.separatorChar + timeRangeId + File.separator
                     + tsFileResource.getFile().getName());
         tsFileResource.setFile(targetFile);
+        if(sequenceFileTreeSet.contains(tsFileResource)){
+          logger.error("The file {} has already been loaded in sequence list", tsFileResource);
+          return false;
+        }
         sequenceFileTreeSet.add(tsFileResource);
         logger.info("Load tsfile in sequence list, move file from {} to {}",
             syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath());
@@ -1777,6 +1787,7 @@ public class StorageGroupProcessor {
           syncedResourceFile.getAbsolutePath(), targetResourceFile.getAbsolutePath(),
           e.getMessage()));
     }
+    return true;
   }
 
   /**

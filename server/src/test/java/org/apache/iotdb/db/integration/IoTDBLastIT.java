@@ -72,6 +72,18 @@ public class IoTDBLastIT {
       "flush",
   };
 
+  private static String[] dataSet3 = new String[]{
+      "SET STORAGE GROUP TO root.ln.wf01.wt03",
+      "CREATE TIMESERIES root.ln.wf01.wt03.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+      "CREATE TIMESERIES root.ln.wf01.wt03.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+      "CREATE TIMESERIES root.ln.wf01.wt03.id WITH DATATYPE=INT32, ENCODING=PLAIN",
+      "INSERT INTO root.ln.wf01.wt03(timestamp,temperature,status, id) "
+          + "values(100, 18.6, false, 7)",
+      "INSERT INTO root.ln.wf01.wt03(timestamp,temperature,status, id) "
+          + "values(300, 23.1, true, 8)",
+      "flush",
+  };
+
   private static final String TIMESTAMP_STR = "Time";
   private static final String TIMESEIRES_STR = "timeseries";
   private static final String VALUE_STR = "value";
@@ -234,6 +246,47 @@ public class IoTDBLastIT {
     }
   }
 
+  @Test
+  public void lastWithEmptyChunkMetadataTest() throws SQLException {
+    String[] retArray =
+        new String[] {
+            "300,root.ln.wf01.wt03.temperature,23.1",
+        };
+
+
+    try (Connection connection =
+        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      MNode node = MManager.getInstance()
+          .getDeviceNodeWithAutoCreateStorageGroup("root.ln.wf01.wt03.temperature");
+      ((LeafMNode) node).resetCache();
+
+      statement.execute("INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(500, false, 9)");
+      statement.execute("flush");
+      boolean hasResultSet = statement.execute(
+          "select last temperature from root.ln.wf01.wt03");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + ","
+                  + resultSet.getString(TIMESEIRES_STR) + ","
+                  + resultSet.getString(VALUE_STR);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(cnt, 1);
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   private void prepareData() {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
@@ -245,6 +298,9 @@ public class IoTDBLastIT {
         statement.execute(sql);
       }
       for (String sql : dataSet2) {
+        statement.execute(sql);
+      }
+      for (String sql : dataSet3) {
         statement.execute(sql);
       }
 
