@@ -388,12 +388,6 @@ public class MManager {
         seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
             .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
       }
-      try {
-        IoTDBConfigDynamicAdapter.getInstance()
-            .addOrDeleteTimeSeries(seriesNumberInStorageGroups.remove(prefixPath) * (-1));
-      } catch (ConfigAdjusterException e) {
-        throw new MetadataException(e.getMessage());
-      }
       mNodeCache.clear();
     }
     try {
