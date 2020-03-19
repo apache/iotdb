@@ -35,7 +35,7 @@ The query engine is responsible for parsing all user commands, generating plans,
 
 * org.apache.iotdb.db.qp.Planner
 
-  Parse SQL, generate logical plans, optimize logic, and generate physical plans.
+  Parse SQL, generate logical plans, optimize logical plans, and generate physical plans.
 
 * org.apache.iotdb.db.qp.executor.PlanExecutor
 
