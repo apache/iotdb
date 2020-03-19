@@ -53,7 +53,7 @@ A memtable's persistence process has three threads, and the main thread's work d
 
 * MemTableFlushTask  Thread
 
-  The persistent main thread and sorting thread are responsible for sorting the chunks corresponding to each measurement.
+  The sorting thread (the main thread), responsible for sorting the chunks corresponding to each measurement and submit tasks to the encoding task.
 
 * encodingTask Thread
 
@@ -82,4 +82,3 @@ Three threads interact through two task queues
 	* IChunkWriter：Persisting a Chunk to Disk
 	
 	* EndChunkGroupIoTask：Ends the persistence of a device (ChunkGroup).
-
