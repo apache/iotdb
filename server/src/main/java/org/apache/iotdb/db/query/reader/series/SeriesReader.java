@@ -630,30 +630,16 @@ class SeriesReader {
   }
 
   private void unpackAllOverlappedTsFilesToTimeSeriesMetadata(long endTime) throws IOException {
-    while (!unseqFileResource.isEmpty()) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.get(0), seriesPath, context, timeFilter);
-      if (timeseriesMetadata == null) {
-        unseqFileResource.remove(0);
-        continue;
-      }
-      if (endTime >= timeseriesMetadata.getStatistics().getStartTime()) {
-        unseqFileResource.remove(0);
+    while (!unseqFileResource.isEmpty() && endTime >= unseqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, timeFilter);
+      if (timeseriesMetadata != null) {
         unSeqTimeSeriesMetadata.add(timeseriesMetadata);
-      } else {
-        break;
       }
     }
-    while (!seqFileResource.isEmpty()) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.get(0), seriesPath, context, timeFilter);
-      if (timeseriesMetadata == null) {
-        seqFileResource.remove(0);
-        continue;
-      }
-      if (endTime >= timeseriesMetadata.getStatistics().getStartTime()) {
-        seqFileResource.remove(0);
+    while (!seqFileResource.isEmpty() && endTime >= seqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.remove(0), seriesPath, context, timeFilter);
+      if (timeseriesMetadata != null) {
         seqTimeSeriesMetadata.add(timeseriesMetadata);
-      } else {
-        break;
       }
     }
   }
