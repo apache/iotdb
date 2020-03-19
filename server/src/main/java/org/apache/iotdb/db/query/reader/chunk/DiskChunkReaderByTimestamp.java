@@ -42,7 +42,17 @@ public class DiskChunkReaderByTimestamp implements IReaderByTimestamp {
 
   @Override
   public Object[] getValuesInTimestamps(TimeColumn timestamps, long bound) throws IOException {
-    Object[] result = new Object[timestamps.size() - timestamps.position()];
+    int position = timestamps.position();
+    int size = 0;
+    while (timestamps.hasCurrent()) {
+      if (timestamps.currentTime() >= bound) {
+        size = timestamps.position() - position;
+        break;
+      }
+      timestamps.next();
+    }
+    timestamps.position(position);
+    Object[] result = new Object[size];
 
     for (int i = 0; i < timestamps.size(); i++) {
       if (timestamps.currentTime() < currentTime) {

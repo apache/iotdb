@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -50,7 +50,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
     super(paths, dataTypes);
     this.timeGenerator = timeGenerator;
     this.seriesReaderByTimestampList = readers;
-    this.cachedRecords = new ArrayList<>();
+    this.cachedRecords = new LinkedList<>();
   }
 
   @Override
