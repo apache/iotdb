@@ -76,7 +76,7 @@ It should be noted that before updating each result, you need to first determine
 ```
 if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
   AggregateResult aggregateResult = aggregateResultList.get(i);
-  ... // 更新
+  ... // update
   if (aggregateResult.isCalculatedAggregationResult()) {
     isCalculatedList.set(i, true);
     remainingToCalculate--;
