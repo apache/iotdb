@@ -60,7 +60,6 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
-import org.apache.iotdb.cluster.exception.NotInSameGroupException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
@@ -93,7 +92,6 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartbeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
@@ -112,7 +110,6 @@ import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
-import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.MetaHeartbeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
@@ -726,8 +723,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       if (localHashSalt != remoteHashSalt) {
         hashSaltEquals = false;
         logger.info("Remote hash salt conflicts with the leader's. Leader: {}, remote: {}",
-            localHashSalt,
-            remoteHashSalt);
+            localHashSalt, remoteHashSalt);
       }
       if (localReplicationNum != remoteReplicationNum) {
         replicationNumEquals = false;
@@ -1298,950 +1294,1161 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
   }
 
-    /**
-     * Get the data types of "paths". If "aggregations" is not null, each one of it correspond to
-     * one in "paths".
-     * First get types locally and if some paths does not exists, pull them from other nodes.
-     * @param paths
-     * @param aggregations nullable, when not null, correspond to "paths" one-to-one.
-     * @return
-     * @throws MetadataException
-     */
-    public List<TSDataType> getSeriesTypesByPath (List < Path > paths, List < String > aggregations) throws
-    MetadataException {
-      try {
-        // try locally first
-        return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
-      } catch (PathNotExistException e) {
-        List<String> pathStr = new ArrayList<>();
-        for (Path path : paths) {
-          pathStr.add(path.getFullPath());
-        }
-        // pull schemas remotely
-        List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStr);
-        // TODO-Cluster: should we register the schemas locally?
-        if (schemas.isEmpty()) {
-          // if one timeseries cannot be found remotely, too, it does not exist
-          throw e;
-        }
+  /**
+   * Get the data types of "paths". If "aggregations" is not null, each one of it correspond to one
+   * in "paths". First get types locally and if some paths does not exists, pull them from other
+   * nodes.
+   *
+   * @param paths
+   * @param aggregations nullable, when not null, correspond to "paths" one-to-one.
+   * @return
+   * @throws MetadataException
+   */
+  public List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations) throws
+      MetadataException {
+    try {
+      // try locally first
+      return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+    } catch (PathNotExistException e) {
+      List<String> pathStr = new ArrayList<>();
+      for (Path path : paths) {
+        pathStr.add(path.getFullPath());
+      }
+      // pull schemas remotely
+      List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStr);
+      // TODO-Cluster: should we register the schemas locally?
+      if (schemas.isEmpty()) {
+        // if one timeseries cannot be found remotely, too, it does not exist
+        throw e;
+      }
 
-        // consider the aggregations to get the real data type
-        List<TSDataType> result = new ArrayList<>();
-        for (int i = 0; i < schemas.size(); i++) {
-          TSDataType dataType = null;
-          if (aggregations != null) {
-            String aggregation = aggregations.get(i);
-            // aggregations like first/last value does not have fixed data types and will return a
-            // null
-            dataType = getAggregationType(aggregation);
+      // consider the aggregations to get the real data type
+      List<TSDataType> result = new ArrayList<>();
+      for (int i = 0; i < schemas.size(); i++) {
+        TSDataType dataType = null;
+        if (aggregations != null) {
+          String aggregation = aggregations.get(i);
+          // aggregations like first/last value does not have fixed data types and will return a
+          // null
+          dataType = getAggregationType(aggregation);
+        }
+        if (dataType == null) {
+          MeasurementSchema schema = schemas.get(i);
+          result.add(schema.getType());
+          SchemaUtils.registerTimeseries(schema);
+        } else {
+          result.add(dataType);
+        }
+      }
+      return result;
+    }
+  }
+
+  /**
+   * Get the data types of "paths". If "aggregation" is not null, every path will use the
+   * aggregation. First get types locally and if some paths does not exists, pull them from other
+   * nodes.
+   *
+   * @param pathStrs
+   * @param aggregation
+   * @return
+   * @throws MetadataException
+   */
+  public List<TSDataType> getSeriesTypesByString(List<String> pathStrs, String aggregation) throws
+      MetadataException {
+    try {
+      // try locally first
+      return SchemaUtils.getSeriesTypesByString(pathStrs, aggregation);
+    } catch (PathNotExistException e) {
+      // pull schemas remotely
+      List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStrs);
+      // TODO-Cluster: should we register the schemas locally?
+      if (schemas.isEmpty()) {
+        // if one timeseries cannot be found remotely, too, it does not exist
+        throw e;
+      }
+
+      // consider the aggregations to get the real data type
+      List<TSDataType> result = new ArrayList<>();
+      // aggregations like first/last value does not have fixed data types and will return a null
+      TSDataType aggregationType = getAggregationType(aggregation);
+      for (MeasurementSchema schema : schemas) {
+        if (aggregationType == null) {
+          result.add(schema.getType());
+        } else {
+          result.add(aggregationType);
+        }
+        SchemaUtils.registerTimeseries(schema);
+      }
+      return result;
+    }
+  }
+
+  /**
+   * Create an IReaderByTimestamp that can read the data of "path" by timestamp in the whole
+   * cluster. This will query every group and merge the result from them.
+   *
+   * @param path
+   * @param dataType
+   * @param context
+   * @return
+   * @throws StorageEngineException
+   */
+  public IReaderByTimestamp getReaderByTimestamp(Path path, TSDataType dataType,
+      QueryContext context)
+      throws StorageEngineException {
+    // make sure the partition table is new
+    syncLeader();
+    // get all data groups
+    List<PartitionGroup> partitionGroups = routeFilter(null, path);
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: Sending query of {} to {} groups", name, path, partitionGroups.size());
+    }
+    List<IReaderByTimestamp> readers = new ArrayList<>();
+    for (PartitionGroup partitionGroup : partitionGroups) {
+      // query each group to get a reader in that group
+      readers.add(getSeriesReaderByTime(partitionGroup, path, context, dataType));
+    }
+    // merge the readers
+    return new MergedReaderByTime(readers);
+  }
+
+  /**
+   * Create a IReaderByTimestamp that read data of "path" by timestamp in the given group. If the
+   * local node is a member of that group, query locally. Otherwise create a remote reader pointing
+   * to one node in that group.
+   *
+   * @param partitionGroup
+   * @param path
+   * @param context
+   * @param dataType
+   * @return
+   * @throws StorageEngineException
+   */
+  private IReaderByTimestamp getSeriesReaderByTime(PartitionGroup partitionGroup, Path path,
+      QueryContext context, TSDataType dataType) throws StorageEngineException {
+    if (partitionGroup.contains(thisNode)) {
+      // the target storage group contains this node, perform a local query
+      DataGroupMember dataGroupMember = getLocalDataMember(partitionGroup.getHeader());
+      logger.debug("{}: creating a local reader for {}#{}", name, path.getFullPath(),
+          context.getQueryId());
+      return dataGroupMember.getReaderByTimestamp(path, dataType, context);
+    } else {
+      return getRemoteReaderByTimestamp(path, dataType, partitionGroup, context);
+    }
+  }
+
+  /**
+   * Create a IReaderByTimestamp that read data of "path" by timestamp in the given group that does
+   * not contain the local node. Send a request to one node in that group to build a reader and use
+   * that reader's id to build a remote reader.
+   *
+   * @param path
+   * @param dataType
+   * @param partitionGroup
+   * @param context
+   * @return
+   * @throws StorageEngineException
+   */
+  private IReaderByTimestamp getRemoteReaderByTimestamp(
+      Path path, TSDataType dataType, PartitionGroup partitionGroup,
+      QueryContext context) throws StorageEngineException {
+    // query a remote node
+    AtomicReference<Long> result = new AtomicReference<>();
+    SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
+    request.setPath(path.getFullPath());
+    request.setHeader(partitionGroup.getHeader());
+    request.setQueryId(context.getQueryId());
+    request.setRequester(thisNode);
+    request.setDataTypeOrdinal(dataType.ordinal());
+
+    for (Node node : partitionGroup) {
+      logger.debug("{}: querying {} from {}", name, path, node);
+      GenericHandler<Long> handler = new GenericHandler<>(node, result);
+      try {
+        DataClient client = getDataClient(node);
+        synchronized (result) {
+          result.set(null);
+          client.querySingleSeriesByTimestamp(request, handler);
+          result.wait(connectionTimeoutInMS);
+        }
+        Long readerId = result.get();
+        if (readerId != null) {
+          // register the node so the remote resources can be released
+          ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
+          logger.debug("{}: get a readerId {} for {} from {}", name, readerId, path, node);
+          return new RemoteSeriesReaderByTimestamp(readerId, node, partitionGroup.getHeader(),
+              this);
+        }
+      } catch (TException | InterruptedException | IOException e) {
+        logger.error("{}: Cannot query {} from {}", name, path, node, e);
+      }
+    }
+    throw new StorageEngineException(
+        new RequestTimeOutException("Query " + path + " in " + partitionGroup));
+  }
+
+  /**
+   * Create a ManagedSeriesReader that can read the data of "path" with filters in the whole
+   * cluster. The data groups that should be queried will be determined by the timeFilter, then for
+   * each group a series reader will be created, and finally all such readers will be merged into
+   * one.
+   *
+   * @param path
+   * @param dataType
+   * @param timeFilter  nullable, when null, all data groups will be queried
+   * @param valueFilter nullable
+   * @param context
+   * @return
+   * @throws StorageEngineException
+   */
+  public ManagedSeriesReader getSeriesReader(Path path, TSDataType dataType, Filter timeFilter,
+      Filter valueFilter, QueryContext context)
+      throws StorageEngineException {
+    // make sure the partition table is new
+    syncLeader();
+    // find the groups that should be queried using the timeFilter
+    List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: Sending data query of {} to {} groups", name, path,
+          partitionGroups.size());
+    }
+    ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
+    try {
+      // build a reader for each group and merge them
+      for (PartitionGroup partitionGroup : partitionGroups) {
+        IPointReader seriesReader = getSeriesReader(partitionGroup, path, timeFilter,
+            valueFilter,
+            context, dataType);
+        if (seriesReader.hasNextTimeValuePair()) {
+          // only add readers that have data, and they should basically not overlap with each
+          // other (from different time partitions) so the priority does not matter
+          mergeReader.addReader(seriesReader, 0);
+        }
+      }
+    } catch (IOException e) {
+      throw new StorageEngineException(e);
+    }
+    return mergeReader;
+  }
+
+  /**
+   * Perform "aggregations" over "path" in some data groups and merge the results. The groups to be
+   * queried is determined by "timeFilter".
+   *
+   * @param path
+   * @param aggregations
+   * @param dataType
+   * @param timeFilter   nullable, when null, all groups will be queried
+   * @param context
+   * @return
+   * @throws StorageEngineException
+   */
+  public List<AggregateResult> getAggregateResult(Path path, List<String> aggregations,
+      TSDataType dataType, Filter timeFilter,
+      QueryContext context) throws StorageEngineException {
+    // make sure the partition table is new
+    syncLeader();
+    List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: Sending aggregation query of {} to {} groups", name, path,
+          partitionGroups.size());
+    }
+    List<AggregateResult> results = null;
+    // get the aggregation result of each group and merge them
+    for (PartitionGroup partitionGroup : partitionGroups) {
+      List<AggregateResult> groupResult = getAggregateResult(path, aggregations, dataType,
+          timeFilter, partitionGroup, context);
+      if (results == null) {
+        results = groupResult;
+      } else {
+        for (int i = 0; i < results.size(); i++) {
+          results.get(i).merge(groupResult.get(i));
+        }
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Perform "aggregations" over "path" in "partitionGroup". If the local node is the member of the
+   * group, do it locally, otherwise pull the results from a remote node.
+   *
+   * @param path
+   * @param aggregations
+   * @param dataType
+   * @param timeFilter     nullable
+   * @param partitionGroup
+   * @param context
+   * @return
+   * @throws StorageEngineException
+   */
+  private List<AggregateResult> getAggregateResult(Path path, List<String> aggregations,
+      TSDataType dataType, Filter timeFilter, PartitionGroup partitionGroup,
+      QueryContext context) throws StorageEngineException {
+    if (!partitionGroup.contains(thisNode)) {
+      return getRemoteAggregateResult(path, aggregations, dataType, timeFilter, partitionGroup,
+          context);
+    } else {
+      // perform the aggregations locally
+      DataGroupMember dataMember = getLocalDataMember(partitionGroup.getHeader());
+      try {
+        logger
+            .debug("{}: querying aggregation {} of {} in {} locally", name, aggregations, path,
+                partitionGroup.getHeader());
+        List<AggregateResult> aggrResult = dataMember
+            .getAggrResult(aggregations, dataType, path.getFullPath(), timeFilter, context);
+        logger
+            .debug("{}: queried aggregation {} of {} in {} locally are {}", name, aggregations,
+                path, partitionGroup.getHeader(), aggrResult);
+        return aggrResult;
+      } catch (IOException | QueryProcessException | LeaderUnknownException e) {
+        throw new StorageEngineException(e);
+      }
+    }
+  }
+
+  /**
+   * Perform "aggregations" over "path" in a remote data group "partitionGroup". Query one node in
+   * the group to get the results.
+   *
+   * @param path
+   * @param aggregations
+   * @param dataType
+   * @param timeFilter     nullable
+   * @param partitionGroup
+   * @param context
+   * @return
+   * @throws StorageEngineException
+   */
+  private List<AggregateResult> getRemoteAggregateResult(Path
+      path, List<String> aggregations,
+      TSDataType dataType, Filter timeFilter, PartitionGroup partitionGroup,
+      QueryContext context) throws StorageEngineException {
+    AtomicReference<List<ByteBuffer>> resultReference = new AtomicReference<>();
+    GetAggrResultRequest request = new GetAggrResultRequest();
+    request.setPath(path.getFullPath());
+    request.setAggregations(aggregations);
+    request.setDataTypeOrdinal(dataType.ordinal());
+    request.setQueryId(context.getQueryId());
+    request.setRequestor(thisNode);
+    request.setHeader(partitionGroup.getHeader());
+    if (timeFilter != null) {
+      request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
+    }
+
+    for (Node node : partitionGroup) {
+      logger.debug("{}: querying aggregation {} of {} from {} of {}", name, aggregations, path,
+          node, partitionGroup.getHeader());
+      GenericHandler<List<ByteBuffer>> handler = new GenericHandler<>(node, resultReference);
+      try {
+        DataClient client = getDataClient(node);
+        synchronized (resultReference) {
+          resultReference.set(null);
+          client.getAggrResult(request, handler);
+          resultReference.wait(connectionTimeoutInMS);
+        }
+        // each buffer is an AggregationResult
+        List<ByteBuffer> resultBuffers = resultReference.get();
+        if (resultBuffers != null) {
+          List<AggregateResult> results = new ArrayList<>(resultBuffers.size());
+          for (ByteBuffer resultBuffer : resultBuffers) {
+            AggregateResult result = AggregateResult.deserializeFrom(resultBuffer);
+            results.add(result);
           }
-          if (dataType == null) {
-            MeasurementSchema schema = schemas.get(i);
-            result.add(schema.getType());
-            SchemaUtils.registerTimeseries(schema);
+          // register the queried node to release resources
+          ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
+          logger.debug("{}: queried aggregation {} of {} from {} of {} are {}", name,
+              aggregations,
+              path, node, partitionGroup.getHeader(), results);
+          return results;
+        }
+      } catch (TException | InterruptedException | IOException e) {
+        logger.error("{}: Cannot query {} from {}", name, path, node, e);
+      }
+    }
+    throw new StorageEngineException(
+        new RequestTimeOutException("Query " + path + " in " + partitionGroup));
+  }
+
+
+  /**
+   * Get the data groups that should be queried when querying "path" with "filter". First, the time
+   * interval qualified by the filter will be extracted. If any side of the interval is open, query
+   * all groups. Otherwise compute all involved groups w.r.t. the time partitioning.
+   *
+   * @param filter
+   * @param path
+   * @return
+   * @throws StorageEngineException
+   */
+  private List<PartitionGroup> routeFilter(Filter filter, Path path) throws
+      StorageEngineException {
+    List<PartitionGroup> partitionGroups = new ArrayList<>();
+    Intervals intervals = PartitionUtils.extractTimeInterval(filter);
+    long firstLB = intervals.getLowerBound(0);
+    long lastUB = intervals.getUpperBound(intervals.getIntervalSize() - 1);
+
+    if (firstLB == Long.MIN_VALUE || lastUB == Long.MAX_VALUE) {
+      // as there is no TimeLowerBound or TimeUpperBound, the query should be broadcast to every
+      // group
+      // TODO-Cluster: cache the AllGroups in PartitionTable?
+      for (Node node : partitionTable.getAllNodes()) {
+        partitionGroups.add(partitionTable.getHeaderGroup(node));
+      }
+    } else {
+      // compute the related data groups of all intervals
+      // TODO-Cluster: change to a broadcast when the computation is too expensive
+      try {
+        String storageGroupName = MManager.getInstance()
+            .getStorageGroupName(path.getFullPath());
+        Set<Node> groupHeaders = new HashSet<>();
+        for (int i = 0; i < intervals.getIntervalSize(); i++) {
+          // compute the headers of groups involved in every interval
+          PartitionUtils.getIntervalHeaders(storageGroupName, intervals.getLowerBound(i),
+              intervals.getUpperBound(i), partitionTable, groupHeaders);
+        }
+        // translate the headers to groups
+        for (Node groupHeader : groupHeaders) {
+          partitionGroups.add(partitionTable.getHeaderGroup(groupHeader));
+        }
+      } catch (MetadataException e) {
+        throw new StorageEngineException(e);
+      }
+    }
+    return partitionGroups;
+  }
+
+
+  /**
+   * Query one node in "partitionGroup" for data of "path" with "timeFilter" and "valueFilter". If
+   * "partitionGroup" contains the local node, a local reader will be returned. Otherwise a remote
+   * reader will be returned.
+   *
+   * @param partitionGroup
+   * @param path
+   * @param timeFilter     nullable
+   * @param valueFilter    nullable
+   * @param context
+   * @param dataType
+   * @return
+   * @throws IOException
+   * @throws StorageEngineException
+   */
+  private IPointReader getSeriesReader(PartitionGroup partitionGroup, Path path,
+      Filter timeFilter, Filter valueFilter, QueryContext context, TSDataType dataType)
+      throws IOException,
+      StorageEngineException {
+    if (partitionGroup.contains(thisNode)) {
+      // the target storage group contains this node, perform a local query
+      DataGroupMember dataGroupMember = getLocalDataMember(partitionGroup.getHeader(),
+          null, String.format("Query: %s, time filter: %s, queryId: %d", path, timeFilter,
+              context.getQueryId()));
+      logger.debug("{}: creating a local reader for {}#{}", name, path.getFullPath(),
+          context.getQueryId());
+      return dataGroupMember
+          .getSeriesPointReader(path, dataType, timeFilter, valueFilter, context);
+    } else {
+      return getRemoteSeriesPointReader(timeFilter, valueFilter, dataType, path, partitionGroup,
+          context);
+    }
+  }
+
+  /**
+   * Query a remote node in "partitionGroup" to get the reader of "path" with "timeFilter" and
+   * "valueFilter". Firstly, a request will be sent to that node to construct a reader there, then
+   * the id of the reader will be returned so that we can fetch data from that node using the reader
+   * id.
+   *
+   * @param timeFilter     nullable
+   * @param valueFilter    nullable
+   * @param dataType
+   * @param path
+   * @param partitionGroup
+   * @param context
+   * @return
+   * @throws IOException
+   * @throws StorageEngineException
+   */
+  private IPointReader getRemoteSeriesPointReader(Filter timeFilter,
+      Filter valueFilter, TSDataType dataType, Path path,
+      PartitionGroup partitionGroup,
+      QueryContext context)
+      throws IOException, StorageEngineException {
+    // query a remote node
+    AtomicReference<Long> result = new AtomicReference<>();
+    SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
+    if (timeFilter != null) {
+      request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
+    }
+    if (valueFilter != null) {
+      request.setValueFilterBytes(SerializeUtils.serializeFilter(valueFilter));
+    }
+    request.setPath(path.getFullPath());
+    request.setHeader(partitionGroup.getHeader());
+    request.setQueryId(context.getQueryId());
+    request.setRequester(thisNode);
+    request.setDataTypeOrdinal(dataType.ordinal());
+
+    // reorder the nodes such that the nodes that suit the query best (have lowest latenct or
+    // highest throughput) will be put to the front
+    List<Node> orderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+    for (Node node : orderedNodes) {
+      logger.debug("{}: querying {} from {}", name, path, node);
+      GenericHandler<Long> handler = new GenericHandler<>(node, result);
+      DataClient client = getDataClient(node);
+      try {
+        synchronized (result) {
+          result.set(null);
+          client.querySingleSeries(request, handler);
+          result.wait(connectionTimeoutInMS);
+        }
+        Long readerId = result.get();
+        if (readerId != null) {
+          if (readerId != -1) {
+            // record the queried node so that the resources can be released later
+            ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
+            logger.debug("{}: get a readerId {} for {} from {}", name, readerId, path, node);
+            return new RemoteSimpleSeriesReader(readerId, node, partitionGroup.getHeader(), this,
+                dataType);
           } else {
-            result.add(dataType);
+            // the id being -1 means there is no satisfying data on the remote node, create an
+            // empty reader to reduce further communication
+            logger.debug("{}: no data for {} from {}", name, path, node);
+            return new EmptyReader();
           }
         }
-        return result;
+      } catch (TException | InterruptedException e) {
+        logger.error("{}: Cannot query {} from {}", name, path, node, e);
+      }
+    }
+    throw new StorageEngineException(
+        new RequestTimeOutException("Query " + path + " in " + partitionGroup));
+  }
+
+  private ClientPool getDataClientPool() {
+    return dataClientPool;
+  }
+
+
+  /**
+   * Get all paths after removing wildcards in the path
+   *
+   * @param originPath a path potentially with wildcard
+   * @return all paths after removing wildcards in the path
+   */
+  public List<String> getMatchedPaths(String originPath) throws MetadataException {
+    if (!originPath.contains(PATH_WILDCARD)) {
+      // path without wildcards does not need to be processed
+      return Collections.singletonList(originPath);
+    }
+    // make sure this node knows all storage groups
+    syncLeader();
+    // get all storage groups this path may belong to
+    // the key is the storage group name and the value is the path to be queried with storage group
+    // added, e.g:
+    // "root.*" will be translated into:
+    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
+    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(originPath);
+    logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
+    List<String> ret = getMatchedPaths(sgPathMap);
+    logger.debug("The paths of path {} are {}", originPath, ret);
+    return ret;
+  }
+
+  /**
+   * Get all devices after removing wildcards in the path
+   *
+   * @param originPath a path potentially with wildcard
+   * @return all paths after removing wildcards in the path
+   */
+  public Set<String> getMatchedDevices(String originPath) throws MetadataException {
+    // make sure this node knows all storage groups
+    syncLeader();
+    // get all storage groups this path may belong to
+    // the key is the storage group name and the value is the path to be queried with storage group
+    // added, e.g:
+    // "root.*" will be translated into:
+    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
+    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(originPath);
+    logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
+    Set<String> ret = getMatchedDevices(sgPathMap);
+    logger.debug("The devices of path {} are {}", originPath, ret);
+
+    return ret;
+  }
+
+  /**
+   * Split the paths by the data group they belong to and query them from the groups separately.
+   *
+   * @param sgPathMap the key is the storage group name and the value is the path to be queried with
+   *                  storage group added
+   * @return a collection of all queried paths
+   * @throws MetadataException
+   */
+  private List<String> getMatchedPaths(Map<String, String> sgPathMap)
+      throws MetadataException {
+    List<String> result = new ArrayList<>();
+    // split the paths by the data group they belong to
+    Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
+    for (Entry<String, String> sgPathEntry : sgPathMap.entrySet()) {
+      String storageGroupName = sgPathEntry.getKey();
+      String pathUnderSG = sgPathEntry.getValue();
+      // find the data group that should hold the timeseries schemas of the storage group
+      PartitionGroup partitionGroup = partitionTable.route(storageGroupName, 0);
+      if (partitionGroup.contains(thisNode)) {
+        // this node is a member of the group, perform a local query after synchronizing with the
+        // leader
+        getLocalDataMember(partitionGroup.getHeader()).syncLeader();
+        List<String> allTimeseriesName = MManager.getInstance().getAllTimeseriesName(pathUnderSG);
+        logger.debug("{}: get matched paths of {} locally, result {}", name, partitionGroup,
+            allTimeseriesName);
+        result.addAll(allTimeseriesName);
+      } else {
+        // batch the queries of the same group to reduce communication
+        groupPathMap.computeIfAbsent(partitionGroup, p -> new ArrayList<>()).add(pathUnderSG);
       }
     }
 
-      /**
-       * Get the data types of "paths". If "aggregation" is not null, every path will use the
-       * aggregation.
-       * First get types locally and if some paths does not exists, pull them from other nodes.
-       * @param pathStrs
-       * @param aggregation
-       * @return
-       * @throws MetadataException
-       */
-      public List<TSDataType> getSeriesTypesByString (List < String > pathStrs, String aggregation) throws
-      MetadataException {
+    // query each data group separately
+    for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry : groupPathMap.entrySet()) {
+      PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
+      List<String> pathsToQuery = partitionGroupPathEntry.getValue();
+      AtomicReference<List<String>> remoteResult = new AtomicReference<>();
+
+      // choose the node with lowest latency or highest throughput
+      List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+      for (Node node : coordinatedNodes) {
         try {
-          // try locally first
-          return SchemaUtils.getSeriesTypesByString(pathStrs, aggregation);
-        } catch (PathNotExistException e) {
-          // pull schemas remotely
-          List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStrs);
-          // TODO-Cluster: should we register the schemas locally?
-          if (schemas.isEmpty()) {
-            // if one timeseries cannot be found remotely, too, it does not exist
-            throw e;
-          }
-
-          // consider the aggregations to get the real data type
-          List<TSDataType> result = new ArrayList<>();
-          // aggregations like first/last value does not have fixed data types and will return a null
-          TSDataType aggregationType = getAggregationType(aggregation);
-          for (MeasurementSchema schema : schemas) {
-            if (aggregationType == null) {
-              result.add(schema.getType());
-            } else {
-              result.add(aggregationType);
-            }
-            SchemaUtils.registerTimeseries(schema);
-          }
-          return result;
-        }
-      }
-
-      /**
-       * Create an IReaderByTimestamp that can read the data of "path" by timestamp in the whole
-       * cluster. This will query every group and merge the result from them.
-       * @param path
-       * @param dataType
-       * @param context
-       * @return
-       * @throws StorageEngineException
-       */
-      public IReaderByTimestamp getReaderByTimestamp (Path path, TSDataType dataType,
-          QueryContext context)
-      throws StorageEngineException {
-        // make sure the partition table is new
-        syncLeader();
-        // get all data groups
-        List<PartitionGroup> partitionGroups = routeFilter(null, path);
-        if (logger.isDebugEnabled()) {
-          logger.debug("{}: Sending query of {} to {} groups", name, path, partitionGroups.size());
-        }
-        List<IReaderByTimestamp> readers = new ArrayList<>();
-        for (PartitionGroup partitionGroup : partitionGroups) {
-          // query each group to get a reader in that group
-          readers.add(getSeriesReaderByTime(partitionGroup, path, context, dataType));
-        }
-        // merge the readers
-        return new MergedReaderByTime(readers);
-      }
-
-      /**
-       * Create a IReaderByTimestamp that read data of "path" by timestamp in the given group. If the
-       * local node is a member of that group, query locally. Otherwise create a remote reader
-       * pointing to one node in that group.
-       * @param partitionGroup
-       * @param path
-       * @param context
-       * @param dataType
-       * @return
-       * @throws StorageEngineException
-       */
-      private IReaderByTimestamp getSeriesReaderByTime (PartitionGroup partitionGroup, Path path,
-          QueryContext context, TSDataType dataType) throws StorageEngineException {
-        if (partitionGroup.contains(thisNode)) {
-          // the target storage group contains this node, perform a local query
-          DataGroupMember dataGroupMember = getLocalDataMember(partitionGroup.getHeader());
-          logger.debug("{}: creating a local reader for {}#{}", name, path.getFullPath(),
-              context.getQueryId());
-          return dataGroupMember.getReaderByTimestamp(path, dataType, context);
-        } else {
-          return getRemoteReaderByTimestamp(path, dataType, partitionGroup, context);
-        }
-      }
-
-      /**
-       * Create a IReaderByTimestamp that read data of "path" by timestamp in the given group that
-       * does not contain the local node. Send a request to one node in that group to build a reader
-       * and use that reader's id to build a remote reader.
-       * @param path
-       * @param dataType
-       * @param partitionGroup
-       * @param context
-       * @return
-       * @throws StorageEngineException
-       */
-      private IReaderByTimestamp getRemoteReaderByTimestamp (
-          Path path, TSDataType dataType, PartitionGroup partitionGroup,
-          QueryContext context) throws StorageEngineException {
-        // query a remote node
-        AtomicReference<Long> result = new AtomicReference<>();
-        SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
-        request.setPath(path.getFullPath());
-        request.setHeader(partitionGroup.getHeader());
-        request.setQueryId(context.getQueryId());
-        request.setRequester(thisNode);
-        request.setDataTypeOrdinal(dataType.ordinal());
-
-        for (Node node : partitionGroup) {
-          logger.debug("{}: querying {} from {}", name, path, node);
-          GenericHandler<Long> handler = new GenericHandler<>(node, result);
-          try {
-            DataClient client = getDataClient(node);
-            synchronized (result) {
-              result.set(null);
-              client.querySingleSeriesByTimestamp(request, handler);
-              result.wait(connectionTimeoutInMS);
-            }
-            Long readerId = result.get();
-            if (readerId != null) {
-              // register the node so the remote resources can be released
-              ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
-              logger.debug("{}: get a readerId {} for {} from {}", name, readerId, path, node);
-              return new RemoteSeriesReaderByTimestamp(readerId, node, partitionGroup.getHeader(),
-                  this);
-            }
-          } catch (TException | InterruptedException | IOException e) {
-            logger.error("{}: Cannot query {} from {}", name, path, node, e);
-          }
-        }
-        throw new StorageEngineException(
-            new RequestTimeOutException("Query " + path + " in " + partitionGroup));
-      }
-
-      /**
-       * Create a ManagedSeriesReader that can read the data of "path" with filters in the whole
-       * cluster. The data groups that should be queried will be determined by the timeFilter, then
-       * for each group a series reader will be created, and finally all such readers will be merged
-       * into one.
-       * @param path
-       * @param dataType
-       * @param timeFilter nullable, when null, all data groups will be queried
-       * @param valueFilter nullable
-       * @param context
-       * @return
-       * @throws StorageEngineException
-       */
-      public ManagedSeriesReader getSeriesReader (Path path, TSDataType dataType, Filter timeFilter,
-          Filter valueFilter, QueryContext context)
-      throws StorageEngineException {
-        // make sure the partition table is new
-        syncLeader();
-        // find the groups that should be queried using the timeFilter
-        List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
-        if (logger.isDebugEnabled()) {
-          logger.debug("{}: Sending data query of {} to {} groups", name, path,
-              partitionGroups.size());
-        }
-        ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
-        try {
-          // build a reader for each group and merge them
-          for (PartitionGroup partitionGroup : partitionGroups) {
-            IPointReader seriesReader = getSeriesReader(partitionGroup, path, timeFilter,
-                valueFilter,
-                context, dataType);
-            if (seriesReader.hasNextTimeValuePair()) {
-              // only add readers that have data, and they should basically not overlap with each
-              // other (from different time partitions) so the priority does not matter
-              mergeReader.addReader(seriesReader, 0);
-            }
-          }
-        } catch (IOException e) {
-          throw new StorageEngineException(e);
-        }
-        return mergeReader;
-      }
-
-      /**
-       * Perform "aggregations" over "path" in some data groups and merge the results. The groups to
-       * be queried is determined by "timeFilter".
-       * @param path
-       * @param aggregations
-       * @param dataType
-       * @param timeFilter nullable, when null, all groups will be queried
-       * @param context
-       * @return
-       * @throws StorageEngineException
-       */
-      public List<AggregateResult> getAggregateResult (Path path, List < String > aggregations,
-          TSDataType dataType, Filter timeFilter,
-          QueryContext context) throws StorageEngineException {
-        // make sure the partition table is new
-        syncLeader();
-        List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
-        if (logger.isDebugEnabled()) {
-          logger.debug("{}: Sending aggregation query of {} to {} groups", name, path,
-              partitionGroups.size());
-        }
-        List<AggregateResult> results = null;
-        // get the aggregation result of each group and merge them
-        for (PartitionGroup partitionGroup : partitionGroups) {
-          List<AggregateResult> groupResult = getAggregateResult(path, aggregations, dataType,
-              timeFilter, partitionGroup, context);
-          if (results == null) {
-            results = groupResult;
-          } else {
-            for (int i = 0; i < results.size(); i++) {
-              results.get(i).merge(groupResult.get(i));
-            }
-          }
-        }
-        return results;
-      }
-
-      /**
-       * Perform "aggregations" over "path" in "partitionGroup". If the local node is the member of
-       * the group, do it locally, otherwise pull the results from a remote node.
-       * @param path
-       * @param aggregations
-       * @param dataType
-       * @param timeFilter nullable
-       * @param partitionGroup
-       * @param context
-       * @return
-       * @throws StorageEngineException
-       */
-      private List<AggregateResult> getAggregateResult (Path path, List < String > aggregations,
-          TSDataType dataType, Filter timeFilter, PartitionGroup partitionGroup,
-          QueryContext context) throws StorageEngineException {
-        if (!partitionGroup.contains(thisNode)) {
-          return getRemoteAggregateResult(path, aggregations, dataType, timeFilter, partitionGroup,
-              context);
-        } else {
-          // perform the aggregations locally
-          DataGroupMember dataMember = getLocalDataMember(partitionGroup.getHeader());
-          try {
-            logger
-                .debug("{}: querying aggregation {} of {} in {} locally", name, aggregations, path,
-                    partitionGroup.getHeader());
-            List<AggregateResult> aggrResult = dataMember
-                .getAggrResult(aggregations, dataType, path.getFullPath(), timeFilter, context);
-            logger
-                .debug("{}: queried aggregation {} of {} in {} locally are {}", name, aggregations,
-                    path, partitionGroup.getHeader(), aggrResult);
-            return aggrResult;
-          } catch (IOException | QueryProcessException | LeaderUnknownException e) {
-            throw new StorageEngineException(e);
-          }
-        }
-      }
-
-      /**
-       * Perform "aggregations" over "path" in a remote data group "partitionGroup". Query one node
-       * in the group to get the results.
-       * @param path
-       * @param aggregations
-       * @param dataType
-       * @param timeFilter nullable
-       * @param partitionGroup
-       * @param context
-       * @return
-       * @throws StorageEngineException
-       */
-      private List<AggregateResult> getRemoteAggregateResult (Path
-      path, List < String > aggregations,
-          TSDataType dataType, Filter timeFilter, PartitionGroup partitionGroup,
-          QueryContext context) throws StorageEngineException {
-        AtomicReference<List<ByteBuffer>> resultReference = new AtomicReference<>();
-        GetAggrResultRequest request = new GetAggrResultRequest();
-        request.setPath(path.getFullPath());
-        request.setAggregations(aggregations);
-        request.setDataTypeOrdinal(dataType.ordinal());
-        request.setQueryId(context.getQueryId());
-        request.setRequestor(thisNode);
-        request.setHeader(partitionGroup.getHeader());
-        if (timeFilter != null) {
-          request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
-        }
-
-        for (Node node : partitionGroup) {
-          logger.debug("{}: querying aggregation {} of {} from {} of {}", name, aggregations, path,
-              node, partitionGroup.getHeader());
-          GenericHandler<List<ByteBuffer>> handler = new GenericHandler<>(node, resultReference);
-          try {
-            DataClient client = getDataClient(node);
-            synchronized (resultReference) {
-              resultReference.set(null);
-              client.getAggrResult(request, handler);
-              resultReference.wait(connectionTimeoutInMS);
-            }
-            // each buffer is an AggregationResult
-            List<ByteBuffer> resultBuffers = resultReference.get();
-            if (resultBuffers != null) {
-              List<AggregateResult> results = new ArrayList<>(resultBuffers.size());
-              for (ByteBuffer resultBuffer : resultBuffers) {
-                AggregateResult result = AggregateResult.deserializeFrom(resultBuffer);
-                results.add(result);
-              }
-              // register the queried node to release resources
-              ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
-              logger.debug("{}: queried aggregation {} of {} from {} of {} are {}", name,
-                  aggregations,
-                  path, node, partitionGroup.getHeader(), results);
-              return results;
-            }
-          } catch (TException | InterruptedException | IOException e) {
-            logger.error("{}: Cannot query {} from {}", name, path, node, e);
-          }
-        }
-        throw new StorageEngineException(
-            new RequestTimeOutException("Query " + path + " in " + partitionGroup));
-      }
-
-      /**
-       * Get the data groups that should be queried when querying "path" with "filter".
-       * First, the time interval qualified by the filter will be extracted. If any side of the
-       * interval is open, query all groups. Otherwise compute all involved groups w.r.t. the time
-       * partitioning.
-       * @param filter
-       * @param path
-       * @return
-       * @throws StorageEngineException
-       */
-      private List<PartitionGroup> routeFilter (Filter filter, Path path) throws
-      StorageEngineException {
-        List<PartitionGroup> partitionGroups = new ArrayList<>();
-        Intervals intervals = PartitionUtils.extractTimeInterval(filter);
-        long firstLB = intervals.getLowerBound(0);
-        long lastUB = intervals.getUpperBound(intervals.getIntervalSize() - 1);
-
-        if (firstLB == Long.MIN_VALUE || lastUB == Long.MAX_VALUE) {
-          // as there is no TimeLowerBound or TimeUpperBound, the query should be broadcast to every
-          // group
-          // TODO-Cluster: cache the AllGroups in PartitionTable?
-          for (Node node : partitionTable.getAllNodes()) {
-            partitionGroups.add(partitionTable.getHeaderGroup(node));
-          }
-        } else {
-          // compute the related data groups of all intervals
-          // TODO-Cluster: change to a broadcast when the computation is too expensive
-          try {
-            String storageGroupName = MManager.getInstance()
-                .getStorageGroupName(path.getFullPath());
-            Set<Node> groupHeaders = new HashSet<>();
-            for (int i = 0; i < intervals.getIntervalSize(); i++) {
-              // compute the headers of groups involved in every interval
-              PartitionUtils.getIntervalHeaders(storageGroupName, intervals.getLowerBound(i),
-                  intervals.getUpperBound(i), partitionTable, groupHeaders);
-            }
-            // translate the headers to groups
-            for (Node groupHeader : groupHeaders) {
-              partitionGroups.add(partitionTable.getHeaderGroup(groupHeader));
-            }
-          } catch (MetadataException e) {
-            throw new StorageEngineException(e);
-          }
-        }
-        return partitionGroups;
-      }
-
-      // get SeriesReader from a PartitionGroup
-      private IPointReader getSeriesReader (PartitionGroup partitionGroup, Path path,
-          Filter timeFilter, Filter valueFilter, QueryContext context, TSDataType dataType)
-      throws IOException,
-          StorageEngineException {
-        if (partitionGroup.contains(thisNode)) {
-          // the target storage group contains this node, perform a local query
-          DataGroupMember dataGroupMember = getLocalDataMember(partitionGroup.getHeader(),
-              null, String.format("Query: %s, time filter: %s, queryId: %d", path, timeFilter,
-                  context.getQueryId()));
-          logger.debug("{}: creating a local reader for {}#{}", name, path.getFullPath(),
-              context.getQueryId());
-          return dataGroupMember
-              .getSeriesPointReader(path, dataType, timeFilter, valueFilter, context);
-        } else {
-          return getRemoteSeriesPointReader(timeFilter, valueFilter, dataType, path, partitionGroup,
-              context);
-        }
-      }
-
-      private IPointReader getRemoteSeriesPointReader (Filter timeFilter,
-          Filter valueFilter, TSDataType dataType, Path path,
-          PartitionGroup partitionGroup,
-          QueryContext context)
-      throws IOException, StorageEngineException {
-        // query a remote node
-        AtomicReference<Long> result = new AtomicReference<>();
-        SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
-        if (timeFilter != null) {
-          request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
-        }
-        if (valueFilter != null) {
-          request.setValueFilterBytes(SerializeUtils.serializeFilter(valueFilter));
-        }
-        request.setPath(path.getFullPath());
-        request.setHeader(partitionGroup.getHeader());
-        request.setQueryId(context.getQueryId());
-        request.setRequester(thisNode);
-        request.setDataTypeOrdinal(dataType.ordinal());
-
-        List<Node> orderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
-        for (Node node : orderedNodes) {
-          logger.debug("{}: querying {} from {}", name, path, node);
-          GenericHandler<Long> handler = new GenericHandler<>(node, result);
           DataClient client = getDataClient(node);
-          try {
-            synchronized (result) {
-              result.set(null);
-              client.querySingleSeries(request, handler);
-              result.wait(connectionTimeoutInMS);
-            }
-            Long readerId = result.get();
-            if (readerId != null) {
-              if (readerId != -1) {
-                ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
-                logger.debug("{}: get a readerId {} for {} from {}", name, readerId, path, node);
-                return new RemoteSimpleSeriesReader(readerId, node, partitionGroup.getHeader(),
-                    this,
-                    dataType);
-              } else {
-                // there is no satisfying data on the remote node, create an empty reader to reduce
-                // further communication
-                logger.debug("{}: no data for {} from {}", name, path, node);
-                return new EmptyReader();
-              }
-            }
-          } catch (TException | InterruptedException e) {
-            logger.error("{}: Cannot query {} from {}", name, path, node, e);
+          GenericHandler<List<String>> handler = new GenericHandler<>(node, remoteResult);
+          remoteResult.set(null);
+          synchronized (remoteResult) {
+            client.getAllPaths(partitionGroup.getHeader(), pathsToQuery, handler);
+            remoteResult.wait(connectionTimeoutInMS);
           }
+          List<String> paths = remoteResult.get();
+          logger.debug("{}: get matched paths of {} from {}, result {}", name, partitionGroup,
+              node, paths);
+          if (paths != null) {
+            result.addAll(paths);
+            // query next group
+            break;
+          }
+        } catch (IOException | TException | InterruptedException e) {
+          throw new MetadataException(e);
         }
-        throw new StorageEngineException(
-            new RequestTimeOutException("Query " + path + " in " + partitionGroup));
       }
+    }
 
-      private ClientPool getDataClientPool () {
-        return dataClientPool;
-      }
+    return result;
+  }
 
-      /**
-       * Get all paths after removing wildcards in the path
-       *
-       * @param originPath a path potentially with wildcard
-       * @return all paths after removing wildcards in the path
-       */
-      public List<String> getMatchedPaths (String originPath) throws MetadataException {
-        if (!originPath.contains(PATH_WILDCARD)) {
-          // path without wildcards does not need to be processed
-          return Collections.singletonList(originPath);
-        }
-        // make sure this node knows all storage groups
-        syncLeader();
-        // get all storage groups this path may belong to
-        Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(originPath);
-        logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
-        List<String> ret = new ArrayList<>();
-        for (Entry<String, String> entry : sgPathMap.entrySet()) {
-          String storageGroupName = entry.getKey();
-          String fullPath = entry.getValue();
-          ret.addAll(getMatchedPaths(storageGroupName, fullPath));
-        }
-        logger.debug("The paths of path {} are {}", originPath, ret);
-
-        return ret;
-      }
-
-      /**
-       * Get all devices after removing wildcards in the path
-       *
-       * @param originPath a path potentially with wildcard
-       * @return all paths after removing wildcards in the path
-       */
-      public Set<String> getMatchedDevices (String originPath) throws MetadataException {
-        // make sure this node knows all storage groups
-        syncLeader();
-        // get all storage groups this path may belong to
-        Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(originPath);
-        Set<String> ret = new HashSet<>();
-        logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
-        for (Entry<String, String> entry : sgPathMap.entrySet()) {
-          String storageGroupName = entry.getKey();
-          String fullPath = entry.getValue();
-          ret.addAll(getMatchedDevices(storageGroupName, fullPath));
-        }
-        logger.debug("The devices of path {} are {}", originPath, ret);
-
-        return ret;
-      }
-
-      private List<String> getMatchedPaths (String storageGroupName, String path)
+  /**
+   * Split the paths by the data group they belong to and query them from the groups separately.
+   *
+   * @param sgPathMap the key is the storage group name and the value is the path to be queried with
+   *                  storage group added
+   * @return a collection of all queried devices
+   * @throws MetadataException
+   */
+  private Set<String> getMatchedDevices(Map<String, String> sgPathMap)
       throws MetadataException {
-        // find the data group that should hold the timeseries schemas of the storage group
-        PartitionGroup partitionGroup = partitionTable.route(storageGroupName, 0);
-        if (partitionGroup.contains(thisNode)) {
-          // this node is a member of the group, perform a local query after synchronizing with the
-          // leader
-          getLocalDataMember(partitionGroup.getHeader(), null, "Get paths of " + path)
-              .syncLeader();
-          List<String> allTimeseriesName = MManager.getInstance().getAllTimeseriesName(path);
-          logger.debug("{}: get matched paths of {} locally, result {}", name, partitionGroup,
-              allTimeseriesName);
-          return allTimeseriesName;
-        } else {
-          AtomicReference<List<String>> result = new AtomicReference<>();
-
-          List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
-          for (Node node : coordinatedNodes) {
-            try {
-              DataClient client = getDataClient(node);
-              GenericHandler<List<String>> handler = new GenericHandler<>(node, result);
-              result.set(null);
-              synchronized (result) {
-                client.getAllPaths(partitionGroup.getHeader(), path, handler);
-                result.wait(connectionTimeoutInMS);
-              }
-              List<String> paths = result.get();
-              logger.debug("{}: get matched paths of {} from {}, result {}", name, partitionGroup,
-                  node, paths);
-              if (paths != null) {
-                return paths;
-              }
-            } catch (IOException | TException | InterruptedException e) {
-              throw new MetadataException(e);
-            }
-          }
-        }
-        return Collections.emptyList();
+    Set<String> result = new HashSet<>();
+    // split the paths by the data group they belong to
+    Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
+    for (Entry<String, String> sgPathEntry : sgPathMap.entrySet()) {
+      String storageGroupName = sgPathEntry.getKey();
+      String pathUnderSG = sgPathEntry.getValue();
+      // find the data group that should hold the timeseries schemas of the storage group
+      PartitionGroup partitionGroup = partitionTable.route(storageGroupName, 0);
+      if (partitionGroup.contains(thisNode)) {
+        // this node is a member of the group, perform a local query after synchronizing with the
+        // leader
+        getLocalDataMember(partitionGroup.getHeader()).syncLeader();
+        Set<String> allDevices = MManager.getInstance().getDevices(pathUnderSG);
+        logger.debug("{}: get matched paths of {} locally, result {}", name, partitionGroup,
+            allDevices);
+        result.addAll(allDevices);
+      } else {
+        // batch the queries of the same group to reduce communication
+        groupPathMap.computeIfAbsent(partitionGroup, p -> new ArrayList<>()).add(pathUnderSG);
       }
+    }
 
-      private Set<String> getMatchedDevices (String storageGroupName, String path)
-      throws MetadataException {
-        // find the data group that should hold the timeseries schemas of the storage group
-        PartitionGroup partitionGroup = partitionTable.route(storageGroupName, 0);
-        if (partitionGroup.contains(thisNode)) {
-          // this node is a member of the group, perform a local query after synchronizing with the
-          // leader
-          getLocalDataMember(partitionGroup.getHeader(), null, "Get devices of " + path)
-              .syncLeader();
-          Set<String> devices = MManager.getInstance().getDevices(path);
-          logger.debug("{}: get matched devices of {} locally, result {}", name, path,
-              devices);
-          return devices;
-        } else {
-          AtomicReference<Set<String>> result = new AtomicReference<>();
+    // query each data group separately
+    for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry : groupPathMap.entrySet()) {
+      PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
+      List<String> pathsToQuery = partitionGroupPathEntry.getValue();
+      AtomicReference<Set<String>> remoteResult = new AtomicReference<>();
 
-          List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
-          for (Node node : coordinatedNodes) {
-            try {
-              DataClient client = getDataClient(node);
-              GenericHandler<Set<String>> handler = new GenericHandler<>(node, result);
-              result.set(null);
-              synchronized (result) {
-                client.getAllDevices(partitionGroup.getHeader(), path, handler);
-                result.wait(connectionTimeoutInMS);
-              }
-              Set<String> paths = result.get();
-              logger.debug("{}: get matched devices of {} from {}, result {}", name, partitionGroup,
-                  node, paths);
-              if (paths != null) {
-                return paths;
-              }
-            } catch (IOException | TException | InterruptedException e) {
-              throw new MetadataException(e);
-            }
-          }
-        }
-        return Collections.emptySet();
-      }
-
-      public Map<Node, Boolean> getAllNodeStatus () {
-        if (getPartitionTable() == null) {
-          // the cluster is being built.
-          return null;
-        }
-        Map<Node, Boolean> nodeStatus = new HashMap<>();
-        for (Node node : allNodes) {
-          nodeStatus.put(node, thisNode == node);
-        }
-        NodeStatusHandler nodeStatusHandler = new NodeStatusHandler(nodeStatus);
+      // choose the node with lowest latency or highest throughput
+      List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+      for (Node node : coordinatedNodes) {
         try {
-          synchronized (nodeStatus) {
-            for (Node node : allNodes) {
-              TSMetaService.AsyncClient client = (AsyncClient) connectNode(node);
-              if (node != thisNode && client != null) {
-                client.checkAlive(nodeStatusHandler);
-              }
-            }
-            nodeStatus.wait(ClusterConstant.CHECK_ALIVE_TIME_OUT_MS);
+          DataClient client = getDataClient(node);
+          GenericHandler<Set<String>> handler = new GenericHandler<>(node, remoteResult);
+          remoteResult.set(null);
+          synchronized (remoteResult) {
+            client.getAllDevices(partitionGroup.getHeader(), pathsToQuery, handler);
+            remoteResult.wait(connectionTimeoutInMS);
           }
-        } catch (InterruptedException | TException e) {
-          logger.warn("Cannot get the status of all nodes");
-        }
-        return nodeStatus;
-      }
-
-      @Override
-      public void queryNodeStatus (AsyncMethodCallback < TNodeStatus > resultHandler) {
-        resultHandler.onComplete(new TNodeStatus());
-      }
-
-      @Override
-      public void checkAlive (AsyncMethodCallback < Node > resultHandler) {
-        resultHandler.onComplete(thisNode);
-      }
-
-      @TestOnly
-      public void setPartitionTable (PartitionTable partitionTable){
-        this.partitionTable = partitionTable;
-        DataClusterServer dataClusterServer = getDataClusterServer();
-        if (dataClusterServer != null) {
-          dataClusterServer.setPartitionTable(partitionTable);
+          Set<String> paths = remoteResult.get();
+          logger.debug("{}: get matched paths of {} from {}, result {}", name, partitionGroup,
+              node, paths);
+          if (paths != null) {
+            result.addAll(paths);
+            // query next group
+            break;
+          }
+        } catch (IOException | TException | InterruptedException e) {
+          throw new MetadataException(e);
         }
       }
+    }
 
-      @Override
-      public void removeNode (Node node, AsyncMethodCallback < Long > resultHandler){
-        if (partitionTable == null) {
-          logger.info("Cannot add node now because the partition table is not set");
-          resultHandler.onError(new PartitionTableUnavailableException(thisNode));
-          return;
-        }
+    return result;
+  }
 
-        // try to process the request locally, if it cannot be processed locally, forward it
-        if (processRemoveNodeLocally(node, resultHandler)) {
-          return;
-        }
-
-        if (character == NodeCharacter.FOLLOWER && leader != null) {
-          logger.info("Forward the node removal request of {} to leader {}", node, leader);
-          if (forwardRemoveNode(node, resultHandler)) {
-            return;
-          }
-        }
-        resultHandler.onError(new LeaderUnknownException(getAllNodes()));
-      }
-
-      private boolean forwardRemoveNode (Node node, AsyncMethodCallback resultHandler){
-        TSMetaService.AsyncClient client = (TSMetaService.AsyncClient) connectNode(leader);
-        if (client != null) {
-          try {
-            client.removeNode(node, new GenericForwardHandler(resultHandler));
-            return true;
-          } catch (TException e) {
-            logger.warn("Cannot connect to node {}", node, e);
-          }
-        }
-        return false;
-      }
-
-      private boolean processRemoveNodeLocally (Node node, AsyncMethodCallback resultHandler){
-        if (character == NodeCharacter.LEADER) {
-          if (allNodes.size() <= ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum()) {
-            resultHandler.onComplete(Response.RESPONSE_CLUSTER_TOO_SMALL);
-            return true;
-          }
-
-          Node target = null;
-          synchronized (allNodes) {
-            for (Node n : allNodes) {
-              if (n.ip.equals(node.ip) && n.metaPort == node.metaPort) {
-                target = n;
-                break;
-              }
-            }
-          }
-
-          if (target == null) {
-            logger.debug("Node {} is not in the cluster", node);
-            resultHandler.onComplete(Response.RESPONSE_REJECT);
-            return true;
-          }
-
-          // node removal must be serialized
-          synchronized (logManager) {
-            RemoveNodeLog removeNodeLog = new RemoveNodeLog();
-            removeNodeLog.setCurrLogTerm(getTerm().get());
-            removeNodeLog.setPreviousLogIndex(logManager.getLastLogIndex());
-            removeNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
-            removeNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-
-            removeNodeLog.setRemovedNode(target);
-
-            logManager.appendLog(removeNodeLog);
-
-            logger.info("Send the node removal request of {} to other nodes", target);
-            AppendLogResult result = sendLogToAllGroups(removeNodeLog);
-
-            switch (result) {
-              case OK:
-                logger.info("Removal request of {} is accepted", target);
-                logManager.commitLog(removeNodeLog.getCurrLogIndex());
-                resultHandler.onComplete(Response.RESPONSE_AGREE);
-                return true;
-              case TIME_OUT:
-                logger.info("Removal request of {} timed out", target);
-                resultHandler.onError(new RequestTimeOutException(removeNodeLog));
-                logManager.removeLastLog();
-                return true;
-              case LEADERSHIP_STALE:
-              default:
-                logManager.removeLastLog();
-                // if the leader is found, forward to it
-            }
-          }
-        }
-        return false;
-      }
-
-      public void applyRemoveNode (Node oldNode){
-        synchronized (allNodes) {
-          if (allNodes.contains(oldNode)) {
-            logger.debug("Removing a node {} from {}", oldNode, allNodes);
-            allNodes.remove(oldNode);
-            idNodeMap.remove(oldNode.nodeIdentifier);
-
-            // update the partition table
-            NodeRemovalResult result = partitionTable.removeNode(oldNode);
-
-            getDataClusterServer().removeNode(oldNode, result);
-            if (oldNode.equals(leader)) {
-              setCharacter(NodeCharacter.ELECTOR);
-              lastHeartbeatReceivedTime = Long.MIN_VALUE;
-            }
-
-            if (oldNode.equals(thisNode)) {
-              // use super.stop() so that the data server will not be closed
-              super.stop();
-              if (clientServer != null) {
-                clientServer.stop();
-              }
-            } else if (thisNode.equals(leader)) {
-              // as the old node is removed, it cannot know this by heartbeat, so it should be
-              // directly kicked out of the cluster
-              MetaClient metaClient = (MetaClient) connectNode(oldNode);
-              try {
-                metaClient.exile(new GenericHandler<>(oldNode, null));
-              } catch (TException e) {
-                logger.warn("Cannot inform {} its removal", oldNode, e);
-              }
-            }
-
-            savePartitionTable();
-          }
-        }
-      }
-
-      @Override
-      public void exile (AsyncMethodCallback < Void > resultHandler) {
-        applyRemoveNode(thisNode);
-        resultHandler.onComplete(null);
-      }
-
-      private MetaMemberReport genMemberReport () {
-        return new MetaMemberReport(character, leader, term.get(),
-            logManager.getLastLogTerm(), logManager.getLastLogIndex(), readOnly);
-      }
-
-      private NodeReport genNodeReport () {
-        NodeReport report = new NodeReport(thisNode);
-        report.setMetaMemberReport(genMemberReport());
-        report.setDataMemberReportList(dataClusterServer.genMemberReports());
-        return report;
-      }
-
-      @Override
-      public void setAllNodes (List < Node > allNodes) {
-        super.setAllNodes(allNodes);
-        idNodeMap = new HashMap<>();
+  public Map<Node, Boolean> getAllNodeStatus() {
+    if (getPartitionTable() == null) {
+      // the cluster is being built.
+      return null;
+    }
+    Map<Node, Boolean> nodeStatus = new HashMap<>();
+    for (Node node : allNodes) {
+      nodeStatus.put(node, thisNode == node);
+    }
+    NodeStatusHandler nodeStatusHandler = new NodeStatusHandler(nodeStatus);
+    try {
+      synchronized (nodeStatus) {
         for (Node node : allNodes) {
-          idNodeMap.put(node.getNodeIdentifier(), node);
-        }
-      }
-
-      /**
-       * @param header        the header of the group which the local node is in
-       * @param resultHandler can be set to null if the request is an internal request
-       * @param request       the toString() of this parameter should explain what the request is and it
-       *                      is only used in logs for tracing
-       * @return
-       */
-      protected DataGroupMember getLocalDataMember (Node header,
-          AsyncMethodCallback resultHandler, Object request){
-        return dataClusterServer.getDataMember(header, resultHandler, request);
-      }
-
-      protected DataGroupMember getLocalDataMember (Node header){
-        return dataClusterServer.getDataMember(header, null, "Internal call");
-      }
-
-      public DataClient getDataClient (Node node) throws IOException {
-        return (DataClient) getDataClientPool().getClient(node);
-      }
-
-      public List<GroupByExecutor> getGroupByExecutors (Path path, TSDataType dataType,
-          QueryContext context, Filter timeFilter, List < Integer > aggregationTypes)
-      throws StorageEngineException {
-        // make sure the partition table is new
-        syncLeader();
-        List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
-        if (logger.isDebugEnabled()) {
-          logger.debug("{}: Sending group by query of {} to {} groups", name, path,
-              partitionGroups.size());
-        }
-        List<GroupByExecutor> executors = new ArrayList<>();
-        for (PartitionGroup partitionGroup : partitionGroups) {
-          GroupByExecutor groupByExecutor = getGroupByExecutor(path, partitionGroup,
-              timeFilter, context, dataType, aggregationTypes);
-          executors.add(groupByExecutor);
-        }
-        return executors;
-      }
-
-      private GroupByExecutor getGroupByExecutor (Path path,
-          PartitionGroup partitionGroup, Filter timeFilter, QueryContext context, TSDataType
-      dataType,
-          List < Integer > aggregationTypes) throws StorageEngineException {
-        if (partitionGroup.contains(thisNode)) {
-          // the target storage group contains this node, perform a local query
-          DataGroupMember dataGroupMember = getLocalDataMember(partitionGroup.getHeader());
-          logger.debug("{}: creating a local group by executor for {}#{}", name,
-              path.getFullPath(), context.getQueryId());
-          return dataGroupMember
-              .getGroupByExecutor(path, dataType, timeFilter, aggregationTypes, context);
-        } else {
-          return getRemoteGroupByExecutor(timeFilter, aggregationTypes, dataType, path,
-              partitionGroup,
-              context);
-        }
-      }
-
-      private GroupByExecutor getRemoteGroupByExecutor (Filter timeFilter,
-          List < Integer > aggregationTypes, TSDataType dataType, Path path, PartitionGroup
-      partitionGroup,
-          QueryContext context) throws StorageEngineException {
-        // query a remote node
-        AtomicReference<Long> result = new AtomicReference<>();
-        GroupByRequest request = new GroupByRequest();
-        if (timeFilter != null) {
-          request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
-        }
-        request.setPath(path.getFullPath());
-        request.setHeader(partitionGroup.getHeader());
-        request.setQueryId(context.getQueryId());
-        request.setAggregationTypeOrdinals(aggregationTypes);
-        request.setDataTypeOrdinal(dataType.ordinal());
-        request.setRequestor(thisNode);
-
-        List<Node> orderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
-        for (Node node : orderedNodes) {
-          logger.debug("{}: querying group by {} from {}", name, path, node);
-          GenericHandler<Long> handler = new GenericHandler<>(node, result);
-          try {
-            DataClient client = getDataClient(node);
-            synchronized (result) {
-              result.set(null);
-              client.getGroupByExecutor(request, handler);
-              result.wait(connectionTimeoutInMS);
-            }
-            Long executorId = result.get();
-            if (executorId != null) {
-              if (executorId != -1) {
-                ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
-                logger.debug("{}: get an executorId {} for {}@{} from {}", name, executorId,
-                    aggregationTypes, path, node);
-                RemoteGroupByExecutor remoteGroupByExecutor = new RemoteGroupByExecutor(executorId,
-                    this, node, partitionGroup.getHeader());
-                for (Integer aggregationType : aggregationTypes) {
-                  remoteGroupByExecutor
-                      .addAggregateResult(AggregateResultFactory.getAggrResultByType(
-                          AggregationType.values()[aggregationType], dataType));
-                }
-                return remoteGroupByExecutor;
-              } else {
-                // there is no satisfying data on the remote node, create an empty reader to reduce
-                // further communication
-                logger.debug("{}: no data for {} from {}", name, path, node);
-                return new EmptyReader();
-              }
-            }
-          } catch (TException | InterruptedException | IOException e) {
-            logger.error("{}: Cannot query {} from {}", name, path, node, e);
+          TSMetaService.AsyncClient client = (AsyncClient) connectNode(node);
+          if (node != thisNode && client != null) {
+            client.checkAlive(nodeStatusHandler);
           }
         }
-        throw new StorageEngineException(
-            new RequestTimeOutException("Query " + path + " in " + partitionGroup));
+        nodeStatus.wait(ClusterConstant.CHECK_ALIVE_TIME_OUT_MS);
       }
+    } catch (InterruptedException | TException e) {
+      logger.warn("Cannot get the status of all nodes");
+    }
+    return nodeStatus;
+  }
+
+  /**
+   * Return the status of the node to the requester that will help the requester figure out the load
+   * of the this node and how well it may perform for a specific query.
+   *
+   * @param resultHandler
+   */
+  @Override
+  public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
+    resultHandler.onComplete(new TNodeStatus());
+  }
 
   @Override
-  public void pullTimeSeriesSchema(PullSchemaRequest request,
-      AsyncMethodCallback<PullSchemaResp> resultHandler) throws TException {
-    // TODO
+  public void checkAlive(AsyncMethodCallback<Node> resultHandler) {
+    resultHandler.onComplete(thisNode);
+  }
+
+  @TestOnly
+  public void setPartitionTable(PartitionTable partitionTable) {
+    this.partitionTable = partitionTable;
+    DataClusterServer dataClusterServer = getDataClusterServer();
+    if (dataClusterServer != null) {
+      dataClusterServer.setPartitionTable(partitionTable);
+    }
+  }
+
+  /**
+   * Process the request of removing a node from the cluster. Reject the request if partition table
+   * is unavailable or the node is not the MetaLeader and it does not know who the leader is.
+   * Otherwise (being the MetaLeader), the request will be processed locally and broadcast to every
+   * node.
+   *
+   * @param node          the node to be removed.
+   * @param resultHandler
+   */
+  @Override
+  public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
+    if (partitionTable == null) {
+      logger.info("Cannot add node now because the partition table is not set");
+      resultHandler.onError(new PartitionTableUnavailableException(thisNode));
+      return;
+    }
+
+    // try to process the request locally, if it cannot be processed locally, forward it
+    if (processRemoveNodeLocally(node, resultHandler)) {
+      return;
+    }
+
+    if (character == NodeCharacter.FOLLOWER && leader != null) {
+      logger.info("Forward the node removal request of {} to leader {}", node, leader);
+      if (forwardRemoveNode(node, resultHandler)) {
+        return;
+      }
+    }
+    resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+  }
+
+  /**
+   * Forward a node removal request to the leader.
+   *
+   * @param node          the node to be removed
+   * @param resultHandler
+   * @return true if the request is successfully forwarded, false otherwise
+   */
+  private boolean forwardRemoveNode(Node node, AsyncMethodCallback resultHandler) {
+    TSMetaService.AsyncClient client = (TSMetaService.AsyncClient) connectNode(leader);
+    if (client != null) {
+      try {
+        client.removeNode(node, resultHandler);
+        return true;
+      } catch (TException e) {
+        logger.warn("Cannot connect to node {}", node, e);
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Process a node removal request locally and broadcast it to the whole cluster. The removal will
+   * be rejected if number of nodes will fall below half of the replication number after this
+   * operation.
+   *
+   * @param node          the node to be removed.
+   * @param resultHandler
+   * @return true if is successfully processed, false if further forwarding is required
+   */
+  private boolean processRemoveNodeLocally(Node node, AsyncMethodCallback resultHandler) {
+    if (character == NodeCharacter.LEADER) {
+      // if we cannot have enough replica after the removal, reject it
+      if (allNodes.size() <= ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum()) {
+        resultHandler.onComplete(Response.RESPONSE_CLUSTER_TOO_SMALL);
+        return true;
+      }
+
+      // find the node to be removed in the node list
+      Node target = null;
+      synchronized (allNodes) {
+        for (Node n : allNodes) {
+          if (n.ip.equals(node.ip) && n.metaPort == node.metaPort) {
+            target = n;
+            break;
+          }
+        }
+      }
+
+      if (target == null) {
+        logger.debug("Node {} is not in the cluster", node);
+        resultHandler.onComplete(Response.RESPONSE_REJECT);
+        return true;
+      }
+
+      // node removal must be serialized to reduce potential concurrency problem
+      synchronized (logManager) {
+        RemoveNodeLog removeNodeLog = new RemoveNodeLog();
+        removeNodeLog.setCurrLogTerm(getTerm().get());
+        removeNodeLog.setPreviousLogIndex(logManager.getLastLogIndex());
+        removeNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
+        removeNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+
+        removeNodeLog.setRemovedNode(target);
+
+        logManager.appendLog(removeNodeLog);
+
+        int retryTime = 1;
+        while (true) {
+          logger.info("Send the node removal request of {} to other nodes, retry time: {}", target,
+              retryTime);
+          AppendLogResult result = sendLogToAllGroups(removeNodeLog);
+
+          switch (result) {
+            case OK:
+              logger.info("Removal request of {} is accepted", target);
+              logManager.commitLog(removeNodeLog.getCurrLogIndex());
+              resultHandler.onComplete(Response.RESPONSE_AGREE);
+              return true;
+            case TIME_OUT:
+              logger.info("Removal request of {} timed out", target);
+              break;
+            // retry
+            case LEADERSHIP_STALE:
+            default:
+              return false;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Remove a node from the node list, partition table and update DataGroupMembers. If the removed
+   * node is the local node, also stop heartbeat and catch-up service of metadata, but the heartbeat
+   * and catch-up service of data are kept alive for other nodes to pull data. If the removed node
+   * is a leader, send an exile to the removed node so that it can know it is removed.
+   *
+   * @param oldNode the node to be removed
+   */
+  public void applyRemoveNode(Node oldNode) {
+    synchronized (allNodes) {
+      if (allNodes.contains(oldNode)) {
+        logger.debug("Removing a node {} from {}", oldNode, allNodes);
+        allNodes.remove(oldNode);
+        idNodeMap.remove(oldNode.nodeIdentifier);
+
+        // update the partition table
+        NodeRemovalResult result = partitionTable.removeNode(oldNode);
+
+        // update DataGroupMembers, as the node is removed, the members of some groups are
+        // changed and there will also be one less group
+        getDataClusterServer().removeNode(oldNode, result);
+        // the leader is removed, start the next election ASAP
+        if (oldNode.equals(leader)) {
+          setCharacter(NodeCharacter.ELECTOR);
+          lastHeartbeatReceivedTime = Long.MIN_VALUE;
+        }
+
+        if (oldNode.equals(thisNode)) {
+          // use super.stop() so that the data server will not be closed because other nodes may
+          // want to pull data from this node
+          super.stop();
+          if (clientServer != null) {
+            clientServer.stop();
+          }
+        } else if (thisNode.equals(leader)) {
+          // as the old node is removed, it cannot know this by heartbeat or log, so it should be
+          // directly kicked out of the cluster
+          MetaClient metaClient = (MetaClient) connectNode(oldNode);
+          try {
+            metaClient.exile(new GenericHandler<>(oldNode, null));
+          } catch (TException e) {
+            logger.warn("Cannot inform {} its removal", oldNode, e);
+          }
+        }
+
+        // save the updated partition table
+        savePartitionTable();
+      }
+    }
+  }
+
+  /**
+   * Process a request that the local node is removed from the cluster. As a node is removed from
+   * the cluster, it no longer receive heartbeats or logs and cannot know it has been removed, so we
+   * must tell it directly.
+   *
+   * @param resultHandler
+   */
+  @Override
+  public void exile(AsyncMethodCallback<Void> resultHandler) {
+    applyRemoveNode(thisNode);
+    resultHandler.onComplete(null);
+  }
+
+  /**
+   * Generate a report containing the character, leader, term, last log and read-only-status. This
+   * will help to see if the node is in a consistent and right state during debugging.
+   *
+   * @return
+   */
+  private MetaMemberReport genMemberReport() {
+    return new MetaMemberReport(character, leader, term.get(),
+        logManager.getLastLogTerm(), logManager.getLastLogIndex(), readOnly);
+  }
+
+  /**
+   * Generate a report containing the status of both MetaGroupMember and DataGroupMembers of this
+   * node. This will help to see if the node is in a consistent and right state during debugging.
+   *
+   * @return
+   */
+  private NodeReport genNodeReport() {
+    NodeReport report = new NodeReport(thisNode);
+    report.setMetaMemberReport(genMemberReport());
+    report.setDataMemberReportList(dataClusterServer.genMemberReports());
+    return report;
+  }
+
+  @Override
+  public void setAllNodes(List<Node> allNodes) {
+    super.setAllNodes(allNodes);
+    idNodeMap = new HashMap<>();
+    for (Node node : allNodes) {
+      idNodeMap.put(node.getNodeIdentifier(), node);
+    }
+  }
+
+  /**
+   * Get a local DataGroupMember that is in the group of "header" and should process "request".
+   *
+   * @param header        the header of the group which the local node is in
+   * @param resultHandler can be set to null if the request is an internal request
+   * @param request       the toString() of this parameter should explain what the request is and it
+   *                      is only used in logs for tracing
+   * @return
+   */
+  protected DataGroupMember getLocalDataMember(Node header,
+      AsyncMethodCallback resultHandler, Object request) {
+    return dataClusterServer.getDataMember(header, resultHandler, request);
+  }
+
+  /**
+   * Get a local DataGroupMember that is in the group of "header" for an internal request.
+   *
+   * @param header the header of the group which the local node is in
+   * @return
+   */
+  protected DataGroupMember getLocalDataMember(Node header) {
+    return dataClusterServer.getDataMember(header, null, "Internal call");
+  }
+
+  /**
+   * Get a thrift client that will connect to "node" using the data port.
+   *
+   * @param node the node to be connected
+   * @return
+   * @throws IOException
+   */
+  public DataClient getDataClient(Node node) throws IOException {
+    return (DataClient) getDataClientPool().getClient(node);
+  }
+
+  /**
+   * Get GroupByExecutors the will executor the aggregations of "aggregationTypes" over "path".
+   * First, the groups to be queried will be determined by the timeFilter. Then for group, a local
+   * or remote GroupByExecutor will be created and finally all such executors will be returned.
+   *
+   * @param path
+   * @param dataType
+   * @param context
+   * @param timeFilter       nullable
+   * @param aggregationTypes
+   * @return
+   * @throws StorageEngineException
+   */
+  public List<GroupByExecutor> getGroupByExecutors(Path path, TSDataType dataType,
+      QueryContext context, Filter timeFilter, List<Integer> aggregationTypes)
+      throws StorageEngineException {
+    // make sure the partition table is new
+    syncLeader();
+    // find out the groups that should be queried
+    List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: Sending group by query of {} to {} groups", name, path,
+          partitionGroups.size());
+    }
+    // create an executor for each group
+    List<GroupByExecutor> executors = new ArrayList<>();
+    for (PartitionGroup partitionGroup : partitionGroups) {
+      GroupByExecutor groupByExecutor = getGroupByExecutor(path, partitionGroup,
+          timeFilter, context, dataType, aggregationTypes);
+      executors.add(groupByExecutor);
+    }
+    return executors;
+  }
+
+  /**
+   * Get a GroupByExecutor that will run "aggregationTypes" over "path" within "partitionGroup". If
+   * the local node is a member of the group, a local executor will be created. Otherwise a remote
+   * executor will be created.
+   *
+   * @param path
+   * @param partitionGroup
+   * @param timeFilter       nullable
+   * @param context
+   * @param dataType
+   * @param aggregationTypes
+   * @return
+   * @throws StorageEngineException
+   */
+  private GroupByExecutor getGroupByExecutor(Path path,
+      PartitionGroup partitionGroup, Filter timeFilter, QueryContext context, TSDataType dataType,
+      List<Integer> aggregationTypes) throws StorageEngineException {
+    if (partitionGroup.contains(thisNode)) {
+      // the target storage group contains this node, perform a local query
+      DataGroupMember dataGroupMember = getLocalDataMember(partitionGroup.getHeader());
+      logger.debug("{}: creating a local group by executor for {}#{}", name,
+          path.getFullPath(), context.getQueryId());
+      return dataGroupMember
+          .getGroupByExecutor(path, dataType, timeFilter, aggregationTypes, context);
+    } else {
+      return getRemoteGroupByExecutor(timeFilter, aggregationTypes, dataType, path, partitionGroup,
+          context);
+    }
+  }
+
+  /**
+   * Get a GroupByExecutor that will run "aggregationTypes" over "path" within a remote group
+   * "partitionGroup". Send a request to one node in the group to create an executor there and use
+   * the return executor id to fetch result later.
+   *
+   * @param timeFilter       nullable
+   * @param aggregationTypes
+   * @param dataType
+   * @param path
+   * @param partitionGroup
+   * @param context
+   * @return
+   * @throws StorageEngineException
+   */
+  private GroupByExecutor getRemoteGroupByExecutor(Filter timeFilter,
+      List<Integer> aggregationTypes, TSDataType dataType, Path path, PartitionGroup partitionGroup,
+      QueryContext context) throws StorageEngineException {
+    AtomicReference<Long> result = new AtomicReference<>();
+    GroupByRequest request = new GroupByRequest();
+    if (timeFilter != null) {
+      request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
+    }
+    request.setPath(path.getFullPath());
+    request.setHeader(partitionGroup.getHeader());
+    request.setQueryId(context.getQueryId());
+    request.setAggregationTypeOrdinals(aggregationTypes);
+    request.setDataTypeOrdinal(dataType.ordinal());
+    request.setRequestor(thisNode);
+
+    // select a node with lowest latency or highest throughput with high priority
+    List<Node> orderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+    for (Node node : orderedNodes) {
+      // query a remote node
+      logger.debug("{}: querying group by {} from {}", name, path, node);
+      GenericHandler<Long> handler = new GenericHandler<>(node, result);
+      try {
+        DataClient client = getDataClient(node);
+        synchronized (result) {
+          result.set(null);
+          client.getGroupByExecutor(request, handler);
+          result.wait(connectionTimeoutInMS);
+        }
+        Long executorId = result.get();
+        if (executorId != null) {
+          if (executorId != -1) {
+            // record the queried node to release resources later
+            ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
+            logger.debug("{}: get an executorId {} for {}@{} from {}", name, executorId,
+                aggregationTypes, path, node);
+            // create a remote executor with the return id
+            RemoteGroupByExecutor remoteGroupByExecutor = new RemoteGroupByExecutor(executorId,
+                this, node, partitionGroup.getHeader());
+            for (Integer aggregationType : aggregationTypes) {
+              remoteGroupByExecutor.addAggregateResult(AggregateResultFactory.getAggrResultByType(
+                  AggregationType.values()[aggregationType], dataType));
+            }
+            return remoteGroupByExecutor;
+          } else {
+            // an id of -1 means there is no satisfying data on the remote node, create an empty
+            // reader tp reduce further communication
+            logger.debug("{}: no data for {} from {}", name, path, node);
+            return new EmptyReader();
+          }
+        }
+      } catch (TException | InterruptedException | IOException e) {
+        logger.error("{}: Cannot query {} from {}", name, path, node, e);
+      }
+    }
+    throw new StorageEngineException(
+        new RequestTimeOutException("Query " + path + " in " + partitionGroup));
   }
 }

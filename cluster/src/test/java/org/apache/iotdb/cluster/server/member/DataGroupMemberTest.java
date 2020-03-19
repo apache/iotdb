@@ -723,7 +723,7 @@ public class DataGroupMemberTest extends MemberTest {
     AtomicReference<List<String>> pathResult = new AtomicReference<>();
     GenericHandler<List<String>> handler = new GenericHandler<>(TestUtils.getNode(0), pathResult);
     synchronized (pathResult) {
-      dataGroupMember.getAllPaths(TestUtils.getNode(0), path, handler);
+      dataGroupMember.getAllPaths(TestUtils.getNode(0), Collections.singletonList(path), handler);
       pathResult.wait(200);
     }
     List<String> result = pathResult.get();

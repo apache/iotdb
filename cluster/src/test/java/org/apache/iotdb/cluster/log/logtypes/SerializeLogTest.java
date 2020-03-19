@@ -76,7 +76,7 @@ public class SerializeLogTest {
 
   @Test
   public void testCloseFileLog() throws UnknownLogTypeException {
-    CloseFileLog log = new CloseFileLog("root.sg1", true);
+    CloseFileLog log = new CloseFileLog("root.sg1", 0, true);
     log.setPreviousLogIndex(1);
     log.setPreviousLogTerm(1);
     log.setCurrLogIndex(2);

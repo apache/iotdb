@@ -23,6 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.client.DataClient;
@@ -37,6 +38,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.cluster.server.member.MemberTest;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -44,6 +46,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 
 public class TestDataClient extends DataClient {
@@ -92,15 +95,9 @@ public class TestDataClient extends DataClient {
   }
 
   @Override
-  public void getAllPaths(Node header, String path,
+  public void getAllPaths(Node header, List<String> paths,
       AsyncMethodCallback<List<String>> resultHandler) {
-    new Thread(() -> {
-      try {
-        resultHandler.onComplete(MManager.getInstance().getAllTimeseriesName(path));
-      } catch (MetadataException e) {
-        resultHandler.onError(e);
-      }
-    }).start();
+    new Thread(() -> dataGroupMemberMap.get(header).getAllPaths(header, paths, resultHandler)).start();
   }
 
   @Override
@@ -138,28 +135,13 @@ public class TestDataClient extends DataClient {
   @Override
   public void appendEntry(AppendEntryRequest request,
       AsyncMethodCallback<Long> resultHandler) {
-    new Thread(() -> resultHandler.onComplete(Response.RESPONSE_AGREE)).start();
+    new Thread(() -> resultHandler.onComplete(MemberTest.dummyResponse.get())).start();
   }
 
   @Override
   public void pullTimeSeriesSchema(PullSchemaRequest request,
       AsyncMethodCallback<PullSchemaResp> resultHandler) {
-    new Thread(() -> {
-      PullSchemaResp resp;
-      try {
-        resp = new PullSchemaResp();
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-        dataOutputStream.writeInt(10);
-        for (int i = 0; i < 10; i++) {
-          TestUtils.getTestSchema(0, i).serializeTo(dataOutputStream);
-        }
-        resp.setSchemaBytes(byteArrayOutputStream.toByteArray());
-        resultHandler.onComplete(resp);
-      } catch (IOException e) {
-        resultHandler.onError(e);
-      }
-    }).start();
+    new Thread(() -> dataGroupMemberMap.get(request.getHeader()).pullTimeSeriesSchema(request, resultHandler)).start();
   }
 
   @Override

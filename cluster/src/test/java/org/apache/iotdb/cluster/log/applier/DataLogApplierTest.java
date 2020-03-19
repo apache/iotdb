@@ -28,11 +28,15 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import junit.framework.TestCase;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -139,4 +143,14 @@ public class DataLogApplierTest extends IoTDBTest {
     assertEquals(49, cnt);
   }
 
+  @Test
+  public void testApplyCloseFile() throws StorageEngineException, QueryProcessException {
+    StorageGroupProcessor storageGroupProcessor =
+        StorageEngine.getInstance().getProcessor(TestUtils.getTestSg(0));
+    TestCase.assertFalse(storageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
+
+    CloseFileLog closeFileLog = new CloseFileLog(TestUtils.getTestSg(0), 0, true);
+    applier.apply(closeFileLog);
+    TestCase.assertTrue(storageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
+  }
 }
