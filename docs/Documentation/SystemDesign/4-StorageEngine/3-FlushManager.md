@@ -33,7 +33,7 @@ After the memory buffer memtable reaches a certain threshold, it will be handed 
 	
 * org.apache.iotdb.db.engine.flush.MemtableFlushTask
 
-	负责持久化一个 Memtable。
+	flush a Memtable。
 
 ## FlushManager: Persistence manager
 
