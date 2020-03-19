@@ -73,7 +73,7 @@ Three threads interact through two task queues
 	
 	* Pair\<TVList, MeasurementSchema\>：Code a Chunk
 	
-	* EndChunkGroupIoTask：End the persistence of a device (ChunkGroup). The encoding does not process this command and  send directly to the IO thread.
+	* EndChunkGroupIoTask：End the persistence of a device (ChunkGroup). The encoding thread does not process this command and  send directly to the IO thread.
 
 * ioTaskQueue: Encoding thread-> IO thread, including three tasks
 	
