@@ -29,7 +29,7 @@ The main logic of the aggregation query is in AggregateExecutor
 
 For aggregate queries without value filters, the results are obtained by the `executeWithoutValueFilter()` method and a dataSet is constructed. First use the `mergeSameSeries()` method to merge aggregate queries for the same time series. For example: if you need to calculate count(s1), sum(s2), count(s3), sum(s1), you need to calculate two aggregation values of s1, then the pathToAggrIndexesMap result will be: s1-> 0, 3; s2-> 1; s3-> 2.
 
-Then you will get `pathToAggrIndexesMap`, where each entry is an aggregate query of series, so you can calculate its aggregate value` aggregateResults` by calling the `groupAggregationsBySeries ()` method.  Before you finally create the result set, you need to restore its order to the order of the user query.  Finally use the `constructDataSet ()` method to create a result set and return it.
+Then you will get `pathToAggrIndexesMap`, where each entry is an aggregate query of series, so you can calculate its aggregate value `aggregateResults` by calling the `groupAggregationsBySeries()` method.  Before you finally create the result set, you need to restore its order to the order of the user query.  Finally use the `constructDataSet()` method to create a result set and return it.
 
 The `groupAggregationsBySeries ()` method is explained in detail below.  First create an `IAggregateReader`:
 ```
