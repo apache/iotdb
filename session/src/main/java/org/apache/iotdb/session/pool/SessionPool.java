@@ -243,13 +243,43 @@ public class SessionPool {
     throw new IoTDBSessionException(String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
-
-
   /**
    * insert data in one row, if you want improve your performance, please use insertInBatch method
    * or insertBatch method
    *
-   * @see Session#insertBatch(RowBatch)
+   * @see Session#insertInBatch(List, List, List, List)
+   */
+  public List<TSStatus> insertRowInBatch(List<String> deviceIds, List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList) throws IoTDBSessionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        List<TSStatus> statuses = session
+            .insertInBatch(deviceIds, times, measurementsList, valuesList);
+        putBack(session);
+        return statuses;
+      } catch (IoTDBSessionException e) {
+        if (e.getCause() instanceof TException) {
+          // TException means the connection is broken, remove it and get a new one.
+          closeSession(session);
+          removeSession();
+        } else {
+          putBack(session);
+          throw e;
+        }
+      }
+    }
+    throw new IoTDBSessionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+  }
+
+
+  /**
+   * insert data in one row, if you want improve your performance, please use insert method
+   * or insertBatch method
+   *
+   * @see Session#insert(String, long, List, List)
    */
   public TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBSessionException {
