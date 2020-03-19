@@ -87,7 +87,6 @@ public class UnseqTsFileRecoverTest {
   @Before
   public void setup() throws IOException, WriteProcessException, MetadataException {
     EnvironmentUtils.envSetUp();
-    FlushSubTaskPoolManager.getInstance().start();
     tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
 
@@ -163,7 +162,6 @@ public class UnseqTsFileRecoverTest {
     FileUtils.deleteDirectory(tsF.getParentFile());
     resource.close();
     node.delete();
-    FlushSubTaskPoolManager.getInstance().stop();
     EnvironmentUtils.cleanEnv();
   }
 

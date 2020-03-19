@@ -109,7 +109,6 @@ public class IoTDBFlushQueryMergeTest {
   @Test
   public void testFlushGivenGroup() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
     String insertTemplate =
         "INSERT INTO root.group%d(timestamp, s1, s2, s3) VALUES (%d, %d, %f, %s)";
     try (Connection connection = DriverManager
@@ -153,8 +152,6 @@ public class IoTDBFlushQueryMergeTest {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
     }
   }
 }
