@@ -81,12 +81,14 @@ public class IoTDBAggregationIT {
   private final String d0s3 = "root.vehicle.d0.s3";
   private String insertTemplate = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)"
       + " VALUES(%d,%d,%d,%f,%s,%s)";
+  private long prevPartitionInterval;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.envSetUp();
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
+    EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
   }
@@ -94,7 +96,7 @@ public class IoTDBAggregationIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(604800);
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
   //add test for part of points in page don't satisfy filter

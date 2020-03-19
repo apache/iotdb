@@ -49,6 +49,7 @@ public class IoTDBMultiSeriesIT {
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
   private static int groupSizeInByte;
+  private static long prevPartitionInterval;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -66,6 +67,7 @@ public class IoTDBMultiSeriesIT {
     tsFileConfig.setPageSizeInByte(1024 * 150);
     tsFileConfig.setGroupSizeInByte(1024 * 1000);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1000);
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(100);
 
     EnvironmentUtils.envSetUp();
@@ -80,7 +82,7 @@ public class IoTDBMultiSeriesIT {
     tsFileConfig.setPageSizeInByte(pageSizeInByte);
     tsFileConfig.setGroupSizeInByte(groupSizeInByte);
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(604800);
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
   }
 

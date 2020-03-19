@@ -64,6 +64,7 @@ public class IoTDBSeriesReaderIT {
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int pageSizeInByte;
   private static int groupSizeInByte;
+  private static long prevPartitionInterval;
 
   private static Connection connection;
 
@@ -81,8 +82,9 @@ public class IoTDBSeriesReaderIT {
     tsFileConfig.setPageSizeInByte(1024 * 1024 * 150);
     tsFileConfig.setGroupSizeInByte(1024 * 1024 * 150);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
-    
+
     // test result of IBatchReader should not cross partition
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(2);
 
     EnvironmentUtils.envSetUp();
@@ -103,7 +105,7 @@ public class IoTDBSeriesReaderIT {
 
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(604800);
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
   private static void insertData() throws ClassNotFoundException {

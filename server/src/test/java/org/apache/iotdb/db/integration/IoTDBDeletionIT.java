@@ -49,14 +49,15 @@ public class IoTDBDeletionIT {
   private String insertTemplate = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4"
       + ") VALUES(%d,%d,%d,%f,%s,%b)";
   private String deleteAllTemplate = "DELETE FROM root.vehicle.d0 WHERE time <= 10000";
-
+  private long prevPartitionInterval;
 
   @Before
   public void setUp() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.envSetUp();
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
+    EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareSeries();
   }
@@ -64,7 +65,7 @@ public class IoTDBDeletionIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(604800);
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
   @Test
