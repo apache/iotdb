@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 public class RowRecord {
 
   private long timestamp;
+  private boolean isEmpty = true;
   private List<Field> fields;
 
   public RowRecord(long timestamp) {
@@ -32,16 +33,22 @@ public class RowRecord {
     this.fields = new ArrayList<>();
   }
 
-  public RowRecord(long timestamp, List<Field> fields){
+  public RowRecord(long timestamp, List<Field> fields) {
     this.timestamp = timestamp;
     this.fields = fields;
   }
 
   public void addField(Field f) {
+    if (f != null) {
+      isEmpty = false;
+    }
     this.fields.add(f);
   }
 
   public void addField(Object value, TSDataType dataType) {
+    if (value != null) {
+      isEmpty = false;
+    }
     this.fields.add(Field.getField(value, dataType));
   }
 
@@ -66,5 +73,9 @@ public class RowRecord {
 
   public List<Field> getFields() {
     return fields;
+  }
+
+  public boolean isEmpty() {
+    return isEmpty;
   }
 }

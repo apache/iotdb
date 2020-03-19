@@ -77,62 +77,38 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
    * @return if there has next row record.
    */
   private boolean cacheRowRecord() throws IOException {
-    Object[][] results = new Object[seriesReaderByTimestampList.size()][];
     while (timeGenerator.hasNextTimeColumn()) {
-      initResults(results);
-
       TimeColumn timeColumn = timeGenerator.nextTimeColumn();
+      int position = timeColumn.position();
 
-      fillResults(results, timeColumn);
-      flatAndCache(results, timeColumn);
+      RowRecord[] records = new RowRecord[timeColumn.size()];
+      for (int i = 0; i < seriesReaderByTimestampList.size(); i++) {
+        IReaderByTimestamp reader = seriesReaderByTimestampList.get(i);
+
+        TSDataType tsDataType = dataTypes.get(i);
+        Object[] values = reader.getValuesInTimestamps(timeColumn);
+        for (int j = 0; j < values.length; j++) {
+          //alloc the tmp memory
+          if (records[j] == null) {
+            records[j] = new RowRecord(timeColumn.getTimeByIndex(j + position));
+          }
+          //fill record
+          Field field = Field.getField(values[j], tsDataType);
+          if (field == null) {
+            records[j].addField(null);
+          } else {
+            records[j].addField(field);
+          }
+          //just add not null row into return result
+          if (i == seriesReaderByTimestampList.size() - 1 && !records[j].isEmpty()) {
+            cachedRecords.add(records[j]);
+          }
+        }
+        //reset position for next time to use
+        timeColumn.position(position);
+      }
     }
     hasCachedRowRecord = !cachedRecords.isEmpty();
     return hasCachedRowRecord;
-  }
-
-  private void flatAndCache(Object[][] results, TimeColumn timeColumn) {
-    int resultSize = timeColumn.size() - timeColumn.position();
-    for (int i = 0; i < resultSize; i++) {
-      RowRecord rowRecord = new RowRecord(timeColumn.getTimeByIndex(i + timeColumn.position()));
-      boolean hasField = false;
-      for (Object[] result : results) {
-        if (result[i] == null) {
-          rowRecord.addField(null);
-          continue;
-        }
-        hasField = true;
-        rowRecord.addField((Field) result[i]);
-      }
-      if (hasField) {
-        cachedRecords.add(rowRecord);
-      }
-    }
-  }
-
-  private void fillResults(Object[][] results, TimeColumn timeColumn) throws IOException {
-    int position = timeColumn.position();
-    for (int i = 0; i < seriesReaderByTimestampList.size(); i++) {
-      IReaderByTimestamp reader = seriesReaderByTimestampList.get(i);
-      if (results[i] == null) {
-        results[i] = new Object[timeColumn.size() - position];
-      }
-
-      TSDataType tsDataType = dataTypes.get(i);
-      Object[] values = reader.getValuesInTimestamps(timeColumn);
-      for (int j = 0; j < values.length; j++) {
-        if (values[j] == null) {
-          results[i][j] = null;
-        } else {
-          results[i][j] = Field.getField(values[j], tsDataType);
-        }
-      }
-      timeColumn.position(position);
-    }
-  }
-
-  private void initResults(Object[][] results) {
-    for (int i = 0; i < results.length; i++) {
-      results[i] = null;
-    }
   }
 }
