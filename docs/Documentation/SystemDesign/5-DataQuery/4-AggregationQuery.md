@@ -40,7 +40,7 @@ IAggregateReader seriesReader = new SeriesAggregateReader(
 
 For each entry (that is, series), first create an aggregate result `AggregateResult` for each aggregate query, and maintain a boolean list` isCalculatedList`, corresponding to whether each `AggregateResult` has been calculated and record the remaining  The number of calculated aggregate functions `remainingToCalculate`.  The list of boolean values and this count value will make some aggregate functions (such as `FIRST_VALUE`) do not need to continue the entire loop process after obtaining the result.
 
-Next, update AggregateResult according to the usage method of aggregateReader introduced in Section 5.2:
+Next, update `AggregateResult` according to the usage method of `aggregateReader` introduced in Section 5.2:
 
 ```
 while (aggregateReader.hasNextChunk()) {
