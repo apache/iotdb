@@ -65,6 +65,7 @@ public class IoTDBSeriesReaderIT {
   private static int pageSizeInByte;
   private static int groupSizeInByte;
   private static long prevPartitionInterval;
+  private static int prevChunkMergePointThreshold;
 
   private static Connection connection;
 
@@ -81,6 +82,9 @@ public class IoTDBSeriesReaderIT {
     tsFileConfig.setMaxNumberOfPointsInPage(1000);
     tsFileConfig.setPageSizeInByte(1024 * 1024 * 150);
     tsFileConfig.setGroupSizeInByte(1024 * 1024 * 150);
+    prevChunkMergePointThreshold = IoTDBDescriptor.getInstance().getConfig()
+        .getChunkMergePointThreshold();
+    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(Integer.MAX_VALUE);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
 
     // test result of IBatchReader should not cross partition
@@ -106,6 +110,8 @@ public class IoTDBSeriesReaderIT {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+    IoTDBDescriptor.getInstance().getConfig()
+        .setChunkMergePointThreshold(prevChunkMergePointThreshold);
   }
 
   private static void insertData() throws ClassNotFoundException {
