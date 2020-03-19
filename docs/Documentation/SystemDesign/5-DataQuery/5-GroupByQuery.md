@@ -125,7 +125,7 @@ private boolean readAndCalcFromPage() throws IOException, QueryProcessException;
 ```
 
 In `GroupByExecutor`, because different aggregate functions of the same path use the same data, the entry method `calcResult` is responsible for reading all the data of the `Path`.
-The retrieved data then calls the calcFromBatch method to complete the calculation of BatchData through all the aggregate functions.
+The retrieved data then calls the `calcFromBatch` method to complete the calculation of `BatchData` through all the aggregate functions.
 
 The `calcResult` method returns all AggregateResult under the current Path and the position of the current aggregated value in the user query order. Its main logic is:
 
