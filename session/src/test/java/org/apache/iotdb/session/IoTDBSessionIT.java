@@ -274,10 +274,6 @@ public class IoTDBSessionIT {
 
     deleteStorageGroupTest();
 
-    // Test batch insertions when creating schema automatically is enabled
-    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-    conf.setAutoCreateSchemaEnabled(true);
-
     // set storage group but do not create timeseries
     session.setStorageGroup("root.sg3");
     insertRowBatchTest1("root.sg3.d1");
@@ -293,8 +289,6 @@ public class IoTDBSessionIT {
 
     // do not set storage group and create timeseries
     insertRowBatchTest1("root.sg5.d1");
-
-    conf.setAutoCreateSchemaEnabled(false);
 
     session.close();
   }
