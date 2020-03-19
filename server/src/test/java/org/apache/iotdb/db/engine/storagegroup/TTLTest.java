@@ -73,10 +73,12 @@ public class TTLTest {
   private StorageGroupProcessor storageGroupProcessor;
   private String s1 = "s1";
   private String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
+  private long prevPartitionInterval;
 
   @Before
   public void setUp()
       throws MetadataException, IOException, StartupException, StorageGroupProcessorException {
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
     createSchemas();
@@ -86,6 +88,7 @@ public class TTLTest {
   public void tearDown() throws IOException, StorageEngineException {
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
   private void createSchemas()
@@ -126,7 +129,8 @@ public class TTLTest {
     insertPlan.setTime(System.currentTimeMillis());
     insertPlan.setMeasurements(new String[]{"s1"});
     insertPlan.setValues(new String[]{"1"});
-    insertPlan.setSchemas(new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
+    insertPlan.setSchemas(
+        new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     // ok without ttl
     storageGroupProcessor.insert(insertPlan);
@@ -151,7 +155,8 @@ public class TTLTest {
     insertPlan.setTime(System.currentTimeMillis());
     insertPlan.setMeasurements(new String[]{"s1"});
     insertPlan.setValues(new String[]{"1"});
-    insertPlan.setSchemas(new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
+    insertPlan.setSchemas(
+        new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     long initTime = System.currentTimeMillis();
     // sequence data

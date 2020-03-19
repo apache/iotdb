@@ -112,11 +112,15 @@ public class StorageEngine implements IService {
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
 
   /**
-   * Time range for dividing storage group, the time unit is the same with IoTDB's TimestampPrecision
+   * Time range for dividing storage group, the time unit is the same with IoTDB's
+   * TimestampPrecision
    */
   @ServerConfigConsistent
-  private static long timePartitionInterval;
-  static {
+  private long timePartitionInterval;
+
+  private StorageEngine() {
+    logger = LoggerFactory.getLogger(StorageEngine.class);
+    systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
     // build time Interval to divide time partition
     String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
     switch (timePrecision) {
@@ -133,11 +137,6 @@ public class StorageEngine implements IService {
             getConfig().getPartitionInterval() * 1000;
         break;
     }
-  }
-
-  private StorageEngine() {
-    logger = LoggerFactory.getLogger(StorageEngine.class);
-    systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
     // create systemDir
     try {
       FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));
@@ -495,7 +494,6 @@ public class StorageEngine implements IService {
   }
 
   /**
-   *
    * @return TsFiles (seq or unseq) grouped by their storage group and partition number.
    */
   public Map<String, Map<Long, List<TsFileResource>>> getAllClosedStorageGroupTsFile() {
@@ -510,7 +508,7 @@ public class StorageEngine implements IService {
         String[] fileSplits = FilePathUtils.splitTsFilePath(sequenceFile);
         long partitionNum = Long.parseLong(fileSplits[fileSplits.length - 2]);
         Map<Long, List<TsFileResource>> storageGroupFiles = ret.computeIfAbsent(entry.getKey()
-            ,n -> new HashMap<>());
+            , n -> new HashMap<>());
         storageGroupFiles.computeIfAbsent(partitionNum, n -> new ArrayList<>()).add(sequenceFile);
       }
     }
@@ -527,12 +525,11 @@ public class StorageEngine implements IService {
     return processor != null && processor.isFileAlreadyExist(tsFileResource);
   }
 
-  public static long getTimePartitionInterval() {
+  public long getTimePartitionInterval() {
     return timePartitionInterval;
   }
 
-  public static long fromTimeToTimePartition(long time) {
-
+  public long fromTimeToTimePartition(long time) {
     return time / timePartitionInterval;
   }
 }
