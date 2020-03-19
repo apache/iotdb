@@ -61,7 +61,7 @@ A memtable's persistence process has three threads, and the main thread's work d
 
 * ioTask Thread
 
-  The IO thread is responsible for persisting the encoded Chunk to the TsFile file on the disk.
+  The IO thread is responsible for persisting the encoded Chunk to the TsFile on the disk.
 
 ### Two task queues
 
