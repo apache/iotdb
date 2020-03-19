@@ -75,7 +75,7 @@ Three threads interact through two task queues
 	
 	* EndChunkGroupIoTask：End the persistence of a device (ChunkGroup). The encoding does not process this command and  send directly to the IO thread.
 
-* ioTaskQueue: Coding thread-> IO thread, including three tasks
+* ioTaskQueue: Encoding thread-> IO thread, including three tasks
 	
 	* StartFlushGroupIOTask：Began to persist a device (ChunkGroup).
 	
