@@ -31,7 +31,7 @@ As shown in the following figure ,  IoTDB uses a client-server architecture.
 
 <img style="width:100%; max-width:400px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/73625221-ddd88680-467e-11ea-9cf3-70367e5886f4.png">
 
-The server mainly includes a query engine that processes all user requests and distributes them to the corresponding management components, including data writing layer, data query, schema management, and rights management modules.
+The server mainly includes a query engine that processes all user requests and distributes them to the corresponding management components, including the data writing layer, data query, schema management, and administration modules.
 
 * [TsFile](/#/SystemDesign/progress/chap1/sec1)
 * [QueryEngine](/#/SystemDesign/progress/chap2/sec1)
@@ -52,4 +52,3 @@ IoTDB is connected with big data systems.
 * [Spark-TsFile](/#/SystemDesign/progress/chap7/sec3)
 * [Spark-IoTDB](/#/SystemDesign/progress/chap7/sec4)
 * [Grafana](/#/SystemDesign/progress/chap7/sec5)
-
