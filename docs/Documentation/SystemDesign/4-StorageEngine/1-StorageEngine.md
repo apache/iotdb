@@ -25,7 +25,7 @@
 
 ## Design ideas
 
-The storage engine is based on the LSM design. The data is first written to the memory buffer memtable and then flushed to disk. For each device in memory, the maximum current timestamp (including those that have been placed and are being persisted) is maintained. The data is divided into sequential data and out-of-order data according to this timestamp. Different types of data pass different memtable And TsFile management.
+The storage engine is based on the LSM design. The data is first written to the memory buffer memtable and then flushed to disk. For each device, the maximum timestamp being flushed (including those that have been flushed and are being flushed) is maintained in memory. The data is divided into sequential data and out-of-order data according to this timestamp. Different types of data are separated into different memtables and flushed into different TsFiles.
 
 Each data file TsFile corresponds to a file index information TsFileResource in memory for query use.
 
