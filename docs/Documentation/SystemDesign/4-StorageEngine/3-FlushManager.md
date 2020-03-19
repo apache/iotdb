@@ -67,7 +67,7 @@ A memtable's persistence process has three threads, and the main thread's work d
 
 Three threads interact through two task queues
 
-* encodingTaskQueue: Sorting thread-> coding thread, including three tasks
+* encodingTaskQueue: Sorting thread-> encoding thread, including three tasks
 	
 	* StartFlushGroupIOTask：Began to persist a device (ChunkGroup), encoding does not process this command, and sends it directly to the IO thread.
 	
