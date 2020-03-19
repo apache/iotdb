@@ -71,7 +71,7 @@ Three threads interact through two task queues
 	
 	* StartFlushGroupIOTask：Began to persist a device (ChunkGroup), encoding does not process this command, and sends it directly to the IO thread.
 	
-	* Pair\<TVList, MeasurementSchema\>：Code a Chunk
+	* Pair\<TVList, MeasurementSchema\>：Encoding a Chunk
 	
 	* EndChunkGroupIoTask：End the persistence of a device (ChunkGroup). The encoding thread does not process this command and  send directly to the IO thread.
 
