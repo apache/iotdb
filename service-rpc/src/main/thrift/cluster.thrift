@@ -271,14 +271,14 @@ service TSDataService extends RaftService {
   void endQuery(1:Node header, 2:Node thisNode, 3:long queryId)
 
   /**
-  * Given a path pattern (path with wildcard), return all paths it matches.
+  * Given path patterns (paths with wildcard), return all paths they match.
   **/
-  list<string> getAllPaths(1:Node header, 2:string path)
+  list<string> getAllPaths(1:Node header, 2:list<string> path)
 
   /**
-   * Given a path pattern (path with wildcard), return all devices it matches.
+   * Given path patterns (paths with wildcard), return all devices they match.
    **/
-  set<string> getAllDevices(1:Node header, 2:string path)
+  set<string> getAllDevices(1:Node header, 2:list<string> path)
 
   list<string> getNodeList(1:Node header, 2:string path, 3:int nodeLevel)
 

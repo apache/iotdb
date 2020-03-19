@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestDataClient;
@@ -57,6 +58,7 @@ import org.junit.After;
 import org.junit.Before;
 
 public class MemberTest {
+  public static AtomicLong dummyResponse = new AtomicLong(Response.RESPONSE_AGREE);
 
   protected Map<Node, DataGroupMember> dataGroupMemberMap;
   protected Map<Node, MetaGroupMember> metaGroupMemberMap;
@@ -96,9 +98,13 @@ public class MemberTest {
     }
 
     for (int i = 0; i < 10; i++) {
-      MManager.getInstance().setStorageGroup(TestUtils.getTestSg(i));
-      for (int j = 0; j < 20; j++) {
-        SchemaUtils.registerTimeseries(TestUtils.getTestSchema(i, j));
+      try {
+        MManager.getInstance().setStorageGroup(TestUtils.getTestSg(i));
+        for (int j = 0; j < 20; j++) {
+          SchemaUtils.registerTimeseries(TestUtils.getTestSchema(i, j));
+        }
+      } catch (MetadataException e) {
+        // ignore
       }
     }
     planExecutor = new PlanExecutor();

@@ -97,7 +97,7 @@ public class MemoryLogManagerTest {
     assertEquals(8, logManager.getCommitLogIndex());
     assertTrue(appliedLogs.containsAll(testLogs.subList(0, 9)));
 
-    logManager.commitLog(1);
+    logManager.commitLog(9);
     assertEquals(9, logManager.getCommitLogIndex());
     assertTrue(appliedLogs.containsAll(testLogs));
   }

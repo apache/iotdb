@@ -48,8 +48,4 @@ public class TestPartitionedLogManager extends PartitionedSnapshotLogManager {
   public void takeSnapshot() {
 
   }
-
-  @Override
-  public void appendLog(Log log) {
-  }
 }

@@ -90,15 +90,4 @@ public class MetaLogApplierTest extends IoTDBTest {
     assertTrue(MManager.getInstance().isPathExist("root.applyMeta.s1"));
     assertEquals(TSDataType.DOUBLE, MManager.getInstance().getSeriesType("root.applyMeta.s1"));
   }
-
-  @Test
-  public void testApplyCloseFile() throws StorageEngineException, QueryProcessException {
-    StorageGroupProcessor storageGroupProcessor =
-        StorageEngine.getInstance().getProcessor(TestUtils.getTestSg(0));
-    assertFalse(storageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
-
-    CloseFileLog closeFileLog = new CloseFileLog(TestUtils.getTestSg(0), true);
-    applier.apply(closeFileLog);
-    assertTrue(storageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
-  }
 }

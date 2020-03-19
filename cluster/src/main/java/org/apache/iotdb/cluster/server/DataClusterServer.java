@@ -51,7 +51,6 @@ import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
@@ -263,10 +262,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void getAllPaths(Node header, String path, AsyncMethodCallback<List<String>> resultHandler) {
-    DataGroupMember member = getDataMember(header, resultHandler, "Find path:" + path);
+  public void getAllPaths(Node header, List<String> paths,
+      AsyncMethodCallback<List<String>> resultHandler) {
+    DataGroupMember member = getDataMember(header, resultHandler, "Find path:" + paths);
     if (member != null) {
-      member.getAllPaths(header, path, resultHandler);
+      member.getAllPaths(header, paths, resultHandler);
     }
   }
 
@@ -311,10 +311,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void getAllDevices(Node header, String path,
+  public void getAllDevices(Node header, List<String> paths,
       AsyncMethodCallback<Set<String>> resultHandler) {
     DataGroupMember dataMember = getDataMember(header, resultHandler, "Get all devices");
-    dataMember.getAllDevices(header, path, resultHandler);
+    dataMember.getAllDevices(header, paths, resultHandler);
   }
 
   @Override

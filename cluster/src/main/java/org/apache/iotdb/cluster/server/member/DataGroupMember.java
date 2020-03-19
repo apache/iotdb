@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -63,7 +64,6 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
@@ -109,7 +109,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -817,19 +816,28 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   @Override
-  public void getAllPaths(Node header, String path, AsyncMethodCallback<List<String>> resultHandler) {
+  public void getAllPaths(Node header, List<String> paths,
+      AsyncMethodCallback<List<String>> resultHandler) {
     try {
-      resultHandler.onComplete(MManager.getInstance().getAllTimeseriesName(path));
+      List<String> ret = new ArrayList<>();
+      for (String path : paths) {
+        ret.addAll(MManager.getInstance().getAllTimeseriesName(path));
+      }
+      resultHandler.onComplete(ret);
     } catch (MetadataException e) {
       resultHandler.onError(e);
     }
   }
 
   @Override
-  public void getAllDevices(Node header, String path,
+  public void getAllDevices(Node header, List<String> paths,
       AsyncMethodCallback<Set<String>> resultHandler) {
     try {
-      resultHandler.onComplete(MManager.getInstance().getDevices(path));
+      Set<String> results = new HashSet<>();
+      for (String path : paths) {
+        results.addAll(MManager.getInstance().getDevices(path));
+      }
+      resultHandler.onComplete(results);
     } catch (MetadataException e) {
       resultHandler.onError(e);
     }
