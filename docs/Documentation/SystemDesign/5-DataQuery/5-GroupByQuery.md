@@ -92,7 +92,7 @@ for (AggregateResult res : fields) {
 Encapsulating the calculation method of all aggregate functions under the same path, this class has the following key fields:
 * private IAggregateReader reader  the `SeriesAggregateReader` used to read the current `Path` data
 * private BatchData preCachedData Every time the data read from `Reader` is a batch, and it is likely to exceed the current time period. This `BatchData` will be cached for next use
-* private List <Pair <AggregateResult, Integer >> results stores all aggregation methods in the current `Path`, for example:` select count (a), sum (a), avg (b) `,` count` and `sum`  The methods are stored together.
+* private List<Pair<AggregateResult, Integer>> results stores all aggregation methods in the current `Path`, for example: `select count(a), sum(a), avg(b)`, `count` and `sum` can be stored together.
      The `Integer` on the right is used to convert the result set to the order of the user query before converting it to RowRecord.
 
 #### Main method
