@@ -77,7 +77,7 @@ Three threads interact through two task queues
 
 * ioTaskQueue: Encoding thread-> IO thread, including three tasks
 	
-	* StartFlushGroupIOTask：Began to persist a device (ChunkGroup).
+	* StartFlushGroupIOTask：Starting to persist a device (ChunkGroup).
 	
 	* IChunkWriter：Persisting a Chunk to Disk
 	
