@@ -55,8 +55,7 @@ See details:
 
 ## Data access
 
-* Main entrance（StorageEngine）: public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context,
-  ​    QueryFileManager filePathsManager)
+* Main entrance（StorageEngine）: public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context, QueryFileManager filePathsManager)
   ​    
 	* Find all ordered and out-of-order TsFileResources containing this time series and return them for use by the query engine
 
