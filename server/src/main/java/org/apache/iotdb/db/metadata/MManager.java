@@ -131,7 +131,6 @@ public class MManager {
     if (initialized) {
       return;
     }
-    lock.writeLock().lock();
     File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
@@ -155,8 +154,6 @@ public class MManager {
     } catch (IOException | MetadataException e) {
       mtree = new MTree();
       logger.error("Cannot read MTree from file, using an empty new one", e);
-    } finally {
-      lock.writeLock().unlock();
     }
     initialized = true;
   }
