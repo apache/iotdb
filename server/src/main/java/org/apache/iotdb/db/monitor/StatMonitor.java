@@ -384,7 +384,7 @@ public class StatMonitor implements IService {
           numInsert.incrementAndGet();
           pointNum = entry.getValue().dataPointList.size();
           numPointsInsert.addAndGet(pointNum);
-        } catch (StorageEngineException | QueryProcessException e) {
+        } catch (StorageEngineException e) {
           numInsertError.incrementAndGet();
           logger.error("Inserting stat points error.", e);
         }

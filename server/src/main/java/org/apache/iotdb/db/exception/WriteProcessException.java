@@ -29,6 +29,10 @@ public class WriteProcessException extends IoTDBException {
     super(message, TSStatusCode.STORAGE_GROUP_ERROR.getStatusCode());
   }
 
+  public WriteProcessException(String message, int errorCode) {
+    super(message, errorCode);
+  }
+
   public WriteProcessException(Exception exception) {
     super(exception, TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode());
   }

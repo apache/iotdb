@@ -153,9 +153,8 @@ public class TsFileProcessor {
    * insert data in an InsertPlan into the workingMemtable.
    *
    * @param insertPlan physical plan of insertion
-   * @return succeed or fail
    */
-  public boolean insert(InsertPlan insertPlan) throws QueryProcessException {
+  public void insert(InsertPlan insertPlan) throws WriteProcessException {
 
     if (workMemTable == null) {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
@@ -167,10 +166,10 @@ public class TsFileProcessor {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         getLogNode().write(insertPlan);
-      } catch (IOException e) {
+      } catch (Exception e) {
         logger.error("{}: {} write WAL failed", storageGroupName,
             tsFileResource.getFile().getName(), e);
-        return false;
+        throw new WriteProcessException(e);
       }
     }
 
@@ -181,8 +180,6 @@ public class TsFileProcessor {
     if (!sequence) {
       tsFileResource.updateEndTime(insertPlan.getDeviceId(), insertPlan.getTime());
     }
-
-    return true;
   }
 
   public void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end,
@@ -195,24 +192,20 @@ public class TsFileProcessor {
     // insert insertPlan to the work memtable
     try {
       workMemTable.insertBatch(batchInsertPlan, start, end);
-      for (int i = start; i < end; i++) {
-        results[i] = RpcUtils.SUCCESS_STATUS;
-      }
-    } catch (Exception e) {
-      setErrorResult(start, end, results, e);
-      return;
-    }
-
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      try {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         batchInsertPlan.setStart(start);
         batchInsertPlan.setEnd(end);
         getLogNode().write(batchInsertPlan);
-      } catch (IOException e) {
-        logger.error("{}: {} write WAL failed", storageGroupName,
-            tsFileResource.getFile().getName(), e);
-        setErrorResult(start, end, results, e);
       }
+    } catch (Exception e) {
+      for (int i = start; i < end; i++) {
+        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      }
+      throw new WriteProcessException(e);
+    }
+
+    for (int i = start; i < end; i++) {
+      results[i] = RpcUtils.SUCCESS_STATUS;
     }
 
     tsFileResource
@@ -224,14 +217,6 @@ public class TsFileProcessor {
       tsFileResource
           .updateEndTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
     }
-  }
-
-  private void setErrorResult(int start, int end, TSStatus[] results, Exception e)
-      throws WriteProcessException {
-    for (int i = start; i < end; i++) {
-      results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
-    }
-    throw new WriteProcessException(e);
   }
 
   /**
@@ -449,9 +434,10 @@ public class TsFileProcessor {
    * flushManager again.
    */
   private void addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
-    if(!updateLatestFlushTimeCallback.call(this)){
-      logger.error("{}: {} Memetable info: {}", storageGroupName,
+    if(!updateLatestFlushTimeCallback.call(this) || tobeFlushed.memSize() == 0){
+      logger.warn("This memtable is empty, skip it in flush. {}: {} Memetable info: {}", storageGroupName,
           tsFileResource.getFile().getName(), tobeFlushed.getMemTableMap());
+      return;
     }
     flushingMemTables.addLast(tobeFlushed);
     if (logger.isDebugEnabled()) {

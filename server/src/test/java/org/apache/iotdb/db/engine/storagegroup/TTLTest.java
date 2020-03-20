@@ -36,6 +36,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -121,7 +122,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLWrite() throws QueryProcessException {
+  public void testTTLWrite() throws WriteProcessException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
@@ -146,7 +147,7 @@ public class TTLTest {
     storageGroupProcessor.insert(insertPlan);
   }
 
-  private void prepareData() throws QueryProcessException {
+  private void prepareData() throws WriteProcessException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
@@ -174,7 +175,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLRead() throws IOException, QueryProcessException, StorageEngineException {
+  public void testTTLRead() throws IOException, WriteProcessException, StorageEngineException {
     prepareData();
 
     // files before ttl
@@ -222,7 +223,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLRemoval() throws StorageEngineException, QueryProcessException {
+  public void testTTLRemoval() throws StorageEngineException, WriteProcessException {
     prepareData();
 
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
@@ -333,7 +334,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLCleanFile() throws QueryProcessException {
+  public void testTTLCleanFile() throws WriteProcessException {
     prepareData();
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 

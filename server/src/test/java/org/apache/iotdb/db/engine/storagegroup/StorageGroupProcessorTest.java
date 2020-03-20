@@ -26,7 +26,6 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
@@ -85,7 +84,7 @@ public class StorageGroupProcessorTest {
 
 
   @Test
-  public void testUnseqUnsealedDelete() throws QueryProcessException, IOException {
+  public void testUnseqUnsealedDelete() throws WriteProcessException, IOException {
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     processor.insert(new InsertPlan(record));
@@ -132,7 +131,7 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testSequenceSyncClose() throws QueryProcessException {
+  public void testSequenceSyncClose() throws WriteProcessException {
     for (int j = 1; j <= 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -208,7 +207,7 @@ public class StorageGroupProcessorTest {
 
 
   @Test
-  public void testSeqAndUnSeqSyncClose() throws QueryProcessException {
+  public void testSeqAndUnSeqSyncClose() throws WriteProcessException {
 
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
@@ -240,7 +239,7 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testMerge() throws QueryProcessException {
+  public void testMerge() throws WriteProcessException {
 
     mergeLock = new AtomicLong(0);
     for (int j = 21; j <= 30; j++) {
