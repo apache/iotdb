@@ -226,7 +226,7 @@ public class TsFileWriter implements AutoCloseable {
     String deviceId = rowBatch.deviceId;
 
     // add all SeriesWriter of measurements in this RowBatch to this ChunkGroupWriter
-    for (MeasurementSchema timeseries : rowBatch.timeseries) {
+    for (MeasurementSchema timeseries : rowBatch.getSchemas()) {
       String measurementId = timeseries.getMeasurementId();
       if (schema.containsTimeseries(new Path(deviceId, measurementId))) {
         groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(new Path(deviceId, measurementId)),

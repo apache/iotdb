@@ -193,4 +193,10 @@ public class ChunkMetadata {
         tsDataType == that.tsDataType &&
         Objects.equals(statistics, that.statistics);
   }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(measurementUid, deletedAt, tsDataType, statistics,
+        version, offsetOfChunkHeader);
+  }
 }

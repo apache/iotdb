@@ -69,7 +69,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   private EndianType endianType = EndianType.BIG_ENDIAN;
   // device -> measurement -> TimeseriesMetadata
   private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadata = new ConcurrentHashMap<>();
-  private final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
+  private static final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
   private boolean cacheDeviceMetadata;
 
   /**
@@ -272,16 +272,9 @@ public class TsFileSequenceReader implements AutoCloseable {
       cacheLock.readLock().unlock();
     }
 
-    Lock lock = cacheLock.writeLock();
+    cacheLock.writeLock().lock();
     try {
-      lock.lock();
       if (cachedDeviceMetadata.containsKey(device)) {
-        try {
-          lock = cacheLock.readLock();
-          lock.lock();
-        } finally {
-          cacheLock.writeLock().unlock();
-        }
         return cachedDeviceMetadata.get(device);
       }
       if (tsFileMetaData == null) {
@@ -301,7 +294,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       cachedDeviceMetadata.put(device, deviceMetadata);
       return deviceMetadata;
     } finally {
-      lock.unlock();
+      cacheLock.writeLock().unlock();
     }
   }
 
