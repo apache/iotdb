@@ -266,14 +266,7 @@ public class StorageGroupProcessor {
         partitionLatestFlushedTimeForEachDevice
             .computeIfAbsent(timePartitionId, id -> new HashMap<>())
             .putAll(resource.getEndTimeMap());
-
-        for (Map.Entry<String, Long> mapEntry : resource.getEndTimeMap().entrySet()) {
-          if (!globalLatestFlushedTimeForEachDevice.containsKey(mapEntry.getKey())
-              || globalLatestFlushedTimeForEachDevice.get(mapEntry.getKey())
-              < mapEntry.getValue()) {
-            globalLatestFlushedTimeForEachDevice.put(mapEntry.getKey(), mapEntry.getValue());
-          }
-        }
+        globalLatestFlushedTimeForEachDevice.putAll(resource.getEndTimeMap());
       }
     }
   }
@@ -425,7 +418,7 @@ public class StorageGroupProcessor {
   }
 
 
-  public void insert(InsertPlan insertPlan) throws QueryProcessException {
+  public void insert(InsertPlan insertPlan) throws WriteProcessException {
     // reject insertions that are out of ttl
     if (!checkTTL(insertPlan.getTime())) {
       throw new OutOfTTLException(insertPlan.getTime(), (System.currentTimeMillis() - dataTTL));
@@ -434,16 +427,15 @@ public class StorageGroupProcessor {
     try {
       // init map
       long timePartitionId = StorageEngine.getTimePartition(insertPlan.getTime());
-      latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>())
-          .putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
-      partitionLatestFlushedTimeForEachDevice
-          .computeIfAbsent(timePartitionId, id -> new HashMap<>())
-          .putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
+
+      latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
+      partitionLatestFlushedTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>());
 
       // insert to sequence or unSequence file
       insertToTsFileProcessor(insertPlan,
           insertPlan.getTime() > partitionLatestFlushedTimeForEachDevice.get(timePartitionId)
-              .get(insertPlan.getDeviceId()));
+              .getOrDefault(insertPlan.getDeviceId(), Long.MIN_VALUE));
+
     } finally {
       writeUnlock();
     }
@@ -545,7 +537,7 @@ public class StorageGroupProcessor {
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
       int start, int end, boolean sequence, TSStatus[] results, long timePartitionId)
       throws WriteProcessException {
-    // return when start <= end
+    // return when start >= end
     if (start >= end) {
       return;
     }
@@ -559,24 +551,24 @@ public class StorageGroupProcessor {
       return;
     }
 
-    tsFileProcessor.insertBatch(batchInsertPlan, start, end, results);
+    try {
+      tsFileProcessor.insertBatch(batchInsertPlan, start, end, results);
+    } catch (WriteProcessException e) {
+      logger.error("insert to TsFileProcessor error ", e);
+      return;
+    }
 
-    latestTimeForEachDevice.computeIfAbsent(timePartitionId, t -> new HashMap<>())
-        .putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
+    latestTimeForEachDevice.computeIfAbsent(timePartitionId, t -> new HashMap<>());
     // try to update the latest time of the device of this tsRecord
-    if (sequence && latestTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId())
+    if (sequence && latestTimeForEachDevice.get(timePartitionId)
+        .getOrDefault(batchInsertPlan.getDeviceId(), Long.MIN_VALUE)
         < batchInsertPlan.getTimes()[end - 1]) {
       latestTimeForEachDevice.get(timePartitionId)
           .put(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
     }
-    long globalLatestFlushedTime =
-        globalLatestFlushedTimeForEachDevice.computeIfAbsent(
-            batchInsertPlan.getDeviceId(), k -> Long.MIN_VALUE);
+    long globalLatestFlushedTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
+        batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
     tryToUpdateBatchInsertLastCache(batchInsertPlan, globalLatestFlushedTime);
-    if (globalLatestFlushedTime < batchInsertPlan.getMaxTime()) {
-      globalLatestFlushedTimeForEachDevice.put(
-          batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
-    }
 
     // check memtable size and may async try to flush the work memtable
     if (tsFileProcessor.shouldFlush()) {
@@ -602,34 +594,29 @@ public class StorageGroupProcessor {
   }
 
   private void insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
-      throws QueryProcessException {
-    TsFileProcessor tsFileProcessor;
-    boolean result;
+      throws WriteProcessException {
     long timePartitionId = StorageEngine.getTimePartition(insertPlan.getTime());
 
-    tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
+    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
 
     if (tsFileProcessor == null) {
       return;
     }
 
     // insert TsFileProcessor
-    result = tsFileProcessor.insert(insertPlan);
+    tsFileProcessor.insert(insertPlan);
 
     // try to update the latest time of the device of this tsRecord
-    if (result
-        && latestTimeForEachDevice.get(timePartitionId).get(insertPlan.getDeviceId()) < insertPlan
-        .getTime()) {
+    if (latestTimeForEachDevice.get(timePartitionId)
+        .getOrDefault(insertPlan.getDeviceId(), Long.MIN_VALUE) < insertPlan.getTime()) {
       latestTimeForEachDevice.get(timePartitionId)
           .put(insertPlan.getDeviceId(), insertPlan.getTime());
     }
-    long globalLatestFlushTime =
-        globalLatestFlushedTimeForEachDevice.computeIfAbsent(
-            insertPlan.getDeviceId(), k -> Long.MIN_VALUE);
+
+    long globalLatestFlushTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
+        insertPlan.getDeviceId(), Long.MIN_VALUE);
+
     tryToUpdateInsertLastCache(insertPlan, globalLatestFlushTime);
-    if (result && globalLatestFlushTime < insertPlan.getTime()) {
-      globalLatestFlushedTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
-    }
 
     // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
@@ -638,7 +625,7 @@ public class StorageGroupProcessor {
   }
 
   public void tryToUpdateInsertLastCache(InsertPlan plan, Long latestFlushedTime)
-      throws QueryProcessException {
+      throws WriteProcessException {
     try {
       MNode node =
           MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(plan.getDeviceId());
@@ -649,8 +636,8 @@ public class StorageGroupProcessor {
         ((LeafMNode) measurementNode)
             .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
+    } catch (MetadataException | QueryProcessException e) {
+      throw new WriteProcessException(e);
     }
   }
 
@@ -1226,9 +1213,9 @@ public class StorageGroupProcessor {
         .get(processor.getTimeRangeId());
 
     if (curPartitionDeviceLatestTime == null) {
-      logger.error("Partition: " + processor.getTimeRangeId() +
-          " does't have latest time for each device record. Flushing tsfile is: "
-          + processor.getTsFileResource().getFile());
+      logger.warn("Partition: {} does't have latest time for each device. "
+              + "No valid record is written into memtable. Flushing tsfile is: {}",
+          processor.getTimeRangeId(), processor.getTsFileResource().getFile());
       return false;
     }
 
@@ -1236,8 +1223,8 @@ public class StorageGroupProcessor {
       partitionLatestFlushedTimeForEachDevice
           .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
           .put(entry.getKey(), entry.getValue());
-      if (!globalLatestFlushedTimeForEachDevice.containsKey(entry.getKey())
-          || globalLatestFlushedTimeForEachDevice.get(entry.getKey()) < entry.getValue()) {
+      if (globalLatestFlushedTimeForEachDevice
+          .getOrDefault(entry.getKey(), Long.MIN_VALUE) < entry.getValue()) {
         globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
       }
     }
@@ -1702,14 +1689,11 @@ public class StorageGroupProcessor {
       Map<String, Long> latestFlushTimeForPartition = partitionLatestFlushedTimeForEachDevice
           .getOrDefault(timePartitionId, new HashMap<>());
 
-      if (!latestFlushTimeForPartition.containsKey(device)
-          || latestFlushTimeForPartition.get(device) < endTime) {
+      if (latestFlushTimeForPartition.getOrDefault(device, Long.MIN_VALUE) < endTime) {
         partitionLatestFlushedTimeForEachDevice
-            .computeIfAbsent(timePartitionId, id -> new HashMap<>())
-            .put(device, endTime);
+            .computeIfAbsent(timePartitionId, id -> new HashMap<>()).put(device, endTime);
       }
-      if (!globalLatestFlushedTimeForEachDevice.containsKey(device)
-          || globalLatestFlushedTimeForEachDevice.get(device) < endTime) {
+      if (globalLatestFlushedTimeForEachDevice.getOrDefault(device, Long.MIN_VALUE) < endTime) {
         globalLatestFlushedTimeForEachDevice.put(device, endTime);
       }
     }

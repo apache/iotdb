@@ -104,7 +104,7 @@ public class IoTDBTtlIT {
         boolean caught = false;
         try {
           statement.execute(String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)",
-              now - 50000 + i, i));
+              now - 500000 + i, i));
         } catch (SQLException e) {
           if (TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode() == e.getErrorCode()) {
             caught = true;
