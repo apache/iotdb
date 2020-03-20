@@ -52,7 +52,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -259,9 +258,8 @@ public class StorageEngine implements IService {
     try {
       storageGroupProcessor = getProcessor(insertPlan.getDeviceId());
     } catch (Exception e) {
-      logger.warn("get StorageGroupProcessor of device {} failed, because {}",
-          insertPlan.getDeviceId(), e.getMessage(), e);
-      throw new StorageEngineException(e);
+      throw new StorageEngineException(
+          "get StorageGroupProcessor of device failed: " + insertPlan.getDeviceId(), e);
     }
 
     // TODO monitor: update statistics

@@ -45,7 +45,6 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseTsFile
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTimeCallBack;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
@@ -167,9 +166,8 @@ public class TsFileProcessor {
       try {
         getLogNode().write(insertPlan);
       } catch (Exception e) {
-        logger.error("{}: {} write WAL failed", storageGroupName,
-            tsFileResource.getFile().getName(), e);
-        throw new WriteProcessException(e);
+        throw new WriteProcessException(String.format("%s: %s write WAL failed, because %s",
+            storageGroupName, tsFileResource.getFile().getAbsolutePath(), e.getMessage()));
       }
     }
 

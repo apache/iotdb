@@ -1276,9 +1276,9 @@ public class StorageGroupProcessor {
         .get(processor.getTimeRangeId());
 
     if (curPartitionDeviceLatestTime == null) {
-      logger.warn("Partition: " + processor.getTimeRangeId() +
-          " does't have latest time for each device. No valid record is written into memtable."
-          + "Flushing tsfile is: " + processor.getTsFileResource().getFile());
+      logger.warn("Partition: {} does't have latest time for each device. "
+              + "No valid record is written into memtable. Flushing tsfile is: {}",
+          processor.getTimeRangeId(), processor.getTsFileResource().getFile());
       return false;
     }
 
