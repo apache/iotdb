@@ -432,8 +432,8 @@ public class TsFileProcessor {
    * flushManager again.
    */
   private void addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
-    if(!updateLatestFlushTimeCallback.call(this) ||
-        (!tobeFlushed.isSignalMemTable() && tobeFlushed.memSize() == 0)){
+    if(!tobeFlushed.isSignalMemTable() &&
+        (!updateLatestFlushTimeCallback.call(this) || tobeFlushed.memSize() == 0)){
       logger.warn("This normal memtable is empty, skip it in flush. {}: {} Memetable info: {}",
           storageGroupName, tsFileResource.getFile().getName(), tobeFlushed.getMemTableMap());
       return;
