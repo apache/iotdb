@@ -173,6 +173,13 @@ class MergeFileTask {
       seqFile.setFile(nextMergeVersionFile);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
+      RestorableTsFileIOWriter oldFileRecoverWriter = new RestorableTsFileIOWriter(
+          seqFile.getFile());
+      if (oldFileRecoverWriter.hasCrashed() && oldFileRecoverWriter.canWrite()) {
+        oldFileRecoverWriter.endFile();
+      } else {
+        oldFileRecoverWriter.close();
+      }
     } finally {
       seqFile.getWriteQueryLock().writeLock().unlock();
     }
