@@ -127,7 +127,7 @@ public class MManager {
 
   //Because the writer will be used later and should not be closed here.
   @SuppressWarnings("squid:S2093")
-  public void init() {
+  public synchronized void init() {
     if (initialized) {
       return;
     }
