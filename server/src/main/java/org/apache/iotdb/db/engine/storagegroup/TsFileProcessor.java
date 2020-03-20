@@ -166,8 +166,8 @@ public class TsFileProcessor {
       try {
         getLogNode().write(insertPlan);
       } catch (Exception e) {
-        throw new WriteProcessException(String.format("%s: %s write WAL failed, because %s",
-            storageGroupName, tsFileResource.getFile().getAbsolutePath(), e.getMessage()));
+        throw new WriteProcessException(String.format("%s: %s write WAL failed",
+            storageGroupName, tsFileResource.getFile().getAbsolutePath()), e);
       }
     }
 
