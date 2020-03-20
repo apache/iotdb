@@ -282,13 +282,7 @@ public class StorageGroupProcessor {
             .putAll(resource.getEndTimeMap());
         partitionLatestFlushedTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>())
             .putAll(resource.getEndTimeMap());
-
-        for (Map.Entry<String, Long> mapEntry : resource.getEndTimeMap().entrySet()) {
-          if (globalLatestFlushedTimeForEachDevice.getOrDefault(mapEntry.getKey(), Long.MIN_VALUE)
-                  < mapEntry.getValue()) {
-            globalLatestFlushedTimeForEachDevice.put(mapEntry.getKey(), mapEntry.getValue());
-          }
-        }
+        globalLatestFlushedTimeForEachDevice.putAll(resource.getEndTimeMap());
       }
     }
   }
