@@ -32,8 +32,8 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.LogManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -44,13 +44,13 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 import org.junit.Test;
 
-public class HeartBeatThreadTest {
+public class HeartbeatThreadTest {
 
   RaftMember member;
   TestLogManager logManager;
   Thread testThread;
   boolean respondToElection;
-  boolean testHeartBeat;
+  boolean testHeartbeat;
 
   Set<Integer> receivedNodes = new HashSet<>();
   PartitionGroup partitionGroup;
@@ -59,7 +59,7 @@ public class HeartBeatThreadTest {
     return new TestMetaGroupMember() {
       @Override
       public LogManager getLogManager() {
-        return HeartBeatThreadTest.this.logManager;
+        return HeartbeatThreadTest.this.logManager;
       }
 
       @Override
@@ -72,10 +72,10 @@ public class HeartBeatThreadTest {
   AsyncClient getClient(Node node) {
     return new TestClient(node.nodeIdentifier) {
       @Override
-      public void sendHeartBeat(HeartBeatRequest request,
-          AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+      public void sendHeartbeat(HeartbeatRequest request,
+          AsyncMethodCallback<HeartbeatResponse> resultHandler) {
         new Thread(() -> {
-          if (testHeartBeat) {
+          if (testHeartbeat) {
             assertEquals(TestUtils.getNode(0), request.getLeader());
             assertEquals(7, request.getCommitLogIndex());
             assertEquals(10, request.getTerm());
@@ -113,8 +113,8 @@ public class HeartBeatThreadTest {
     };
   }
 
-  HeartBeatThread getHeartBeatThread(RaftMember member) {
-    return new HeartBeatThread(member);
+  HeartbeatThread getHeartbeatThread(RaftMember member) {
+    return new HeartbeatThread(member);
   }
 
   @Before
@@ -122,7 +122,7 @@ public class HeartBeatThreadTest {
     logManager = new TestLogManager();
     member = getMember();
 
-    HeartBeatThread heartBeatThread = getHeartBeatThread(member);
+    HeartbeatThread heartBeatThread = getHeartbeatThread(member);
     testThread = new Thread(heartBeatThread);
     member.getTerm().set(10);
     logManager.setLastLogId(9);
@@ -130,7 +130,7 @@ public class HeartBeatThreadTest {
     logManager.setCommitLogIndex(7);
 
     respondToElection = false;
-    testHeartBeat = false;
+    testHeartbeat = false;
     partitionGroup = new PartitionGroup();
     for (int i = 0; i < 10; i++) {
       partitionGroup.add(TestUtils.getNode(i));
@@ -142,7 +142,7 @@ public class HeartBeatThreadTest {
 
   @Test
   public void testAsLeader() throws InterruptedException {
-    testHeartBeat = true;
+    testHeartbeat = true;
     member.setCharacter(NodeCharacter.LEADER);
     member.setLeader(member.getThisNode());
     synchronized (receivedNodes) {
@@ -159,7 +159,7 @@ public class HeartBeatThreadTest {
     int prevTimeOut = RaftServer.connectionTimeoutInMS;
     RaftServer.connectionTimeoutInMS = 500;
     member.setCharacter(NodeCharacter.FOLLOWER);
-    member.setLastHeartBeatReceivedTime(System.currentTimeMillis());
+    member.setLastHeartbeatReceivedTime(System.currentTimeMillis());
     respondToElection = false;
     try {
       testThread.start();

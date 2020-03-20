@@ -40,7 +40,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
@@ -162,11 +162,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   // request, and forward the request to it. See methods in DataGroupMember for details.
 
   @Override
-  public void sendHeartBeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
+  public void sendHeartbeat(HeartbeatRequest request, AsyncMethodCallback resultHandler) {
     Node header = request.getHeader();
     DataGroupMember member = getDataMember(header, resultHandler, request);
     if (member != null) {
-      member.sendHeartBeat(request, resultHandler);
+      member.sendHeartbeat(request, resultHandler);
     }
   }
 

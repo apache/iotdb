@@ -25,7 +25,7 @@ typedef i16 short
 typedef i64 long
 
 // leader -> follower
-struct HeartBeatRequest {
+struct HeartbeatRequest {
   1: required long term // leader's meta log
   2: required long commitLogIndex  // leader's meta log
   3: required Node leader
@@ -41,7 +41,7 @@ struct HeartBeatRequest {
 }
 
 // follower -> leader
-struct HeartBeatResponse {
+struct HeartbeatResponse {
   1: required long term
   2: optional long lastLogIndex // follower's meta log
   3: optional long lastLogTerm // follower's meta log
@@ -94,6 +94,7 @@ struct AddNodeResponse {
   // add new node
   1: required int respNum
   2: optional binary partitionTableBytes
+  3: optional CheckStatusResponse checkStatusResponse
 }
 
 struct Node {
@@ -101,6 +102,20 @@ struct Node {
   2: required int metaPort
   3: required int nodeIdentifier
   4: required int dataPort
+}
+
+// leader -> follower
+struct StartUpStatus{
+ 1: required long partitionInterval
+ 2: required int hashSalt
+ 3: required int replicationNumber
+}
+
+// follower -> leader
+struct CheckStatusResponse{
+ 1: required bool partitionalIntervalEquals
+ 2: required bool hashSaltEquals
+ 3: required bool replicationNumEquals
 }
 
 struct SendSnapshotRequest {
@@ -179,10 +194,10 @@ service RaftService {
   * The method will check the authority of the leader.
   *
   * @param request information of the leader
-  * @return if the leader is valid, HeartBeatResponse.term will set -1, and the follower will tell
+  * @return if the leader is valid, HeartbeatResponse.term will set -1, and the follower will tell
   * leader its lastLogIndex; otherwise, the follower will tell the fake leader its term.
   **/
-	HeartBeatResponse sendHeartBeat(1:HeartBeatRequest request);
+	HeartbeatResponse sendHeartbeat(1:HeartbeatRequest request);
 
 	/**
   * If a node wants to be a leader, it'll call the method to other nodes to get a vote.
@@ -315,7 +330,7 @@ service TSMetaService extends RaftService {
   *
   * @param node a new node that needs to be added
   **/
-  AddNodeResponse addNode(1: Node node)
+  AddNodeResponse addNode(1: Node node, 2: StartUpStatus startUpStatus)
 
   /**
   * Remove a node from the cluster. If the node is not in the cluster or the cluster size will
@@ -334,4 +349,5 @@ service TSMetaService extends RaftService {
   TNodeStatus queryNodeStatus()
 
   Node checkAlive()
+
 }

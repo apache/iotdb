@@ -57,13 +57,14 @@ import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.RaftServer;
@@ -248,10 +249,10 @@ public class MetaGroupMemberTest extends MemberTest {
             }
 
             @Override
-            public void sendHeartBeat(HeartBeatRequest request,
-                AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+            public void sendHeartbeat(HeartbeatRequest request,
+                AsyncMethodCallback<HeartbeatResponse> resultHandler) {
               new Thread(() -> {
-                HeartBeatResponse response = new HeartBeatResponse();
+                HeartbeatResponse response = new HeartbeatResponse();
                 response.setTerm(Response.RESPONSE_AGREE);
                 resultHandler.onComplete(response);
               }).start();
@@ -270,7 +271,8 @@ public class MetaGroupMemberTest extends MemberTest {
             }
 
             @Override
-            public void addNode(Node node, AsyncMethodCallback<AddNodeResponse> resultHandler) {
+            public void addNode(Node node, StartUpStatus startUpStatus,
+                AsyncMethodCallback<AddNodeResponse> resultHandler) {
               new Thread(() -> {
                 if (node.getNodeIdentifier() == 10) {
                   resultHandler.onComplete(new AddNodeResponse(
@@ -305,7 +307,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
             @Override
             public void exile(AsyncMethodCallback<Void> resultHandler) {
-             new Thread(() -> exiledNode = node).start();
+              new Thread(() -> exiledNode = node).start();
             }
 
             @Override
@@ -348,12 +350,11 @@ public class MetaGroupMemberTest extends MemberTest {
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
     }
-    metaGroupMember.closePartition(TestUtils.getTestSg(0), 0,true);
+    metaGroupMember.closePartition(TestUtils.getTestSg(0), 0, true);
 
     StorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(TestUtils.getTestSg(0));
     assertTrue(processor.getWorkSequenceTsFileProcessors().isEmpty());
-
 
     int prevTimeout = RaftServer.connectionTimeoutInMS;
     RaftServer.connectionTimeoutInMS = 1;
@@ -375,7 +376,7 @@ public class MetaGroupMemberTest extends MemberTest {
           // ignore
         }
       }).start();
-      metaGroupMember.closePartition(TestUtils.getTestSg(0), 0,true);
+      metaGroupMember.closePartition(TestUtils.getTestSg(0), 0, true);
       assertTrue(processor.getWorkSequenceTsFileProcessors().isEmpty());
 
       for (int i = 30; i < 40; i++) {
@@ -386,7 +387,7 @@ public class MetaGroupMemberTest extends MemberTest {
       }
       // indicating the leader is stale
       dummyResponse.set(100);
-      metaGroupMember.closePartition(TestUtils.getTestSg(0), 0,true);
+      metaGroupMember.closePartition(TestUtils.getTestSg(0), 0, true);
       assertFalse(processor.getWorkSequenceTsFileProcessors().isEmpty());
     } finally {
       RaftServer.connectionTimeoutInMS = prevTimeout;
@@ -532,10 +533,14 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testGetSeriesType() throws MetadataException {
     // a local series
     assertEquals(Collections.singletonList(TSDataType.DOUBLE),
-        metaGroupMember.getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(0, 0)), null));
+        metaGroupMember
+            .getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(0, 0)),
+                null));
     // a remote series that can be fetched
     assertEquals(Collections.singletonList(TSDataType.DOUBLE),
-        metaGroupMember.getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(9, 0)), null));
+        metaGroupMember
+            .getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(9, 0)),
+                null));
     // a non-existent series
     MManager.getInstance().setStorageGroup(TestUtils.getTestSg(10));
     try {
@@ -553,6 +558,7 @@ public class MetaGroupMemberTest extends MemberTest {
           e.getMessage());
     }
   }
+
 
   @Test
   public void testGetReaderByTimestamp()
@@ -622,7 +628,8 @@ public class MetaGroupMemberTest extends MemberTest {
     try {
       for (int i = 0; i < 10; i++) {
         ManagedSeriesReader reader = metaGroupMember
-            .getSeriesReader(new Path(TestUtils.getTestSeries(i, 0)), TSDataType.DOUBLE, TimeFilter.gtEq(5),
+            .getSeriesReader(new Path(TestUtils.getTestSeries(i, 0)), TSDataType.DOUBLE,
+                TimeFilter.gtEq(5),
                 ValueFilter.ltEq(8.0), context);
         assertTrue(reader.hasNextBatch());
         BatchData batchData = reader.nextBatch();
@@ -654,12 +661,12 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testProcessValidHeartBeatReq() throws QueryProcessException {
+  public void testProcessValidHeartbeatReq() throws QueryProcessException {
     MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(10));
     try {
-      HeartBeatRequest request = new HeartBeatRequest();
+      HeartbeatRequest request = new HeartbeatRequest();
       request.setRequireIdentifier(true);
-      HeartBeatResponse response = new HeartBeatResponse();
+      HeartbeatResponse response = new HeartbeatResponse();
       metaGroupMember.processValidHeartbeatReq(request, response);
       assertEquals(10, response.getFollowerIdentifier());
 
@@ -677,14 +684,14 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testProcessValidHeartBeatResp()
+  public void testProcessValidHeartbeatResp()
       throws TTransportException, QueryProcessException {
     MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(10));
     metaGroupMember.start();
     metaGroupMember.onElectionWins();
     try {
       for (int i = 0; i < 10; i++) {
-        HeartBeatResponse response = new HeartBeatResponse();
+        HeartbeatResponse response = new HeartbeatResponse();
         response.setFollowerIdentifier(i);
         response.setRequirePartitionTable(true);
         metaGroupMember.processValidHeartbeatResp(response, TestUtils.getNode(i));
@@ -699,7 +706,7 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testAppendEntry() throws InterruptedException {
     metaGroupMember.setPartitionTable(null);
-    CloseFileLog log = new CloseFileLog(TestUtils.getTestSg(0), 0,  true);
+    CloseFileLog log = new CloseFileLog(TestUtils.getTestSg(0), 0, true);
     log.setCurrLogIndex(0);
     log.setCurrLogTerm(0);
     log.setPreviousLogIndex(-1);
@@ -734,7 +741,8 @@ public class MetaGroupMemberTest extends MemberTest {
       AtomicReference<AddNodeResponse> result = new AtomicReference<>();
       GenericHandler<AddNodeResponse> handler = new GenericHandler<>(TestUtils.getNode(0), result);
       synchronized (result) {
-        metaGroupMember.addNode(TestUtils.getNode(10), handler);
+
+        metaGroupMember.addNode(TestUtils.getNode(10), TestUtils.getStartUpStatus(), handler);
         result.wait(200);
       }
       AddNodeResponse response = result.get();
@@ -744,7 +752,7 @@ public class MetaGroupMemberTest extends MemberTest {
       result.set(null);
       metaGroupMember.setPartitionTable(partitionTable);
       synchronized (result) {
-        metaGroupMember.addNode(TestUtils.getNode(0), handler);
+        metaGroupMember.addNode(TestUtils.getNode(0), TestUtils.getStartUpStatus(), handler);
         result.wait(200);
       }
       assertNull(result.get());
@@ -755,7 +763,7 @@ public class MetaGroupMemberTest extends MemberTest {
       result.set(null);
       metaGroupMember.setPartitionTable(partitionTable);
       synchronized (result) {
-        metaGroupMember.addNode(TestUtils.getNode(10), handler);
+        metaGroupMember.addNode(TestUtils.getNode(10), TestUtils.getStartUpStatus(), handler);
         result.wait(200);
       }
       response = result.get();
@@ -767,7 +775,7 @@ public class MetaGroupMemberTest extends MemberTest {
       result.set(null);
       metaGroupMember.setPartitionTable(partitionTable);
       synchronized (result) {
-        metaGroupMember.addNode(TestUtils.getNode(10), handler);
+        metaGroupMember.addNode(TestUtils.getNode(10), TestUtils.getStartUpStatus(), handler);
         result.wait(200);
       }
       response = result.get();
@@ -780,7 +788,7 @@ public class MetaGroupMemberTest extends MemberTest {
       result.set(null);
       metaGroupMember.setPartitionTable(partitionTable);
       synchronized (result) {
-        metaGroupMember.addNode(TestUtils.getNode(11), handler);
+        metaGroupMember.addNode(TestUtils.getNode(11), TestUtils.getStartUpStatus(), handler);
         result.wait(200);
       }
       response = result.get();
@@ -793,11 +801,62 @@ public class MetaGroupMemberTest extends MemberTest {
       metaGroupMember.setPartitionTable(partitionTable);
       synchronized (result) {
         Node node = TestUtils.getNode(12).setNodeIdentifier(10);
-        metaGroupMember.addNode(node, handler);
+        metaGroupMember.addNode(node, TestUtils.getStartUpStatus(), handler);
         result.wait(200);
       }
       response = result.get();
       assertEquals(Response.RESPONSE_IDENTIFIER_CONFLICT, response.getRespNum());
+
+      //  cannot add a node due to configuration conflict, partition interval
+      metaGroupMember.setCharacter(LEADER);
+      result.set(null);
+      metaGroupMember.setPartitionTable(partitionTable);
+      synchronized (result) {
+        Node node = TestUtils.getNode(13);
+        StartUpStatus startUpStatus = TestUtils.getStartUpStatus();
+        startUpStatus.setPartitionInterval(-1);
+        metaGroupMember.addNode(node, startUpStatus, handler);
+        result.wait(200);
+      }
+      response = result.get();
+      assertEquals(Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT, response.getRespNum());
+      assertFalse(response.getCheckStatusResponse().isPartitionalIntervalEquals());
+      assertTrue(response.getCheckStatusResponse().isHashSaltEquals());
+      assertTrue(response.getCheckStatusResponse().isReplicationNumEquals());
+
+      // cannot add a node due to configuration conflict, hash salt
+      metaGroupMember.setCharacter(LEADER);
+      result.set(null);
+      metaGroupMember.setPartitionTable(partitionTable);
+      synchronized (result) {
+        Node node = TestUtils.getNode(12);
+        StartUpStatus startUpStatus = TestUtils.getStartUpStatus();
+        startUpStatus.setHashSalt(0);
+        metaGroupMember.addNode(node, startUpStatus, handler);
+        result.wait(200);
+      }
+      response = result.get();
+      assertEquals(Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT, response.getRespNum());
+      assertTrue(response.getCheckStatusResponse().isPartitionalIntervalEquals());
+      assertFalse(response.getCheckStatusResponse().isHashSaltEquals());
+      assertTrue(response.getCheckStatusResponse().isReplicationNumEquals());
+
+      // cannot add a node due to configuration conflict, replication number
+      metaGroupMember.setCharacter(LEADER);
+      result.set(null);
+      metaGroupMember.setPartitionTable(partitionTable);
+      synchronized (result) {
+        Node node = TestUtils.getNode(12);
+        StartUpStatus startUpStatus = TestUtils.getStartUpStatus();
+        startUpStatus.setReplicationNumber(0);
+        metaGroupMember.addNode(node, startUpStatus, handler);
+        result.wait(200);
+      }
+      response = result.get();
+      assertEquals(Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT, response.getRespNum());
+      assertTrue(response.getCheckStatusResponse().isPartitionalIntervalEquals());
+      assertTrue(response.getCheckStatusResponse().isHashSaltEquals());
+      assertFalse(response.getCheckStatusResponse().isReplicationNumEquals());
 
       // cannot add a node due to network failure
       dummyResponse.set(Response.RESPONSE_NO_CONNECTION);
@@ -814,7 +873,7 @@ public class MetaGroupMemberTest extends MemberTest {
             //ignore
           }
         }).start();
-        metaGroupMember.addNode(TestUtils.getNode(12), handler);
+        metaGroupMember.addNode(TestUtils.getNode(12), TestUtils.getStartUpStatus(), handler);
         result.wait(200);
       }
       response = result.get();
@@ -826,11 +885,12 @@ public class MetaGroupMemberTest extends MemberTest {
       result.set(null);
       metaGroupMember.setPartitionTable(partitionTable);
       synchronized (result) {
-        metaGroupMember.addNode(TestUtils.getNode(13), handler);
+        metaGroupMember.addNode(TestUtils.getNode(13), TestUtils.getStartUpStatus(), handler);
         result.wait(200);
       }
       response = result.get();
       assertNull(response);
+
     } finally {
       metaGroupMember.stop();
       RaftServer.connectionTimeoutInMS = prevTimeout;
@@ -895,7 +955,7 @@ public class MetaGroupMemberTest extends MemberTest {
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
     assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(40)));
     assertEquals(ELECTOR, metaGroupMember.getCharacter());
-    assertEquals(Long.MIN_VALUE, metaGroupMember.getLastHeartBeatReceivedTime());
+    assertEquals(Long.MIN_VALUE, metaGroupMember.getLastHeartbeatReceivedTime());
   }
 
   @Test
@@ -906,7 +966,7 @@ public class MetaGroupMemberTest extends MemberTest {
     doRemoveNode(resultRef, TestUtils.getNode(20));
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
     assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(20)));
-    assertEquals(0, metaGroupMember.getLastHeartBeatReceivedTime());
+    assertEquals(0, metaGroupMember.getLastHeartbeatReceivedTime());
   }
 
   @Test
@@ -953,7 +1013,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testRemoveTooManyNodes() throws InterruptedException {
-    for (int i = 0; i < 7; i ++) {
+    for (int i = 0; i < 7; i++) {
       AtomicReference<Long> resultRef = new AtomicReference<>();
       metaGroupMember.setCharacter(LEADER);
       doRemoveNode(resultRef, TestUtils.getNode(90 - i * 10));
@@ -967,7 +1027,8 @@ public class MetaGroupMemberTest extends MemberTest {
     assertTrue(metaGroupMember.getAllNodes().contains(TestUtils.getNode(20)));
   }
 
-  private void doRemoveNode(AtomicReference<Long> resultRef, Node nodeToRemove) throws InterruptedException {
+  private void doRemoveNode(AtomicReference<Long> resultRef, Node nodeToRemove)
+      throws InterruptedException {
     synchronized (resultRef) {
       metaGroupMember.removeNode(nodeToRemove, new AsyncMethodCallback<Long>() {
         @Override
