@@ -96,11 +96,10 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
             records[j] = new RowRecord(currentTime);
           }
           //fill record
-          Field field = Field.getField(values[j], tsDataType);
-          if (field == null) {
+          if (values[j] == null) {
             records[j].addField(null);
           } else {
-            records[j].addField(field);
+            records[j].addField(Field.getField(values[j], tsDataType));
           }
           //just add not null row into return result
           if (i == seriesReaderByTimestampList.size() - 1 && !records[j].isEmpty()) {
