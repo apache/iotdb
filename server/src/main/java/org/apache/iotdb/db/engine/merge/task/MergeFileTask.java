@@ -180,6 +180,7 @@ class MergeFileTask {
       } else {
         oldFileRecoverWriter.close();
       }
+      throw e;
     } finally {
       seqFile.getWriteQueryLock().writeLock().unlock();
     }
