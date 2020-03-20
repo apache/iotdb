@@ -87,13 +87,10 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
 
         TSDataType tsDataType = dataTypes.get(i);
         Object[] values = reader.getValuesInTimestamps(timeColumn);
-        timeColumn.position(position);
         for (int j = 0; j < values.length; j++) {
-          long currentTime = timeColumn.currentTime();
-          timeColumn.next();
           //alloc the tmp memory
           if (records[j] == null) {
-            records[j] = new RowRecord(currentTime);
+            records[j] = new RowRecord(timeColumn.getTimeByIndex(j + position));
           }
           //fill record
           if (values[j] == null) {
