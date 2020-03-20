@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read;
 
+import static sun.audio.AudioDevice.device;
+
 import java.util.Map.Entry;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -44,13 +46,11 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -263,8 +263,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @throws IOException io error
    */
   public Map<String, TimeseriesMetadata> readDeviceMetadata(String device) throws IOException {
+    if (!cacheDeviceMetadata) {
+      return readDeviceMetadataFromDisk(device);
+    }
+
+    cacheLock.readLock().lock();
     try {
-      cacheLock.readLock().lock();
       if (cachedDeviceMetadata.containsKey(device)) {
         return cachedDeviceMetadata.get(device);
       }
@@ -280,22 +284,26 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (tsFileMetaData == null) {
         readFileMetadata();
       }
-      if (tsFileMetaData.getDeviceMetadataIndex() == null
-              || !tsFileMetaData.getDeviceMetadataIndex().containsKey(device)) {
+      if (!tsFileMetaData.getDeviceMetadataIndex().containsKey(device)) {
         return new HashMap<>();
       }
-      Pair<Long, Integer> deviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex().get(device);
-      Map<String, TimeseriesMetadata> deviceMetadata = new HashMap<>();
-      ByteBuffer buffer = readData(deviceMetadataIndex.left, deviceMetadataIndex.right);
-      while (buffer.hasRemaining()) {
-        TimeseriesMetadata tsMetaData = TimeseriesMetadata.deserializeFrom(buffer);
-        deviceMetadata.put(tsMetaData.getMeasurementId(), tsMetaData);
-      }
+      Map<String, TimeseriesMetadata> deviceMetadata = readDeviceMetadataFromDisk(device);
       cachedDeviceMetadata.put(device, deviceMetadata);
       return deviceMetadata;
     } finally {
       cacheLock.writeLock().unlock();
     }
+  }
+
+  private Map<String, TimeseriesMetadata> readDeviceMetadataFromDisk(String device) throws IOException {
+    Pair<Long, Integer> deviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex().get(device);
+    Map<String, TimeseriesMetadata> deviceMetadata = new HashMap<>();
+    ByteBuffer buffer = readData(deviceMetadataIndex.left, deviceMetadataIndex.right);
+    while (buffer.hasRemaining()) {
+      TimeseriesMetadata tsMetaData = TimeseriesMetadata.deserializeFrom(buffer);
+      deviceMetadata.put(tsMetaData.getMeasurementId(), tsMetaData);
+    }
+    return deviceMetadata;
   }
 
 
