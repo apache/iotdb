@@ -91,8 +91,7 @@ public class QueryResourceManager {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath,
         filter);
-    return StorageEngine
-        .getInstance().query(singleSeriesExpression, context, filePathsManager);
+    return StorageEngine.getInstance().query(singleSeriesExpression, context, filePathsManager);
   }
 
   /**

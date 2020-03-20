@@ -179,7 +179,8 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLRead() throws IOException, WriteProcessException, StorageEngineException {
+  public void testTTLRead()
+      throws IOException, WriteProcessException, StorageEngineException, QueryProcessException {
     prepareData();
 
     // files before ttl
