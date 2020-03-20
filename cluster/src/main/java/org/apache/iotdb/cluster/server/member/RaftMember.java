@@ -550,487 +550,477 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
 
-    /**
-     * Sub-classes will add their own process of HeartBeatResponse in this method.
-     * @param response
-     * @param receiver
-     */
-    public void processValidHeartbeatResp (HeartbeatResponse response, Node receiver){
+  /**
+   * Sub-classes will add their own process of HeartBeatResponse in this method.
+   *
+   * @param response
+   * @param receiver
+   */
+  public void processValidHeartbeatResp(HeartbeatResponse response, Node receiver) {
 
+  }
+
+  /**
+   * The actions performed when the node wins in an election (becoming a leader).
+   */
+  public void onElectionWins() {
+
+  }
+
+
+  /**
+   * Sub-classes will add their own process of HeartBeatRequest in this method.
+   *
+   * @param request
+   * @param response
+   */
+  void processValidHeartbeatReq(HeartbeatRequest request, HeartbeatResponse response) {
+
+  }
+
+  /**
+   * If "newTerm" is larger than the local term, give up the leadership, become a follower and reset
+   * heartbeat timer.
+   *
+   * @param newTerm
+   */
+  public void retireFromLeader(long newTerm) {
+    synchronized (term) {
+      long currTerm = term.get();
+      // confirm that the heartbeat of the new leader hasn't come
+      if (currTerm < newTerm) {
+        term.set(newTerm);
+        setCharacter(NodeCharacter.FOLLOWER);
+        setLeader(null);
+        setLastHeartbeatReceivedTime(System.currentTimeMillis());
+      }
+    }
+  }
+
+  /**
+   * Verify the validity of an ElectionRequest, and make itself a follower of the elector if the
+   * request is valid.
+   *
+   * @param electionRequest
+   * @return Response.RESPONSE_AGREE if the elector is valid or the local term if the elector has a
+   * smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
+   */
+  long processElectionRequest(ElectionRequest electionRequest) {
+
+    long thatTerm = electionRequest.getTerm();
+    long thatLastLogId = electionRequest.getLastLogIndex();
+    long thatLastLogTerm = electionRequest.getLastLogTerm();
+    logger
+        .info("{} received an election request, term:{}, metaLastLogId:{}, metaLastLogTerm:{}",
+            name, thatTerm,
+            thatLastLogId, thatLastLogTerm);
+
+    long lastLogIndex = logManager.getLastLogIndex();
+    long lastLogTerm = logManager.getLastLogTerm();
+
+    synchronized (term) {
+      long thisTerm = term.get();
+      long resp = verifyElector(thisTerm, lastLogIndex, lastLogTerm, thatTerm, thatLastLogId,
+          thatLastLogTerm);
+      if (resp == Response.RESPONSE_AGREE) {
+        term.set(thatTerm);
+        setCharacter(NodeCharacter.FOLLOWER);
+        lastHeartbeatReceivedTime = System.currentTimeMillis();
+        leader = electionRequest.getElector();
+        // interrupt election
+        term.notifyAll();
+      }
+      return resp;
+    }
+  }
+
+  /**
+   * Reject the election if one of the four holds: 1. the term of the candidate is no bigger than
+   * the voter's 2. the lastLogTerm of the candidate is smaller than the voter's 3. the lastLogTerm
+   * of the candidate equals to the voter's but its lastLogIndex is smaller than the voter's
+   * Otherwise accept the election.
+   *
+   * @param thisTerm
+   * @param thisLastLogIndex
+   * @param thisLastLogTerm
+   * @param thatTerm
+   * @param thatLastLogId
+   * @param thatLastLogTerm
+   * @return Response.RESPONSE_AGREE if the elector is valid or the local term if the elector has a
+   * smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
+   */
+  long verifyElector(long thisTerm, long thisLastLogIndex, long thisLastLogTerm,
+      long thatTerm, long thatLastLogId, long thatLastLogTerm) {
+    long response;
+    if (thatTerm <= thisTerm) {
+      response = thisTerm;
+      logger.debug("{} rejected an election request, term:{}/{}",
+          name, thatTerm, thisTerm);
+    } else if (thatLastLogTerm < thisLastLogTerm
+        || (thatLastLogTerm == thisLastLogTerm && thatLastLogId < thisLastLogIndex)) {
+      logger.debug("{} rejected an election request, logIndex:{}/{}, logTerm:{}/{}",
+          name, thatLastLogId, thisLastLogIndex, thatLastLogTerm, thisLastLogTerm);
+      response = Response.RESPONSE_LOG_MISMATCH;
+    } else {
+      logger.debug("{} accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
+          name, thatTerm, thisTerm, thatLastLogId, thisLastLogIndex, thatLastLogTerm,
+          thisLastLogTerm);
+      response = Response.RESPONSE_AGREE;
+    }
+    return response;
+  }
+
+  /**
+   * Update the followers' log by sending logs whose index >= followerLastMatchedLogIndex to the
+   * follower. If some of the logs are not in memory, also send the snapshot.
+   * <br>notice that if a part of data is in the snapshot, then it is not in the logs</>
+   *
+   * @param follower
+   * @param followerLastLogIndex
+   */
+  public void catchUp(Node follower, long followerLastLogIndex) {
+    // TODO-Cluster: use lastMatchLogIndex instead of lastLogIndex
+    // for one follower, there is at most one ongoing catch-up
+    synchronized (follower) {
+      // check if the last catch-up is still ongoing
+      Long lastCatchupResp = lastCatchUpResponseTime.get(follower);
+      if (lastCatchupResp != null
+          && System.currentTimeMillis() - lastCatchupResp < RaftServer.connectionTimeoutInMS) {
+        logger.debug("{}: last catch up of {} is ongoing", name, follower);
+        return;
+      } else {
+        // record the start of the catch-up
+        lastCatchUpResponseTime.put(follower, System.currentTimeMillis());
+      }
+    }
+    if (followerLastLogIndex == -1) {
+      // if the follower does not have any logs, send from the first one
+      followerLastLogIndex = 0;
     }
 
-    /**
-     * The actions performed when the node wins in an election (becoming a leader).
-     */
-    public void onElectionWins () {
+    AsyncClient client = connectNode(follower);
+    if (client != null) {
+      List<Log> logs;
+      boolean allLogsValid;
+      Snapshot snapshot = null;
+      synchronized (logManager) {
+        // check if the very first log has been snapshot
+        allLogsValid = logManager.logValid(followerLastLogIndex);
+        logs = logManager.getLogs(followerLastLogIndex, Long.MAX_VALUE);
+        if (!allLogsValid) {
+          // if the first log has been snapshot, the snapshot should also be sent to the
+          // follower, otherwise some data will be missing
+          snapshot = logManager.getSnapshot();
+        }
+      }
 
+      if (allLogsValid) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("{} makes {} catch up with {} cached logs", name, follower, logs.size());
+        }
+        catchUpService.submit(new LogCatchUpTask(logs, follower, this));
+      } else {
+        logger.debug("{}: Logs in {} are too old, catch up with snapshot", name, follower);
+        catchUpService.submit(new SnapshotCatchUpTask(logs, snapshot, follower, this));
+      }
+    } else {
+      lastCatchUpResponseTime.remove(follower);
+      logger.warn("{}: Catch-up failed: node {} is currently unavailable", name, follower);
+    }
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  /**
+   * @return the header of the data raft group or null if this is in a meta group.
+   */
+  public Node getHeader() {
+    return null;
+  }
+
+  /**
+   * Forward a non-query plan to a node using the default client.
+   *
+   * @param plan   a non-query plan
+   * @param node   cannot be the local node
+   * @param header must be set for data group communication, set to null for meta group
+   *               communication
+   * @return a TSStatus indicating if the forwarding is successful.
+   */
+  TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
+    if (node == thisNode || node == null) {
+      logger.debug("{}: plan {} has no where to be forwarded", name, plan);
+      return StatusUtils.NO_LEADER;
     }
 
+    logger.info("{}: Forward {} to node {}", name, plan, node);
 
-      /**
-       * Sub-classes will add their own process of HeartBeatRequest in this method.
-       * @param request
-       * @param response
-       */
-      void processValidHeartbeatReq (HeartbeatRequest request, HeartbeatResponse response){
+    AsyncClient client = connectNode(node);
+    if (client != null) {
+      return forwardPlan(plan, client, node, header);
+    }
+    return StatusUtils.TIME_OUT;
+  }
 
+  /**
+   * Forward a non-query plan to "receiver" using "client".
+   *
+   * @param plan     a non-query plan
+   * @param client
+   * @param receiver
+   * @param header   to determine which DataGroupMember of "receiver" will process the request.
+   * @return a TSStatus indicating if the forwarding is successful.
+   */
+  TSStatus forwardPlan(PhysicalPlan plan, AsyncClient client, Node receiver, Node header) {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      plan.serializeTo(dataOutputStream);
+      AtomicReference<TSStatus> status = new AtomicReference<>();
+      ExecutNonQueryReq req = new ExecutNonQueryReq();
+      req.setPlanBytes(byteArrayOutputStream.toByteArray());
+      if (header != null) {
+        req.setHeader(header);
       }
-
-      /**
-       * If "newTerm" is larger than the local term, give up the leadership, become a follower and
-       * reset heartbeat timer.
-       * @param newTerm
-       */
-      public void retireFromLeader ( long newTerm){
-        synchronized (term) {
-          long currTerm = term.get();
-          // confirm that the heartbeat of the new leader hasn't come
-          if (currTerm < newTerm) {
-            term.set(newTerm);
-            setCharacter(NodeCharacter.FOLLOWER);
-            setLeader(null);
-            setLastHeartbeatReceivedTime(System.currentTimeMillis());
-          }
-        }
+      synchronized (status) {
+        client.executeNonQueryPlan(req, new ForwardPlanHandler(status, plan, receiver));
+        status.wait(RaftServer.connectionTimeoutInMS);
       }
+      return status.get() == null ? StatusUtils.TIME_OUT : status.get();
+    } catch (IOException | TException e) {
+      TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
+      status.setMessage(e.getMessage());
+      logger
+          .error("{}: encountered an error when forwarding {} to {}", name, plan, receiver, e);
+      return status;
+    } catch (InterruptedException e) {
+      return StatusUtils.TIME_OUT;
+    }
+  }
 
-      /**
-       * Verify the validity of an ElectionRequest, and make itself a follower of the elector if the
-       * request is valid.
-       * @param electionRequest
-       * @return Response.RESPONSE_AGREE if the elector is valid or the local term if the elector has
-       *   a smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
-       */
-      long processElectionRequest (ElectionRequest electionRequest){
+  /**
+   * Create a log for "plan" and append it locally and to all followers. Only the group leader can
+   * call this method. Will commit the log locally and send it to followers
+   *
+   * @param plan
+   * @return OK if over half of the followers accept the log or null if the leadership is lost
+   * during the appending
+   */
+  TSStatus processPlanLocally(PhysicalPlan plan) {
+    logger.debug("{}: Processing plan {}", name, plan);
+    if (readOnly) {
+      return StatusUtils.NODE_READ_ONLY;
+    }
 
-        long thatTerm = electionRequest.getTerm();
-        long thatLastLogId = electionRequest.getLastLogIndex();
-        long thatLastLogTerm = electionRequest.getLastLogTerm();
-        logger
-            .info("{} received an election request, term:{}, metaLastLogId:{}, metaLastLogTerm:{}",
-                name, thatTerm,
-                thatLastLogId, thatLastLogTerm);
+    PhysicalPlanLog log = new PhysicalPlanLog();
+    // assign term and index to the new log and append it
+    synchronized (logManager) {
+      log.setCurrLogTerm(getTerm().get());
+      log.setPreviousLogIndex(logManager.getLastLogIndex());
+      log.setPreviousLogTerm(logManager.getLastLogTerm());
+      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
-        long lastLogIndex = logManager.getLastLogIndex();
-        long lastLogTerm = logManager.getLastLogTerm();
+      log.setPlan(plan);
+      logManager.appendLog(log);
+    }
 
-        synchronized (term) {
-          long thisTerm = term.get();
-          long resp = verifyElector(thisTerm, lastLogIndex, lastLogTerm, thatTerm, thatLastLogId,
-              thatLastLogTerm);
-          if (resp == Response.RESPONSE_AGREE) {
-            term.set(thatTerm);
-            setCharacter(NodeCharacter.FOLLOWER);
-            lastHeartbeatReceivedTime = System.currentTimeMillis();
-            leader = electionRequest.getElector();
-            // interrupt election
-            term.notifyAll();
-          }
-          return resp;
-        }
-      }
+    if (appendLogInGroup(log)) {
+      return StatusUtils.OK;
+    }
+    return null;
+  }
 
-      /**
-       *  Reject the election if one of the four holds:
-       *   1. the term of the candidate is no bigger than the voter's
-       *   2. the lastLogTerm of the candidate is smaller than the voter's
-       *   3. the lastLogTerm of the candidate equals to the voter's but its lastLogIndex is
-       *      smaller than the voter's
-       *   Otherwise accept the election.
-       * @param thisTerm
-       * @param thisLastLogIndex
-       * @param thisLastLogTerm
-       * @param thatTerm
-       * @param thatLastLogId
-       * @param thatLastLogTerm
-       * @return Response.RESPONSE_AGREE if the elector is valid or the local term if the elector has
-       * a smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
-       */
-      long verifyElector ( long thisTerm, long thisLastLogIndex, long thisLastLogTerm,
-      long thatTerm, long thatLastLogId, long thatLastLogTerm){
-        long response;
-        if (thatTerm <= thisTerm) {
-          response = thisTerm;
-          logger.debug("{} rejected an election request, term:{}/{}",
-              name, thatTerm, thisTerm);
-        } else if (thatLastLogTerm < thisLastLogTerm
-            || (thatLastLogTerm == thisLastLogTerm && thatLastLogId < thisLastLogIndex)) {
-          logger.debug("{} rejected an election request, logIndex:{}/{}, logTerm:{}/{}",
-              name, thatLastLogId, thisLastLogIndex, thatLastLogTerm, thisLastLogTerm);
-          response = Response.RESPONSE_LOG_MISMATCH;
-        } else {
-          logger.debug("{} accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
-              name, thatTerm, thisTerm, thatLastLogId, thisLastLogIndex, thatLastLogTerm,
-              thisLastLogTerm);
-          response = Response.RESPONSE_AGREE;
-        }
-        return response;
-      }
 
-      /**
-       * Update the followers' log by sending logs whose index >= followerLastMatchedLogIndex to the
-       * follower. If some of the logs are not in memory, also send the snapshot.
-       * <br>notice that if a part of data is in the snapshot, then it is not in the logs</>
-       *
-       * @param follower
-       * @param followerLastLogIndex
-       */
-      public void catchUp (Node follower,long followerLastLogIndex){
-        // TODO-Cluster: use lastMatchLogIndex instead of lastLogIndex
-        // for one follower, there is at most one ongoing catch-up
-        synchronized (follower) {
-          // check if the last catch-up is still ongoing
-          Long lastCatchupResp = lastCatchUpResponseTime.get(follower);
-          if (lastCatchupResp != null
-              && System.currentTimeMillis() - lastCatchupResp < RaftServer.connectionTimeoutInMS) {
-            logger.debug("{}: last catch up of {} is ongoing", name, follower);
-            return;
-          } else {
-            // record the start of the catch-up
-            lastCatchUpResponseTime.put(follower, System.currentTimeMillis());
-          }
-        }
-        if (followerLastLogIndex == -1) {
-          // if the follower does not have any logs, send from the first one
-          followerLastLogIndex = 0;
-        }
-
-        AsyncClient client = connectNode(follower);
-        if (client != null) {
-          List<Log> logs;
-          boolean allLogsValid;
-          Snapshot snapshot = null;
-          synchronized (logManager) {
-            // check if the very first log has been snapshot
-            allLogsValid = logManager.logValid(followerLastLogIndex);
-            logs = logManager.getLogs(followerLastLogIndex, Long.MAX_VALUE);
-            if (!allLogsValid) {
-              // if the first log has been snapshot, the snapshot should also be sent to the
-              // follower, otherwise some data will be missing
-              snapshot = logManager.getSnapshot();
-            }
-          }
-
-          if (allLogsValid) {
-            if (logger.isDebugEnabled()) {
-              logger.debug("{} makes {} catch up with {} cached logs", name, follower, logs.size());
-            }
-            catchUpService.submit(new LogCatchUpTask(logs, follower, this));
-          } else {
-            logger.debug("{}: Logs in {} are too old, catch up with snapshot", name, follower);
-            catchUpService.submit(new SnapshotCatchUpTask(logs, snapshot, follower, this));
-          }
-        } else {
-          lastCatchUpResponseTime.remove(follower);
-          logger.warn("{}: Catch-up failed: node {} is currently unavailable", name, follower);
-        }
-      }
-
-      public String getName () {
-        return name;
-      }
-
-      /**
-       * @return the header of the data raft group or null if this is in a meta group.
-       */
-      public Node getHeader () {
-        return null;
-      }
-
-      /**
-       <<<<<<< HEAD
-       * Forward a plan to a node using the default client.
-       *
-       * @param plan
-       * @param node
-      =======
-       * Forward a non-query plan to a node using the default client.
-       * @param plan a non-query plan
-       * @param node cannot be the local node
-      >>>>>>> 378da6117d05a7e38d05fb46cb20b3023434c08c
-       * @param header must be set for data group communication, set to null for meta group
-       *               communication
-       * @return a TSStatus indicating if the forwarding is successful.
-       */
-      TSStatus forwardPlan (PhysicalPlan plan, Node node, Node header){
-        if (node == thisNode || node == null) {
-          logger.debug("{}: plan {} has no where to be forwarded", name, plan);
-          return StatusUtils.NO_LEADER;
-        }
-
-        logger.info("{}: Forward {} to node {}", name, plan, node);
-
-        AsyncClient client = connectNode(node);
-        if (client != null) {
-          return forwardPlan(plan, client, node, header);
-        }
-        return StatusUtils.TIME_OUT;
-      }
-
-      /**
-       * Forward a non-query plan to "receiver" using "client".
-       * @param plan a non-query plan
-       * @param client
-       * @param receiver
-       * @param header to determine which DataGroupMember of "receiver" will process the request.
-       * @return a TSStatus indicating if the forwarding is successful.
-       */
-      TSStatus forwardPlan (PhysicalPlan plan, AsyncClient client, Node receiver, Node header){
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-        try {
-          plan.serializeTo(dataOutputStream);
-          AtomicReference<TSStatus> status = new AtomicReference<>();
-          ExecutNonQueryReq req = new ExecutNonQueryReq();
-          req.setPlanBytes(byteArrayOutputStream.toByteArray());
-          if (header != null) {
-            req.setHeader(header);
-          }
-          synchronized (status) {
-            client.executeNonQueryPlan(req, new ForwardPlanHandler(status, plan, receiver));
-            status.wait(RaftServer.connectionTimeoutInMS);
-          }
-          return status.get() == null ? StatusUtils.TIME_OUT : status.get();
-        } catch (IOException | TException e) {
-          TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
-          status.setMessage(e.getMessage());
-          logger
-              .error("{}: encountered an error when forwarding {} to {}", name, plan, receiver, e);
-          return status;
-        } catch (InterruptedException e) {
-          return StatusUtils.TIME_OUT;
-        }
-      }
-
-      /**
-       <<<<<<< HEAD
-       * Only the group leader can call this method. Will commit the log locally and send it to
-       * followers
-       *
-       =======
-       * Create a log for "plan" and append it locally and to all followers.
-       * Only the group leader can call this method.
-       * Will commit the log locally and send it to followers
-       >>>>>>> 378da6117d05a7e38d05fb46cb20b3023434c08c
-       * @param plan
-       * @return OK if over half of the followers accept the log or null if the leadership is lost
-       * during the appending
-       */
-      TSStatus processPlanLocally (PhysicalPlan plan){
-        logger.debug("{}: Processing plan {}", name, plan);
-        if (readOnly) {
-          return StatusUtils.NODE_READ_ONLY;
-        }
-
-        PhysicalPlanLog log = new PhysicalPlanLog();
-        // assign term and index to the new log and append it
-        synchronized (logManager) {
-          log.setCurrLogTerm(getTerm().get());
-          log.setPreviousLogIndex(logManager.getLastLogIndex());
-          log.setPreviousLogTerm(logManager.getLastLogTerm());
-          log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-
-          log.setPlan(plan);
-          logManager.appendLog(log);
-        }
-
-        if (appendLogInGroup(log)) {
-          return StatusUtils.OK;
-        }
-        return null;
-      }
-
-      /**
-       <<<<<<< HEAD
-       * if the node is not a leader, will send it to the leader. Otherwise do it locally (whether to
-       * send it to followers depends on the implementation of executeNonQuery()).
-       *
-       =======
-       * Append a log to all followers in the group until half of them accept the log or the
-       * leadership is lost.
-       * @param log
-       * @return true if the log is accepted by the quorum of the group, false otherwise
-       */
-      protected boolean appendLogInGroup (Log log){
-        int retryTime = 0;
-        retry:
-        while (true) {
-          logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
-          AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
-          switch (result) {
-            case OK:
-              logger.debug("{}: log {} is accepted", name, log);
-              logManager.commitLog(log.getCurrLogIndex());
-              return true;
-            case TIME_OUT:
-              logger.debug("{}: log {} timed out, retrying...", name, log);
-              retryTime++;
-              break;
-            case LEADERSHIP_STALE:
-              // abort the appending, the new leader will fix the local logs by catch-up
-            default:
-              break retry;
-          }
-        }
-        return false;
-      }
-
-      /**
-       * If the node is not a leader, the request will be sent to the leader or reports an error if
-       * there is no leader.
-       * Otherwise execute the plan locally (whether to send it to followers depends on the
-       * type of the plan).
-       >>>>>>> 378da6117d05a7e38d05fb46cb20b3023434c08c
-       * @param request
-       * @param resultHandler
-       */
-      public void executeNonQueryPlan (ExecutNonQueryReq request,
-          AsyncMethodCallback < TSStatus > resultHandler){
-        if (character != NodeCharacter.LEADER) {
-          // forward the plan to the leader
-          AsyncClient client = connectNode(leader);
-          if (client != null) {
-            try {
-              client.executeNonQueryPlan(request, resultHandler);
-            } catch (TException e) {
-              resultHandler.onError(e);
-            }
-          } else {
-            resultHandler.onComplete(StatusUtils.NO_LEADER);
-          }
-          return;
-        }
-        try {
-          // process the plan locally
-          PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
-          logger.debug("{}: Received a plan {}", name, plan);
-          resultHandler.onComplete(executeNonQuery(plan));
-        } catch (Exception e) {
-          resultHandler.onError(e);
-        }
-      }
-
-      /**
-       * Request and check the leader's commitId to see whether this node has caught up. If not, wait
-       * until this node catches up.
-       *
-       * @return true if the node has caught up, false otherwise
-       */
-      public boolean syncLeader () {
-        if (character == NodeCharacter.LEADER) {
+  /**
+   * Append a log to all followers in the group until half of them accept the log or the leadership
+   * is lost.
+   *
+   * @param log
+   * @return true if the log is accepted by the quorum of the group, false otherwise
+   */
+  protected boolean appendLogInGroup(Log log) {
+    int retryTime = 0;
+    retry:
+    while (true) {
+      logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
+      AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
+      switch (result) {
+        case OK:
+          logger.debug("{}: log {} is accepted", name, log);
+          logManager.commitLog(log.getCurrLogIndex());
           return true;
-        }
-        if (leader == null) {
-          // the leader has not been elected, we must assume the node falls behind
-          return false;
-        }
-        logger.debug("{}: try synchronizing with the leader {}", name, leader);
-        long startTime = System.currentTimeMillis();
-        long waitedTime = 0;
-        AtomicReference<Long> commitIdResult = new AtomicReference<>(Long.MAX_VALUE);
-        while (waitedTime < RaftServer.syncLeaderMaxWaitMs) {
-          AsyncClient client = connectNode(leader);
-          if (client == null) {
-            // cannot connect to the leader
-            return false;
-          }
-          try {
-            synchronized (commitIdResult) {
-              client.requestCommitIndex(getHeader(), new GenericHandler<>(leader, commitIdResult));
-              commitIdResult.wait(RaftServer.syncLeaderMaxWaitMs);
-            }
-            long leaderCommitId = commitIdResult.get();
-            long localCommitId = logManager.getCommitLogIndex();
-            logger
-                .debug("{}: synchronizing commitIndex {}/{}", name, localCommitId, leaderCommitId);
-            if (leaderCommitId <= localCommitId) {
-              // before the response comes, the leader may commit new logs and the localCommitId may be
-              // updated by catching up, so it is possible that localCommitId > leaderCommitId at
-              // this time
-              // this node has caught up
-              if (logger.isDebugEnabled()) {
-                waitedTime = System.currentTimeMillis() - startTime;
-                logger.debug("{}: synchronized with the leader after {}ms", name, waitedTime);
-              }
-              return true;
-            }
-            // wait for next heartbeat to catch up
-            // the local node will not perform a commit here according to the leaderCommitId because
-            // the node may have some inconsistent logs with the leader
-            waitedTime = System.currentTimeMillis() - startTime;
-            synchronized (syncLock) {
-              syncLock.wait(RaftServer.heartBeatIntervalMs);
-            }
-          } catch (TException | InterruptedException e) {
-            logger.error("{}: Cannot request commit index from {}", name, leader, e);
-          }
-        }
-        return false;
+        case TIME_OUT:
+          logger.debug("{}: log {} timed out, retrying...", name, log);
+          retryTime++;
+          break;
+        case LEADERSHIP_STALE:
+          // abort the appending, the new leader will fix the local logs by catch-up
+        default:
+          break retry;
       }
+    }
+    return false;
+  }
 
-      /**
-       * Execute a non-query plan.
-       * @param plan a non-query plan.
-       * @return A TSStatus indicating the execution result.
-       */
-      abstract TSStatus executeNonQuery (PhysicalPlan plan);
-
-      /**
-       * Tell the requester the current commit index if the local node is the leader of the group
-       * headed by header. Or forward it to the leader. Otherwise report an error.
-       * @param header to determine the DataGroupMember in data groups
-       * @param resultHandler
-       */
-      @Override
-      public void requestCommitIndex (Node header, AsyncMethodCallback < Long > resultHandler){
-        if (character == NodeCharacter.LEADER) {
-          resultHandler.onComplete(logManager.getCommitLogIndex());
-          return;
-        }
-        AsyncClient client = connectNode(leader);
-        if (client == null) {
-          resultHandler.onError(new LeaderUnknownException(getAllNodes()));
-          return;
-        }
+  /**
+   * If the node is not a leader, the request will be sent to the leader or reports an error if
+   * there is no leader. Otherwise execute the plan locally (whether to send it to followers depends
+   * on the type of the plan).
+   *
+   * @param request
+   * @param resultHandler
+   */
+  public void executeNonQueryPlan(ExecutNonQueryReq request,
+      AsyncMethodCallback<TSStatus> resultHandler) {
+    if (character != NodeCharacter.LEADER) {
+      // forward the plan to the leader
+      AsyncClient client = connectNode(leader);
+      if (client != null) {
         try {
-          client.requestCommitIndex(header, resultHandler);
+          client.executeNonQueryPlan(request, resultHandler);
         } catch (TException e) {
           resultHandler.onError(e);
         }
+      } else {
+        resultHandler.onComplete(StatusUtils.NO_LEADER);
       }
+      return;
+    }
+    try {
+      // process the plan locally
+      PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
+      logger.debug("{}: Received a plan {}", name, plan);
+      resultHandler.onComplete(executeNonQuery(plan));
+    } catch (Exception e) {
+      resultHandler.onError(e);
+    }
+  }
 
-      /**
-       * An ftp-like interface that is used for a node to pull chunks of files like TsFiles.
-       * @param filePath
-       * @param offset
-       * @param length
-       * @param header to determine the DataGroupMember in data groups
-       * @param resultHandler
-       */
-      @Override
-      public void readFile (String filePath,long offset, int length, Node header,
-          AsyncMethodCallback < ByteBuffer > resultHandler){
-        try (BufferedInputStream bufferedInputStream =
-            new BufferedInputStream(new FileInputStream(filePath))) {
-          bufferedInputStream.skip(offset);
-          byte[] bytes = new byte[length];
-          ByteBuffer result = ByteBuffer.wrap(bytes);
-          int len = bufferedInputStream.read(bytes);
-          result.limit(Math.max(len, 0));
-
-          resultHandler.onComplete(result);
-        } catch (IOException e) {
-          resultHandler.onError(e);
+  /**
+   * Request and check the leader's commitId to see whether this node has caught up. If not, wait
+   * until this node catches up.
+   *
+   * @return true if the node has caught up, false otherwise
+   */
+  public boolean syncLeader() {
+    if (character == NodeCharacter.LEADER) {
+      return true;
+    }
+    if (leader == null) {
+      // the leader has not been elected, we must assume the node falls behind
+      return false;
+    }
+    logger.debug("{}: try synchronizing with the leader {}", name, leader);
+    long startTime = System.currentTimeMillis();
+    long waitedTime = 0;
+    AtomicReference<Long> commitIdResult = new AtomicReference<>(Long.MAX_VALUE);
+    while (waitedTime < RaftServer.syncLeaderMaxWaitMs) {
+      AsyncClient client = connectNode(leader);
+      if (client == null) {
+        // cannot connect to the leader
+        return false;
+      }
+      try {
+        synchronized (commitIdResult) {
+          client.requestCommitIndex(getHeader(), new GenericHandler<>(leader, commitIdResult));
+          commitIdResult.wait(RaftServer.syncLeaderMaxWaitMs);
         }
-      }
-
-      public void setReadOnly () {
-        synchronized (logManager) {
-          readOnly = true;
+        long leaderCommitId = commitIdResult.get();
+        long localCommitId = logManager.getCommitLogIndex();
+        logger.debug("{}: synchronizing commitIndex {}/{}", name, localCommitId, leaderCommitId);
+        if (leaderCommitId <= localCommitId) {
+          // before the response comes, the leader may commit new logs and the localCommitId may be
+          // updated by catching up, so it is possible that localCommitId > leaderCommitId at
+          // this time
+          // this node has caught up
+          if (logger.isDebugEnabled()) {
+            waitedTime = System.currentTimeMillis() - startTime;
+            logger.debug("{}: synchronized with the leader after {}ms", name, waitedTime);
+          }
+          return true;
         }
-      }
-
-      public void setAllNodes (List < Node > allNodes) {
-        this.allNodes = allNodes;
+        // wait for next heartbeat to catch up
+        // the local node will not perform a commit here according to the leaderCommitId because
+        // the node may have some inconsistent logs with the leader
+        waitedTime = System.currentTimeMillis() - startTime;
+        synchronized (syncLock) {
+          syncLock.wait(RaftServer.heartBeatIntervalMs);
+        }
+      } catch (TException | InterruptedException e) {
+        logger.error("{}: Cannot request commit index from {}", name, leader, e);
       }
     }
+    return false;
+  }
+
+  /**
+   * Execute a non-query plan.
+   *
+   * @param plan a non-query plan.
+   * @return A TSStatus indicating the execution result.
+   */
+  abstract TSStatus executeNonQuery(PhysicalPlan plan);
+
+  /**
+   * Tell the requester the current commit index if the local node is the leader of the group headed
+   * by header. Or forward it to the leader. Otherwise report an error.
+   *
+   * @param header        to determine the DataGroupMember in data groups
+   * @param resultHandler
+   */
+  @Override
+  public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
+    if (character == NodeCharacter.LEADER) {
+      resultHandler.onComplete(logManager.getCommitLogIndex());
+      return;
+    }
+    AsyncClient client = connectNode(leader);
+    if (client == null) {
+      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+      return;
+    }
+    try {
+      client.requestCommitIndex(header, resultHandler);
+    } catch (TException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  /**
+   * An ftp-like interface that is used for a node to pull chunks of files like TsFiles.
+   *
+   * @param filePath
+   * @param offset
+   * @param length
+   * @param header        to determine the DataGroupMember in data groups
+   * @param resultHandler
+   */
+  @Override
+  public void readFile(String filePath, long offset, int length, Node header,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    try (BufferedInputStream bufferedInputStream =
+        new BufferedInputStream(new FileInputStream(filePath))) {
+      bufferedInputStream.skip(offset);
+      byte[] bytes = new byte[length];
+      ByteBuffer result = ByteBuffer.wrap(bytes);
+      int len = bufferedInputStream.read(bytes);
+      result.limit(Math.max(len, 0));
+
+      resultHandler.onComplete(result);
+    } catch (IOException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  public void setReadOnly() {
+    synchronized (logManager) {
+      readOnly = true;
+    }
+  }
+
+  public void setAllNodes(List<Node> allNodes) {
+    this.allNodes = allNodes;
+  }
+}
