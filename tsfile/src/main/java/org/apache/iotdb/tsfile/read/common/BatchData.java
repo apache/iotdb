@@ -40,13 +40,11 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
  * <p>
  * This class records a time list and a value list, which could be replaced by TVList in the future
  * <p>
- * When you use BatchData in query process, it does not contain duplicated timestamps. The batch
- * data may be empty.
+ * When you use BatchData in query process, it does not contain duplicated timestamps. The batch data may be empty.
  * <p>
  * If you get a batch data, you can iterate the data as the following codes:
  * <p>
- * while (batchData.hasCurrent()) { long time = batchData.currentTime(); Object value =
- * batchData.currentValue(); batchData.next(); }
+ * while (batchData.hasCurrent()) { long time = batchData.currentTime(); Object value = batchData.currentValue(); batchData.next(); }
  */
 public class BatchData implements Serializable {
 
@@ -68,6 +66,7 @@ public class BatchData implements Serializable {
 
   // the insert timestamp number of timeRet
   private int count;
+  private long maxTime = Long.MIN_VALUE;
 
 
   private List<long[]> timeRet;
@@ -549,7 +548,10 @@ public class BatchData implements Serializable {
   }
 
   public long getMaxTimestamp() {
-    return getTimeByIndex(length() - 1);
+    if (maxTime == Long.MIN_VALUE) {
+      maxTime = getTimeByIndex(length() - 1);
+    }
+    return maxTime;
   }
 
   public TimeColumn getTimeColumn() {
@@ -561,8 +563,7 @@ public class BatchData implements Serializable {
   }
 
   /**
-   * This method is used to reset batch data when more than one group by aggregation functions visit
-   * the same batch data
+   * This method is used to reset batch data when more than one group by aggregation functions visit the same batch data
    */
   public void resetBatchData() {
     this.readCurArrayIndex = 0;
