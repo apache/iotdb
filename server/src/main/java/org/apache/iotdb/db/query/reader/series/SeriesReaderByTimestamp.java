@@ -59,10 +59,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     timestamps.position(position);
     Object[] result = new Object[size];
 
-    for (int i = 0; i < timestamps.size(); i++) {
-      if (timestamps.currentTime() >= bound || !timestamps.hasCurrent()) {
-        return result;
-      }
+    for (int i = 0; i < size; i++) {
       if (timestamps.currentTime() < currentTime) {
         throw new IOException("time must be increasing when use ReaderByTimestamp");
       }

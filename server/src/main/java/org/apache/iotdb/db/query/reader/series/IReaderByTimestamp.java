@@ -35,9 +35,9 @@ public interface IReaderByTimestamp {
    * of correctness with any other way of calling. For example, DO NOT call this method twice with
    * the same timestamp.
    */
-  default Object[] getValuesInTimestamps(TimeColumn timestamps) throws IOException {
-    return getValuesInTimestamps(timestamps, Long.MAX_VALUE);
-  }
+//  default Object[] getValuesInTimestamps(TimeColumn timestamps) throws IOException {
+//    return getValuesInTimestamps(timestamps, Long.MAX_VALUE);
+//  }
 
   Object[] getValuesInTimestamps(TimeColumn timestamps, long bound) throws IOException;
 }

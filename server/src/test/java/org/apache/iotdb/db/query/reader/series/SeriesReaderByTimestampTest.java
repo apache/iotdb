@@ -74,7 +74,7 @@ public class SeriesReaderByTimestampTest {
       column.add(time);
     }
 
-    Object[] value = seriesReader.getValuesInTimestamps(column);
+    Object[] value = seriesReader.getValuesInTimestamps(column, Long.MAX_VALUE);
     column.position(0);
     for (int i = 0; i < column.size(); i++) {
       //mock time not start with 0

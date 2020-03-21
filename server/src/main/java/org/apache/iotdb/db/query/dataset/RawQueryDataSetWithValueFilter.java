@@ -86,7 +86,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
         IReaderByTimestamp reader = seriesReaderByTimestampList.get(i);
 
         TSDataType tsDataType = dataTypes.get(i);
-        Object[] values = reader.getValuesInTimestamps(timeColumn);
+        Object[] values = reader.getValuesInTimestamps(timeColumn, Long.MAX_VALUE);
         for (int j = 0; j < values.length; j++) {
           //alloc the tmp memory
           if (records[j] == null) {
