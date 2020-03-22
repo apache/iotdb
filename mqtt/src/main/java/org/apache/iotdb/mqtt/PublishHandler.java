@@ -21,8 +21,8 @@ import io.moquette.interception.AbstractInterceptHandler;
 import io.moquette.interception.messages.InterceptPublishMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttQoS;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.session.IoTDBSessionException;
 import org.apache.iotdb.session.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +50,7 @@ public class PublishHandler extends AbstractInterceptHandler {
                 config.getIotDBUsername(), config.getIotDBPassword());
         try {
             session.open();
-        } catch (IoTDBSessionException e) {
+        } catch (IoTDBConnectionException e) {
             throw new RuntimeException("Connect to IoTDB server failure, please check the db status.", e);
         }
     }
@@ -85,9 +85,10 @@ public class PublishHandler extends AbstractInterceptHandler {
         try {
             status = session.insert(event.getDevice(), event.getTimestamp(),
                     event.getMeasurements(), event.getValues());
-        } catch (IoTDBSessionException e) {
-           throw new RuntimeException(e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
+
         LOG.debug("send event result: {}", status);
     }
 }
