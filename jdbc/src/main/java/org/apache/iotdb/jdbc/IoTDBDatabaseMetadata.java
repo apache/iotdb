@@ -19,8 +19,8 @@
 package org.apache.iotdb.jdbc;
 
 import java.sql.*;
-import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -1013,7 +1013,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     resp = client.fetchMetadata(req);
     try {
       RpcUtils.verifySuccess(resp.getStatus());
-    } catch (IoTDBRPCException e) {
+    } catch (StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
     }
     return resp.getMetadataInJson();

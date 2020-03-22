@@ -24,8 +24,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
@@ -48,6 +49,7 @@ public class SessionDataSet {
   private long sessionId;
   private TSIService.Iface client;
   private int batchSize = 1024;
+  private List<String> columnNameList;
   private List<String> columnTypeDeduplicatedList;
   // duplicated column index -> origin index
   Map<Integer, Integer> duplicateLocation;
@@ -70,6 +72,7 @@ public class SessionDataSet {
     this.sql = sql;
     this.queryId = queryId;
     this.client = client;
+    this.columnNameList = columnNameList;
     currentBitmap = new byte[columnNameList.size()];
     columnSize = columnNameList.size();
 
@@ -100,7 +103,11 @@ public class SessionDataSet {
     this.batchSize = batchSize;
   }
 
-  public boolean hasNext() throws SQLException, IoTDBRPCException {
+  public List<String> getColumnNames() {
+    return columnNameList;
+  }
+
+  public boolean hasNext() throws IoTDBConnectionException, StatementExecutionException {
     if (hasCachedRecord) {
       return true;
     }
@@ -117,7 +124,7 @@ public class SessionDataSet {
           rowsIndex = 0;
         }
       } catch (TException e) {
-        throw new SQLException(
+        throw new IoTDBConnectionException(
             "Cannot fetch result from server, because of network connection: {} ", e);
       }
 
@@ -127,6 +134,8 @@ public class SessionDataSet {
     hasCachedRecord = true;
     return true;
   }
+
+
 
   private void constructOneRow() {
     List<Field> outFields = new ArrayList<>();
@@ -194,7 +203,6 @@ public class SessionDataSet {
    * judge whether the specified column value is null in the current position
    *
    * @param index column index
-   * @return
    */
   private boolean isNull(int index, int rowNum) {
     byte bitmap = currentBitmap[index];
@@ -202,7 +210,7 @@ public class SessionDataSet {
     return ((flag >>> shift) & bitmap) == 0;
   }
 
-  public RowRecord next() throws SQLException, IoTDBRPCException {
+  public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {
     if (!hasCachedRecord) {
       if (!hasNext()) {
         return null;
@@ -213,17 +221,15 @@ public class SessionDataSet {
     return rowRecord;
   }
 
-  public void closeOperationHandle() throws SQLException {
+  public void closeOperationHandle() throws StatementExecutionException, IoTDBConnectionException {
     try {
       TSCloseOperationReq closeReq = new TSCloseOperationReq(sessionId);
       closeReq.setQueryId(queryId);
       TSStatus closeResp = client.closeOperation(closeReq);
       RpcUtils.verifySuccess(closeResp);
-    } catch (IoTDBRPCException e) {
-      throw new SQLException("Error occurs for close opeation in server side. The reason is " + e);
     } catch (TException e) {
-      throw new SQLException(
-          "Error occurs when connecting to server for close operation, because: " + e);
+      throw new IoTDBConnectionException(
+          "Error occurs when connecting to server for close operation, because: " + e, e);
     }
   }
 }

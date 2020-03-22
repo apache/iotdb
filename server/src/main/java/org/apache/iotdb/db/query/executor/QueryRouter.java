@@ -138,10 +138,20 @@ public class QueryRouter implements IQueryRouter {
     groupByPlan.setExpression(optimizedExpression);
 
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-      return new GroupByWithoutValueFilterDataSet(context, groupByPlan);
+      return getGroupByWithoutValueFilterDataSet(context, groupByPlan);
     } else {
-      return new GroupByWithValueFilterDataSet(context, groupByPlan);
+      return getGroupByWithValueFilterDataSet(context, groupByPlan);
     }
+  }
+
+  protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(QueryContext context, GroupByPlan plan)
+      throws StorageEngineException {
+    return new GroupByWithoutValueFilterDataSet(context, plan);
+  }
+
+  protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(QueryContext context, GroupByPlan plan)
+      throws StorageEngineException {
+    return new GroupByWithValueFilterDataSet(context, plan);
   }
 
   @Override
@@ -152,9 +162,16 @@ public class QueryRouter implements IQueryRouter {
     long queryTime = fillQueryPlan.getQueryTime();
     Map<TSDataType, IFill> fillType = fillQueryPlan.getFillType();
 
-    FillQueryExecutor fillQueryExecutor = new FillQueryExecutor(fillPaths, dataTypes, queryTime,
+    FillQueryExecutor fillQueryExecutor = getFillExecutor(fillPaths, dataTypes, queryTime,
         fillType);
     return fillQueryExecutor.execute(context);
+  }
+
+  protected FillQueryExecutor getFillExecutor(
+      List<Path> fillPaths,
+      List<TSDataType> dataTypes, long queryTime,
+      Map<TSDataType, IFill> fillType) {
+    return new FillQueryExecutor(fillPaths, dataTypes, queryTime, fillType);
   }
 
   @Override

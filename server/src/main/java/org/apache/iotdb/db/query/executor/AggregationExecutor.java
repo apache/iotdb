@@ -57,7 +57,7 @@ public class AggregationExecutor {
 
   private List<Path> selectedSeries;
   protected List<TSDataType> dataTypes;
-  private List<String> aggregations;
+  protected List<String> aggregations;
   protected IExpression expression;
 
   /**
@@ -65,7 +65,7 @@ public class AggregationExecutor {
    **/
   private int aggregateFetchSize;
 
-  AggregationExecutor(AggregationPlan aggregationPlan) {
+  protected AggregationExecutor(AggregationPlan aggregationPlan) {
     this.selectedSeries = aggregationPlan.getDeduplicatedPaths();
     this.dataTypes = aggregationPlan.getDeduplicatedDataTypes();
     this.aggregations = aggregationPlan.getDeduplicatedAggregations();
@@ -78,7 +78,7 @@ public class AggregationExecutor {
    *
    * @param context query context
    */
-  QueryDataSet executeWithoutValueFilter(QueryContext context)
+  public QueryDataSet executeWithoutValueFilter(QueryContext context)
       throws StorageEngineException, IOException, QueryProcessException {
 
     Filter timeFilter = null;
@@ -109,7 +109,7 @@ public class AggregationExecutor {
    * @param context query context
    * @return AggregateResult list
    */
-  private List<AggregateResult> aggregateOneSeries(
+  protected List<AggregateResult> aggregateOneSeries(
       Map.Entry<Path, List<Integer>> pathToAggrIndexes,
       Filter timeFilter, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException {
@@ -128,7 +128,7 @@ public class AggregationExecutor {
     return aggregateResultList;
   }
 
-  private static void aggregateOneSeries(Path seriesPath, QueryContext context, Filter timeFilter,
+  public static void aggregateOneSeries(Path seriesPath, QueryContext context, Filter timeFilter,
       TSDataType tsDataType, List<AggregateResult> aggregateResultList, TsFileFilter fileFilter)
       throws StorageEngineException, IOException, QueryProcessException {
 
@@ -227,7 +227,7 @@ public class AggregationExecutor {
    *
    * @param context query context.
    */
-  QueryDataSet executeWithValueFilter(QueryContext context)
+  public QueryDataSet executeWithValueFilter(QueryContext context)
       throws StorageEngineException, IOException {
 
     TimeGenerator timestampGenerator = getTimeGenerator(context);
@@ -249,11 +249,11 @@ public class AggregationExecutor {
     return constructDataSet(aggregateResults);
   }
 
-  private TimeGenerator getTimeGenerator(QueryContext context) throws StorageEngineException {
+  protected TimeGenerator getTimeGenerator(QueryContext context) throws StorageEngineException {
     return new ServerTimeGenerator(expression, context);
   }
 
-  private IReaderByTimestamp getReaderByTime(Path path, TSDataType dataType,
+  protected IReaderByTimestamp getReaderByTime(Path path, TSDataType dataType,
       QueryContext context) throws StorageEngineException {
     return new SeriesReaderByTimestamp(path,
         dataType, context,

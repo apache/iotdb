@@ -36,6 +36,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
@@ -47,7 +48,6 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TSStatusType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Before;
@@ -118,9 +118,7 @@ public class IoTDBQueryResultSetTest {
   @Mock
   private TSFetchResultsResp fetchResultsResp;
 
-  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-      "");
-  private TSStatus Status_SUCCESS = new TSStatus(successStatus);
+  private TSStatus successStatus = RpcUtils.SUCCESS_STATUS;
   private ZoneId zoneID = ZoneId.systemDefault();
 
   @Before
@@ -134,15 +132,15 @@ public class IoTDBQueryResultSetTest {
     when(connection.isClosed()).thenReturn(false);
     when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execResp);
     when(execResp.getQueryId()).thenReturn(queryId);
-    when(execResp.getStatus()).thenReturn(Status_SUCCESS);
+    when(execResp.getStatus()).thenReturn(successStatus);
 
     when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
-    when(fetchMetadataResp.getStatus()).thenReturn(Status_SUCCESS);
+    when(fetchMetadataResp.getStatus()).thenReturn(successStatus);
 
     when(client.fetchResults(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
-    when(fetchResultsResp.getStatus()).thenReturn(Status_SUCCESS);
+    when(fetchResultsResp.getStatus()).thenReturn(successStatus);
 
-    TSStatus closeResp = Status_SUCCESS;
+    TSStatus closeResp = successStatus;
     when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(closeResp);
   }
 

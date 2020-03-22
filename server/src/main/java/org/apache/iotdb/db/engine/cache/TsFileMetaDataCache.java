@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This class is used to cache <code>TsFileMetaData</code> of tsfile in IoTDB.
@@ -103,10 +104,10 @@ public class TsFileMetaDataCache {
     }
     synchronized (internPath) {
       synchronized (cache) {
-        if (cache.containsKey(path)) {
+        if (cache.containsKey(tsFileResource)) {
           cacheHitNum.incrementAndGet();
           printCacheLog(true);
-          return cache.get(path);
+          return cache.get(tsFileResource);
         }
       }
       printCacheLog(false);

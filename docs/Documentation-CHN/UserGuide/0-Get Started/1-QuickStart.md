@@ -72,7 +72,7 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
   * 日志配置模块 (`logback.xml`). 
 
 想要了解更多，请浏览[Chapter3: Server](https://iotdb.apache.org/#/Documents/progress/chap3/sec1)
-	
+​	
 
 ## IoTDB试用
 
@@ -281,3 +281,13 @@ Windows系统停止命令如下：
 ```
 > $sbin\stop-server.bat
 ```
+
+## 只建立客户端
+
+在incubator-iotdb的根路径下：
+
+```
+> mvn clean package -pl client -am -DskipTests
+```
+
+构建后，IoTDB客户端将位于文件夹“ client / target / iotdb-client- {project.version}”下。

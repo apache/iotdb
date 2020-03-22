@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -144,8 +144,8 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
         closeReq.setQueryId(queryId);
         TSStatus closeResp = client.closeOperation(closeReq);
         RpcUtils.verifySuccess(closeResp);
-      } catch (IoTDBRPCException e) {
-        throw new SQLException("Error occurs for close opeation in server side becasuse ", e);
+      } catch (StatementExecutionException e) {
+        throw new SQLException("Error occurs for close operation in server side because ", e);
       } catch (TException e) {
         throw new SQLException("Error occurs when connecting to server for close operation ", e);
       }

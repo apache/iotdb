@@ -19,6 +19,8 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
+import java.util.LinkedList;
+import java.util.List;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
@@ -27,7 +29,7 @@ public class LeafNode implements Node {
 
   private IBatchReader reader;
 
-  private BatchData cacheData;
+  private List<BatchData> batchDataList = new LinkedList<>();
   private TimeColumn cachedTimeSeries;
   private boolean hasCached;
 
@@ -41,10 +43,11 @@ public class LeafNode implements Node {
       return true;
     }
     while (reader.hasNextBatch()) {
-      cacheData = reader.nextBatch();
-      if (cacheData.hasCurrent()) {
+      BatchData currentBatch = reader.nextBatch();
+      if (currentBatch.hasCurrent()) {
+        batchDataList.add(currentBatch);
         hasCached = true;
-        cachedTimeSeries = cacheData.getTimeColumn();
+        cachedTimeSeries = currentBatch.getTimeColumn();
         break;
       }
     }
@@ -61,23 +64,22 @@ public class LeafNode implements Node {
   }
 
   /**
-   * Check whether the current time equals the given time.
-   *
-   * @param time the given time
-   * @return True if the current time equals the given time. False if not.
-   */
-  public boolean currentTimeIs(long time) {
-    if (!cacheData.hasCurrent()) {
-      return false;
-    }
-    return cacheData.currentTime() == time;
-  }
-
-  /**
    * Function for getting the value at the given time.
    */
   public Object currentValue(long time) {
-    return cacheData.getValueInTimestamp(time);
+    while (!batchDataList.isEmpty()) {
+      BatchData oldestBatch = batchDataList.get(0);
+      Object value = oldestBatch.getValueInTimestamp(time);
+      if (value != null) {
+        return value;
+      }
+      if (!oldestBatch.hasCurrent()) {
+        batchDataList.remove(0);
+      } else {
+        return null;
+      }
+    }
+    return null;
   }
 
   @Override

@@ -45,7 +45,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import java.io.IOException;
 import java.util.*;
 
-class SeriesReader {
+public class SeriesReader {
 
   private final Path seriesPath;
   private final TSDataType dataType;
@@ -94,7 +94,7 @@ class SeriesReader {
   private boolean hasCachedNextOverlappedPage;
   private BatchData cachedBatchData;
 
-  SeriesReader(Path seriesPath, TSDataType dataType, QueryContext context,
+  public SeriesReader(Path seriesPath, TSDataType dataType, QueryContext context,
       QueryDataSource dataSource, Filter timeFilter, Filter valueFilter, TsFileFilter fileFilter) {
     this.seriesPath = seriesPath;
     this.dataType = dataType;
