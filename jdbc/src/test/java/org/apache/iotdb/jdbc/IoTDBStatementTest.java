@@ -24,12 +24,13 @@ import static org.mockito.Mockito.when;
 
 import java.sql.SQLException;
 import java.time.ZoneId;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TSStatusType;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -49,8 +50,6 @@ public class IoTDBStatementTest {
   @Mock
   private TSFetchMetadataResp fetchMetadataResp;
 
-  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
-  private TSStatus Status_SUCCESS = new TSStatus(successStatus);
   private ZoneId zoneID = ZoneId.systemDefault();
 
   @Before
@@ -59,7 +58,7 @@ public class IoTDBStatementTest {
     when(connection.getMetaData()).thenReturn(new IoTDBDatabaseMetadata(connection, client, sessionId));
     when(connection.isClosed()).thenReturn(false);
     when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
-    when(fetchMetadataResp.getStatus()).thenReturn(Status_SUCCESS);
+    when(fetchMetadataResp.getStatus()).thenReturn(RpcUtils.SUCCESS_STATUS);
   }
 
   @After

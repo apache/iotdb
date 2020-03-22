@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -18,12 +18,28 @@
  */
 package org.apache.iotdb.rpc;
 
-public class IoTDBRPCException extends Exception{
+import java.util.List;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-  private static final long serialVersionUID = -1268775292265203036L;
+public class BatchExecutionException extends Exception{
 
-  public IoTDBRPCException(String reason) {
-    super(reason);
+  private List<TSStatus> statusList;
+
+  public BatchExecutionException(String message) {
+    super(message);
+  }
+
+  public BatchExecutionException(List<TSStatus> statusList) {
+    this.statusList = statusList;
+  }
+
+  public BatchExecutionException(List<TSStatus> statusList, String message) {
+    super(message);
+    this.statusList = statusList;
+  }
+
+  public List<TSStatus> getStatusList() {
+    return statusList;
   }
 
 }

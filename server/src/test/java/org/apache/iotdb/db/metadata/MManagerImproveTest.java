@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -77,7 +77,7 @@ public class MManagerImproveTest {
   }
 
   @Test
-  public void analyseTimeCost() throws MetadataException, StorageGroupException {
+  public void analyseTimeCost() throws MetadataException, WriteProcessException {
     mManager = MManager.getInstance();
 
     long startTime, endTime;
@@ -115,7 +115,7 @@ public class MManagerImproveTest {
   }
 
   private void doOriginTest(String deviceId, List<String> measurementList)
-      throws MetadataException, StorageGroupException {
+      throws MetadataException, WriteProcessException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       assertTrue(mManager.isPathExist(path));
@@ -125,7 +125,7 @@ public class MManagerImproveTest {
   }
 
   private void doPathLoopOnceTest(String deviceId, List<String> measurementList)
-      throws MetadataException, StorageGroupException {
+      throws MetadataException, WriteProcessException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       TSDataType dataType = mManager.getSeriesType(path);
@@ -146,7 +146,7 @@ public class MManagerImproveTest {
   }
 
   @Test
-  public void improveTest() throws MetadataException, StorageGroupException, CacheException {
+  public void improveTest() throws MetadataException, WriteProcessException, CacheException {
     mManager = MManager.getInstance();
 
     long startTime, endTime;

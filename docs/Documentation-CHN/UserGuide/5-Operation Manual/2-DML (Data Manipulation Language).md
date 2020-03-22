@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -309,8 +309,384 @@ select last id, status, temperature from root.ln.wf01 disable align
 |  9   | root.ln.wf01.wt01.temperature| 35.7  |
 ```
 
+### 自动填充
 
-## 数据维护
+在IoTDB的实际使用中，当进行时间序列的查询操作时，可能会出现在某些时间点值为null的情况，这会妨碍用户进行进一步的分析。 为了更好地反映数据更改的程度，用户希望可以自动填充缺失值。 因此，IoTDB系统引入了自动填充功能。
+
+自动填充功能是指对单列或多列执行时间序列查询时，根据用户指定的方法和有效时间范围填充空值。 如果查询点的值不为null，则填充功能将不起作用。
+
+> 注意：在当前版本中，IoTDB为用户提供两种方法：Previous 和Linear。 Previous 方法用前一个值填充空白。 Linear方法通过线性拟合来填充空白。 并且填充功能只能在执行时间点查询时使用。
+
+#### 填充功能
+
+- Previous功能
+
+当查询的时间戳值为空时，将使用前一个时间戳的值来填充空白。 形式化的先前方法如下（有关详细语法，请参见第7.1.3.6节）：
+
+```
+select <path> from <prefixPath> where time = <T> fill(<data_type>[previous, <before_range>], …)
+```
+
+表3-4给出了所有参数的详细说明。
+
+<center>**表3-4previous填充参数列表**
+
+| 参数名称（不区分大小写） | 解释                                                         |
+| :----------------------- | :----------------------------------------------------------- |
+| path, prefixPath         | 查询路径； 必填项                                            |
+| T                        | 查询时间戳（只能指定一个）； 必填项                          |
+| data\_type               | 填充方法使用的数据类型。 可选值是int32，int64，float，double，boolean，text; 可选字段 |
+| before\_range            | 表示前一种方法的有效时间范围。 当[T-before \ _range，T]范围内的值存在时，前一种方法将起作用。 如果未指定before_range，则before_range会使用默认值default_fill_interval; -1表示无穷大； 可选字段 |
+
+</center>
+
+在这里，我们举一个使用先前方法填充空值的示例。 SQL语句如下：
+
+```
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1m]) 
+```
+
+意思是：
+
+由于时间根目录root.sgcc.wf03.wt01.temperature在2017-11-01T16：37：50.000为空，因此系统使用以前的时间戳2017-11-01T16：37：00.000（且时间戳位于[2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000]范围）进行填充和显示。
+
+在[样例数据中](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt), 该语句的执行结果如下所示：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577616-67df0280-1ef5-11e9-9dff-2eb8342074eb.jpg"></center>
+
+值得注意的是，如果在指定的有效时间范围内没有值，系统将不会填充空值，如下所示：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577679-9f4daf00-1ef5-11e9-8d8b-06a58de6efc1.jpg"></center>
+
+- Linear方法
+
+当查询的时间戳值为空时，将使用前一个和下一个时间戳的值来填充空白。 形式化线性方法如下：
+
+```
+select <path> from <prefixPath> where time = <T> fill(<data_type>[linear, <before_range>, <after_range>]…)
+```
+
+表3-5中给出了所有参数的详细说明。
+
+<center>**表3-5线性填充参数列表**
+
+| 参数名称（不区分大小写）    | 解释                                                         |
+| :-------------------------- | :----------------------------------------------------------- |
+| path, prefixPath            | 查询路径； 必填项                                            |
+| T                           | 查询时间戳（只能指定一个）； 必填项                          |
+| data_type                   | 填充方法使用的数据类型。 可选值是int32，int64，float，double，boolean，text; 可选字段 |
+| before\_range, after\_range | 表示线性方法的有效时间范围。 当[T-before_range，T + after_range]范围内的值存在时，前一种方法将起作用。 如果未明确指定before_range和after_range，则使用default\_fill\_interval。 -1表示无穷大； 可选字段 |
+
+</center>
+
+在这里，我们举一个使用线性方法填充空值的示例。 SQL语句如下：
+
+```
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [linear, 1m, 1m])
+```
+
+意思是：
+
+由于时间根目录root.sgcc.wf03.wt01.temperature在2017-11-01T16：37：50.000为空，因此系统使用以前的时间戳2017-11-01T16：37：00.000（且时间戳位于[2017- 11-01T16：36：50.000，2017-11-01T16：37：50.000]时间范围）及其值21.927326，下一个时间戳记2017-11-01T16：38：00.000（且时间戳记位于[2017-11-11] 01T16：37：50.000、2017-11-01T16：38：50.000]时间范围）及其值25.311783以执行线性拟合计算：
+
+21.927326 +（25.311783-21.927326）/ 60s * 50s = 24.747707
+
+在 [样例数据](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt), 该语句的执行结果如下所示：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577727-d4f29800-1ef5-11e9-8ff3-3bb519da3993.jpg"></center>
+
+#### 数据类型和填充方法之间的对应关系
+
+数据类型和支持的填充方法如表3-6所示。
+
+<center>**表3-6数据类型和支持的填充方法**
+
+| 数据类型 | 支持的填充方法   |
+| :------- | :--------------- |
+| boolean  | previous         |
+| int32    | previous, linear |
+| int64    | previous, linear |
+| float    | previous, linear |
+| double   | previous, linear |
+| text     | previous         |
+
+</center>
+
+值得注意的是，IoTDB将针对数据类型不支持的填充方法给出错误提示，如下所示：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577741-e340b400-1ef5-11e9-9238-a4eaf498ab84.jpg"></center>
+
+如果未指定fill方法，则每种数据类型均具有其自己的默认fill方法和参数。 对应关系如表3-7所示。
+
+<center>**表3-7各种数据类型的默认填充方法和参数**
+
+| 数据类型 | 默认填充方法和参数     |
+| :------- | :--------------------- |
+| boolean  | previous, 600000       |
+| int32    | linear, 600000, 600000 |
+| int64    | linear, 600000, 600000 |
+| float    | linear, 600000, 600000 |
+| double   | linear, 600000, 600000 |
+| text     | previous, 600000       |
+
+</center>
+
+> 注意：在版本0.7.0中，应在Fill语句中至少指定一种填充方法。
+
+### 对查询结果的行和列控制
+
+IoTDB提供 [LIMIT/SLIMIT](/#/Documents/progress/chap5/sec4) 子句和 [OFFSET/SOFFSET](/#/Documents/progress/chap5/sec4) 子句，以使用户可以更好地控制查询结果。使用LIMIT和SLIMIT子句可让用户控制查询结果的行数和列数，
+并且使用OFFSET和SOFSET子句允许用户设置结果显示的起始位置。
+
+请注意，按组查询不支持LIMIT和OFFSET。
+
+本章主要介绍查询结果的行和列控制的相关示例。你还可以使用 [Java JDBC](/#/Documents/progress/chap4/sec2) 标准接口执行查询。
+
+#### 查询结果的行控制
+
+通过使用LIMIT和OFFSET子句，用户可以以与行相关的方式控制查询结果。 我们将通过以下示例演示如何使用LIMIT和OFFSET子句。
+
+- 示例1：基本的LIMIT子句
+
+SQL语句是：
+
+```
+select status, temperature from root.ln.wf01.wt01 limit 10
+```
+
+意思是：
+
+所选设备为ln组wf01工厂wt01设备； 选择的时间序列是“状态”和“温度”。 SQL语句要求返回查询结果的前10行。
+
+结果如下所示：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577752-efc50c80-1ef5-11e9-9071-da2bbd8b9bdd.jpg"></center>
+
+- 示例2：带OFFSET的LIMIT子句
+
+SQL语句是：
+
+```
+select status, temperature from root.ln.wf01.wt01 limit 5 offset 3
+```
+
+意思是：
+
+所选设备为ln组wf01工厂wt01设备； 选择的时间序列是“状态”和“温度”。 SQL语句要求返回查询结果的第3至7行（第一行编号为0行）。
+
+结果如下所示：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577773-08352700-1ef6-11e9-883f-8d353bef2bdc.jpg"></center>
+
+- 示例3：LIMIT子句与WHERE子句结合
+
+SQL语句是：
+
+```
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time< 2017-11-01T00:12:00.000 limit 2 offset 3
+```
+
+意思是：
+
+所选设备为ln组wf01工厂wt01设备； 选择的时间序列是“状态”和“温度”。 SQL语句要求返回时间“ 2017-11-01T00：05：00.000”和“ 2017-11-01T00：12：00.000”之间的状态和温度传感器值的第3至4行（第一行） 编号为第0行）。
+
+结果如下所示：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577789-15521600-1ef6-11e9-86ca-d7b2c947367f.jpg"></center>
+
+- 示例4：LIMIT子句与GROUP BY子句组合
+
+SQL语句是：
+
+```
+select count(status), max_value(temperature) from root.ln.wf01.wt01 group by (1d,[2017-11-01T00:00:00, 2017-11-07T23:00:00]) limit 5 offset 3
+```
+
+意思是：
+
+SQL语句子句要求返回查询结果的第3至7行（第一行编号为0行）。
+
+结果如下所示：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577796-1e42e780-1ef6-11e9-8987-be443000a77e.jpg"></center>
+
+值得注意的是，由于当前的FILL子句只能在某个时间点填充时间序列的缺失值，也就是说，FILL子句的执行结果恰好是一行，因此LIMIT和OFFSET不会是 与FILL子句结合使用，否则将提示错误。 例如，执行以下SQL语句：
+
+```
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1m]) limit 10
+```
+
+SQL语句将不会执行，并且相应的错误提示如下：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517266-6e2fe080-aa39-11e9-8015-154a8e8ace30.png"></center>
+
+#### 查询结果的列控制
+
+通过使用LIMIT和OFFSET子句，用户可以以与列相关的方式控制查询结果。 我们将通过以下示例演示如何使用SLIMIT和OFFSET子句。
+
+- 示例1：基本的SLIMIT子句
+
+SQL语句是：
+
+```
+select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1
+```
+
+意思是：
+
+所选设备为ln组wf01工厂wt01设备； 所选时间序列是该设备下的第一列，即电源状态。 SQL语句要求在“ 2017-11-01T00：05：00.000”和“ 2017-11-01T00：12：00.000”的时间点之间选择状态传感器值。
+
+结果如下所示：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577813-30bd2100-1ef6-11e9-94ef-dbeb450cf319.jpg"></center>
+
+- 示例2：带OFFSET的LIMIT子句
+
+SQL语句是：
+
+```
+select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 1
+```
+
+意思是：
+
+所选设备为ln组wf01工厂wt01设备； 所选时间序列是该设备下的第二列，即温度。 SQL语句要求在“ 2017-11-01T00：05：00.000”和“ 2017-11-01T00：12：00.000”的时间点之间选择温度传感器值。
+
+结果如下所示：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577827-39adf280-1ef6-11e9-81b5-876769607cd2.jpg"></center>
+
+- 示例3：SLIMIT子句与GROUP BY子句结合
+
+SQL语句是：
+
+```
+select max_value(*) from root.ln.wf01.wt01 group by (1d, [2017-11-01T00:00:00, 2017-11-07T23:00:00]) slimit 1 soffset 1
+
+```
+
+结果如下所示：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577840-44688780-1ef6-11e9-8abc-04ae78efa85b.jpg"></center>
+
+- 示例4：SLIMIT子句与FILL子句结合
+
+SQL语句是：
+
+```
+select * from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1m]) slimit 1 soffset 1
+
+```
+
+意思是：
+
+所选设备为ln组wf01工厂wt01设备； 所选时间序列是该设备下的第二列，即温度。
+
+结果如下所示：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577855-4d595900-1ef6-11e9-8541-a4accd714b75.jpg"></center>
+
+值得注意的是，预期SLIMIT子句将与星形路径或前缀路径一起使用，并且当SLIMIT子句与完整路径查询一起使用时，系统将提示错误。 例如，执行以下SQL语句：
+
+```
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1
+
+```
+
+SQL语句将不会执行，并且相应的错误提示如下：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577867-577b5780-1ef6-11e9-978c-e02c1294bcc5.jpg"></center>
+
+#### Row and Column Control over Query Results
+
+除了对查询结果进行行或列控制之外，IoTDB还允许用户控制查询结果的行和列。 这是同时包含LIMIT子句和SLIMIT子句的完整示例。
+
+SQL语句是：
+
+```
+select * from root.ln.wf01.wt01 limit 10 offset 100 slimit 2 soffset 0
+
+```
+
+意思是：
+
+所选设备为ln组wf01工厂wt01设备； 所选时间序列是此设备下的第0列至第1列（第一列编号为第0列）。 SQL语句子句要求返回查询结果的第100至109行（第一行编号为0行）。
+
+结果如下所示：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577879-64984680-1ef6-11e9-9d7b-57dd60fab60e.jpg"></center>
+
+#### 其他结果集格式
+
+此外，IoTDB支持两种其他结果集格式：“按设备对齐”和“禁用对齐”。
+
+“按设备对齐”指示将deviceId视为一列。 因此，数据集中的列完全有限。
+
+SQL语句是：
+
+```
+select s1,s2 from root.sg1.* GROUP BY DEVICE
+
+```
+
+有关更多语法描述，请阅读SQL REFERENCE。
+
+“禁用对齐”指示结果集中每个时间序列都有3列。 有关更多语法描述，请阅读SQL REFERENCE。
+
+#### 错误处理
+
+当LIMIT / SLIMIT的参数N / SN超过结果集的大小时，IoTDB将按预期返回所有结果。 例如，原始SQL语句的查询结果由六行组成，我们通过LIMIT子句选择前100行：
+
+```
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 100
+
+```
+
+结果如下所示：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578187-ad9cca80-1ef7-11e9-897a-83e66a0f3d94.jpg"></center>
+
+当LIMIT / SLIMIT子句的参数N / SN超过允许的最大值（N / SN的类型为int32）时，系统将提示错误。 例如，执行以下SQL语句：
+
+```
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 1234567890123456789
+
+```
+
+SQL语句将不会执行，并且相应的错误提示如下：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517469-e696a180-aa39-11e9-8ca5-42ea991d520e.png"></center>
+
+当LIMIT / LIMIT子句的参数N / SN不是正整数时，系统将提示错误。 例如，执行以下SQL语句：
+
+```
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 13.1
+
+```
+
+SQL语句将不会执行，并且相应的错误提示如下：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61518094-68d39580-aa3b-11e9-993c-fc73c27540f7.png"></center>
+
+当LIMIT子句的参数OFFSET超过结果集的大小时，IoTDB将返回空结果集。 例如，执行以下SQL语句：
+
+```
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 2 offset 6
+
+```
+
+结果如下所示：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578227-c60ce500-1ef7-11e9-98eb-175beb8d4086.jpg"></center>
+
+当SLIMIT子句的参数SOFFSET不小于可用时间序列数时，系统将提示错误。 例如，执行以下SQL语句：
+
+```
+select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 2
+
+```
+
+SQL语句将不会执行，并且相应的错误提示如下：
 
 ### 数据删除
 

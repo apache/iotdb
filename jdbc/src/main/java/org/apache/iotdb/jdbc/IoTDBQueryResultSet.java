@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -83,7 +83,7 @@ public class IoTDBQueryResultSet extends AbstractIoTDBResultSet {
 
       try {
         RpcUtils.verifySuccess(resp.getStatus());
-      } catch (IoTDBRPCException e) {
+      } catch (StatementExecutionException e) {
         throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
       }
       if (!resp.hasResultSet) {

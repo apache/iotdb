@@ -45,7 +45,7 @@ public class ExpressionOptimizer {
   /**
    * try to remove GlobalTimeExpression.
    *
-   * @param expression IExpression to be transferred
+   * @param expression     IExpression to be transferred
    * @param selectedSeries selected series
    * @return an executable query filter, whether a GlobalTimeExpression or All leaf nodes are
    * SingleSeriesExpression
@@ -108,11 +108,61 @@ public class ExpressionOptimizer {
       addTimeFilterToQueryFilter((globalTimeExpression).getFilter(), regularRightIExpression);
       return regularRightIExpression;
     } else if (relation == ExpressionType.OR) {
-      return BinaryExpression
-          .or(pushGlobalTimeFilterToAllSeries(globalTimeExpression, selectedSeries),
-              regularRightIExpression);
+      IExpression afterTransform = pushGlobalTimeFilterToAllSeries(globalTimeExpression,
+          selectedSeries);
+      return mergeSecondTreeToFirstTree(afterTransform, regularRightIExpression);
     }
     throw new QueryFilterOptimizationException("unknown relation in IExpression:" + relation);
+  }
+
+  /**
+   * This method merge the second input, which is of tree structure, to the first parameter. It
+   * visits all leaf nodes, which are SingleSeriesExpressions, or AndExpression in right Expression,
+   * merge them to the right position in leftExpression.
+   *
+   * @param leftExpression  The IExpression transformed from GlobalTimeExpression, which might have
+   *                        already be updated and merged.
+   * @param rightExpression The IExpression to be merged into the first IExpression
+   * @return a merged IExpression, which is initially based on the input leftExpression
+   */
+  private IExpression mergeSecondTreeToFirstTree(IExpression leftExpression,
+      IExpression rightExpression) {
+    if (rightExpression.getType() == ExpressionType.SERIES) {
+      SingleSeriesExpression leaf = (SingleSeriesExpression) rightExpression;
+      updateFilterWithOr(leftExpression, leaf.getFilter(), leaf.getSeriesPath());
+      return leftExpression;
+    } else if (rightExpression.getType() == ExpressionType.OR) {
+      IExpression leftChild = ((BinaryExpression) rightExpression).getLeft();
+      IExpression rightChild = ((BinaryExpression) rightExpression).getRight();
+      leftExpression = mergeSecondTreeToFirstTree(leftExpression, leftChild);
+      leftExpression = mergeSecondTreeToFirstTree(leftExpression, rightChild);
+      return leftExpression;
+    } else {
+      return BinaryExpression.or(leftExpression, rightExpression);
+    }
+  }
+
+  /**
+   * This method search  the node in the input expression, whose path is identical to the input
+   * path, then merges its filter and the input filter with relation OR.
+   *
+   * @return true if the input filter is merged.
+   */
+  private boolean updateFilterWithOr(IExpression expression, Filter filter, Path path) {
+    if (expression.getType() == ExpressionType.SERIES && ((SingleSeriesExpression) expression)
+        .getSeriesPath().equals(path)) {
+      Filter nodeFilter = ((SingleSeriesExpression) expression).getFilter();
+      nodeFilter = FilterFactory.or(nodeFilter, filter);
+      ((SingleSeriesExpression) expression).setFilter(nodeFilter);
+      return true;
+    } else if (expression.getType() == ExpressionType.OR) {
+      assert expression instanceof BinaryExpression;
+      IExpression left = ((BinaryExpression) expression).getLeft();
+      IExpression right = ((BinaryExpression) expression).getRight();
+      return updateFilterWithOr(left, filter, path) || updateFilterWithOr(right, filter, path);
+    } else {
+      return false;
+    }
   }
 
   /**
