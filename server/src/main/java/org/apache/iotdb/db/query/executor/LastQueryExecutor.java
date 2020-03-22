@@ -22,11 +22,7 @@ package org.apache.iotdb.db.query.executor;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 
-import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
-import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -35,18 +31,12 @@ import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
-import org.apache.iotdb.db.query.reader.series.SeriesLastReader;
-import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.db.query.reader.series.InvertedSeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -135,25 +125,32 @@ public class LastQueryExecutor {
         QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, timeFilter);
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
-    SeriesLastReader seriesReader =
-        new SeriesLastReader(
+    InvertedSeriesReader seriesReader =
+        new InvertedSeriesReader(
             seriesPath, tsDataType, context, queryDataSource, timeFilter, null, null);
 
     while (seriesReader.hasNextChunk()) {
       // cal by chunk statistics
       if (seriesReader.canUseCurrentChunkStatistics()) {
         Statistics chunkStatistics = seriesReader.currentChunkStatistics();
-        resultPair =
-            constructLastPair(
-                chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+        if (resultPair == null || resultPair.getTimestamp() < chunkStatistics.getEndTime()) {
+          resultPair = constructLastPair(
+                  chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+        }
         seriesReader.skipCurrentChunk();
       } else {
-        BatchData lastBatchData = seriesReader.lastBatch();
+        BatchData lastBatchData = null;
+        while (seriesReader.hasNextPage()) {
+          lastBatchData = seriesReader.nextPage();
+        }
 
-        resultPair =
-            new TimeValuePair(
+        if (lastBatchData != null) {
+          if (resultPair == null || resultPair.getTimestamp() < lastBatchData.getMaxTimestamp()) {
+            resultPair = new TimeValuePair(
                 lastBatchData.getMaxTimestamp(),
                 lastBatchData.getTsPrimitiveTypeByIndex(lastBatchData.length() - 1));
+          }
+        }
       }
     }
 
