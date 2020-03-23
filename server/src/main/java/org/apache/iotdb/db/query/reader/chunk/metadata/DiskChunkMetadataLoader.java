@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.chunk.metadata;
 
-import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -50,7 +50,8 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
   @Override
   public List<ChunkMetadata> getChunkMetadataList() throws IOException {
-    List<ChunkMetadata> chunkMetadataList = DeviceMetaDataCache.getInstance().get(resource, seriesPath);
+    List<ChunkMetadata> chunkMetadataList = ChunkMetadataCache
+        .getInstance().get(resource, seriesPath);
 
     setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
 

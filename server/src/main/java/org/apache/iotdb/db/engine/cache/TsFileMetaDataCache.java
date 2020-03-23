@@ -62,7 +62,7 @@ public class TsFileMetaDataCache {
               .sizeOf(value.getDeviceMetadataIndex().entrySet().iterator().next());
         }
         // totalChunkNum, invalidChunkNum
-        long valueSize = 4 + 4;
+        long valueSize = 4 + 4L;
 
         // deviceMetadataIndex
         if (value.getDeviceMetadataIndex() != null) {

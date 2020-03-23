@@ -39,7 +39,7 @@ public class RowBatch {
   /**
    * the list of measurement schemas for creating the row batch
    */
-  public List<MeasurementSchema> timeseries;
+  private List<MeasurementSchema> schemas;
 
   /**
    * timestamps in this row batch
@@ -81,18 +81,22 @@ public class RowBatch {
    * always be default size.
    *
    * @param deviceId     the name of the device specified to be written in
-   * @param timeseries   the list of measurement schemas for creating the row
+   * @param schemas   the list of measurement schemas for creating the row
    *                     batch
    * @param maxBatchSize the maximum number of rows for this row batch
    */
-  public RowBatch(String deviceId, List<MeasurementSchema> timeseries, int maxBatchSize) {
+  public RowBatch(String deviceId, List<MeasurementSchema> schemas, int maxBatchSize) {
     this.deviceId = deviceId;
-    this.timeseries = timeseries;
+    this.schemas = schemas;
     this.maxBatchSize = maxBatchSize;
 
     createColumns();
 
     reset();
+  }
+
+  public List<MeasurementSchema> getSchemas() {
+    return schemas;
   }
 
   /**
@@ -112,10 +116,10 @@ public class RowBatch {
   private void createColumns() {
     // create timestamp column
     timestamps = new long[maxBatchSize];
-    values = new Object[timeseries.size()];
+    values = new Object[schemas.size()];
     // create value columns
-    for (int i = 0; i < timeseries.size(); i++) {
-      TSDataType dataType = timeseries.get(i).getType();
+    for (int i = 0; i < schemas.size(); i++) {
+      TSDataType dataType = schemas.get(i).getType();
       switch (dataType) {
       case INT32:
         values[i] = new int[maxBatchSize];
@@ -150,8 +154,8 @@ public class RowBatch {
    */
   public int getValueBytesSize() {
     valueOccupation = 0;
-    for (int i = 0; i < timeseries.size(); i++) {
-      switch (timeseries.get(i).getType()) {
+    for (int i = 0; i < schemas.size(); i++) {
+      switch (schemas.get(i).getType()) {
       case BOOLEAN:
         valueOccupation += batchSize;
         break;
@@ -175,7 +179,7 @@ public class RowBatch {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", timeseries.get(i).getType()));
+            String.format("Data type %s is not supported.", schemas.get(i).getType()));
       }
     }
     return valueOccupation;

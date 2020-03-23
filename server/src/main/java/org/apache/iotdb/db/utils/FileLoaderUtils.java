@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -112,7 +112,7 @@ public class FileLoaderUtils {
       return new ArrayList<>();
     }
     if (resource.isClosed()) {
-      chunkMetadataList = DeviceMetaDataCache.getInstance().get(resource, seriesPath);
+      chunkMetadataList = ChunkMetadataCache.getInstance().get(resource, seriesPath);
     } else {
       chunkMetadataList = resource.getChunkMetadataList();
     }

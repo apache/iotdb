@@ -28,7 +28,7 @@ import java.util.Map.Entry;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
@@ -121,7 +121,7 @@ class MergeFileTask {
     seqFile.getWriteQueryLock().writeLock().lock();
     try {
       TsFileMetaDataCache.getInstance().remove(seqFile);
-      DeviceMetaDataCache.getInstance().remove(seqFile);
+      ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
 
       resource.removeFileReader(seqFile);
@@ -173,6 +173,14 @@ class MergeFileTask {
       seqFile.setFile(nextMergeVersionFile);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
+      RestorableTsFileIOWriter oldFileRecoverWriter = new RestorableTsFileIOWriter(
+          seqFile.getFile());
+      if (oldFileRecoverWriter.hasCrashed() && oldFileRecoverWriter.canWrite()) {
+        oldFileRecoverWriter.endFile();
+      } else {
+        oldFileRecoverWriter.close();
+      }
+      throw e;
     } finally {
       seqFile.getWriteQueryLock().writeLock().unlock();
     }
@@ -252,7 +260,7 @@ class MergeFileTask {
     try {
       resource.removeFileReader(seqFile);
       TsFileMetaDataCache.getInstance().remove(seqFile);
-      DeviceMetaDataCache.getInstance().remove(seqFile);
+      ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
       seqFile.getFile().delete();
 

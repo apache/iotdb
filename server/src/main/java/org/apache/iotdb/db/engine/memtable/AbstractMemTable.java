@@ -27,6 +27,7 @@ import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -85,7 +86,7 @@ public abstract class AbstractMemTable implements IMemTable {
   protected abstract IWritableMemChunk genMemSeries(MeasurementSchema schema);
 
   @Override
-  public void insert(InsertPlan insertPlan) throws QueryProcessException {
+  public void insert(InsertPlan insertPlan) throws WriteProcessException {
     try {
       for (int i = 0; i < insertPlan.getValues().length; i++) {
 
@@ -98,19 +99,19 @@ public abstract class AbstractMemTable implements IMemTable {
       long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
       memSize += recordSizeInByte;
     } catch (Exception e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new WriteProcessException(e.getMessage());
     }
   }
 
   @Override
   public void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end)
-      throws QueryProcessException {
+      throws WriteProcessException {
     try {
       write(batchInsertPlan, start, end);
       long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan, start, end);
       memSize += recordSizeInByte;
-    } catch (Exception e) {
-      throw new QueryProcessException(e.getMessage());
+    } catch (RuntimeException e) {
+      throw new WriteProcessException(e.getMessage());
     }
   }
 

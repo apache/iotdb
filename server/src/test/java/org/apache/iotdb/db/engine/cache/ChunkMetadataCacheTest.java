@@ -31,24 +31,22 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class DeviceMetaDataCacheTest {
+public class ChunkMetadataCacheTest {
 
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
@@ -90,7 +88,7 @@ public class DeviceMetaDataCacheTest {
     EnvironmentUtils.cleanDir(systemDir);
   }
 
-  private void insertOneRecord(long time, int num) throws QueryProcessException {
+  private void insertOneRecord(long time, int num) throws WriteProcessException {
     TSRecord record = new TSRecord(time, storageGroup);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId0, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT64, measurementId1, String.valueOf(num)));
@@ -100,7 +98,7 @@ public class DeviceMetaDataCacheTest {
     storageGroupProcessor.insert(new InsertPlan(record));
   }
 
-  protected void insertData() throws IOException, QueryProcessException {
+  protected void insertData() throws IOException, WriteProcessException {
     for (int j = 1; j <= 100; j++) {
       insertOneRecord(j, j);
     }
@@ -146,7 +144,7 @@ public class DeviceMetaDataCacheTest {
     Assert.assertTrue(unseqResources.get(2).isClosed());
     Assert.assertFalse(unseqResources.get(3).isClosed());
 
-    List<ChunkMetadata> metaDataList = DeviceMetaDataCache.getInstance()
+    List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
         .get(seqResources.get(0), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }
@@ -168,7 +166,7 @@ public class DeviceMetaDataCacheTest {
     Assert.assertTrue(unseqResources.get(2).isClosed());
     Assert.assertFalse(unseqResources.get(3).isClosed());
 
-    List<ChunkMetadata> metaDataList = DeviceMetaDataCache.getInstance()
+    List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
         .get(seqResources.get(0), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }

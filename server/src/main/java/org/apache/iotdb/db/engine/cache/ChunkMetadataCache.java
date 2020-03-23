@@ -39,9 +39,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * This class is used to cache <code>List<ChunkMetaData></code> of tsfile in IoTDB. The caching
  * strategy is LRU.
  */
-public class DeviceMetaDataCache {
+public class ChunkMetadataCache {
 
-  private static final Logger logger = LoggerFactory.getLogger(DeviceMetaDataCache.class);
+  private static final Logger logger = LoggerFactory.getLogger(ChunkMetadataCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_B = config.getAllocateMemoryForChunkMetaDataCache();
   private static boolean cacheEnable = config.isMetaDataCacheEnable();
@@ -60,7 +60,7 @@ public class DeviceMetaDataCache {
    */
   private long chunkMetaDataSize = 0;
 
-  private DeviceMetaDataCache(long memoryThreshold) {
+  private ChunkMetadataCache(long memoryThreshold) {
     lruCache = new LRULinkedHashMap<String, List<ChunkMetadata>>(memoryThreshold, true) {
       @Override
       protected long calEntrySize(String key, List<ChunkMetadata> value) {
@@ -72,8 +72,8 @@ public class DeviceMetaDataCache {
     };
   }
 
-  public static DeviceMetaDataCache getInstance() {
-    return RowGroupBlockMetaDataCacheSingleton.INSTANCE;
+  public static ChunkMetadataCache getInstance() {
+    return ChunkMetadataCacheSingleton.INSTANCE;
   }
 
   /**
@@ -120,9 +120,6 @@ public class DeviceMetaDataCache {
       // bloom filter part
       BloomFilter bloomFilter = fileMetaData.getBloomFilter();
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
-        if (logger.isDebugEnabled()) {
-          logger.debug("path not found by bloom filter, file is: " + resource.getFile() + " path is: " + seriesPath);
-        }
         return new ArrayList<>();
       }
       List<ChunkMetadata> chunkMetaDataList = TsFileMetadataUtils.getChunkMetadataList(seriesPath, resource);
@@ -171,9 +168,9 @@ public class DeviceMetaDataCache {
   /**
    * singleton pattern.
    */
-  private static class RowGroupBlockMetaDataCacheSingleton {
+  private static class ChunkMetadataCacheSingleton {
 
-    private static final DeviceMetaDataCache INSTANCE = new
-        DeviceMetaDataCache(MEMORY_THRESHOLD_IN_B);
+    private static final ChunkMetadataCache INSTANCE = new
+        ChunkMetadataCache(MEMORY_THRESHOLD_IN_B);
   }
 }
