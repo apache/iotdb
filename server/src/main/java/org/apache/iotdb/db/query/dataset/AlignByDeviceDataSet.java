@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
@@ -119,15 +120,12 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     while (deviceIterator.hasNext()) {
       currentDevice = deviceIterator.next();
       // get all measurements of current device
-      Set<String> measurementOfGivenDevice = new HashSet<>();
+      Set<String> measurementOfGivenDevice;
       try {
-        Set<String> pathsOfGivenDevice = MManager.getInstance()
-            .getChildNodePathInNextLevel(currentDevice);
-        for (String path : pathsOfGivenDevice) {
-          measurementOfGivenDevice.add(path.substring(path.lastIndexOf('.') + 1));
-        }
+        MNode deviceNode = MManager.getInstance().getNodeByPath(currentDevice);
+        measurementOfGivenDevice = deviceNode.getChildren().keySet();
       } catch (MetadataException e) {
-        throw new IOException("Cannot get paths from " + currentDevice);
+        throw new IOException("Cannot get node from " + currentDevice);
       }
       // extract paths and aggregations queried from all measurements
       // executeColumns is for calculating rowRecord
