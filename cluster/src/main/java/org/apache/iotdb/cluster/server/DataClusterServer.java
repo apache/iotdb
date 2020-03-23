@@ -402,6 +402,12 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     }
   }
 
+  /**
+   * Set the partition table as the in-use one and build a DataGroupMember for each local group
+   * (the group which the local node is in) and start them.
+   * @param partitionTable
+   * @throws TTransportException
+   */
   public void bulidDataGroupMembers(PartitionTable partitionTable)
       throws TTransportException {
     setPartitionTable(partitionTable);
