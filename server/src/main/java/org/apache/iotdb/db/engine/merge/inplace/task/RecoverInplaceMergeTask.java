@@ -31,9 +31,9 @@ import java.util.List;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
-import org.apache.iotdb.db.engine.merge.inplace.recover.InplaceLogAnalyzer;
-import org.apache.iotdb.db.engine.merge.inplace.recover.InplaceLogAnalyzer.Status;
-import org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger;
+import org.apache.iotdb.db.engine.merge.inplace.recover.InplaceMergeLogger;
+import org.apache.iotdb.db.engine.merge.inplace.recover.LogAnalyzer;
+import org.apache.iotdb.db.engine.merge.inplace.recover.LogAnalyzer.Status;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.utils.MergeUtils;
@@ -44,14 +44,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * RecoverInplaceMergeTask is an extension of InplaceMergeTask, which resumes the last merge
- * progress by scanning merge.log using InplaceLogAnalyzer and continue the unfinished merge.
+ * RecoverInplaceMergeTask is an extension of MergeTask, which resumes the last merge progress by
+ * scanning merge.log using LogAnalyzer and continue the unfinished merge.
  */
 public class RecoverInplaceMergeTask extends InplaceMergeTask {
 
   private static final Logger logger = LoggerFactory.getLogger(RecoverInplaceMergeTask.class);
 
-  private InplaceLogAnalyzer analyzer;
+  private LogAnalyzer analyzer;
 
   public RecoverInplaceMergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupSysDir,
@@ -62,14 +62,14 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask {
   }
 
   public void recoverMerge(boolean continueMerge) throws IOException, MetadataException {
-    File logFile = new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);
+    File logFile = new File(storageGroupSysDir, InplaceMergeLogger.MERGE_LOG_NAME);
     if (!logFile.exists()) {
       logger.info("{} no merge.log, merge recovery ends", taskName);
       return;
     }
     long startTime = System.currentTimeMillis();
 
-    analyzer = new InplaceLogAnalyzer(resource, taskName, logFile, storageGroupName);
+    analyzer = new LogAnalyzer(resource, taskName, logFile, storageGroupName);
     Status status = analyzer.analyze();
     if (logger.isInfoEnabled()) {
       logger.info("{} merge recovery status determined: {} after {}ms", taskName, status,
@@ -135,7 +135,7 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask {
   }
 
   private void resumeMergeProgress() throws IOException {
-    mergeLogger = new MergeLogger(storageGroupSysDir);
+    mergeLogger = new InplaceMergeLogger(storageGroupSysDir);
     truncateFiles();
     recoverChunkCounts();
   }

@@ -430,7 +430,8 @@ public class StorageGroupProcessor {
       long timePartitionId = StorageEngine.getTimePartition(insertPlan.getTime());
 
       latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
-      partitionLatestFlushedTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>());
+      partitionLatestFlushedTimeForEachDevice
+          .computeIfAbsent(timePartitionId, id -> new HashMap<>());
 
       // insert to sequence or unSequence file
       insertToTsFileProcessor(insertPlan,
@@ -1305,8 +1306,8 @@ public class StorageGroupProcessor {
 
       long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
       long timeLowerBound = System.currentTimeMillis() - dataTTL;
-
-      IMergeFileSelector fileSelector = getMergeFileSelector(sequenceFileTreeSet,
+      MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
+      IMergeFileSelector fileSelector = strategy.getFileSelector(sequenceFileTreeSet,
           unSequenceFileList, budget, timeLowerBound);
       try {
         Pair<MergeResource, SelectorContext> selectRes = fileSelector.selectMergedFiles();
@@ -1351,19 +1352,6 @@ public class StorageGroupProcessor {
       }
     } finally {
       writeUnlock();
-    }
-  }
-
-  private IMergeFileSelector getMergeFileSelector(
-      Collection<TsFileResource> seqFiles,
-      Collection<TsFileResource> unseqFiles, long budget, long timeLowerBound) {
-    MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
-    switch (strategy) {
-      case MAX_FILE_NUM:
-      case MAX_SERIES_NUM:
-        return new InplaceMaxFileSelector(seqFiles, unseqFiles, budget, timeLowerBound);
-      default:
-        throw new UnsupportedOperationException("Unknown MergeFileStrategy " + strategy);
     }
   }
 

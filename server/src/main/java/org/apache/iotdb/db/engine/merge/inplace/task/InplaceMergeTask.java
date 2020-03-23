@@ -29,8 +29,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
-import org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger;
+import org.apache.iotdb.db.engine.merge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -48,20 +49,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * InplaceMergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of
- * three steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files 2. move
- * the merged chunks in the temp files back to the seqFiles or move the unmerged chunks in the
- * seqFiles into temp files and replace the seqFiles with the temp files. 3. remove unseqFiles
+ * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
+ * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files 2. move the
+ * merged chunks in the temp files back to the seqFiles or move the unmerged chunks in the seqFiles
+ * into temp files and replace the seqFiles with the temp files. 3. remove unseqFiles
  */
 public class InplaceMergeTask implements Callable<Void> {
 
-  public static final String MERGE_SUFFIX = ".merge";
+  public static final String MERGE_SUFFIX = ".merge.inplace";
   private static final Logger logger = LoggerFactory.getLogger(InplaceMergeTask.class);
 
   MergeResource resource;
   String storageGroupSysDir;
   String storageGroupName;
-  MergeLogger mergeLogger;
+  InplaceMergeLogger mergeLogger;
   MergeContext mergeContext = new MergeContext();
 
   private MergeCallback callback;
@@ -72,7 +73,7 @@ public class InplaceMergeTask implements Callable<Void> {
   InplaceMergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupSysDir, MergeCallback callback,
       String taskName, boolean fullMerge, String storageGroupName) {
-    this.resource = new MergeResource();
+    this.resource = new MergeResource(seqFiles, unseqFiles);
     this.storageGroupSysDir = storageGroupSysDir;
     this.callback = callback;
     this.taskName = taskName;
@@ -103,7 +104,8 @@ public class InplaceMergeTask implements Callable<Void> {
       // call the callback to make sure the StorageGroup exit merging status, but passing 2
       // empty file lists to avoid files being deleted.
       callback.call(Collections.emptyList(), Collections.emptyList(),
-          new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME), null);
+          SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, InplaceMergeLogger.MERGE_LOG_NAME),
+          null);
       throw e;
     }
     return null;
@@ -117,7 +119,7 @@ public class InplaceMergeTask implements Callable<Void> {
     long startTime = System.currentTimeMillis();
     long totalFileSize = MergeUtils.collectFileSizes(resource.getSeqFiles(),
         resource.getUnseqFiles());
-    mergeLogger = new MergeLogger(storageGroupSysDir);
+    mergeLogger = new InplaceMergeLogger(storageGroupSysDir);
 
     mergeLogger.logFiles(resource);
 
@@ -185,7 +187,7 @@ public class InplaceMergeTask implements Callable<Void> {
       unseqFile.setMerging(false);
     }
 
-    File logFile = new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);
+    File logFile = new File(storageGroupSysDir, InplaceMergeLogger.MERGE_LOG_NAME);
     if (executeCallback) {
       // make sure merge.log is not deleted until unseqFiles are cleared so that when system
       // reboots, the undeleted files can be deleted again

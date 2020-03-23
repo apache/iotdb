@@ -28,7 +28,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 /**
- * MergeLogger records the progress of a merge in file "merge.log" as text lines.
+ * InplaceMergeLogger records the progress of a merge in file "merge.log" as text lines.
  */
 public class SqueezeMergeLogger {
 

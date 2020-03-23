@@ -19,9 +19,53 @@
 
 package org.apache.iotdb.db.engine.merge;
 
+import java.util.Collection;
+import java.util.concurrent.Callable;
+import org.apache.iotdb.db.engine.merge.inplace.selector.InplaceMaxFileSelector;
+import org.apache.iotdb.db.engine.merge.inplace.selector.InplaceMaxSeriesMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.squeeze.selector.SqueezeMaxFileSelector;
+import org.apache.iotdb.db.engine.merge.squeeze.selector.SqueezeMaxSeriesMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.squeeze.task.SqueezeMergeTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+
 public enum MergeFileStrategy {
-  MAX_SERIES_NUM,
-  MAX_FILE_NUM,
-  // TODO: HOW?
-  TRADE_OFF,
+  INPLACE_MAX_SERIES_NUM,
+  INPLACE_MAX_FILE_NUM,
+  SQUEEZE_MAX_SERIES_NUM,
+  SQUEEZE_MAX_FILE_NUM;
+  // TODO new strategies?
+
+  public IMergeFileSelector getFileSelector(Collection<TsFileResource> seqFiles,
+      Collection<TsFileResource> unseqFiles, long budget, long timeLowerBound) {
+    switch (this) {
+      case INPLACE_MAX_FILE_NUM:
+        return new InplaceMaxFileSelector(seqFiles, unseqFiles, budget, timeLowerBound);
+      case INPLACE_MAX_SERIES_NUM:
+        return new InplaceMaxSeriesMergeFileSelector(seqFiles, unseqFiles, budget, timeLowerBound);
+      case SQUEEZE_MAX_FILE_NUM:
+        return new SqueezeMaxFileSelector(seqFiles, unseqFiles, budget, timeLowerBound);
+      case SQUEEZE_MAX_SERIES_NUM:
+        return new SqueezeMaxSeriesMergeFileSelector(seqFiles, unseqFiles, budget, timeLowerBound);
+    }
+    return null;
+  }
+
+  public Callable<Void> getMergeTask(MergeResource mergeResource, String storageGroupSysDir,
+      MergeCallback callback,
+      String taskName, int concurrentMergeSeriesNum, String storageGroupName,
+      boolean isFullMerge) {
+    switch (this) {
+      case INPLACE_MAX_SERIES_NUM:
+      case INPLACE_MAX_FILE_NUM:
+        return new InplaceMergeTask(mergeResource, storageGroupSysDir, callback, taskName,
+            isFullMerge, concurrentMergeSeriesNum, storageGroupName);
+      case SQUEEZE_MAX_FILE_NUM:
+      case SQUEEZE_MAX_SERIES_NUM:
+        return new SqueezeMergeTask(mergeResource, storageGroupSysDir, callback, taskName,
+            concurrentMergeSeriesNum, storageGroupName);
+    }
+    return null;
+  }
 }

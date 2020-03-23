@@ -23,16 +23,18 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
-
+import java.util.Set;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
+import org.apache.iotdb.db.engine.merge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
@@ -58,11 +60,11 @@ class MergeFileTask {
 
   private String taskName;
   private MergeContext context;
-  private MergeLogger mergeLogger;
+  private InplaceMergeLogger mergeLogger;
   private MergeResource resource;
   private List<TsFileResource> unmergedFiles;
 
-  MergeFileTask(String taskName, MergeContext context, MergeLogger mergeLogger,
+  MergeFileTask(String taskName, MergeContext context, InplaceMergeLogger mergeLogger,
       MergeResource resource, List<TsFileResource> unmergedSeqFiles) {
     this.taskName = taskName;
     this.context = context;
@@ -149,7 +151,7 @@ class MergeFileTask {
           logger.debug("{} find {} merged chunk groups", taskName,
               chunkMetadataListInChunkGroups.size());
         }
-        for (Map.Entry<String, List<ChunkMetadata>> entry : chunkMetadataListInChunkGroups
+        for (Entry<String, List<ChunkMetadata>> entry : chunkMetadataListInChunkGroups
             .entrySet()) {
           String deviceId = entry.getKey();
           List<ChunkMetadata> chunkMetadataList = entry.getValue();
@@ -173,14 +175,6 @@ class MergeFileTask {
       seqFile.setFile(nextMergeVersionFile);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      RestorableTsFileIOWriter oldFileRecoverWriter = new RestorableTsFileIOWriter(
-          seqFile.getFile());
-      if (oldFileRecoverWriter.hasCrashed() && oldFileRecoverWriter.canWrite()) {
-        oldFileRecoverWriter.endFile();
-      } else {
-        oldFileRecoverWriter.close();
-      }
-      throw e;
     } finally {
       seqFile.getWriteQueryLock().writeLock().unlock();
     }

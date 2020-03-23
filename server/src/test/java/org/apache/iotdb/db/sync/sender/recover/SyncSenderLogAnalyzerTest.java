@@ -52,9 +52,9 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SyncSenderInplaceLogAnalyzerTest {
+public class SyncSenderLogAnalyzerTest {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncSenderInplaceLogAnalyzerTest.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SyncSenderLogAnalyzerTest.class);
   private ISyncSenderLogger senderLogger;
   private ISyncSenderLogAnalyzer senderLogAnalyzer;
   private ISyncFileManager manager = SyncFileManager.getInstance();

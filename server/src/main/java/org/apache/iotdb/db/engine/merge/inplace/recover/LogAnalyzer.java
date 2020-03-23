@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.merge.inplace.recover;
 
-import static org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger.*;
+import static org.apache.iotdb.db.engine.merge.inplace.recover.InplaceMergeLogger.*;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -39,7 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * InplaceLogAnalyzer scans the "merge.log" file and recovers information such as files of last merge,
+ * LogAnalyzer scans the "merge.log" file and recovers information such as files of last merge,
  * the last available positions of each file and how many timeseries and files have been merged.
  * An example of merging 1 seqFile and 1 unseqFile containing 3 series is:
  * seqFiles
@@ -58,9 +58,9 @@ import org.slf4j.LoggerFactory;
  * end
  * merge end
  */
-public class InplaceLogAnalyzer {
+public class LogAnalyzer {
 
-  private static final Logger logger = LoggerFactory.getLogger(InplaceLogAnalyzer.class);
+  private static final Logger logger = LoggerFactory.getLogger(LogAnalyzer.class);
 
   private MergeResource resource;
   private String taskName;
@@ -77,7 +77,7 @@ public class InplaceLogAnalyzer {
 
   private Status status;
 
-  public InplaceLogAnalyzer(MergeResource resource, String taskName, File logFile, String storageGroupName) {
+  public LogAnalyzer(MergeResource resource, String taskName, File logFile, String storageGroupName) {
     this.resource = resource;
     this.taskName = taskName;
     this.logFile = logFile;

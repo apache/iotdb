@@ -365,7 +365,7 @@ public class IoTDBConfig {
    * If one merge file selection runs for more than this time, it will be ended and its current
    * selection will be used as final selection. Unit: millis. When < 0, it means time is unbounded.
    */
-  private long mergeFileSelectionTimeBudget = 10000 * 1000;
+  private long mergeFileSelectionTimeBudget = 30 * 1000;
 
   /**
    * When set to true, if some crashed merges are detected during system rebooting, such merges will
@@ -394,7 +394,7 @@ public class IoTDBConfig {
    */
   private int chunkMergePointThreshold = 20480;
 
-  private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
+  private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.INPLACE_MAX_SERIES_NUM;
 
   /**
    * Default system file storage is in local file system (unsupported)
@@ -472,9 +472,9 @@ public class IoTDBConfig {
   private int defaultFillInterval = 600000;
 
   /**
-   * default TTL for storage groups that are not set TTL by statements, in ms
-   * Notice: if this property is changed, previous created storage group which are not set TTL will
-   * also be affected.
+   * default TTL for storage groups that are not set TTL by statements, in ms Notice: if this
+   * property is changed, previous created storage group which are not set TTL will also be
+   * affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
   /**
