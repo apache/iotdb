@@ -74,7 +74,7 @@ This class has the following key fields:
 
 First, in the initialization `initGroupBy ()` method, the `timeFilter` is calculated based on the expression, and` GroupByExecutor` is generated for each `path`.
 
-The `nextWithoutConstraint ()` method calculates the aggregate value `aggregateResults` of all aggregation methods in each` Path` by calling the `GroupByExecutor.calcResult ()` method.
+First, in the initialization `initGroupBy()` method, the `timeFilter` is calculated based on the expression, and `GroupByExecutor` is generated for each `path`.
 The following method is used to convert the result list into a RowRecord. Note that when there are no results in the list, add `null` to the RowRecord:
 
 ```
