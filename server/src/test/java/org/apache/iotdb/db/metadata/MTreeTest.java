@@ -296,7 +296,7 @@ public class MTreeTest {
       root.setStorageGroup("root.laptop.d2");
       root.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      root.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      root.createTimeseries("root.laptop.d1.s2", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
 
       List<String> list = new ArrayList<>();

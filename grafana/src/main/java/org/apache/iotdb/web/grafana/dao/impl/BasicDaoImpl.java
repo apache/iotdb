@@ -123,8 +123,6 @@ public class BasicDaoImpl implements BasicDao {
 
   static class TimeValuesRowMapper implements RowMapper<TimeValues> {
 
-    static final String TRUE_STR = "true";
-    static final String FALSE_STR = "false";
     String columnName;
 
     TimeValuesRowMapper(String columnName) {
@@ -137,17 +135,10 @@ public class BasicDaoImpl implements BasicDao {
       tv.setTime(resultSet.getLong("Time") / TIMESTAMP_RADIX);
       String valueString = resultSet.getString(columnName);
       if (valueString != null) {
-        if (TRUE_STR.equalsIgnoreCase(valueString)) {
-          tv.setValue(1);
-        } else if (FALSE_STR.equalsIgnoreCase(valueString)) {
-          tv.setValue(0);
-        } else {
-          try {
-            tv.setValue(Float.parseFloat(resultSet.getString(columnName)));
-          } catch (Exception e) {
-            logger.error("Can not parse the value {}", resultSet.getString(columnName));
-            tv.setValue(0);
-          }
+        try {
+          tv.setValue(Float.parseFloat(resultSet.getString(columnName)));
+        } catch (Exception e) {
+          tv.setValue(resultSet.getString(columnName));
         }
       }
       return tv;
