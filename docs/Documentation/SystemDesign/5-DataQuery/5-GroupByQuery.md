@@ -40,7 +40,7 @@ The following fields are for the current segment, and the time period is left cl
 * protected boolean hasCachedTimeInterval;
 
 
-The core method of `GroupByEngineDataSet` is very easy. First, determine if there is a next segment based on whether there is a cached time period, and return` true`; if not, calculate the segmentation start time and increase `usedIndex` by 1.  If the segment start time has exceeded the query end time, return `false`; otherwise, calculate the query end time, set` hasCachedTimeInterval` to `true`, and return` true`:
+The core method of `GroupByEngineDataSet` is very easy. First, determine if there is a next segment based on whether there is a cached time period, and return `true`; if not, calculate the segmentation start time and increase `usedIndex` by 1.  If the segment start time has exceeded the query end time, return `false`; otherwise, calculate the query end time, set `hasCachedTimeInterval` to `true`, and return` true`:
 ```
 protected boolean hasNextWithoutConstraint() {
   if (hasCachedTimeInterval) {
