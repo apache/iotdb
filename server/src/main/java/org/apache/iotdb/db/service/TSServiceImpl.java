@@ -133,7 +133,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final int DELETE_SIZE = 50;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
-  public static Vector<SqlArgument> sqlArgumentsList = new Vector<>();
+  public static final Vector<SqlArgument> sqlArgumentsList = new Vector<>();
 
   protected Planner processor;
   protected IPlanExecutor executor;
@@ -508,9 +508,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
                 sessionIdUsernameMap.get(req.getSessionId()));
         long endTime = System.currentTimeMillis();
         sqlArgument = new SqlArgument(resp, physicalPlan, statement, startTime, endTime);
-        sqlArgumentsList.add(sqlArgument);
-        if (sqlArgumentsList.size() > MAX_SIZE) {
-          sqlArgumentsList.subList(0, DELETE_SIZE).clear();
+        synchronized (sqlArgumentsList) {
+          sqlArgumentsList.add(sqlArgument);
+          if (sqlArgumentsList.size() > MAX_SIZE) {
+            sqlArgumentsList.subList(0, DELETE_SIZE).clear();
+          }
         }
         return resp;
       } else {
@@ -567,9 +569,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           sessionIdUsernameMap.get(req.getSessionId()));
       long endTime = System.currentTimeMillis();
       sqlArgument = new SqlArgument(resp, physicalPlan, statement, startTime, endTime);
-      sqlArgumentsList.add(sqlArgument);
-      if (sqlArgumentsList.size() > MAX_SIZE) {
-        sqlArgumentsList.subList(0, DELETE_SIZE).clear();
+      synchronized (sqlArgumentsList) {
+        sqlArgumentsList.add(sqlArgument);
+        if (sqlArgumentsList.size() > MAX_SIZE) {
+          sqlArgumentsList.subList(0, DELETE_SIZE).clear();
+        }
       }
       return resp;
     } catch (ParseCancellationException e) {
