@@ -216,28 +216,28 @@ if (batchData.getMaxTimestamp() >= curEndTime) {
 The downsampling query logic with value filtering conditions is mainly in the `GroupByWithValueFilterDataSet` class, which inherits `GroupByEngineDataSet`.
 
 This class has the following key fields:
-* private List<IReaderByTimestamp> allDataReaderList
+* private List\<IReaderByTimestamp\> allDataReaderList
 * private GroupByPlan groupByPlan
 * private TimeGenerator timestampGenerator
 * private long timestamp is used to cache timestamp for the next group by partition
 * private boolean hasCachedTimestamp used to determine whether there is a timestamp cache for the next group by partition
 * private int timeStampFetchSize is the size of the group by calculating the batch
 
-First, in the initialization initGroupBy () method, create a timestampGenerator based on the expression; then create a SeriesReaderByTimestamp for each time series and place it in the allDataReaderList list. After initialization is complete, call the nextWithoutConstraint () method to update the result.  If timestamp is cached for the next group by partition and the time meets the requirements, add it to timestampArray, otherwise return the aggregateResultList result directly; if timestamp is not cached for the next group by partition, use timestampGenerator to traverse:
+First, in the initialization ``initGroupBy ()``method, create a `timestampGenerator` based on the expression; then create a `SeriesReaderByTimestamp` for each time series and place it in the `allDataReaderList` list. After initialization is complete, call the `nextWithoutConstraint ()`method to update the result.  If timestamp is cached for the next group by partition and the time meets the requirements, add it to `timestampArray`, otherwise return the `aggregateResultList` result directly; if timestamp is not cached for the next group by partition, use `timestampGenerator` to traverse:
 
 ```
 while (timestampGenerator.hasNext()) {
-  // 调用 constructTimeArrayForOneCal() 方法，得到 timestamp 列表
+  // Call constructTimeArrayForOneCal () method to get a list of timestamp
   timeArrayLength = constructTimeArrayForOneCal(timestampArray, timeArrayLength);
 
-  // 调用 updateResultUsingTimestamps() 方法，使用 timestamp 列表计算聚合结果
+  // Call the updateResultUsingTimestamps () method to calculate the aggregate result using the timestamp list
   for (int i = 0; i < paths.size(); i++) {
     aggregateResultList.get(i).updateResultUsingTimestamps(
         timestampArray, timeArrayLength, allDataReaderList.get(i));
   }
 
   timeArrayLength = 0;
-  // 判断是否到结束
+  // Determine if it is over
   if (timestamp >= curEndTime) {
     hasCachedTimestamp = true;
     break;
@@ -245,7 +245,7 @@ while (timestampGenerator.hasNext()) {
 }
 ```
 
-The `constructTimeArrayForOneCal ()` method traverses timestampGenerator to build a list of timestamps:
+The `constructTimeArrayForOneCal ()`method traverses timestampGenerator to build a list of timestamps:
 
 ```
 for (int cnt = 1; cnt < timeStampFetchSize && timestampGenerator.hasNext(); cnt++) {
