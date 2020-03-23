@@ -22,7 +22,7 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 
 import java.net.ConnectException;
-import org.apache.iotdb.cluster.rpc.thrift.HeartbeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  * HeartbeatHandler checks the response of a heartbeat and decides whether to start a catch-up or
  * give up the leadership due to the term is stale.
  */
-public class HeartbeatHandler implements AsyncMethodCallback<HeartbeatResponse> {
+public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> {
 
   private static final Logger logger = LoggerFactory.getLogger(HeartbeatHandler.class);
 
@@ -48,7 +48,7 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartbeatResponse> 
   }
 
   @Override
-  public void onComplete(HeartbeatResponse resp) {
+  public void onComplete(HeartBeatResponse resp) {
     logger.trace("{}: Received a heartbeat response", memberName);
     long followerTerm = resp.getTerm();
     if (followerTerm == RESPONSE_AGREE) {

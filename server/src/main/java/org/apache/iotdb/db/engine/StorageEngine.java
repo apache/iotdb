@@ -346,7 +346,7 @@ public class StorageEngine implements IService {
           for (TsFileProcessor tsfileProcessor : new ArrayList<>(
               processor.getWorkSequenceTsFileProcessors())) {
             if (tsfileProcessor.getTimeRangeId() == partitionId) {
-              processor.moveOneWorkProcessorToClosingList(true, tsfileProcessor);
+              processor.asyncCloseOneTsFileProcessor(true, tsfileProcessor);
               break;
             }
           }
@@ -355,7 +355,7 @@ public class StorageEngine implements IService {
           for (TsFileProcessor tsfileProcessor : new ArrayList<>(
               processor.getWorkUnsequenceTsFileProcessor())) {
             if (tsfileProcessor.getTimeRangeId() == partitionId) {
-              processor.moveOneWorkProcessorToClosingList(false, tsfileProcessor);
+              processor.asyncCloseOneTsFileProcessor(false, tsfileProcessor);
               break;
             }
           }

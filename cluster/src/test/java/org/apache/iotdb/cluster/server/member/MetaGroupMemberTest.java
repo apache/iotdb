@@ -57,8 +57,8 @@ import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
-import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartbeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
@@ -249,10 +249,10 @@ public class MetaGroupMemberTest extends MemberTest {
             }
 
             @Override
-            public void sendHeartbeat(HeartbeatRequest request,
-                AsyncMethodCallback<HeartbeatResponse> resultHandler) {
+            public void sendHeartbeat(HeartBeatRequest request,
+                AsyncMethodCallback<HeartBeatResponse> resultHandler) {
               new Thread(() -> {
-                HeartbeatResponse response = new HeartbeatResponse();
+                HeartBeatResponse response = new HeartBeatResponse();
                 response.setTerm(Response.RESPONSE_AGREE);
                 resultHandler.onComplete(response);
               }).start();
@@ -511,13 +511,6 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testPullTimeseriesSchema() throws MetadataException {
-    for (int i = 1; i < 10; i++) {
-      for (int j = 0; j < 10; j++) {
-        MeasurementSchema schema = TestUtils.getTestSchema(i, j);
-        MManager.getInstance().createTimeseries(schema.getMeasurementId(), schema.getType(),
-            schema.getEncodingType(), schema.getCompressor(), schema.getProps());
-      }
-    }
 
     for (int i = 0; i < 10; i++) {
       List<MeasurementSchema> schemas =
@@ -664,9 +657,9 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testProcessValidHeartbeatReq() throws QueryProcessException {
     MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(10));
     try {
-      HeartbeatRequest request = new HeartbeatRequest();
+      HeartBeatRequest request = new HeartBeatRequest();
       request.setRequireIdentifier(true);
-      HeartbeatResponse response = new HeartbeatResponse();
+      HeartBeatResponse response = new HeartBeatResponse();
       metaGroupMember.processValidHeartbeatReq(request, response);
       assertEquals(10, response.getFollowerIdentifier());
 
@@ -691,7 +684,7 @@ public class MetaGroupMemberTest extends MemberTest {
     metaGroupMember.onElectionWins();
     try {
       for (int i = 0; i < 10; i++) {
-        HeartbeatResponse response = new HeartbeatResponse();
+        HeartBeatResponse response = new HeartBeatResponse();
         response.setFollowerIdentifier(i);
         response.setRequirePartitionTable(true);
         metaGroupMember.processValidHeartbeatResp(response, TestUtils.getNode(i));

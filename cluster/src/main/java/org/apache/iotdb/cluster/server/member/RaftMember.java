@@ -53,8 +53,8 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
-import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartbeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
@@ -65,8 +65,6 @@ import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
@@ -183,12 +181,12 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @param resultHandler
    */
   @Override
-  public void sendHeartbeat(HeartbeatRequest request, AsyncMethodCallback resultHandler) {
+  public void sendHeartbeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
     logger.trace("{} received a heartbeat", name);
     synchronized (term) {
       long thisTerm = term.get();
       long leaderTerm = request.getTerm();
-      HeartbeatResponse response = new HeartbeatResponse();
+      HeartBeatResponse response = new HeartBeatResponse();
 
       if (leaderTerm < thisTerm) {
         // a leader with term lower than this node is invalid, send it the local term to inform this
@@ -556,7 +554,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @param response
    * @param receiver
    */
-  public void processValidHeartbeatResp(HeartbeatResponse response, Node receiver) {
+  public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {
 
   }
 
@@ -574,7 +572,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @param request
    * @param response
    */
-  void processValidHeartbeatReq(HeartbeatRequest request, HeartbeatResponse response) {
+  void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response) {
 
   }
 

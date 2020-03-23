@@ -26,7 +26,7 @@ import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
-import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
@@ -142,7 +142,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  public void sendHeartbeat(HeartbeatRequest request, AsyncMethodCallback resultHandler) {
+  public void sendHeartbeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
     member.sendHeartbeat(request, resultHandler);
   }
 

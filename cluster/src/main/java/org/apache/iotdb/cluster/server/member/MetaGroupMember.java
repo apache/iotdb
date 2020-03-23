@@ -88,8 +88,8 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartbeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
@@ -470,7 +470,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @param response
    */
   @Override
-  void processValidHeartbeatReq(HeartbeatRequest request, HeartbeatResponse response) {
+  void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response) {
     if (request.isRequireIdentifier()) {
       // the leader wants to know who the node is
       if (request.isRegenerateIdentifier()) {
@@ -532,7 +532,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @param receiver
    */
   @Override
-  public void processValidHeartbeatResp(HeartbeatResponse response, Node receiver) {
+  public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {
     // register the id of the node
     if (response.isSetFollowerIdentifier()) {
       registerNodeIdentifier(receiver, response.getFollowerIdentifier());
@@ -2451,4 +2451,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     throw new StorageEngineException(
         new RequestTimeOutException("Query " + path + " in " + partitionGroup));
   }
+
+
 }

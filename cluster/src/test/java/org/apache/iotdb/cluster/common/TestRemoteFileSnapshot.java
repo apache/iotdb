@@ -27,8 +27,8 @@ import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.RemoteSnapshot;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -68,7 +68,7 @@ public class TestRemoteFileSnapshot extends FileSnapshot implements RemoteSnapsh
       try {
         StorageEngine.getInstance().getProcessor(storageGroup).insert(insertPlan);
         StorageEngine.getInstance().asyncCloseProcessor(storageGroup, true);
-      } catch (QueryProcessException | StorageEngineException | StorageGroupNotSetException e) {
+      } catch (StorageEngineException | StorageGroupNotSetException | WriteProcessException e) {
         logger.error("Cannot fake files in TestRemoteFileSnapshot", e);
       }
     }

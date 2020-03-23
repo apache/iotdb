@@ -36,8 +36,8 @@ import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartbeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.Response;
@@ -174,9 +174,9 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
   AsyncClient getClient(Node node) {
     return new TestClient(node.nodeIdentifier) {
       @Override
-      public void sendHeartbeat(HeartbeatRequest request,
-          AsyncMethodCallback<HeartbeatResponse> resultHandler) {
-        HeartbeatRequest requestCopy = new HeartbeatRequest(request);
+      public void sendHeartbeat(HeartBeatRequest request,
+          AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+        HeartBeatRequest requestCopy = new HeartBeatRequest(request);
         new Thread(() -> {
           if (testHeartbeat) {
             assertEquals(TestUtils.getNode(0), requestCopy.getLeader());

@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -49,7 +49,7 @@ public class HeartbeatThread implements Runnable {
 
   private RaftMember localMember;
   private String memberName;
-  HeartbeatRequest request = new HeartbeatRequest();
+  HeartBeatRequest request = new HeartBeatRequest();
   ElectionRequest electionRequest = new ElectionRequest();
 
   private Random random = new Random();
