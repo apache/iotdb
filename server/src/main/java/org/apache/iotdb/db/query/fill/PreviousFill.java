@@ -96,7 +96,7 @@ public class PreviousFill extends IFill {
           lastBatchData = dataReader.nextPage();
         }
 
-        if (lastBatchData != null) {
+        if (lastBatchData != null && lastBatchData.length() > 0) {
           if (fillPair == null || fillPair.getTimestamp() < lastBatchData.getMaxTimestamp()) {
             fillPair = new TimeValuePair(
                 lastBatchData.getMaxTimestamp(),
