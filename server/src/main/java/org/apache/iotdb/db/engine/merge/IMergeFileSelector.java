@@ -1,12 +1,12 @@
 package org.apache.iotdb.db.engine.merge;
 
-import java.util.List;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.merge.utils.SelectorContext;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public interface IMergeFileSelector {
 
-  MergeResource selectMergedFiles(List<TsFileResource> seqFiles, List<TsFileResource> unseqfiles,
-      long budget, long timeLowerBound) throws MergeException;
+  Pair<MergeResource, SelectorContext> selectMergedFiles() throws MergeException;
+
 }

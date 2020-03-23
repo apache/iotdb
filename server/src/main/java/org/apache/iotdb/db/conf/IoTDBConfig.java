@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.MergeFileStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
@@ -365,7 +365,7 @@ public class IoTDBConfig {
    * If one merge file selection runs for more than this time, it will be ended and its current
    * selection will be used as final selection. Unit: millis. When < 0, it means time is unbounded.
    */
-  private long mergeFileSelectionTimeBudget = 30 * 1000;
+  private long mergeFileSelectionTimeBudget = 10000 * 1000;
 
   /**
    * When set to true, if some crashed merges are detected during system rebooting, such merges will

@@ -25,14 +25,14 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.inplace.selector.InplaceMaxFileSelector;
+import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
-import org.apache.iotdb.db.engine.merge.task.RecoverMergeTask;
+import org.apache.iotdb.db.engine.merge.MergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.inplace.task.RecoverInplaceMergeTask;
+import org.apache.iotdb.db.engine.merge.utils.SelectorContext;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -76,7 +76,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -245,10 +245,11 @@ public class StorageGroupProcessor {
       if (mergingMods.exists()) {
         mergingModification = new ModificationFile(mergingMods.getPath());
       }
-      RecoverMergeTask recoverMergeTask = new RecoverMergeTask(seqTsFiles, unseqTsFiles,
+      RecoverInplaceMergeTask recoverMergeTask = new RecoverInplaceMergeTask(seqTsFiles,
+          unseqTsFiles,
           storageGroupSysDir.getPath(), this::mergeEndAction, taskName,
           IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), storageGroupName);
-      logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
+      logger.info("{} a RecoverInplaceMergeTask {} starts...", storageGroupName, taskName);
       recoverMergeTask
           .recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
@@ -1317,13 +1318,14 @@ public class StorageGroupProcessor {
 
       long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
       long timeLowerBound = System.currentTimeMillis() - dataTTL;
-      MergeResource mergeResource = new MergeResource(sequenceFileTreeSet, unSequenceFileList,
-          timeLowerBound);
 
-      IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
+      IMergeFileSelector fileSelector = getMergeFileSelector(sequenceFileTreeSet,
+          unSequenceFileList, budget, timeLowerBound);
       try {
-        List[] mergeFiles = fileSelector.select();
-        if (mergeFiles.length == 0) {
+        Pair<MergeResource, SelectorContext> selectRes = fileSelector.selectMergedFiles();
+        MergeResource mergeResource = selectRes.left;
+        SelectorContext selectorContext = selectRes.right;
+        if (mergeResource.getSeqFiles().size() == 0 && mergeResource.getUnseqFiles().size() == 0) {
           logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
               budget);
           return;
@@ -1342,15 +1344,17 @@ public class StorageGroupProcessor {
           tsFileResource.setMerging(true);
         }
 
-        MergeTask mergeTask = new MergeTask(mergeResource, storageGroupSysDir.getPath(),
-            this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum(),
+        InplaceMergeTask mergeTask = new InplaceMergeTask(mergeResource,
+            storageGroupSysDir.getPath(),
+            this::mergeEndAction, taskName, fullMerge, selectorContext.getConcurrentMergeNum(),
             storageGroupName);
         mergingModification = new ModificationFile(
             storageGroupSysDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
         MergeManager.getINSTANCE().submitMainTask(mergeTask);
         if (logger.isInfoEnabled()) {
           logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
-              storageGroupName, taskName, mergeFiles[0].size(), mergeFiles[1].size());
+              storageGroupName, taskName, mergeResource.getSeqFiles().size(),
+              mergeResource.getUnseqFiles().size());
         }
         isMerging = true;
         mergeStartTime = System.currentTimeMillis();
@@ -1363,13 +1367,14 @@ public class StorageGroupProcessor {
     }
   }
 
-  private IMergeFileSelector getMergeFileSelector(long budget, MergeResource resource) {
+  private IMergeFileSelector getMergeFileSelector(
+      Collection<TsFileResource> seqFiles,
+      Collection<TsFileResource> unseqFiles, long budget, long timeLowerBound) {
     MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
     switch (strategy) {
       case MAX_FILE_NUM:
-        return new MaxFileMergeFileSelector(resource, budget);
       case MAX_SERIES_NUM:
-        return new MaxSeriesMergeFileSelector(resource, budget);
+        return new InplaceMaxFileSelector(seqFiles, unseqFiles, budget, timeLowerBound);
       default:
         throw new UnsupportedOperationException("Unknown MergeFileStrategy " + strategy);
     }
@@ -1430,18 +1435,40 @@ public class StorageGroupProcessor {
   }
 
   protected void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
-      File mergeLog) {
+      File mergeLog, TsFileResource newFile) {
     logger.info("{} a merge task is ending...", storageGroupName);
 
-    if (unseqFiles.isEmpty()) {
+    if (seqFiles.isEmpty() && unseqFiles.isEmpty()) {
       // merge runtime exception arose, just end this merge
-      isMerging = false;
-      logger.info("{} a merge task abnormally ends", storageGroupName);
+      mergeLock.writeLock().lock();
+      try {
+        if (mergingModification != null) {
+          logger.debug("{} is updating the merged file's modification file", storageGroupName);
+          mergingModification.remove();
+          mergingModification = null;
+        }
+      } catch (IOException e) {
+        logger.error("{} cannot remove merge modifications after merge abnormally ends",
+            storageGroupName, e);
+      } finally {
+        isMerging = false;
+        logger.debug("{} a merge task abnormally ends", storageGroupName);
+        mergeLock.writeLock().unlock();
+      }
       return;
     }
 
-    removeUnseqFiles(unseqFiles);
+    if (newFile == null) {
+      handleInplaceMerge(seqFiles, unseqFiles, mergeLog);
+    } else {
 
+    }
+  }
+
+  private void handleInplaceMerge(List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles, File mergeLog) {
+
+    removeUnseqFiles(unseqFiles);
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);
       mergeLock.writeLock().lock();
@@ -1457,7 +1484,7 @@ public class StorageGroupProcessor {
         mergeLock.writeLock().unlock();
       }
     }
-    logger.info("{} a merge task ends", storageGroupName);
+    logger.debug("{} a merge task ends", storageGroupName);
   }
 
   /**

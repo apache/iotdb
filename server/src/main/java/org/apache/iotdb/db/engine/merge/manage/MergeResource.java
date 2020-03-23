@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.db.engine.merge.manage;
 
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask.MERGE_SUFFIX;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -32,9 +31,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import org.apache.iotdb.db.engine.merge.utils.MergeFileSelectorUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resource.CachedUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -43,10 +42,12 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 /**
  * MergeResource manages files and caches of readers, writers, MeasurementSchemas and modifications
@@ -60,8 +61,7 @@ public class MergeResource {
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
-  private Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>(); //is this too waste?
-  private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
+  private Map<Path, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
   private boolean cacheDeviceMeta = false;
 
@@ -71,10 +71,8 @@ public class MergeResource {
   }
 
   public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    this.seqFiles = seqFiles.stream().filter(this::filterResource)
-        .collect(Collectors.toList());
-    this.unseqFiles = unseqFiles.stream().filter(this::filterResource)
-        .collect(Collectors.toList());
+    this.seqFiles = seqFiles;
+    this.unseqFiles = unseqFiles;
   }
 
   public void clear() throws IOException {
@@ -88,12 +86,11 @@ public class MergeResource {
     fileReaderCache.clear();
     fileWriterCache.clear();
     modificationCache.clear();
-    measurementSchemaMap.clear();
     chunkWriterCache.clear();
   }
 
-  public MeasurementSchema getSchema(Path path) {
-    return measurementSchemaMap.get(path);
+  public IChunkWriter getChunkWriter(Path path) {
+    return chunkWriterCache.get(path);
   }
 
   /**
@@ -149,18 +146,10 @@ public class MergeResource {
     List<Chunk>[] pathChunks = MergeUtils.collectUnseqChunks(paths, unseqFiles, this);
     IPointReader[] ret = new IPointReader[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
-      TSDataType dataType = getSchema(paths.get(i)).getType();
+      TSDataType dataType = getChunkWriter(paths.get(i)).getDataType();
       ret[i] = new CachedUnseqResourceMergeReader(pathChunks[i], dataType);
     }
     return ret;
-  }
-
-  /**
-   * Construct the a new or get an existing ChunkWriter of a measurement. Different timeseries of
-   * the same measurement and data type shares the same instance.
-   */
-  public IChunkWriter getChunkWriter(MeasurementSchema measurementSchema) {
-    return chunkWriterCache.computeIfAbsent(measurementSchema, ChunkWriterImpl::new);
   }
 
   /**
@@ -248,8 +237,14 @@ public class MergeResource {
     this.cacheDeviceMeta = cacheDeviceMeta;
   }
 
-  public void setMeasurementSchemaMap(Map<Path, MeasurementSchema> measurementSchemaMap) {
-    this.measurementSchemaMap = measurementSchemaMap;
+  public void setChunkWriterCache(Map<Path, IChunkWriter> chunkWriterCache) {
+    this.chunkWriterCache = chunkWriterCache;
+  }
+
+  public void flushChunks(TsFileIOWriter writer) throws IOException {
+    for (IChunkWriter chunkWriter : chunkWriterCache.values()) {
+      chunkWriter.writeToFileWriter(writer);
+    }
   }
 
 }
