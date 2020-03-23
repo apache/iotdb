@@ -67,16 +67,16 @@ public class TsFileMetadata {
 
     // deviceMetadataIndex
     int deviceNum = ReadWriteIOUtils.readInt(buffer);
+    Map<String, Pair<Long, Integer>> deviceMetaDataMap = new HashMap<>();
     if (deviceNum > 0) {
-      Map<String, Pair<Long, Integer>> deviceMetaDataMap = new HashMap<>();
       for (int i = 0; i < deviceNum; i++) {
         String deviceId = ReadWriteIOUtils.readString(buffer);
         long offset = ReadWriteIOUtils.readLong(buffer);
         int length = ReadWriteIOUtils.readInt(buffer);
         deviceMetaDataMap.put(deviceId, new Pair<>(offset, length));
       }
-      fileMetaData.setDeviceMetadataIndex(deviceMetaDataMap);
     }
+    fileMetaData.setDeviceMetadataIndex(deviceMetaDataMap);
 
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);

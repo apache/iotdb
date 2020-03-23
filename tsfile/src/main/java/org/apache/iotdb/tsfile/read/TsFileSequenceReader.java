@@ -281,9 +281,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (cachedDeviceMetadata.containsKey(device)) {
         return cachedDeviceMetadata.get(device);
       }
-      if (tsFileMetaData == null) {
-        readFileMetadata();
-      }
+      readFileMetadata();
       if (!tsFileMetaData.getDeviceMetadataIndex().containsKey(device)) {
         return new HashMap<>();
       }
@@ -296,6 +294,10 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   private Map<String, TimeseriesMetadata> readDeviceMetadataFromDisk(String device) throws IOException {
+    readFileMetadata();
+    if (!tsFileMetaData.getDeviceMetadataIndex().containsKey(device)) {
+      return Collections.emptyMap();
+    }
     Pair<Long, Integer> deviceMetadataIndex = tsFileMetaData.getDeviceMetadataIndex().get(device);
     Map<String, TimeseriesMetadata> deviceMetadata = new HashMap<>();
     ByteBuffer buffer = readData(deviceMetadataIndex.left, deviceMetadataIndex.right);
@@ -785,7 +787,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   public List<String> getDeviceNameInRange(long start, long end) throws IOException {
     List<String> res = new ArrayList<>();
 
-    TsFileMetadata tsFileMetaData = readFileMetadata();
+    readFileMetadata();
     for (Map.Entry<String, Pair<Long, Integer>> entry : tsFileMetaData.getDeviceMetadataIndex()
         .entrySet()) {
 
