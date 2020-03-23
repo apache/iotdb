@@ -25,12 +25,12 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MetaHeartBeatThread extends HeartBeatThread {
+public class MetaHeartbeatThread extends HeartbeatThread {
 
-  private static final Logger logger = LoggerFactory.getLogger(MetaHeartBeatThread.class);
+  private static final Logger logger = LoggerFactory.getLogger(MetaHeartbeatThread.class);
   private MetaGroupMember localMetaMember;
 
-  public MetaHeartBeatThread(MetaGroupMember metaMember) {
+  public MetaHeartbeatThread(MetaGroupMember metaMember) {
     super(metaMember);
     this.localMetaMember = metaMember;
   }

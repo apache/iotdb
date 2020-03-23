@@ -27,34 +27,34 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartbeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.ElectionHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.HeartBeatHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.HeartbeatHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * HeartBeatThread takes the responsibility to send heartbeats (when this node is a leader),
- * check if the leader is still online (when this node is a follower) or start elections (when
- * this node is a elector).
+ * HeartbeatThread takes the responsibility to send heartbeats (when this node is a leader), check
+ * if the leader is still online (when this node is a follower) or start elections (when this node
+ * is a elector).
  */
-public class HeartBeatThread implements Runnable {
+public class HeartbeatThread implements Runnable {
 
-  private static final Logger logger = LoggerFactory.getLogger(HeartBeatThread.class);
+  private static final Logger logger = LoggerFactory.getLogger(HeartbeatThread.class);
 
   private RaftMember localMember;
   private String memberName;
-  HeartBeatRequest request = new HeartBeatRequest();
+  HeartbeatRequest request = new HeartbeatRequest();
   ElectionRequest electionRequest = new ElectionRequest();
 
   private Random random = new Random();
 
-  HeartBeatThread(RaftMember localMember) {
+  HeartbeatThread(RaftMember localMember) {
     this.localMember = localMember;
     memberName = localMember.getName();
   }
@@ -67,13 +67,13 @@ public class HeartBeatThread implements Runnable {
         switch (localMember.getCharacter()) {
           case LEADER:
             // send heartbeats to the followers
-            sendHeartBeats();
+            sendHeartbeats();
             Thread.sleep(RaftServer.heartBeatIntervalMs);
             break;
           case FOLLOWER:
             // check if heartbeat times out
             long heartBeatInterval = System.currentTimeMillis() - localMember
-                .getLastHeartBeatReceivedTime();
+                .getLastHeartbeatReceivedTime();
             if (heartBeatInterval >= connectionTimeoutInMS) {
               // the leader is considered dead, an election will be started in the next loop
               logger.debug("{}: The leader {} timed out", memberName, localMember.getLeader());
@@ -101,17 +101,17 @@ public class HeartBeatThread implements Runnable {
     logger.info("{}: Heartbeat thread exits", memberName);
   }
 
-  private void sendHeartBeats() {
+  private void sendHeartbeats() {
     synchronized (localMember.getTerm()) {
       request.setTerm(localMember.getTerm().get());
       request.setLeader(localMember.getThisNode());
       request.setCommitLogIndex(localMember.getLogManager().getCommitLogIndex());
 
-      sendHeartBeats(localMember.getAllNodes());
+      sendHeartbeats(localMember.getAllNodes());
     }
   }
 
-  private void sendHeartBeats(Collection<Node> nodes) {
+  private void sendHeartbeats(Collection<Node> nodes) {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: Send heartbeat to {} followers", memberName, nodes.size() - 1);
     }
@@ -131,7 +131,7 @@ public class HeartBeatThread implements Runnable {
   void sendHeartbeat(Node node, AsyncClient client) {
     try {
       logger.debug("{}: Sending heartbeat to {}", memberName, node);
-      client.sendHeartBeat(request, new HeartBeatHandler(localMember, node));
+      client.sendHeartbeat(request, new HeartbeatHandler(localMember, node));
     } catch (Exception e) {
       logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);
     }
@@ -156,7 +156,7 @@ public class HeartBeatThread implements Runnable {
         Thread.sleep(electionWait);
       }
     }
-    localMember.setLastHeartBeatReceivedTime(System.currentTimeMillis());
+    localMember.setLastHeartbeatReceivedTime(System.currentTimeMillis());
   }
 
   // start one round of election

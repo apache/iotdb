@@ -73,7 +73,7 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
-import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
+import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -149,7 +149,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void start() throws TTransportException {
     super.start();
-    heartBeatService.submit(new DataHeartBeatThread(this));
+    heartBeatService.submit(new DataHeartbeatThread(this));
     pullSnapshotService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
   }
 
@@ -213,7 +213,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // taking the leadership
     synchronized (term) {
       term.incrementAndGet();
-      setLastHeartBeatReceivedTime(System.currentTimeMillis());
+      setLastHeartbeatReceivedTime(System.currentTimeMillis());
       setCharacter(NodeCharacter.ELECTOR);
       leader = null;
     }
@@ -274,7 +274,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     if (resp == Response.RESPONSE_AGREE) {
       term.set(thatTerm);
       setCharacter(NodeCharacter.FOLLOWER);
-      lastHeartBeatReceivedTime = System.currentTimeMillis();
+      lastHeartbeatReceivedTime = System.currentTimeMillis();
       leader = electionRequest.getElector();
     }
     return resp;
@@ -866,7 +866,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         if (removedNode.equals(leader)) {
           synchronized (term) {
             setCharacter(NodeCharacter.ELECTOR);
-            setLastHeartBeatReceivedTime(Long.MIN_VALUE);
+            setLastHeartbeatReceivedTime(Long.MIN_VALUE);
           }
         }
       }

@@ -25,12 +25,12 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DataHeartBeatThread extends HeartBeatThread {
+public class DataHeartbeatThread extends HeartbeatThread {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataHeartBeatThread.class);
+  private static final Logger logger = LoggerFactory.getLogger(DataHeartbeatThread.class);
   private DataGroupMember dataGroupMember;
 
-  public DataHeartBeatThread(DataGroupMember raftMember) {
+  public DataHeartbeatThread(DataGroupMember raftMember) {
     super(raftMember);
     this.dataGroupMember = raftMember;
   }
