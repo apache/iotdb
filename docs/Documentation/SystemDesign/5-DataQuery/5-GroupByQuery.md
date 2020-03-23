@@ -72,7 +72,7 @@ This class has the following key fields:
 * private Filter timeFilter Generates a user-defined query interval as a Filter object, which is used to filter the available files, chunks, and pages.
 
 
-First, in the initialization `initGroupBy ()` method, the `timeFilter` is calculated based on the expression, and` GroupByExecutor` is generated for each `path`.
+First, in the initialization `initGroupBy()` method, the `timeFilter` is calculated based on the expression, and `GroupByExecutor` is generated for each `path`.
 
 First, in the initialization `initGroupBy()` method, the `timeFilter` is calculated based on the expression, and `GroupByExecutor` is generated for each `path`.
 The following method is used to convert the result list into a RowRecord. Note that when there are no results in the list, add `null` to the RowRecord:
