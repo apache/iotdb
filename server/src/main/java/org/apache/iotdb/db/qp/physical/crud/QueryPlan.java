@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -30,7 +28,6 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   private List<Path> paths = null;
   private List<TSDataType> dataTypes = null;
-  private Map<Path, TSDataType> dataTypeMapping = new HashMap<>();
   private boolean alignByTime = true; // for disable align sql
 
   private int rowLimit = 0;
@@ -88,14 +85,6 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public void setAlignByTime(boolean align) {
     alignByTime = align;
-  }
-
-  public Map<Path, TSDataType> getDataTypeMapping() {
-    return dataTypeMapping;
-  }
-
-  public void addTypeMapping(Path path, TSDataType dataType) {
-    dataTypeMapping.put(path, dataType);
   }
 
 }
