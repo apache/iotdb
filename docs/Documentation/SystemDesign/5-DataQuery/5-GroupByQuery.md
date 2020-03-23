@@ -32,7 +32,7 @@ The following two fields are for the entire query, and the time period is left c
 * private long startTime
 * private long endTime
 
-The following fields are for the current segment.
+The following fields are for the current segment, and the time period is left closed and right open, which is `[startTime, endTime)`:
 
 * protected long curStartTime;
 * protected long curEndTime;
