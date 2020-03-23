@@ -92,7 +92,7 @@ When using `overlapedPageData` to update, since each batch function result will 
 ## Aggregated query with value filter
 For an aggregate query with a value filter, obtain the results through the `executeWithoutValueFilter()` method and build a dataSet.  First create a `timestampGenerator` based on the expression, then create a `SeriesReaderByTimestamp` for each time series and place it in the `readersOfSelectedSeries` list; create an aggregate result for each query as `AggregateResult`, and place it in the `aggregateResults` list.
 
-After initialization is complete, call the `aggregateWithValueFilter ()` method to update the result:
+After initialization is complete, call the `aggregateWithValueFilter()` method to update the result:
 ```
 while (timestampGenerator.hasNext()) {
   // Generate timestamps
