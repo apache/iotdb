@@ -835,6 +835,7 @@ NameChar
     |   'a'..'z'
     |   '0'..'9'
     |   '_'
+    |   CN_CHAR
     ;
 
 fragment DOUBLE_QUOTE_STRING_LITERAL
@@ -949,6 +950,10 @@ fragment Y
 fragment Z
     : 'z' | 'Z'
     ;
+
+fragment CN_CHAR
+  : '\u2E80'..'\u9FFF'
+  ;
 
 fragment PATH_FRAGMENT
     : ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'-'|'.')*
