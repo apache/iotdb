@@ -213,7 +213,7 @@ if (batchData.getMaxTimestamp() >= curEndTime) {
 ```
 
 ## Aggregated query with value filter
-The downsampling query logic with value filtering conditions is mainly in the GroupByWithValueFilterDataSet class, which inherits GroupByEngineDataSet.
+The downsampling query logic with value filtering conditions is mainly in the `GroupByWithValueFilterDataSet` class, which inherits `GroupByEngineDataSet`.
 
 This class has the following key fields:
 * private List<IReaderByTimestamp> allDataReaderList
