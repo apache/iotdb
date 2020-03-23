@@ -17,28 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.query.dataset.groupby;
 
-import org.apache.iotdb.rpc.TSStatusCode;
+import java.io.IOException;
+import java.util.List;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 
-public class WriteProcessException extends IoTDBException {
 
-  private static final long serialVersionUID = 7082567513626836322L;
+/**
+ * Each executor calculates results of all aggregations on this series
+ */
+public interface GroupByExecutor {
 
-  public WriteProcessException(String message) {
-    super(message, TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
-  }
+  /**
+   * add reusable result cache in executor
+   */
+  void addAggregateResult(AggregateResult aggrResult);
 
-  public WriteProcessException(String message, int errorCode) {
-    super(message, errorCode);
-  }
-
-  public WriteProcessException(String message, Throwable cause) {
-    super(message, cause, TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
-  }
-
-  public WriteProcessException(Exception exception) {
-    super(exception, TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
-  }
-
+  /**
+   * calculate result in [curStartTime, curEndTime)
+   */
+  List<AggregateResult> calcResult(long curStartTime, long curEndTime) throws IOException, QueryProcessException;
 }

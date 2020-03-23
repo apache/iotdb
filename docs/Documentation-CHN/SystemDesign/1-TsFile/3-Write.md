@@ -25,7 +25,7 @@
 
 TsFile 的写入流程如下图所示：
 
-< img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/73625238-efba2980-467e-11ea-927e-a7021f8153af.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/73625238-efba2980-467e-11ea-927e-a7021f8153af.png">
 
 其中，每个设备对应一个 ChunkGroupWriter，每个传感器对应一个 ChunkWriter。
 

@@ -299,7 +299,6 @@ public class PhysicalGenerator {
           try {
             // remove stars in SELECT to get actual paths
             List<String> actualPaths = getMatchedTimeseries(fullPath.getFullPath());
-
             // for actual non exist path
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
               String nonExistMeasurement = fullPath.getMeasurement();

@@ -19,8 +19,11 @@
 package org.apache.iotdb.db.utils;
 
 import java.io.File;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 public class FilePathUtils {
+
+  private static final String PATH_SPLIT_STRING = File.separator.equals("\\") ? "\\\\" : "/";
 
   private FilePathUtils() {
     // forbidding instantiation
@@ -39,4 +42,7 @@ public class FilePathUtils {
     return filePath;
   }
 
+  public static String[] splitTsFilePath(TsFileResource resource) {
+    return resource.getFile().getAbsolutePath().split(PATH_SPLIT_STRING);
+  }
 }

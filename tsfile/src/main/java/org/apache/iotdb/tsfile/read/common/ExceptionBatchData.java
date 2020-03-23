@@ -16,29 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.read.common;
 
-package org.apache.iotdb.db.exception;
+public class ExceptionBatchData extends BatchData {
 
-import org.apache.iotdb.rpc.TSStatusCode;
+  private Exception exception;
 
-public class WriteProcessException extends IoTDBException {
-
-  private static final long serialVersionUID = 7082567513626836322L;
-
-  public WriteProcessException(String message) {
-    super(message, TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
+  public ExceptionBatchData(Exception exception) {
+    this.exception = exception;
   }
 
-  public WriteProcessException(String message, int errorCode) {
-    super(message, errorCode);
+  @Override
+  public boolean hasCurrent() {
+    throw new UnsupportedOperationException("hasCurrent is not supported for ExceptionBatchData");
   }
 
-  public WriteProcessException(String message, Throwable cause) {
-    super(message, cause, TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
+  public Exception getException() {
+    return exception;
   }
-
-  public WriteProcessException(Exception exception) {
-    super(exception, TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
-  }
-
 }
