@@ -28,7 +28,7 @@ The result set of the downsampling query will inherit `GroupByEngineDataSet`, th
 * private long interval
 * private long slidingStep
 
-The following two fields are for the entire query, and the time period is left closed and right open, which is [startTime, endTime):
+The following two fields are for the entire query, and the time period is left closed and right open, which is `[startTime, endTime)`:
 * private long startTime
 * private long endTime
 
