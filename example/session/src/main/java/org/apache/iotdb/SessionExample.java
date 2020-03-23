@@ -133,11 +133,15 @@ public class SessionExample {
   /**
    * insert a batch data of one device, each batch contains multiple timestamps with values of
    * sensors
-   * <p>
+   *
    * a RowBatch example:
-   * <p>
-   * device1 time s1, s2, s3 1,   1,  1,  1 2,   2,  2,  2 3,   3,  3,  3
-   * <p>
+   *
+   *      device1
+   * time s1, s2, s3
+   * 1,   1,  1,  1
+   * 2,   2,  2,  2
+   * 3,   3,  3,  3
+   *
    * Users need to control the count of RowBatch and write a batch when it reaches the maxBatchSize
    */
   private static void insertRowBatch() throws IoTDBConnectionException, BatchExecutionException {
