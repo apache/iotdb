@@ -236,6 +236,26 @@ public class LogicalPlanSmallTest {
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("*"));
     Assert.assertEquals(paths, ((QueryOperator) operator).getSelectedPaths());
+
+    String[] sqlStrings = new String[]{
+        "insert into root.\"哈哈\".b(timestamp,c) values(1,2)",
+        "insert into root.a.b(timestamp,\"哈哈\") values(1,2)",
+        "insert into root.a.b(timestamp,\"哈哈\") values(1,\"哈哈\") ",
+        "insert into root.哈哈.b(timestamp,c) values(1,100)",
+        "insert into root.哈哈.b(timestamp,c) values(1,2)",
+        "insert into root.sg.b(timestamp,哈哈) values(1,2)",
+        "insert into root.sg.b(timestamp,\"哈哈\") values(1,2)",
+        "insert into root.sg.b(timestamp,'哈哈') values(1,2)"
+    };
+    for (String s : sqlStrings) {
+      try {
+        astTree = ParseGenerator.generateAST(sqlStr2);
+      } catch (ParseException e) {
+        throw new IllegalASTFormatException(sqlStr2, e.getMessage());
+      }
+      astNode = ParseUtils.findRootNonNullToken(astTree);
+      operator = generator.getLogicalPlan(astNode);
+    }
   }
 
 }
