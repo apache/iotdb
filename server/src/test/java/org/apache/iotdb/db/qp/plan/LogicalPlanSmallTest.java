@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.plan;
 
+import java.util.ArrayList;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
@@ -205,6 +207,35 @@ public class LogicalPlanSmallTest {
     Assert.assertEquals(DeleteStorageGroupOperator.class, operator.getClass());
     Path path = new Path("root.vehicle.d1");
     Assert.assertEquals(path, ((DeleteStorageGroupOperator) operator).getDeletePathList().get(0));
+  }
+
+
+  @Test
+  public void testChineseCharacter() throws QueryProcessException, MetadataException {
+    String sqlStr1 = "set storage group to root.一级";
+    AstNode astTree;
+    try {
+      astTree = ParseGenerator.generateAST(sqlStr1);
+    } catch (ParseException e) {
+      throw new IllegalASTFormatException(sqlStr1, e.getMessage());
+    }
+    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
+    RootOperator operator = generator.getLogicalPlan(astNode);
+    Assert.assertEquals(SetStorageGroupOperator.class, operator.getClass());
+    Assert.assertEquals(new Path("root.一级"), ((SetStorageGroupOperator) operator).getPath());
+
+    String sqlStr2 = "select * from root.一级.设备1 limit 10 offset 20";
+    try {
+      astTree = ParseGenerator.generateAST(sqlStr2);
+    } catch (ParseException e) {
+      throw new IllegalASTFormatException(sqlStr2, e.getMessage());
+    }
+    astNode = ParseUtils.findRootNonNullToken(astTree);
+    operator = generator.getLogicalPlan(astNode);
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("*"));
+    Assert.assertEquals(paths, ((QueryOperator) operator).getSelectedPaths());
   }
 
 }
