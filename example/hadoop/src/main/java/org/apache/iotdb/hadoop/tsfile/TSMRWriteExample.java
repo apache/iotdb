@@ -158,8 +158,6 @@ public class TSMRWriteExample {
    */
   public static class TSReducer extends Reducer<Text, MapWritable, NullWritable, HDFSTSRecord> {
 
-    private static final Logger logger = LoggerFactory.getLogger(TSReducer.class);
-
     @Override
     protected void reduce(Text key, Iterable<MapWritable> values,
         Reducer<Text, MapWritable, NullWritable, HDFSTSRecord>.Context context)
@@ -175,12 +173,14 @@ public class TSMRWriteExample {
         sensor3_value_sum += ((DoubleWritable) value.get(new Text(Constant.SENSOR_3))).get();
       }
       HDFSTSRecord tsRecord = new HDFSTSRecord(1L, key.toString());
-      DataPoint dPoint1 = new LongDataPoint(Constant.SENSOR_1, sensor1_value_sum / num);
-      DataPoint dPoint2 = new LongDataPoint(Constant.SENSOR_2, sensor2_value_sum / num);
-      DataPoint dPoint3 = new DoubleDataPoint(Constant.SENSOR_3, sensor3_value_sum / num);
-      tsRecord.addTuple(dPoint1);
-      tsRecord.addTuple(dPoint2);
-      tsRecord.addTuple(dPoint3);
+      if (num != 0) {
+        DataPoint dPoint1 = new LongDataPoint(Constant.SENSOR_1, sensor1_value_sum / num);
+        DataPoint dPoint2 = new LongDataPoint(Constant.SENSOR_2, sensor2_value_sum / num);
+        DataPoint dPoint3 = new DoubleDataPoint(Constant.SENSOR_3, sensor3_value_sum / num);
+        tsRecord.addTuple(dPoint1);
+        tsRecord.addTuple(dPoint2);
+        tsRecord.addTuple(dPoint3);
+      }
       context.write(NullWritable.get(), tsRecord);
     }
   }

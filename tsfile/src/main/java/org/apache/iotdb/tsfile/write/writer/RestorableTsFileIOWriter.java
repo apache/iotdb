@@ -57,7 +57,6 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   private boolean crashed;
 
   /**
-   * 
    * all chunk group metadata which have been serialized on disk.
    */
   private Map<String, Map<String, List<ChunkMetadata>>> metadatas = new HashMap<>();
@@ -91,7 +90,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         }
 
         // uncompleted file
-        truncatedPosition = reader.selfCheck(knownSchemas, chunkMetadataListMap ,true);
+        truncatedPosition = reader.selfCheck(knownSchemas, chunkMetadataListMap, true);
         totalChunkNum = reader.getTotalChunkNum();
         if (truncatedPosition == TsFileCheckStatus.INCOMPATIBLE_FILE) {
           out.close();
@@ -99,8 +98,9 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
               String.format("%s is not in TsFile format.", file.getAbsolutePath()));
         } else if (truncatedPosition == TsFileCheckStatus.ONLY_MAGIC_HEAD) {
           crashed = true;
-          out.truncate(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
-              .getBytes().length);
+          out.truncate(
+              (long) TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+                  .getBytes().length);
         } else {
           crashed = true;
           // remove broken data
