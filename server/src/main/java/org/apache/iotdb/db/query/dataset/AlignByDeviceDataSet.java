@@ -21,7 +21,6 @@ package org.apache.iotdb.db.query.dataset;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -134,20 +133,17 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       List<TSDataType> tsDataTypes = new ArrayList<>();
       List<String> executeAggregations = new ArrayList<>();
       for (String column : measurementDataTpeMap.keySet()) {
+        String measurement = column;
         if (dataSetType == DataSetType.GROUPBY || dataSetType == DataSetType.AGGREGATE) {
-          String measurement = column.substring(column.indexOf('(') + 1, column.indexOf(')'));
-          if (measurementOfGivenDevice.contains(measurement)){
-            executeColumns.add(column);
-            executePaths.add(new Path(currentDevice, measurement));
-            tsDataTypes.add(measurementDataTpeMap.get(column));
+          measurement = column.substring(column.indexOf('(') + 1, column.indexOf(')'));
+          if (measurementOfGivenDevice.contains(measurement)) {
             executeAggregations.add(column.substring(0, column.indexOf('(')));
           }
-        } else {
-          if (measurementOfGivenDevice.contains(column)) {
-            executeColumns.add(column);
-            executePaths.add(new Path(currentDevice, column));
-            tsDataTypes.add(measurementDataTpeMap.get(column));
-          }
+        }
+        if (measurementOfGivenDevice.contains(measurement)) {
+          executeColumns.add(column);
+          executePaths.add(new Path(currentDevice, measurement));
+          tsDataTypes.add(measurementDataTpeMap.get(column));
         }
       }
 
