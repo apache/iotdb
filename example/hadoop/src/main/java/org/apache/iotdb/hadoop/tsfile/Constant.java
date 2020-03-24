@@ -21,7 +21,15 @@ package org.apache.iotdb.hadoop.tsfile;
 
 public class Constant {
 
-  public static final String SENSOR_PREFIX = "sensor_";
-  public static final String DEVICE_1 = "device_1";
+  private Constant() {
+
+  }
+
+  static final String DEVICE_1 = "device_1";
+
+  static final String SENSOR_PREFIX = "sensor_";
+  static final String SENSOR_1 = "sensor_1";
+  static final String SENSOR_2 = "sensor_2";
+  static final String SENSOR_3 = "sensor_3";
 
 }

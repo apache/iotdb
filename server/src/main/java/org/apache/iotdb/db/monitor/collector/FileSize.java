@@ -48,7 +48,6 @@ public class FileSize implements IStatistic {
   private static final Logger logger = LoggerFactory.getLogger(FileSize.class);
   private static final long ABNORMAL_VALUE = -1L;
   private static final long INIT_VALUE_IF_FILE_NOT_EXIST = 0L;
-  private StorageEngine storageEngine;
 
   @Override
   public Map<String, TSRecord> getAllStatisticsValue() {
@@ -100,7 +99,6 @@ public class FileSize implements IStatistic {
   }
 
   private FileSize() {
-    storageEngine = StorageEngine.getInstance();
     if (config.isEnableStatMonitor()) {
       StatMonitor statMonitor = StatMonitor.getInstance();
       registerStatMetadata();

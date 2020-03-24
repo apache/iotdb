@@ -120,8 +120,8 @@ public class TSMRWriteExample {
     TSFInputFormat.setReadDeviceId(job, true); // configure reading deltaObjectId enable
     String[] deviceIds = {Constant.DEVICE_1};// configure reading which deviceIds
     TSFInputFormat.setReadDeviceIds(job, deviceIds);
-    String[] measurementIds = {"sensor_1", "sensor_2",
-        "sensor_3"};// configure reading which measurementIds
+    String[] measurementIds = {Constant.SENSOR_1, Constant.SENSOR_2,
+        Constant.SENSOR_3};// configure reading which measurementIds
     TSFInputFormat.setReadMeasurementIds(job, measurementIds);
     boolean isSuccess = false;
     try {
@@ -170,14 +170,14 @@ public class TSMRWriteExample {
       long num = 0;
       for (MapWritable value : values) {
         num++;
-        sensor1_value_sum += ((LongWritable) value.get(new Text("sensor_1"))).get();
-        sensor2_value_sum += ((LongWritable) value.get(new Text("sensor_2"))).get();
-        sensor3_value_sum += ((DoubleWritable) value.get(new Text("sensor_3"))).get();
+        sensor1_value_sum += ((LongWritable) value.get(new Text(Constant.SENSOR_1))).get();
+        sensor2_value_sum += ((LongWritable) value.get(new Text(Constant.SENSOR_2))).get();
+        sensor3_value_sum += ((DoubleWritable) value.get(new Text(Constant.SENSOR_3))).get();
       }
       HDFSTSRecord tsRecord = new HDFSTSRecord(1L, key.toString());
-      DataPoint dPoint1 = new LongDataPoint("sensor_1", sensor1_value_sum / num);
-      DataPoint dPoint2 = new LongDataPoint("sensor_2", sensor2_value_sum / num);
-      DataPoint dPoint3 = new DoubleDataPoint("sensor_3", sensor3_value_sum / num);
+      DataPoint dPoint1 = new LongDataPoint(Constant.SENSOR_1, sensor1_value_sum / num);
+      DataPoint dPoint2 = new LongDataPoint(Constant.SENSOR_2, sensor2_value_sum / num);
+      DataPoint dPoint3 = new DoubleDataPoint(Constant.SENSOR_3, sensor3_value_sum / num);
       tsRecord.addTuple(dPoint1);
       tsRecord.addTuple(dPoint2);
       tsRecord.addTuple(dPoint3);

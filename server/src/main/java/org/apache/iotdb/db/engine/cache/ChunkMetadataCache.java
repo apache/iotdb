@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -32,8 +34,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This class is used to cache <code>List<ChunkMetaData></code> of tsfile in IoTDB. The caching
@@ -87,7 +87,8 @@ public class ChunkMetadataCache {
       BloomFilter bloomFilter = fileMetaData.getBloomFilter();
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
         if (logger.isDebugEnabled()) {
-          logger.debug("path not found by bloom filter, file is: %s, path is: %s", resource.getFile(), seriesPath);
+          logger.debug(String
+              .format("path not found by bloom filter, file is: %s, path is: %s", resource.getFile(), seriesPath));
         }
         return new ArrayList<>();
       }
