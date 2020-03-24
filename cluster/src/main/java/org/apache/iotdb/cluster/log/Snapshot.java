@@ -34,6 +34,7 @@ public abstract class Snapshot {
 
   protected long lastLogId;
   protected long lastLogTerm;
+  protected long lastLogIndex;
 
   public abstract ByteBuffer serialize();
 
@@ -47,11 +48,19 @@ public abstract class Snapshot {
     this.lastLogTerm = lastLogTerm;
   }
 
+  public void setLastLogIndex(long lastLogIndex) {
+    this.lastLogIndex = lastLogIndex;
+  }
+
   public long getLastLogId() {
     return lastLogId;
   }
 
   public long getLastLogTerm() {
     return lastLogTerm;
+  }
+
+  public long getLastLogIndex() {
+    return lastLogIndex;
   }
 }
