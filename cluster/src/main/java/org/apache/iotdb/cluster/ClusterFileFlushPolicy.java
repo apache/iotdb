@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster;
 
-import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -46,8 +45,11 @@ public class ClusterFileFlushPolicy implements TsFileFlushPolicy {
         processor.getTsFileResource().getFile().getAbsolutePath());
 
     if (processor.shouldClose()) {
-      if (metaGroupMember.getCharacter() == NodeCharacter.LEADER) {
-        metaGroupMember.closePartition(storageGroupProcessor.getStorageGroupName(), isSeq);
+      // find the related DataGroupMember and close the processor through it
+      if (!metaGroupMember.closePartition(storageGroupProcessor.getStorageGroupName(),
+          processor.getTimeRangeId(), isSeq)) {
+        // the corresponding DataGroupMember is not a leader, just do a flush
+        processor.asyncFlush();
       }
     } else {
       processor.asyncFlush();

@@ -52,7 +52,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -253,23 +252,21 @@ public class StorageEngine implements IService {
    *
    * @param insertPlan physical plan of insertion
    */
-  public void insert(InsertPlan insertPlan)
-      throws StorageEngineException, QueryProcessException {
+  public void insert(InsertPlan insertPlan) throws StorageEngineException {
 
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(insertPlan.getDeviceId());
-    } catch (StorageEngineException e) {
-      logger.warn("get StorageGroupProcessor of device {} failed, because {}",
-          insertPlan.getDeviceId(), e.getMessage(), e);
-      throw new StorageEngineException(e);
+    } catch (Exception e) {
+      throw new StorageEngineException(
+          "get StorageGroupProcessor of device failed: " + insertPlan.getDeviceId(), e);
     }
 
     // TODO monitor: update statistics
     try {
       storageGroupProcessor.insert(insertPlan);
-    } catch (QueryProcessException e) {
-      throw new QueryProcessException(e);
+    } catch (WriteProcessException e) {
+      throw new StorageEngineException(e);
     }
   }
 
@@ -303,9 +300,7 @@ public class StorageEngine implements IService {
   public void syncCloseAllProcessor() {
     logger.info("Start closing all storage group processor");
     for (StorageGroupProcessor processor : processorMap.values()) {
-      processor.waitForAllCurrentTsFileProcessorsClosed();
-      //TODO do we need to wait for all merging tasks to be finished here?
-      processor.closeAllResources();
+      processor.syncCloseAllWorkingTsFileProcessors();
     }
   }
 
@@ -321,13 +316,48 @@ public class StorageEngine implements IService {
           // to avoid concurrent modification problem, we need a new array list
           for (TsFileProcessor tsfileProcessor : new ArrayList<>(
               processor.getWorkSequenceTsFileProcessors())) {
-            processor.moveOneWorkProcessorToClosingList(true, tsfileProcessor);
+            processor.asyncCloseOneTsFileProcessor(true, tsfileProcessor);
           }
         } else {
           // to avoid concurrent modification problem, we need a new array list
           for (TsFileProcessor tsfileProcessor : new ArrayList<>(
               processor.getWorkUnsequenceTsFileProcessor())) {
-            processor.moveOneWorkProcessorToClosingList(false, tsfileProcessor);
+            processor.asyncCloseOneTsFileProcessor(false, tsfileProcessor);
+          }
+        }
+      } finally {
+        processor.writeUnlock();
+      }
+    } else {
+      throw new StorageGroupNotSetException(storageGroupName);
+    }
+  }
+
+  public void asyncCloseProcessor(String storageGroupName, long partitionId, boolean isSeq)
+      throws StorageGroupNotSetException {
+    StorageGroupProcessor processor = processorMap.get(storageGroupName);
+    if (processor != null) {
+      logger.info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
+          storageGroupName, isSeq, partitionId);
+      processor.writeLock();
+      try {
+        if (isSeq) {
+          // to avoid concurrent modification problem, we need a new array list
+          for (TsFileProcessor tsfileProcessor : new ArrayList<>(
+              processor.getWorkSequenceTsFileProcessors())) {
+            if (tsfileProcessor.getTimeRangeId() == partitionId) {
+              processor.asyncCloseOneTsFileProcessor(true, tsfileProcessor);
+              break;
+            }
+          }
+        } else {
+          // to avoid concurrent modification problem, we need a new array list
+          for (TsFileProcessor tsfileProcessor : new ArrayList<>(
+              processor.getWorkUnsequenceTsFileProcessor())) {
+            if (tsfileProcessor.getTimeRangeId() == partitionId) {
+              processor.asyncCloseOneTsFileProcessor(false, tsfileProcessor);
+              break;
+            }
           }
         }
       } finally {

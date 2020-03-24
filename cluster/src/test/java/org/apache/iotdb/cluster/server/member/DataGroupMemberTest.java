@@ -79,6 +79,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -316,7 +317,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testApplySnapshot()
-      throws StorageEngineException, QueryProcessException, IOException {
+      throws StorageEngineException, IOException, WriteProcessException {
     FileSnapshot snapshot = new FileSnapshot();
     List<MeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
@@ -340,9 +341,9 @@ public class DataGroupMemberTest extends MemberTest {
     insertPlan.setDataTypes(new TSDataType[]{TSDataType.DOUBLE});
     insertPlan.setValues(new String[]{"1.0"});
     processor.insert(insertPlan);
-    processor.waitForAllCurrentTsFileProcessorsClosed();
+    processor.asyncCloseAllWorkingTsFileProcessors();
 
-    dataGroupMember.applySnapshot(snapshot, 0);
+    dataGroupMember.applySnapshot(snapshot;
     assertEquals(3, processor.getSequenceFileTreeSet().size());
     assertEquals(0, processor.getUnSequenceFileList().size());
     Deletion deletion = new Deletion(new Path(TestUtils.getTestSg(0)), 0, 0);
@@ -414,7 +415,7 @@ public class DataGroupMemberTest extends MemberTest {
   public void testFollowerExecuteNonQuery() {
     dataGroupMember.setCharacter(NodeCharacter.FOLLOWER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
-    MeasurementSchema measurementSchema = TestUtils.getTestSchema(2, 0);
+    MeasurementSchema measurementSchema = TestUtils.getTestSchema(20, 0);
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(new Path(measurementSchema.getMeasurementId()),
             measurementSchema.getType(), measurementSchema.getEncodingType(),
@@ -723,7 +724,7 @@ public class DataGroupMemberTest extends MemberTest {
     AtomicReference<List<String>> pathResult = new AtomicReference<>();
     GenericHandler<List<String>> handler = new GenericHandler<>(TestUtils.getNode(0), pathResult);
     synchronized (pathResult) {
-      dataGroupMember.getAllPaths(TestUtils.getNode(0), path, handler);
+      dataGroupMember.getAllPaths(TestUtils.getNode(0), Collections.singletonList(path), handler);
       pathResult.wait(200);
     }
     List<String> result = pathResult.get();
@@ -828,7 +829,7 @@ public class DataGroupMemberTest extends MemberTest {
       }
 
       assertEquals(NodeCharacter.ELECTOR, dataGroupMember.getCharacter());
-      assertEquals(Long.MIN_VALUE, dataGroupMember.getLastHeartBeatReceivedTime());
+      assertEquals(Long.MIN_VALUE, dataGroupMember.getLastHeartbeatReceivedTime());
       assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));
       assertFalse(dataGroupMember.getAllNodes().contains(nodeToRemove));
       List<Integer> newSlots = nodeRemovalResult.getNewSlotOwners().get(TestUtils.getNode(0));
@@ -855,7 +856,7 @@ public class DataGroupMemberTest extends MemberTest {
         dataGroupMember.wait(500);
       }
 
-      assertEquals(0, dataGroupMember.getLastHeartBeatReceivedTime());
+      assertEquals(0, dataGroupMember.getLastHeartbeatReceivedTime());
       assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));
       assertFalse(dataGroupMember.getAllNodes().contains(nodeToRemove));
       List<Integer> newSlots = nodeRemovalResult.getNewSlotOwners().get(TestUtils.getNode(0));

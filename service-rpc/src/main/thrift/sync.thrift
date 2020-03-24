@@ -18,15 +18,28 @@
  */
 namespace java org.apache.iotdb.service.sync.thrift
 
-typedef i32 int 
-
 struct SyncStatus{
-  required i32 code
-  required string msg
+  1:required i32 code
+  2:required string msg
+}
+
+// The sender and receiver need to check some info to confirm validity
+struct ConfirmInfo{
+  // check whether the ip of sender is in thw white list of receiver.
+  1:string address
+
+  // Sender needs to tell receiver its identity.
+  2:string uuid
+
+  // The partition interval of sender and receiver need to be the same.
+  3:i64 partitionInterval
+
+  // The version of sender and receiver need to be the same.
+  4:string version
 }
 
 service SyncService{
-	SyncStatus check(1:string address, 2:string uuid)
+	SyncStatus check(ConfirmInfo info)
 	SyncStatus startSync();
 	SyncStatus init(1:string storageGroupName)
 	SyncStatus syncDeletedFileName(1:string fileName)

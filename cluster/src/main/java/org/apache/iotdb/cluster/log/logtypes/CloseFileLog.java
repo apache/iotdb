@@ -33,13 +33,15 @@ public class CloseFileLog extends Log {
 
   private String storageGroupName;
   private boolean isSeq;
+  private long partitionId;
 
   public CloseFileLog() {
   }
 
-  public CloseFileLog(String storageGroupName, boolean isSeq) {
+  public CloseFileLog(String storageGroupName, long partitionId, boolean isSeq) {
     this.storageGroupName = storageGroupName;
     this.isSeq = isSeq;
+    this.partitionId = partitionId;
   }
 
   @Override
@@ -57,6 +59,7 @@ public class CloseFileLog extends Log {
 
       SerializeUtils.serialize(storageGroupName, dataOutputStream);
       dataOutputStream.writeBoolean(isSeq);
+      dataOutputStream.writeLong(partitionId);
 
     } catch (IOException e) {
       // unreachable
@@ -75,6 +78,7 @@ public class CloseFileLog extends Log {
 
     storageGroupName = SerializeUtils.deserializeString(buffer);
     isSeq = buffer.get() == 1;
+    partitionId = buffer.getLong();
   }
 
   public boolean isSeq() {
@@ -85,11 +89,16 @@ public class CloseFileLog extends Log {
     return storageGroupName;
   }
 
+  public long getPartitionId() {
+    return partitionId;
+  }
+
   @Override
   public String toString() {
     return "CloseFileLog{" +
         "storageGroupName='" + storageGroupName + '\'' +
         ", isSeq=" + isSeq +
+        ", partitionId=" + partitionId +
         '}';
   }
 
@@ -106,11 +115,11 @@ public class CloseFileLog extends Log {
     }
     CloseFileLog that = (CloseFileLog) o;
     return isSeq == that.isSeq &&
-        Objects.equals(storageGroupName, that.storageGroupName);
+        Objects.equals(storageGroupName, that.storageGroupName) && partitionId == that.partitionId;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), storageGroupName, isSeq);
+    return Objects.hash(super.hashCode(), storageGroupName, partitionId, isSeq);
   }
 }

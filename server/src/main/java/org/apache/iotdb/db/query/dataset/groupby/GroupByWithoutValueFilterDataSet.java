@@ -48,7 +48,6 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   private Map<Path, GroupByExecutor> pathExecutors = new HashMap<>();
 
-
   /**
    * path -> result index for each aggregation
    *

@@ -44,17 +44,20 @@ public class SessionExample {
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, BatchExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
+    session.open(false);
 
     session.setStorageGroup("root.sg1");
     if (session.checkTimeseriesExists("root.sg1.d1.s1")) {
-      session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+      session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE,
+          CompressionType.SNAPPY);
     }
     if (session.checkTimeseriesExists("root.sg1.d1.s2")) {
-      session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+      session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE,
+          CompressionType.SNAPPY);
     }
     if (session.checkTimeseriesExists("root.sg1.d1.s3")) {
-      session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+      session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE,
+          CompressionType.SNAPPY);
     }
 
     insert();
@@ -82,7 +85,8 @@ public class SessionExample {
     }
   }
 
-  private static void insertInObject() throws IoTDBConnectionException, StatementExecutionException {
+  private static void insertInObject()
+      throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -127,7 +131,8 @@ public class SessionExample {
   }
 
   /**
-   * insert a batch data of one device, each batch contains multiple timestamps with values of sensors
+   * insert a batch data of one device, each batch contains multiple timestamps with values of
+   * sensors
    *
    * a RowBatch example:
    *
@@ -138,7 +143,6 @@ public class SessionExample {
    * 3,   3,  3,  3
    *
    * Users need to control the count of RowBatch and write a batch when it reaches the maxBatchSize
-   *
    */
   private static void insertRowBatch() throws IoTDBConnectionException, BatchExecutionException {
     // The schema of sensors of one device
@@ -241,8 +245,9 @@ public class SessionExample {
   private static void query() throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet dataSet;
     dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    System.out.println(dataSet.getColumnNames());
     dataSet.setBatchSize(1024); // default is 512
-    while (dataSet.hasNext()){
+    while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
     }
 

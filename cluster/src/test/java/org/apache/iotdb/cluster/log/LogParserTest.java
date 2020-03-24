@@ -68,7 +68,7 @@ public class LogParserTest {
 
   @Test
   public void testCloseFileLog() throws UnknownLogTypeException {
-    CloseFileLog log = new CloseFileLog(TestUtils.getTestSg(5), false);
+    CloseFileLog log = new CloseFileLog(TestUtils.getTestSg(5), 0, false);
     log.setCurrLogIndex(8);
     log.setCurrLogTerm(8);
     log.setPreviousLogIndex(7);

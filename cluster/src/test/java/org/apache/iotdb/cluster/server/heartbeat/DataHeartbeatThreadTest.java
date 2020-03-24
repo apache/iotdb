@@ -38,7 +38,7 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 
-public class DataHeartBeatThreadTest extends HeartBeatThreadTest {
+public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
 
   private TestLogManager dataLogManager;
 
@@ -57,7 +57,7 @@ public class DataHeartBeatThreadTest extends HeartBeatThreadTest {
 
       @Override
       public MetaGroupMember getMetaGroupMember() {
-        return (MetaGroupMember) DataHeartBeatThreadTest.super.getMember();
+        return (MetaGroupMember) DataHeartbeatThreadTest.super.getMember();
       }
     };
   }
@@ -66,10 +66,10 @@ public class DataHeartBeatThreadTest extends HeartBeatThreadTest {
   AsyncClient getClient(Node node) {
     return new TestClient(node.nodeIdentifier) {
       @Override
-      public void sendHeartBeat(HeartBeatRequest request,
+      public void sendHeartbeat(HeartBeatRequest request,
           AsyncMethodCallback<HeartBeatResponse> resultHandler) {
         new Thread(() -> {
-          if (testHeartBeat) {
+          if (testHeartbeat) {
             assertEquals(TestUtils.getNode(0), request.getLeader());
             assertEquals(13, request.getCommitLogIndex());
             assertEquals(10, request.getTerm());
@@ -120,7 +120,7 @@ public class DataHeartBeatThreadTest extends HeartBeatThreadTest {
   }
 
   @Override
-  HeartBeatThread getHeartBeatThread(RaftMember member) {
-    return new DataHeartBeatThread((DataGroupMember) member);
+  HeartbeatThread getHeartbeatThread(RaftMember member) {
+    return new DataHeartbeatThread((DataGroupMember) member);
   }
 }

@@ -7,7 +7,6 @@ import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.manage.serializable.LogDequeSerializer;
 import org.apache.iotdb.cluster.log.manage.serializable.LogManagerMeta;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,13 +94,7 @@ public abstract class DiskLogManager extends MemoryLogManager {
     // save commit log index
     serializeMeta();
   }
-
-  @Override
-  public void commitLog(Log log) throws QueryProcessException {
-    super.commitLog(log);
-    // save commit log index
-    serializeMeta();
-  }
+  
 
   @Override
   public void setLastLogId(long lastLogId) {

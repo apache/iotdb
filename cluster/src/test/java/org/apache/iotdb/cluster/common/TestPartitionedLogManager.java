@@ -48,13 +48,4 @@ public class TestPartitionedLogManager extends PartitionedSnapshotLogManager {
   public void takeSnapshot() {
 
   }
-
-  @Override
-  public void commitLog(Log log) throws QueryProcessException {
-    getApplier().apply(log);
-  }
-
-  @Override
-  public void appendLog(Log log) {
-  }
 }

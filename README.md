@@ -108,6 +108,13 @@ You can download the source code from:
 git clone https://github.com/apache/incubator-iotdb.git
 ```
 
+The default master branch is the dev branch, If you want to use a released version x.x.x:
+
+```
+git checkout release/x.x.x
+```
+
+
 Under the root path of incubator-iotdb:
 
 ```

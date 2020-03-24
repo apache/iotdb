@@ -94,6 +94,7 @@ struct AddNodeResponse {
   // add new node
   1: required int respNum
   2: optional binary partitionTableBytes
+  3: optional CheckStatusResponse checkStatusResponse
 }
 
 struct Node {
@@ -101,6 +102,20 @@ struct Node {
   2: required int metaPort
   3: required int nodeIdentifier
   4: required int dataPort
+}
+
+// leader -> follower
+struct StartUpStatus{
+ 1: required long partitionInterval
+ 2: required int hashSalt
+ 3: required int replicationNumber
+}
+
+// follower -> leader
+struct CheckStatusResponse{
+ 1: required bool partitionalIntervalEquals
+ 2: required bool hashSaltEquals
+ 3: required bool replicationNumEquals
 }
 
 struct SendSnapshotRequest {
@@ -182,7 +197,7 @@ service RaftService {
   * @return if the leader is valid, HeartBeatResponse.term will set -1, and the follower will tell
   * leader its lastLogIndex; otherwise, the follower will tell the fake leader its term.
   **/
-	HeartBeatResponse sendHeartBeat(1:HeartBeatRequest request);
+	HeartBeatResponse sendHeartbeat(1:HeartBeatRequest request);
 
 	/**
   * If a node wants to be a leader, it'll call the method to other nodes to get a vote.
@@ -229,11 +244,6 @@ service RaftService {
   **/
   long requestCommitIndex(1:Node header)
 
-  /**
-  * Pull all timeseries schemas prefixed by a given path.
-  **/
-  PullSchemaResp pullTimeSeriesSchema(1: PullSchemaRequest request)
-
   binary readFile(1:string filePath, 2:i64 offset, 3:i32 length, 4:Node header)
 }
 
@@ -276,14 +286,14 @@ service TSDataService extends RaftService {
   void endQuery(1:Node header, 2:Node thisNode, 3:long queryId)
 
   /**
-  * Given a path pattern (path with wildcard), return all paths it matches.
+  * Given path patterns (paths with wildcard), return all paths they match.
   **/
-  list<string> getAllPaths(1:Node header, 2:string path)
+  list<string> getAllPaths(1:Node header, 2:list<string> path)
 
   /**
-   * Given a path pattern (path with wildcard), return all devices it matches.
+   * Given path patterns (paths with wildcard), return all devices they match.
    **/
-  set<string> getAllDevices(1:Node header, 2:string path)
+  set<string> getAllDevices(1:Node header, 2:list<string> path)
 
   list<string> getNodeList(1:Node header, 2:string path, 3:int nodeLevel)
 
@@ -303,6 +313,12 @@ service TSDataService extends RaftService {
   * required aggregations, and their orders are the same.
   **/
   list<binary> getGroupByResult(1:Node header, 2:long executorId, 3:long startTime, 4:long endTime)
+
+
+  /**
+  * Pull all timeseries schemas prefixed by a given path.
+  **/
+  PullSchemaResp pullTimeSeriesSchema(1: PullSchemaRequest request)
 }
 
 service TSMetaService extends RaftService {
@@ -314,7 +330,7 @@ service TSMetaService extends RaftService {
   *
   * @param node a new node that needs to be added
   **/
-  AddNodeResponse addNode(1: Node node)
+  AddNodeResponse addNode(1: Node node, 2: StartUpStatus startUpStatus)
 
   /**
   * Remove a node from the cluster. If the node is not in the cluster or the cluster size will
@@ -333,4 +349,5 @@ service TSMetaService extends RaftService {
   TNodeStatus queryNodeStatus()
 
   Node checkAlive()
+
 }

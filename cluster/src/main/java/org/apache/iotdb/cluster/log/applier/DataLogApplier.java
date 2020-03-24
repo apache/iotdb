@@ -20,8 +20,11 @@
 package org.apache.iotdb.cluster.log.applier;
 
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +44,17 @@ public class DataLogApplier extends BaseApplier {
   public void apply(Log log) throws QueryProcessException {
     if (log instanceof PhysicalPlanLog) {
       applyPhysicalPlan(((PhysicalPlanLog) log).getPlan());
+    } else if (log instanceof CloseFileLog) {
+      CloseFileLog closeFileLog = ((CloseFileLog) log);
+      try {
+        StorageEngine.getInstance().asyncCloseProcessor(closeFileLog.getStorageGroupName(),
+            closeFileLog.getPartitionId(),
+            closeFileLog.isSeq());
+      } catch (StorageGroupNotSetException e) {
+        logger.error("Cannot close {} file in {}, partitionId {}",
+            closeFileLog.isSeq() ? "seq" : "unseq",
+            closeFileLog.getStorageGroupName(), closeFileLog.getPartitionId());
+      }
     } else {
       // TODO-Cluster#348 support more types of logs
       logger.error("Unsupported log: {}", log);

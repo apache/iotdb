@@ -30,18 +30,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * HeartBeatHandler checks the response of a heartbeat and decides whether to start a catch-up or
+ * HeartbeatHandler checks the response of a heartbeat and decides whether to start a catch-up or
  * give up the leadership due to the term is stale.
  */
-public class HeartBeatHandler implements AsyncMethodCallback<HeartBeatResponse> {
+public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> {
 
-  private static final Logger logger = LoggerFactory.getLogger(HeartBeatHandler.class);
+  private static final Logger logger = LoggerFactory.getLogger(HeartbeatHandler.class);
 
   private RaftMember localMember;
   private String memberName;
   private Node receiver;
 
-  public HeartBeatHandler(RaftMember localMember, Node receiver) {
+  public HeartbeatHandler(RaftMember localMember, Node receiver) {
     this.localMember = localMember;
     this.receiver = receiver;
     this.memberName = localMember.getName();

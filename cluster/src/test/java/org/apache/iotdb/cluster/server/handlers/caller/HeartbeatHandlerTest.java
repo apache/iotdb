@@ -35,7 +35,7 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.junit.Before;
 import org.junit.Test;
 
-public class HeartBeatHandlerTest {
+public class HeartbeatHandlerTest {
 
   private MetaGroupMember metaGroupMember;
   private boolean catchUpFlag;
@@ -60,7 +60,7 @@ public class HeartBeatHandlerTest {
 
   @Test
   public void testComplete() throws InterruptedException {
-    HeartBeatHandler handler = new HeartBeatHandler(metaGroupMember, TestUtils.getNode(1));
+    HeartbeatHandler handler = new HeartbeatHandler(metaGroupMember, TestUtils.getNode(1));
     HeartBeatResponse response = new HeartBeatResponse();
     response.setTerm(Response.RESPONSE_AGREE);
     response.setLastLogIndex(-1);
@@ -74,7 +74,7 @@ public class HeartBeatHandlerTest {
 
   @Test
   public void testLeaderShipStale() throws InterruptedException {
-    HeartBeatHandler handler = new HeartBeatHandler(metaGroupMember, TestUtils.getNode(1));
+    HeartbeatHandler handler = new HeartbeatHandler(metaGroupMember, TestUtils.getNode(1));
     HeartBeatResponse response = new HeartBeatResponse();
     response.setTerm(10);
     synchronized (metaGroupMember.getTerm()) {
@@ -86,7 +86,7 @@ public class HeartBeatHandlerTest {
 
   @Test
   public void testError() throws InterruptedException {
-    HeartBeatHandler handler = new HeartBeatHandler(metaGroupMember, TestUtils.getNode(1));
+    HeartbeatHandler handler = new HeartbeatHandler(metaGroupMember, TestUtils.getNode(1));
     catchUpFlag = false;
     new Thread(() -> handler.onError(new TestException())).start();
     Thread.sleep(1000);

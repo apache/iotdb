@@ -162,11 +162,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   // request, and forward the request to it. See methods in DataGroupMember for details.
 
   @Override
-  public void sendHeartBeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
+  public void sendHeartbeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
     Node header = request.getHeader();
     DataGroupMember member = getDataMember(header, resultHandler, request);
     if (member != null) {
-      member.sendHeartBeat(request, resultHandler);
+      member.sendHeartbeat(request, resultHandler);
     }
   }
 
@@ -262,10 +262,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void getAllPaths(Node header, String path, AsyncMethodCallback<List<String>> resultHandler) {
-    DataGroupMember member = getDataMember(header, resultHandler, "Find path:" + path);
+  public void getAllPaths(Node header, List<String> paths,
+      AsyncMethodCallback<List<String>> resultHandler) {
+    DataGroupMember member = getDataMember(header, resultHandler, "Find path:" + paths);
     if (member != null) {
-      member.getAllPaths(header, path, resultHandler);
+      member.getAllPaths(header, paths, resultHandler);
     }
   }
 
@@ -310,10 +311,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void getAllDevices(Node header, String path,
+  public void getAllDevices(Node header, List<String> paths,
       AsyncMethodCallback<Set<String>> resultHandler) {
     DataGroupMember dataMember = getDataMember(header, resultHandler, "Get all devices");
-    dataMember.getAllDevices(header, path, resultHandler);
+    dataMember.getAllDevices(header, paths, resultHandler);
   }
 
   @Override
@@ -367,9 +368,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   /**
    * Try adding the node into the group of each DataGroupMember, and if the DataGroupMember no
    * longer stays in that group, also remove and stop it.
+   * If the new group contains this node, also create and add a new DataGroupMember for it.
    * @param node
+   * @param newGroup
    */
-  public void addNode(Node node) {
+  public void addNode(Node node, PartitionGroup newGroup) {
     Iterator<Entry<Node, DataGroupMember>> entryIterator = headerGroupMap.entrySet().iterator();
     synchronized (headerGroupMap) {
       while (entryIterator.hasNext()) {
@@ -383,7 +386,39 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
           dataGroupMember.stop();
         }
       }
+
+      if (newGroup.contains(thisNode)) {
+        try {
+          logger.info("Adding this node into a new group {}", newGroup);
+          DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup, thisNode);
+          addDataGroupMember(dataGroupMember);
+          dataGroupMember.start();
+          dataGroupMember
+              .pullNodeAdditionSnapshots(partitionTable.getNodeSlots(node), node);
+        } catch (TTransportException e) {
+          logger.error("Fail to create data newMember for new header {}", node, e);
+        }
+      }
     }
+  }
+
+  /**
+   * Set the partition table as the in-use one and build a DataGroupMember for each local group
+   * (the group which the local node is in) and start them.
+   * @param partitionTable
+   * @throws TTransportException
+   */
+  public void bulidDataGroupMembers(PartitionTable partitionTable)
+      throws TTransportException {
+    setPartitionTable(partitionTable);
+    List<PartitionGroup> partitionGroups = partitionTable.getLocalGroups();
+    for (PartitionGroup partitionGroup : partitionGroups) {
+      logger.debug("Building member of data group: {}", partitionGroup);
+      DataGroupMember dataGroupMember = dataMemberFactory.create(partitionGroup, thisNode);
+      dataGroupMember.start();
+      addDataGroupMember(dataGroupMember);
+    }
+    logger.info("Data group members are ready");
   }
 
   /**

@@ -78,7 +78,16 @@ public interface PartitionTable {
    * @param timestamp
    * @return
    */
-  Node routeToHeader(String storageGroupName, long timestamp);
+  Node routeToHeaderByTime(String storageGroupName, long timestamp);
+
+  /**
+   * Given the storageGroupName and the partitionId, return the header node of the partitionGroup by
+   * which the storage group and the corresponding time interval is managed.
+   * @param storageGroupName
+   * @param partitionId
+   * @return
+   */
+  Node routeToHeaderByPartition(String storageGroupName, long partitionId);
 
   /**
    * get a unicode value for a sg and a timestamp.

@@ -40,6 +40,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -126,11 +127,10 @@ public class MManager {
 
   //Because the writer will be used later and should not be closed here.
   @SuppressWarnings("squid:S2093")
-  public void init() {
+  public synchronized void init() {
     if (initialized) {
       return;
     }
-    lock.writeLock().lock();
     File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
@@ -154,13 +154,11 @@ public class MManager {
     } catch (IOException | MetadataException e) {
       mtree = new MTree();
       logger.error("Cannot read MTree from file, using an empty new one", e);
-    } finally {
-      lock.writeLock().unlock();
     }
     initialized = true;
   }
 
-  private void initFromLog(File logFile) throws IOException, MetadataException {
+  private void initFromLog(File logFile) throws IOException {
     // init the metadata from the operation log
     mtree = new MTree();
     if (logFile.exists()) {
@@ -168,7 +166,11 @@ public class MManager {
           BufferedReader br = new BufferedReader(fr)) {
         String cmd;
         while ((cmd = br.readLine()) != null) {
-          operation(cmd);
+          try {
+            operation(cmd);
+          } catch (Exception e) {
+            logger.error("Can not operate cmd {}", cmd, e);
+          }
         }
       }
     }
@@ -216,7 +218,9 @@ public class MManager {
             props);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
-        deleteTimeseries(args[1]);
+        for (String deleteStorageGroup : deleteTimeseries(args[1])) {
+          StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
+        }
         break;
       case MetadataOperationType.SET_STORAGE_GROUP:
         setStorageGroup(args[1]);
@@ -381,12 +385,6 @@ public class MManager {
         seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
             .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
       }
-      try {
-        IoTDBConfigDynamicAdapter.getInstance()
-            .addOrDeleteTimeSeries(seriesNumberInStorageGroups.remove(prefixPath) * (-1));
-      } catch (ConfigAdjusterException e) {
-        throw new MetadataException(e.getMessage());
-      }
       mNodeCache.clear();
     }
     try {
@@ -418,13 +416,13 @@ public class MManager {
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
+      String storageGroupName = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
         writer.write(MetadataOperationType.DELETE_TIMESERIES + "," + path);
         writer.newLine();
         writer.flush();
       }
-      String storageGroupName = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
       // TODO: delete the path node and all its ancestors
       mNodeCache.clear();
       try {
@@ -453,13 +451,13 @@ public class MManager {
   public void setStorageGroup(String storageGroup) throws MetadataException {
     lock.writeLock().lock();
     try {
+      mtree.setStorageGroup(storageGroup);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
         writer.write(MetadataOperationType.SET_STORAGE_GROUP + "," + storageGroup);
         writer.newLine();
         writer.flush();
       }
-      mtree.setStorageGroup(storageGroup);
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
       ActiveTimeSeriesCounter.getInstance().init(storageGroup);
       seriesNumberInStorageGroups.put(storageGroup, 0);
@@ -481,23 +479,16 @@ public class MManager {
   public void deleteStorageGroups(List<String> storageGroups) throws MetadataException {
     lock.writeLock().lock();
     try {
-      if (writeToLog) {
-        StringBuilder jointPath = new StringBuilder();
-        for (String storagePath : storageGroups) {
-          jointPath.append(",").append(storagePath);
-        }
-        BufferedWriter writer = getLogWriter();
-        writer.write(MetadataOperationType.DELETE_STORAGE_GROUP + jointPath);
-        writer.newLine();
-        writer.flush();
-      }
+      BufferedWriter writer = getLogWriter();
       for (String storageGroup : storageGroups) {
-        try {
-          // try to delete storage group
-          mtree.deleteStorageGroup(storageGroup);
-        } catch (MetadataException e) {
-          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
-          throw new MetadataException(e);
+        // try to delete storage group
+        mtree.deleteStorageGroup(storageGroup);
+
+        // if success
+        if (writeToLog) {
+          writer.write(MetadataOperationType.DELETE_STORAGE_GROUP + storageGroup);
+          writer.newLine();
+          writer.flush();
         }
         mNodeCache.clear();
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);

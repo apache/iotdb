@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -43,6 +44,7 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.manage.FilePartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
@@ -62,7 +64,6 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
@@ -72,7 +73,7 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
-import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
+import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -108,7 +109,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -120,13 +120,36 @@ import org.slf4j.LoggerFactory;
 public class DataGroupMember extends RaftMember implements TSDataService.AsyncIface {
 
   private static final Logger logger = LoggerFactory.getLogger(DataGroupMember.class);
+  /**
+   * When a DataGroupMember pulls data from another node, the data files will be firstly stored
+   * in the "REMOTE_FILE_TEMP_DIR", and then load file functionality of IoTDB will be used to
+   * load the files into the IoTDB instance.
+   */
   private static final String REMOTE_FILE_TEMP_DIR = "remote";
 
+  /**
+   * The MetaGroupMember that in charge of the DataGroupMember. Mainly for providing partition
+   * table and MetaLogManager.
+   */
   private MetaGroupMember metaGroupMember;
 
+  /**
+   * The thread pool that runs the pull snapshot tasks. Pool size is the # of CPU cores.
+   */
   private ExecutorService pullSnapshotService;
+
+  /**
+   * "logManager" manages the logs of this DataGroupMember. Although the logs of different data
+   * partitions (slots) are mixed together before a snapshot is taken, after the taking of
+   * snapshot, logs of different logs will be stored separately.
+   */
   private PartitionedSnapshotLogManager logManager;
 
+  /**
+   * "queryManger" records the remote nodes which have queried this node, and the readers or
+   * executors this member has created for those queries. When the queries end, an
+   * EndQueryRequest will be sent to this member and related resources will be released.
+   */
   private ClusterQueryManager queryManager;
 
   @TestOnly
@@ -146,13 +169,25 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     setQueryManager(new ClusterQueryManager());
   }
 
+  /**
+   * Start heartbeat, catch-up and pull snapshot services.
+   * Calling the method twice does not induce side effects.
+   * @throws TTransportException
+   */
   @Override
   public void start() throws TTransportException {
+    if (heartBeatService != null) {
+      return;
+    }
     super.start();
-    heartBeatService.submit(new DataHeartBeatThread(this));
+    heartBeatService.submit(new DataHeartbeatThread(this));
     pullSnapshotService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
   }
 
+  /**
+   * Stop heartbeat, catch-up and pull snapshot services and release all query resources.
+   * Calling the method twice does not induce side effects.
+   */
   @Override
   public void stop() {
     super.stop();
@@ -203,22 +238,24 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   /**
-   * Try to add a Node into this group
+   * Try to add a Node into the group to which the member belongs.
    * @param node
    * @return true if this node should leave the group because of the addition of the node, false
    * otherwise
    */
   public synchronized boolean addNode(Node node) {
     // when a new node is added, start an election instantly to avoid the stale leader still
-    // taking the leadership
+    // taking the leadership, which guarantees the valid leader will not have the stale
+    // partition table
     synchronized (term) {
       term.incrementAndGet();
-      setLastHeartBeatReceivedTime(System.currentTimeMillis());
+      setLastHeartbeatReceivedTime(System.currentTimeMillis());
       setCharacter(NodeCharacter.ELECTOR);
       leader = null;
     }
     synchronized (allNodes) {
       int insertIndex = -1;
+      // find the position to insert the new node, the nodes are ordered by their identifiers
       for (int i = 0; i < allNodes.size() - 1; i++) {
         Node prev = allNodes.get(i);
         Node next = allNodes.get(i + 1);
@@ -232,6 +269,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       }
       if (insertIndex > 0) {
         allNodes.add(insertIndex, node);
+        // remove the last node because the group size is fixed to replication number
         Node removedNode = allNodes.remove(allNodes.size() - 1);
         // if the local node is the last node and the insertion succeeds, this node should leave
         // the group
@@ -242,6 +280,16 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
+  /**
+   * Process the election request from another node in the group. To win the vote from the local
+   * member, a node must have both meta and data logs no older than then local member, or it will
+   * be turned down.
+   * @param electionRequest
+   * @return Response.RESPONSE_META_LOG_STALE if the meta logs of the elector fall behind
+   *         Response.RESPONSE_LOG_MISMATCH if the data logs of the elector fall behind
+   *         Response.SUCCESS if the vote is given to the elector
+   *         the term of local member if the elector's term is no bigger than the local member
+   */
   @Override
   long processElectionRequest(ElectionRequest electionRequest) {
     // to be a data group leader, a node should also be qualified to be the meta group leader
@@ -255,6 +303,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     long thisMetaLastLogIndex = metaGroupMember.getLogManager().getLastLogIndex();
     long thisMetaLastLogTerm = metaGroupMember.getLogManager().getLastLogTerm();
 
+    // check meta logs
     // term of the electors's MetaGroupMember is not verified, so 0 and 1 are used to make sure
     // the verification does not fail
     long metaResponse = verifyElector(0, thisMetaLastLogIndex, thisMetaLastLogTerm,
@@ -272,14 +321,21 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     long resp = verifyElector(term.get(), logManager.getLastLogIndex(),
         logManager.getLastLogTerm(), thatTerm, thatDataLastLogId, thatDataLastLogTerm);
     if (resp == Response.RESPONSE_AGREE) {
+      // the elector wins the vote, follow it
       term.set(thatTerm);
       setCharacter(NodeCharacter.FOLLOWER);
-      lastHeartBeatReceivedTime = System.currentTimeMillis();
+      lastHeartbeatReceivedTime = System.currentTimeMillis();
       leader = electionRequest.getElector();
     }
     return resp;
   }
 
+  /**
+   * Deserialize and apply a snapshot sent by the leader. The type of the snapshot must be currently
+   * PartitionedSnapshot with FileSnapshot inside.
+   * @param request
+   * @param resultHandler
+   */
   @Override
   public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
     logger.debug("{}: received a snapshot", name);
@@ -294,8 +350,15 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
-  public void applySnapshot(Snapshot snapshot, int slot) {
-    logger.debug("{}: applying snapshot {} of slot {}", name, snapshot, slot);
+  /**
+   * Apply a snapshot to the state machine, i.e., load the data and meta data contained in the
+   * snapshot into the IoTDB instance.
+   * Currently the type of the snapshot should be ony FileSnapshot, but more types may be
+   * supported in the future.
+   * @param snapshot
+   */
+  public void applySnapshot(Snapshot snapshot) {
+    logger.debug("{}: applying snapshot {}", name, snapshot);
     if (snapshot instanceof FileSnapshot) {
       applyFileSnapshot((FileSnapshot) snapshot);
     } else {
@@ -303,12 +366,21 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
+  /**
+   * Apply a FileSnapshot, which consists of MeasurementSchemas and RemoteTsFileResources. The
+   * timeseries in the MeasurementSchemas will be registered and the files in the
+   * "RemoteTsFileResources" will be loaded into the IoTDB instance if they do not totally
+   * overlap with existing files.
+   * @param snapshot
+   */
   private void applyFileSnapshot(FileSnapshot snapshot) {
     synchronized (logManager) {
+      // load metadata in the snapshot
       for (MeasurementSchema schema : snapshot.getTimeseriesSchemas()) {
         SchemaUtils.registerTimeseries(schema);
       }
 
+      // load data in the snapshot
       List<RemoteTsFileResource> remoteTsFileResources = snapshot.getDataFiles();
       for (RemoteTsFileResource resource : remoteTsFileResources) {
         if (!isFileAlreadyPulled(resource)) {
@@ -318,10 +390,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
+  /**
+   * Check if the file "resource" is a duplication of some local files. As all data file close
+   * @param resource
+   * @return
+   */
   private boolean isFileAlreadyPulled(RemoteTsFileResource resource) {
-    // TODO-Cluster#352: The problem of duplicated data in remote files is partially resolved by
-    //  tracking the merge history using the version numbers of the merged files. But a better
-    //  solution still remains to be found.
     String[] pathSegments = FilePathUtils.splitTsFilePath(resource);
     int segSize = pathSegments.length;
     // {storageGroupName}/{partitionNum}/{fileName}
@@ -335,7 +409,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       for (Integer slot : slots) {
         Snapshot subSnapshot = snapshot.getSnapshot(slot);
         if (subSnapshot != null) {
-          applySnapshot(subSnapshot, slot);
+          applySnapshot(subSnapshot);
         }
       }
       logManager.setLastLogId(snapshot.getLastLogId());
@@ -552,6 +626,33 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     return metaGroupMember;
   }
 
+  /**
+   * If the member is the leader, let all members in the group close the specified partition of a
+   * storage group, else just return false.
+   * @param storageGroupName
+   * @param partitionId
+   * @param isSeq
+   * @return false if the member is not a leader, true if the close request is accepted by the
+   * quorum
+   */
+  public boolean closePartition(String storageGroupName, long partitionId, boolean isSeq) {
+    if (character != NodeCharacter.LEADER) {
+      return false;
+    }
+    CloseFileLog log = new CloseFileLog(storageGroupName, partitionId, isSeq);
+    synchronized (logManager) {
+      log.setCurrLogTerm(getTerm().get());
+      log.setPreviousLogIndex(logManager.getLastLogIndex());
+      log.setPreviousLogTerm(logManager.getLastLogTerm());
+      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+
+      logManager.appendLog(log);
+
+      logger.info("Send the close file request of {} to other nodes", log);
+    }
+    return appendLogInGroup(log);
+  }
+
   TSStatus executeNonQuery(PhysicalPlan plan) {
     if (character == NodeCharacter.LEADER) {
       TSStatus status = processPlanLocally(plan);
@@ -571,7 +672,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     if (!syncLeader()) {
       // if this node cannot synchronize with the leader with in a given time, forward the
       // request to the leader
-      AsyncClient client = connectNode(leader);
+      DataClient client = (DataClient) connectNode(leader);
       if (client == null) {
         resultHandler.onError(new LeaderUnknownException(getAllNodes()));
         return;
@@ -789,19 +890,28 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   @Override
-  public void getAllPaths(Node header, String path, AsyncMethodCallback<List<String>> resultHandler) {
+  public void getAllPaths(Node header, List<String> paths,
+      AsyncMethodCallback<List<String>> resultHandler) {
     try {
-      resultHandler.onComplete(MManager.getInstance().getAllTimeseriesName(path));
+      List<String> ret = new ArrayList<>();
+      for (String path : paths) {
+        ret.addAll(MManager.getInstance().getAllTimeseriesName(path));
+      }
+      resultHandler.onComplete(ret);
     } catch (MetadataException e) {
       resultHandler.onError(e);
     }
   }
 
   @Override
-  public void getAllDevices(Node header, String path,
+  public void getAllDevices(Node header, List<String> paths,
       AsyncMethodCallback<Set<String>> resultHandler) {
     try {
-      resultHandler.onComplete(MManager.getInstance().getDevices(path));
+      Set<String> results = new HashSet<>();
+      for (String path : paths) {
+        results.addAll(MManager.getInstance().getDevices(path));
+      }
+      resultHandler.onComplete(results);
     } catch (MetadataException e) {
       resultHandler.onError(e);
     }
@@ -830,7 +940,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         if (removedNode.equals(leader)) {
           synchronized (term) {
             setCharacter(NodeCharacter.ELECTOR);
-            setLastHeartBeatReceivedTime(Long.MIN_VALUE);
+            setLastHeartbeatReceivedTime(Long.MIN_VALUE);
           }
         }
       }

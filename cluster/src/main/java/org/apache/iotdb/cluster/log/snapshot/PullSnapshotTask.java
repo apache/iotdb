@@ -94,7 +94,7 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
           logger.info("Received a snapshot {} from {}", result, previousHolders.get(nodeIndex));
         }
         for (Entry<Integer, T> entry : result.entrySet()) {
-          newMember.applySnapshot(entry.getValue(), entry.getKey());
+          newMember.applySnapshot(entry.getValue());
         }
         return true;
       } else {
