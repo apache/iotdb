@@ -849,10 +849,6 @@ public class TsFileProcessor {
     return null;
   }
 
-  public boolean getSequence() {
-    return sequence;
-  }
-
   public long getTimeRangeId() {
     return timeRangeId;
   }
