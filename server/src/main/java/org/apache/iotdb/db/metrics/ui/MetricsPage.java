@@ -35,6 +35,7 @@ public class MetricsPage {
 
   private static final Logger logger = LoggerFactory.getLogger(MetricsPage.class);
   private MetricRegistry mr;
+  private final List<SqlArgument> sqlArguments = TSServiceImpl.getSqlArgumentList();
 
   public MetricsPage(MetricRegistry metricRegistry) {
     this.mr = metricRegistry;
@@ -91,44 +92,45 @@ public class MetricsPage {
     String errMsg;
     int statusCode;
 
-    List<SqlArgument> readCopy = TSServiceImpl.getSqlArgumentList();
-    for (int i = (readCopy.size() - 1); i >= 0; i--) {
-      sqlArgument = readCopy.get(i);
-      resp = sqlArgument.getTSExecuteStatementResp();
-      errMsg = resp.getStatus().message;
-      statusCode = resp.getStatus().code;
-      String status;
-      if (statusCode == 200) {
-        status = "FINISHED";
-      } else if (statusCode == 201) {
-        status = "EXECUTING";
-      } else if (statusCode == 202) {
-        status = "INVALID_HANDLE";
-      } else {
-        status = "FAILED";
-      }
+    synchronized (sqlArguments) {
+      for (int i = (sqlArguments.size() - 1); i >= 0; i--) {
+        sqlArgument = sqlArguments.get(i);
+        resp = sqlArgument.getTSExecuteStatementResp();
+        errMsg = resp.getStatus().message;
+        statusCode = resp.getStatus().code;
+        String status;
+        if (statusCode == 200) {
+          status = "FINISHED";
+        } else if (statusCode == 201) {
+          status = "EXECUTING";
+        } else if (statusCode == 202) {
+          status = "INVALID_HANDLE";
+        } else {
+          status = "FAILED";
+        }
 
-      table.append(
-          "<tr>"
-          + "<td>" + resp.getOperationType() + "</td>"
-          + "<td>" + sdf.format(new Date(sqlArgument.getStartTime())) + "</td>"
-          + "<td>" + sdf.format(new Date(sqlArgument.getEndTime())) + "</td>"
-          + "<td>" + (int) (sqlArgument.getEndTime() - sqlArgument.getStartTime()) + " ms</td>"
-          + "<td class=\"sql\">" + sqlArgument.getStatement() + "</td>"
-          + "<td>" + status + "</td>"
-          + "<td>" + (errMsg.equals("") ? "== Parsed Physical Plan ==" : errMsg)
-          +   "<span class=\"expand-details\" onclick=\"this.parentNode.querySelector('.stacktrace-details').classList.toggle('collapsed')\">+ details</span>"
-          +   "<div class=\"stacktrace-details collapsed\">"
-          +     "<pre>"
-          +       "Physical Plan: " + sqlArgument.getPlan().getClass().getSimpleName()
-          +       "</br>===========================</br>"
-          +       "OperatorType: " + sqlArgument.getPlan().getOperatorType()
-          +       "</br>===========================</br>"
-          +       "Path: " + sqlArgument.getPlan().getPaths().toString()
-          +     "</pre>"
-          +   "</div>"
-          + "</td>"
-          +"</tr>");
+        table.append(
+            "<tr>"
+                + "<td>" + resp.getOperationType() + "</td>"
+                + "<td>" + sdf.format(new Date(sqlArgument.getStartTime())) + "</td>"
+                + "<td>" + sdf.format(new Date(sqlArgument.getEndTime())) + "</td>"
+                + "<td>" + (int) (sqlArgument.getEndTime() - sqlArgument.getStartTime()) + " ms</td>"
+                + "<td class=\"sql\">" + sqlArgument.getStatement() + "</td>"
+                + "<td>" + status + "</td>"
+                + "<td>" + (errMsg.equals("") ? "== Parsed Physical Plan ==" : errMsg)
+                +   "<span class=\"expand-details\" onclick=\"this.parentNode.querySelector('.stacktrace-details').classList.toggle('collapsed')\">+ details</span>"
+                +   "<div class=\"stacktrace-details collapsed\">"
+                +     "<pre>"
+                +       "Physical Plan: " + sqlArgument.getPlan().getClass().getSimpleName()
+                +       "</br>===========================</br>"
+                +       "OperatorType: " + sqlArgument.getPlan().getOperatorType()
+                +       "</br>===========================</br>"
+                +       "Path: " + sqlArgument.getPlan().getPaths().toString()
+                +     "</pre>"
+                +   "</div>"
+                + "</td>"
+                +"</tr>");
+      }
     }
     return table;
   }

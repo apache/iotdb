@@ -129,7 +129,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
-  private static final int DELETE_SIZE = 50;
+  private static final int DELETE_SIZE = 20;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
 
@@ -1312,11 +1312,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   public static List<SqlArgument> getSqlArgumentList() {
-    List<SqlArgument> readCopy;
-    synchronized (sqlArgumentList) {
-      readCopy = new ArrayList<>(sqlArgumentList);
-    }
-    return readCopy;
+    return sqlArgumentList;
   }
 
   private long generateQueryId(boolean isDataQuery) {
