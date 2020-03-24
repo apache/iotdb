@@ -400,7 +400,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     int segSize = pathSegments.length;
     // {storageGroupName}/{partitionNum}/{fileName}
     String storageGroupName = pathSegments[segSize - 3];
-    return StorageEngine.getInstance().isFileAlreadyExist(resource, storageGroupName);
+    long partitionNumber = Long.parseLong(pathSegments[segSize - 2]);
+    return StorageEngine.getInstance().isFileAlreadyExist(resource, storageGroupName, partitionNumber);
   }
 
   private void applyPartitionedSnapshot(PartitionedSnapshot snapshot) {
