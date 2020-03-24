@@ -88,6 +88,9 @@ public class WinClient extends AbstractClient {
         hf.printHelp(IOTDB_CLI_PREFIX, options, true);
         return false;
       }
+      if (commandLine.hasOption(RPC_COMPRESS_ARGS)) {
+        Config.rpcThriftCompressionEnable = true;
+      }
       if (commandLine.hasOption(ISO8601_ARGS)) {
         setTimeFormat("long");
       }
