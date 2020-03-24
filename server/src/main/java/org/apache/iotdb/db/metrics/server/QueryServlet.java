@@ -28,7 +28,7 @@ public class QueryServlet extends HttpServlet {
 
   private static final long serialVersionUID = 1L;
 
-  private List<SqlArgument> list = TSServiceImpl.sqlArgumentsList;
+  private List<SqlArgument> list = TSServiceImpl.sqlArgumentList;
   private MetricsPage page;
 
   public QueryServlet(MetricsPage page) {
