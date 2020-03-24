@@ -194,6 +194,11 @@ public class IoTDBConfig {
   private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 3 / 39;
 
   /**
+   * Memory allocated for timeSeriesMetaData cache in read process
+   */
+  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 5 / 39;
+
+  /**
    * Memory allocated for chunkMetaData cache in read process
    */
   private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead * 6 / 39;
@@ -1063,6 +1068,14 @@ public class IoTDBConfig {
 
   void setAllocateMemoryForFileMetaDataCache(long allocateMemoryForFileMetaDataCache) {
     this.allocateMemoryForFileMetaDataCache = allocateMemoryForFileMetaDataCache;
+  }
+
+  public long getAllocateMemoryForTimeSeriesMetaDataCache() {
+    return allocateMemoryForTimeSeriesMetaDataCache;
+  }
+
+  public void setAllocateMemoryForTimeSeriesMetaDataCache(long allocateMemoryForTimeSeriesMetaDataCache) {
+    this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
   }
 
   public long getAllocateMemoryForChunkMetaDataCache() {

@@ -71,6 +71,11 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
     return ChunkCache.getInstance().calculateChunkHitRatio();
   }
 
+  @Override
+  public double getTimeSeriesMetadataHitRatio() {
+    return TimeSeriesMetadataCache.getInstance().calculateTimeSeriesMetadataHitRatio();
+  }
+
   public static CacheHitRatioMonitor getInstance() {
     return instance;
   }

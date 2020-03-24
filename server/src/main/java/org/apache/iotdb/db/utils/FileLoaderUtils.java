@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -72,8 +73,8 @@ public class FileLoaderUtils {
   public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, Path seriesPath, QueryContext context, Filter timeFilter) throws IOException {
     TimeseriesMetadata timeSeriesMetadata;
     if (resource.isClosed()) {
-      TsFileSequenceReader reader = FileReaderManager.getInstance().get(resource.getPath(), resource.isClosed());
-      timeSeriesMetadata = reader.readDeviceMetadata(seriesPath.getDevice()).get(seriesPath.getMeasurement());
+      timeSeriesMetadata = TimeSeriesMetadataCache.getInstance()
+              .get(new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(resource.getPath(), seriesPath.getDevice(), seriesPath.getMeasurement()));
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(new DiskChunkMetadataLoader(resource, seriesPath, context, timeFilter));
       }
