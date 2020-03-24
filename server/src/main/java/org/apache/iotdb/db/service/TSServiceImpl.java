@@ -31,7 +31,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
@@ -135,7 +134,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       "meet error while parsing SQL to physical plan: {}";
 
   private boolean enableMetric = IoTDBDescriptor.getInstance().getConfig().isEnableMetricService();
-  public static final Vector<SqlArgument> sqlArgumentList = new Vector<>();
+  private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
 
   protected Planner processor;
   protected IPlanExecutor executor;
@@ -608,7 +607,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         SqlArgument sqlArgument = new SqlArgument(resp, plan, statement, startTime, endTime);
         synchronized (sqlArgumentList) {
           sqlArgumentList.add(sqlArgument);
-          if (sqlArgumentList.size() > MAX_SIZE) {
+          if (sqlArgumentList.size() >= MAX_SIZE) {
             sqlArgumentList.subList(0, DELETE_SIZE).clear();
           }
         }
@@ -1310,6 +1309,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return execRet
         ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
         : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
+  }
+
+  public static List<SqlArgument> getSqlArgumentList() {
+    return sqlArgumentList;
   }
 
   private long generateQueryId(boolean isDataQuery) {

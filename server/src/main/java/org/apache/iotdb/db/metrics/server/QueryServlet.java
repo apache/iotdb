@@ -16,24 +16,20 @@ package org.apache.iotdb.db.metrics.server;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.List;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.iotdb.db.metrics.ui.MetricsPage;
-import org.apache.iotdb.db.service.TSServiceImpl;
 
 public class QueryServlet extends HttpServlet {
 
   private static final long serialVersionUID = 1L;
 
-  private List<SqlArgument> list = TSServiceImpl.sqlArgumentList;
   private MetricsPage page;
 
   public QueryServlet(MetricsPage page) {
     this.page = page;
-    this.page.setList(list);
   }
 
   @Override

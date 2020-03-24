@@ -20,10 +20,12 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
+import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,15 +35,6 @@ public class MetricsPage {
 
   private static final Logger logger = LoggerFactory.getLogger(MetricsPage.class);
   private MetricRegistry mr;
-  private List<SqlArgument> list;
-
-  public List<SqlArgument> getList() {
-    return list;
-  }
-
-  public void setList(List<SqlArgument> list) {
-    this.list = list;
-  }
 
   public MetricsPage(MetricRegistry metricRegistry) {
     this.mr = metricRegistry;
@@ -97,8 +90,9 @@ public class MetricsPage {
     TSExecuteStatementResp resp;
     String errMsg;
     int statusCode;
-    for (int i = (list.size() - 1); i >= 0; i--) {
-      sqlArgument = list.get(i);
+    List<SqlArgument> readCopy = new ArrayList<>(TSServiceImpl.getSqlArgumentList());
+    for (int i = (readCopy.size() - 1); i >= 0; i--) {
+      sqlArgument = readCopy.get(i);
       resp = sqlArgument.getTSExecuteStatementResp();
       errMsg = resp.getStatus().message;
       statusCode = resp.getStatus().code;
