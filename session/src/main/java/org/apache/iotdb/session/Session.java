@@ -107,6 +107,10 @@ public class Session {
     open(true, Config.DEFAULT_TIMEOUT_MS);
   }
 
+  public synchronized void open(boolean enableRPCCompression) throws IoTDBConnectionException {
+    open(enableRPCCompression, Config.DEFAULT_TIMEOUT_MS);
+  }
+
   private synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
       throws IoTDBConnectionException {
     if (!isClosed) {
@@ -186,11 +190,12 @@ public class Session {
 
   /**
    * check whether the batch has been sorted
+   *
    * @return whether the batch has been sorted
    */
-  private boolean checkSorted(RowBatch rowBatch){
+  private boolean checkSorted(RowBatch rowBatch) {
     for (int i = 1; i < rowBatch.batchSize; i++) {
-      if(rowBatch.timestamps[i] < rowBatch.timestamps[i - 1]){
+      if (rowBatch.timestamps[i] < rowBatch.timestamps[i - 1]) {
         return false;
       }
     }
@@ -224,15 +229,15 @@ public class Session {
   }
 
   /**
-   * use batch interface to insert sorted data
-   * times in row batch must be sorted before!
+   * use batch interface to insert sorted data times in row batch must be sorted before!
    *
    * @param rowBatch data batch
    */
   public void insertSortedBatch(RowBatch rowBatch)
       throws BatchExecutionException, IoTDBConnectionException {
-    if(!checkSorted(rowBatch)){
-      throw new BatchExecutionException("Row batch has't been sorted when calling insertSortedBatch");
+    if (!checkSorted(rowBatch)) {
+      throw new BatchExecutionException(
+          "Row batch has't been sorted when calling insertSortedBatch");
     }
     insertSortedBatchIntern(rowBatch);
   }
@@ -243,22 +248,22 @@ public class Session {
    * @param rowBatchMap data batch in multiple device
    */
   public void insertMultipleDeviceBatch
-      (Map<String, RowBatch> rowBatchMap) throws IoTDBConnectionException, BatchExecutionException {
-    for(Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()){
+  (Map<String, RowBatch> rowBatchMap) throws IoTDBConnectionException, BatchExecutionException {
+    for (Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()) {
       sortRowBatch(dataInOneDevice.getValue());
       insertBatch(dataInOneDevice.getValue());
     }
   }
 
   /**
-   * use batch interface to insert sorted data in multiple device
-   * times in row batch must be sorted before!
+   * use batch interface to insert sorted data in multiple device times in row batch must be sorted
+   * before!
    *
    * @param rowBatchMap data batch in multiple device
    */
   public void insertMultipleDeviceSortedBatch
   (Map<String, RowBatch> rowBatchMap) throws IoTDBConnectionException, BatchExecutionException {
-    for(Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()){
+    for (Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()) {
       checkSorted(dataInOneDevice.getValue());
       insertSortedBatchIntern(dataInOneDevice.getValue());
     }
@@ -277,7 +282,7 @@ public class Session {
     insertSortedBatchIntern(rowBatch);
   }
 
-  private void sortRowBatch(RowBatch rowBatch){
+  private void sortRowBatch(RowBatch rowBatch) {
     /*
      * following part of code sort the batch data by time,
      * so we can insert continuous data in value list to get a better performance
@@ -299,8 +304,8 @@ public class Session {
    * sort value list by index
    *
    * @param valueList value list
-   * @param dataType data type
-   * @param index index
+   * @param dataType  data type
+   * @param index     index
    * @return sorted list
    */
   private Object sortList(Object valueList, TSDataType dataType, Integer[] index) {
