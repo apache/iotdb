@@ -30,7 +30,6 @@ import org.apache.iotdb.spark.tsfile.qp.common.FilterOperator;
 import org.apache.iotdb.spark.tsfile.qp.common.SQLConstant;
 import org.apache.iotdb.spark.tsfile.qp.common.SingleQuery;
 import org.apache.iotdb.spark.tsfile.qp.common.TSQueryPlan;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -49,7 +48,7 @@ public class PhysicalOptimizer {
   public List<TSQueryPlan> optimize(SingleQuery singleQuery, List<String> paths,
       TsFileSequenceReader in, Long start, Long end) throws IOException {
 
-    HashMap<String, TSDataType> allMeasurementsInFile = in.getAllMeasurements();
+    Map<String, TSDataType> allMeasurementsInFile = in.getAllMeasurements();
 
     List<String> selectedSeries = new ArrayList<>();
     for (String path : paths) {

@@ -261,7 +261,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
         blockLocations = fileSystem.getFileBlockLocations(fileStatus, 0, length);
 
         logger.info("The block location information is {}", Arrays.toString(blockLocations));
-        splits.addAll(generateSplits(path, blockLocations, logger));
+        splits.addAll(generateSplits(path, blockLocations));
       } else {
         logger.warn("The file length is " + length);
       }
@@ -278,7 +278,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
    *
    * @throws IOException
    */
-  private static List<TSFInputSplit> generateSplits(Path path, BlockLocation[] blockLocations, Logger logger)
+  private static List<TSFInputSplit> generateSplits(Path path, BlockLocation[] blockLocations)
       throws IOException {
     List<TSFInputSplit> splits = new ArrayList<>();
     for (BlockLocation blockLocation : blockLocations) {

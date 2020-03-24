@@ -39,7 +39,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class TimeSeriesMetadataCache {
 
-  private static final Logger logger = LoggerFactory.getLogger(ChunkCache.class);
+  private static final Logger logger = LoggerFactory.getLogger(TimeSeriesMetadataCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE = config.getAllocateMemoryForTimeSeriesMetaDataCache();
   private static boolean cacheEnable = config.isMetaDataCacheEnable();

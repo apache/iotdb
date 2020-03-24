@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.mnode;
 import java.io.Serializable;
 import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the

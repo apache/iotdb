@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile;
 
+import java.io.File;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -29,12 +30,9 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.io.File;
-
 /**
- * An example of writing data with TSRecord to TsFile
- * It uses the interface:
- * public void addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
+ * An example of writing data with TSRecord to TsFile It uses the interface: public void
+ * addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
  */
 public class TsFileWriteWithTSRecord {
 
@@ -48,23 +46,23 @@ public class TsFileWriteWithTSRecord {
       TsFileWriter tsFileWriter = new TsFileWriter(f);
 
       // add measurements into file schema
-      
+
       for (int i = 0; i < 4; i++) {
         // add measurements into file schema
-        tsFileWriter.registerTimeseries(new Path("device_" + i, "sensor_1"),
-            new MeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.RLE));
-        tsFileWriter.registerTimeseries(new Path("device_" + i, "sensor_2"),
-            new MeasurementSchema("sensor_2", TSDataType.INT64, TSEncoding.RLE));
-        tsFileWriter.registerTimeseries(new Path("device_" + i, "sensor_3"),
-            new MeasurementSchema("sensor_3", TSDataType.INT64, TSEncoding.RLE));
+        tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_1),
+            new MeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
+        tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_2),
+            new MeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
+        tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_3),
+            new MeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
       }
 
       // construct TSRecord
       for (int i = 0; i < 100; i++) {
-        TSRecord tsRecord = new TSRecord(i, "device_" + (i % 4));
-        DataPoint dPoint1 = new LongDataPoint("sensor_1", i);
-        DataPoint dPoint2 = new LongDataPoint("sensor_2", i);
-        DataPoint dPoint3 = new LongDataPoint("sensor_3", i);
+        TSRecord tsRecord = new TSRecord(i, Constant.DEVICE_PREFIX + (i % 4));
+        DataPoint dPoint1 = new LongDataPoint(Constant.SENSOR_1, i);
+        DataPoint dPoint2 = new LongDataPoint(Constant.SENSOR_2, i);
+        DataPoint dPoint3 = new LongDataPoint(Constant.SENSOR_3, i);
         tsRecord.addTuple(dPoint1);
         tsRecord.addTuple(dPoint2);
         tsRecord.addTuple(dPoint3);

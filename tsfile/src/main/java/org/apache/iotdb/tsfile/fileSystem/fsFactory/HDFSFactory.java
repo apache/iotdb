@@ -92,8 +92,8 @@ public class HDFSFactory implements FSFactory {
     try {
       return (File) constructorWithParentStringAndChild.newInstance(parent, child);
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
-      logger.error("Failed to get file: {}" + File.separator + "{}. Please check your dependency of Hadoop module.",
-          parent, child, e);
+      logger.error("Failed to get file: {}. Please check your dependency of Hadoop module.",
+          parent + File.separator + child, e);
       return null;
     }
   }
@@ -102,8 +102,8 @@ public class HDFSFactory implements FSFactory {
     try {
       return (File) constructorWithParentFileAndChild.newInstance(parent, child);
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
-      logger.error("Failed to get file: {}" + File.separator + "{}. Please check your dependency of Hadoop module.",
-          parent.getAbsolutePath(), child, e);
+      logger.error("Failed to get file: {}. Please check your dependency of Hadoop module.",
+          parent.getAbsolutePath() + File.separator + child, e);
       return null;
     }
   }
@@ -112,7 +112,7 @@ public class HDFSFactory implements FSFactory {
     try {
       return (File) constructorWithUri.newInstance(uri);
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
-      logger.error("Failed to get file: {}. Please check your dependency of Hadoop module.", uri.toString(), e);
+      logger.error("Failed to get file: {}. Please check your dependency of Hadoop module.", uri, e);
       return null;
     }
   }

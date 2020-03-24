@@ -172,7 +172,6 @@ class MergeFileTask {
               new File(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
       seqFile.setFile(nextMergeVersionFile);
     } catch (Exception e) {
-      logger.error(e.getMessage(), e);
       RestorableTsFileIOWriter oldFileRecoverWriter = new RestorableTsFileIOWriter(
           seqFile.getFile());
       if (oldFileRecoverWriter.hasCrashed() && oldFileRecoverWriter.canWrite()) {

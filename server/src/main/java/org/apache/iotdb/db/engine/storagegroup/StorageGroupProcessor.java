@@ -104,7 +104,6 @@ public class StorageGroupProcessor {
 
   private static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
-  private static final int MAX_CACHE_SENSORS = 5000;
   /**
    * a read write lock for guaranteeing concurrent safety when accessing all fields in this class
    * (i.e., schema, (un)sequenceFileList, work(un)SequenceTsFileProcessor,
@@ -1055,7 +1054,6 @@ public class StorageGroupProcessor {
               pair.right));
         }
       } catch (IOException e) {
-        logger.error("Some error happened in creating TsFileResource", e);
         throw new MetadataException(e);
       } finally {
         closeQueryLock.readLock().unlock();

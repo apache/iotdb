@@ -87,7 +87,7 @@ public class ChunkMetadataCache {
       BloomFilter bloomFilter = fileMetaData.getBloomFilter();
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
         if (logger.isDebugEnabled()) {
-          logger.debug("path not found by bloom filter, file is: " + resource.getFile() + " path is: " + seriesPath);
+          logger.debug("path not found by bloom filter, file is: %s, path is: %s", resource.getFile(), seriesPath);
         }
         return new ArrayList<>();
       }

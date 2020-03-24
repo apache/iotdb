@@ -168,13 +168,13 @@ public class TsFileMetadata {
    * @return bloom filter
    */
   private BloomFilter buildBloomFilter(Set<Path> paths) {
-    BloomFilter bloomFilter = BloomFilter
+    BloomFilter filter = BloomFilter
         .getEmptyBloomFilter(TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(),
             paths.size());
     for (Path path : paths) {
-      bloomFilter.add(path.toString());
+      filter.add(path.toString());
     }
-    return bloomFilter;
+    return filter;
   }
 
   public int getTotalChunkNum() {

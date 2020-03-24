@@ -32,6 +32,10 @@ import org.apache.iotdb.tsfile.read.common.Path;
  */
 class TsFileMetadataUtils {
 
+  private TsFileMetadataUtils() {
+
+  }
+
   /**
    * get TsFileMetadata of a closed TsFile.
    *

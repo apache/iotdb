@@ -56,7 +56,7 @@ public class FloatStatistics extends Statistics<Float> {
     this.sumValue = sum;
   }
 
-  private void updateStats(float minValue, float maxValue, float firstValue, float last, double sumValue) {
+  private void updateStats(float minValue, float maxValue, float last, double sumValue) {
     if (minValue < this.minValue) {
       this.minValue = minValue;
     }
@@ -79,7 +79,7 @@ public class FloatStatistics extends Statistics<Float> {
       initializeStats(value, value, value, value, value);
       isEmpty = false;
     } else {
-      updateStats(value, value, value, value, value);
+      updateStats(value, value, value, value);
     }
   }
 
@@ -123,7 +123,7 @@ public class FloatStatistics extends Statistics<Float> {
           floatStats.getLastValue(), floatStats.getSumValue());
       isEmpty = false;
     } else {
-      updateStats(floatStats.getMinValue(), floatStats.getMaxValue(), floatStats.getFirstValue(),
+      updateStats(floatStats.getMinValue(), floatStats.getMaxValue(),
           floatStats.getLastValue(), floatStats.getSumValue());
     }
   }

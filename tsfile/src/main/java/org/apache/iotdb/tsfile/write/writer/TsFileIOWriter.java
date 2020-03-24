@@ -272,7 +272,7 @@ public class TsFileIOWriter {
     // create device -> TimeseriesMetaDataList Map
     for (Map.Entry<Path, List<ChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
       Path path = entry.getKey();
-      String deviceId = path.getDevice();
+      String device = path.getDevice();
       // create TimeseriesMetaData
       TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
       timeseriesMetaData.setMeasurementId(path.getMeasurement());
@@ -289,14 +289,14 @@ public class TsFileIOWriter {
       }
       timeseriesMetaData.setStatistics(seriesStatistics);
       timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetadataListLength);
-      deviceTimeseriesMetadataMap.computeIfAbsent(deviceId, k -> new ArrayList<>())
+      deviceTimeseriesMetadataMap.computeIfAbsent(device, k -> new ArrayList<>())
           .add(timeseriesMetaData);
     }
     // create DeviceMetaDataMap device -> Pair<TimeseriesMetaDataOffset, TimeseriesMetaDataLength> 
     Map<String, Pair<Long, Integer>> deviceMetadataMap = new HashMap<>();
     for (Map.Entry<String, List<TimeseriesMetadata>> entry : deviceTimeseriesMetadataMap
         .entrySet()) {
-      String deviceId = entry.getKey();
+      String device = entry.getKey();
       List<TimeseriesMetadata> timeseriesMetadataList = entry.getValue();
       long offsetOfFirstTimeseriesMetaDataInDevice = out.getPosition();
       int size = 0;
@@ -304,7 +304,7 @@ public class TsFileIOWriter {
         size += timeseriesMetaData.serializeTo(out.wrapAsStream());
       }
       deviceMetadataMap
-          .put(deviceId, new Pair<Long, Integer>(offsetOfFirstTimeseriesMetaDataInDevice, size));
+          .put(device, new Pair<Long, Integer>(offsetOfFirstTimeseriesMetaDataInDevice, size));
     }
     // return
     return deviceMetadataMap;
@@ -325,8 +325,8 @@ public class TsFileIOWriter {
     Map<String, List<ChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
     for (Map.Entry<Path, List<ChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
       Path path = entry.getKey();
-      String deviceId = path.getDevice();
-      deviceChunkMetadataMap.computeIfAbsent(deviceId, k -> new ArrayList<>())
+      String device = path.getDevice();
+      deviceChunkMetadataMap.computeIfAbsent(device, k -> new ArrayList<>())
           .addAll(entry.getValue());
     }
     return deviceChunkMetadataMap;
@@ -382,16 +382,16 @@ public class TsFileIOWriter {
     chunkStartTimes.forEach((p, t) -> startTimeIdxes.put(p, 0));
 
     for (Map.Entry<Path, List<ChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
-      List<ChunkMetadata> chunkMetadataList = entry.getValue();
+      List<ChunkMetadata> chunkMetadatas = entry.getValue();
       Path path = entry.getKey();
-      int chunkNum = chunkMetadataList.size();
-      for (ChunkMetadata chunkMetaData : chunkMetadataList) {
+      int chunkNum = chunkMetadatas.size();
+      for (ChunkMetadata chunkMetaData : chunkMetadatas) {
         int startTimeIdx = startTimeIdxes.get(path);
         List<Long> pathChunkStartTimes = chunkStartTimes.get(path);
         boolean chunkValid = startTimeIdx < pathChunkStartTimes.size()
             && pathChunkStartTimes.get(startTimeIdx) == chunkMetaData.getStartTime();
         if (!chunkValid) {
-          chunkMetadataList.remove(chunkMetaData);
+          chunkMetadatas.remove(chunkMetaData);
           chunkNum--;
           invalidChunkNum++;
         } else {

@@ -16,31 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.flush;
 
-import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
-import org.apache.iotdb.db.engine.memtable.IMemTable;
-import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+package org.apache.iotdb.hadoop.tsfile;
 
-/**
- * Only used in sync flush and async close to start a flush task
- * This memtable is not managed by MemTablePool and does not store any data.
- */
-public class NotifyFlushMemTable extends AbstractMemTable {
+public class Constant {
 
-  @Override
-  protected IWritableMemChunk genMemSeries(MeasurementSchema schema) {
-    return null;
-  }
+  public static final String SENSOR_PREFIX = "sensor_";
+  public static final String DEVICE_1 = "device_1";
 
-  @Override
-  public IMemTable copy() {
-    return null;
-  }
-
-  @Override
-  public boolean isSignalMemTable() {
-    return true;
-  }
 }

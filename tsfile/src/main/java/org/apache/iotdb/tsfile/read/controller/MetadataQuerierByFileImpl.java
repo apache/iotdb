@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read.controller;
 
 import java.util.Map.Entry;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
-import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -177,7 +176,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
     TreeMap<String, Set<String>> deviceMeasurementsMap = new TreeMap<>();
     for (Path path : paths) {
-      deviceMeasurementsMap.computeIfAbsent(path.getDevice(), (key) -> new HashSet<>()).add(path.getMeasurement());
+      deviceMeasurementsMap.computeIfAbsent(path.getDevice(), key -> new HashSet<>()).add(path.getMeasurement());
     }
     for (Map.Entry<String, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
       String selectedDevice = deviceMeasurements.getKey();

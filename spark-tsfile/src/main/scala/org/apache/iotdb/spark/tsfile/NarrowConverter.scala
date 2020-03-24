@@ -70,7 +70,6 @@ object NarrowConverter extends Converter {
     files.foreach(f => {
       val in = new HDFSInput(f.getPath, conf)
       val reader = new TsFileSequenceReader(in)
-      val tsFileMetaData = reader.readFileMetadata
       val measurements = reader.getAllMeasurements
 
       measurements.foreach(m => {

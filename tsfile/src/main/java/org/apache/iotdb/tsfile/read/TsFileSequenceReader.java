@@ -342,7 +342,7 @@ public class TsFileSequenceReader implements AutoCloseable {
 
     while (buffer.hasRemaining()) {
       ChunkMetadata chunkMetadata = ChunkMetadata.deserializeFrom(buffer);
-      seriesMetadata.computeIfAbsent(chunkMetadata.getMeasurementUid(), (key) -> new ArrayList<>())
+      seriesMetadata.computeIfAbsent(chunkMetadata.getMeasurementUid(), key -> new ArrayList<>())
           .add(chunkMetadata);
     }
 
@@ -517,7 +517,6 @@ public class TsFileSequenceReader implements AutoCloseable {
       resourceLogger.info("{} reader is closed.", file);
     }
     this.tsFileInput.close();
-    // deviceMetadataMap = null;
   }
 
   public String getFileName() {
@@ -759,11 +758,11 @@ public class TsFileSequenceReader implements AutoCloseable {
    * get all measurements in this file
    * @return measurement -> datatype
    */
-  public HashMap<String, TSDataType> getAllMeasurements() throws IOException{
+  public Map<String, TSDataType> getAllMeasurements() throws IOException{
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
-    HashMap<String, TSDataType> result = new HashMap<>();
+    Map<String, TSDataType> result = new HashMap<>();
     for (Map.Entry<String, Pair<Long, Integer>> entry : tsFileMetaData.getDeviceMetadataIndex()
         .entrySet()) {
       // read TimeseriesMetaData from file

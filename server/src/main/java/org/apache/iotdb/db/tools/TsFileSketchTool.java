@@ -150,13 +150,6 @@ public class TsFileSketchTool {
       printlnBoth(pw,
           String.format("%20s", "") + "|\t\t" + tsFileMetaData.getDeviceMetadataIndex().size()
               + " key&TsDeviceMetadataIndex");
-      // boolean createByIsNotNull = (tsFileMetaData.getCreatedBy() != null);
-      // printlnBoth(pw,
-      //    String.format("%20s", "") + "|\t\t[createBy isNotNull] " + createByIsNotNull);
-      // if (createByIsNotNull) {
-      //  printlnBoth(pw,
-      //      String.format("%20s", "") + "|\t\t[createBy] " + tsFileMetaData.getCreatedBy());
-      // }
       printlnBoth(pw,
           String.format("%20s", "") + "|\t\t[totalChunkNum] " + tsFileMetaData.getTotalChunkNum());
       printlnBoth(pw,

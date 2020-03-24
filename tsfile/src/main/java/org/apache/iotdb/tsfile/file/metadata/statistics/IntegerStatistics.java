@@ -56,7 +56,7 @@ public class IntegerStatistics extends Statistics<Integer> {
     this.sumValue = sum;
   }
 
-  private void updateStats(int minValue, int maxValue, int firstValue, int lastValue, double sumValue) {
+  private void updateStats(int minValue, int maxValue, int lastValue, double sumValue) {
     if (minValue < this.minValue) {
       this.minValue = minValue;
     }
@@ -79,7 +79,7 @@ public class IntegerStatistics extends Statistics<Integer> {
       initializeStats(value, value, value, value, value);
       isEmpty = false;
     } else {
-      updateStats(value, value, value, value, value);
+      updateStats(value, value, value, value);
       isEmpty = false;
     }
   }
@@ -124,7 +124,7 @@ public class IntegerStatistics extends Statistics<Integer> {
           intStats.getSumValue());
       isEmpty = false;
     } else {
-      updateStats(intStats.getMinValue(), intStats.getMaxValue(), intStats.getFirstValue(), intStats.getLastValue(),
+      updateStats(intStats.getMinValue(), intStats.getMaxValue(), intStats.getLastValue(),
           intStats.getSumValue());
     }
 

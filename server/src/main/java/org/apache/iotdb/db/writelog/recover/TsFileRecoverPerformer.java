@@ -203,7 +203,7 @@ public class TsFileRecoverPerformer {
         tableFlushTask.syncFlushMemTable();
       }
 
-      if (!isLastFile || isLastFile && resource.isCloseFlagSet()) {
+      if (!isLastFile || resource.isCloseFlagSet()) {
         // end the file if it is not the last file or it is closed before crush
         restorableTsFileIOWriter.endFile();
         resource.cleanCloseFlag();

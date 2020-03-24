@@ -598,7 +598,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void createSchemaAutomatically(Map<Path, List<ChunkMetadata>> chunkMetaDataListMap,
       Map<Path, MeasurementSchema> knownSchemas, int sgLevel)
-      throws QueryProcessException, MetadataException, StorageEngineException {
+      throws QueryProcessException, MetadataException {
     if (chunkMetaDataListMap.isEmpty()) {
       return;
     }

@@ -36,6 +36,10 @@ import org.slf4j.LoggerFactory;
 
 public class SchemaUtils {
 
+  private SchemaUtils() {
+
+  }
+
   private static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
 
   public static void registerTimeseries(MeasurementSchema schema) {
@@ -55,7 +59,9 @@ public class SchemaUtils {
     }
 
   }
-  public static List<TSDataType> getSeriesTypesByPath(Collection<Path> paths) throws MetadataException {
+
+  public static List<TSDataType> getSeriesTypesByPath(Collection<Path> paths)
+      throws MetadataException {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : paths) {
       dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
@@ -64,7 +70,6 @@ public class SchemaUtils {
   }
 
   /**
-   *
    * @param paths time series paths
    * @param aggregation aggregation function, may be null
    * @return The data type of aggregation or (data type of paths if aggregation is null)
@@ -110,7 +115,6 @@ public class SchemaUtils {
   }
 
   /**
-   *
    * @param aggregation aggregation function
    * @return the data type of the aggregation or null if it aggregation is null
    */
