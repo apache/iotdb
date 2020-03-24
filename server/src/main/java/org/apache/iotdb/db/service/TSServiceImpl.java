@@ -1312,7 +1312,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   public static List<SqlArgument> getSqlArgumentList() {
-    return sqlArgumentList;
+    List<SqlArgument> readCopy;
+    synchronized (sqlArgumentList) {
+      readCopy = new ArrayList<>(sqlArgumentList);
+    }
+    return readCopy;
   }
 
   private long generateQueryId(boolean isDataQuery) {
