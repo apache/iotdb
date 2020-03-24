@@ -91,7 +91,7 @@ public class MetricsPage {
     String errMsg;
     int statusCode;
 
-    List<SqlArgument> readCopy = new ArrayList<>(TSServiceImpl.getSqlArgumentList());
+    List<SqlArgument> readCopy = TSServiceImpl.getSqlArgumentList();
     for (int i = (readCopy.size() - 1); i >= 0; i--) {
       sqlArgument = readCopy.get(i);
       resp = sqlArgument.getTSExecuteStatementResp();
