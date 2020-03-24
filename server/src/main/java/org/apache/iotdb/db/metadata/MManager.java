@@ -853,6 +853,12 @@ public class MManager {
     }
   }
 
+  /**
+   * Collect the timeseries schemas under "startingPath". Notice the measurements in the collected
+   * MeasurementSchemas are the full path here.
+   * @param startingPath
+   * @param timeseriesSchemas
+   */
   public void collectSeries(String startingPath, List<MeasurementSchema> timeseriesSchemas) {
     MNode mNode;
     try {

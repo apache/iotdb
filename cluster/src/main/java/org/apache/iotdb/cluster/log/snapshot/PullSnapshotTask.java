@@ -26,6 +26,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.exception.SnapshotApplicationException;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
@@ -94,7 +95,13 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
           logger.info("Received a snapshot {} from {}", result, previousHolders.get(nodeIndex));
         }
         for (Entry<Integer, T> entry : result.entrySet()) {
-          newMember.applySnapshot(entry.getValue());
+          try {
+            newMember.applySnapshot(entry.getValue());
+          } catch (SnapshotApplicationException e) {
+            logger.error("Apply snapshot failed, retry...", e);
+            Thread.sleep(ClusterConstant.PULL_SNAPSHOT_RETRY_INTERVAL);
+            return false;
+          }
         }
         return true;
       } else {

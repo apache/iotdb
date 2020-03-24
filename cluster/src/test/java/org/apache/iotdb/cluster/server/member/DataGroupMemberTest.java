@@ -49,6 +49,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
+import org.apache.iotdb.cluster.exception.SnapshotApplicationException;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
@@ -317,7 +318,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testApplySnapshot()
-      throws StorageEngineException, IOException, WriteProcessException {
+      throws StorageEngineException, IOException, WriteProcessException, SnapshotApplicationException {
     FileSnapshot snapshot = new FileSnapshot();
     List<MeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
@@ -343,7 +344,7 @@ public class DataGroupMemberTest extends MemberTest {
     processor.insert(insertPlan);
     processor.asyncCloseAllWorkingTsFileProcessors();
 
-    dataGroupMember.applySnapshot(snapshot;
+    dataGroupMember.applySnapshot(snapshot);
     assertEquals(3, processor.getSequenceFileTreeSet().size());
     assertEquals(0, processor.getUnSequenceFileList().size());
     Deletion deletion = new Deletion(new Path(TestUtils.getTestSg(0)), 0, 0);

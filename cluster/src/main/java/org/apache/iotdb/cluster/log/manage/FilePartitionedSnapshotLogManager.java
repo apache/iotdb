@@ -51,15 +51,20 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   }
 
   @Override
-  public void takeSnapshot() {
+  public void waitRemoteSnapshots() {
     synchronized (slotSnapshots) {
-      // make sure every remote snapshot is pulled before creating local snapshot
       for (Entry<Integer, FileSnapshot> entry : slotSnapshots.entrySet()) {
         if (entry.getValue() instanceof RemoteSnapshot) {
           ((RemoteSnapshot) entry.getValue()).getRemoteSnapshot();
         }
       }
     }
+  }
+
+  @Override
+  public void takeSnapshot() {
+    // make sure every remote snapshot is pulled before creating local snapshot
+    waitRemoteSnapshots();
 
     logger.info("Taking snapshots, flushing IoTDB");
     StorageEngine.getInstance().syncCloseAllProcessor();
