@@ -79,18 +79,15 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class RaftMember implements RaftService.AsyncIface {
 
-  ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
-
-  // the name of the member, to distinguish several members from the logs
-  String name;
-
-  // to choose nodes to join cluster request randomly
-  Random random = new Random();
   protected Node thisNode;
   // the nodes known by this node
   protected volatile List<Node> allNodes;
-
+  ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
+  // the name of the member, to distinguish several members from the logs
+  String name;
+  // to choose nodes to join cluster request randomly
+  Random random = new Random();
   AtomicLong term = new AtomicLong(0);
   volatile NodeCharacter character = NodeCharacter.ELECTOR;
   volatile Node leader;
@@ -101,27 +98,22 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   // the single thread pool that runs the heartbeat thread
   ExecutorService heartBeatService;
-
-  // the thread pool that runs catch-up tasks
-  private ExecutorService catchUpService;
-
-  // lastCatchUpResponseTime records when is the latest response of each node's catch-up. There
-  // should be only one catch-up task for each node to avoid duplication, but the task may
-  // time out and in that case, the next catch up should be enabled.
-  private Map<Node, Long> lastCatchUpResponseTime = new ConcurrentHashMap<>();
-
-  // the pool that provides reusable clients to connect to other RaftMembers. It will be initialized
-  // according to the implementation of the subclasses
-  private ClientPool clientPool;
-
-  // when the commit progress is updated by a heart beat, this object is notified so that we may
-  // know if this node is synchronized with the leader
-  private Object syncLock = new Object();
-
   // when the header of the group is removed from the cluster, the members of the group should no
   // longer accept writes, but they still can be read candidates for weak consistency reads and
   // provide snapshots for the new holders
   volatile boolean readOnly = false;
+  // the thread pool that runs catch-up tasks
+  private ExecutorService catchUpService;
+  // lastCatchUpResponseTime records when is the latest response of each node's catch-up. There
+  // should be only one catch-up task for each node to avoid duplication, but the task may
+  // time out and in that case, the next catch up should be enabled.
+  private Map<Node, Long> lastCatchUpResponseTime = new ConcurrentHashMap<>();
+  // the pool that provides reusable clients to connect to other RaftMembers. It will be initialized
+  // according to the implementation of the subclasses
+  private ClientPool clientPool;
+  // when the commit progress is updated by a heart beat, this object is notified so that we may
+  // know if this node is synchronized with the leader
+  private Object syncLock = new Object();
 
   public RaftMember() {
   }
@@ -266,6 +258,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    */
   private boolean checkRequestTerm(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
     long leaderTerm = request.getTerm();
+    return checkTerm(resultHandler, leaderTerm);
+  }
+
+  private boolean checkTerm(AsyncMethodCallback resultHandler, long leaderTerm) {
     long localTerm;
 
     synchronized (term) {
@@ -288,6 +284,21 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     logger.debug("{} accepted the AppendEntryRequest for term: {}", name, localTerm);
     return true;
   }
+
+  /**
+   * Check the term of the AppednEntryRequest. The term checked is the term of the leader, not the
+   * term of the log. A new leader can still send logs of old leaders.
+   *
+   * @param request
+   * @param resultHandler if the term is illegal, the "resultHandler" will be invoked so the caller
+   *                      does not need to invoke it again
+   * @return true if the term is legal, false otherwise
+   */
+  private boolean checkRequestTerm(AppendEntriesRequest request, AsyncMethodCallback resultHandler) {
+    long leaderTerm = request.getTerm();
+    return checkTerm(resultHandler, leaderTerm);
+  }
+
 
   /**
    * Find the local previous log of "log". If such log is found, discard all local logs behind it
@@ -377,7 +388,26 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   @Override
   public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback resultHandler) {
-    //TODO-Cluster#354: implement
+    logger.debug("{} received an AppendEntriesRequest", name);
+
+    // the term checked here is that of the leader, not that of the log
+    if (!checkRequestTerm(request, resultHandler)) {
+      return;
+    }
+
+    try {
+      long response = 0;
+      for (ByteBuffer buffer : request.getEntries()) {
+        Log log = LogParser.getINSTANCE().parse(buffer);
+        response = appendEntry(log);
+      }
+
+      resultHandler.onComplete(response);
+      logger.debug("{} AppendEntriesRequest of log size {} completed", name,
+          request.getEntries().size());
+    } catch (UnknownLogTypeException e) {
+      resultHandler.onError(e);
+    }
   }
 
   /**
@@ -470,10 +500,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return AppendLogResult.OK;
   }
 
-  enum AppendLogResult {
-    OK, TIME_OUT, LEADERSHIP_STALE
-  }
-
   /**
    * Get an asynchronous thrift client to the given node.
    *
@@ -494,9 +520,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return client;
   }
 
-  public void setThisNode(Node thisNode) {
-    this.thisNode = thisNode;
-    allNodes.add(thisNode);
+  public NodeCharacter getCharacter() {
+    return character;
   }
 
   public void setCharacter(NodeCharacter character) {
@@ -504,28 +529,24 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     this.character = character;
   }
 
-  public NodeCharacter getCharacter() {
-    return character;
-  }
-
   public AtomicLong getTerm() {
     return term;
-  }
-
-  public long getLastHeartbeatReceivedTime() {
-    return lastHeartbeatReceivedTime;
-  }
-
-  public Node getLeader() {
-    return leader;
   }
 
   public void setTerm(AtomicLong term) {
     this.term = term;
   }
 
+  public long getLastHeartbeatReceivedTime() {
+    return lastHeartbeatReceivedTime;
+  }
+
   public void setLastHeartbeatReceivedTime(long lastHeartbeatReceivedTime) {
     this.lastHeartbeatReceivedTime = lastHeartbeatReceivedTime;
+  }
+
+  public Node getLeader() {
+    return leader;
   }
 
   public void setLeader(Node leader) {
@@ -539,8 +560,17 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return thisNode;
   }
 
+  public void setThisNode(Node thisNode) {
+    this.thisNode = thisNode;
+    allNodes.add(thisNode);
+  }
+
   public Collection<Node> getAllNodes() {
     return allNodes;
+  }
+
+  public void setAllNodes(List<Node> allNodes) {
+    this.allNodes = allNodes;
   }
 
   public Map<Node, Long> getLastCatchUpResponseTime() {
@@ -1018,7 +1048,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
-  public void setAllNodes(List<Node> allNodes) {
-    this.allNodes = allNodes;
+  enum AppendLogResult {
+    OK, TIME_OUT, LEADERSHIP_STALE
   }
 }
