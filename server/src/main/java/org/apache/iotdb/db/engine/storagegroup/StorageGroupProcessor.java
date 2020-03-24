@@ -1616,7 +1616,7 @@ public class StorageGroupProcessor {
       } else {
 
         // check whether the file name needs to be renamed.
-        if (insertPos != sequenceFileTreeSet.size() - 1 || insertPos != -1) {
+        if (!sequenceFileTreeSet.isEmpty()) {
           String newFileName = getFileNameForLoadingFile(tsfileToBeInserted.getName(), insertPos,
               getTimePartitionFromTsFileResource(newTsFileResource));
           if (!newFileName.equals(tsfileToBeInserted.getName())) {
