@@ -2450,7 +2450,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     throw new StorageEngineException(
         new RequestTimeOutException("Query " + path + " in " + partitionGroup));
-  }
+}
 
 
 }
