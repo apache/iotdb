@@ -1655,7 +1655,7 @@ public class StorageGroupProcessor {
    */
   private int findInsertionPosition(TsFileResource newTsFileResource) {
     File tsfileToBeInserted = newTsFileResource.getFile();
-    long newFilePartitionId = Long.parseLong(tsfileToBeInserted.getParent());
+    long newFilePartitionId = Long.parseLong(tsfileToBeInserted.getParentFile().getName());
     int insertPos = -1;
 
     List<TsFileResource> sequenceList = new ArrayList<>(sequenceFileTreeSet);
@@ -1665,7 +1665,7 @@ public class StorageGroupProcessor {
       if (localFile.getFile().getName().equals(tsfileToBeInserted.getName())) {
         return POS_ALREADY_EXIST;
       }
-      long localPartitionId = Long.parseLong(localFile.getFile().getParent());
+      long localPartitionId = Long.parseLong(localFile.getFile().getParentFile().getName());
       if (i == sequenceList.size() - 1 && localFile.getEndTimeMap().isEmpty()
           || newFilePartitionId != localPartitionId) {
         // skip files that are not in the partition as the new file and the last empty file
@@ -1709,10 +1709,10 @@ public class StorageGroupProcessor {
       long endTimeB = fileB.getEndTimeMap().get(device);
       if (startTimeA > endTimeB) {
         // A's data of the device is later than to the B's data
-        hasSubsequence = true;
+        hasPre = true;
       } else if (startTimeB > endTimeA) {
         // A's data of the device is previous to the B's data
-        hasPre = true;
+        hasSubsequence = true;
       } else {
         // the two files overlap in the device
         return 0;
@@ -1933,6 +1933,8 @@ public class StorageGroupProcessor {
           syncedResourceFile.getAbsolutePath(), targetResourceFile.getAbsolutePath(),
           e.getMessage()));
     }
+    partitionDirectFileVersions.computeIfAbsent(timeRangeId,
+        p -> new HashSet<>()).addAll(tsFileResource.getHistoricalVersions());
     return true;
   }
 
