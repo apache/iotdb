@@ -26,7 +26,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
@@ -56,10 +59,10 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private IExpression expression;
 
   private List<String> measurements;
-  private Map<String, Set<String>> deviceToMeasurementsMap;
+  private List<String> devices;
   private Map<String, IExpression> deviceToFilterMap;
   private Map<String, MeasurementType> measurementTypeMap;
-
+  private Map<String, TSDataType> measurementDataTpeMap;
 
   private GroupByPlan groupByPlan;
   private FillQueryPlan fillQueryPlan;
@@ -67,10 +70,9 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private RawDataQueryPlan rawDataQueryPlan;
 
   private boolean curDataSetInitialized;
-  private Iterator<String> deviceIterator;
   private String currentDevice;
   private QueryDataSet currentDataSet;
-  private Map<Path, TSDataType> tsDataTypeMap;
+  private Iterator<String> deviceIterator;
   private List<String> executeColumns;
 
   public AlignByDeviceDataSet(AlignByDevicePlan alignByDevicePlan, QueryContext context,
@@ -78,10 +80,10 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     super(null, alignByDevicePlan.getDataTypes());
 
     this.measurements = alignByDevicePlan.getMeasurements();
-    this.tsDataTypeMap = alignByDevicePlan.getDataTypeMapping();
+    this.devices = alignByDevicePlan.getDevices();
+    this.measurementDataTpeMap = alignByDevicePlan.getMeasurementDataTypeMap();
     this.queryRouter = queryRouter;
     this.context = context;
-    this.deviceToMeasurementsMap = alignByDevicePlan.getDeviceToMeasurementsMap();
     this.deviceToFilterMap = alignByDevicePlan.getDeviceToFilterMap();
     this.measurementTypeMap = alignByDevicePlan.getMeasurementTypeMap();
 
@@ -104,7 +106,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     }
 
     this.curDataSetInitialized = false;
-    this.deviceIterator = deviceToMeasurementsMap.keySet().iterator();
+    this.deviceIterator = devices.iterator();
   }
 
   protected boolean hasNextWithoutConstraint() throws IOException {
@@ -116,25 +118,32 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
     while (deviceIterator.hasNext()) {
       currentDevice = deviceIterator.next();
-      Set<String> measurementColumnsOfGivenDevice = deviceToMeasurementsMap
-          .get(currentDevice);
-      executeColumns = new ArrayList<>(measurementColumnsOfGivenDevice);
-
-      // extract paths and aggregations if exist from executeColumns
+      // get all measurements of current device
+      Set<String> measurementOfGivenDevice;
+      try {
+        MNode deviceNode = MManager.getInstance().getNodeByPath(currentDevice);
+        measurementOfGivenDevice = deviceNode.getChildren().keySet();
+      } catch (MetadataException e) {
+        throw new IOException("Cannot get node from " + currentDevice);
+      }
+      // extract paths and aggregations queried from all measurements
+      // executeColumns is for calculating rowRecord
+      executeColumns = new ArrayList<>();
       List<Path> executePaths = new ArrayList<>();
       List<TSDataType> tsDataTypes = new ArrayList<>();
       List<String> executeAggregations = new ArrayList<>();
-      for (String column : executeColumns) {
+      for (String column : measurementDataTpeMap.keySet()) {
+        String measurement = column;
         if (dataSetType == DataSetType.GROUPBY || dataSetType == DataSetType.AGGREGATE) {
-          Path path = new Path(currentDevice,
-              column.substring(column.indexOf('(') + 1, column.indexOf(')')));
-          tsDataTypes.add(tsDataTypeMap.get(path));
-          executePaths.add(path);
-          executeAggregations.add(column.substring(0, column.indexOf('(')));
-        } else {
-          Path path = new Path(currentDevice, column);
-          tsDataTypes.add(tsDataTypeMap.get(path));
-          executePaths.add(path);
+          measurement = column.substring(column.indexOf('(') + 1, column.indexOf(')'));
+          if (measurementOfGivenDevice.contains(measurement)) {
+            executeAggregations.add(column.substring(0, column.indexOf('(')));
+          }
+        }
+        if (measurementOfGivenDevice.contains(measurement)) {
+          executeColumns.add(column);
+          executePaths.add(new Path(currentDevice, measurement));
+          tsDataTypes.add(measurementDataTpeMap.get(column));
         }
       }
 
