@@ -26,9 +26,9 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
-import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.slf4j.Logger;
@@ -139,7 +139,7 @@ public class FileLoader implements IFileLoader {
       StorageEngine.getInstance().loadNewTsFileForSync(tsFileResource);
     } catch (SyncDeviceOwnerConflictException e) {
       LOGGER.error("Device owner has conflicts, so skip the loading file", e);
-    } catch (TsFileProcessorException | StorageEngineException e) {
+    } catch (LoadFileException | StorageEngineException e) {
       LOGGER.error("Can not load new tsfile {}", newTsFile.getAbsolutePath(), e);
       throw new IOException(e);
     }

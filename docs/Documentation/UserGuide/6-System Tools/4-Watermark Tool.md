@@ -21,8 +21,6 @@ under the License.
 
 -->
 
-# Chapter 6: System Tools
-
 # Watermark Tool
 
 This tool has two functions: 1) watermark embedding of the IoTDB query result and 2) watermark detection of the suspected data.

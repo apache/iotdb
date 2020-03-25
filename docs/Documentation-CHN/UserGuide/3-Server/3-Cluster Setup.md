@@ -18,8 +18,7 @@
     under the License.
 
 -->
-# 第3章: 服务器端
 
-## 集群设置
+# 集群设置
 
 Coming Soon.

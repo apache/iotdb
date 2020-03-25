@@ -48,7 +48,7 @@ The following introduces the producer's code first. It is encapsulated in an int
 `ReadTask` has two fields
 
 * private final ManagedSeriesReader reader;
-* private BlockingQueue<BatchData> blockingQueue;
+* private BlockingQueue\<BatchData\> blockingQueue;
 
 The `ManagedSeriesReader` interface inherits the IBatchReader interface, which is mainly used to read data from a single time series, and adds the following four methods
 
@@ -120,11 +120,11 @@ Next, introduce the code of the consumer. The main logic of the consumer is to t
 
 First introduce some important fields of consumer tasks
 
-* TreeSet<Long> timeHeap
+* TreeSet\<Long\> timeHeap
 
   The smallest heap of timestamps for timestamp alignment
 
-* BlockingQueue<BatchData>[] blockingQueueArray;
+* BlockingQueue\<BatchData\>[] blockingQueueArray;
 
   An array of blocking queues to store the blocking queues corresponding to each time series
 
@@ -252,7 +252,7 @@ Its query logic is to first generate a timestamp that meets the filtering condit
 
   Is used to generate timestamps that satisfy the filter
   
-* private List<IReaderByTimestamp> seriesReaderByTimestampList;
+* private List\<IReaderByTimestamp\> seriesReaderByTimestampList;
 
   Reader for each time series, used to get data based on timestamp
 

@@ -64,7 +64,7 @@ The following will be explained according to the specific process:
 
 Unlike the original data query, the alignment by device query does not concatenate the suffix paths in the SELECT statement and the WHERE statement at this stage, but when the physical plan is subsequently generated, the mapping value and filter conditions corresponding to each device are calculated.  Therefore, the work done at this stage by device alignment only includes optimization of filter conditions in WHERE statements.
 
-The optimization of the filtering conditions mainly includes three parts: removing the negation, transforming the disjunction paradigm, and merging the same path filtering conditions.  The corresponding optimizers are: RemoveNotOptimizer, DnfFilterOptimizer, MergeSingleFilterOptimizer.  This part of the logic can refer to:[Planner](/#/SystemDesign/progress/chap2/sec2).
+The optimization of the filtering conditions mainly includes three parts: removing the negation, transforming the disjunction paradigm, and merging the same path filtering conditions.  The corresponding optimizers are: RemoveNotOptimizer, DnfFilterOptimizer, MergeSingleFilterOptimizer.  This part of the logic can refer to:[Planner](/document/master/SystemDesign/2-QueryEngine/2-Planner.html).
 
 ### Physical plan generation
 
@@ -186,7 +186,7 @@ The specific implementation logic is as follows:
 1. First determine whether the current result set is initialized and there is a next result. If it is, it returns true directly, that is, you can call the next () method to get the next RowRecord; otherwise, the result set is not initialized and proceeds to step 2.
 2. Iterate deviceIterator to get the devices needed for this execution, and then get the corresponding measurement points in the deviceToMeasurementsMap to get executeColumns.
 3. Concatenate the current device name and measurements to calculate the query path, data type, and filter conditions of the current device. The corresponding fields are `executePaths`,` tsDataTypes`, and `expression`. If it is an aggregate query, you need to calculate` executeAggregations`  .
-4. Determine whether the current subquery type is GroupByQuery, AggregationQuery, FillQuery or RawDataQuery. Perform the corresponding query and return the result set. The implementation logic [Raw data query](/#/SystemDesign/progress/chap5/sec3)，[Aggregate query](/#/SystemDesign/progress/chap5/sec4)，[Downsampling query](/#/SystemDesign/progress/chap5/sec5)  can be referenced.
+4. Determine whether the current subquery type is GroupByQuery, AggregationQuery, FillQuery or RawDataQuery. Perform the corresponding query and return the result set. The implementation logic [Raw data query](/document/master/SystemDesign/5-DataQuery/3-RawDataQuery.html)，[Aggregate query](/document/master/SystemDesign/5-DataQuery/4-AggregationQuery.html)，[Downsampling query](/document/master/SystemDesign/5-DataQuery/5-GroupByQuery.html)  can be referenced.
 
 After initializing the result set through the `hasNextWithoutConstraint ()` method and ensuring that there is a next result, you can call `QueryDataSet.next ()` method to get the next `RowRecord`.
 
