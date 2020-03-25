@@ -1725,7 +1725,7 @@ public class StorageGroupProcessor {
           return POS_OVERLAP;
         case -1:
           // all devices in the local file are newer than the new file, the new file can be
-          // inserted before the new file
+          // inserted before the local file
           return i - 1;
         default:
           // all devices in the local file are older than the new file, proceed to the next file
