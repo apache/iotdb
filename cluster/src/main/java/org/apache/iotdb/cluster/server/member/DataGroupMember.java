@@ -803,6 +803,18 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     resultHandler.onComplete(resp);
   }
 
+  /**
+   * Create an IPointReader of "path" with “timeFilter” and "valueFilter". A synchronization with
+   * the leader will be performed first to preserve strong consistency.
+   * TODO-Cluster: also support weak consistency
+   * @param path
+   * @param dataType
+   * @param timeFilter nullable
+   * @param valueFilter nullable
+   * @param context
+   * @return
+   * @throws StorageEngineException
+   */
   IPointReader getSeriesPointReader(Path path, TSDataType dataType, Filter timeFilter,
       Filter valueFilter, QueryContext context)
       throws StorageEngineException {
@@ -815,18 +827,44 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
+  /**
+   * Create an IBatchReader of "path" with “timeFilter” and "valueFilter". A synchronization with
+   * the leader will be performed first to preserve strong consistency.
+   * TODO-Cluster: also support weak consistency
+   * @param path
+   * @param dataType
+   * @param timeFilter nullable
+   * @param valueFilter nullable
+   * @param context
+   * @return an IBatchReader or null if there is no satisfying data
+   * @throws StorageEngineException
+   */
   IBatchReader getSeriesBatchReader(Path path, TSDataType dataType, Filter timeFilter,
       Filter valueFilter, QueryContext context)
       throws StorageEngineException {
     // pull the newest data
     if (syncLeader()) {
-      return new SeriesRawDataBatchReader(getSeriesReader(path, dataType, timeFilter,
-          valueFilter, context));
+      SeriesReader seriesReader = getSeriesReader(path, dataType, timeFilter, valueFilter, context);
+      if (seriesReader.isEmpty()) {
+        return null;
+      }
+      return new SeriesRawDataBatchReader(seriesReader);
     } else {
       throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
     }
   }
 
+  /**
+   * Create a SeriesReader of "path" with “timeFilter” and "valueFilter". The consistency is not
+   * guaranteed here and only data slots managed by the member will be queried.
+   * @param path
+   * @param dataType
+   * @param timeFilter nullable
+   * @param valueFilter nullable
+   * @param context
+   * @return
+   * @throws StorageEngineException
+   */
   private SeriesReader getSeriesReader(Path path, TSDataType dataType, Filter timeFilter,
       Filter valueFilter, QueryContext context) throws StorageEngineException {
     List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
@@ -836,16 +874,37 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         timeFilter, valueFilter, new SlotTsFileFilter(nodeSlots));
   }
 
+  /**
+   * Create an IReaderByTimestamp of "path". A synchronization with the leader will be performed
+   * first to preserve strong consistency.
+   * TODO-Cluster: also support weak consistency
+   * @param path
+   * @param dataType
+   * @param context
+   * @return an IReaderByTimestamp or null if there is no satisfying data
+   * @throws StorageEngineException
+   */
   IReaderByTimestamp getReaderByTimestamp(Path path, TSDataType dataType, QueryContext context)
       throws StorageEngineException {
     if (syncLeader()) {
-      return new SeriesReaderByTimestamp(getSeriesReader(path, dataType, TimeFilter.gtEq(Long.MIN_VALUE),
-          null, context));
+      SeriesReader seriesReader = getSeriesReader(path, dataType, TimeFilter.gtEq(Long.MIN_VALUE),
+          null, context);
+      if (seriesReader.isEmpty()) {
+        return null;
+      }
+      return new SeriesReaderByTimestamp(seriesReader);
     } else {
       throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
     }
   }
 
+  /**
+   * Create an IBatchReader of a path, register it in the query manager to get a reader id for it
+   * and send the id back to the requester. If the reader does not have any data, an id of -1
+   * will be returned.
+   * @param request
+   * @param resultHandler
+   */
   @Override
   public void querySingleSeries(SingleSeriesQueryRequest request,
       AsyncMethodCallback<Long> resultHandler) {
@@ -867,6 +926,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       valueFilter = FilterFactory.deserialize(request.valueFilterBytes);
     }
 
+    // the same query from a requester correspond to a context here
     RemoteQueryContext queryContext = getQueryManager().getQueryContext(request.getRequester(),
         request.getQueryId());
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
@@ -875,7 +935,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       IBatchReader batchReader = getSeriesBatchReader(path, dataType, timeFilter,
           valueFilter, queryContext);
 
-      if (batchReader.hasNextBatch()) {
+      // if the reader contains no data, send a special id of -1 to prevent the requester from
+      // meaninglessly fetching data
+      if (batchReader != null && batchReader.hasNextBatch()) {
         long readerId = getQueryManager().registerReader(batchReader);
         queryContext.registerLocalReader(readerId);
         logger.debug("{}: Build a reader of {} for {}#{}, readerId: {}", name, path,
@@ -885,13 +947,22 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         logger.debug("{}: There is no data {} for {}#{}", name, path,
             request.getRequester(), request.getQueryId());
         resultHandler.onComplete(-1L);
-        batchReader.close();
+        if (batchReader != null) {
+          batchReader.close();
+        }
       }
     } catch (IOException | StorageEngineException e) {
       resultHandler.onError(e);
     }
   }
 
+  /**
+   * Create an IReaderByTime of a path, register it in the query manager to get a reader id for it
+   * and send the id back to the requester. If the reader does not have any data, an id of -1
+   * will be returned.
+   * @param request
+   * @param resultHandler
+   */
   @Override
   public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
       AsyncMethodCallback<Long> resultHandler) {
@@ -911,17 +982,31 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         request.getPath(), queryContext.getQueryId());
     try {
       IReaderByTimestamp readerByTimestamp = getReaderByTimestamp(path, dataType, queryContext);
-      long readerId = getQueryManager().registerReaderByTime(readerByTimestamp);
-      queryContext.registerLocalReader(readerId);
+      if (readerByTimestamp != null) {
+        long readerId = getQueryManager().registerReaderByTime(readerByTimestamp);
+        queryContext.registerLocalReader(readerId);
 
-      logger.debug("{}: Build a readerByTimestamp of {} for {}, readerId: {}", name, path,
-          request.getRequester(), readerId);
-      resultHandler.onComplete(readerId);
+        logger.debug("{}: Build a readerByTimestamp of {} for {}, readerId: {}", name, path,
+            request.getRequester(), readerId);
+        resultHandler.onComplete(readerId);
+      } else {
+        logger.debug("{}: There is no data {} for {}#{}", name, path,
+            request.getRequester(), request.getQueryId());
+        resultHandler.onComplete(-1L);
+      }
     } catch (StorageEngineException e) {
       resultHandler.onError(e);
     }
   }
 
+  /**
+   * Find the QueryContext related a query of "queryId" in "requester" and release all resources
+   * of the context.
+   * @param header
+   * @param requester
+   * @param queryId
+   * @param resultHandler
+   */
   @Override
   public void endQuery(Node header, Node requester, long queryId,
       AsyncMethodCallback<Void> resultHandler) {
@@ -933,6 +1018,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
+  /**
+   * Return the data of the reader whose id is "readerId", using timestamps in "timeBuffer".
+   * @param header
+   * @param readerId
+   * @param timeBuffer the size of the timestamps is not serialized, every 8 bytes in the buffer
+   *                   is a timestamp
+   * @param resultHandler
+   */
   @Override
   public void fetchSingleSeriesByTimestamp(Node header, long readerId, ByteBuffer timeBuffer,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
@@ -942,7 +1035,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       return;
     }
     try {
-      logger.debug("{}: deserialize time from buffer {}", name, timeBuffer);
       long[] timestamps = SerializeUtils.deserializeLongs(timeBuffer);
       Object[] values = reader.getValuesInTimestamps(timestamps);
       if (values != null) {
@@ -959,6 +1051,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
+  /**
+   * Fetch a batch from the reader whose id is "readerId".
+   * @param header
+   * @param readerId
+   * @param resultHandler
+   */
   @Override
   public void fetchSingleSeries(Node header, long readerId,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
@@ -985,6 +1083,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
+  /**
+   * Get the local paths that match any path in "paths". The result is not deduplicated.
+   * @param header
+   * @param paths paths potentially contain wildcards
+   * @param resultHandler
+   */
   @Override
   public void getAllPaths(Node header, List<String> paths,
       AsyncMethodCallback<List<String>> resultHandler) {
@@ -999,6 +1103,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
+  /**
+   * Get the local devices that match any path in "paths". The result is deduplicated.
+   * @param header
+   * @param paths paths potentially contain wildcards
+   * @param resultHandler
+   */
   @Override
   public void getAllDevices(Node header, List<String> paths,
       AsyncMethodCallback<Set<String>> resultHandler) {
@@ -1034,6 +1144,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         // update the group if the deleted node was in it
         allNodes = metaGroupMember.getPartitionTable().getHeaderGroup(getHeader());
         if (removedNode.equals(leader)) {
+          // if the leader is removed, also start an election immediately
           synchronized (term) {
             setCharacter(NodeCharacter.ELECTOR);
             setLastHeartbeatReceivedTime(Long.MIN_VALUE);
@@ -1048,6 +1159,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
+  /**
+   * Generate a report containing the character, leader, term, last log term, last log index,
+   * header and readOnly or not of this member.
+   * @return
+   */
   public DataMemberReport genReport() {
     return new DataMemberReport(character, leader, term.get(),
         logManager.getLastLogTerm(), logManager.getLastLogIndex(), getHeader(), readOnly);
@@ -1058,6 +1174,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     this.metaGroupMember = metaGroupMember;
   }
 
+  /**
+   * Get the nodes of a prefix "path" at "nodeLevel". The method currently requires strong
+   * consistency.
+   * @param header
+   * @param path
+   * @param nodeLevel
+   * @param resultHandler
+   */
   @Override
   public void getNodeList(Node header, String path, int nodeLevel,
       AsyncMethodCallback<List<String>> resultHandler) {
@@ -1072,6 +1196,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
+  /**
+   * Execute aggregations over the given path and return the results to the requester.
+   * @param request
+   * @param resultHandler
+   */
   @Override
   public void getAggrResult(GetAggrResultRequest request,
       AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
@@ -1088,22 +1217,24 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     RemoteQueryContext queryContext = queryManager
         .getQueryContext(request.getRequestor(), request.queryId);
 
+    // do the aggregations locally
     List<AggregateResult> results;
     try {
-       results = getAggrResult(aggregations, dataType, path, timeFilter,
-          queryContext);
-      logger.debug("{}: aggregation results {}, queryId: {}", name, results, request.getQueryId());
+       results = getAggrResult(aggregations, dataType, path, timeFilter, queryContext);
+       logger.trace("{}: aggregation results {}, queryId: {}", name, results, request.getQueryId());
     } catch (StorageEngineException | IOException | QueryProcessException | LeaderUnknownException e) {
       resultHandler.onError(e);
       return;
     }
+
+    // serialize and send the results
     List<ByteBuffer> resultBuffers = new ArrayList<>();
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     for (AggregateResult result : results) {
       try {
         result.serializeTo(byteArrayOutputStream);
       } catch (IOException e) {
-        // ignore
+        // ignore since we are using a ByteArrayOutputStream
       }
       resultBuffers.add(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       byteArrayOutputStream.reset();
@@ -1111,6 +1242,20 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     resultHandler.onComplete(resultBuffers);
   }
 
+  /**
+   * Execute "aggregation" over "path" with "timeFilter". This method currently requires strong
+   * consistency. Only data managed by this group will be used for aggregation.
+   * @param aggregations aggregation names in SQLConstant
+   * @param dataType
+   * @param path
+   * @param timeFilter nullable
+   * @param context
+   * @return
+   * @throws IOException
+   * @throws StorageEngineException
+   * @throws QueryProcessException
+   * @throws LeaderUnknownException
+   */
   public List<AggregateResult> getAggrResult(List<String> aggregations, TSDataType dataType, String path,
       Filter timeFilter, QueryContext context)
       throws IOException, StorageEngineException, QueryProcessException, LeaderUnknownException {
@@ -1133,7 +1278,18 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     super.logManager = logManager;
   }
 
-  public GroupByExecutor getGroupByExecutor(Path path, TSDataType dataType, Filter timeFilter,
+  /**
+   * Create a local GroupByExecutor that will run aggregations of "aggregationTypes" over "path"
+   * with "timeFilter". The method currently requires strong consistency.
+   * @param path
+   * @param dataType
+   * @param timeFilter nullable
+   * @param aggregationTypes ordinals of AggregationType
+   * @param context
+   * @return
+   * @throws StorageEngineException
+   */
+  public LocalGroupByExecutor getGroupByExecutor(Path path, TSDataType dataType, Filter timeFilter,
       List<Integer> aggregationTypes, QueryContext context) throws StorageEngineException {
     // pull the newest data
     if (syncLeader()) {
@@ -1150,6 +1306,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
+  /**
+   * Create a local GroupByExecutor that will run aggregations of "aggregationTypes" over "path"
+   * with "timeFilter", register it in the query manager to generate the executor id, and send it
+   * back to the requester.
+   * @param request
+   * @param resultHandler
+   */
   @Override
   public void getGroupByExecutor(GroupByRequest request, AsyncMethodCallback<Long> resultHandler) {
     Path path = new Path(request.getPath());
@@ -1162,20 +1325,36 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     long queryId = request.getQueryId();
     logger.debug("{}: {} is querying {} using group by, queryId: {}", name,
         request.getRequestor(), path, queryId);
+
     RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequestor(), queryId);
     try {
-      GroupByExecutor executor = getGroupByExecutor(path, dataType, timeFilter,
+      LocalGroupByExecutor executor = getGroupByExecutor(path, dataType, timeFilter,
           aggregationTypeOrdinals, queryContext);
-      long executorId = queryManager.registerGroupByExecutor(executor);
-      logger.debug("{}: Build a GroupByExecutor of {} for {}, executorId: {}", name, path,
-          request.getRequestor(), executor);
-      queryContext.registerLocalGroupByExecutor(executorId);
-      resultHandler.onComplete(executorId);
+      if (!executor.isEmpty()) {
+        long executorId = queryManager.registerGroupByExecutor(executor);
+        logger.debug("{}: Build a GroupByExecutor of {} for {}, executorId: {}", name, path,
+            request.getRequestor(), executor);
+        queryContext.registerLocalGroupByExecutor(executorId);
+        resultHandler.onComplete(executorId);
+      } else {
+        logger.debug("{}: There is no data {} for {}#{}", name, path,
+            request.getRequestor(), request.getQueryId());
+        resultHandler.onComplete(-1L);
+      }
     } catch (StorageEngineException e) {
       resultHandler.onError(e);
     }
   }
 
+  /**
+   * Fetch the aggregation results between [startTime, endTime] of the executor whose id is
+   * "executorId". This method currently requires strong consistency.
+   * @param header
+   * @param executorId
+   * @param startTime
+   * @param endTime
+   * @param resultHandler
+   */
   @Override
   public void getGroupByResult(Node header, long executorId, long startTime, long endTime,
       AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
