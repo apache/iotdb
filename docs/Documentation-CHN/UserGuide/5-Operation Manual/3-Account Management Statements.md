@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,36 +19,35 @@
 
 -->
 
-# 第5章 IoTDB操作指南
-
-## 账户管理语句
+# 账户管理语句
 
 IoTDB为用户提供了权限管理操作，从而为用户提供对于数据的权限管理功能，保障数据的安全。
 
-我们将通过以下几个具体的例子为您示范基本的用户权限操作，详细的SQL语句及使用方式详情请参见本文[第5.4节](/#/Documents/progress/chap5/sec4)。同时，在JAVA编程环境中，您可以使用[JDBC API](/#/Documents/progress/chap4/sec2)单条或批量执行权限管理类语句。
+我们将通过以下几个具体的例子为您示范基本的用户权限操作，详细的SQL语句及使用方式详情请参见本文[第5.4节](/zh/document/master/UserGuide/2-Concept/1-Data%20Model%20and%20Terminology.html)。同时，在JAVA编程环境中，您可以使用[JDBC API](/zh/document/master/UserGuide/4-Client/3-Programming%20-%20JDBC.html)单条或批量执行权限管理类语句。
 
-### 基本概念
-#### 用户
+## 基本概念
+
+### 用户
 
 用户即数据库的合法使用者。一个用户与一个唯一的用户名相对应，并且拥有密码作为身份验证的手段。一个人在使用数据库之前，必须先提供合法的（即存于数据库中的）用户名与密码，使得自己成为用户。
 
-#### 权限
+### 权限
 
 数据库提供多种操作，并不是所有的用户都能执行所有操作。如果一个用户可以执行某项操作，则称该用户有执行该操作的权限。权限可分为数据管理权限（如对数据进行增删改查）以及权限管理权限（用户、角色的创建与删除，权限的赋予与撤销等）。数据管理权限往往需要一个路径来限定其生效范围，它的生效范围是以该路径对应的节点为根的一颗子树（具体请参考IoTDB的数据组织）。
 
-#### 角色
+### 角色
 
 角色是若干权限的集合，并且有一个唯一的角色名作为标识符。用户通常和一个现实身份相对应（例如交通调度员），而一个现实身份可能对应着多个用户。这些具有相同现实身份的用户往往具有相同的一些权限。角色就是为了能对这样的权限进行统一的管理的抽象。
 
-#### 默认用户及其具有的角色
+### 默认用户及其具有的角色
 
 初始安装后的IoTDB中有一个默认用户：root，默认密码为root。该用户为管理员用户，固定拥有所有权限，无法被赋予、撤销权限，也无法被删除。
 
-### 权限操作示例 
+## 权限操作示例 
 
-根据本文中描述的[样例数据](/#/Documents/progress/chap5/sec1)内容，IoTDB的样例数据可能同时属于ln, sgcc等不同发电集团，不同的发电集团不希望其他发电集团获取自己的数据库数据，因此我们需要将不同的数据在集团层进行权限隔离。
+根据本文中描述的[样例数据](/zh/document/master/UserGuide/5-Operation%20Manual/1-DDL%20Data%20Definition%20Language.html)内容，IoTDB的样例数据可能同时属于ln, sgcc等不同发电集团，不同的发电集团不希望其他发电集团获取自己的数据库数据，因此我们需要将不同的数据在集团层进行权限隔离。
 
-#### 创建用户
+### 创建用户
 
 我们可以为ln和sgcc集团创建两个用户角色，名为ln_write_user, sgcc_write_user，密码均为write_pwd。SQL语句为：
 
@@ -65,7 +64,7 @@ LIST USER
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578263-e2a91d00-1ef7-11e9-94e8-28819b6fea87.jpg"></center>
 
-#### 赋予用户权限
+### 赋予用户权限
 
 此时，虽然两个用户已经创建，但是他们不具有任何权限，因此他们并不能对数据库进行操作，例如我们使用ln_write_user用户对数据库中的数据进行写入，SQL语句为：
 
@@ -84,8 +83,9 @@ INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 执行状态如图所示：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578942-33ba1080-1efa-11e9-891c-09d69791aff1.jpg"></center>
 
-### 其他说明
-#### 用户、权限与角色的关系
+## 其他说明
+
+### 用户、权限与角色的关系
 
 角色是权限的集合，而权限和角色都是用户的一种属性。即一个角色可以拥有若干权限。一个用户可以拥有若干角色与权限（称为用户自身权限）。
 
@@ -95,7 +95,7 @@ INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 
 同时，对角色的修改会立即反映到所有拥有该角色的用户上，例如对角色增加某种权限将立即使所有拥有该角色的用户都拥有对应权限，删除某种权限也将使对应用户失去该权限（除非用户本身有该权限）。 
 
-#### 系统所含权限列表
+### 系统所含权限列表
 
 <center>**系统所含权限列表**
 
@@ -121,14 +121,14 @@ INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 |REVOKE\_ROLE\_PRIVILEGE|撤销角色权限。路径无关|
 </center>
 
-#### 用户名限制
+### 用户名限制
 
 IoTDB规定用户名的字符长度不小于4，其中用户名不能包含空格。
 
-#### 密码限制
+### 密码限制
 
 IoTDB规定密码的字符长度不小于4，其中密码不能包含空格，密码采用MD5进行加密。
 
-#### 角色名限制
+### 角色名限制
 
 IoTDB规定角色名的字符长度不小于4，其中角色名不能包含空格。

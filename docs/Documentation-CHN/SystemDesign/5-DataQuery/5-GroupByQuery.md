@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -70,6 +70,7 @@ protected boolean hasNextWithoutConstraint() {
 * private TimeRange timeRange 将每次计算的时间区间封装成对象，用于判断 `Statistics` 是否可以直接参与计算
 * private Filter timeFilter   将用户定义的查询区间生成为 `Filter` 对象，用来过滤可用的`文件`、`chunk`、`page`
   
+
 首先，在初始化 `initGroupBy()` 方法中，根据表达式计算出 `timeFilter`，并为每个 `path` 生成 `GroupByExecutor` 。
 
 `nextWithoutConstraint()` 方法通过调用 `GroupByExecutor.calcResult()` 方法计算出每个 `Path` 内的所有聚合方法的聚合值 `aggregateResults`。
@@ -214,11 +215,18 @@ if (batchData.getMaxTimestamp() >= curEndTime) {
 带值过滤条件的降采样查询逻辑主要在 `GroupByWithValueFilterDataSet` 类中，该类继承了 `GroupByEngineDataSet`。
 
 该类有如下关键字段：
-* private List<IReaderByTimestamp> allDataReaderList
+* ```
+  private List<IReaderByTimestamp> allDataReaderList
+  ```
+
 * private GroupByPlan groupByPlan
+
 * private TimeGenerator timestampGenerator
+
 * private long timestamp 用于为下一个 group by 分区缓存 timestamp
+
 * private boolean hasCachedTimestamp 用于判断是否有为下一个 group by 分区缓存 timestamp
+
 * private int timeStampFetchSize 是 group by 计算 batch 的大小
 
 首先，在初始化 `initGroupBy()` 方法中，根据表达式创建 `timestampGenerator`；然后为每一个时间序列创建一个 `SeriesReaderByTimestamp`，放到 `allDataReaderList`列表中

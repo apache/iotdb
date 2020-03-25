@@ -20,17 +20,19 @@
 -->
 
 <!-- TOC -->
-# 第4章 客户端
+
+# 命令行接口(CLI)
+
 ## 概览
+
 - Cli / Shell工具
-    - Cli / Shell安装
-    - Cli / Shell运行方式
-    - Cli / Shell运行参数
-    - Cli / Shell的-e参数
+  - Cli / Shell安装
+  - Cli / Shell运行方式
+  - Cli / Shell运行参数
+  - Cli / Shell的-e参数
 
 <!-- /TOC -->
 
-# 命令行接口(CLI)
 IOTDB为用户提供Client/Shell工具用于启动客户端和服务端程序。下面介绍每个Client/Shell工具的运行方式和相关参数。
 > \$IOTDB\_HOME表示IoTDB的安装目录所在路径。
 
