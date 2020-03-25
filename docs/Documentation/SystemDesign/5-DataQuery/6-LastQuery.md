@@ -63,7 +63,7 @@ Last standard query process needs to traverse all sequential files and unsequent
       }
     }
     ```
-- Out of order files need to traverse all `ChunkMetadata` structures to get the maximum timestamp data.  It should be noted that when multiple `ChunkMetadata` have the same timestamp, we take the data in` ChunkMatadata` with the largest `version` value as the result of Last.
+- Unsequential files need to traverse all `ChunkMetadata` structures to get the maximum timestamp data.  It should be noted that when multiple `ChunkMetadata` have the same timestamp, we take the data in` ChunkMatadata` with the largest `version` value as the result of Last.
 
     ```
     long version = 0;
