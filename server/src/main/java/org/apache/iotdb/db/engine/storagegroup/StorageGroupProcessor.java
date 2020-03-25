@@ -242,7 +242,7 @@ public class StorageGroupProcessor {
    */
   private Map<Long, Set<Long>> partitionDirectFileVersions = new HashMap<>();
 
-  private boolean updatedLastestFlushedTime = false;
+  private boolean updatedLatestFlushedTime = false;
 
   public StorageGroupProcessor(String systemInfoDir, String storageGroupName,
       TsFileFlushPolicy fileFlushPolicy)
@@ -664,7 +664,7 @@ public class StorageGroupProcessor {
               updateFLushTimeForEachDevice.get(deviceId));
         }
       }
-      updatedLastestFlushedTime = true;
+      updatedLatestFlushedTime = true;
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
   }
@@ -723,7 +723,7 @@ public class StorageGroupProcessor {
               updateFLushTimeForEachDevice.get(deviceId));
         }
       }
-      updatedLastestFlushedTime = true;
+      updatedLatestFlushedTime = true;
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
   }
@@ -1348,7 +1348,7 @@ public class StorageGroupProcessor {
       return false;
     }
 
-    if (!updatedLastestFlushedTime) {
+    if (!updatedLatestFlushedTime) {
       for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
         partitionLatestFlushedTimeForEachDevice
             .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
@@ -1359,6 +1359,8 @@ public class StorageGroupProcessor {
         }
       }
     }
+
+    updatedLatestFlushedTime = false;
 
     return true;
   }
