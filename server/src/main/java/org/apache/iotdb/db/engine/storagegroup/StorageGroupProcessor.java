@@ -1712,8 +1712,9 @@ public class StorageGroupProcessor {
       }
       long localPartitionId = Long.parseLong(localFile.getFile().getParentFile().getName());
       if (i == sequenceList.size() - 1 && localFile.getEndTimeMap().isEmpty()
-          || newFilePartitionId != localPartitionId) {
-        // skip files that are not in the partition as the new file and the last empty file
+          || newFilePartitionId > localPartitionId) {
+        // skip files that are in the previous partition and the last empty file, as the all data
+        // in those files must be older than the new file
         continue;
       }
 
