@@ -66,8 +66,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @throws IOException if write failed, or the file is broken but autoRepair==false.
    */
   public RestorableTsFileIOWriter(File file) throws IOException {
-    if (resourceLogger.isInfoEnabled()) {
-      resourceLogger.info("{} is opened.", file.getName());
+    if (resourceLogger.isDebugEnabled()) {
+      resourceLogger.debug("{} is opened.", file.getName());
     }
     this.file = file;
     this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);

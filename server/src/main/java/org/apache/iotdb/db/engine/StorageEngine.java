@@ -111,7 +111,7 @@ public class StorageEngine implements IService {
    * TimestampPrecision
    */
   @ServerConfigConsistent
-  private long timePartitionInterval;
+  private static long timePartitionInterval;
 
   private StorageEngine() {
     logger = LoggerFactory.getLogger(StorageEngine.class);
@@ -522,7 +522,7 @@ public class StorageEngine implements IService {
     return timePartitionInterval;
   }
 
-  public long getTimePartition(long time) {
+  public static long getTimePartition(long time) {
     return time / timePartitionInterval;
   }
 }
