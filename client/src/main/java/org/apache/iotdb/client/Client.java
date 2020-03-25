@@ -83,6 +83,9 @@ public class Client extends AbstractClient {
         hf.printHelp(SCRIPT_HINT, options, true);
         return false;
       }
+      if (commandLine.hasOption(RPC_COMPRESS_ARGS)) {
+        Config.rpcThriftCompressionEnable = true;
+      }
       if (commandLine.hasOption(ISO8601_ARGS)) {
         setTimeFormat("long");
       }
