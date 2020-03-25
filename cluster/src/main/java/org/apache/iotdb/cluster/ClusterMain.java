@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.thrift.TException;
@@ -59,6 +60,8 @@ public class ClusterMain {
       return;
     }
     String mode = args[0];
+
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
 
     logger.info("Running mode {}", mode);
     try {
