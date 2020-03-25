@@ -66,6 +66,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -1023,5 +1024,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   public void setAllNodes(List<Node> allNodes) {
     this.allNodes = allNodes;
+  }
+
+  @TestOnly
+  public void setLogManager(LogManager logManager) {
+    this.logManager = logManager;
   }
 }

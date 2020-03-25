@@ -80,6 +80,7 @@ import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -458,6 +459,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         resource.serialize();
         loadRemoteResource(resource);
         logger.info("{}: Remote file {} is successfully loaded", name, resource);
+        return;
       } catch (IOException e) {
         logger.error("{}: Cannot serialize {}", name, resource, e);
       }
@@ -483,7 +485,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     try {
       StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource);
       StorageEngine.getInstance().getProcessor(storageGroupName).removeFullyOverlapFiles(resource);
-    } catch (TsFileProcessorException | StorageEngineException e) {
+    } catch (StorageEngineException | LoadFileException e) {
       logger.error("{}: Cannot load remote file {} into storage group", name, resource, e);
       return;
     }

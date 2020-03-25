@@ -19,7 +19,9 @@ public class MergedReaderByTime implements IReaderByTimestamp {
   public Object[] getValuesInTimestamps(long[] timestamps) throws IOException {
     Object[] rst = new Object[timestamps.length];
     for (int i = 0; i < innerReaders.size(); i++) {
-      valueCaches[i] = innerReaders.get(i).getValuesInTimestamps(timestamps);
+      if (innerReaders.get(i) != null) {
+        valueCaches[i] = innerReaders.get(i).getValuesInTimestamps(timestamps);
+      }
     }
     forTime:
     for (int i = 0; i < rst.length; i++) {

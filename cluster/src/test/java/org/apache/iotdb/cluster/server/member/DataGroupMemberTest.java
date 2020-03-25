@@ -929,7 +929,7 @@ public class DataGroupMemberTest extends MemberTest {
     request.timeFilterBytes.position(0);
     dataGroupMember.getGroupByExecutor(request, handler);
     executorId = resultRef.get();
-    assertEquals(1L, (long) executorId);
+    assertEquals(-1L, (long) executorId);
 
     // fetch result
     aggrResultRef = new AtomicReference<>();
@@ -937,13 +937,7 @@ public class DataGroupMemberTest extends MemberTest {
     dataGroupMember.getGroupByResult(TestUtils.getNode(30), executorId, 0, 20, aggrResultHandler);
 
     byteBuffers = aggrResultRef.get();
-    assertNotNull(byteBuffers);
-    aggregateResults = new ArrayList<>();
-    for (ByteBuffer byteBuffer : byteBuffers) {
-      aggregateResults.add(AggregateResult.deserializeFrom(byteBuffer));
-    }
-    answers = new Object[] {0.0, null, 0.0, null, null, null, null, null, null};
-    checkAggregates(answers, aggregateResults);
+    assertNull(byteBuffers);
   }
 
   private void checkAggregates(Object[] answers, List<AggregateResult> aggregateResults) {
