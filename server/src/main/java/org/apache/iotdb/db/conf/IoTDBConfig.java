@@ -489,7 +489,7 @@ public class IoTDBConfig {
   //wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
 
-  private int queryCacheSizeInMetric = 200;
+  private int queryCacheSizeInMetric =50;
 
   public IoTDBConfig() {
     // empty constructor

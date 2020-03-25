@@ -19,7 +19,6 @@
 
 -->
 
-# Chapter4: Client
 # Programming - JDBC
 
 ## Usage

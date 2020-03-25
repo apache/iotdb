@@ -19,8 +19,6 @@
 
 -->
 
-# 第4章: 客户端
-
 # 编程 - 原生接口
 
 ## 使用
@@ -67,34 +65,48 @@
 
 * 设置存储组
 
-  ​	TSStatus setStorageGroup(String storageGroupId)
+  ```
+  TSStatus setStorageGroup(String storageGroupId)
+  ```
 
 * 删除单个或多个存储组
 
-  ​	TSStatus deleteStorageGroup(String storageGroup)
-  ​	TSStatus deleteStorageGroups(List<String> storageGroups)
+  ```
+  	TSStatus deleteStorageGroup(String storageGroup)
+  	TSStatus deleteStorageGroups(List<String> storageGroups)
+  ```
 
 * 创建单个时间序列
 
-  ​	TSStatus createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
+  ```
+  	TSStatus createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
+  ```
 
 * 删除一个或多个时间序列
 
-  ​	TSStatus deleteTimeseries(String path)
-  ​	TSStatus deleteTimeseries(List<String> paths)
+  ```
+  	TSStatus deleteTimeseries(String path)
+  	TSStatus deleteTimeseries(List<String> paths)
+  ```
 
 * 删除某一特定时间前的时间序列
 
-  ​	TSStatus deleteData(String path, long time)
-  ​	TSStatus deleteData(List<String> paths, long time)
+  ```
+  	TSStatus deleteData(String path, long time)
+  	TSStatus deleteData(List<String> paths, long time)
+  ```
 
 * 插入时序数据
 
-  ​	TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
+  ```
+  TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
+  ```
 
 * 批量插入时序数据
 
-  ​	TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch)
+  ```
+  	TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch)
+  ```
 
 ### 示例代码
 
