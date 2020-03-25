@@ -25,7 +25,7 @@
 
 The written files are both out of order and in order, and there are both small files and large files, and there are different optimal merge algorithms in different systems. Therefore, MergeManager provides multiple merge policy interfaces and provides flexible new policy interfaces.  Entry method
 
-## 调用过程
+## Calling procedure
 
 - Each merge will be called when the user client calls the "merge" command or according to the mergeIntervalSec in the configuration
 - The merge is divided into three processes, including selecting a file (selector), performing a merge, and recovering after the merge process is interrupted (recover)
@@ -77,7 +77,7 @@ Under limited memory and time, first select the unseq file in turn, and each tim
 
 First select all series that need to be merged according to storageGroupName, then create a chunkMetaHeap for each seq file selected in the selector, and merge them into multiple sub-threads according to the mergeChunkSubThreadNum in the configuration.
 
-## squeeze策略
+## squeeze strategy
 
 ### selector
 
