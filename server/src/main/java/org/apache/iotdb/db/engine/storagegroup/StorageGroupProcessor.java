@@ -656,15 +656,17 @@ public class StorageGroupProcessor {
     // sequence: check the size of work memtable and may asyncTryToFlush flush memtable
     // unsequence: check the size of work memtable and may asyncTryToFlush it
     if (tsFileProcessor.shouldFlush()) {
-      Map<String, Long> updateFLushTimeForEachDevice = tsFileProcessor.adjustMemTable();
-      for (String deviceId : updateFLushTimeForEachDevice.keySet()) {
-        if (globalLatestFlushedTimeForEachDevice.getOrDefault(deviceId, Long.MIN_VALUE) <
-            updateFLushTimeForEachDevice.get(deviceId)) {
-          globalLatestFlushedTimeForEachDevice.put(deviceId,
-              updateFLushTimeForEachDevice.get(deviceId));
+      if (sequence) {
+        Map<String, Long> updateFLushTimeForEachDevice = tsFileProcessor.adjustMemTable();
+        for (String deviceId : updateFLushTimeForEachDevice.keySet()) {
+          if (globalLatestFlushedTimeForEachDevice.getOrDefault(deviceId, Long.MIN_VALUE) <
+              updateFLushTimeForEachDevice.get(deviceId)) {
+            globalLatestFlushedTimeForEachDevice.put(deviceId,
+                updateFLushTimeForEachDevice.get(deviceId));
+          }
         }
+        updatedLatestFlushedTime = true;
       }
-      updatedLatestFlushedTime = true;
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
   }
@@ -715,15 +717,17 @@ public class StorageGroupProcessor {
     // sequence: check the size of work memtable and may asyncTryToFlush flush memtable
     // unsequence: check the size of work memtable and may asyncTryToFlush it
     if (tsFileProcessor.shouldFlush()) {
-      Map<String, Long> updateFLushTimeForEachDevice = tsFileProcessor.adjustMemTable();
-      for (String deviceId : updateFLushTimeForEachDevice.keySet()) {
-        if (globalLatestFlushedTimeForEachDevice.getOrDefault(deviceId, Long.MIN_VALUE) <
-            updateFLushTimeForEachDevice.get(deviceId)) {
-          globalLatestFlushedTimeForEachDevice.put(deviceId,
-              updateFLushTimeForEachDevice.get(deviceId));
+      if (sequence) {
+        Map<String, Long> updateFLushTimeForEachDevice = tsFileProcessor.adjustMemTable();
+        for (String deviceId : updateFLushTimeForEachDevice.keySet()) {
+          if (globalLatestFlushedTimeForEachDevice.getOrDefault(deviceId, Long.MIN_VALUE) <
+              updateFLushTimeForEachDevice.get(deviceId)) {
+            globalLatestFlushedTimeForEachDevice.put(deviceId,
+                updateFLushTimeForEachDevice.get(deviceId));
+          }
         }
+        updatedLatestFlushedTime = true;
       }
-      updatedLatestFlushedTime = true;
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
   }

@@ -677,9 +677,6 @@ public class TsFileProcessor {
    * new workMemTable which continues to accept insertions.
    */
   public Map<String, Long> adjustMemTable() throws WriteProcessException {
-    if (!sequence) {
-      return null;
-    }
     flushQueryLock.writeLock().lock();
     Map<String, Long> updateFlushTimeForEachDevice = new HashMap<>();
     try {
