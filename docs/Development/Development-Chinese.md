@@ -27,7 +27,7 @@ IoTDB 官网：https://iotdb.apache.org/
 
 代码库：https://github.com/apache/incubator-iotdb/tree/master
 
-快速上手：https://iotdb.apache.org/#/Documents/Quick%20Start
+快速上手：http://iotdb.apache.org/document/master/UserGuide/0-Get%20Started/1-QuickStart.html
 
 ## 订阅邮件列表
 
