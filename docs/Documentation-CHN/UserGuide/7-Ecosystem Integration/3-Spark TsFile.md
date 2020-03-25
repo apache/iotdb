@@ -49,7 +49,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 ./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-0.10.0-jar-with-dependencies.jar
 ```
 
-- spark-shell-path是您的spark-shell的真实路径。
+- \<spark-shell-path\>是您的spark-shell的真实路径。
 - 多个jar包用逗号分隔，没有任何空格。
 - 有关如何获取TsFile的信息，请参见https://github.com/apache/incubator-iotdb/tree/master/tsfile。
 
@@ -63,7 +63,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 
 注意：
 
-- spark-shell-path是您的spark-shell的真实路径。
+- \<spark-shell-path\>是您的spark-shell的真实路径。
 - 多个jar包用逗号分隔，没有任何空格。
 - 有关如何获取TsFile的信息，请参见https://github.com/apache/incubator-iotdb/tree/master/tsfile。
 

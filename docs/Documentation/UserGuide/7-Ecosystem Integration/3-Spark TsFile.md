@@ -49,7 +49,7 @@ Start Spark with TsFile-Spark-Connector in local mode:
 
 Note:
 
-* \<spark-shell-path> is the real path of your spark-shell.
+* \<spark-shell-path\> is the real path of your spark-shell.
 * Multiple jar packages are separated by commas without any spaces.
 * See https://github.com/apache/incubator-iotdb/tree/master/tsfile for how to get TsFile.
 
@@ -64,7 +64,7 @@ Start Spark with TsFile-Spark-Connector in distributed mode (That is, the spark 
 
 Note:
 
-* \<spark-shell-path> is the real path of your spark-shell.
+* \<spark-shell-path\> is the real path of your spark-shell.
 * Multiple jar packages are separated by commas without any spaces.
 * See https://github.com/apache/incubator-iotdb/tree/master/tsfile for how to get TsFile.
 
