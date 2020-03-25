@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.db.exception;
 
-public class LoadFileException extends TsFileProcessorException {
+import org.apache.iotdb.rpc.TSStatusCode;
+
+public class LoadFileException extends IoTDBException {
 
   public LoadFileException(String message) {
-    super(message);
+    super(message, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
   }
 
   public LoadFileException(Exception exception) {
-    super(exception);
+    super(exception, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
   }
 }
