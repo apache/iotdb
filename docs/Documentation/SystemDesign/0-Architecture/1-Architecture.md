@@ -33,22 +33,22 @@ As shown in the following figure ,  IoTDB uses a client-server architecture.
 
 The server mainly includes a query engine that processes all user requests and distributes them to the corresponding management components, including the data writing layer, data query, schema management, and administration modules.
 
-* [TsFile](/#/SystemDesign/progress/chap1/sec1)
-* [QueryEngine](/#/SystemDesign/progress/chap2/sec1)
-* [SchemaManager](/#/SystemDesign/progress/chap3/sec1)
-* [StorageEngine](/#/SystemDesign/progress/chap4/sec1)
-* [DataQuery](/#/SystemDesign/progress/chap5/sec1)
+* [TsFile](../1-TsFile/1-TsFile.html)
+* [QueryEngine](../2-QueryEngine/1-QueryEngine.html)
+* [SchemaManager](/document/master/SystemDesign/3-SchemaManager/1-SchemaManager.html)
+* [StorageEngine](/document/master/SystemDesign/4-StorageEngine/1-StorageEngine.html)
+* [DataQuery](/document/master/SystemDesign/5-DataQuery/1-DataQuery.html)
 
 ## System Tools
 
-* [Data synchronization tool](/#/SystemDesign/progress/chap6/sec1)
+* [Data synchronization tool](/document/master/SystemDesign/6-Tools/1-Sync.html)
 
 ## Connector
 
 IoTDB is connected with big data systems.
 
 * [Hadoop-TsFile](/#/SystemDesign/progress/chap7/sec1)
-* [Hive-TsFile](/#/SystemDesign/progress/chap7/sec2)
-* [Spark-TsFile](/#/SystemDesign/progress/chap7/sec3)
-* [Spark-IoTDB](/#/SystemDesign/progress/chap7/sec4)
+* [Hive-TsFile](/document/master/SystemDesign/7-Connector/2-Hive-TsFile.html)
+* [Spark-TsFile](/document/master/SystemDesign/7-Connector/3-Spark-TsFile.html)
+* [Spark-IoTDB](/document/master/SystemDesign/7-Connector/4-Spark-IOTDB.html)
 * [Grafana](/#/SystemDesign/progress/chap7/sec5)

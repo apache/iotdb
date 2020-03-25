@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,29 +19,27 @@
 
 -->
 
-<!-- TOC -->
+# Quick Start
 
 ## Outline
 
 - Quick Start
- - Prerequisites
- - Installation
-    - Build from source
-       - Configurations
- - Start
-    - Start IoTDB
-    - Use IoTDB
-       - Use Cli
-       - Basic commands for IoTDB
-    - Stop IoTDB
- - Only build server
- - Only build client
- 
+- Prerequisites
+- Installation
+  - Build from source
+    - Configurations
+- Start
+  - Start IoTDB
+  - Use IoTDB
+    - Use Cli
+    - Basic commands for IoTDB
+  - Stop IoTDB
+- Only build server
+- Only build client
+
 <!-- /TOC -->
 
-# Quick Start
-
-This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/progress/chap1/sec1).
+This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](/document/master/UserGuide/1-Overview/1-What%20is%20IoTDB.html).
 
 ## Prerequisites
 
@@ -64,7 +62,7 @@ Here in the Quick Start, we give a brief introduction to install IoTDB. For furt
 ## Download
 
 You can download the binary file from:
-[Here](https://iotdb.apache.org/#/Download)
+[Here](/download/)
 
 ## Configurations
 
@@ -74,7 +72,7 @@ configuration files are under "conf" folder
   * system config module (`tsfile-format.properties`, `iotdb-engine.properties`)
   * log config module (`logback.xml`). 
 
-For more, see [Chapter3: Server](https://iotdb.apache.org/#/Documents/progress/chap3/sec1) in detail.
+For more, see [Chapter3: Server](/document/master/UserGuide/3-Server/1-Download.html) in detail.
 
 ## Start
 
@@ -158,13 +156,13 @@ storage group number = 1
 ```
 
 After the storage group is set, we can use CREATE TIMESERIES to create new timeseries. When we create a timeseries, we should define its data type and the encoding scheme. We create two timeseries as follow:
- 
+
 ```
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 ```
 
-In order to query the specific timeseries, we can use SHOW TIMESERIES <Path>. <Path> represent the path of the timeseries. Its default value is null, which means quering all the timeseries in the system(the same as using "SHOW TIMESERIES root"). Here are the examples:
+In order to query the specific timeseries, we can use SHOW TIMESERIES Path. Path represent the path of the timeseries. Its default value is null, which means quering all the timeseries in the system(the same as using "SHOW TIMESERIES root"). Here are the examples:
 
 1. Querying all timeseries in the system:
 
@@ -232,7 +230,7 @@ or
 IoTDB> exit
 ```
 
-For more on what commands are supported by IoTDB SQL, see [SQL Reference](https://iotdb.apache.org/#/Documents/progress/chap5/sec4).
+For more on what commands are supported by IoTDB SQL, see [SQL Reference](/document/master/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html).
 
 ### Stop IoTDB
 

@@ -19,7 +19,6 @@
 
 -->
 
-# 第7章: 生态集成
 # TsFile的Spark连接器
 
 ## 1. About TsFile-Spark-Connector
@@ -50,7 +49,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 ./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-0.10.0-jar-with-dependencies.jar
 ```
 
-- \<spark-shell-path>是您的spark-shell的真实路径。
+- spark-shell-path是您的spark-shell的真实路径。
 - 多个jar包用逗号分隔，没有任何空格。
 - 有关如何获取TsFile的信息，请参见https://github.com/apache/incubator-iotdb/tree/master/tsfile。
 
@@ -64,7 +63,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 
 注意：
 
-- \ <spark-shell-path>是您的spark-shell的真实路径。
+- spark-shell-path是您的spark-shell的真实路径。
 - 多个jar包用逗号分隔，没有任何空格。
 - 有关如何获取TsFile的信息，请参见https://github.com/apache/incubator-iotdb/tree/master/tsfile。
 
@@ -98,7 +97,7 @@ TsFile中的现有数据如下：
 <table style="text-align:center">
 	<tr><th colspan="4">device:root.ln.wf01.wt01</th><th colspan="4">device:root.ln.wf02.wt02</th></tr>
 	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th></tr>
-	<tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th><th>time</th><th>value</td></tr>
+	<tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
 	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td></tr>
 	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td></tr>
 	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td></tr>

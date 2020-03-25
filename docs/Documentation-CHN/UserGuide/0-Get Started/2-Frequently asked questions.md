@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,20 +21,21 @@
 
 <!-- TOC -->
 
+# 常见问题
+
 ## 概览
 
 - 常见问题
-    - 如何查询我的 IoTDB 版本？
-    - 在哪里可以找到 IoTDB 的日志？
-    - 在哪里可以找到 IoTDB 的数据文件？
-    - 如何知道 IoTDB 中存储了多少时间序列？
-    - 可以使用 Hadoop 和 Spark 读取 IoTDB 中的 TsFile 吗？
-    - IoTDB 如何处理重复的数据点？
-    - 我如何知道具体的 timeseries 的类型？
-    - 如何更改 IoTDB 的客户端时间显示格式？
+  - 如何查询我的 IoTDB 版本？
+  - 在哪里可以找到 IoTDB 的日志？
+  - 在哪里可以找到 IoTDB 的数据文件？
+  - 如何知道 IoTDB 中存储了多少时间序列？
+  - 可以使用 Hadoop 和 Spark 读取 IoTDB 中的 TsFile 吗？
+  - IoTDB 如何处理重复的数据点？
+  - 我如何知道具体的 timeseries 的类型？
+  - 如何更改 IoTDB 的客户端时间显示格式？
 
 <!-- /TOC -->
-# 常见问题
 
 ## 如何查询我的 IoTDB 版本？
 

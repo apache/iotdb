@@ -47,7 +47,7 @@ If it is found that the cache has not been written, execute the following standa
 
 ## Last standard query process
 
-Last standard query process needs to traverse all sequential files and unsequential files to get query results, and finally write the query results back to the MNode cache.  In the algorithm, sequential files and unsequential files are processed separately.
+Last standard query process needs to traverse all sequential files and unsequential files to get query results, and finally write the query results back to the MNode cache.  In the algorithm, sequential files and  unsequential  files are processed separately.
 - The sequential file is sorted by its writing time, so use the `loadChunkMetadataFromTsFileResource` method directly to get the last` ChunkMetadata`, and get the maximum timestamp and corresponding value through the statistical data of `ChunkMetadata`.
     ```
     if (!seqFileResources.isEmpty()) {
@@ -63,7 +63,7 @@ Last standard query process needs to traverse all sequential files and unsequent
       }
     }
     ```
-- Unsequential files need to traverse all `ChunkMetadata` structures to get the maximum timestamp data.  It should be noted that when multiple `ChunkMetadata` have the same timestamp, we take the data in` ChunkMatadata` with the largest `version` value as the result of Last.
+- Out of order files need to traverse all `ChunkMetadata` structures to get the maximum timestamp data.  It should be noted that when multiple `ChunkMetadata` have the same timestamp, we take the data in` ChunkMatadata` with the largest `version` value as the result of Last.
 
     ```
     long version = 0;

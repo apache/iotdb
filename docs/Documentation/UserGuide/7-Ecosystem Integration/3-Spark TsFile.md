@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,8 +18,6 @@
     under the License.
 
 -->
-
-# Chapter 7: Ecosystem Integration
 
 # TsFile-Spark-Connector User Guide
 
@@ -96,17 +94,17 @@ The way to display TsFile is dependent on the schema. Take the following TsFile 
 
 The existing data in the TsFile is as follows:
 
-
 <center>
 <table style="text-align:center">
 	<tr><th colspan="4">device:root.ln.wf01.wt01</th><th colspan="4">device:root.ln.wf02.wt02</th></tr>
 	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th></tr>
-	<tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th><th>time</th><th>value</td></tr>
+	<tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
 	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td></tr>
 	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td></tr>
 	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td></tr>
 </table>
 </center>
+
 
 
 The corresponding SparkSQL table is as follows:
@@ -124,14 +122,14 @@ You can also use narrow table form which as follows: (You can see part 6 about h
 
 | time | device_name                   | status                   | hardware                   | temperature |
 |------|-------------------------------|--------------------------|----------------------------|-------------------------------|
-|    1 | root.ln.wf02.wt01             | true                     | null                       | 2.2                           | 
-|    1 | root.ln.wf02.wt02             | true                     | null                       | null                          | 
-|    2 | root.ln.wf02.wt01             | null                     | null                       | 2.2                          |                 
-|    2 | root.ln.wf02.wt02             | false                    | aaa                        | null                           |                   
-|    3 | root.ln.wf02.wt01             | true                     | null                       | 2.1                           |                 
-|    4 | root.ln.wf02.wt02             | true                     | bbb                        | null                          |                  
-|    5 | root.ln.wf02.wt01             | false                    | null                       | null                          |                   
-|    6 | root.ln.wf02.wt02             | null                     | ccc                        | null                          |                   
+|    1 | root.ln.wf02.wt01             | true                     | null                       | 2.2                           |
+|    1 | root.ln.wf02.wt02             | true                     | null                       | null                          |
+|    2 | root.ln.wf02.wt01             | null                     | null                       | 2.2                          |
+|    2 | root.ln.wf02.wt02             | false                    | aaa                        | null                           |
+|    3 | root.ln.wf02.wt01             | true                     | null                       | 2.1                           |
+|    4 | root.ln.wf02.wt02             | true                     | bbb                        | null                          |
+|    5 | root.ln.wf02.wt01             | false                    | null                       | null                          |
+|    6 | root.ln.wf02.wt02             | null                     | ccc                        | null                          |
 
 
 
@@ -257,7 +255,7 @@ The existing data in the file is as follows:
 <table style="text-align:center">
 	<tr><th colspan="4">delta\_object:root.ln.wf01.wt01</th><th colspan="4">delta\_object:root.ln.wf02.wt02</th><th colspan="4">delta\_object:root.sgcc.wf03.wt01</th></tr>
 	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th><th colspan="2">status</th><th colspan="2">temperature</th></tr>
-	<tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th></tr>
+	<tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
 	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td><td>2</td><td>True</td><td>3</td><td>3.3</td></tr>
 	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td><td>3</td><td>True</td><td>6</td><td>6.6</td></tr>
 	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td><td>4</td><td>True</td><td>8</td><td>8.8</td></tr>
@@ -265,7 +263,6 @@ The existing data in the file is as follows:
 </table>
 <span>A set of time-series data</span>
 </center>
-
 There are two ways to show it out:
 
 #### the default way
@@ -332,7 +329,6 @@ Then The SparkSQL Table Structure is as follow:
 	<tr><td>8</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>null</td><td>8.8</td><td>null</td></tr>
 	<tr><td>9</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>null</td><td>9.9</td><td>null</td></tr>
 	</table>
-
 </center>
 
 TsFile-Spark-Connector can display one or more TsFiles as a table in SparkSQL By SparkSQL. It also allows users to specify a single directory or use wildcards to match multiple directories. If there are multiple TsFiles, the union of the measurements in all TsFiles will be retained in the table, and the measurement with the same name will have the same data type by default. Note that if there is a situation with the same name but different data types, TsFile-Spark-Connector will not guarantee the correctness of the results.
