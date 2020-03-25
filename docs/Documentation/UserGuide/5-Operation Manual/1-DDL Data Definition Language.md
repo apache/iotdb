@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,10 +19,10 @@
 
 -->
 
-# Chapter 5: Operation Manual
 # DDL (Data Definition Language)
 
-### Create Storage Group
+## Create Storage Group
+
 According to the storage model we can set up the corresponding storage group. The SQL statements for creating storage groups are as follows:
 
 ```
@@ -39,9 +39,9 @@ IoTDB> set storage group to root.ln.wf01
 Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.MetadataException: The prefix of root.ln.wf01 has been set to the storage group.
 ```
 
-### Show Storage Group
+## Show Storage Group
 
-After the storage group is created, we can use the [SHOW STORAGE GROUP](/#/Documents/progress/chap5/sec4) statement to view all the storage groups. The SQL statement is as follows:
+After the storage group is created, we can use the [SHOW STORAGE GROUP](/document/master/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html) statement to view all the storage groups. The SQL statement is as follows:
 
 ```
 IoTDB> show storage group
@@ -50,8 +50,7 @@ IoTDB> show storage group
 The result is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577338-84c70600-1ef4-11e9-9dab-605b32c02836.jpg"></center>
 
-
-### Create Timeseries
+## Create Timeseries
 
 According to the storage model selected before, we can create corresponding timeseries in the two storage groups respectively. The SQL statements for creating timeseries are as follows:
 
@@ -71,9 +70,9 @@ IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODIN
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
-Please refer to [Encoding](/#/Documents/progress/chap2/sec3) for correspondence between data type and encoding.
+Please refer to [Encoding](/document/master/UserGuide/2-Concept/3-Encoding.html) for correspondence between data type and encoding.
 
-### Show Timeseries
+## Show Timeseries
 
 Currently, IoTDB supports two ways of viewing timeseries:
 
@@ -92,7 +91,8 @@ The results are shown below respectly:
 
 It is worth noting that when the queried path does not exist, the system will return no timeseries.  
 
-### Count Timeseries
+## Count Timeseries
+
 IoTDB is able to use `COUNT TIMESERIES <Path>` to count the number of timeseries in the path. SQL statements are as follows:
 ```
 IoTDB > COUNT TIMESERIES root
@@ -123,7 +123,8 @@ You will get following results:
 
 > Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
 
-### Count Nodes
+## Count Nodes
+
 IoTDB is able to use `COUNT NODES <Path> LEVEL=<INTEGER>` to count the number of nodes at the given level in current Metadata Tree. This could be used to query the number of devices. The usage are as follows:
 ```
 IoTDB > COUNT NODES root LEVEL=2
@@ -137,7 +138,8 @@ As for the above mentioned example and Metadata tree, you can get following resu
 
 > Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
 
-### Delete Timeseries
+## Delete Timeseries
+
 To delete the timeseries we created before, we are able to use `DELETE TimeSeries <PrefixPath>` statement.
 
 The usage are as follows:
@@ -147,7 +149,7 @@ IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardwa
 IoTDB> delete timeseries root.ln.wf02.*
 ```
 
-### Show Devices
+## Show Devices
 
 Similar to `Show Timeseries`, IoTDB also supports two ways of viewing devices:
 
@@ -159,17 +161,19 @@ IoTDB> show devices
 IoTDB> show devices root.ln
 ```
 
-## TTL
+# TTL
+
 IoTDB supports storage-level TTL settings, which means it is able to delete old data automatically and periodically. The benefit of using TTL is that hopefully you can control the total disk space usage and prevent the machine from running out of disks. Moreover, the query performance may downgrade as the total number of files goes up and the memory usage also increase as there are more files. Timely removing such files helps to keep at a high query performance level and reduce memory usage.
 
-### Set TTL
+## Set TTL
+
 The SQL Statement for setting TTL is as follow:
 ```
 IoTDB> set ttl to root.ln 3600000
 ```
 This example means that for data in `root.ln`, only that of the latest 1 hour will remain, the older one is removed or made invisible.
 
-### Unset TTL
+## Unset TTL
 
 To unset TTL, we can use follwing SQL statement:
 ```

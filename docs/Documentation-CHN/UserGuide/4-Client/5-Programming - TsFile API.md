@@ -19,8 +19,7 @@
 
 -->
 
-# 第4章: 客户端
-## TsFile API 
+# TsFile API 
 
 TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中，我们将介绍这种文件格式的用法。 
 
@@ -41,35 +40,36 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
 	
 * 使用 Maven 依赖: 
 
-	编译源码并且部署到您的本地仓库中需要 3 步:
+  编译源码并且部署到您的本地仓库中需要 3 步:
 
-	* 下载源码
-	
-		```
-		git clone https://github.com/apache/incubator-iotdb.git
-		```
-	* 编译源码和部署到本地仓库
-		
-		```
-		cd tsfile/
-		mvn clean install -Dmaven.test.skip=true
-		```
-	* 在您自己的工程中增加依赖:
-	
-	  ```
-		 <dependency>
-		   <groupId>org.apache.iotdb</groupId>
-		   <artifactId>tsfile</artifactId>
-		   <version>0.10.0</version>
-		 </dependency>
-	  ```
-	  
-	或者，您可以直接使用官方的 Maven 仓库:
-	
-	* 首先，在`${username}\.m2\settings.xml`目录下的`settings.xml`文件中`<profiles>`
-	   节中增加`<profile>`，内容如下:
-	  ```
-	    <profile>
+  * 下载源码
+
+  	```
+  	git clone https://github.com/apache/incubator-iotdb.git
+  	```
+  * 编译源码和部署到本地仓库
+  	
+  	```
+  	cd tsfile/
+  	mvn clean install -Dmaven.test.skip=true
+  	```
+  * 在您自己的工程中增加依赖:
+
+    ```
+  	 <dependency>
+  	   <groupId>org.apache.iotdb</groupId>
+  	   <artifactId>tsfile</artifactId>
+  	   <version>0.10.0</version>
+  	 </dependency>
+    ```
+    
+
+  或者，您可以直接使用官方的 Maven 仓库:
+
+  * 首先，在`${username}\.m2\settings.xml`目录下的`settings.xml`文件中`<profiles>`
+     节中增加`<profile>`，内容如下:
+    ```
+      <profile>
            <id>allow-snapshots</id>
               <activation><activeByDefault>true</activeByDefault></activation>
            <repositories>
@@ -86,16 +86,16 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
               </repository>
            </repositories>
          </profile>
-	  ```
-	* 之后您可以在您的工程中增加如下依赖:
-	
-	  ```
-		 <dependency>
-		   <groupId>org.apache.iotdb</groupId>
-		   <artifactId>tsfile</artifactId>
-		   <version>0.10.0</version>
-		 </dependency>
-	  ```
+    ```
+  * 之后您可以在您的工程中增加如下依赖:
+
+    ```
+  	 <dependency>
+  	   <groupId>org.apache.iotdb</groupId>
+  	   <artifactId>tsfile</artifactId>
+  	   <version>0.10.0</version>
+  	 </dependency>
+    ```
 
 ## TSFile 的使用
 本章节演示TsFile的详细用法。
@@ -107,7 +107,7 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
 传统的传感器(如温度计)也采用单次测量(measurement)并产生时间序列，我们将在下面交替使用测量(measurement)和传感器。
 
 * **device**: 一个设备指的是一个正在进行多次测量(产生多个时间序列)的实体，例如，
-              一列正在运行的火车监控它的速度、油表、它已经运行的英里数，当前的乘客每个都被传送到一个时间序列。
+  ​    ​    ​    一列正在运行的火车监控它的速度、油表、它已经运行的英里数，当前的乘客每个都被传送到一个时间序列。
 
 表1描述了一组时间序列数据。下表中显示的集合包含一个名为 "device\_1" 的设备，它有三个测量值(measurement)分别是
 "sensor\_1", "sensor\_2" 和 "sensor\_3". 
@@ -116,7 +116,7 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
 <table style="text-align:center">
     <tr><th colspan="6">device_1</th></tr>
     <tr><th colspan="2">sensor_1</th><th colspan="2">sensor_2</th><th colspan="2">sensor_3</th></tr>
-    <tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</td>
+    <tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
     <tr><td>1</td><td>1.2</td><td>1</td><td>20</td><td>2</td><td>50</td></tr>
     <tr><td>3</td><td>1.4</td><td>2</td><td>20</td><td>4</td><td>51</td></tr>
     <tr><td>5</td><td>1.1</td><td>3</td><td>21</td><td>6</td><td>52</td></tr>
@@ -124,6 +124,7 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
 </table>
 <span>一组时间序列数据</span>
 </center>
+
 
 **单行数据**: 在许多工业应用程序中，一个设备通常包含多个传感器，这些传感器可能同时具有多个值，这称为一行数据。
 
@@ -149,7 +150,7 @@ device_1, 1490860659000, m1, 10, m2, 12.12
 TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile 示例"章节。
 
 * 首先，构造一个`TsFileWriter`实例。
-    
+  
     以下是可用的构造函数:
     
     * 没有预定义 schema
@@ -185,7 +186,7 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
     * config : TsFile 的一些配置项
 
 * 第二部，添加测量值(measurement)
-    
+  
     你也可以先创建一个`Schema`类的实例然后把它传递给`TsFileWriter`类的构造函数
     
     `Schema`类保存的是一个映射关系，key 是一个 measurement 的名字，value 是 measurement schema.
@@ -206,7 +207,7 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
     ```
   
     你可以在`TsFileWriter`类中使用以下接口来添加额外的测量(measurement):
-          
+    ​      
     ```
     public void addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
     ```
@@ -220,12 +221,12 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
     ```
     
     **参数:**
-        
+    ​    
     * measurementID: 测量的名称，通常是传感器的名称。
-        
+      
     * type: 数据类型，现在支持六种类型: `BOOLEAN`, `INT32`, `INT64`, `FLOAT`, `DOUBLE`, `TEXT`;
     
-    * encoding: 编码类型. 参见 [Chapter 2-3](/#/Documents/progress/chap2/sec3).
+    * encoding: 编码类型. 参见 [Chapter 2-3](/zh/document/master/UserGuide/2-Concept/3-Encoding.html).
     
     * compression: 压缩方式. 现在支持 `UNCOMPRESSED` 和 `SNAPPY`.
     
@@ -234,14 +235,14 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
     
     > **注意:** 虽然一个测量(measurement)的名字可以被用在多个deltaObjects中, 但是它的参数是不允许被修改的。比如: 
         不允许多次为同一个测量(measurement)名添加不同类型的编码。下面是一个错误示例:
-        
+    
         // The measurement "sensor_1" is float type
         addMeasurement(new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
         
         // This call will throw a WriteProcessException exception
         addMeasurement(new MeasurementSchema("sensor_1", TSDataType.INT32, TSEncoding.RLE));
 * 第三，插入和写入数据。
-    
+  
     使用这个接口创建一个新的`TSRecord`(时间戳和设备对)。
     
     ```
@@ -256,7 +257,7 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
     ```
     
 * 最后，调用`close`方法来完成写入过程。
-    
+  
     ```
     public void close() throws IOException
     ```
@@ -265,7 +266,9 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
 
 您需要安装 TsFile 到本地的 Maven 仓库中。
 
-详情参见: [Installation](./1-Installation.md)
+```
+mvn clean install -pl tsfile -am -DskipTests
+```
 
 如果存在**非对齐**的时序数据(比如：不是所有的传感器都有值)，您可以通过构造**TSRecord**来写入。
 
@@ -423,7 +426,7 @@ public class TsFileWriteWithRowBatch {
 <table style="text-align:center">
     <tr><th colspan="6">device_1</th></tr>
     <tr><th colspan="2">sensor_1</th><th colspan="2">sensor_2</th><th colspan="2">sensor_3</th></tr>
-    <tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</td>
+    <tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
     <tr><td>1</td><td>1.2</td><td>1</td><td>20</td><td>2</td><td>50</td></tr>
     <tr><td>3</td><td>1.4</td><td>2</td><td>20</td><td>4</td><td>51</td></tr>
     <tr><td>5</td><td>1.1</td><td>3</td><td>21</td><td>6</td><td>52</td></tr>
@@ -431,6 +434,7 @@ public class TsFileWriteWithRowBatch {
 </table>
 <span>一组时间序列数据</span>
 </center>
+
 
 #### 路径的定义
 
@@ -466,33 +470,33 @@ paths.add(new Path("device_1.sensor_3"));
 我们创建一个或多个筛选器表达式，并且可以使用`Binary Filter Operators`将它们连接形成最终表达式。
 
 * **创建一个Filter表达式**
-    
+  
     有两种类型的过滤器。
     
      * TimeFilter: 使用时序数据中的`time`过滤。
         ```
         IExpression timeFilterExpr = new GlobalTimeExpression(TimeFilter);
         ```
-       使用以下关系获得一个`TimeFilter`对象(值是一个 long 型变量)。
+          使用以下关系获得一个`TimeFilter`对象(值是一个 long 型变量)。
         <center>
         <table style="text-align:center">
-            <tr><th>Relationship</th><th>Description</td></tr>
-            <tr><td>TimeFilter.eq(value)</td><td>选择时间等于值的数据</td>
-            <tr><td>TimeFilter.lt(value)</td><td>选择时间小于值的数据</td>
-            <tr><td>TimeFilter.gt(value)</td><td>选择时间大于值的数据</td>
-            <tr><td>TimeFilter.ltEq(value)</td><td>选择时间小于等于值的数据</td>
-            <tr><td>TimeFilter.gtEq(value)</td><td>选择时间大于等于值的数据</td>
-            <tr><td>TimeFilter.notEq(value)</td><td>选择时间不等于值的数据</td>
-            <tr><td>TimeFilter.not(TimeFilter)</td><td>选择时间不满足另一个时间过滤器的数据</td>
+            <tr><th>Relationship</th><th>Description</th></tr>
+            <tr><td>TimeFilter.eq(value)</td><td>选择时间等于值的数据</td></tr>
+            <tr><td>TimeFilter.lt(value)</td><td>选择时间小于值的数据</td></tr>
+            <tr><td>TimeFilter.gt(value)</td><td>选择时间大于值的数据</td></tr>
+            <tr><td>TimeFilter.ltEq(value)</td><td>选择时间小于等于值的数据</td></tr>
+            <tr><td>TimeFilter.gtEq(value)</td><td>选择时间大于等于值的数据</td></tr>
+            <tr><td>TimeFilter.notEq(value)</td><td>选择时间不等于值的数据</td></tr>
+            <tr><td>TimeFilter.not(TimeFilter)</td><td>选择时间不满足另一个时间过滤器的数据</td></tr>
         </table>
         </center>
         
      * ValueFilter: 使用时序数据中的`value`过滤。
-        
+       
         ```
         IExpression valueFilterExpr = new SingleSeriesExpression(Path, ValueFilter);
         ```
-       `ValueFilter`的用法与`TimeFilter`相同，只是需要确保值的类型等于measurement(在路径中定义)的类型。
+          `ValueFilter`的用法与`TimeFilter`相同，只是需要确保值的类型等于measurement(在路径中定义)的类型。
 
 * **Binary Filter Operators**
 
@@ -500,7 +504,7 @@ paths.add(new Path("device_1.sensor_3"));
 
      * BinaryExpression.and(Expression, Expression): 选择同时满足两个表达式的数据。
      * BinaryExpression.or(Expression, Expression): 选择满足任意一个表达式值的数据。
-     
+    
 
 ##### Filter Expression 示例
 
@@ -567,7 +571,7 @@ ReadOnlyTsFile类有两个`query`方法来执行查询。
     * **参数** : 对于 method 2，添加了两个额外的参数来支持部分查询(Partial Query):
         *  ```partitionStartOffset```: TsFile 的开始偏移量
         *  ```partitionEndOffset```: TsFile 的结束偏移量
-                                     
+           ​                          
         > **什么是部分查询?**
         >
         > 在一些分布式文件系统中(比如：HDFS), 文件被分成几个部分，这些部分被称为"Blocks"并存储在不同的节点中。在涉及的每个节点上并行执行查询可以提高效率。因此需要部分查询(Partial Query)。部分查询(Partial Query)仅支持查询 TsFile 中被```QueryConstant.PARTITION_START_OFFSET```和```QueryConstant.PARTITION_END_OFFSET```分割的部分。
@@ -596,11 +600,11 @@ ReadOnlyTsFile类有两个`query`方法来执行查询。
        DOUBLE,
        TEXT;
  * `RowRecord next() throws IOException;`
- 
+
     获取下一条记录。
     
     `RowRecord`类包含一个`long`类型的时间戳和一个`List<Field>`，用于不同传感器中的数据，我们可以使用两个getter方法来获取它们。
-     
+    
     ```
     long getTimestamp();
     List<Field> getFields();
@@ -678,7 +682,7 @@ public class TsFileRead {
 ```
 
 ## 指定配置文件路径
-   
+
 默认的配置文件`tsfile-format.properties.template`存放在`/tsfile/src/main/resources`目录下。如果您想使用自定义的路径:
 ```
 System.setProperty(TsFileConstant.TSFILE_CONF, "your config file path");

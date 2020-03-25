@@ -19,8 +19,6 @@
 
 -->
 
-# 第7章: 生态集成
-
 # Spark IoTDB连接器
 
 ## 版本
@@ -94,12 +92,13 @@ TsFile中的现有数据如下：
 <table style="text-align:center">
 	<tr><th colspan="4">device:root.ln.wf01.wt01</th><th colspan="4">device:root.ln.wf02.wt02</th></tr>
 	<tr><th colspan="2">状态</th><th colspan="2">温度</th><th colspan="2">硬件</th><th colspan="2">状态</th></tr>
-	<tr><th>时间</th><th>值</td><th>时间</th><th>值</td><th>时间</th><th>值</th><th>时间</th><th>值</td></tr>
+	<tr><th>时间</th><th>值</td><th>时间</th><th>值</th><th>时间</th><th>值</th><th>时间</th><th>值</th></tr>
 	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td></tr>
 	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td></tr>
 	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td></tr>
 </table>
 </center>
+
 
 宽（默认）表形式如下：
 

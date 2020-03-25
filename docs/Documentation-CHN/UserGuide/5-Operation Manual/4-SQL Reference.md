@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,10 +19,9 @@
 
 -->
 
-# 第5章 IoTDB操作指南
-## SQL 参考文档
+# SQL 参考文档
 
-### 显示版本号
+## 显示版本号
 
 ```sql
 show version
@@ -38,7 +37,7 @@ Total line number = 1
 It costs 0.417s
 ```
 
-### Schema语句
+## Schema语句
 
 * 设置存储组
 
@@ -181,7 +180,7 @@ Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
 Note: The path can be prefix path or star path, the nodes can be in a "prefix + star" format. 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
-### 数据管理语句
+## 数据管理语句
 
 * 插入记录语句
 
@@ -487,7 +486,7 @@ Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2 disable align
 
 ```
 
-### 数据库管理语句
+## 数据库管理语句
 
 * 创建用户
 
@@ -653,7 +652,7 @@ password:=string
 Eg: IoTDB > ALTER USER tempuser SET PASSWORD newpwd;
 ```
 
-### 功能
+## 功能
 
 * COUNT
 
@@ -738,7 +737,8 @@ Eg. SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.tempe
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
-### TTL
+## TTL
+
 IoTDB支持对存储组级别设置数据存活时间（TTL），这使得IoTDB可以定期、自动地删除一定时间之前的数据。合理使用TTL
 可以帮助您控制IoTDB占用的总磁盘空间以避免出现磁盘写满等异常。并且，随着文件数量的增多，查询性能往往随之下降,
 内存占用也会有所提高。及时地删除一些较老的文件有助于使查询性能维持在一个较高的水平和减少内存资源的占用。
@@ -775,9 +775,9 @@ Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
 一部分之前不可见的数据可能重新可见，而那些已经被物理删除的数据则将永久丢失。也就是说，TTL操作不会原子性地删除
 对应的数据。因此我们不推荐您频繁修改TTL，除非您能接受该操作带来的一定程度的不可预知性。
 
-## 参考
+# 参考
 
-### 关键字
+## 关键字
 
 ```
 Keywords for IoTDB (case insensitive):
@@ -790,7 +790,7 @@ Keywords with special meanings (case insensitive):
 * Logical symbol: AND, &, &&, OR, | , ||, NOT, !, TRUE, FALSE
 ```
 
-### 标识符
+## 标识符
 
 ```
 QUOTE := '\'';
@@ -845,7 +845,7 @@ eg. _abc123
 
 ```
 
-### 常量
+## 常量
 
 
 ```
