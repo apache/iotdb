@@ -107,8 +107,6 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   // used in merge resource
-
-  // TODO: deviceMetadataMap
   public TsFileSequenceReader(String file, boolean loadMetadata, boolean cacheDeviceMetadata)
       throws IOException {
     this(file, loadMetadata);

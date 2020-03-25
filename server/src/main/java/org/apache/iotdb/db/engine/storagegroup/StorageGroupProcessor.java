@@ -277,7 +277,7 @@ public class StorageGroupProcessor {
     // just find any time of device
     Iterator<Long> iterator = startTimeMap.values().iterator();
     if (iterator.hasNext()) {
-      return StorageEngine.getTimePartition(iterator.next());
+      return StorageEngine.getInstance().getTimePartition(iterator.next());
     }
 
     return -1;
@@ -425,7 +425,7 @@ public class StorageGroupProcessor {
     writeLock();
     try {
       // init map
-      long timePartitionId = StorageEngine.getTimePartition(insertPlan.getTime());
+      long timePartitionId = StorageEngine.getInstance().getTimePartition(insertPlan.getTime());
 
       latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
       partitionLatestFlushedTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>());
@@ -468,7 +468,7 @@ public class StorageGroupProcessor {
       int before = loc;
       // before time partition
       long beforeTimePartition = StorageEngine
-          .getTimePartition(batchInsertPlan.getTimes()[before]);
+          .getInstance().getTimePartition(batchInsertPlan.getTimes()[before]);
       // init map
       long lastFlushTime = partitionLatestFlushedTimeForEachDevice.
           computeIfAbsent(beforeTimePartition, id -> new HashMap<>()).
@@ -477,7 +477,7 @@ public class StorageGroupProcessor {
       boolean isSequence = false;
       while (loc < batchInsertPlan.getRowCount()) {
         long time = batchInsertPlan.getTimes()[loc];
-        long curTimePartition = StorageEngine.getTimePartition(time);
+        long curTimePartition = StorageEngine.getInstance().getTimePartition(time);
         results[loc] = RpcUtils.SUCCESS_STATUS;
         // start next partition
         if (curTimePartition != beforeTimePartition) {
@@ -594,7 +594,7 @@ public class StorageGroupProcessor {
 
   private void insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
       throws WriteProcessException {
-    long timePartitionId = StorageEngine.getTimePartition(insertPlan.getTime());
+    long timePartitionId = StorageEngine.getInstance().getTimePartition(insertPlan.getTime());
 
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
 
@@ -1118,7 +1118,7 @@ public class StorageGroupProcessor {
       }
 
       // time partition to divide storage group
-      long timePartitionId = StorageEngine.getTimePartition(timestamp);
+      long timePartitionId = StorageEngine.getInstance().getTimePartition(timestamp);
       // write log
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         DeletePlan deletionPlan = new DeletePlan(timestamp, new Path(deviceId, measurementId));
@@ -1677,7 +1677,7 @@ public class StorageGroupProcessor {
     for (Entry<String, Long> entry : newTsFileResource.getEndTimeMap().entrySet()) {
       String device = entry.getKey();
       long endTime = newTsFileResource.getEndTimeMap().get(device);
-      long timePartitionId = StorageEngine.getTimePartition(endTime);
+      long timePartitionId = StorageEngine.getInstance().getTimePartition(endTime);
       if (!latestTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>())
           .containsKey(device)
           || latestTimeForEachDevice.get(timePartitionId).get(device) < endTime) {
@@ -1709,7 +1709,7 @@ public class StorageGroupProcessor {
       TsFileResource tsFileResource)
       throws TsFileProcessorException, DiskSpaceInsufficientException {
     File targetFile;
-    long timeRangeId = StorageEngine.getTimePartition(
+    long timeRangeId = StorageEngine.getInstance().getTimePartition(
         tsFileResource.getStartTimeMap().entrySet().iterator().next().getValue());
     switch (type) {
       case LOAD_UNSEQUENCE:

@@ -29,8 +29,7 @@ import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedExc
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
 /**
- * compress data according to type in schema. TODO we need to modify
- * MManger.flush method to avoid add Serializable interface
+ * compress data according to type in schema.
  */
 public interface ICompressor extends Serializable {
 

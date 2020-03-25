@@ -18,9 +18,12 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.slf4j.Logger;
@@ -44,6 +47,8 @@ public class TsFileMetaDataCache {
    * TsFile path -> TsFileMetaData
    */
   private final LRULinkedHashMap<String, TsFileMetadata> cache;
+  private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
   private AtomicLong cacheHitNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
@@ -89,32 +94,36 @@ public class TsFileMetaDataCache {
    */
   public TsFileMetadata get(TsFileResource tsFileResource) throws IOException {
     if (!cacheEnable) {
-      return TsFileMetadataUtils.getTsFileMetadata(tsFileResource);
+      return FileLoaderUtils.getTsFileMetadata(tsFileResource);
     }
 
     String path = tsFileResource.getPath().intern();
     cacheRequestNum.incrementAndGet();
-    synchronized (cache) {
+
+    lock.readLock().lock();
+    try {
       if (cache.containsKey(path)) {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
         return cache.get(path);
       }
+    } finally {
+      lock.readLock().unlock();
     }
-    synchronized (path) {
-      synchronized (cache) {
-        if (cache.containsKey(tsFileResource.getPath())) {
-          cacheHitNum.incrementAndGet();
-          printCacheLog(true);
-          return cache.get(tsFileResource.getPath());
-        }
+
+    lock.writeLock().lock();
+    try {
+      if (cache.containsKey(tsFileResource.getPath())) {
+        cacheHitNum.incrementAndGet();
+        printCacheLog(true);
+        return cache.get(tsFileResource.getPath());
       }
       printCacheLog(false);
-      TsFileMetadata fileMetaData = TsFileMetadataUtils.getTsFileMetadata(tsFileResource);
-      synchronized (cache) {
-        cache.put(tsFileResource.getPath(), fileMetaData);
-        return fileMetaData;
-      }
+      TsFileMetadata fileMetaData = FileLoaderUtils.getTsFileMetadata(tsFileResource);
+      cache.put(tsFileResource.getPath(), fileMetaData);
+      return fileMetaData;
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 

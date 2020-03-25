@@ -151,4 +151,20 @@ public class FileLoaderUtils {
         chunkMetaData.getStartTime() > chunkMetaData.getEndTime()));
     return chunkMetadataList;
   }
+
+  public static List<ChunkMetadata> getChunkMetadataList(Path path, TsFileResource resource) throws IOException {
+    if (!resource.isClosed()) {
+      throw new IOException("The TsFile is not closed: " + resource.getFile().getAbsolutePath());
+    }
+    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource.getPath(), true);
+    return tsFileReader.getChunkMetadataList(path);
+  }
+
+  public static TsFileMetadata getTsFileMetadata(TsFileResource resource) throws IOException {
+    if (!resource.isClosed()) {
+      throw new IOException("The TsFile is not closed: " + resource.getFile().getAbsolutePath());
+    }
+    TsFileSequenceReader reader = FileReaderManager.getInstance().get(resource.getPath(), true);
+    return reader.readFileMetadata();
+  }
 }

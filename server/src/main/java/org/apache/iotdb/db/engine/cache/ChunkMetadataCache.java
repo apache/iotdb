@@ -22,11 +22,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -51,6 +54,8 @@ public class ChunkMetadataCache {
    * value: chunkMetaData list of one timeseries in the file.
    */
   private final LRULinkedHashMap<String, List<ChunkMetadata>> lruCache;
+
+  private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
   private AtomicLong cacheHitNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
@@ -100,21 +105,25 @@ public class ChunkMetadataCache {
     String key = (resource.getPath() + IoTDBConstant.PATH_SEPARATOR
         + seriesPath.getDevice() + seriesPath.getMeasurement()).intern();
 
-    synchronized (lruCache) {
-      cacheRequestNum.incrementAndGet();
+    cacheRequestNum.incrementAndGet();
+
+    lock.readLock().lock();
+    try {
       if (lruCache.containsKey(key)) {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
         return new ArrayList<>(lruCache.get(key));
       }
+    } finally {
+      lock.readLock().unlock();
     }
-    synchronized (key) {
-      synchronized (lruCache) {
-        if (lruCache.containsKey(key)) {
-          printCacheLog(true);
-          cacheHitNum.incrementAndGet();
-          return new ArrayList<>(lruCache.get(key));
-        }
+
+    lock.writeLock().lock();
+    try {
+      if (lruCache.containsKey(key)) {
+        printCacheLog(true);
+        cacheHitNum.incrementAndGet();
+        return new ArrayList<>(lruCache.get(key));
       }
       printCacheLog(false);
       TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
@@ -123,13 +132,12 @@ public class ChunkMetadataCache {
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
         return new ArrayList<>();
       }
-      List<ChunkMetadata> chunkMetaDataList = TsFileMetadataUtils.getChunkMetadataList(seriesPath, resource);
-      synchronized (lruCache) {
-        if (!lruCache.containsKey(key)) {
-          lruCache.put(key, chunkMetaDataList);
-        }
-        return chunkMetaDataList;
-      }
+      List<ChunkMetadata> chunkMetaDataList = FileLoaderUtils
+          .getChunkMetadataList(seriesPath, resource);
+      lruCache.put(key, chunkMetaDataList);
+      return chunkMetaDataList;
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 
