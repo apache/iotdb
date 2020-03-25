@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,14 +19,14 @@
 
 -->
 
-# Chapter 6: System Tools
+# Memory Estimation Tool
 
-## Memory Estimation Tool
+## Introduction
 
-### Introduction
 This tool calculates the minimum memory for writing to meet specific workload through a number of parameters input by users. (Memory in IoTDB is divided into three parts: write memory, read memory and reserve memory. Write memory is used for data write allocation. The ratio of the three can be set in the configuration file) The unit of result is in GB.
 
-### Input parameters
+## Input parameters
+
 When using this tool, the parameters needed to be input are as follows:
 
 <table>
@@ -59,7 +59,7 @@ When using this tool, the parameters needed to be input are as follows:
 
 In memory estimation, if the calculation takes a long time, the tool will show the running progress below, which is convenient for users to master the progress.
 
-### Usage
+## Usage
 
 Users can use the tool using scripts under the `IOTDB_HOME/bin`folder.
 For Linux and Mac OS X users:

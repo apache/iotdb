@@ -51,7 +51,7 @@ In addition, the storage engine includes asynchronous persistence and file merge
 
 ## Data write
 See details:
-* [Data write](/#/SystemDesign/progress/chap4/sec6)
+* [Data write](/document/master/SystemDesign/4-StorageEngine/6-DataManipulation.html)
 
 ## Data access
 
@@ -61,8 +61,8 @@ See details:
 
 ## Related documents
 
-* [Write Ahead Log (WAL)](/#/SystemDesign/progress/chap4/sec2)
+* [Write Ahead Log (WAL)](/document/master/SystemDesign/4-StorageEngine/2-WAL.html)
 
-* [memtable Endurance](/#/SystemDesign/progress/chap4/sec3)
+* [memtable Endurance](/document/master/SystemDesign/4-StorageEngine/3-FlushManager.html)
 
-* [File merge mechanism](/#/SystemDesign/progress/chap4/sec4)
+* [File merge mechanism](/document/master/SystemDesign/4-StorageEngine/4-MergeManager.html)

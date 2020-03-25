@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,16 +18,16 @@
     under the License.
 
 -->
-# Chapter 4: Client
-## Outline
-<!-- TOC -->
-- Command Line Interface(CLI)
-    - Running Cli/Shell
-    - Cli/Shell Parameters
-    - Cli/shell tool with -e parameter
 
-<!-- /TOC -->
 # Command Line Interface(CLI)
+
+## Outline
+
+- Command Line Interface(CLI)
+  - Running Cli/Shell
+  - Cli/Shell Parameters
+  - Cli/shell tool with -e parameter
+
 IoTDB provides Cli/shell tools for users to interact with IoTDB server in command lines. This document will show how Cli/shell tool works and what does it parameters mean.
 
 > Note: In this document, \$IOTDB\_HOME represents the path of the IoTDB installation directory.
