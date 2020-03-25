@@ -823,19 +823,24 @@ DATETIME
       (('+' | '-') INT ':' INT)?)?
     ;
 /** Allow unicode rule/token names */
-ID : NameChar NameChar*;
+ID : NAME_CHAR NAME_CHAR*;
 
 FILE
     :  (('a'..'z'| 'A'..'Z')(':')?)* (('\\' | '/')+ PATH_FRAGMENT) +
     ;
 
 fragment
-NameChar
+NAME_CHAR
     :   'A'..'Z'
     |   'a'..'z'
     |   '0'..'9'
     |   '_'
+    |   CN_CHAR
     ;
+
+fragment CN_CHAR
+  : '\u2E80'..'\u9FFF'
+  ;
 
 fragment DOUBLE_QUOTE_STRING_LITERAL
     : '"' ('\\' . | ~'"' )*? '"'
