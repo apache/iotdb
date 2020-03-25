@@ -21,7 +21,6 @@ package org.apache.iotdb.db.qp.strategy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -275,7 +274,6 @@ public class PhysicalGenerator {
 
       // to record result measurement columns
       List<String> measurements = new ArrayList<>();
-      Map<String, Set<String>> deviceToMeasurementsMap = new LinkedHashMap<>();
       // to check the same measurement of different devices having the same datatype
       Map<String, TSDataType> measurementDataTypeMap = new HashMap<>();
       Map<String, MeasurementType> measurementTypeMap = new HashMap<>();
@@ -340,11 +338,6 @@ public class PhysicalGenerator {
                   || measurementTypeMap.get(measurementChecked) != MeasurementType.Exist) {
                 measurementTypeMap.put(measurementChecked, MeasurementType.Exist);
               }
-              // update deviceToMeasurementsMap
-              if (!deviceToMeasurementsMap.containsKey(device)) {
-                deviceToMeasurementsMap.put(device, new HashSet<>());
-              }
-              deviceToMeasurementsMap.get(device).add(measurementChecked);
               // update paths
               paths.add(path);
             }
@@ -375,7 +368,7 @@ public class PhysicalGenerator {
 
       // assigns to alignByDevicePlan
       alignByDevicePlan.setMeasurements(measurements);
-      alignByDevicePlan.setDeviceToMeasurementsMap(deviceToMeasurementsMap);
+      alignByDevicePlan.setDevices(devices);
       alignByDevicePlan.setMeasurementDataTypeMap(measurementDataTypeMap);
       alignByDevicePlan.setMeasurementTypeMap(measurementTypeMap);
       alignByDevicePlan.setPaths(paths);
@@ -411,11 +404,10 @@ public class PhysicalGenerator {
       }
     }
     try {
-      generateDataTypes(queryPlan);
+      deduplicate(queryPlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
-    deduplicate(queryPlan);
 
     queryPlan.setRowLimit(queryOperator.getRowLimit());
     queryPlan.setRowOffset(queryOperator.getRowOffset());
@@ -490,35 +482,42 @@ public class PhysicalGenerator {
     basicOperator.setSinglePath(concatPath);
   }
 
-  private void generateDataTypes(QueryPlan queryPlan) throws MetadataException {
+  private void deduplicate(QueryPlan queryPlan) throws MetadataException {
+    // generate dataType first
     List<Path> paths = queryPlan.getPaths();
     List<TSDataType> dataTypes = getSeriesTypes(paths);
-    for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
-      TSDataType dataType = dataTypes.get(i);
-      queryPlan.addTypeMapping(path, dataType);
-    }
     queryPlan.setDataTypes(dataTypes);
-  }
 
-  private void deduplicate(QueryPlan queryPlan) {
+    // deduplicate from here
     if (queryPlan instanceof AlignByDevicePlan) {
       return;
     }
     if (queryPlan instanceof AggregationPlan) {
       AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
-      deduplicateAggregation(aggregationPlan);
+      List<String> aggregations = aggregationPlan.getAggregations();
+
+      Set<String> columnSet = new HashSet<>();
+      for (int i = 0; i < paths.size(); i++) {
+        Path path = paths.get(i);
+        String column = aggregations.get(i) + "(" + path.toString() + ")";
+        if (!columnSet.contains(column)) {
+          aggregationPlan.addDeduplicatedPaths(path);
+          TSDataType seriesType = dataTypes.get(i);
+          aggregationPlan.addDeduplicatedDataTypes(seriesType);
+          aggregationPlan.addDeduplicatedAggregations(aggregations.get(i));
+          columnSet.add(column);
+        }
+      }
       return;
     }
     RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
-    List<Path> paths = queryPlan.getPaths();
 
     Set<String> columnSet = new HashSet<>();
-    Map<Path, TSDataType> dataTypeMapping = queryPlan.getDataTypeMapping();
-    for (Path path : paths) {
+    for (int i = 0; i < paths.size(); i++) {
+      Path path = paths.get(i);
       String column = path.toString();
       if (!columnSet.contains(column)) {
-        TSDataType seriesType = dataTypeMapping.get(path);
+        TSDataType seriesType = dataTypes.get(i);
         rawDataQueryPlan.addDeduplicatedPaths(path);
         rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
         columnSet.add(column);
@@ -541,26 +540,6 @@ public class PhysicalGenerator {
 
     // trim seriesPath list
     return new ArrayList<>(columnList.subList(seriesOffset, endPosition));
-  }
-
-
-  private void deduplicateAggregation(AggregationPlan queryPlan) {
-    List<Path> paths = queryPlan.getPaths();
-    List<String> aggregations = queryPlan.getAggregations();
-
-    Set<String> columnSet = new HashSet<>();
-    Map<Path, TSDataType> dataTypeMapping = queryPlan.getDataTypeMapping();
-    for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
-      String column = aggregations.get(i) + "(" + path.toString() + ")";
-      if (!columnSet.contains(column)) {
-        queryPlan.addDeduplicatedPaths(path);
-        TSDataType seriesType = dataTypeMapping.get(path);
-        queryPlan.addDeduplicatedDataTypes(seriesType);
-        queryPlan.addDeduplicatedAggregations(aggregations.get(i));
-        columnSet.add(column);
-      }
-    }
   }
 
   protected List<String> getMatchedTimeseries(String path) throws MetadataException {

@@ -63,7 +63,10 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.exception.LoadEmptyFileException;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -1566,10 +1569,12 @@ public class StorageGroupProcessor {
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws TsFileProcessorException {
     File tsfileToBeInserted = newTsFileResource.getFile();
+    long newFilePartitionId = getNewFilePartitionId(newTsFileResource);
     writeLock();
     mergeLock.writeLock().lock();
     try {
-      if (loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource)){
+      if (loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource,
+          newFilePartitionId)){
         updateLatestTimeMap(newTsFileResource);
       }
     } catch (DiskSpaceInsufficientException e) {
@@ -1601,18 +1606,20 @@ public class StorageGroupProcessor {
   public void loadNewTsFile(TsFileResource newTsFileResource)
       throws TsFileProcessorException {
     File tsfileToBeInserted = newTsFileResource.getFile();
+    long newFilePartitionId = getNewFilePartitionId(newTsFileResource);
 
     writeLock();
     mergeLock.writeLock().lock();
     try {
-      int insertPos = findInsertionPosition(newTsFileResource);
+      int insertPos = findInsertionPosition(newTsFileResource, newFilePartitionId);
       if (insertPos == POS_ALREADY_EXIST) {
         return;
       }
 
       // loading tsfile by type
       if (insertPos == POS_OVERLAP) {
-        loadTsFileByType(LoadTsFileType.LOAD_UNSEQUENCE, tsfileToBeInserted, newTsFileResource);
+        loadTsFileByType(LoadTsFileType.LOAD_UNSEQUENCE, tsfileToBeInserted, newTsFileResource,
+            newFilePartitionId);
       } else {
 
         // check whether the file name needs to be renamed.
@@ -1625,7 +1632,8 @@ public class StorageGroupProcessor {
             newTsFileResource.setFile(new File(tsfileToBeInserted.getParentFile(), newFileName));
           }
         }
-        loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource);
+        loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource,
+            newFilePartitionId);
       }
 
       // update latest time map
@@ -1647,15 +1655,52 @@ public class StorageGroupProcessor {
   }
 
   /**
+   * Check and get the partition id of a TsFile to be inserted using the start times and end
+   * times of devices.
+   * TODO: when the partition violation happens, split the file and load into different partitions
+   * @param resource
+   * @return
+   * @throws LoadFileException if the data of the file cross partitions or it is empty
+   */
+  private long getNewFilePartitionId(TsFileResource resource) throws LoadFileException {
+    long partitionId = -1;
+    for (Long startTime : resource.getStartTimeMap().values()) {
+      long p = StorageEngine.fromTimeToTimePartition(startTime);
+      if (partitionId == -1) {
+        partitionId = p;
+      } else {
+        if (partitionId != p) {
+          throw new PartitionViolationException(resource);
+        }
+      }
+    }
+    for (Long endTime : resource.getEndTimeMap().values()) {
+      long p = StorageEngine.fromTimeToTimePartition(endTime);
+      if (partitionId == -1) {
+        partitionId = p;
+      } else {
+        if (partitionId != p) {
+          throw new PartitionViolationException(resource);
+        }
+      }
+    }
+    if (partitionId == -1) {
+      throw new LoadEmptyFileException();
+    }
+    return partitionId;
+  }
+
+  /**
    * Find the position of "newTsFileResource" in the sequence files if it can be inserted into them.
    * @param newTsFileResource
+   * @param newFilePartitionId
    * @return POS_ALREADY_EXIST(-2) if some file has the same name as the one to be inserted
    *         POS_OVERLAP(-3) if some file overlaps the new file
    *         an insertion position i >= -1 if the new file can be inserted between [i, i+1]
    */
-  private int findInsertionPosition(TsFileResource newTsFileResource) {
+  private int findInsertionPosition(TsFileResource newTsFileResource, long newFilePartitionId) {
     File tsfileToBeInserted = newTsFileResource.getFile();
-    long newFilePartitionId = Long.parseLong(tsfileToBeInserted.getParentFile().getName());
+
     int insertPos = -1;
 
     List<TsFileResource> sequenceList = new ArrayList<>(sequenceFileTreeSet);
@@ -1863,19 +1908,18 @@ public class StorageGroupProcessor {
    *
    * @param type load type
    * @param tsFileResource tsfile resource to be loaded
+   * @param filePartitionId the partition id of the new file
    * @UsedBy sync module, load external tsfile module.
    * @return load the file successfully
    */
   private boolean loadTsFileByType(LoadTsFileType type, File syncedTsFile,
-      TsFileResource tsFileResource)
+      TsFileResource tsFileResource, long filePartitionId)
       throws TsFileProcessorException, DiskSpaceInsufficientException {
     File targetFile;
-    long timeRangeId = StorageEngine.fromTimeToTimePartition(
-        tsFileResource.getStartTimeMap().entrySet().iterator().next().getValue());
     switch (type) {
       case LOAD_UNSEQUENCE:
         targetFile = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(),
-            storageGroupName + File.separatorChar + timeRangeId + File.separator + tsFileResource
+            storageGroupName + File.separatorChar + filePartitionId + File.separator + tsFileResource
                 .getFile().getName());
         tsFileResource.setFile(targetFile);
         if(unSequenceFileList.contains(tsFileResource)){
@@ -1889,7 +1933,7 @@ public class StorageGroupProcessor {
       case LOAD_SEQUENCE:
         targetFile =
             new File(DirectoryManager.getInstance().getNextFolderForSequenceFile(),
-                storageGroupName + File.separatorChar + timeRangeId + File.separator
+                storageGroupName + File.separatorChar + filePartitionId + File.separator
                     + tsFileResource.getFile().getName());
         tsFileResource.setFile(targetFile);
         if(sequenceFileTreeSet.contains(tsFileResource)){
@@ -1933,7 +1977,7 @@ public class StorageGroupProcessor {
           syncedResourceFile.getAbsolutePath(), targetResourceFile.getAbsolutePath(),
           e.getMessage()));
     }
-    partitionDirectFileVersions.computeIfAbsent(timeRangeId,
+    partitionDirectFileVersions.computeIfAbsent(filePartitionId,
         p -> new HashSet<>()).addAll(tsFileResource.getHistoricalVersions());
     return true;
   }
