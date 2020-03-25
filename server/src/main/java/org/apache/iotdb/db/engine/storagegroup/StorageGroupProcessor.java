@@ -367,17 +367,17 @@ public class StorageGroupProcessor {
 
       File[] subFiles = fileFolder.listFiles();
       if (subFiles != null) {
-        for (File timeRangeFileFolder : subFiles) {
+        for (File partitionFolder : subFiles) {
           // some TsFileResource may be being persisted when the system crashed, try recovering such
           // resources
-          continueFailedRenames(timeRangeFileFolder, TEMP_SUFFIX);
+          continueFailedRenames(partitionFolder, TEMP_SUFFIX);
 
           // some TsFiles were going to be replaced by the merged files when the system crashed and
           // the process was interrupted before the merged files could be named
-          continueFailedRenames(timeRangeFileFolder, MERGE_SUFFIX);
+          continueFailedRenames(partitionFolder, MERGE_SUFFIX);
 
           Collections.addAll(tsFiles,
-              fsFactory.listFilesBySuffix(timeRangeFileFolder.getAbsolutePath(), TSFILE_SUFFIX));
+              fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX));
         }
       }
 
@@ -1256,15 +1256,13 @@ public class StorageGroupProcessor {
       DeletePlan deletionPlan = new DeletePlan(timestamp, new Path(deviceId, measurementId));
       for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
         if (entry.getKey() <= timePartitionId) {
-          entry.getValue().getLogNode()
-              .write(deletionPlan);
+          entry.getValue().getLogNode().write(deletionPlan);
         }
       }
 
       for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
         if (entry.getKey() <= timePartitionId) {
-          entry.getValue().getLogNode()
-              .write(deletionPlan);
+          entry.getValue().getLogNode().write(deletionPlan);
         }
       }
     }
@@ -1611,7 +1609,9 @@ public class StorageGroupProcessor {
     writeLock();
     mergeLock.writeLock().lock();
     try {
-      int insertPos = findInsertionPosition(newTsFileResource, newFilePartitionId);
+      List<TsFileResource> sequenceList = new ArrayList<>(sequenceFileTreeSet);
+
+      int insertPos = findInsertionPosition(newTsFileResource, newFilePartitionId, sequenceList);
       if (insertPos == POS_ALREADY_EXIST) {
         return;
       }
@@ -1625,7 +1625,7 @@ public class StorageGroupProcessor {
         // check whether the file name needs to be renamed.
         if (!sequenceFileTreeSet.isEmpty()) {
           String newFileName = getFileNameForLoadingFile(tsfileToBeInserted.getName(), insertPos,
-              getTimePartitionFromTsFileResource(newTsFileResource));
+              getTimePartitionFromTsFileResource(newTsFileResource), sequenceList);
           if (!newFileName.equals(tsfileToBeInserted.getName())) {
             logger.info("Tsfile {} must be renamed to {} for loading into the sequence list.",
                 tsfileToBeInserted.getName(), newFileName);
@@ -1658,8 +1658,6 @@ public class StorageGroupProcessor {
    * Check and get the partition id of a TsFile to be inserted using the start times and end
    * times of devices.
    * TODO: when the partition violation happens, split the file and load into different partitions
-   * @param resource
-   * @return
    * @throws LoadFileException if the data of the file cross partitions or it is empty
    */
   private long getNewFilePartitionId(TsFileResource resource) throws LoadFileException {
@@ -1698,12 +1696,12 @@ public class StorageGroupProcessor {
    *         POS_OVERLAP(-3) if some file overlaps the new file
    *         an insertion position i >= -1 if the new file can be inserted between [i, i+1]
    */
-  private int findInsertionPosition(TsFileResource newTsFileResource, long newFilePartitionId) {
+  private int findInsertionPosition(TsFileResource newTsFileResource, long newFilePartitionId,
+      List<TsFileResource> sequenceList) {
     File tsfileToBeInserted = newTsFileResource.getFile();
 
     int insertPos = -1;
 
-    List<TsFileResource> sequenceList = new ArrayList<>(sequenceFileTreeSet);
     // find the position where the new file should be inserted
     for (int i = 0; i < sequenceList.size(); i++) {
       TsFileResource localFile = sequenceList.get(i);
@@ -1725,7 +1723,7 @@ public class StorageGroupProcessor {
           return POS_OVERLAP;
         case -1:
           // all devices in the local file are newer than the new file, the new file can be
-          // inserted before the local file
+          // inserted before all local files
           return i - 1;
         default:
           // all devices in the local file are older than the new file, proceed to the next file
@@ -1847,11 +1845,10 @@ public class StorageGroupProcessor {
    * @return appropriate filename
    */
   private String getFileNameForLoadingFile(String tsfileName, int insertIndex,
-      long timePartitionId) {
+      long timePartitionId, List<TsFileResource> sequenceList) {
     long currentTsFileTime = Long
         .parseLong(tsfileName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
     long preTime;
-    List<TsFileResource> sequenceList = new ArrayList<>(sequenceFileTreeSet);
     if (insertIndex == -1) {
       preTime = 0L;
     } else {
