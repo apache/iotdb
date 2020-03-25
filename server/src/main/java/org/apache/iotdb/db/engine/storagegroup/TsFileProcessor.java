@@ -676,7 +676,7 @@ public class TsFileProcessor {
    * Split the filled workMemTable into two parts, respectively flushMemTable to be flushed and the
    * new workMemTable which continues to accept insertions.
    */
-  public Map<String, Long> adjustMemTable() throws QueryProcessException {
+  public Map<String, Long> adjustMemTable() throws WriteProcessException {
     if (!sequence) {
       return null;
     }

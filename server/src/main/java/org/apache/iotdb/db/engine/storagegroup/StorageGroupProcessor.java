@@ -485,7 +485,7 @@ public class StorageGroupProcessor {
   }
 
   public TSStatus[] insertBatch(BatchInsertPlan batchInsertPlan)
-      throws WriteProcessException, QueryProcessException {
+      throws WriteProcessException {
     writeLock();
     try {
       TSStatus[] results = new TSStatus[batchInsertPlan.getRowCount()];
@@ -579,7 +579,7 @@ public class StorageGroupProcessor {
    */
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
       int start, int end, boolean sequence, TSStatus[] results, long timePartitionId)
-      throws WriteProcessException, QueryProcessException {
+      throws WriteProcessException {
     // return when start >= end
     if (start >= end) {
       return;

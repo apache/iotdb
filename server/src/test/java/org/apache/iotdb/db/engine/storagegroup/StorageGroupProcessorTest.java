@@ -150,7 +150,7 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testIoTDBRowBatchWriteAndSyncClose() throws WriteProcessException, QueryProcessException {
+  public void testIoTDBRowBatchWriteAndSyncClose() throws WriteProcessException {
 
     String[] measurements = new String[2];
     measurements[0] = "s0";

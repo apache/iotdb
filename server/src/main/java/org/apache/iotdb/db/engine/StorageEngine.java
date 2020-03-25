@@ -289,7 +289,7 @@ public class StorageEngine implements IService {
     // TODO monitor: update statistics
     try {
       return storageGroupProcessor.insertBatch(batchInsertPlan);
-    } catch (WriteProcessException | QueryProcessException e) {
+    } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }
   }
