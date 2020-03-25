@@ -618,7 +618,7 @@ public class StorageGroupProcessor {
     if (tsFileProcessor.shouldFlush()) {
       Map<String, Long> updateFLushTimeForEachDevice = tsFileProcessor.adjustMemTable();
       for (String deviceId : updateFLushTimeForEachDevice.keySet()) {
-        if (globalLatestFlushedTimeForEachDevice.get(deviceId) <
+        if (globalLatestFlushedTimeForEachDevice.getOrDefault(deviceId, Long.MIN_VALUE) <
             updateFLushTimeForEachDevice.get(deviceId)) {
           globalLatestFlushedTimeForEachDevice.put(deviceId,
               updateFLushTimeForEachDevice.get(deviceId));
@@ -677,7 +677,7 @@ public class StorageGroupProcessor {
     if (tsFileProcessor.shouldFlush()) {
       Map<String, Long> updateFLushTimeForEachDevice = tsFileProcessor.adjustMemTable();
       for (String deviceId : updateFLushTimeForEachDevice.keySet()) {
-        if (globalLatestFlushedTimeForEachDevice.get(deviceId) <
+        if (globalLatestFlushedTimeForEachDevice.getOrDefault(deviceId, Long.MIN_VALUE) <
             updateFLushTimeForEachDevice.get(deviceId)) {
           globalLatestFlushedTimeForEachDevice.put(deviceId,
               updateFLushTimeForEachDevice.get(deviceId));
