@@ -1564,8 +1564,7 @@ public class StorageGroupProcessor {
    * @param newTsFileResource tsfile resource
    * @UsedBy sync module.
    */
-  public void loadNewTsFileForSync(TsFileResource newTsFileResource)
-      throws TsFileProcessorException {
+  public void loadNewTsFileForSync(TsFileResource newTsFileResource) throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getFile();
     long newFilePartitionId = getNewFilePartitionId(newTsFileResource);
     writeLock();
@@ -1580,7 +1579,7 @@ public class StorageGroupProcessor {
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
           tsfileToBeInserted.getAbsolutePath(), tsfileToBeInserted.getParentFile().getName());
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-      throw new TsFileProcessorException(e);
+      throw new LoadFileException(e);
     } finally {
       mergeLock.writeLock().unlock();
       writeUnlock();
@@ -1601,11 +1600,9 @@ public class StorageGroupProcessor {
    * @param newTsFileResource tsfile resource
    * @UsedBy load external tsfile module
    */
-  public void loadNewTsFile(TsFileResource newTsFileResource)
-      throws TsFileProcessorException {
+  public void loadNewTsFile(TsFileResource newTsFileResource) throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getFile();
     long newFilePartitionId = getNewFilePartitionId(newTsFileResource);
-
     writeLock();
     mergeLock.writeLock().lock();
     try {
@@ -1647,7 +1644,7 @@ public class StorageGroupProcessor {
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
           tsfileToBeInserted.getAbsolutePath(), tsfileToBeInserted.getParentFile().getName());
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-      throw new TsFileProcessorException(e);
+      throw new LoadFileException(e);
     } finally {
       mergeLock.writeLock().unlock();
       writeUnlock();
@@ -1912,7 +1909,7 @@ public class StorageGroupProcessor {
    */
   private boolean loadTsFileByType(LoadTsFileType type, File syncedTsFile,
       TsFileResource tsFileResource, long filePartitionId)
-      throws TsFileProcessorException, DiskSpaceInsufficientException {
+      throws LoadFileException, DiskSpaceInsufficientException {
     File targetFile;
     switch (type) {
       case LOAD_UNSEQUENCE:
@@ -1943,7 +1940,7 @@ public class StorageGroupProcessor {
             syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath());
         break;
       default:
-        throw new TsFileProcessorException(
+        throw new LoadFileException(
             String.format("Unsupported type of loading tsfile : %s", type));
     }
 
@@ -1956,7 +1953,7 @@ public class StorageGroupProcessor {
     } catch (IOException e) {
       logger.error("File renaming failed when loading tsfile. Origin: {}, Target: {}",
           syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath(), e);
-      throw new TsFileProcessorException(String.format(
+      throw new LoadFileException(String.format(
           "File renaming failed when loading tsfile. Origin: %s, Target: %s, because %s",
           syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage()));
     }
@@ -1970,7 +1967,7 @@ public class StorageGroupProcessor {
     } catch (IOException e) {
       logger.error("File renaming failed when loading .resource file. Origin: {}, Target: {}",
           syncedResourceFile.getAbsolutePath(), targetResourceFile.getAbsolutePath(), e);
-      throw new TsFileProcessorException(String.format(
+      throw new LoadFileException(String.format(
           "File renaming failed when loading .resource file. Origin: %s, Target: %s, because %s",
           syncedResourceFile.getAbsolutePath(), targetResourceFile.getAbsolutePath(),
           e.getMessage()));
