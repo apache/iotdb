@@ -691,49 +691,18 @@ public class TsFileProcessor {
           TSDataType[] dataTypes = new TSDataType[] {series.getType()};
           TVList tvList = series.getSortedTVList();
           int rowCount = (int)Math.ceil(tvList.size() * config.getDefaultStep());
-          long[] flushTimes = tvList.getPartialTimes(0, rowCount);
-          long[] workTimes = tvList.getPartialTimes(rowCount, tvList.size());
-          Object[] flushColumns = new Object[1];
-          Object[] workColumns = new Object[1];
-          switch (series.getType()) {
-            case TEXT:
-              flushColumns[0] = tvList.getPartialBinaries(0, rowCount);
-              workColumns[0] = tvList.getPartialBinaries(rowCount, tvList.size());
-              break;
-            case FLOAT:
-              flushColumns[0] = tvList.getPartialFloats(0, rowCount);
-              workColumns[0] = tvList.getPartialFloats(rowCount, tvList.size());
-              break;
-            case INT32:
-              flushColumns[0] = tvList.getPartialInts(0, rowCount);
-              workColumns[0] = tvList.getPartialInts(rowCount, tvList.size());
-              break;
-            case INT64:
-              flushColumns[0] = tvList.getPartialLongs(0, rowCount);
-              workColumns[0] = tvList.getPartialLongs(rowCount, tvList.size());
-              break;
-            case DOUBLE:
-              flushColumns[0] = tvList.getPartialDoubles(0, rowCount);
-              workColumns[0] = tvList.getPartialDoubles(rowCount, tvList.size());
-              break;
-            case BOOLEAN:
-              flushColumns[0] = tvList.getPartialBooleans(0, rowCount);
-              workColumns[0] = tvList.getPartialBooleans(rowCount, tvList.size());
-              break;
+          if (rowCount != 0) {
+            BatchInsertPlan flushBatchInsertPlan = getBatchInsertPlanFromWorkMemTable(
+                tvList, deviceId, measurements, dataTypes, 0, rowCount);
+            flushMemTable.insertBatch(flushBatchInsertPlan, 0, rowCount);
+            if (flushBatchInsertPlan.getMaxTime() > tmpFlushTime) {
+              tmpFlushTime = flushBatchInsertPlan.getMaxTime();
+            }
           }
-          BatchInsertPlan flushBatchInsertPlan = new BatchInsertPlan(deviceId, measurements, dataTypes);
-          flushBatchInsertPlan.setTimes(flushTimes);
-          flushBatchInsertPlan.setColumns(flushColumns);
-          flushBatchInsertPlan.setRowCount(rowCount);
-          flushMemTable.insertBatch(flushBatchInsertPlan, 0, rowCount);
-
-          BatchInsertPlan workBatchInsertPlan = new BatchInsertPlan(deviceId, measurements, dataTypes);
-          workBatchInsertPlan.setTimes(workTimes);
-          workBatchInsertPlan.setColumns(workColumns);
-          workBatchInsertPlan.setRowCount(tvList.size() - rowCount);
-          tmpWorkMemTable.insertBatch(workBatchInsertPlan, 0, tvList.size() - rowCount);
-          if (flushTimes[rowCount - 1] > tmpFlushTime) {
-            tmpFlushTime = flushTimes[rowCount - 1];
+          if (rowCount != tvList.size()) {
+            BatchInsertPlan workBatchInsertPlan = getBatchInsertPlanFromWorkMemTable(
+                tvList, deviceId, measurements, dataTypes, rowCount, tvList.size());
+            tmpWorkMemTable.insertBatch(workBatchInsertPlan, 0, tvList.size() - rowCount);
           }
         }
         updateFlushTimeForEachDevice.put(deviceId, tmpFlushTime);
@@ -745,6 +714,38 @@ public class TsFileProcessor {
       flushQueryLock.writeLock().unlock();
     }
     return updateFlushTimeForEachDevice;
+  }
+
+  private BatchInsertPlan getBatchInsertPlanFromWorkMemTable(TVList tvList, String deviceId,
+      String[] measurements, TSDataType[] dataTypes, int start, int end) {
+    long[] times = tvList.getPartialTimes(start, end);
+    Object[] columns = new Object[1];
+    switch (dataTypes[0]) {
+      case TEXT:
+        columns[0] = tvList.getPartialBinaries(start, end);
+        break;
+      case FLOAT:
+        columns[0] = tvList.getPartialFloats(start, end);
+        break;
+      case INT32:
+        columns[0] = tvList.getPartialInts(start, end);
+        break;
+      case INT64:
+        columns[0] = tvList.getPartialLongs(start, end);
+        break;
+      case DOUBLE:
+        columns[0] = tvList.getPartialDoubles(start, end);
+        break;
+      case BOOLEAN:
+        columns[0] = tvList.getPartialBooleans(start, end);
+        break;
+    }
+    BatchInsertPlan batchInsertPlan = new BatchInsertPlan(deviceId, measurements, dataTypes);
+    batchInsertPlan.setTimes(times);
+    batchInsertPlan.setColumns(columns);
+    batchInsertPlan.setRowCount(end - start);
+    batchInsertPlan.setMaxTime(times[end - 1]);
+    return batchInsertPlan;
   }
 
   public int getFlushingMemTableSize() {

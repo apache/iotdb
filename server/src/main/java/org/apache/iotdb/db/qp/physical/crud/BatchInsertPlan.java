@@ -413,6 +413,10 @@ public class BatchInsertPlan extends PhysicalPlan {
     return tmpMaxTime;
   }
 
+  public void setMaxTime(Long maxTime) {
+    this.maxTime = maxTime;
+  }
+
   public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
     if (measurementIndex >= columns.length) {
       return null;
