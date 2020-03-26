@@ -33,8 +33,8 @@ import org.slf4j.LoggerFactory;
 /**
  * AppendNodeEntryHandler checks if the log is successfully appended by the quorum or some node has
  * rejected it for some reason when one node has finished the AppendEntryRequest.
- * The target of the log is the single nodes, it requires the quorum of the nodes to reach
- * consistency.
+ * The target of the log is the single nodes, it requires the agreement from the quorum of the nodes
+ * to reach consistency.
  */
 public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
@@ -54,7 +54,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
       return;
     }
     long resp = response;
-    synchronized (voteCounter) {//this synchronized codes are just for calling quorum.wait.
+    synchronized (voteCounter) {
       if (resp == RESPONSE_AGREE) {
         int remaining = voteCounter.decrementAndGet();
         logger.debug("Received an agreement from {} for {}, remaining votes to succeed: {}",
@@ -64,6 +64,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
           voteCounter.notifyAll();
         }
       } else if (resp > 0) {
+        // a response > 0 is the follower's term
         // the leader ship is stale, wait for the new leader's heartbeat
         long prevReceiverTerm = receiverTerm.get();
         logger.debug("Received a rejection from {} because term is stale: {}/{}", receiver,

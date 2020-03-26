@@ -41,10 +41,13 @@ public class DataHeartbeatThread extends HeartbeatThread {
     super.sendHeartbeat(node, client);
   }
 
+  /**
+   * Different from the election of the meta group, the leader of a data group should have the
+   * newest meta log to guarantee it will not receive the data of the slots that no longer
+   * belongs to it. So the progress of meta logs is also examined.
+   */
   @Override
   void startElection() {
-    // the leader of a data group should have the newest meta log to guarantee its partition
-    // table is not out dated
     electionRequest.setHeader(dataGroupMember.getHeader());
     electionRequest.setLastLogTerm(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogTerm());
     electionRequest.setLastLogIndex(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogIndex());

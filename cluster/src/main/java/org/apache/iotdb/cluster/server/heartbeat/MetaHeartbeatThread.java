@@ -35,6 +35,14 @@ public class MetaHeartbeatThread extends HeartbeatThread {
     this.localMetaMember = metaMember;
   }
 
+  /**
+   * Send a heartbeat to "node" through "client".
+   * If the node's identifier is unknown, set the requireIdentifierFlag. If the last identifier
+   * it has sent conflicts with another, further set the regenerateIdentifierFlag.
+   * Also send the partition table to the node if the table is required.
+   * @param node
+   * @param client
+   */
   @Override
   void sendHeartbeat(Node node, AsyncClient client) {
     // if the node's identifier is not clear, require it
@@ -57,7 +65,9 @@ public class MetaHeartbeatThread extends HeartbeatThread {
       }
     }
 
+    // the actual sending goes here
     super.sendHeartbeat(node, client);
+    // erase the sent partition table so it will not be sent in the next heartbeat
     request.unsetPartitionTableBytes();
   }
 }

@@ -92,6 +92,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   // the nodes known by this node
   protected volatile List<Node> allNodes;
 
+  // the current term of the node, this object also works as lock of some transactions of the
+  // member like elections
   AtomicLong term = new AtomicLong(0);
   volatile NodeCharacter character = NodeCharacter.ELECTOR;
   volatile Node leader;
