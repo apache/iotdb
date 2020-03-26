@@ -314,11 +314,13 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         int metaPort = Integer.parseInt(split[1]);
         int dataPort = Integer.parseInt(split[2]);
         if (!ip.equals(thisNode.ip) || metaPort != thisNode.metaPort) {
+          // do not add the local node since it is added in `setThisNode()`
           Node seedNode = new Node();
           seedNode.setIp(ip);
           seedNode.setMetaPort(metaPort);
           seedNode.setDataPort(dataPort);
           if (!allNodes.contains(seedNode)) {
+            // avoid duplications
             allNodes.add(seedNode);
           }
         }
