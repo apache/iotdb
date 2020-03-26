@@ -744,7 +744,7 @@ public class TsFileProcessor {
     batchInsertPlan.setTimes(times);
     batchInsertPlan.setColumns(columns);
     batchInsertPlan.setRowCount(end - start);
-    batchInsertPlan.setMaxTime(times[end - 1]);
+    batchInsertPlan.setMaxTime(times[end - start - 1]);
     return batchInsertPlan;
   }
 
