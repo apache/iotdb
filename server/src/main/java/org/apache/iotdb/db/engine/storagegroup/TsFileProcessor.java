@@ -687,13 +687,14 @@ public class TsFileProcessor {
         long tmpFlushTime = Long.MIN_VALUE;
         for (String measurementId : workMemTable.getMemTableMap().get(deviceId).keySet()) {
           IWritableMemChunk series = workMemTable.getMemTableMap().get(deviceId).get(measurementId);
-          if (series.count() == 0) {
-            continue;
-          }
           String[] measurements = new String[] {measurementId};
           TSDataType[] dataTypes = new TSDataType[] {series.getType()};
           TVList tvList = series.getSortedTVList();
           int rowCount = (int)(tvList.size() * config.getDefaultStep());
+          if (rowCount == 0) {
+            System.out.println("tvList.size()=" + rowCount);
+            continue;
+          }
           long[] flushTimes = tvList.getPartialTimes(0, rowCount);
           long[] workTimes = tvList.getPartialTimes(rowCount, tvList.size());
           Object[] flushColumns = new Object[1];
