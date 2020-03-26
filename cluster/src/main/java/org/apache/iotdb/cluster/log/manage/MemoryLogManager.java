@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.List;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
@@ -44,7 +42,7 @@ public abstract class MemoryLogManager implements LogManager {
   private long lastLogId = -1;
   private long lastLogTerm = -1;
 
-  Deque<Log> logBuffer = new ArrayDeque<>();
+  List<Log> logBuffer = new ArrayList<>();
   private LogApplier logApplier;
 
   protected MemoryLogManager(LogApplier logApplier) {
@@ -67,27 +65,54 @@ public abstract class MemoryLogManager implements LogManager {
   }
 
   @Override
-  public void appendLog(Log log) {
-    logBuffer.addLast(log);
-    lastLogId = log.getCurrLogIndex();
-    lastLogTerm = log.getCurrLogTerm();
-  }
-
-  @Override
-  public void removeLastLog() {
-    if (!logBuffer.isEmpty()) {
-      Log log = logBuffer.removeLast();
-      lastLogId = log.getPreviousLogIndex();
-      lastLogTerm = log.getPreviousLogTerm();
+  public boolean appendLog(Log appendingLog) {
+    long appendingPrevIndex = appendingLog.getPreviousLogIndex();
+    long appendingPrevTerm = appendingLog.getPreviousLogTerm();
+    long appendingCurrTerm = appendingLog.getCurrLogTerm();
+    long appendingCurrIndex = appendingLog.getCurrLogIndex();
+    if (logBuffer.isEmpty()) {
+      // the logs are empty, check the appendingLog with the recorded last log index and term
+      if(appendingPrevIndex == lastLogId && appendingPrevTerm == lastLogTerm) {
+        logBuffer.add(appendingLog);
+        lastLogId = appendingLog.getCurrLogIndex();
+        lastLogTerm = appendingLog.getCurrLogTerm();
+        return true;
+      } else {
+        return false;
+      }
     }
-  }
 
-  @Override
-  public void replaceLastLog(Log log) {
-    logBuffer.removeLast();
-    logBuffer.addLast(log);
-    lastLogId = log.getCurrLogIndex();
-    lastLogTerm = log.getCurrLogTerm();
+    // find the first log whose index <= appendingLog's
+    int insertPos = logBuffer.size() - 1;
+    for (; insertPos >= 0; insertPos--) {
+      Log currLog = logBuffer.get(insertPos);
+      if (currLog.getCurrLogIndex() == appendingCurrIndex && currLog.getCurrLogTerm() == appendingCurrTerm) {
+        // the log is already appended
+        return true;
+      }
+
+      if (currLog.getCurrLogIndex() == appendingPrevIndex) {
+        if (appendingPrevTerm != currLog.getCurrLogTerm()) {
+          // log mismatch
+          return false;
+        } else {
+          insertPos ++;
+          break;
+        }
+      } else if (currLog.getCurrLogIndex() < appendingPrevIndex) {
+        // log mismatch
+        return false;
+      }
+      // continue to the previous log if currLog's index > appendingLog's
+    }
+    // if the all logs' indices are larger than appendingLog's, just clear the buffer
+    insertPos = Math.max(insertPos, 0);
+    // the insertion position is found, insert the log into insertPos and discard the following logs
+    logBuffer.subList(insertPos, logBuffer.size()).clear();
+    logBuffer.add(appendingLog);
+    lastLogId = appendingLog.getCurrLogIndex();
+    lastLogTerm = appendingLog.getCurrLogTerm();
+    return true;
   }
 
   @Override
@@ -128,13 +153,13 @@ public abstract class MemoryLogManager implements LogManager {
 
   @Override
   public boolean logValid(long logIndex) {
-    return !logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex()
-        <= logIndex && logIndex <= logBuffer.getLast().getCurrLogIndex();
+    return !logBuffer.isEmpty() && logBuffer.get(0).getCurrLogIndex()
+        <= logIndex && logIndex <= logBuffer.get(logBuffer.size() - 1).getCurrLogIndex();
   }
 
   @Override
   public Log getLastLog() {
-    return logBuffer.isEmpty()? null : logBuffer.getLast();
+    return logBuffer.isEmpty()? null : logBuffer.get(logBuffer.size() - 1);
   }
 
   @Override

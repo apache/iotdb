@@ -71,7 +71,8 @@ public class ClusterMain {
         ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
         int quorum = config.getReplicationNum() / 2 + 1;
         if (config.getSeedNodeUrls().size() < quorum) {
-          String message = String.format("Seed number less than quorum, seed number: {}, quorum: {}.",
+          String message = String.format("Seed number less than quorum, seed number: %s, quorum: "
+                  + "%s.",
               config.getSeedNodeUrls().size(), quorum);
           throw new StartupException(metaServer.getMember().getName(), message);
         }

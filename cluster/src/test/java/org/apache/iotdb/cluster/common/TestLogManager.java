@@ -47,18 +47,8 @@ public class TestLogManager implements LogManager {
   }
 
   @Override
-  public void appendLog(Log log) {
-
-  }
-
-  @Override
-  public void removeLastLog() {
-
-  }
-
-  @Override
-  public void replaceLastLog(Log log) {
-
+  public boolean appendLog(Log log) {
+    return true;
   }
 
   @Override

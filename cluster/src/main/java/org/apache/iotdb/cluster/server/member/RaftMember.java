@@ -301,40 +301,14 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   private long appendEntry(Log log) {
     long resp;
     synchronized (logManager) {
-      // TODO-Cluster: instead of the last log, we should find the log that matches the previous
-      //  log of "log", discard all logs behind it and then append the new log. If such a matched
-      //  log cannot be found, the follower should help the leader position the last matched log.
-      Log lastLog = logManager.getLastLog();
-      long previousLogIndex = log.getPreviousLogIndex();
-      long previousLogTerm = log.getPreviousLogTerm();
-
-      if (logManager.getLastLogIndex() == previousLogIndex
-          && logManager.getLastLogTerm() == previousLogTerm) {
-        // the incoming log points to the local last log, append it
-        logManager.appendLog(log);
+      boolean success = logManager.appendLog(log);
+      if (success) {
         if (logger.isDebugEnabled()) {
           logger.debug("{} append a new log {}", name, log);
         }
         resp = Response.RESPONSE_AGREE;
-      } else if (lastLog != null && lastLog.getPreviousLogIndex() == previousLogIndex
-          && lastLog.getCurrLogTerm() <= log.getCurrLogTerm()) {
-        /* <pre>
-                                       +------+
-                                     .'|      | new coming log
-                                   .'  +------+
-                                 .'
-        +--------+     +--------+      +------+
-        |        |-----|        |------|      | so called latest log   (local)
-        +--------+     +--------+      +------+
-        </pre>
-        */
-        // the incoming log points to the previous log of the local last log, and its term is
-        // bigger than or equals to the local last log's, replace the local last log with it
-        // because the local latest log is invalid.
-        logManager.replaceLastLog(log);
-        logger.debug("{} replaced the last log with {}", name, log);
-        resp = Response.RESPONSE_AGREE;
       } else {
+        Log lastLog = logManager.getLastLog();
         long lastPrevLogTerm = lastLog == null ? -1 : lastLog.getPreviousLogTerm();
         long lastPrevLogId = lastLog == null ? -1 : lastLog.getPreviousLogIndex();
         // the incoming log points to an illegal position, reject it
@@ -345,7 +319,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
             logManager.getLastLogTerm(), logManager.getLastLogIndex(),
             lastPrevLogTerm, lastPrevLogId,
             log.getCurrLogTerm(), log.getCurrLogIndex(),
-            previousLogTerm, previousLogIndex);
+            log.getPreviousLogTerm(), log.getPreviousLogIndex());
         resp = Response.RESPONSE_LOG_MISMATCH;
       }
     }
