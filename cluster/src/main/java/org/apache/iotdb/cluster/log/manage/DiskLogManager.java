@@ -1,7 +1,5 @@
 package org.apache.iotdb.cluster.log.manage;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.manage.serializable.LogDequeSerializer;
@@ -59,18 +57,15 @@ public abstract class DiskLogManager extends MemoryLogManager {
   }
 
   @Override
-  public void appendLog(Log log) {
-    super.appendLog(log);
-    logDequeSerializer.addLast(log, getMeta());
+  public boolean appendLog(Log log) {
+    boolean result = super.appendLog(log);
+    if(result) {
+      logDequeSerializer.addLast(log, getMeta());
+    }
+
+    return result;
   }
 
-  @Override
-  public void removeLastLog() {
-    if (!logBuffer.isEmpty()) {
-      super.removeLastLog();
-      logDequeSerializer.removeLast(getMeta());
-    }
-  }
 
   public void truncateLog(int count) {
     if (logBuffer.size() > count) {
@@ -78,14 +73,6 @@ public abstract class DiskLogManager extends MemoryLogManager {
       // super.truncateLog();
       logDequeSerializer.truncateLog(count, getMeta());
     }
-  }
-
-  @Override
-  public void replaceLastLog(Log log) {
-    super.replaceLastLog(log);
-    LogManagerMeta curMeta = getMeta();
-    logDequeSerializer.removeLast(curMeta);
-    logDequeSerializer.addLast(log, curMeta);
   }
 
   @Override
@@ -122,41 +109,11 @@ public abstract class DiskLogManager extends MemoryLogManager {
     logDequeSerializer.serializeMeta(getMeta());
   }
 
-  /**
-   * remove logs which haven been committed
-   *
-   * @return last committed log
-   */
+
   @Override
-  public Log removeCommittedLogsReturnLastLog() {
-    Log res = null;
-    int removeCount = 0;
-    while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
-      removeCount++;
-      // remove committed logs
-      res = removeFirstLog();
-    }
-
-    logDequeSerializer.removeFirst(removeCount);
-    return res;
-  }
-
-  /**
-   * remove logs which haven been committed
-   *
-   * @return committed logs List
-   */
-  @Override
-  public List<Log> removeAndReturnCommittedLogs() {
-    List<Log> res = new ArrayList<>();
-    int removeCount = 0;
-    while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
-      removeCount++;
-      res.add(removeFirstLog());
-    }
-
-    logDequeSerializer.removeFirst(removeCount);
-    return res;
+  public void removeFromHead(int length){
+    super.removeFromHead(length);
+    logDequeSerializer.removeFirst(length);
   }
 
   /**

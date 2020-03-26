@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,8 +19,6 @@
 
 -->
 
-# 第8章: 系统设计
+# Shared-nothing 架构
 
-## Shared-nothing 架构
-
-正在开发中，预计2019年底发布，敬请期待。
+正在开发中，敬请期待。

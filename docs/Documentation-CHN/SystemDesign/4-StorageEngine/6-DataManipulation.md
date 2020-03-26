@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -64,7 +64,7 @@
 目前不支持数据的原地更新操作，即update语句，但用户可以直接插入新的数据，在同一个时间点上的同一个时间序列以最新插入的数据为准
 旧数据会通过合并来自动删除，参见：
 
-* [文件合并机制](/#/SystemDesign/progress/chap4/sec4)
+* [文件合并机制](/zh/document/master/SystemDesign/4-StorageEngine/4-MergeManager.html)
 
 ## 数据删除
 

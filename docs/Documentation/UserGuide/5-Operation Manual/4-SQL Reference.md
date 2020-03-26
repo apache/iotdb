@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,9 +18,9 @@
     under the License.
 
 -->
-# Chapter 5: Operation Manual
 
-## SQL Reference
+# SQL Reference
+
 In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a SQL-like query language for interacting with IoTDB, the query language can be devided into 4 major parts:
 
 * Schema Statement: statements about schema management are all listed in this section.
@@ -30,7 +30,7 @@ In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a S
 
 All of these statements are write in IoTDB's own syntax, for details about the syntax composition, please check the `Reference` section.
 
-### Show Version
+## Show Version
 
 ```sql
 show version
@@ -46,7 +46,7 @@ Total line number = 1
 It costs 0.417s
 ```
 
-### Schema Statement
+## Schema Statement
 
 * Set Storage Group
 
@@ -188,7 +188,7 @@ Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
 Note: The path can be prefix path or star path, the nodes can be in a "prefix + star" format. 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
-### Data Management Statement
+## Data Management Statement
 
 * Insert Record Statement
 
@@ -497,7 +497,7 @@ Query like "select last s1 from root.sg.d1" will be parsed exactly the same as "
 
 ```
 
-### Database Management Statement
+## Database Management Statement
 
 * Create User
 
@@ -663,7 +663,7 @@ password:=identifier
 Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
 ```
 
-### Functions
+## Functions
 
 * COUNT
 
@@ -767,7 +767,8 @@ Eg. SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.tempe
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
-### TTL
+## TTL
+
 IoTDB supports storage-level TTL settings, which means it is able to delete old data
 automatically and periodically. The benefit of using TTL is that hopefully you can control the 
 total disk space usage and prevent the machine from running out of disks. Moreover, the query
@@ -813,9 +814,9 @@ atomicity of data deletion is not guaranteed for efficiency concerns. So we reco
 not change the TTL once it is set or at least do not reset it frequently, unless you are determined 
 to suffer the unpredictability. 
 
-## Reference
+# Reference
 
-### Keywords
+## Keywords
 
 ```
 Keywords for IoTDB (case insensitive):
@@ -828,7 +829,7 @@ Keywords with special meanings (case insensitive):
 * Logical symbol: AND, &, &&, OR, | , ||, NOT, !, TRUE, FALSE
 ```
 
-### Identifiers
+## Identifiers
 
 ```
 QUOTE := '\'';
@@ -883,7 +884,7 @@ eg. _abc123
 
 ```
 
-### Literals
+## Literals
 
 
 ```

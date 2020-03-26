@@ -119,6 +119,9 @@ public class SeriesReader {
     this.valueFilter = valueFilter;
   }
 
+  public boolean isEmpty() {
+    return seqFileResource.isEmpty() && unseqFileResource.isEmpty();
+  }
 
   boolean hasNextChunk() throws IOException {
 

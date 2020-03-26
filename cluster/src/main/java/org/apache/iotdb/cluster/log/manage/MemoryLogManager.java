@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.List;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
@@ -41,13 +39,26 @@ import org.slf4j.LoggerFactory;
 public abstract class MemoryLogManager implements LogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MemoryLogManager.class);
-  protected long commitLogIndex = -1;
-  protected Deque<Log> logBuffer = new ArrayDeque<>();
   protected long lastLogId = -1;
   protected long lastLogTerm = -1;
-  private LogApplier logApplier;
+  protected LogApplier logApplier;
+  long commitLogIndex = -1;
+  List<Log> logBuffer = new ArrayList<>();
   protected MemoryLogManager(LogApplier logApplier) {
     this.logApplier = logApplier;
+  }
+
+  public void setLogBuffer(List<Log> logBuffer) {
+    this.logBuffer = logBuffer;
+  }
+
+  public long getLastLogId() {
+    return lastLogId;
+  }
+
+  @Override
+  public void setLastLogId(long lastLogId) {
+    this.lastLogId = lastLogId;
   }
 
   @Override
@@ -75,27 +86,55 @@ public abstract class MemoryLogManager implements LogManager {
   }
 
   @Override
-  public void appendLog(Log log) {
-    logBuffer.addLast(log);
-    lastLogId = log.getCurrLogIndex();
-    lastLogTerm = log.getCurrLogTerm();
-  }
-
-  @Override
-  public void removeLastLog() {
-    if (!logBuffer.isEmpty()) {
-      Log log = logBuffer.removeLast();
-      lastLogId = log.getPreviousLogIndex();
-      lastLogTerm = log.getPreviousLogTerm();
+  public boolean appendLog(Log appendingLog) {
+    long appendingPrevIndex = appendingLog.getPreviousLogIndex();
+    long appendingPrevTerm = appendingLog.getPreviousLogTerm();
+    long appendingCurrTerm = appendingLog.getCurrLogTerm();
+    long appendingCurrIndex = appendingLog.getCurrLogIndex();
+    if (logBuffer.isEmpty()) {
+      // the logs are empty, check the appendingLog with the recorded last log index and term
+      if (appendingPrevIndex == lastLogId && appendingPrevTerm == lastLogTerm) {
+        logBuffer.add(appendingLog);
+        lastLogId = appendingLog.getCurrLogIndex();
+        lastLogTerm = appendingLog.getCurrLogTerm();
+        return true;
+      } else {
+        return false;
+      }
     }
-  }
 
-  @Override
-  public void replaceLastLog(Log log) {
-    logBuffer.removeLast();
-    logBuffer.addLast(log);
-    lastLogId = log.getCurrLogIndex();
-    lastLogTerm = log.getCurrLogTerm();
+    // find the first log whose index <= appendingLog's
+    int insertPos = logBuffer.size() - 1;
+    for (; insertPos >= 0; insertPos--) {
+      Log currLog = logBuffer.get(insertPos);
+      if (currLog.getCurrLogIndex() == appendingCurrIndex
+          && currLog.getCurrLogTerm() == appendingCurrTerm) {
+        // the log is already appended
+        return true;
+      }
+
+      if (currLog.getCurrLogIndex() == appendingPrevIndex) {
+        if (appendingPrevTerm != currLog.getCurrLogTerm()) {
+          // log mismatch
+          return false;
+        } else {
+          insertPos++;
+          break;
+        }
+      } else if (currLog.getCurrLogIndex() < appendingPrevIndex) {
+        // log mismatch
+        return false;
+      }
+      // continue to the previous log if currLog's index > appendingLog's
+    }
+    // if the all logs' indices are larger than appendingLog's, just clear the buffer
+    insertPos = Math.max(insertPos, 0);
+    // the insertion position is found, insert the log into insertPos and discard the following logs
+    logBuffer.subList(insertPos, logBuffer.size()).clear();
+    logBuffer.add(appendingLog);
+    lastLogId = appendingLog.getCurrLogIndex();
+    lastLogTerm = appendingLog.getCurrLogTerm();
+    return true;
   }
 
   @Override
@@ -136,13 +175,13 @@ public abstract class MemoryLogManager implements LogManager {
 
   @Override
   public boolean logValid(long logIndex) {
-    return !logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex()
-        <= logIndex && logIndex <= logBuffer.getLast().getCurrLogIndex();
+    return !logBuffer.isEmpty() && logBuffer.get(0).getCurrLogIndex()
+        <= logIndex && logIndex <= logBuffer.get(logBuffer.size() - 1).getCurrLogIndex();
   }
 
   @Override
   public Log getLastLog() {
-    return logBuffer.isEmpty() ? null : logBuffer.getLast();
+    return logBuffer.isEmpty() ? null : logBuffer.get(logBuffer.size() - 1);
   }
 
   @Override
@@ -150,62 +189,24 @@ public abstract class MemoryLogManager implements LogManager {
     return logApplier;
   }
 
-  @Override
-  public void setLastLogId(long lastLogId) {
-    this.lastLogId = lastLogId;
-  }
-
-  Log removeFirstLog() {
-    return logBuffer.removeFirst();
+  public void removeFromHead(int length) {
+    logBuffer.subList(0, length).clear();
   }
 
   /**
-   * remove logs which haven been committed
-   *
-   * @return last committed log
+   * only for test
    */
-  public Log removeCommittedLogsReturnLastLog() {
-    Log res = null;
-    while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
-      // remove committed logs
-      res = removeFirstLog();
-    }
-
-    return res;
-  }
-
-  /**
-   * remove logs which haven been committed
-   *
-   * @return committed logs List
-   */
-  public List<Log> removeAndReturnCommittedLogs() {
-    List<Log> res = new ArrayList<>();
-    while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
-      res.add(removeFirstLog());
-    }
-
-    return res;
-  }
-
-  public void setLogBuffer(Deque<Log> logBuffer) {
-    this.logBuffer = logBuffer;
+  public LogManagerMeta getMeta() {
+    LogManagerMeta managerMeta = new LogManagerMeta();
+    managerMeta.setCommitLogIndex(commitLogIndex);
+    managerMeta.setLastLogId(lastLogId);
+    managerMeta.setLastLogTerm(lastLogTerm);
+    return managerMeta;
   }
 
   public void setMeta(LogManagerMeta meta) {
     commitLogIndex = meta.getCommitLogIndex();
     lastLogId = meta.getLastLogId();
     lastLogTerm = meta.getLastLogTerm();
-  }
-
-  /**
-   * only for test
-   */
-  public LogManagerMeta getMeta(){
-    LogManagerMeta managerMeta = new LogManagerMeta();
-    managerMeta.setCommitLogIndex(commitLogIndex);
-    managerMeta.setLastLogId(lastLogId);
-    managerMeta.setLastLogTerm(lastLogTerm);
-    return managerMeta;
   }
 }

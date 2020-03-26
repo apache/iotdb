@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.thrift.TException;
@@ -60,6 +61,8 @@ public class ClusterMain {
     }
     String mode = args[0];
 
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
+
     logger.info("Running mode {}", mode);
     try {
       if (MODE_START.equals(mode)) {
@@ -68,7 +71,8 @@ public class ClusterMain {
         ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
         int quorum = config.getReplicationNum() / 2 + 1;
         if (config.getSeedNodeUrls().size() < quorum) {
-          String message = String.format("Seed number less than quorum, seed number: {}, quorum: {}.",
+          String message = String.format("Seed number less than quorum, seed number: %s, quorum: "
+                  + "%s.",
               config.getSeedNodeUrls().size(), quorum);
           throw new StartupException(metaServer.getMember().getName(), message);
         }

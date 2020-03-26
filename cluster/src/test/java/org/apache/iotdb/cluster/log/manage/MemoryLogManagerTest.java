@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.log.manage;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -36,7 +35,6 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -76,7 +74,7 @@ public class MemoryLogManagerTest {
     assertFalse(logManager.logValid(5));
 
     for (Log testLog : testLogs) {
-      logManager.appendLog(testLog);
+      assertTrue(logManager.appendLog(testLog));
     }
     assertEquals(9, logManager.getLastLogIndex());
     assertEquals(9, logManager.getLastLogTerm());
@@ -86,7 +84,62 @@ public class MemoryLogManagerTest {
   }
 
   @Test
-  public void testCommit() throws QueryProcessException {
+  public void testReplace() {
+    List<Log> testLogs = TestUtils.prepareTestLogs(10);
+    for (Log testLog : testLogs) {
+      logManager.appendLog(testLog);
+    }
+
+    Log testLog = new TestLog();
+    testLog.setPreviousLogIndex(5);
+    testLog.setPreviousLogTerm(5);
+    testLog.setCurrLogIndex(6);
+    testLog.setCurrLogTerm(11);
+
+    assertTrue(logManager.appendLog(testLog));
+    assertEquals(6, logManager.getLastLogIndex());
+    assertEquals(11, logManager.getLastLogTerm());
+    assertEquals(testLog, logManager.getLastLog());
+    assertEquals(testLogs.subList(0, 5), logManager.getLogs(0, 5));
+    assertTrue(logManager.logValid(6));
+    assertFalse(logManager.logValid(8));
+  }
+
+  @Test
+  public void testMismatchAppend() {
+    List<Log> testLogs = TestUtils.prepareTestLogs(10);
+    for (Log testLog : testLogs) {
+      logManager.appendLog(testLog);
+    }
+
+    Log testLog = new TestLog();
+    testLog.setPreviousLogIndex(5);
+    testLog.setPreviousLogTerm(7);
+    testLog.setCurrLogIndex(6);
+    testLog.setCurrLogTerm(11);
+
+    assertFalse(logManager.appendLog(testLog));
+    assertEquals(9, logManager.getLastLogIndex());
+    assertEquals(9, logManager.getLastLogTerm());
+    assertEquals(testLogs.get(9), logManager.getLastLog());
+    assertEquals(testLogs.subList(3, 7), logManager.getLogs(3, 7));
+    assertTrue(logManager.logValid(5));
+
+    testLog.setPreviousLogIndex(9);
+    testLog.setPreviousLogTerm(10);
+    testLog.setCurrLogIndex(10);
+    testLog.setCurrLogTerm(10);
+
+    assertFalse(logManager.appendLog(testLog));
+    assertEquals(9, logManager.getLastLogIndex());
+    assertEquals(9, logManager.getLastLogTerm());
+    assertEquals(testLogs.get(9), logManager.getLastLog());
+    assertEquals(testLogs.subList(3, 7), logManager.getLogs(3, 7));
+    assertTrue(logManager.logValid(5));
+  }
+
+  @Test
+  public void testCommit() {
     List<Log> testLogs = TestUtils.prepareTestLogs(10);
     assertEquals(-1, logManager.getCommitLogIndex());
     for (Log testLog : testLogs) {
@@ -116,32 +169,4 @@ public class MemoryLogManagerTest {
     assertEquals(Collections.emptyList(), logManager.getLogs(2000, 100));
   }
 
-  @Test
-  public void testRemove() {
-    List<Log> testLogs = TestUtils.prepareTestLogs(10);
-    for (Log testLog : testLogs) {
-      logManager.appendLog(testLog);
-    }
-    for (int i = 0; i < 3; i++) {
-      logManager.removeLastLog();
-    }
-    assertEquals(testLogs.subList(0, 7), logManager.getLogs(0, 7));
-  }
-
-  @Test
-  public void testReplace() {
-    List<Log> testLogs = TestUtils.prepareTestLogs(10);
-    for (Log testLog : testLogs) {
-      logManager.appendLog(testLog);
-    }
-
-    Log log = new TestLog();
-    log.setPreviousLogTerm(8);
-    log.setPreviousLogIndex(8);
-    log.setCurrLogTerm(100);
-    log.setCurrLogIndex(9);
-    assertNotEquals(log, logManager.getLastLog());
-    logManager.replaceLastLog(log);
-    assertEquals(log, logManager.getLastLog());
-  }
 }

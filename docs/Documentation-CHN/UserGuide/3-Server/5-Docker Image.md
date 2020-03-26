@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,8 +19,8 @@
 
 -->
 
-# 第3章 服务器端
-## Docker Image
+# Docker Image
+
 Dockerfile 存放在的 docker 工程下的 src/main/Dockerfile 中.
 
 1. 您可以使用下面的命令构建 docker image: 

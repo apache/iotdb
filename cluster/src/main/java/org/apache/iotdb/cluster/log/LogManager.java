@@ -32,23 +32,14 @@ public interface LogManager {
   long getCommitLogIndex();
 
   /**
-   * Append log to the last of logs.
+   * Append log to a proper place in the log chain.
+   * If the previous log of the appending log can be found, the new log will be appended after
+   * the log and old logs before the log will be removed and a true will be returned.
+   * Otherwise this method will return false.
    * @param log
+   * @return true if the log is successfully appended, false otherwise.
    */
-  void appendLog(Log log);
-
-  /**
-   * Remove the last log. Often it is used to remove the newly-added log when it fails to operate
-   * on the quorum.
-   */
-  void removeLastLog();
-
-  /**
-   * Replace the last log with the given log. It is used when the last log came from a stale
-   * leader and the new leader just sent a log with the same index but bigger term.
-   * @param log
-   */
-  void replaceLastLog(Log log);
+  boolean appendLog(Log log);
 
   /**
    * Commit (apply) all memory logs whose index <= maxLogIndex, also change commit log index.
@@ -93,4 +84,11 @@ public interface LogManager {
   void setLastLogId(long lastLogId);
 
   void setLastLogTerm(long lastLogTerm);
+
+  /**
+   * Wait until all remote snapshots are pulled locally.
+   */
+  default void waitRemoteSnapshots() {
+
+  };
 }

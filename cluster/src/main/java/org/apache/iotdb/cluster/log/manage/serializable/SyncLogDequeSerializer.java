@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
@@ -15,6 +16,7 @@ import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import java.util.List;
 
 public class SyncLogDequeSerializer implements LogDequeSerializer {
 
@@ -147,16 +149,16 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   }
 
   @Override
-  public Deque<Log> recoverLog() {
+  public List<Log> recoverLog() {
     if (meta == null) {
       recoverMeta();
     }
 
     if (!logFile.exists()) {
-      return new ArrayDeque<>();
+      return new ArrayList<>();
     }
 
-    Deque<Log> result = new ArrayDeque<>();
+    List<Log> result = new ArrayList<>();
     long count = 0;
     try {
       FileInputStream logReader = new FileInputStream(logFile);
@@ -165,7 +167,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
         // actual log
         if (count >= firstLogPosition) {
           Log log = readLog(logReader, false);
-          result.addLast(log);
+          result.add(log);
         }
         // removed log, skip
         else {

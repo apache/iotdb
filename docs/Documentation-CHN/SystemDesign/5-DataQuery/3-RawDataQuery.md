@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -47,8 +47,12 @@
 
 `ReadTask`中有两个字段
 
-* private final ManagedSeriesReader reader;
-* private BlockingQueue<BatchData> blockingQueue;
+```
+ private final ManagedSeriesReader reader;
+ private BlockingQueue<BatchData> blockingQueue;
+```
+
+
 
 `ManagedSeriesReader`接口继承了`IBatchReader`接口，主要用来读取单个时间序列的数据，并且新增了以下四个方法
 
@@ -120,22 +124,31 @@ public void run() {
 
 先介绍消费者任务的一些重要字段
 
-* TreeSet<Long> timeHeap
+* ```
+  TreeSet<Long> timeHeap
+  ```
 
   时间戳的最小堆，用以实现时间戳对齐操作
 
-* BlockingQueue<BatchData>[] blockingQueueArray;
+* ```
+  BlockingQueue<BatchData>[] blockingQueueArray;
+  ```
 
   阻塞队列的数组，用以存储每个时间序列对应的阻塞队列
 
-* boolean[] noMoreDataInQueueArray
+* ```
+  boolean[] noMoreDataInQueueArray
+  ```
 
   用以表征某个时间序列的阻塞队列里还有没有值，如果为false，则消费者不会再去调用`take()`方法，以防消费者线程被阻塞。
-  
-* BatchData[] cachedBatchDataArray
+
+* ```
+  BatchData[] cachedBatchDataArray
+  ```
 
   缓存从阻塞队列里取出的一个BatchData，因为阻塞队列里`take()`出的`BatchData`并不能一次性消费完，所以需要做缓存
-  
+
+
 在消费者`RawQueryDataSetWithoutValueFilter`的构造函数里首先调用了`init()`方法
 
 #### init()
@@ -247,22 +260,31 @@ for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
 
 它的查询逻辑是，首先根据查询条件生成满足过滤条件的时间戳，通过满足条件的时间戳查询投影列的值，然后返回结果集。它有四个字段
 
-* private EngineTimeGenerator timeGenerator;
+* ```
+  private EngineTimeGenerator timeGenerator;
+  ```
 
   是用来生成满足过滤条件的时间戳的
-  
-* private List<IReaderByTimestamp> seriesReaderByTimestampList;
+
+* ```
+  private List<IReaderByTimestamp> seriesReaderByTimestampList;
+  ```
 
   每个时间序列对应的reader，用来根据时间戳获取数据
 
-* private boolean hasCachedRowRecord;
+* ```
+  private boolean hasCachedRowRecord;
+  ```
 
   当前是否缓存了数据行
-  
-* private RowRecord cachedRowRecord;
+
+* ```
+  private RowRecord cachedRowRecord;
+  ```
 
   当前缓存的数据行
-  
+
+
 它的主要查询逻辑封装在`cacheRowRecord()`方法中，具体分析见代码中的注释
 
 #### cacheRowRecord()

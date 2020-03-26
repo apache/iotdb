@@ -51,15 +51,20 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   }
 
   @Override
-  public void takeSnapshot() {
+  public void waitRemoteSnapshots() {
     synchronized (slotSnapshots) {
-      // make sure every remote snapshot is pulled before creating local snapshot
       for (Entry<Integer, FileSnapshot> entry : slotSnapshots.entrySet()) {
         if (entry.getValue() instanceof RemoteSnapshot) {
           ((RemoteSnapshot) entry.getValue()).getRemoteSnapshot();
         }
       }
     }
+  }
+
+  @Override
+  public void takeSnapshot() {
+    // make sure every remote snapshot is pulled before creating local snapshot
+    waitRemoteSnapshots();
 
     logger.info("Taking snapshots, flushing IoTDB");
     StorageEngine.getInstance().syncCloseAllProcessor();
@@ -67,11 +72,16 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     synchronized (slotSnapshots) {
       collectTimeseriesSchemas();
 
-      Log lastCommittedLog = removeCommittedLogsReturnLastLog();
-      if(lastCommittedLog != null){
-        snapshotLastLogId = lastCommittedLog.getCurrLogIndex();
-        snapshotLastLogTerm = lastCommittedLog.getCurrLogTerm();
+
+      int i = 0;
+      for (; i < logBuffer.size(); i++) {
+        if (logBuffer.get(i).getCurrLogIndex() > commitLogIndex) {
+          break;
+        }
+        snapshotLastLogId = logBuffer.get(i).getCurrLogIndex();
+        snapshotLastLogTerm = logBuffer.get(i).getCurrLogTerm();
       }
+      removeFromHead(i);
 
       collectTsFiles();
 

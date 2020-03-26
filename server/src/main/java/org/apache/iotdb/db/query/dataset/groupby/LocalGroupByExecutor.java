@@ -47,10 +47,12 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   private List<AggregateResult> results = new ArrayList<>();
   private TimeRange timeRange;
 
+  private QueryDataSource queryDataSource;
+
   public LocalGroupByExecutor(Path path, TSDataType dataType, QueryContext context, Filter timeFilter,
       TsFileFilter fileFilter)
       throws StorageEngineException {
-    QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+   queryDataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(path, context, timeFilter);
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
@@ -58,6 +60,10 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         null, fileFilter);
     this.preCachedData = null;
     timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
+  }
+
+  public boolean isEmpty() {
+    return queryDataSource.getSeqResources().isEmpty() && queryDataSource.getUnseqResources().isEmpty();
   }
 
   @Override

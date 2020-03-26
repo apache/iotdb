@@ -2,7 +2,7 @@ package org.apache.iotdb.cluster.utils.nodetool.function;
 
 import io.airlift.airline.Command;
 import io.airlift.airline.Option;
-import java.util.Deque;
+import java.util.List;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.manage.serializable.LogManagerMeta;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
@@ -24,17 +24,17 @@ public class LogView implements Runnable {
     SyncLogDequeSerializer logDequeSerializer = new SyncLogDequeSerializer(path);
 
     LogManagerMeta managerMeta = logDequeSerializer.recoverMeta();
-    Deque<Log> logs = logDequeSerializer.recoverLog();
+    List<Log> logs = logDequeSerializer.recoverLog();
 
     Printer.msgPrintln("-------------------LOG META-------------------------");
     Printer.msgPrintln(managerMeta.toString());
     Printer.msgPrintln("-------------------LOG DATA-------------------------");
     int count = 0;
 
-    while (!logs.isEmpty()) {
+    for (int i = 0; i < logs.size(); i++) {
       Printer.msgPrintln("Log NO " + count + ": ");
       count++;
-      Log curLog = logs.removeFirst();
+      Log curLog = logs.get(i);
       if (detail) {
         Printer.msgPrintln(curLog.toString());
       } else {

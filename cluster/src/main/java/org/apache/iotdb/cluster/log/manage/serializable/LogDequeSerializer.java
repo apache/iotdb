@@ -1,6 +1,6 @@
 package org.apache.iotdb.cluster.log.manage.serializable;
 
-import java.util.Deque;
+import java.util.List;
 import org.apache.iotdb.cluster.log.Log;
 
 public interface LogDequeSerializer {
@@ -34,7 +34,7 @@ public interface LogDequeSerializer {
    * recover logs from disk
    * @return recovered logs
    */
-  public Deque<Log> recoverLog();
+  public List<Log> recoverLog();
 
   /**
    * recover meta from disk
