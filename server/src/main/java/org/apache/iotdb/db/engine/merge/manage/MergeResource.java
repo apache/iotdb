@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.merge.manage;
 
-import static org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.InplaceMergeTask.MERGE_SUFFIX;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -64,6 +64,10 @@ public class MergeResource {
   public MergeResource() {
     this.seqFiles = new ArrayList<>();
     this.unseqFiles = new ArrayList<>();
+  }
+
+  public MergeResource(List<TsFileResource> seqFiles) {
+    this(seqFiles, new ArrayList<>());
   }
 
   public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {

@@ -292,7 +292,7 @@ public class StorageGroupProcessorTest {
 
     @Override
     protected void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
-        File mergeLog, TsFileResource newFile) {
+        File mergeLog, List<TsFileResource> newFile) {
       super.mergeEndAction(seqFiles, unseqFiles, mergeLog, newFile);
       mergeLock.incrementAndGet();
       assertFalse(mergeLog.exists());

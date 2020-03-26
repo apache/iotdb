@@ -33,5 +33,5 @@ public interface MergeCallback {
    * 4. exit merging status
    */
   void call(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, File logFile,
-      TsFileResource newFile);
+      List<TsFileResource> newFile);
 }

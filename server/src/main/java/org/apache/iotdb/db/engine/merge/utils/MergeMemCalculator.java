@@ -5,7 +5,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.engine.merge.IFileQueryMemMeasurement;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.utils.MergeUtils;
@@ -163,7 +162,7 @@ public class MergeMemCalculator {
     return cost;
   }
 
-  private long calculateMetadataSize(TsFileResource seqFile)
+  public long calculateMetadataSize(TsFileResource seqFile)
       throws IOException {
     Long cost = fileMetaSizeMap.get(seqFile);
     if (cost == null) {
@@ -192,7 +191,7 @@ public class MergeMemCalculator {
 
   // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
   // its proportion to all series to get a maximum estimation
-  private long calculateTightSeqMemoryCost(TsFileResource seqFile, int concurrentMergeNum)
+  public long calculateTightSeqMemoryCost(TsFileResource seqFile, int concurrentMergeNum)
       throws IOException {
     long singleSeriesCost = calculateTightFileMemoryCost(seqFile, this::calculateMetadataSize);
     long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
@@ -208,5 +207,17 @@ public class MergeMemCalculator {
     long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
     long maxCost = unseqFile.getFileSize();
     return multiSeriesCost > maxCost ? maxCost : multiSeriesCost;
+  }
+
+  /**
+   * Estimate how much memory a file may occupy when being queried during merge.
+   *
+   * @return
+   * @throws IOException
+   */
+  @FunctionalInterface
+  interface IFileQueryMemMeasurement {
+
+    long measure(TsFileResource resource) throws IOException;
   }
 }

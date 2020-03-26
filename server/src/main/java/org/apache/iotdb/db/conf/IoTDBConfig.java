@@ -19,7 +19,8 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.merge.MergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.seqMerge.SeqMergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.sizeMerge.SizeMergeFileStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
@@ -368,6 +369,11 @@ public class IoTDBConfig {
   private long mergeFileSelectionTimeBudget = 30 * 1000;
 
   /**
+   * the time range size of target merge file
+   */
+  private long mergeFileTimeBlock = 60 * 60 * 1000;
+
+  /**
    * When set to true, if some crashed merges are detected during system rebooting, such merges will
    * be continued, otherwise, the unfinished parts of such merges will not be continued while the
    * finished parts still remain as they are.
@@ -394,7 +400,9 @@ public class IoTDBConfig {
    */
   private int chunkMergePointThreshold = 20480;
 
-  private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.INPLACE_MAX_SERIES_NUM;
+  private SeqMergeFileStrategy seqMergeFileStrategy = SeqMergeFileStrategy.INPLACE_MAX_SERIES_NUM;
+
+  private SizeMergeFileStrategy sizeMergeFileStrategy = SizeMergeFileStrategy.REGULARIZATION_MAX_FILE_NUM;
 
   /**
    * Default system file storage is in local file system (unsupported)
@@ -1016,13 +1024,22 @@ public class IoTDBConfig {
     this.memtableSizeThreshold = memtableSizeThreshold;
   }
 
-  public MergeFileStrategy getMergeFileStrategy() {
-    return mergeFileStrategy;
+  public SeqMergeFileStrategy getSeqMergeFileStrategy() {
+    return seqMergeFileStrategy;
   }
 
-  public void setMergeFileStrategy(
-      MergeFileStrategy mergeFileStrategy) {
-    this.mergeFileStrategy = mergeFileStrategy;
+  public SizeMergeFileStrategy getSizeMergeFileStrategy() {
+    return sizeMergeFileStrategy;
+  }
+
+  public void setSeqMergeFileStrategy(
+      SeqMergeFileStrategy seqMergeFileStrategy) {
+    this.seqMergeFileStrategy = seqMergeFileStrategy;
+  }
+
+  public void setSizeMergeFileStrategy(
+      SizeMergeFileStrategy sizeMergeFileStrategy) {
+    this.sizeMergeFileStrategy = sizeMergeFileStrategy;
   }
 
   public int getMergeChunkSubThreadNum() {
@@ -1039,6 +1056,14 @@ public class IoTDBConfig {
 
   void setMergeFileSelectionTimeBudget(long mergeFileSelectionTimeBudget) {
     this.mergeFileSelectionTimeBudget = mergeFileSelectionTimeBudget;
+  }
+
+  public long getMergeFileTimeBlock() {
+    return mergeFileTimeBlock;
+  }
+
+  void setMergeFileTimeBlock(long mergeFileTimeBlock) {
+    this.mergeFileTimeBlock = mergeFileTimeBlock;
   }
 
   public boolean isRpcThriftCompressionEnable() {
