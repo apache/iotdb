@@ -28,3 +28,10 @@ The example is to show how to send data to a IoTDB server from a Flink job.
 ## Usage
 
 * Run `org.apache.iotdb.flink.FlinkIoTDBSink.java` to launch the local iotDB server and run the flink job on local mini cluster.
+
+# TsFile-Flink-Connector Example
+
+## Usage
+
+* Run `org.apache.iotdb.flink.FlinkTsFileBatchSource.java` to create a tsfile and read it via a flink DataSet job on local mini cluster.
+* Run `org.apache.iotdb.flink.FlinkTsFileStreamSource.java` to create a tsfile and read it via a flink DataStream job on local mini cluster.
