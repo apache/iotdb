@@ -1,7 +1,7 @@
 package org.apache.iotdb.cluster.exception;
 
-public class StableEntryUnavailable extends Exception {
-    public StableEntryUnavailable() {
+public class EntryUnavailableException extends Exception {
+    public EntryUnavailableException() {
         super("requested entry at index is unavailable");
     }
 }

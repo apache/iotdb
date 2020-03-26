@@ -1,7 +1,7 @@
 package org.apache.iotdb.cluster.exception;
 
-public class StableEntryCompactedException extends Exception {
-    public StableEntryCompactedException() {
+public class EntryCompactedException extends Exception {
+    public EntryCompactedException() {
         super("requested index is unavailable due to compaction");
     }
 }
