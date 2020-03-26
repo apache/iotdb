@@ -35,7 +35,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 
 | Spark Version | Scala Version | Java Version | TsFile   |
 | ------------- | ------------- | ------------ | -------- |
-| `2.4.3`       | `2.11.8`      | `1.8`        | `0.10.0` |
+| `>= 2.2`       | `2.11`      | `1.8`        | `0.10.0` |
 
 > 注意：有关如何下载和使用TsFile的更多信息，请参见以下链接：https://github.com/apache/incubator-iotdb/tree/master/tsfile
 
