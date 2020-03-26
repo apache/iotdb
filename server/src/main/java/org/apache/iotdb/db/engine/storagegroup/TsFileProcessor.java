@@ -687,7 +687,7 @@ public class TsFileProcessor {
         long tmpFlushTime = Long.MIN_VALUE;
         for (String measurementId : workMemTable.getMemTableMap().get(deviceId).keySet()) {
           IWritableMemChunk series = workMemTable.getMemTableMap().get(deviceId).get(measurementId);
-          if (series == null) {
+          if (series.count() == 0) {
             continue;
           }
           String[] measurements = new String[] {measurementId};
