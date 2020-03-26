@@ -690,9 +690,9 @@ public class TsFileProcessor {
           String[] measurements = new String[] {measurementId};
           TSDataType[] dataTypes = new TSDataType[] {series.getType()};
           TVList tvList = series.getSortedTVList();
+          System.out.println("tvList.size()=" + tvList.size());
           int rowCount = (int)(tvList.size() * config.getDefaultStep());
           if (rowCount == 0) {
-            System.out.println("tvList.size()=" + rowCount);
             continue;
           }
           long[] flushTimes = tvList.getPartialTimes(0, rowCount);
