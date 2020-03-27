@@ -538,7 +538,7 @@ public class SeriesReader {
     return timeFilter;
   }
 
-  private class VersionPageReader {
+  public static class VersionPageReader {
 
     protected long version;
     protected IPageReader data;

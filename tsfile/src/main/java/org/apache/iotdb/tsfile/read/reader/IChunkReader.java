@@ -32,4 +32,6 @@ public interface IChunkReader {
   void close() throws IOException;
 
   List<IPageReader> getPageReaderList() throws IOException;
+
+  List<IPageReader> getPageReaderListWithTerminateTime(long terminateTime) throws IOException;
 }
