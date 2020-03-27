@@ -29,6 +29,10 @@ IoTDB 官网：https://iotdb.apache.org/
 
 快速上手：http://iotdb.apache.org/document/master/UserGuide/0-Get%20Started/1-QuickStart.html
 
+Jira 任务管理：https://issues.apache.org/jira/projects/IOTDB/issues/IOTDB-9?filter=allopenissues
+
+Wiki 文档管理：https://cwiki.apache.org/confluence/display/IOTDB/Home
+
 ## 订阅邮件列表
 
 邮件列表是 Apache 项目进行技术讨论和用户沟通的地方，关注邮件列表就可以收到邮件了。
@@ -39,7 +43,7 @@ IoTDB 官网：https://iotdb.apache.org/
 
 ## 新功能、Bug 反馈、改进等
 
-所有希望 IoTDB 做的功能或修的 bug，都可以在 Jira 上提 issue：https://issues.apache.org/jira/projects/IOTDB/issues/IOTDB-9?filter=allopenissues
+所有希望 IoTDB 做的功能或修的 bug，都可以在 Jira 上提 issue
 
 可以选择 issue 类型：bug、improvement、new feature等。新建的 issue 会自动向邮件列表中同步邮件，之后的讨论可在 jira 上留言，也可以在邮件列表进行。当问题解决后请关闭 issue。
 
@@ -68,7 +72,6 @@ IoTDB 所有官网上的内容都在项目根目录的 docs 中：
 注意事项：
 
 * Markdown 中的图片可上传至 https://github.com/thulab/iotdb/issues/543 获得 url
-* 新增加的系统设计文档和用户手册的 md 文件，需要在英文版对应的根目录下的 0-Content.md 中增加索引
 
 ## 贡献代码
 
@@ -84,16 +87,33 @@ IoTDB 所有官网上的内容都在项目根目录的 docs 中：
 * 根据其他人的审阅意见进行修改，继续更新，直到合并
 * 关闭 jira issue
 
-## 二、IoTDB 调试方式
+# 二、IoTDB 调试方式
+
+## 导入代码
+
+### Intellij idea
 
 推荐使用 Intellij idea。```mvn clean package -DskipTests``` 之后把 ```server/target/generated-sources/antlr4``` 和 ```service-rpc/target/generated-sources/thrift``` 标记为 ```Source Root```。 
+
+### Eclipse
+
+如果是 eclipse 2019 之前的版本，需要现在 IoTDB 根目录执行 `mvn eclipse:eclipse -DskipTests`。
+
+import -> General -> Existing Projects into Workspace -> 选择 IoTDB 根目录
+
+如果 eclipse 2019 之后的版本
+
+import -> Maven -> Existing Maven Projects
+
+## 调试代码
 
 * 服务器主函数：```server/src/main/java/org/apache/iotdb/db/service/IoTDB```，可以debug模式启动
 * 客户端：```client/src/main/java/org/apache/iotdb/client/```，linux 用 Clinet，windows 用 WinClint，可以直接启动，需要参数"-h 127.0.0.1 -p 6667 -u root -pw root"
 * 服务器的 rpc 实现（主要用来客户端和服务器通信，一般在这里开始打断点）：```server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl```
 	* jdbc所有语句：executeStatement(TSExecuteStatementReq req)
-	* jdbc查询语句：executeQueryStatement(TSExecuteStatementReq req)	* native写入接口：insert(TSInsertReq req)
+	* jdbc查询语句：executeQueryStatement(TSExecuteStatementReq req)	
+	* native写入接口：insert(TSInsertReq req)
 
 * 存储引擎 org.apache.iotdb.db.engine.StorageEngine
-* 查询引擎 org.apache.iotdb.db.qp.QueryProcessor
+* 查询引擎 org.apache.iotdb.db.qp.Planner
 

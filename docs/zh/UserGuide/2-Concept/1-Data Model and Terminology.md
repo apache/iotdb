@@ -21,11 +21,9 @@
 
 # 数据模型与技术
 
-我们为您提供一份简化的[样例数据](https://github.com/apache/incubator-iotdb/blob/master/docs/Documentation/OtherMaterial-Sample%20Data.txt)。
+我们为您提供一份简化的[样例数据](https://github.com/apache/incubator-iotdb/tree/master/docs/SampleData.txt)。
 
-下载文件: [IoTDB-SampleData.txt](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt).
-
-根据本文描述的[数据](https://github.com/apache/incubator-iotdb/blob/master/docs/Documentation/OtherMaterial-Sample%20Data.txt)属性层级，按照属性涵盖范围以及它们之间的从属关系，我们可将其表示为如下图2.1的属性层级组织结构，其层级关系为：集团层-电场层-设备层-传感器层。其中ROOT为根节点，传感器层的每一个节点称为叶子节点。在使用IoTDB的过程中，您可以直接将由ROOT节点到每一个叶子节点路径上的属性用“.”连接，将其作为一个IoTDB的时间序列的名称。图2.1中最左侧的路径可以生成一个名为`ROOT.ln.wf01.wt01.status`的时间序列。
+下载样例数据，按照属性涵盖范围以及它们之间的从属关系，我们可将其表示为如下图2.1的属性层级组织结构，其层级关系为：集团层-电场层-设备层-传感器层。其中ROOT为根节点，传感器层的每一个节点称为叶子节点。在使用IoTDB的过程中，您可以直接将由ROOT节点到每一个叶子节点路径上的属性用“.”连接，将其作为一个IoTDB的时间序列的名称。图2.1中最左侧的路径可以生成一个名为`ROOT.ln.wf01.wt01.status`的时间序列。
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577327-7aa50780-1ef4-11e9-9d75-cadabb62444e.jpg"></center>
 
