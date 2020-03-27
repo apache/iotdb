@@ -83,7 +83,6 @@ public class IoTDB implements IoTDBMBean {
     setUncaughtExceptionHandler();
 
     initMManager();
-    registerManager.register(StorageEngine.getInstance());
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
@@ -101,6 +100,7 @@ public class IoTDB implements IoTDBMBean {
       registerManager.register(MetricsService.getInstance());
     }
     JMXService.registerMBean(getInstance(), mbeanName);
+    registerManager.register(StorageEngine.getInstance());
 
     // When registering statMonitor, we should start recovering some statistics
     // with latest values stored
