@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,8 +19,6 @@
 
 -->
 
-# Chapter 8: System Design (Developer)
-
-## Shared Nothing Architecture
+# Shared Nothing Architecture
 
 Shared Nothing Architecture is under development and is expected to be released by the end of 2019. Please wait patiently and look forward to it.

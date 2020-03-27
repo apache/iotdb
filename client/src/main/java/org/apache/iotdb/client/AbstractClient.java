@@ -69,6 +69,8 @@ public abstract class AbstractClient {
   static final List<String> AGGREGRATE_TIME_LIST = new ArrayList<>();
   static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
   private static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
+  static final String RPC_COMPRESS_ARGS = "c";
+  static final String RPC_COMPRESS_NAME = "rpcCompressed";
   static final String SET_MAX_DISPLAY_NUM = "set max_display_num";
   static final String SET_TIMESTAMP_DISPLAY = "set time_display_type";
   static final String SHOW_TIMESTAMP_DISPLAY = "show time_display_type";
@@ -121,6 +123,7 @@ public abstract class AbstractClient {
     keywordSet.add("-" + EXECUTE_ARGS);
     keywordSet.add("-" + ISO8601_ARGS);
     keywordSet.add("-" + MAX_PRINT_ROW_COUNT_ARGS);
+    keywordSet.add("-" + RPC_COMPRESS_ARGS);
   }
 
 
@@ -129,10 +132,9 @@ public abstract class AbstractClient {
   }
 
   private static void printCount(int cnt) {
-    if(cnt == 0){
+    if (cnt == 0) {
       println("Empty set.");
-    }
-    else {
+    } else {
       println("Total line number = " + cnt);
     }
   }
@@ -175,6 +177,11 @@ public abstract class AbstractClient {
         .argName(MAX_PRINT_ROW_COUNT_NAME).hasArg()
         .desc("Maximum number of rows displayed (optional)").build();
     options.addOption(maxPrintCount);
+
+    Option isRpcCompressed = Option.builder(RPC_COMPRESS_ARGS)
+        .argName(RPC_COMPRESS_NAME)
+        .desc("Rpc Compression enabled or not").build();
+    options.addOption(isRpcCompressed);
     return options;
   }
 
@@ -565,11 +572,11 @@ public abstract class AbstractClient {
   /**
    * cache all results
    *
-   * @param resultSet jdbc resultSet
-   * @param maxSizeList the longest result of every column
-   * @param columnCount the number of column
+   * @param resultSet         jdbc resultSet
+   * @param maxSizeList       the longest result of every column
+   * @param columnCount       the number of column
    * @param resultSetMetaData jdbc resultSetMetaData
-   * @param zoneId your time zone
+   * @param zoneId            your time zone
    * @return List<List < String>> result
    * @throws SQLException throw exception
    */

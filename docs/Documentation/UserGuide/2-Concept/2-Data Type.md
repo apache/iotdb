@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,9 +19,8 @@
 
 -->
 
-# Chapter 2: Concept
+# Data Type
 
-## Data Type
 IoTDB supports six data types in total:
 * BOOLEAN (Boolean)
 * INT32 (Integer)
@@ -31,7 +30,7 @@ IoTDB supports six data types in total:
 * TEXT (String).
 
 
-The time series of **FLOAT** and **DOUBLE** type can specify (MAX\_POINT\_NUMBER, see [this page](/#/Documents/progress/chap5/sec4) for more information on how to specify), which is the number of digits after the decimal point of the floating point number, if the encoding method is [RLE](/#/Documents/progress/chap2/sec3) or [TS\_2DIFF](/#/Documents/progress/chap2/sec3) (Refer to [Create Timeseries Statement](/#/Documents/progress/chap5/sec4) for more information on how to specify). If MAX\_POINT\_NUMBER is not specified, the system will use [float\_precision](/#/Documents/progress/chap3/sec4) in the configuration file `tsfile-format.properties`.
+The time series of **FLOAT** and **DOUBLE** type can specify (MAX\_POINT\_NUMBER, see [this page](/document/master/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html) for more information on how to specify), which is the number of digits after the decimal point of the floating point number, if the encoding method is [RLE](/document/master/UserGuide/2-Concept/3-Encoding.html) or [TS\_2DIFF](/#/Documents/progress/chap2/sec3) (Refer to [Create Timeseries Statement](/document/master/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html) for more information on how to specify). If MAX\_POINT\_NUMBER is not specified, the system will use [float\_precision](/document/master/UserGuide/3-Server/4-Config%20Manual.html) in the configuration file `tsfile-format.properties`.
 
 * For Float data value, The data range is (-Integer.MAX_VALUE, Integer.MAX_VALUE), rather than Float.MAX_VALUE, and the max_point_number is 19, it is because of the limition of function Math.round(float) in Java.
 * For Double data value, The data range is (-Long.MAX_VALUE, Long.MAX_VALUE), rather than Double.MAX_VALUE, and the max_point_number is 19, it is because of the limition of function Math.round(double) in Java (Long.MAX_VALUE=9.22E18).

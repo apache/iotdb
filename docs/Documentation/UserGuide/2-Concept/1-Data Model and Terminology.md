@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,17 +19,17 @@
 
 -->
 
-# Chapter 2: Concept
-## Data Model and Terminology
+# Data Model and Terminology
+
 To make this manual more practical, we will use a specific scenario example to illustrate how to operate IoTDB databases at all stages of use. See [this page](https://github.com/apache/incubator-iotdb/blob/master/docs/Documentation/OtherMaterial-Sample%20Data.txt) for a look. For convenience, we also provide you with a sample data file in real scenario to import into the IoTDB system for trial and operation.
 
 Download file: [IoTDB-SampleData.txt](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt).
 
 According to the data attribute layers described in [sample data](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt), we can express it as an attribute hierarchy structure based on the coverage of attributes and the subordinate relationship between them, as shown in Figure 2.1 below. Its hierarchical relationship is: power group layer - power plant layer - device layer - sensor layer. ROOT is the root node, and each node of sensor layer is called a leaf node. In the process of using IoTDB, you can directly connect the attributes on the path from ROOT node to each leaf node with ".", thus forming the name of a timeseries in IoTDB. For example, The left-most path in Figure 2.1 can generate a timeseries named `ROOT.ln.wf01.wt01.status`.
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577327-7aa50780-1ef4-11e9-9d75-cadabb62444e.jpg">
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577327-7aa50780-1ef4-11e9-9d75-cadabb62444e.jpg"></center>
 
-**Figure 2.1 Attribute hierarchy structure**</center>
+**Figure 2.1 Attribute hierarchy structure**
 
 After getting the name of the timeseries, we need to set up the storage group according to the actual scenario and scale of the data. Because in the scenario of this chapter data is usually arrived in the unit of groups (i.e., data may be across electric fields and devices), in order to avoid frequent switching of IO when writing data, and to meet the user's requirement of physical isolation of data in the unit of  groups, we set the storage group at the group layer.
 
@@ -191,27 +191,27 @@ Relative time refers to the time relative to the server time ```now()``` and ```
   Duration = (Digit+ ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS'))+
   RelativeTime = (now() | DATETIME) ((+|-) Duration)+
         
-  ```
-  
+ ```
+
   <center>**The syntax of the duration unit**
-  
-  |Symbol|Meaning|Presentation|Examples|
-  |:---:|:---:|:---:|:---:|
-  |y|year|1y=365 days|1y|
-  |mo|month|1mo=30 days|1mo|
-  |w|week|1w=7 days|1w|
-  |d|day|1d=1 day|1d|
-  |||||
-  |h|hour|1h=3600 seconds|1h|
-  |m|minute|1m=60 seconds|1m|
-  |s|second|1s=1 second|1s|
-  |||||
-  |ms|millisecond|1ms=1000_000 nanoseconds|1ms|
-  |us|microsecond|1us=1000 nanoseconds|1us|
-  |ns|nanosecond|1ns=1 nanosecond|1ns|  
-  
+
+|Symbol|Meaning|Presentation|Examples|
+|:---:|:---:|:---:|:---:|
+|y|year|1y=365 days|1y|
+|mo|month|1mo=30 days|1mo|
+|w|week|1w=7 days|1w|
+|d|day|1d=1 day|1d|
+|||||
+|h|hour|1h=3600 seconds|1h|
+|m|minute|1m=60 seconds|1m|
+|s|second|1s=1 second|1s|
+|||||
+|ms|millisecond|1ms=1000_000 nanoseconds|1ms|
+|us|microsecond|1us=1000 nanoseconds|1us|
+|ns|nanosecond|1ns=1 nanosecond|1ns|
+
   </center>
-  
+
   eg：
   ```
   now() - 1d2h //1 day and 2 hours earlier than the current server time

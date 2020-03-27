@@ -57,6 +57,14 @@ public abstract class IFill {
         timeFilter, null, null);
   }
 
+  public void setAllDataReader(IBatchReader allDataReader) {
+    this.allDataReader = allDataReader;
+  }
+
+  public Filter getFilter() {
+    return constructFilter();
+  }
+
   public abstract TimeValuePair getFillResult() throws IOException, UnSupportedFillTypeException;
 
   public TSDataType getDataType() {

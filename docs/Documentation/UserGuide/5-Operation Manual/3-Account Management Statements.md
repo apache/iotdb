@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,30 +19,35 @@
 
 -->
 
-# Chapter 5: Operation Manual
+# Account Management Statements
 
-## Account Management Statements
 IoTDB provides users with account privilege management operations, so as to ensure data security.
 
-We will show you basic user privilege management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [SQL Documentation](/#/Documents/progress/chap5/sec4). At the same time, in the JAVA programming environment, you can use the [Java JDBC](/#/Documents/progress/chap4/sec2) to execute privilege management statements in a single or batch mode. 
+We will show you basic user privilege management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [SQL Documentation](/document/master/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html). At the same time, in the JAVA programming environment, you can use the [Java JDBC](/document/master/UserGuide/4-Client/3-Programming%20-%20JDBC.html) to execute privilege management statements in a single or batch mode. 
 
-### Basic Concepts
-#### User
+## Basic Concepts
+
+### User
+
 The user is the legal user of the database. A user corresponds to a unique username and has a password as a means of authentication. Before using a database, a person must first provide a legitimate username and password to make himself/herself a user.
 
-#### Privilege
+### Privilege
+
 The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, the user is said to have the privilege to perform the operation. privileges can be divided into data management privilege (such as adding, deleting and modifying data) and authority management privilege (such as creation and deletion of users and roles, granting and revoking of privileges, etc.). Data management privilege often needs a path to limit its effective range, which is a subtree rooted at the path's corresponding node.
 
-#### Role
+### Role
+
 A role is a set of privileges and has a unique role name as an identifier. A user usually corresponds to a real identity (such as a traffic dispatcher), while a real identity may correspond to multiple users. These users with the same real identity tend to have the same privileges. Roles are abstractions that can unify the management of such privileges.
 
-#### Default User
+### Default User
+
 There is a default user in IoTDB after the initial installation: root, and the default password is root. This user is an administrator user, who cannot be deleted and has all the privileges. Neither can new privileges be granted to the root user nor can privileges owned by the root user be deleted.
 
-### Privilege Management Operation Examples
+## Privilege Management Operation Examples
+
 According to the [sample data](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt), the sample data of IoTDB may belong to different power generation groups such as ln, sgcc, etc. Different power generation groups do not want others to obtain their own database data, so we need to have data privilege isolated at the group layer.
 
-#### Create User
+### Create User
 
 We can create two users for ln and sgcc groups, named ln\_write\_user and sgcc\_write\_user, with both passwords being write\_pwd. The SQL statement is:
 
@@ -59,7 +64,8 @@ As can be seen from the result shown below, the two users have been created:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578263-e2a91d00-1ef7-11e9-94e8-28819b6fea87.jpg"></center>
 
-#### Grant User Privilege
+### Grant User Privilege
+
 At this point, although two users have been created, they do not have any privileges, so they can not operate on the database. For example, we use ln_write_user to write data in the database, the SQL statement is:
 
 ```
@@ -79,8 +85,9 @@ INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 The execution result is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578942-33ba1080-1efa-11e9-891c-09d69791aff1.jpg"></center>
 
-### Other Instructions
-#### The Relationship among Users, Privileges and Roles
+## Other Instructions
+
+### The Relationship among Users, Privileges and Roles
 
 A Role is a set of privileges, and privileges and roles are both attributes of users. That is, a role can have several privileges and a user can have several roles and privileges (called the user's own privileges).
 
@@ -90,7 +97,7 @@ It should be noted that if users have a privilege (corresponding to operation A)
 
 At the same time, changes to roles are immediately reflected on all users who own the roles. For example, adding certain privileges to roles will immediately give all users who own the roles corresponding privileges, and deleting certain privileges will also deprive the corresponding users of the privileges (unless the users themselves have the privileges).
 
-#### List of Privileges Included in the System
+### List of Privileges Included in the System
 
 <center>**List of privileges Included in the System**
 
@@ -116,9 +123,12 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |REVOKE\_ROLE\_PRIVILEGE|revoke role privileges; path independent|
 </center>
 
-#### Username Restrictions
+### Username Restrictions
+
 IoTDB specifies that the character length of a username should not be less than 4, and the username cannot contain spaces.
-#### Password Restrictions
+### Password Restrictions
+
 IoTDB specifies that the character length of a password should not be less than 4, and the password cannot contain spaces. The password is encrypted with MD5.
-#### Role Name Restrictions
+### Role Name Restrictions
+
 IoTDB specifies that the character length of a role name should not be less than 4, and the role name cannot contain spaces.

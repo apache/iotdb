@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
@@ -110,12 +112,14 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     // concat filter
     FilterOperator filter = sfwOperator.getFilterOperator();
+    Set<Path> filterPaths = new HashSet<>();
     if (filter == null) {
       return operator;
     }
     if(!isAlignByDevice){
-      sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter));
+      sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter, filterPaths));
     }
+    sfwOperator.getFilterOperator().setPathSet(filterPaths);
     // GROUP_BY_DEVICE leaves the concatFilter to PhysicalGenerator to optimize filter without prefix first
 
     return sfwOperator;
@@ -208,12 +212,13 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
   }
 
-  private FilterOperator concatFilter(List<Path> fromPaths, FilterOperator operator)
+  private FilterOperator concatFilter(List<Path> fromPaths, FilterOperator operator,
+      Set<Path> filterPaths)
       throws LogicalOptimizeException {
     if (!operator.isLeaf()) {
       List<FilterOperator> newFilterList = new ArrayList<>();
       for (FilterOperator child : operator.getChildren()) {
-        newFilterList.add(concatFilter(fromPaths, child));
+        newFilterList.add(concatFilter(fromPaths, child, filterPaths));
       }
       operator.setChildren(newFilterList);
       return operator;
@@ -222,11 +227,13 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     Path filterPath = functionOperator.getSinglePath();
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
     if (SQLConstant.isReservedPath(filterPath) || filterPath.startWith(SQLConstant.ROOT)) {
+      filterPaths.add(filterPath);
       return operator;
     }
     List<Path> concatPaths = new ArrayList<>();
     fromPaths.forEach(fromPath -> concatPaths.add(Path.addPrefixPath(filterPath, fromPath)));
     List<Path> noStarPaths = removeStarsInPathWithUnique(concatPaths);
+    filterPaths.addAll(noStarPaths);
     if (noStarPaths.size() == 1) {
       // Transform "select s1 from root.car.* where s1 > 10" to
       // "select s1 from root.car.* where root.car.*.s1 > 10"

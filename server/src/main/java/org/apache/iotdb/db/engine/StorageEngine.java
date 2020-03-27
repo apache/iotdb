@@ -48,11 +48,10 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -253,23 +252,21 @@ public class StorageEngine implements IService {
    *
    * @param insertPlan physical plan of insertion
    */
-  public void insert(InsertPlan insertPlan)
-      throws StorageEngineException, QueryProcessException {
+  public void insert(InsertPlan insertPlan) throws StorageEngineException {
 
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(insertPlan.getDeviceId());
-    } catch (StorageEngineException e) {
-      logger.warn("get StorageGroupProcessor of device {} failed, because {}",
-          insertPlan.getDeviceId(), e.getMessage(), e);
-      throw new StorageEngineException(e);
+    } catch (Exception e) {
+      throw new StorageEngineException(
+          "get StorageGroupProcessor of device failed: " + insertPlan.getDeviceId(), e);
     }
 
     // TODO monitor: update statistics
     try {
       storageGroupProcessor.insert(insertPlan);
-    } catch (QueryProcessException e) {
-      throw new QueryProcessException(e);
+    } catch (WriteProcessException e) {
+      throw new StorageEngineException(e);
     }
   }
 
@@ -303,9 +300,7 @@ public class StorageEngine implements IService {
   public void syncCloseAllProcessor() {
     logger.info("Start closing all storage group processor");
     for (StorageGroupProcessor processor : processorMap.values()) {
-      processor.waitForAllCurrentTsFileProcessorsClosed();
-      //TODO do we need to wait for all merging tasks to be finished here?
-      processor.closeAllResources();
+      processor.syncCloseAllWorkingTsFileProcessors();
     }
   }
 
@@ -321,13 +316,13 @@ public class StorageEngine implements IService {
           // to avoid concurrent modification problem, we need a new array list
           for (TsFileProcessor tsfileProcessor : new ArrayList<>(
               processor.getWorkSequenceTsFileProcessors())) {
-            processor.moveOneWorkProcessorToClosingList(true, tsfileProcessor);
+            processor.asyncCloseOneTsFileProcessor(true, tsfileProcessor);
           }
         } else {
           // to avoid concurrent modification problem, we need a new array list
           for (TsFileProcessor tsfileProcessor : new ArrayList<>(
               processor.getWorkUnsequenceTsFileProcessor())) {
-            processor.moveOneWorkProcessorToClosingList(false, tsfileProcessor);
+            processor.asyncCloseOneTsFileProcessor(false, tsfileProcessor);
           }
         }
       } finally {
@@ -486,13 +481,13 @@ public class StorageEngine implements IService {
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
-      throws TsFileProcessorException, StorageEngineException {
+      throws StorageEngineException, LoadFileException {
     getProcessor(newTsFileResource.getFile().getParentFile().getName())
         .loadNewTsFileForSync(newTsFileResource);
   }
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
-      throws TsFileProcessorException, StorageEngineException, MetadataException {
+      throws LoadFileException, StorageEngineException, MetadataException {
     Map<String, Long> startTimeMap = newTsFileResource.getStartTimeMap();
     if (startTimeMap == null || startTimeMap.isEmpty()) {
       throw new StorageEngineException("Can not get the corresponding storage group.");
@@ -529,15 +524,23 @@ public class StorageEngine implements IService {
 
   /**
    *
-   * @return TsFiles (seq or unseq) grouped by their storage group.
+   * @return TsFiles (seq or unseq) grouped by their storage group and partition number.
    */
-  public Map<String, List<TsFileResource>> getAllClosedStorageGroupTsFile() {
-    Map<String, List<TsFileResource>> ret = new HashMap<>();
-    for (Entry<String, StorageGroupProcessor> entry : processorMap
-        .entrySet()) {
-      ret.computeIfAbsent(entry.getKey(), sg -> new ArrayList<>()).addAll(entry.getValue().getSequenceFileTreeSet());
-      ret.get(entry.getKey()).addAll(entry.getValue().getUnSequenceFileList());
-      ret.get(entry.getKey()).removeIf(file -> !file.isClosed());
+  public Map<String, Map<Long, List<TsFileResource>>> getAllClosedStorageGroupTsFile() {
+    Map<String, Map<Long, List<TsFileResource>>> ret = new HashMap<>();
+    for (Entry<String, StorageGroupProcessor> entry : processorMap.entrySet()) {
+      List<TsFileResource> allResources = entry.getValue().getSequenceFileTreeSet();
+      allResources.addAll(entry.getValue().getUnSequenceFileList());
+      for (TsFileResource sequenceFile : allResources) {
+        if (!sequenceFile.isClosed()) {
+          continue;
+        }
+        String[] fileSplits = FilePathUtils.splitTsFilePath(sequenceFile);
+        long partitionNum = Long.parseLong(fileSplits[fileSplits.length - 2]);
+        Map<Long, List<TsFileResource>> storageGroupFiles = ret.computeIfAbsent(entry.getKey()
+            ,n -> new HashMap<>());
+        storageGroupFiles.computeIfAbsent(partitionNum, n -> new ArrayList<>()).add(sequenceFile);
+      }
     }
     return ret;
   }
@@ -546,10 +549,10 @@ public class StorageEngine implements IService {
     this.fileFlushPolicy = fileFlushPolicy;
   }
 
-  public boolean isFileAlreadyExist(TsFileResource tsFileResource, String storageGroup) {
-    // TODO-Cluster#350: integrate with time partitioning
+  public boolean isFileAlreadyExist(TsFileResource tsFileResource, String storageGroup,
+      long partitionNum) {
     StorageGroupProcessor processor = processorMap.get(storageGroup);
-    return processor != null && processor.isFileAlreadyExist(tsFileResource);
+    return processor != null && processor.isFileAlreadyExist(tsFileResource, partitionNum);
   }
 
   public static long getTimePartitionInterval() {

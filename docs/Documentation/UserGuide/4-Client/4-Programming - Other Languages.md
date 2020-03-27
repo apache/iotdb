@@ -19,8 +19,6 @@
 
 -->
 
-# Chapter 4: Client
-
 # Programming - Other Languages
 
 ## Python API

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.qp.strategy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -212,8 +211,13 @@ public class PhysicalGenerator {
     }
   }
 
-  protected TSDataType getSeriesType(String path) throws MetadataException {
-    return SchemaUtils.getSeriesType(path);
+  protected List<TSDataType> getSeriesTypes(List<String> paths,
+      String aggregation) throws MetadataException {
+    return SchemaUtils.getSeriesTypesByString(paths, aggregation);
+  }
+
+  protected List<TSDataType> getSeriesTypes(List<Path> paths) throws MetadataException {
+    return SchemaUtils.getSeriesTypesByPath(paths);
   }
 
   private PhysicalPlan transformQuery(QueryOperator queryOperator)
@@ -270,7 +274,6 @@ public class PhysicalGenerator {
 
       // to record result measurement columns
       List<String> measurements = new ArrayList<>();
-      Map<String, Set<String>> deviceToMeasurementsMap = new LinkedHashMap<>();
       // to check the same measurement of different devices having the same datatype
       Map<String, TSDataType> measurementDataTypeMap = new HashMap<>();
       Map<String, MeasurementType> measurementTypeMap = new HashMap<>();
@@ -294,7 +297,6 @@ public class PhysicalGenerator {
           try {
             // remove stars in SELECT to get actual paths
             List<String> actualPaths = getMatchedTimeseries(fullPath.getFullPath());
-
             // for actual non exist path
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
               String nonExistMeasurement = fullPath.getMeasurement();
@@ -304,22 +306,22 @@ public class PhysicalGenerator {
               }
             }
 
-            for (String pathStr : actualPaths) {
-              Path path = new Path(pathStr);
+            String aggregation = originAggregations != null && !originAggregations.isEmpty() ?
+                originAggregations.get(i) : null;
+            List<TSDataType> dataTypes = getSeriesTypes(actualPaths, aggregation);
+            for (int pathIdx = 0; pathIdx < actualPaths.size(); pathIdx++) {
+              Path path = new Path(actualPaths.get(pathIdx));
 
               // check datatype consistency
               // a example of inconsistency: select s0 from root.sg1.d1, root.sg2.d3 align by device,
               // while root.sg1.d1.s0 is INT32 and root.sg2.d3.s0 is FLOAT.
-              String pathForDataType;
               String measurementChecked;
               if (originAggregations != null && !originAggregations.isEmpty()) {
-                pathForDataType = originAggregations.get(i) + "(" + path.getFullPath() + ")";
                 measurementChecked = originAggregations.get(i) + "(" + path.getMeasurement() + ")";
               } else {
-                pathForDataType = path.getFullPath();
                 measurementChecked = path.getMeasurement();
               }
-              TSDataType dataType = getSeriesType(pathForDataType);
+              TSDataType dataType = dataTypes.get(pathIdx);
               if (measurementDataTypeMap.containsKey(measurementChecked)) {
                 if (!dataType.equals(measurementDataTypeMap.get(measurementChecked))) {
                   throw new QueryProcessException(
@@ -336,11 +338,6 @@ public class PhysicalGenerator {
                   || measurementTypeMap.get(measurementChecked) != MeasurementType.Exist) {
                 measurementTypeMap.put(measurementChecked, MeasurementType.Exist);
               }
-              // update deviceToMeasurementsMap
-              if (!deviceToMeasurementsMap.containsKey(device)) {
-                deviceToMeasurementsMap.put(device, new HashSet<>());
-              }
-              deviceToMeasurementsMap.get(device).add(measurementChecked);
               // update paths
               paths.add(path);
             }
@@ -371,7 +368,7 @@ public class PhysicalGenerator {
 
       // assigns to alignByDevicePlan
       alignByDevicePlan.setMeasurements(measurements);
-      alignByDevicePlan.setDeviceToMeasurementsMap(deviceToMeasurementsMap);
+      alignByDevicePlan.setDevices(devices);
       alignByDevicePlan.setMeasurementDataTypeMap(measurementDataTypeMap);
       alignByDevicePlan.setMeasurementTypeMap(measurementTypeMap);
       alignByDevicePlan.setPaths(paths);
@@ -392,16 +389,25 @@ public class PhysicalGenerator {
       FilterOperator filterOperator = queryOperator.getFilterOperator();
 
       if (filterOperator != null) {
-        IExpression expression = filterOperator.transformToExpression();
-        ((RawDataQueryPlan) queryPlan).setExpression(expression);
+        List<Path> filterPaths = new ArrayList<>(filterOperator.getPathSet());
+        try {
+          List<TSDataType> seriesTypes = getSeriesTypes(filterPaths);
+          HashMap<Path, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
+          for (int i = 0; i < filterPaths.size(); i++) {
+            pathTSDataTypeHashMap.put(filterPaths.get(i), seriesTypes.get(i));
+          }
+          IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
+          ((RawDataQueryPlan) queryPlan).setExpression(expression);
+        } catch (MetadataException e) {
+          throw new LogicalOptimizeException(e);
+        }
       }
     }
     try {
-      generateDataTypes(queryPlan);
+      deduplicate(queryPlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
-    deduplicate(queryPlan);
 
     queryPlan.setRowLimit(queryOperator.getRowLimit());
     queryPlan.setRowOffset(queryOperator.getRowOffset());
@@ -416,11 +422,23 @@ public class PhysicalGenerator {
       FilterOperator operator)
       throws QueryProcessException {
     Map<String, IExpression> deviceToFilterMap = new HashMap<>();
+    Set<Path> filterPaths = new HashSet<>();
     for (String device : devices) {
       FilterOperator newOperator = operator.copy();
-      concatFilterPath(device, newOperator);
-
-      deviceToFilterMap.put(device, newOperator.transformToExpression());
+      concatFilterPath(device, newOperator, filterPaths);
+      // transform to a list so it can be indexed
+      List<Path> filterPathList = new ArrayList<>(filterPaths);
+      try {
+        List<TSDataType> seriesTypes = getSeriesTypes(filterPathList);
+        Map<Path, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
+        for (int i = 0; i < filterPathList.size(); i++) {
+          pathTSDataTypeHashMap.put(filterPathList.get(i), seriesTypes.get(i));
+        }
+        deviceToFilterMap.put(device, newOperator.transformToExpression(pathTSDataTypeHashMap));
+        filterPaths.clear();
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
+      }
     }
 
     return deviceToFilterMap;
@@ -442,10 +460,11 @@ public class PhysicalGenerator {
     return retDevices;
   }
 
-  private void concatFilterPath(String prefix, FilterOperator operator) {
+  private void concatFilterPath(String prefix, FilterOperator operator,
+      Set<Path> filterPaths) {
     if (!operator.isLeaf()) {
       for (FilterOperator child : operator.getChildren()) {
-        concatFilterPath(prefix, child);
+        concatFilterPath(prefix, child, filterPaths);
       }
       return;
     }
@@ -454,42 +473,51 @@ public class PhysicalGenerator {
 
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
     if (SQLConstant.isReservedPath(filterPath) || filterPath.startWith(SQLConstant.ROOT)) {
+      filterPaths.add(filterPath);
       return;
     }
 
     Path concatPath = Path.addPrefixPath(filterPath, prefix);
+    filterPaths.add(concatPath);
     basicOperator.setSinglePath(concatPath);
   }
 
-  private void generateDataTypes(QueryPlan queryPlan) throws MetadataException {
+  private void deduplicate(QueryPlan queryPlan) throws MetadataException {
+    // generate dataType first
     List<Path> paths = queryPlan.getPaths();
-    List<TSDataType> dataTypes = new ArrayList<>(paths.size());
-    for (Path path : paths) {
-      TSDataType seriesType = getSeriesType(path.toString());
-      dataTypes.add(seriesType);
-      queryPlan.addTypeMapping(path, seriesType);
-    }
+    List<TSDataType> dataTypes = getSeriesTypes(paths);
     queryPlan.setDataTypes(dataTypes);
-  }
 
-  private void deduplicate(QueryPlan queryPlan) {
+    // deduplicate from here
     if (queryPlan instanceof AlignByDevicePlan) {
       return;
     }
     if (queryPlan instanceof AggregationPlan) {
       AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
-      deduplicateAggregation(aggregationPlan);
+      List<String> aggregations = aggregationPlan.getAggregations();
+
+      Set<String> columnSet = new HashSet<>();
+      for (int i = 0; i < paths.size(); i++) {
+        Path path = paths.get(i);
+        String column = aggregations.get(i) + "(" + path.toString() + ")";
+        if (!columnSet.contains(column)) {
+          aggregationPlan.addDeduplicatedPaths(path);
+          TSDataType seriesType = dataTypes.get(i);
+          aggregationPlan.addDeduplicatedDataTypes(seriesType);
+          aggregationPlan.addDeduplicatedAggregations(aggregations.get(i));
+          columnSet.add(column);
+        }
+      }
       return;
     }
     RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
-    List<Path> paths = queryPlan.getPaths();
 
     Set<String> columnSet = new HashSet<>();
-    Map<Path, TSDataType> dataTypeMapping = queryPlan.getDataTypeMapping();
-    for (Path path : paths) {
+    for (int i = 0; i < paths.size(); i++) {
+      Path path = paths.get(i);
       String column = path.toString();
       if (!columnSet.contains(column)) {
-        TSDataType seriesType = dataTypeMapping.get(path);
+        TSDataType seriesType = dataTypes.get(i);
         rawDataQueryPlan.addDeduplicatedPaths(path);
         rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
         columnSet.add(column);
@@ -512,26 +540,6 @@ public class PhysicalGenerator {
 
     // trim seriesPath list
     return new ArrayList<>(columnList.subList(seriesOffset, endPosition));
-  }
-
-
-  private void deduplicateAggregation(AggregationPlan queryPlan) {
-    List<Path> paths = queryPlan.getPaths();
-    List<String> aggregations = queryPlan.getAggregations();
-
-    Set<String> columnSet = new HashSet<>();
-    Map<Path, TSDataType> dataTypeMapping = queryPlan.getDataTypeMapping();
-    for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
-      String column = aggregations.get(i) + "(" + path.toString() + ")";
-      if (!columnSet.contains(column)) {
-        queryPlan.addDeduplicatedPaths(path);
-        TSDataType seriesType = dataTypeMapping.get(path);
-        queryPlan.addDeduplicatedDataTypes(seriesType);
-        queryPlan.addDeduplicatedAggregations(aggregations.get(i));
-        columnSet.add(column);
-      }
-    }
   }
 
   protected List<String> getMatchedTimeseries(String path) throws MetadataException {

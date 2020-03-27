@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -29,6 +33,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.thrift.TException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,17 +44,20 @@ public class SessionExample {
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, BatchExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
+    session.open(false);
 
     session.setStorageGroup("root.sg1");
     if (session.checkTimeseriesExists("root.sg1.d1.s1")) {
-      session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+      session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE,
+          CompressionType.SNAPPY);
     }
     if (session.checkTimeseriesExists("root.sg1.d1.s2")) {
-      session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+      session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE,
+          CompressionType.SNAPPY);
     }
     if (session.checkTimeseriesExists("root.sg1.d1.s3")) {
-      session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+      session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE,
+          CompressionType.SNAPPY);
     }
 
     insert();
@@ -74,6 +82,18 @@ public class SessionExample {
       values.add("2");
       values.add("3");
       session.insert(deviceId, time, measurements, values);
+    }
+  }
+
+  private static void insertInObject()
+      throws IoTDBConnectionException, StatementExecutionException {
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    for (long time = 0; time < 100; time++) {
+      session.insert(deviceId, time, measurements, 1L, 1L, 1L);
     }
   }
 
@@ -111,7 +131,8 @@ public class SessionExample {
   }
 
   /**
-   * insert a batch data of one device, each batch contains multiple timestamps with values of sensors
+   * insert a batch data of one device, each batch contains multiple timestamps with values of
+   * sensors
    *
    * a RowBatch example:
    *
@@ -122,7 +143,6 @@ public class SessionExample {
    * 3,   3,  3,  3
    *
    * Users need to control the count of RowBatch and write a batch when it reaches the maxBatchSize
-   *
    */
   private static void insertRowBatch() throws IoTDBConnectionException, BatchExecutionException {
     // The schema of sensors of one device
@@ -155,6 +175,58 @@ public class SessionExample {
     }
   }
 
+  private static void insertMultipleDeviceRowBatch()
+      throws IoTDBConnectionException, BatchExecutionException {
+    // The schema of sensors of one device
+    Schema schema1 = new Schema();
+    schema1.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema1.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema1.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+
+    RowBatch rowBatch1 = schema1.createRowBatch("root.sg1.d1", 100);
+
+    Schema schema2 = new Schema();
+    schema2.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema2.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema2.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+
+    RowBatch rowBatch2 = schema1.createRowBatch("root.sg1.d2", 100);
+
+    Map<String, RowBatch> rowBatchMap = new HashMap<>();
+    rowBatchMap.put("root.sg1.d1", rowBatch1);
+    rowBatchMap.put("root.sg1.d2", rowBatch2);
+
+    long[] timestamps1 = rowBatch1.timestamps;
+    Object[] values1 = rowBatch1.values;
+    long[] timestamps2 = rowBatch2.timestamps;
+    Object[] values2 = rowBatch2.values;
+
+    for (long time = 0; time < 100; time++) {
+      int row1 = rowBatch1.batchSize++;
+      int row2 = rowBatch2.batchSize++;
+      timestamps1[row1] = time;
+      timestamps2[row2] = time;
+      for (int i = 0; i < 3; i++) {
+        long[] sensor1 = (long[]) values1[i];
+        sensor1[row1] = i;
+        long[] sensor2 = (long[]) values2[i];
+        sensor2[row2] = i;
+      }
+      if (rowBatch1.batchSize == rowBatch1.getMaxBatchSize()) {
+        session.insertMultipleDeviceBatch(rowBatchMap);
+
+        rowBatch1.reset();
+        rowBatch2.reset();
+      }
+    }
+
+    if (rowBatch1.batchSize != 0) {
+      session.insertMultipleDeviceBatch(rowBatchMap);
+      rowBatch1.reset();
+      rowBatch2.reset();
+    }
+  }
+
   private static void deleteData() throws IoTDBConnectionException, StatementExecutionException {
     String path = "root.sg1.d1.s1";
     long deleteTime = 99;
@@ -173,8 +245,9 @@ public class SessionExample {
   private static void query() throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet dataSet;
     dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    System.out.println(dataSet.getColumnNames());
     dataSet.setBatchSize(1024); // default is 512
-    while (dataSet.hasNext()){
+    while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
     }
 

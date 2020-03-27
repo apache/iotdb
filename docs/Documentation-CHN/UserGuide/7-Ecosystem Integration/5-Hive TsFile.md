@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,24 +18,21 @@
     under the License.
 
 -->
-# 第7章: 生态集成
 
-<!-- TOC -->
+# TsFile的Hive连接器
+
 ## 概要
 
 - TsFile的Hive连接器使用手册
-	- 什么是TsFile的Hive连接器
-	- 系统环境要求
-	- 数据类型对应关系
-	- 为Hive添加依赖jar包
-	- 创建Tsfile-backed的Hive表
-	- 从Tsfile-backed的Hive表中查询
-	    - 选择查询语句示例
-	    - 聚合查询语句示例
-	- 后续工作
-		
-<!-- /TOC -->
-# TsFile的Hive连接器使用手册
+  - 什么是TsFile的Hive连接器
+  - 系统环境要求
+  - 数据类型对应关系
+  - 为Hive添加依赖jar包
+  - 创建Tsfile-backed的Hive表
+  - 从Tsfile-backed的Hive表中查询
+    - 选择查询语句示例
+    - 聚合查询语句示例
+  - 后续工作
 
 ## 什么是TsFile的Hive连接器
 
