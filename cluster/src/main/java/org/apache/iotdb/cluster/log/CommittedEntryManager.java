@@ -17,11 +17,12 @@ public class CommittedEntryManager {
     private Snapshot snapshot;
     private List<Log> entries;
 
-    public CommittedEntryManager(HardState hardState) {
+    public CommittedEntryManager(HardState hardState, Snapshot snapshot) {
         this.hardState = hardState;
+        this.snapshot = snapshot;
         PhysicalPlanLog dummy = new PhysicalPlanLog();
-        dummy.setCurrLogIndex(-1);
-        dummy.setCurrLogTerm(-1);
+        dummy.setCurrLogIndex(snapshot.getLastLogIndex());
+        dummy.setCurrLogTerm(snapshot.getLastLogTerm());
         entries = new ArrayList<Log>() {{
             add(dummy);
         }};
@@ -35,43 +36,8 @@ public class CommittedEntryManager {
         return hardState;
     }
 
-    public Long getFirstIndex() {
-        return entries.get(0).getCurrLogIndex() + 1;
-    }
-
-    public Long getLastIndex() {
-        return entries.get(0).getCurrLogIndex() + entries.size() - 1;
-    }
-
-//    public Snapshot getSnapshot() {
-//        return snapshot;
-//    }
-
-    public long getTerm(long index) {
-        long offset = entries.get(0).getCurrLogIndex();
-        if (index < offset) {
-            return -1;
-        }
-        if ((int) (index - offset) >= entries.size()) {
-            return -1;
-        }
-        return entries.get((int) (index - offset)).getCurrLogTerm();
-    }
-
-    public List<Log> getEntries(long low, long high) throws EntryCompactedException, EntryUnavailableException {
-        List<Log> ans;
-        long offset = entries.get(0).getCurrLogIndex();
-        if (low < offset) {
-            throw new EntryCompactedException();
-        }
-        if (high > getLastIndex() + 1) {
-            logger.error("entries high ({}) is out of bound lastIndex ({})", high, getLastIndex());
-        }
-        if (entries.size() == 1) {
-            throw new EntryUnavailableException();
-        }
-        ans = entries.subList((int) (low - offset), (int) (high - offset));
-        return ans;
+    public Snapshot getSnapshot() {
+        return snapshot;
     }
 
     public void applySnapshot(Snapshot snap) {
@@ -86,28 +52,55 @@ public class CommittedEntryManager {
         Log dummy = new PhysicalPlanLog();
         dummy.setCurrLogIndex(snap.getLastLogIndex());
         dummy.setCurrLogTerm(snap.getLastLogTerm());
-        entries = new ArrayList<Log>() {{
-            add(dummy);
-        }};
+        entries.add(dummy);
     }
 
-    public void compactEntries(long compactIndex) throws EntryCompactedException {
+    public Long getFirstIndex() {
+        return entries.get(0).getCurrLogIndex() + 1;
+    }
+
+    public Long getLastIndex() {
+        return entries.get(0).getCurrLogIndex() + entries.size() - 1;
+    }
+
+    public long getTerm(long index) {
+        long offset = entries.get(0).getCurrLogIndex();
+        if (index < offset) {
+            return -1;
+        }
+        if ((int) (index - offset) >= entries.size()) {
+            return -1;
+        }
+        return entries.get((int) (index - offset)).getCurrLogTerm();
+    }
+
+    public List<Log> getEntries(long low, long high) throws EntryCompactedException, EntryUnavailableException {
+        long offset = entries.get(0).getCurrLogIndex();
+        if (low <= offset || entries.size() == 1) {
+            throw new EntryCompactedException();
+        }
+        if (high > getLastIndex() + 1) {
+            logger.error("entries high ({}) is out of bound lastIndex ({})", high, getLastIndex());
+            throw new EntryUnavailableException();
+        }
+        return entries.subList((int) (low - offset), (int) (high - offset));
+    }
+
+    public void compactEntries(long compactIndex) throws EntryCompactedException, EntryUnavailableException {
         long offset = entries.get(0).getCurrLogIndex();
         if (compactIndex < offset) {
             throw new EntryCompactedException();
         }
         if (compactIndex > getLastIndex()) {
             logger.error("compact ({}) is out of bound lastIndex ({})", compactIndex, getLastIndex());
+            throw new EntryUnavailableException();
         }
         int index = (int) (compactIndex - offset);
-        Log dummy = new PhysicalPlanLog();
-        dummy.setCurrLogIndex(entries.get(index).getCurrLogIndex());
-        dummy.setCurrLogTerm(entries.get(index).getCurrLogTerm());
-        List<Log> newEntries = new ArrayList<Log>() {{
-            add(dummy);
-        }};
-        newEntries.addAll(entries.subList(index + 1, entries.size()));
-        entries = newEntries;
+        PhysicalPlanLog dummy = new PhysicalPlanLog();
+        dummy.setCurrLogIndex(entries.get(index).getCurrLogTerm());
+        dummy.setCurrLogTerm(entries.get(index).getCurrLogIndex());
+        entries.clear();
+        entries.add(dummy);
     }
 
     public void append(List<Log> entries) {
@@ -120,19 +113,16 @@ public class CommittedEntryManager {
             return;
         }
         if (first > entries.get(0).getCurrLogIndex()) {
-            entries = entries.subList((int) (first - entries.get(0).getCurrLogIndex()), entries.size());
+            entries.subList(0, (int) (first - entries.get(0).getCurrLogIndex())).clear();
         }
         long offset = entries.get(0).getCurrLogIndex() - this.entries.get(0).getCurrLogIndex();
         if (this.entries.size() - offset == 0) {
             this.entries.addAll(entries);
         } else if (this.entries.size() - offset > 0) {
-            List<Log> newEntries = new ArrayList<>();
-            newEntries.addAll(this.entries.subList(0, (int) (offset)));
-            newEntries.addAll(entries);
-           this.entries = newEntries;
+            this.entries.subList((int) offset, this.entries.size()).clear();
+            this.entries.addAll(entries);
         } else {
             logger.error("missing log entry [last: {}, append at: {}]", getLastIndex(), entries.get(0).getCurrLogIndex());
         }
-
     }
 }
