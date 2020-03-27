@@ -68,28 +68,31 @@ public class MemUtils {
     return memSize;
   }
 
-  public static long getRecordSize(BatchInsertPlan batchInsertPlan) {
+  public static long getRecordSize(BatchInsertPlan batchInsertPlan, int start, int end) {
+    if (start >= end) {
+      return 0L;
+    }
     long memSize = 0;
     for (int i = 0; i < batchInsertPlan.getMeasurements().length; i++) {
       switch (batchInsertPlan.getDataTypes()[i]) {
         case INT32:
-          memSize += batchInsertPlan.getRowCount() * (8L + 4L); break;
+          memSize += (end - start) * (8L + 4L); break;
         case INT64:
-          memSize += batchInsertPlan.getRowCount() * (8L + 8L); break;
+          memSize += (end - start) * (8L + 8L); break;
         case FLOAT:
-          memSize += batchInsertPlan.getRowCount() * (8L + 4L); break;
+          memSize += (end - start) * (8L + 4L); break;
         case DOUBLE:
-          memSize += batchInsertPlan.getRowCount() * (8L + 8L); break;
+          memSize += (end - start) * (8L + 8L); break;
         case BOOLEAN:
-          memSize += batchInsertPlan.getRowCount() * (8L + 1L); break;
+          memSize += (end - start) * (8L + 1L); break;
         case TEXT:
-          memSize += batchInsertPlan.getRowCount() * 8L;
-          for (int j = 0; j < batchInsertPlan.getRowCount(); j++) {
+          memSize += (end - start) * 8L;
+          for (int j = start; j < end; j++) {
             memSize += ((Binary[]) batchInsertPlan.getColumns()[i])[j].getLength();
           }
           break;
         default:
-          memSize += batchInsertPlan.getRowCount() * (8L + 8L);
+          memSize += (end - start) * (8L + 8L);
       }
     }
     return memSize;

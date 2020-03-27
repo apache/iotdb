@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -115,7 +116,9 @@ public class FileReaderManager implements IService {
 
   private void clearMap(Map<TsFileResource, TsFileSequenceReader> readerMap,
       Map<TsFileResource, AtomicInteger> refMap) {
-    for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : readerMap.entrySet()) {
+    Iterator<Map.Entry<TsFileResource, TsFileSequenceReader>> iterator = readerMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<TsFileResource, TsFileSequenceReader> entry = iterator.next();
       TsFileSequenceReader reader = entry.getValue();
       AtomicInteger refAtom = refMap.get(entry.getKey());
 
@@ -125,8 +128,11 @@ public class FileReaderManager implements IService {
         } catch (IOException e) {
           logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
         }
-        readerMap.remove(entry.getKey());
+        iterator.remove();
         refMap.remove(entry.getKey());
+        if (resourceLogger.isDebugEnabled()) {
+          resourceLogger.debug("{} TsFileReader is closed because of no reference.", entry.getValue().getFileName());
+        }
       }
     }
   }
@@ -186,9 +192,9 @@ public class FileReaderManager implements IService {
   void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     synchronized (this) {
       if (!isClosed && unclosedReferenceMap.containsKey(tsFile)) {
-        unclosedReferenceMap.get(tsFile).getAndDecrement();
+        unclosedReferenceMap.get(tsFile).decrementAndGet();
       } else if (closedReferenceMap.containsKey(tsFile)){
-        closedReferenceMap.get(tsFile).getAndDecrement();
+        closedReferenceMap.get(tsFile).decrementAndGet();
       }
     }
     tsFile.getWriteQueryLock().readLock().unlock();
@@ -199,21 +205,25 @@ public class FileReaderManager implements IService {
    * integration tests will not conflict with each other.
    */
   public synchronized void closeAndRemoveAllOpenedReaders() throws IOException {
-    for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : closedFileReaderMap.entrySet()) {
+    Iterator<Map.Entry<TsFileResource, TsFileSequenceReader>> iterator = closedFileReaderMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<TsFileResource, TsFileSequenceReader> entry = iterator.next();
       entry.getValue().close();
-      if (resourceLogger.isInfoEnabled()) {
-        resourceLogger.info("{} closedTsFileReader is closed.", entry.getValue().getFileName());
+      if (resourceLogger.isDebugEnabled()) {
+        resourceLogger.debug("{} closedTsFileReader is closed.", entry.getValue().getFileName());
       }
       closedReferenceMap.remove(entry.getKey());
-      closedFileReaderMap.remove(entry.getKey());
+      iterator.remove();
     }
-    for (Map.Entry<TsFileResource, TsFileSequenceReader> entry : unclosedFileReaderMap.entrySet()) {
+    iterator = unclosedFileReaderMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<TsFileResource, TsFileSequenceReader> entry = iterator.next();
       entry.getValue().close();
-      if (resourceLogger.isInfoEnabled()) {
-        resourceLogger.info("{} unclosedTsFileReader is closed.", entry.getValue().getFileName());
+      if (resourceLogger.isDebugEnabled()) {
+        resourceLogger.debug("{} unclosedTsFileReader is closed.", entry.getValue().getFileName());
       }
       unclosedReferenceMap.remove(entry.getKey());
-      unclosedFileReaderMap.remove(entry.getKey());
+      iterator.remove();
     }
   }
 

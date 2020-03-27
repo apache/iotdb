@@ -26,6 +26,7 @@ import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -54,5 +55,11 @@ public interface IQueryRouter {
    * Execute fill query.
    */
   QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
+      throws StorageEngineException, QueryProcessException, IOException;
+
+  /**
+   * Execute last query
+   */
+  QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException;
 }

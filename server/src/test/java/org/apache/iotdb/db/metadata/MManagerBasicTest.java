@@ -26,6 +26,8 @@ import static org.junit.Assert.fail;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.PathException;
@@ -64,6 +66,7 @@ public class MManagerBasicTest {
 
     try {
       manager.setStorageGroup("root.laptop.d1");
+      manager.setStorageGroup("root.1");
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -78,8 +81,7 @@ public class MManagerBasicTest {
 
     try {
       manager.createTimeseries("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections
-              .emptyMap());
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -91,20 +93,31 @@ public class MManagerBasicTest {
     try {
       manager.createTimeseries("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+      manager.createTimeseries("root.laptop.d1.1_2", TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+      manager.createTimeseries("root.laptop.d1.\"1.2.3\"", TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+      manager.createTimeseries("root.1.2.3", TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
     } catch (MetadataException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
     assertTrue(manager.isPathExist("root.laptop.d1.s1"));
+    assertTrue(manager.isPathExist("root.laptop.d1.1_2"));
+    assertTrue(manager.isPathExist("root.laptop.d1.\"1.2.3\""));
+    assertTrue(manager.isPathExist("root.1.2.3"));
+    assertTrue(manager.isPathExist("root.1"));
+    assertTrue(manager.isPathExist("root.1.2"));
+
     try {
       manager.deleteTimeseries("root.laptop.d1.s1");
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    // just delete s0, and don't delete root.laptop.d1??
-    // delete storage group or not
     assertFalse(manager.isPathExist("root.laptop.d1.s1"));
+
     try {
       manager.deleteTimeseries("root.laptop.d1.s0");
     } catch (MetadataException e) {
@@ -156,6 +169,28 @@ public class MManagerBasicTest {
               "root.laptop.d2"),
           e.getMessage());
     }
+
+    try {
+      manager.deleteTimeseries("root.laptop.d1.1_2");
+      manager.deleteTimeseries("root.laptop.d1.\"1.2.3\"");
+      manager.deleteTimeseries("root.1.2.3");
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    assertFalse(manager.isPathExist("root.laptop.d1.1_2"));
+    assertFalse(manager.isPathExist("root.laptop.d1.\"1.2.3\""));
+    assertFalse(manager.isPathExist("root.1.2.3"));
+    assertFalse(manager.isPathExist("root.1.2"));
+    assertTrue(manager.isPathExist("root.1"));
+
+    try {
+      manager.deleteStorageGroups(Collections.singletonList("root.1"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    assertFalse(manager.isPathExist("root.1"));
   }
 
   @Test
@@ -303,7 +338,7 @@ public class MManagerBasicTest {
           CompressionType.GZIP, null);
       manager.createTimeseries("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      List<String> devices = new ArrayList<>();
+      Set<String> devices = new TreeSet<>();
       devices.add("root.laptop.d1");
       devices.add("root.laptop.d2");
       // usual condition
@@ -314,6 +349,59 @@ public class MManagerBasicTest {
       devices.add("root.vehicle.d1");
       // prefix with *
       assertEquals(devices, manager.getDevices("root.*"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testGetChildNodePathInNextLevel() {
+    MManager manager = MManager.getInstance();
+    String[] res = new String[]{
+        "[root.laptop, root.vehicle]",
+        "[root.laptop.b1, root.laptop.b2]",
+        "[root.laptop.b1.d1, root.laptop.b1.d2]",
+        "[root.laptop.b1, root.laptop.b2, root.vehicle.b1, root.vehicle.b2]",
+        "[root.laptop.b1.d1, root.laptop.b1.d2, root.vehicle.b1.d0, root.vehicle.b1.d2, root.vehicle.b1.d3]",
+        "[root.laptop.b1.d1, root.laptop.b1.d2]",
+        "[root.vehicle.b1.d0, root.vehicle.b1.d2, root.vehicle.b1.d3, root.vehicle.b2.d0]",
+        "[root.laptop.b1.d1.s0, root.laptop.b1.d1.s1, root.laptop.b1.d2.s0, root.laptop.b2.d1.s1, root.laptop.b2.d1.s3, root.laptop.b2.d2.s2]"
+    };
+
+    try {
+      manager.setStorageGroup("root.laptop");
+      manager.setStorageGroup("root.vehicle");
+
+      manager.createTimeseries("root.laptop.b1.d1.s0", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null);
+      manager.createTimeseries("root.laptop.b1.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null);
+      manager.createTimeseries("root.laptop.b1.d2.s0", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null);
+      manager.createTimeseries("root.laptop.b2.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null);
+      manager.createTimeseries("root.laptop.b2.d1.s3", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null);
+      manager.createTimeseries("root.laptop.b2.d2.s2", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null);
+      manager.createTimeseries("root.vehicle.b1.d0.s0", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null);
+      manager.createTimeseries("root.vehicle.b1.d2.s2", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null);
+      manager.createTimeseries("root.vehicle.b1.d3.s3", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null);
+      manager.createTimeseries("root.vehicle.b2.d0.s1", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null);
+
+      assertEquals(res[0], manager.getChildNodePathInNextLevel("root").toString());
+      assertEquals(res[1], manager.getChildNodePathInNextLevel("root.laptop").toString());
+      assertEquals(res[2], manager.getChildNodePathInNextLevel("root.laptop.b1").toString());
+      assertEquals(res[3], manager.getChildNodePathInNextLevel("root.*").toString());
+      assertEquals(res[4], manager.getChildNodePathInNextLevel("root.*.b1").toString());
+      assertEquals(res[5], manager.getChildNodePathInNextLevel("root.l*.b1").toString());
+      assertEquals(res[6], manager.getChildNodePathInNextLevel("root.v*.*").toString());
+      assertEquals(res[7], manager.getChildNodePathInNextLevel("root.l*.b*.*").toString());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

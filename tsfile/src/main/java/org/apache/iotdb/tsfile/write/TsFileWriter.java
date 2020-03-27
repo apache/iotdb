@@ -296,7 +296,7 @@ public class TsFileWriter implements AutoCloseable{
    * function just return false, the Override of IoTDB may return true.
    * @throws IOException exception in IO
    */
-  private boolean flushAllChunkGroups() throws IOException {
+  public boolean flushAllChunkGroups() throws IOException {
     if (recordCount > 0) {
       for (Map.Entry<String, IChunkGroupWriter> entry: groupWriters.entrySet()) {
         long pos = fileWriter.getPos();

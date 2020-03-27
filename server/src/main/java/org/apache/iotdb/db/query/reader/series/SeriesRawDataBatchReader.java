@@ -27,10 +27,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
 import java.io.IOException;
 import java.util.List;
-
 
 public class SeriesRawDataBatchReader implements ManagedSeriesReader {
 
@@ -41,6 +39,7 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
 
   private BatchData batchData;
   private boolean hasCachedBatchData = false;
+
 
   public SeriesRawDataBatchReader(SeriesReader seriesReader) {
     this.seriesReader = seriesReader;
@@ -71,28 +70,26 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
       return true;
     }
 
+    /*
+     * consume page data firstly
+     */
+    if (readPageData()) {
+      hasCachedBatchData = true;
+      return true;
+    }
+
+    /*
+     * consume next chunk finally
+     */
     while (seriesReader.hasNextChunk()) {
-      while (seriesReader.hasNextPage()) {
-        if (!seriesReader.isPageOverlapped()) {
-          batchData = seriesReader.nextPage();
-          if (!batchData.hasCurrent()) {
-            continue;
-          }
-          hasCachedBatchData = true;
-          return true;
-        }
-        if (seriesReader.hasNextOverlappedPage()) {
-          batchData = seriesReader.nextOverlappedPage();
-          if (!batchData.hasCurrent()) {
-            continue;
-          }
-          hasCachedBatchData = true;
-          return true;
-        }
+      if (readPageData()) {
+        hasCachedBatchData = true;
+        return true;
       }
     }
-    return false;
+    return hasCachedBatchData;
   }
+
 
   @Override
   public BatchData nextBatch() throws IOException {
@@ -107,7 +104,6 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
   public void close() throws IOException {
     //no resources need to close
   }
-
 
   @Override
   public boolean isManagedByQueryManager() {
@@ -129,4 +125,18 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     this.hasRemaining = hasRemaining;
   }
 
+
+  private boolean readPageData() throws IOException {
+    while (seriesReader.hasNextPage()) {
+      batchData = seriesReader.nextPage();
+      if (!isEmpty(batchData)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean isEmpty(BatchData batchData) {
+    return batchData == null || !batchData.hasCurrent();
+  }
 }

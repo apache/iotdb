@@ -178,7 +178,7 @@ public class Field {
 
   public static Field getField(Object value, TSDataType dataType) {
     if (value == null) {
-      return new Field(null);
+      return null;
     }
     Field field = new Field(dataType);
     switch (dataType) {

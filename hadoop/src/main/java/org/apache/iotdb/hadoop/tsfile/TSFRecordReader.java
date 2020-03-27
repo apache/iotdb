@@ -57,15 +57,15 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
    */
   private List<QueryDataSet> dataSetList = new ArrayList<>();
   /**
-   * List for name of devices. The order corresponds to the order of dataSetList.
-   * Means that deviceIdList[i] is the name of device for dataSetList[i].
+   * List for name of devices. The order corresponds to the order of dataSetList. Means that
+   * deviceIdList[i] is the name of device for dataSetList[i].
    */
   private List<String> deviceIdList = new ArrayList<>();
   private List<Field> fields = null;
   /**
    * The index of QueryDataSet that is currently processed
    */
-  private  int currentIndex = 0;
+  private int currentIndex = 0;
   private long timestamp = 0;
   private boolean isReadDeviceId = false;
   private boolean isReadTime = false;
@@ -77,67 +77,71 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
   public void initialize(InputSplit split, TaskAttemptContext context)
       throws IOException {
     if (split instanceof TSFInputSplit) {
-      initialize((TSFInputSplit) split, context.getConfiguration(), this, dataSetList, deviceIdList);
-    }
-    else {
+      initialize((TSFInputSplit) split, context.getConfiguration(), this, dataSetList,
+          deviceIdList);
+    } else {
       logger.error("The InputSplit class is not {}, the class is {}", TSFInputSplit.class.getName(),
-              split.getClass().getName());
+          split.getClass().getName());
       throw new InternalError(String.format("The InputSplit class is not %s, the class is %s",
-              TSFInputSplit.class.getName(), split.getClass().getName()));
+          TSFInputSplit.class.getName(), split.getClass().getName()));
     }
   }
 
-  public static void initialize(TSFInputSplit split, Configuration configuration, IReaderSet readerSet, List<QueryDataSet> dataSetList, List<String> deviceIdList) throws IOException  {
-      org.apache.hadoop.fs.Path path = split.getPath();
-      List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList = split.getChunkGroupInfoList();
-      TsFileSequenceReader reader = new TsFileSequenceReader(new HDFSInput(path, configuration));
-      readerSet.setReader(reader);
-      // Get the read columns and filter information
+  public static void initialize(TSFInputSplit split, Configuration configuration,
+      IReaderSet readerSet, List<QueryDataSet> dataSetList, List<String> deviceIdList)
+      throws IOException {
+    org.apache.hadoop.fs.Path path = split.getPath();
+    List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList = split.getChunkGroupInfoList();
+    TsFileSequenceReader reader = new TsFileSequenceReader(new HDFSInput(path, configuration));
+    readerSet.setReader(reader);
+    // Get the read columns and filter information
 
-      List<String> deviceIds = TSFInputFormat.getReadDeviceIds(configuration);
-      if (deviceIds == null) {
-        deviceIds = initDeviceIdList(chunkGroupInfoList);
+    List<String> deviceIds = TSFInputFormat.getReadDeviceIds(configuration);
+    if (deviceIds == null) {
+      deviceIds = initDeviceIdList(chunkGroupInfoList);
+    }
+    List<String> measurementIds = TSFInputFormat.getReadMeasurementIds(configuration);
+    if (measurementIds == null) {
+      measurementIds = initSensorIdList(chunkGroupInfoList);
+    }
+    readerSet.setMeasurementIds(measurementIds);
+    logger.info("deviceIds:" + deviceIds);
+    logger.info("Sensors:" + measurementIds);
+
+    readerSet.setReadDeviceId(TSFInputFormat.getReadDeviceId(configuration));
+    readerSet.setReadTime(TSFInputFormat.getReadTime(configuration));
+
+    ReadOnlyTsFile queryEngine = new ReadOnlyTsFile(reader);
+    for (TSFInputSplit.ChunkGroupInfo chunkGroupInfo : chunkGroupInfoList) {
+      String deviceId = chunkGroupInfo.getDeviceId();
+      if (deviceIds.contains(deviceId)) {
+        List<Path> paths = measurementIds.stream()
+            .map(
+                measurementId -> new Path(deviceId + TsFileConstant.PATH_SEPARATOR + measurementId))
+            .collect(toList());
+        QueryExpression queryExpression = QueryExpression.create(paths, null);
+        QueryDataSet dataSet = queryEngine.query(queryExpression,
+            chunkGroupInfo.getStartOffset(), chunkGroupInfo.getEndOffset());
+        dataSetList.add(dataSet);
+        deviceIdList.add(deviceId);
       }
-      List<String> measurementIds = TSFInputFormat.getReadMeasurementIds(configuration);
-      if (measurementIds == null) {
-        measurementIds = initSensorIdList(chunkGroupInfoList);
-      }
-      readerSet.setMeasurementIds(measurementIds);
-      logger.info("deviceIds:" + deviceIds);
-      logger.info("Sensors:" + measurementIds);
-
-
-      readerSet.setReadDeviceId(TSFInputFormat.getReadDeviceId(configuration));
-      readerSet.setReadTime(TSFInputFormat.getReadTime(configuration));
-
-      ReadOnlyTsFile queryEngine = new ReadOnlyTsFile(reader);
-      for (TSFInputSplit.ChunkGroupInfo chunkGroupInfo : chunkGroupInfoList) {
-        String deviceId = chunkGroupInfo.getDeviceId();
-        if (deviceIds.contains(deviceId)) {
-          List<Path> paths = measurementIds.stream()
-                  .map(measurementId -> new Path(deviceId + TsFileConstant.PATH_SEPARATOR + measurementId))
-                  .collect(toList());
-          QueryExpression queryExpression = QueryExpression.create(paths, null);
-          QueryDataSet dataSet = queryEngine.query(queryExpression,
-                  chunkGroupInfo.getStartOffset(), chunkGroupInfo.getEndOffset());
-          dataSetList.add(dataSet);
-          deviceIdList.add(deviceId);
-        }
-      }
+    }
   }
 
-  private static List<String> initDeviceIdList(List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList) {
+  private static List<String> initDeviceIdList(
+      List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList) {
     return chunkGroupInfoList.stream()
-            .map(TSFInputSplit.ChunkGroupInfo::getDeviceId)
-            .distinct()
-            .collect(toList());
+        .map(TSFInputSplit.ChunkGroupInfo::getDeviceId)
+        .distinct()
+        .collect(toList());
   }
 
-  private static List<String> initSensorIdList(List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList) {
+  private static List<String> initSensorIdList(
+      List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList) {
     return chunkGroupInfoList.stream()
-            .flatMap(chunkGroupMetaData -> Arrays.stream(chunkGroupMetaData.getMeasurementIds()))
-            .distinct()
-            .collect(toList());
+        .flatMap(chunkGroupMetaData -> Arrays.stream(chunkGroupMetaData.getMeasurementIds()))
+        .distinct()
+        .collect(toList());
   }
 
   @Override
@@ -145,8 +149,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
     while (currentIndex < dataSetList.size()) {
       if (!dataSetList.get(currentIndex).hasNext()) {
         currentIndex++;
-      }
-      else {
+      } else {
         RowRecord rowRecord = dataSetList.get(currentIndex).next();
         fields = rowRecord.getFields();
         timestamp = rowRecord.getTimestamp();
@@ -163,13 +166,14 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
 
   @Override
   public MapWritable getCurrentValue() throws InterruptedException {
-    return getCurrentValue(deviceIdList, currentIndex, timestamp, isReadTime, isReadDeviceId, fields, measurementIds);
+    return getCurrentValue(deviceIdList, currentIndex, timestamp, isReadTime, isReadDeviceId,
+        fields, measurementIds);
   }
 
   public static MapWritable getCurrentValue(List<String> deviceIdList, int currentIndex,
-                                            long timestamp, boolean isReadTime,
-                                            boolean isReadDeviceId, List<Field> fields,
-                                            List<String> measurementIds)  throws InterruptedException {
+      long timestamp, boolean isReadTime,
+      boolean isReadDeviceId, List<Field> fields,
+      List<String> measurementIds) throws InterruptedException {
     MapWritable mapWritable = new MapWritable();
     Text deviceIdText = new Text(deviceIdList.get(currentIndex));
     LongWritable time = new LongWritable(timestamp);
@@ -188,13 +192,15 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
 
   /**
    * Read from current fields value
+   *
    * @param mapWritable where to write
    * @throws InterruptedException
    */
-  public static void readFieldsValue(MapWritable mapWritable, List<Field> fields, List<String> measurementIds) throws InterruptedException {
+  public static void readFieldsValue(MapWritable mapWritable, List<Field> fields,
+      List<String> measurementIds) throws InterruptedException {
     int index = 0;
     for (Field field : fields) {
-      if (field.getDataType() == null) {
+      if (field == null || field.getDataType() == null) {
         logger.info("Current value is null");
         mapWritable.put(new Text(measurementIds.get(index)), NullWritable.get());
       } else {
@@ -203,24 +209,29 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
             mapWritable.put(new Text(measurementIds.get(index)), new IntWritable(field.getIntV()));
             break;
           case INT64:
-            mapWritable.put(new Text(measurementIds.get(index)), new LongWritable(field.getLongV()));
+            mapWritable
+                .put(new Text(measurementIds.get(index)), new LongWritable(field.getLongV()));
             break;
           case FLOAT:
-            mapWritable.put(new Text(measurementIds.get(index)), new FloatWritable(field.getFloatV()));
+            mapWritable
+                .put(new Text(measurementIds.get(index)), new FloatWritable(field.getFloatV()));
             break;
           case DOUBLE:
-            mapWritable.put(new Text(measurementIds.get(index)), new DoubleWritable(field.getDoubleV()));
+            mapWritable
+                .put(new Text(measurementIds.get(index)), new DoubleWritable(field.getDoubleV()));
             break;
           case BOOLEAN:
-            mapWritable.put(new Text(measurementIds.get(index)), new BooleanWritable(field.getBoolV()));
+            mapWritable
+                .put(new Text(measurementIds.get(index)), new BooleanWritable(field.getBoolV()));
             break;
           case TEXT:
-            mapWritable.put(new Text(measurementIds.get(index)), new Text(field.getBinaryV().getStringValue()));
+            mapWritable.put(new Text(measurementIds.get(index)),
+                new Text(field.getBinaryV().getStringValue()));
             break;
           default:
             logger.error("The data type is not support {}", field.getDataType());
             throw new InterruptedException(
-                    String.format("The data type %s is not support ", field.getDataType()));
+                String.format("The data type %s is not support ", field.getDataType()));
         }
       }
       index++;

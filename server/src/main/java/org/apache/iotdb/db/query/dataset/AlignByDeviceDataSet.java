@@ -20,14 +20,19 @@ package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -53,18 +58,11 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private QueryContext context;
   private IExpression expression;
 
-  private List<String> deduplicatedMeasurementColumns;
-  private Map<String, Set<String>> deviceToMeasurementsMap;
+  private List<String> measurements;
+  private List<String> devices;
   private Map<String, IExpression> deviceToFilterMap;
-
-  // the measurements that do not exist in any device,
-  // data type is considered as Boolean. The value is considered as null
-  private List<String> notExistMeasurements;
-  private List<Integer> positionOfNotExistMeasurements;
-  // the measurements that have quotation mark. e.g. "abc",
-  // '11', the data type is considered as String and the value is considered is the same with measurement name
-  private List<String> constMeasurements;
-  private List<Integer> positionOfConstMeasurements;
+  private Map<String, MeasurementType> measurementTypeMap;
+  private Map<String, TSDataType> measurementDataTpeMap;
 
   private GroupByPlan groupByPlan;
   private FillQueryPlan fillQueryPlan;
@@ -72,29 +70,24 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private RawDataQueryPlan rawDataQueryPlan;
 
   private boolean curDataSetInitialized;
-  private Iterator<String> deviceIterator;
   private String currentDevice;
   private QueryDataSet currentDataSet;
-  private int[] currentColumnMapRelation;
-  private Map<Path, TSDataType> tsDataTypeMap;
+  private Iterator<String> deviceIterator;
+  private List<String> executeColumns;
 
   public AlignByDeviceDataSet(AlignByDevicePlan alignByDevicePlan, QueryContext context,
       IQueryRouter queryRouter) {
     super(null, alignByDevicePlan.getDataTypes());
 
-    // get deduplicated measurement columns (already deduplicated in TSServiceImpl.getAlignByDeviceQueryHeaders)
-    this.deduplicatedMeasurementColumns = alignByDevicePlan.getMeasurements();
-    this.tsDataTypeMap = alignByDevicePlan.getDataTypeMapping();
+    this.measurements = alignByDevicePlan.getMeasurements();
+    this.devices = alignByDevicePlan.getDevices();
+    this.measurementDataTpeMap = alignByDevicePlan.getMeasurementDataTypeMap();
     this.queryRouter = queryRouter;
     this.context = context;
-    this.deviceToMeasurementsMap = alignByDevicePlan.getDeviceToMeasurementsMap();
     this.deviceToFilterMap = alignByDevicePlan.getDeviceToFilterMap();
-    this.notExistMeasurements = alignByDevicePlan.getNotExistMeasurements();
-    this.constMeasurements = alignByDevicePlan.getConstMeasurements();
-    this.positionOfNotExistMeasurements = alignByDevicePlan.getPositionOfNotExistMeasurements();
-    this.positionOfConstMeasurements = alignByDevicePlan.getPositionOfConstMeasurements();
+    this.measurementTypeMap = alignByDevicePlan.getMeasurementTypeMap();
 
-    switch (alignByDevicePlan.getOperatorType()){
+    switch (alignByDevicePlan.getOperatorType()) {
       case GROUPBY:
         this.dataSetType = DataSetType.GROUPBY;
         this.groupByPlan = alignByDevicePlan.getGroupByPlan();
@@ -113,8 +106,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     }
 
     this.curDataSetInitialized = false;
-    this.deviceIterator = deviceToMeasurementsMap.keySet().iterator();
-    this.currentColumnMapRelation = new int[deduplicatedMeasurementColumns.size()];
+    this.deviceIterator = devices.iterator();
   }
 
   protected boolean hasNextWithoutConstraint() throws IOException {
@@ -125,45 +117,33 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     }
 
     while (deviceIterator.hasNext()) {
-      for (int i = 0; i < deduplicatedMeasurementColumns.size(); i++) {
-        currentColumnMapRelation[i] = -1;
-      }
       currentDevice = deviceIterator.next();
-      Set<String> measurementColumnsOfGivenDevice = deviceToMeasurementsMap
-          .get(currentDevice);
-
-      // get columns to execute for the current device and the column map relation
-      // e.g. root.sg.d0's measurementColumnsOfGivenDevice is {s2,s3}, and
-      // deduplicatedMeasurementColumns is {s1,s2,s3,s4,s5},
-      // then the final executeColumns is [s2,s3], currentColumnMapRelation is [-1,0,1,-1,-1].
-      List<String> executeColumns = new ArrayList<>();
-      int indexInExecuteColumns = -1;
-      for (String column : measurementColumnsOfGivenDevice) {
-        for (int i = 0; i < deduplicatedMeasurementColumns.size(); i++) {
-          String columnToExecute = deduplicatedMeasurementColumns.get(i);
-          if (columnToExecute.equals(column)) {
-            executeColumns.add(column);
-            indexInExecuteColumns++;
-            currentColumnMapRelation[i] = indexInExecuteColumns;
-            break;
-          }
-        }
+      // get all measurements of current device
+      Set<String> measurementOfGivenDevice;
+      try {
+        MNode deviceNode = MManager.getInstance().getNodeByPath(currentDevice);
+        measurementOfGivenDevice = deviceNode.getChildren().keySet();
+      } catch (MetadataException e) {
+        throw new IOException("Cannot get node from " + currentDevice);
       }
-      // extract paths and aggregations if exist from executeColumns
+      // extract paths and aggregations queried from all measurements
+      // executeColumns is for calculating rowRecord
+      executeColumns = new ArrayList<>();
       List<Path> executePaths = new ArrayList<>();
       List<TSDataType> tsDataTypes = new ArrayList<>();
       List<String> executeAggregations = new ArrayList<>();
-      for (String column : executeColumns) {
+      for (String column : measurementDataTpeMap.keySet()) {
+        String measurement = column;
         if (dataSetType == DataSetType.GROUPBY || dataSetType == DataSetType.AGGREGATE) {
-          Path path = new Path(currentDevice,
-              column.substring(column.indexOf('(') + 1, column.indexOf(')')));
-          tsDataTypes.add(tsDataTypeMap.get(path));
-          executePaths.add(path);
-          executeAggregations.add(column.substring(0, column.indexOf('(')));
-        } else {
-          Path path = new Path(currentDevice, column);
-          tsDataTypes.add(tsDataTypeMap.get(path));
-          executePaths.add(path);
+          measurement = column.substring(column.indexOf('(') + 1, column.indexOf(')'));
+          if (measurementOfGivenDevice.contains(measurement)) {
+            executeAggregations.add(column.substring(0, column.indexOf('(')));
+          }
+        }
+        if (measurementOfGivenDevice.contains(measurement)) {
+          executeColumns.add(column);
+          executePaths.add(new Path(currentDevice, measurement));
+          tsDataTypes.add(measurementDataTpeMap.get(column));
         }
       }
 
@@ -201,7 +181,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
           default:
             throw new IOException("unsupported DataSetType");
         }
-      } catch (QueryProcessException | QueryFilterOptimizationException | StorageEngineException | IOException e) {
+      } catch (QueryProcessException | QueryFilterOptimizationException | StorageEngineException e) {
         throw new IOException(e);
       }
 
@@ -223,43 +203,32 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     rowRecord.addField(deviceField);
 
     List<Field> measurementFields = originRowRecord.getFields();
-    for (int mapPos : currentColumnMapRelation) {
-      if (mapPos == -1) {
-        rowRecord.addField(new Field(null));
-      } else {
-        rowRecord.addField(measurementFields.get(mapPos));
+    Map<String, Field> currentColumnMap = new HashMap<>();
+    for (int i = 0; i < measurementFields.size(); i++) {
+      currentColumnMap.put(executeColumns.get(i), measurementFields.get(i));
+    }
+
+    for (String measurement : measurements) {
+      switch (measurementTypeMap.get(measurement)) {
+        case Exist:
+          if (currentColumnMap.get(measurement) != null) {
+            rowRecord.addField(currentColumnMap.get(measurement));
+          } else {
+            rowRecord.addField(new Field(null));
+          }
+          break;
+        case NonExist:
+          rowRecord.addField(new Field(null));
+          break;
+        case Constant:
+          Field res = new Field(TSDataType.TEXT);
+          res.setBinaryV(Binary.valueOf(measurement));
+          rowRecord.addField(res);
+          break;
       }
     }
 
-    // build record with constant and non exist measurement
-    RowRecord outRecord = new RowRecord(originRowRecord.getTimestamp());
-    int loc = 0;
-    int totalSize = notExistMeasurements.size() + constMeasurements.size()
-        + rowRecord.getFields().size();
-    int notExistMeasurementsLoc = 0;
-    int constMeasurementsLoc = 0;
-    int resLoc = 0;
-    // don't forget device column, so loc - 1 is for looking up constant and non exist column
-    while (loc < totalSize) {
-      if (notExistMeasurementsLoc < notExistMeasurements.size()
-          && loc - 1 == positionOfNotExistMeasurements.get(notExistMeasurementsLoc)) {
-        outRecord.addField(new Field(null));
-        notExistMeasurementsLoc++;
-      } else if (constMeasurementsLoc < constMeasurements.size()
-          && loc - 1 == positionOfConstMeasurements.get(constMeasurementsLoc)) {
-        Field res = new Field(TSDataType.TEXT);
-        res.setBinaryV(Binary.valueOf(constMeasurements.get(constMeasurementsLoc)));
-        outRecord.addField(res);
-        constMeasurementsLoc++;
-      } else {
-        outRecord.addField(rowRecord.getFields().get(resLoc));
-        resLoc++;
-      }
-
-      loc++;
-    }
-
-    return outRecord;
+    return rowRecord;
   }
 
   private enum DataSetType {

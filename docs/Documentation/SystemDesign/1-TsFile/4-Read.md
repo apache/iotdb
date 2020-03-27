@@ -384,11 +384,11 @@ Before the introducing the optimize() method in detail, we first show how to com
     *Case 2*: The relation between GlobalTimeExpression and IExpression is OR. In this case, the merge steps include: 
     1. Analyse the projected time series, which is a set of Path. To take a query with 3 projected time series as an example, denote that projected time series as a set, PathList{path1, path2, path3}。
     2. Denote the Filter in GlobalTimeExpression to be tFilter. The method calls pushGlobalTimeFilterToAllSeries() to generate a corresponding SingleSeriesExpression for each Path. Set the Filters of SingleSeriesExpressions to be tFilter. Join the generated SingleSeriesExpression with OR operator to get an OrExpression, which is denoted as orExpression.
-    3. Combine the result of step 2, the orExpression, and the IExpression with OR operation, to generate the final result.
+    3. Call mergeSecondTreeToFirstTree method to combine the nodes in IExpression with the nodes in the orExpression, which is generated from step 2. The combined structure is the result expression.
+    
+    For example, to combine the following GlobalTimeFilter and IExpression using OR relation, denote the projected time series as PathList{path1, path2, path3}
 
-    For example, to combine the following GlobaLTimeFilter and IExpression using OR relation, denote the projected time series as PathList{path1, path2, path3}
-
-        1. GlobaLTimeFilter(tFilter)
+        1. GlobalTimeFilter(tFilter)
         2. IExpression
                 AndExpression
                     SingleSeriesExpression("path1", filter1)

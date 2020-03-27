@@ -27,16 +27,16 @@ import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class AbstractMemTable implements IMemTable {
 
@@ -85,68 +85,30 @@ public abstract class AbstractMemTable implements IMemTable {
   protected abstract IWritableMemChunk genMemSeries(TSDataType dataType);
 
   @Override
-  public void insert(InsertPlan insertPlan) throws QueryProcessException {
+  public void insert(InsertPlan insertPlan) throws WriteProcessException {
     try {
       for (int i = 0; i < insertPlan.getValues().length; i++) {
 
-        Object value = parseValue(insertPlan.getDataTypes()[i], insertPlan.getValues()[i]);
+        Object value = CommonUtils.parseValue(insertPlan.getDataTypes()[i], insertPlan.getValues()[i]);
         write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
             insertPlan.getDataTypes()[i], insertPlan.getTime(), value);
       }
       long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
       memSize += recordSizeInByte;
-    } catch (RuntimeException e) {
-      throw new QueryProcessException(e.getMessage());
-    }
-  }
-
-  private static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
-    try {
-      switch (dataType) {
-        case BOOLEAN:
-          value = value.toLowerCase();
-          if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEN_FALSE.equals(value)) {
-            return false;
-          }
-          if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEN_TRUE.equals(value)) {
-            return true;
-          }
-          throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
-        case INT32:
-          return Integer.parseInt(value);
-        case INT64:
-          return Long.parseLong(value);
-        case FLOAT:
-          return Float.parseFloat(value);
-        case DOUBLE:
-          return Double.parseDouble(value);
-        case TEXT:
-          if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
-              || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
-            if (value.length() == 1) {
-              return new Binary(value);
-            } else {
-              return new Binary(value.substring(1, value.length() - 1));
-            }
-          }
-          throw new QueryProcessException("The TEXT data type should be covered by \" or '");
-        default:
-          throw new QueryProcessException("Unsupported data type:" + dataType);
-      }
-    } catch (NumberFormatException e) {
-      throw new QueryProcessException(e.getMessage());
+    } catch (Exception e) {
+      throw new WriteProcessException(e.getMessage());
     }
   }
 
   @Override
   public void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end)
-      throws QueryProcessException {
+      throws WriteProcessException {
     try {
       write(batchInsertPlan, start, end);
-      long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan);
+      long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan, start, end);
       memSize += recordSizeInByte;
     } catch (RuntimeException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new WriteProcessException(e.getMessage());
     }
   }
 

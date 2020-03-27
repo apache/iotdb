@@ -27,7 +27,7 @@ public interface IAggregateReader {
 
   boolean hasNextChunk() throws IOException;
 
-  boolean canUseCurrentChunkStatistics();
+  boolean canUseCurrentChunkStatistics() throws IOException;
 
   Statistics currentChunkStatistics();
 
@@ -47,7 +47,6 @@ public interface IAggregateReader {
 
   void skipCurrentPage();
 
-  boolean hasNextOverlappedPage() throws IOException;
+  BatchData nextPage() throws IOException;
 
-  BatchData nextOverlappedPage() throws IOException;
 }

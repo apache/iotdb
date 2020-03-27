@@ -19,43 +19,50 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.factory.AggregateResultFactory;
-import org.apache.iotdb.db.query.reader.series.IAggregateReader;
-import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.*;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.factory.AggregateResultFactory;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
-  /**
-   * Merges same series to one map. For example: Given: paths: s1, s2, s3, s1 and aggregations:
-   * count, sum, count, sum seriesMap: s1 -> 0, 3; s2 -> 1; s3 -> 2
-   */
-  private Map<Path, List<Integer>> pathToAggrIndexesMap;
+  private static final Logger logger = LoggerFactory
+      .getLogger(GroupByWithoutValueFilterDataSet.class);
+
+  private Map<Path, GroupByExecutor> pathExecutors = new HashMap<>();
 
   /**
-   * Maps path and its aggregate reader
+   * path -> result index for each aggregation
+   *
+   * e.g.,
+   *
+   * deduplicated paths : s1, s2, s1
+   * deduplicated aggregations : count, count, sum
+   *
+   * s1 -> 0, 2
+   * s2 -> 1
    */
-  private Map<Path, IAggregateReader> aggregateReaders;
-  private List<BatchData> cachedBatchDataList;
-  private GroupByPlan groupByPlan;
+  private Map<Path, List<Integer>> resultIndexes = new HashMap<>();
+
+  public GroupByWithoutValueFilterDataSet() {
+  }
 
   /**
    * constructor.
@@ -64,45 +71,31 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       throws StorageEngineException {
     super(context, groupByPlan);
 
-    this.pathToAggrIndexesMap = new HashMap<>();
-    this.aggregateReaders = new HashMap<>();
-    this.cachedBatchDataList = new ArrayList<>();
-    for (int i = 0; i < paths.size(); i++) {
-      cachedBatchDataList.add(null);
-    }
     initGroupBy(context, groupByPlan);
   }
 
-  /**
-   * init reader and aggregate function.
-   */
-  private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
+  protected void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
       throws StorageEngineException {
     IExpression expression = groupByPlan.getExpression();
-    this.groupByPlan = groupByPlan;
 
     Filter timeFilter = null;
-    // init reader
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
 
+    // init resultIndexes, group result indexes by path
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-      List<Integer> indexList = pathToAggrIndexesMap
-          .computeIfAbsent(path, key -> new ArrayList<>());
-      indexList.add(i);
-      if (!aggregateReaders.containsKey(path)) {
-
-        QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-            .getQueryDataSource(path, context, timeFilter);
-        // update filter by TTL
-        timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
-
-        IAggregateReader seriesReader = new SeriesAggregateReader(path, dataTypes.get(i), context,
-            queryDataSource, timeFilter, null, null);
-        aggregateReaders.put(path, seriesReader);
+      if (!pathExecutors.containsKey(path)) {
+        //init GroupByExecutor
+        pathExecutors.put(path,
+            getGroupByExecutor(path, dataTypes.get(i), context, timeFilter, null));
+        resultIndexes.put(path, new ArrayList<>());
       }
+      resultIndexes.get(path).add(i);
+      AggregateResult aggrResult = AggregateResultFactory
+          .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(i), dataTypes.get(i));
+      pathExecutors.get(path).addAggregateResult(aggrResult);
     }
   }
 
@@ -114,159 +107,37 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
     hasCachedTimeInterval = false;
     RowRecord record = new RowRecord(curStartTime);
-    AggregateResult[] aggregateResultList = new AggregateResult[paths.size()];
-    for (Map.Entry<Path, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
-      List<AggregateResult> aggregateResults;
-      try {
-        aggregateResults = nextIntervalAggregation(entry);
-      } catch (QueryProcessException e) {
-        throw new IOException(e);
+
+    AggregateResult[] fields = new AggregateResult[paths.size()];
+
+    try {
+      for (Entry<Path, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
+        GroupByExecutor executor = pathToExecutorEntry.getValue();
+        List<AggregateResult> aggregations = executor.calcResult(curStartTime, curEndTime);
+        for (int i = 0; i < aggregations.size(); i++) {
+          int resultIndex = resultIndexes.get(pathToExecutorEntry.getKey()).get(i);
+          fields[resultIndex] = aggregations.get(i);
+        }
       }
-      int index = 0;
-      for (int i : entry.getValue()) {
-        aggregateResultList[i] = aggregateResults.get(index);
-        index++;
-      }
+    } catch (QueryProcessException e) {
+      logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
+      throw new IOException(e.getMessage(), e);
     }
-    if (aggregateResultList.length == 0) {
-      record.addField(new Field(null));
-    } else {
-      for (AggregateResult res : aggregateResultList) {
-        record.addField(res.getResult(), res.getResultDataType());
+
+    for (AggregateResult res : fields) {
+      if (res == null) {
+        record.addField(null);
+        continue;
       }
+      record.addField(res.getResult(), res.getResultDataType());
     }
     return record;
   }
 
-  /**
-   * calculate the group by result of one series
-   *
-   * @param pathToAggrIndexes entry of path to aggregation indexes map
-   */
-  private List<AggregateResult> nextIntervalAggregation(Map.Entry<Path,
-      List<Integer>> pathToAggrIndexes) throws IOException, QueryProcessException {
-    List<AggregateResult> aggregateResultList = new ArrayList<>();
-    List<Boolean> isCalculatedList = new ArrayList<>();
-    List<Integer> indexList = pathToAggrIndexes.getValue();
-
-    int remainingToCalculate = indexList.size();
-    TSDataType tsDataType = groupByPlan.getDeduplicatedDataTypes().get(indexList.get(0));
-
-    for (int index : indexList) {
-      AggregateResult result = AggregateResultFactory
-          .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(index), tsDataType);
-      aggregateResultList.add(result);
-
-      BatchData lastBatch = cachedBatchDataList.get(index);
-
-      calcBatchData(result, lastBatch);
-      if (isEndCalc(result, lastBatch)) {
-        isCalculatedList.add(true);
-        remainingToCalculate--;
-        if (remainingToCalculate == 0) {
-          return aggregateResultList;
-        }
-      } else {
-        isCalculatedList.add(false);
-      }
-    }
-    TimeRange timeRange = new TimeRange(curStartTime, curEndTime - 1);
-    IAggregateReader reader = aggregateReaders.get(pathToAggrIndexes.getKey());
-
-    while (reader.hasNextChunk()) {
-      // cal by chunk statistics
-      Statistics chunkStatistics = reader.currentChunkStatistics();
-      if (chunkStatistics.getStartTime() >= curEndTime) {
-        return aggregateResultList;
-      }
-      if (reader.canUseCurrentChunkStatistics() && timeRange.contains(
-          new TimeRange(chunkStatistics.getStartTime(), chunkStatistics.getEndTime()))) {
-        for (int i = 0; i < aggregateResultList.size(); i++) {
-          if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-            AggregateResult result = aggregateResultList.get(i);
-            result.updateResultFromStatistics(chunkStatistics);
-            if (result.isCalculatedAggregationResult()) {
-              isCalculatedList.set(i, true);
-              remainingToCalculate--;
-              if (remainingToCalculate == 0) {
-                return aggregateResultList;
-              }
-            }
-          }
-        }
-        reader.skipCurrentChunk();
-        continue;
-      }
-
-      while (reader.hasNextPage()) {
-        //cal by page statistics
-        Statistics pageStatistics = reader.currentPageStatistics();
-        if (pageStatistics.getStartTime() >= curEndTime) {
-          return aggregateResultList;
-        }
-        if (reader.canUseCurrentPageStatistics() && timeRange.contains(
-            new TimeRange(pageStatistics.getStartTime(), pageStatistics.getEndTime()))) {
-          for (int i = 0; i < aggregateResultList.size(); i++) {
-            if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-              AggregateResult result = aggregateResultList.get(i);
-              result.updateResultFromStatistics(pageStatistics);
-              if (result.isCalculatedAggregationResult()) {
-                isCalculatedList.set(i, true);
-                remainingToCalculate--;
-                if (remainingToCalculate == 0) {
-                  return aggregateResultList;
-                }
-              }
-            }
-          }
-          reader.skipCurrentPage();
-          continue;
-        }
-        while (reader.hasNextOverlappedPage()) {
-          // cal by page data
-          BatchData batchData = reader.nextOverlappedPage();
-          for (int i = 0; i < aggregateResultList.size(); i++) {
-            if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-              AggregateResult result = aggregateResultList.get(i);
-              calcBatchData(result, batchData);
-              int idx = pathToAggrIndexes.getValue().get(i);
-              if (batchData.hasCurrent()) {
-                cachedBatchDataList.set(idx, batchData);
-              }
-              if (isEndCalc(result, null)) {
-                isCalculatedList.set(i, true);
-                remainingToCalculate--;
-                if (remainingToCalculate == 0) {
-                  break;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    return aggregateResultList;
-  }
-
-  private boolean isEndCalc(AggregateResult function, BatchData lastBatch) {
-    return (lastBatch != null && lastBatch.hasCurrent() && lastBatch.currentTime() >= curEndTime)
-        || function.isCalculatedAggregationResult();
-  }
-
-  /**
-   * this batchData >= curEndTime
-   */
-  private void calcBatchData(AggregateResult result, BatchData batchData) throws IOException {
-    if (batchData == null || !batchData.hasCurrent()) {
-      return;
-    }
-    while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
-      batchData.next();
-    }
-    if (batchData.hasCurrent()) {
-      result.updateResultFromPageData(batchData, curEndTime);
-      // reset batch data for next calculation
-      batchData.resetBatchData();
-    }
+  protected GroupByExecutor getGroupByExecutor(Path path,
+      TSDataType dataType,
+      QueryContext context, Filter timeFilter, TsFileFilter fileFilter)
+      throws StorageEngineException {
+    return new LocalGroupByExecutor(path, dataType, context, timeFilter, fileFilter);
   }
 }

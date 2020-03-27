@@ -88,13 +88,11 @@ public class FillQueryExecutor {
       } else {
         fill = typeIFillMap.get(dataType).copy();
       }
-      fill.setDataType(dataType);
-      fill.setQueryTime(queryTime);
-      fill.constructReaders(path, context);
+      configureFill(fill, dataType, path, context, queryTime);
 
       TimeValuePair timeValuePair = fill.getFillResult();
       if (timeValuePair == null || timeValuePair.getValue() == null) {
-        record.addField(new Field(null));
+        record.addField(null);
       } else {
         record.addField(timeValuePair.getValue().getValue(), dataType);
       }
@@ -103,5 +101,12 @@ public class FillQueryExecutor {
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
     dataSet.setRecord(record);
     return dataSet;
+  }
+
+  protected void configureFill(IFill fill, TSDataType dataType, Path path, QueryContext context,
+      long queryTime) throws StorageEngineException {
+    fill.setDataType(dataType);
+    fill.setQueryTime(queryTime);
+    fill.constructReaders(path, context);
   }
 }

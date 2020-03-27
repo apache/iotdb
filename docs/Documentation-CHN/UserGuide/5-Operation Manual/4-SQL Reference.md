@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,10 +19,9 @@
 
 -->
 
-# 第5章 IoTDB操作指南
-## SQL 参考文档
+# SQL 参考文档
 
-### 显示版本号
+## 显示版本号
 
 ```sql
 show version
@@ -38,28 +37,28 @@ Total line number = 1
 It costs 0.417s
 ```
 
-### Schema语句
+## Schema语句
 
 * 设置存储组
 
 ``` SQL
-SET STORAGE GROUP TO <PrefixPath>
+SET STORAGE GROUP TO <FullPath>
 Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
-Note: PrefixPath can not include `*`
+Note: FullPath can not include `*`
 ```
 * 删除存储组
 
 ```
-DELETE STORAGE GROUP <PrefixPath> [COMMA <PrefixPath>]*
+DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Note: PrefixPath can not include `*`
+Note: FullPath can not include `*`
 ```
 
 * 创建时间序列语句
 
 ```
-CREATE TIMESERIES <Timeseries> WITH <AttributeClauses>
+CREATE TIMESERIES <FullPath> WITH <AttributeClauses>
 AttributeClauses : DATATYPE=<DataTypeValue> COMMA ENCODING=<EncodingValue> [COMMA <ExtraAttributeClause>]*
 DataTypeValue: BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
 EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF | REGULAR
@@ -176,11 +175,12 @@ Note: This statement can be used in IoTDB Client and JDBC.
 SHOW CHILD PATHS <Path>
 Eg: IoTDB > SHOW CHILD PATHS root
 Eg: IoTDB > SHOW CHILD PATHS root.ln
-Eg: IoTDB > SHOW CHILD PATHS root.ln.wf01
-Note: The path can only be prefix path.
+Eg: IoTDB > SHOW CHILD PATHS root.*.wf01
+Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
+Note: The path can be prefix path or star path, the nodes can be in a "prefix + star" format. 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
-### 数据管理语句
+## 数据管理语句
 
 * 插入记录语句
 
@@ -236,6 +236,7 @@ SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
 Eg. IoTDB > SELECT * FROM root
 Eg. IoTDB > SELECT * FROM root where time > now() - 5m
+Eg. IoTDB > SELECT * FROM root.ln.*.wf*
 Eg. IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MAX_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature > 24
@@ -247,7 +248,7 @@ Note: In Version 0.7.0, if <WhereClause> includes `OR`, time filter can not be u
 Note: There must be a space on both sides of the plus and minus operator appearing in the time expression 
 ```
 
-* Group By语句
+* Group By 语句
 
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByClause>
@@ -276,7 +277,7 @@ Note: <TimeUnit> needs to be greater than 0
 Note: Third <TimeUnit> if set shouldn't be smaller than second <TimeUnit>
 ```
 
-* Fill语句
+* Fill 语句
 
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE <WhereClause> FILL <FillClause>
@@ -305,7 +306,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath>(FromClause) +
 Note: Integer in <TimeUnit> needs to be greater than 0
 ```
 
-* Limit语句
+* Limit & SLimit 语句
 
 ```
 SELECT <SelectClause> FROM <FromClause> [WHERE <WhereClause>] [<LIMITClause>] [<SLIMITClause>]
@@ -334,14 +335,15 @@ Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammati
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
 
-* Group by device语句
+* Align by device语句
+
 ```
-GroupbyDeviceClause : GROUP BY DEVICE
+AlignbyDeviceClause : ALIGN BY DEVICE
 
 规则:  
 1. 大小写不敏感.  
-正例: select * from root.sg1 align by device  
-正例: select * from root.sg1 GROUP BY DEVICE  
+正例: select * from root.sg1 align by device
+正例: select * from root.sg1 ALIGN BY DEVICE
 
 2. AlignbyDeviceClause 只能放在末尾.  
 正例: select * from root.sg1 where time > 10 align by device  
@@ -393,19 +395,27 @@ root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT.
 
 7. 在Select子句中重复写列名是生效的。例如, "select s0,s0,s1 from root.sg.* align by device" 不等于 "select s0,s1 from root.sg.* align by device".
 
-8. 更多正例: 
+8. 在Where子句中时间过滤条件和值过滤条件均可以使用，值过滤条件可以使用叶子节点 path，或以 root 开头的整个 path，不允许存在通配符。例如，
+- select * from root.sg.* where time = 1 align by device
+- select * from root.sg.* where s0 < 100 align by device
+- select * from root.sg.* where time < 20 AND s0 > 50 align by device
+- select * from root.sg.d0 where root.sg.d0.s0 = 15 align by device
+
+9. 更多正例:
    - select * from root.vehicle align by device
    - select s0,s0,s1 from root.vehicle.* align by device
    - select s0,s1 from root.vehicle.* limit 10 offset 1 align by device
    - select * from root.vehicle slimit 10 soffset 2 align by device
    - select * from root.vehicle where time > 10 align by device
+   - select * from root.vehicle.* where time < 10 AND s0 > 25 align by device
    - select * from root.vehicle where root.vehicle.d0.s0>0 align by device
    - select count(*) from root.vehicle align by device
    - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) align by device
    - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) align by device
 ```
 
-* Disable align语句
+* Disable align 语句
+
 ```
 规则:  
 1. 大小写均可.  
@@ -440,10 +450,43 @@ root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT.
    - select * from root.vehicle slimit 10 soffset 2 disable align
    - select * from root.vehicle where time > 10 disable align
 
+```
+
+* Last语句
+
+Last 语句返回所要查询时间序列的最近时间戳的一条数据
+
+```
+SELECT LAST <SelectClause> FROM <FromClause> <DisableAlignClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+DisableAlignClause : [DISABLE ALIGN]
+
+Eg. SELECT LAST s1 FROM root.sg.d1 disable align
+Eg. SELECT LAST s1, s2 FROM root.sg.d1 disable align
+Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2 disable align
+
+规则:
+1. 需要满足PrefixPath.Path 为一条完整的时间序列，即 <PrefixPath> + <Path> = <Timeseries>
+
+2. SELECT LAST 语句不支持过滤条件.
+
+3. 结果集以"disable align"的形式返回，表现为总是包含三列的表格。
+例如 "select last s1, s2 from root.sg.d1, root.sg.d2 disable align", 结果集返回如下：
+
+| Time | Path         | Value |
+| ---  | ------------ | ----- |
+|  5   | root.sg.d1.s1| 100   |
+|  2   | root.sg.d1.s2| 400   |
+|  4   | root.sg.d2.s1| 250   |
+|  9   | root.sg.d2.s2| 600   |
+
+4. SELECT LAST 查询语句要是总是和末尾的disable align在一起使用。如果用户不熟悉SELECT LAST的语法或者忘记在末尾添加"disable align"，IoTDB 也会接受不包含"disable align"的SQL语句并且仍以"disable align"的形式返回结果集。
+例如用户输入 "select last s1 from root.sg.d1" 所得到的查询结果与 "select last s1 from root.sg.d1 disable align". 的结果是完全相同的。
 
 ```
 
-### 数据库管理语句
+## 数据库管理语句
 
 * 创建用户
 
@@ -609,7 +652,7 @@ password:=string
 Eg: IoTDB > ALTER USER tempuser SET PASSWORD newpwd;
 ```
 
-### 功能
+## 功能
 
 * COUNT
 
@@ -694,7 +737,8 @@ Eg. SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.tempe
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
-### TTL
+## TTL
+
 IoTDB支持对存储组级别设置数据存活时间（TTL），这使得IoTDB可以定期、自动地删除一定时间之前的数据。合理使用TTL
 可以帮助您控制IoTDB占用的总磁盘空间以避免出现磁盘写满等异常。并且，随着文件数量的增多，查询性能往往随之下降,
 内存占用也会有所提高。及时地删除一些较老的文件有助于使查询性能维持在一个较高的水平和减少内存资源的占用。
@@ -731,9 +775,9 @@ Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
 一部分之前不可见的数据可能重新可见，而那些已经被物理删除的数据则将永久丢失。也就是说，TTL操作不会原子性地删除
 对应的数据。因此我们不推荐您频繁修改TTL，除非您能接受该操作带来的一定程度的不可预知性。
 
-## 参考
+# 参考
 
-### 关键字
+## 关键字
 
 ```
 Keywords for IoTDB (case insensitive):
@@ -746,7 +790,7 @@ Keywords with special meanings (case insensitive):
 * Logical symbol: AND, &, &&, OR, | , ||, NOT, !, TRUE, FALSE
 ```
 
-### 标识符
+## 标识符
 
 ```
 QUOTE := '\'';
@@ -801,7 +845,7 @@ eg. _abc123
 
 ```
 
-### 常量
+## 常量
 
 
 ```
@@ -845,4 +889,3 @@ eg. root.ln.wf01.wt01.*
 eg. *.wt01.*
 eg. *
 ```
-

@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -45,24 +45,23 @@
 
 * org.apache.iotdb.db.engine.storagegroup.TsFileProcessor
 
-	负责一个 TsFile 文件的数据写入和访问。
-	
-	
+  负责一个 TsFile 文件的数据写入和访问。
+
 ## 数据写入
 详见：
-* [数据写入](/#/SystemDesign/progress/chap4/sec6)
+* [数据写入](/zh/document/master/SystemDesign/4-StorageEngine/6-DataManipulation.html)
 
 ## 数据访问
 
 * 总入口（StorageEngine）: public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context,
-      QueryFileManager filePathsManager)
-      
+  ​    QueryFileManager filePathsManager)
+  ​    
 	* 找到所有包含这个时间序列的顺序和乱序的 TsFileResource 进行返回，供查询引擎使用。
 
 ## 相关文档
 
-* [写前日志 (WAL)](/#/SystemDesign/progress/chap4/sec2)
+* [写前日志 (WAL)](/zh/document/master/SystemDesign/4-StorageEngine/2-WAL.html)
 
-* [memtable 持久化](/#/SystemDesign/progress/chap4/sec3)
+* [memtable 持久化](/zh/document/master/SystemDesign/4-StorageEngine/3-FlushManager.html)
 
-* [文件合并机制](/#/SystemDesign/progress/chap4/sec4)
+* [文件合并机制](/zh/document/master/SystemDesign/4-StorageEngine/4-MergeManager.html)

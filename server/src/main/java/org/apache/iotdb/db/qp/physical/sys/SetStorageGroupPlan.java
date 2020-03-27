@@ -18,16 +18,23 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class SetStorageGroupPlan extends PhysicalPlan {
   private Path path;
-  
+
+  public SetStorageGroupPlan() {
+    super(false, Operator.OperatorType.SET_STORAGE_GROUP);
+  }
+
   public SetStorageGroupPlan(Path path) {
     super(false, Operator.OperatorType.SET_STORAGE_GROUP);
     this.path = path;
@@ -50,4 +57,41 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     return ret;
   }
 
+  @Override
+  public void serializeTo(DataOutputStream stream) throws IOException {
+    stream.write((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
+    byte[] fullPathBytes = path.getFullPath().getBytes();
+    stream.writeInt(fullPathBytes.length);
+    stream.write(fullPathBytes);
+  }
+
+  @Override
+  public void deserializeFrom(ByteBuffer buffer) {
+    int length = buffer.getInt();
+    byte[] fullPathBytes = new byte[length];
+    buffer.get(fullPathBytes);
+    path = new Path(new String(fullPathBytes));
+  }
+
+  @Override
+  public String toString() {
+    return "SetStorageGroup{" + path + '}';
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    SetStorageGroupPlan that = (SetStorageGroupPlan) o;
+    return Objects.equals(path, that.path);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(path);
+  }
 }

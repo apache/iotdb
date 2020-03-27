@@ -20,12 +20,14 @@ package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
 public class MemPageReader implements IPageReader {
 
   private BatchData batchData;
   private Statistics statistics;
+  private Filter valueFilter;
 
   public MemPageReader(BatchData batchData, Statistics statistics) {
     this.batchData = batchData;
@@ -34,11 +36,26 @@ public class MemPageReader implements IPageReader {
 
   @Override
   public BatchData getAllSatisfiedPageData() {
-    return batchData;
+    if (valueFilter == null) {
+      return batchData;
+    }
+    BatchData filteredBatchData = new BatchData(batchData.getDataType());
+    while (batchData.hasCurrent()) {
+      if (valueFilter.satisfy(batchData.currentTime(), batchData.currentValue())) {
+        filteredBatchData.putAnObject(batchData.currentTime(), batchData.currentValue());
+      }
+      batchData.next();
+    }
+    return filteredBatchData;
   }
 
   @Override
   public Statistics getStatistics() {
     return statistics;
+  }
+
+  @Override
+  public void setFilter(Filter filter) {
+    this.valueFilter = filter;
   }
 }

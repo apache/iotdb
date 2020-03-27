@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -69,20 +69,25 @@ public interface IReaderSet {
 
 下面先介绍一下这个类的一些重要字段
 
-* private List<QueryDataSet> dataSetList = new ArrayList<>();
+* ```
+  private List<QueryDataSet> dataSetList = new ArrayList<>();
+  ```
 
   这个分片所生成的所有的 QueryDataSet
 
-* private List<String> deviceIdList = new ArrayList<>();
+* ```
+  private List<String> deviceIdList = new ArrayList<>();
+  ```
 
   设备名列表，这个顺序与 dataSetList 的顺序一致，即 deviceIdList[i] 是 dataSetList[i] 的设备名.
 
 * private int currentIndex = 0;
 
   当前正在被处理的 QueryDataSet 的下标
-  
+
+
 这个类在构造函数里，调用了`TSFRecordReader`的`initialize(TSFInputSplit, Configuration, IReaderSet, List<QueryDataSet>, List<String>)`方法去初始化上面提到的一些类字段。它覆写了`RecordReader`的`next()`方法，用以返回从 TsFile 里读出的数据。
-  
+
 ##### next(NullWritable, MapWritable)
 
 我们注意到它从 TsFile 读取出来数据之后，是以`MapWritable`的形式返回的，这里的`MapWritable`其实就是一个`Map`，只不过它的 key 与 value 都做了序列化与反序列化的特殊适配，它的读取流程如下
@@ -105,7 +110,9 @@ public interface IReaderSet {
 
 这个类就是将数据反序列化为 Hive 的输出格式，仅有一个`deserialize()`方法。
 
-##### public Object deserialize(List<String>, List<TypeInfo>, Writable, String)
+```
+public Object deserialize(List<String>, List<TypeInfo>, Writable, String)
+```
 
 这个方法的`Writable`参数就是`TSFHiveRecordReader`的`next()`生成的`MapWritable`。
 

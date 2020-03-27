@@ -278,6 +278,9 @@ public class MTreeTest {
       assertTrue(root.isStorageGroup("root.laptop.d1"));
       assertTrue(root.isStorageGroup("root.laptop.d2"));
       assertFalse(root.isStorageGroup("root.laptop.d3"));
+
+      root.setStorageGroup("root.1");
+      assertTrue(root.isStorageGroup("root.1"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -293,7 +296,7 @@ public class MTreeTest {
       root.setStorageGroup("root.laptop.d2");
       root.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      root.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      root.createTimeseries("root.laptop.d1.s2", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
 
       List<String> list = new ArrayList<>();

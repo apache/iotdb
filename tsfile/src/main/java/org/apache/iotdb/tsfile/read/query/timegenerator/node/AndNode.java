@@ -53,10 +53,14 @@ public class AndNode implements Node {
     if (hasCachedValue) {
       return true;
     }
-    cachedTimeColumn = new TimeColumn(fetchSize);
+    cachedTimeColumn = new TimeColumn();
     //fill data
     fillLeftCache();
     fillRightCache();
+
+    if (!hasLeftValue() || !hasRightValue()) {
+      return false;
+    }
 
     while (leftTimeColumn.hasCurrent() && rightTimeColumn.hasCurrent()) {
       long leftValue = leftTimeColumn.currentTime();
@@ -92,6 +96,14 @@ public class AndNode implements Node {
     if (couldFillCache(leftTimeColumn, leftChild)) {
       leftTimeColumn = leftChild.nextTimeColumn();
     }
+  }
+
+  private boolean hasLeftValue() {
+    return leftTimeColumn != null && leftTimeColumn.hasCurrent();
+  }
+
+  private boolean hasRightValue() {
+    return rightTimeColumn != null && rightTimeColumn.hasCurrent();
   }
 
   //no more data in cache and has more data in child

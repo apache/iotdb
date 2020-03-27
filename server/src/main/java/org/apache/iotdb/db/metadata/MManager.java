@@ -24,9 +24,12 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -37,11 +40,14 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.MonitorConstants;
@@ -121,11 +127,10 @@ public class MManager {
 
   //Because the writer will be used later and should not be closed here.
   @SuppressWarnings("squid:S2093")
-  public void init() {
+  public synchronized void init() {
     if (initialized) {
       return;
     }
-    lock.writeLock().lock();
     File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
@@ -149,13 +154,11 @@ public class MManager {
     } catch (IOException | MetadataException e) {
       mtree = new MTree();
       logger.error("Cannot read MTree from file, using an empty new one", e);
-    } finally {
-      lock.writeLock().unlock();
     }
     initialized = true;
   }
 
-  private void initFromLog(File logFile) throws IOException, MetadataException {
+  private void initFromLog(File logFile) throws IOException {
     // init the metadata from the operation log
     mtree = new MTree();
     if (logFile.exists()) {
@@ -163,7 +166,11 @@ public class MManager {
           BufferedReader br = new BufferedReader(fr)) {
         String cmd;
         while ((cmd = br.readLine()) != null) {
-          operation(cmd);
+          try {
+            operation(cmd);
+          } catch (Exception e) {
+            logger.error("Can not operate cmd {}", cmd, e);
+          }
         }
       }
     }
@@ -211,7 +218,9 @@ public class MManager {
             props);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
-        deleteTimeseries(args[1]);
+        for (String deleteStorageGroup : deleteTimeseries(args[1])) {
+          StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
+        }
         break;
       case MetadataOperationType.SET_STORAGE_GROUP:
         setStorageGroup(args[1]);
@@ -376,12 +385,6 @@ public class MManager {
         seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
             .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
       }
-      try {
-        IoTDBConfigDynamicAdapter.getInstance()
-            .addOrDeleteTimeSeries(seriesNumberInStorageGroups.remove(prefixPath) * (-1));
-      } catch (ConfigAdjusterException e) {
-        throw new MetadataException(e.getMessage());
-      }
       mNodeCache.clear();
     }
     try {
@@ -413,13 +416,13 @@ public class MManager {
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
+      String storageGroupName = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
         writer.write(MetadataOperationType.DELETE_TIMESERIES + "," + path);
         writer.newLine();
         writer.flush();
       }
-      String storageGroupName = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
       // TODO: delete the path node and all its ancestors
       mNodeCache.clear();
       try {
@@ -448,13 +451,13 @@ public class MManager {
   public void setStorageGroup(String storageGroup) throws MetadataException {
     lock.writeLock().lock();
     try {
+      mtree.setStorageGroup(storageGroup);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
         writer.write(MetadataOperationType.SET_STORAGE_GROUP + "," + storageGroup);
         writer.newLine();
         writer.flush();
       }
-      mtree.setStorageGroup(storageGroup);
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
       ActiveTimeSeriesCounter.getInstance().init(storageGroup);
       seriesNumberInStorageGroups.put(storageGroup, 0);
@@ -476,23 +479,16 @@ public class MManager {
   public void deleteStorageGroups(List<String> storageGroups) throws MetadataException {
     lock.writeLock().lock();
     try {
-      if (writeToLog) {
-        StringBuilder jointPath = new StringBuilder();
-        for (String storagePath : storageGroups) {
-          jointPath.append(",").append(storagePath);
-        }
-        BufferedWriter writer = getLogWriter();
-        writer.write(MetadataOperationType.DELETE_STORAGE_GROUP + jointPath);
-        writer.newLine();
-        writer.flush();
-      }
+      BufferedWriter writer = getLogWriter();
       for (String storageGroup : storageGroups) {
-        try {
-          // try to delete storage group
-          mtree.deleteStorageGroup(storageGroup);
-        } catch (MetadataException e) {
-          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
-          throw new MetadataException(e);
+        // try to delete storage group
+        mtree.deleteStorageGroup(storageGroup);
+
+        // if success
+        if (writeToLog) {
+          writer.write(MetadataOperationType.DELETE_STORAGE_GROUP + storageGroup);
+          writer.newLine();
+          writer.flush();
         }
         mNodeCache.clear();
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
@@ -558,7 +554,7 @@ public class MManager {
    * wildcard can only match one level, otherwise it can match to the tail.
    * @return A HashSet instance which stores devices names with given prefixPath.
    */
-  public List<String> getDevices(String prefixPath) throws MetadataException {
+  public Set<String> getDevices(String prefixPath) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getDevices(prefixPath);
@@ -708,7 +704,7 @@ public class MManager {
   /**
    * Get node by path
    */
-  MNode getNodeByPath(String path) throws MetadataException {
+  public MNode getNodeByPath(String path) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getNodeByPath(path);
@@ -837,6 +833,70 @@ public class MManager {
       return mtree.getStorageGroupByPath(path);
     } catch (MetadataException e) {
       throw new MetadataException(e);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  public void collectSeries(MNode startingNode, Collection<MeasurementSchema> timeseriesSchemas) {
+    Deque<MNode> nodeDeque = new ArrayDeque<>();
+    nodeDeque.addLast(startingNode);
+    while (!nodeDeque.isEmpty()) {
+      MNode node = nodeDeque.removeFirst();
+      if (node instanceof LeafMNode) {
+        MeasurementSchema nodeSchema = node.getSchema();
+        timeseriesSchemas.add(new MeasurementSchema(node.getFullPath(),
+            nodeSchema.getType(), nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
+      } else if (!node.getChildren().isEmpty()) {
+        nodeDeque.addAll(node.getChildren().values());
+      }
+    }
+  }
+
+  public void collectSeries(String startingPath, List<MeasurementSchema> timeseriesSchemas) {
+    MNode mNode;
+    try {
+      mNode = getNodeByPath(startingPath);
+    } catch (MetadataException e) {
+      return;
+    }
+    collectSeries(mNode, timeseriesSchemas);
+  }
+
+  /**
+   * For a path, infer all storage groups it may belong to.
+   * The path can have wildcards.
+   *
+   * Consider the path into two parts: (1) the sub path which can not contain a storage group name and
+   * (2) the sub path which is substring that begin after the storage group name.
+   *
+   * (1) Suppose the part of the path can not contain a storage group name (e.g.,
+   * "root".contains("root.sg") == false), then:
+   * If the wildcard is not at the tail, then for each wildcard, only one level will be inferred
+   * and the wildcard will be removed.
+   * If the wildcard is at the tail, then the inference will go on until the storage groups are found
+   * and the wildcard will be kept.
+   * (2) Suppose the part of the path is a substring that begin after the storage group name. (e.g.,
+   *  For "root.*.sg1.a.*.b.*" and "root.x.sg1" is a storage group, then this part is "a.*.b.*").
+   *  For this part, keep what it is.
+   *
+   * Assuming we have three SGs: root.group1, root.group2, root.area1.group3
+   * Eg1:
+   *  for input "root.*", returns ("root.group1", "root.group1.*"), ("root.group2", "root.group2.*")
+   *  ("root.area1.group3", "root.area1.group3.*")
+   * Eg2:
+   *  for input "root.*.s1", returns ("root.group1", "root.group1.s1"), ("root.group2", "root.group2.s1")
+   *
+   * Eg3:
+   *  for input "root.area1.*", returns ("root.area1.group3", "root.area1.group3.*")
+   *
+   * @param path can be a prefix or a full path.
+   * @return StorageGroupName-FullPath pairs
+   */
+  public Map<String, String> determineStorageGroup(String path) throws IllegalPathException {
+    lock.readLock().lock();
+    try {
+      return mtree.determineStorageGroup(path);
     } finally {
       lock.readLock().unlock();
     }
