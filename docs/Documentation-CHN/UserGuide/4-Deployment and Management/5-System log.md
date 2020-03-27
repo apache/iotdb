@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,17 +19,15 @@
 
 -->
 
-# 第4章 系统部署与管理
-
-## 系统日志
+# 系统日志
 
 IoTDB支持用户通过修改日志配置文件的方式对IoTDB系统日志（如日志输出级别等）进行配置，系统日志配置文件默认位置在$IOTDB_HOME/conf文件夹下，默认的日志配置文件名为logback.xml。用户可以通过增加或更改其中的xml树型节点参数对系统运行日志的相关配置进行修改。需要说明的是，使用日志配置文件对系统日志进行配置并非修改完文件立刻生效，而是重启IoTDB系统后生效。详细配置说明参看本文第5.4.2节日志文件配置说明。
 
-同时，为了方便在系统运行过程中运维人员对系统的调试，我们为系统运维人员提供了动态修改日志配置的JMX接口，能够在系统不重启的前提下实时对系统的Log模块进行配置。详细使用方法参看[动态系统日志配置说明](/#/Documents/0.8.2/chap4/sec4)。
+同时，为了方便在系统运行过程中运维人员对系统的调试，我们为系统运维人员提供了动态修改日志配置的JMX接口，能够在系统不重启的前提下实时对系统的Log模块进行配置。详细使用方法参看[动态系统日志配置说明](/zh/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/4-Performance%20Monitor.html)。
 
-### 动态系统日志配置说明
+## 动态系统日志配置说明
 
-#### 连接JMX
+### 连接JMX
 
 本节以Jconsole为例介绍连接JMX并进入动态系统日志配置模块的方法。启动Jconsole控制页面，在新建连接处建立与IoTDB Server的JMX连接（可以选择本地进程或给定IoTDB的IP及PORT进行远程连接，IoTDB的JMX服务默认运行端口为31999），如下图使用远程进程连接Localhost下运行在31999端口的IoTDB JMX服务。
 
@@ -43,7 +41,7 @@ IoTDB支持用户通过修改日志配置文件的方式对IoTDB系统日志（�
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577216-09fdeb00-1ef4-11e9-9005-542ad7d9e9e0.png">
 
-#### 动态系统日志接口说明
+### 动态系统日志接口说明
 
 * reloadDefaultConfiguration接口
 

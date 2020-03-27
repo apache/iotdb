@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,14 +19,13 @@
 
 -->
 
-# 第3章 IoTDB操作指南
+# 数据查询
 
-## 数据查询
-### 时间切片查询
+## 时间切片查询
 
-本章节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](/#/Documents/0.8.2/chap5/sec1)。同时，您也可以使用[Java JDBC](/#/Documents/0.8.2/chap6/sec1)标准接口来执行相关的查询语句。
+本章节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](/zh/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html)。同时，您也可以使用[Java JDBC](/zh/document/V0.8.x/UserGuide/6-JDBC%20API/1-JDBC%20API.html)标准接口来执行相关的查询语句。
 
-#### 根据一个时间区间选择一列数据
+### 根据一个时间区间选择一列数据
 
 SQL语句为：
 
@@ -35,13 +34,13 @@ select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
 ```
 其含义为：
 
-被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看[2.1节](/#/Documents/0.8.2/chap2/sec1)）时间点以前的所有温度传感器的值。
+被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看[2.1节](/zh/document/V0.8.x/UserGuide/2-Concept%20Key%20Concepts%20and%20Terminology/1-Key%20Concepts%20and%20Terminology.html)）时间点以前的所有温度传感器的值。
 
 该SQL语句的执行结果如下：
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280074-da1c0a00-a7e9-11e9-8eb8-3809428043a8.png"></center>
 
-#### 根据一个时间区间选择多列数据
+### 根据一个时间区间选择多列数据
 
 SQL语句为：
 
@@ -56,7 +55,7 @@ select status, temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280328-40a12800-a7ea-11e9-85b9-3b8db67673a3.png"></center>
 
-#### 按照多个时间区间选择同一设备的多列数据
+### 按照多个时间区间选择同一设备的多列数据
 
 IoTDB支持在一次查询中指定多个时间区间条件，用户可以根据需求随意组合时间区间条件。例如，
 
@@ -72,8 +71,7 @@ select status,temperature from root.ln.wf01.wt01 where (time > 2017-11-01T00:05:
 该SQL语句的执行结果如下：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280449-780fd480-a7ea-11e9-8ed0-70fa9dfda80f.png"></center>
 
-
-#### 按照多个时间区间选择不同设备的多列数据
+### 按照多个时间区间选择不同设备的多列数据
 
 该系统支持在一次查询中选择任意列的数据，也就是说，被选择的列可以来源于不同的设备。例如，SQL语句为：
 
@@ -87,9 +85,9 @@ select wf01.wt01.status,wf02.wt02.hardware from root.ln where (time > 2017-11-01
 该SQL语句的执行结果如下：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
 
-### 降频聚合查询
+## 降频聚合查询
 
-本章节主要介绍降频聚合查询的相关示例，主要使用的是IoTDB SELECT语句的[GROUP BY子句](/#/Documents/0.8.2/chap5/sec1)，该子句是IoTDB中用于根据用户给定划分条件对结果集进行划分，并对已划分的结果集进行聚合计算的语句。IoTDB支持根据时间间隔对结果集进行划分，默认结果按照时间升序排列。同时，您也可以使用[Java JDBC](/#/Documents/0.8.2/chap6/sec1)标准接口来执行相关的查询语句。
+本章节主要介绍降频聚合查询的相关示例，主要使用的是IoTDB SELECT语句的[GROUP BY子句](/zh/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html)，该子句是IoTDB中用于根据用户给定划分条件对结果集进行划分，并对已划分的结果集进行聚合计算的语句。IoTDB支持根据时间间隔对结果集进行划分，默认结果按照时间升序排列。同时，您也可以使用[Java JDBC](/zh/document/V0.8.x/UserGuide/6-JDBC%20API/1-JDBC%20API.html)标准接口来执行相关的查询语句。
 
 GROUP BY语句为用户提供三类指定参数：
 
@@ -100,11 +98,11 @@ GROUP BY语句为用户提供三类指定参数：
 
 三类参数的实际含义如下图3.2所示。其中时间轴划分原点参数为可选参数，下面我们将给出指定划分原点、不指定划分原点、指定时间过滤条件三种较为典型的降频聚合的例子。
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577465-e8513380-1ef4-11e9-84c6-d0690f2a8113.jpg">
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577465-e8513380-1ef4-11e9-84c6-d0690f2a8113.jpg"></center>
 
-**图3.2 三类参数实际含义**</center>
+<center>**图3.2 三类参数实际含义**</center>
 
-#### 不指定时间轴划分原点的降频聚合
+### 不指定时间轴划分原点的降频聚合
 
 SQL语句为：
 
@@ -125,7 +123,7 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 group by (1d
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577537-277f8480-1ef5-11e9-9b0f-c477f3b71acb.jpg"></center>
 
-#### 指定时间轴划分原点的降频聚合
+### 指定时间轴划分原点的降频聚合
 
 SQL语句为：
 
@@ -147,7 +145,7 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 group by (1d
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577563-3a925480-1ef5-11e9-88da-2d7e3eb4c951.jpg"></center>
 
-#### 指定时间过滤条件的降频聚合
+### 指定时间过滤条件的降频聚合
 
 SQL语句为：
 
@@ -172,7 +170,7 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 where time >
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517091-fbbf0080-aa38-11e9-8623-cdadf1ccf5d6.png"></center>
 
-### 查询结果自动补值
+## 查询结果自动补值
 
 在IoTDB实际使用中，做时间序列的查询操作时，会出现在某些时刻数值为空值的情况，这样的情况会影响使用者进行进一步的分析。为了更好的反映数据的变化程度，用户希望能够对缺失值进行自动填补，因此，IoTDB系统引入了自动补值（Fill）功能。
 
@@ -180,7 +178,8 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 where time >
 
 > 注：当前0.8.2版本中IoTDB为用户提供使用前一个数值填充（Previous）和使用线性拟合填充（Linear）两种方法。且填充仅可用在对某一个时间点进行查询传感器数值结果为空的情况。
 
-#### 填充方法
+### 填充方法
+
 * Previous方法
 
 当查询时间戳的值为空值时，用查询时间戳的前一个时间戳的值进行补值。 形式化的Previous自动补值方法如下所示：
@@ -190,7 +189,8 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[previous, <bef
 
 其中各个参数含义如下：
 
-<center>**表格3-4 Previous方法参数列表**
+<center>**表格3-4 Previous方法参数列表**</center>
+
 
 |参数名|含义|
 |:---|:---|
@@ -198,8 +198,6 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[previous, <bef
 |T|查询时间戳（该查询时间戳只能指定一个），必选字段。|
 |data\_type|填充方法作用的数据类型。可选值为：int32, int64, float, double, boolean, text。可选字段。|
 |before\_range|表示Previous填充方法的有效时间范围。当 [T-before\_range, T]范围内有数值时，Previous方法才能进行填充。当未指定before\_range的值时，before\_range为默认值T。可选字段。|
-</center>
-
 在此我们给出一个使用Previous方法填充空值的示例，SQL语句如下所示：
 
 ```
@@ -209,7 +207,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 
 由于2017-11-01T16:37:50.000时刻，时间序列`root.sgcc.wf03.wt01.temperature`结果为空值，系统采用2017-11-01T16:37:50.000时刻的前一个时间戳（且该时间戳在[2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000]时间范围内）的值进行补值并显示。
 
-在本文的[样例数据集](/#/Documents/0.8.2/chap3/sec1)上，该语句的执行结果如图所示：
+在本文的[样例数据集](/zh/document/V0.8.x/UserGuide/3-Operation%20Manual/1-Sample%20Data.html)上，该语句的执行结果如图所示：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577616-67df0280-1ef5-11e9-9dff-2eb8342074eb.jpg"></center>
 
 值得说明的是，如果在填充指定的有效时间内没有数值，则系统不会进行填充，返回为空，如图所示：
@@ -223,7 +221,8 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[linear, <befor
 ```
 其中各个参数含义如下：
 
-<center>**表格3-5 Linear方法参数列表**
+<center>**表格3-5 Linear方法参数列表**</center>
+
 
 |参数名|含义|
 |:---|:---|
@@ -232,8 +231,6 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[linear, <befor
 |data\_type|填充方法作用的数据类型。可选值为：int32, int64, float, double, boolean, text。可选字段。|
 |before\_range, after\_range|表示Linear填充方法的有效时间范围。当 [T-before\_range, T+after\_range]范围内有数值时，Linear方法才能进行填充。当未指定before\_range的值时，before\_range为默认值T。可选字段。|
 |before\_range|表示Linear填充方法的前置有效时间范围。当 [T-before\_range, T+after\_range]范围内前后都有数值时，Linear方法才能进行填充。当before\_range及after\_range未显式指定时，before\_range与after\_range皆默认为无穷大。|
-</center>
-
 在此我们给出一个使用Linear方法填充空值的示例，SQL语句如下所示：
 
 ```
@@ -243,13 +240,15 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 
 由于2017-11-01T16:37:50.000时刻，时间序列`root.sgcc.wf03.wt01.temperature`结果为空值，系统采用2017-11-01T16:37:50.000时刻的前一个时间戳（且该时间戳在[2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000]时间范围内）2017-11-01T16:37:00.000及其值21.927326、2017-11-01T16:37:50.000时刻的后一个时间戳（且该时间戳在[2017-11-01T16:37:50.000, 2017-11-01T16:38:50.000]时间范围内）2017-11-01T16:39:00.000及其值25.311783进行线性计算得到结果为21.927326 + (25.311783-21.927326)/60s*50s = 24.747707。
 
-在本文的[样例数据集](/#/Documents/0.8.2/chap3/sec1)上，该语句的执行结果如图所示：
+在本文的[样例数据集](/zh/document/V0.8.x/UserGuide/3-Operation%20Manual/1-Sample%20Data.html)上，该语句的执行结果如图所示：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577727-d4f29800-1ef5-11e9-8ff3-3bb519da3993.jpg"></center>
 
-#### 数据类型与填充方法对应关系
+### 数据类型与填充方法对应关系
+
 数据类型及支持的填充方式如表格3-6所示：
 
-<center>**表格3-6 数据类型及支持的填充方式**
+<center>**表格3-6 数据类型及支持的填充方式**</center>
+
 
 |数据类型|支持的填充方式|
 |:---|:---|
@@ -259,15 +258,14 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 |float|previous, linear|
 |double|previous, linear|
 |text|previous|
-</center>
-
 需要注意的是，对数据类型不支持的fill方式，IoTDB系统会给出错误提示，如下图：
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577741-e340b400-1ef5-11e9-9238-a4eaf498ab84.jpg"></center>
 
 在不指定填充方式时，各类型有其自己默认的填充方式以及参数，对应关系如表格3-7：
 
-<center>**Table 3-7 各种数据类型的默认Fill方式**
+<center>**Table 3-7 各种数据类型的默认Fill方式**</center>
+
 
 |数据类型|默认Fill方式|
 |:---|:---|
@@ -277,18 +275,17 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 |float|linear, 0, 0|
 |double|linear, 0, 0|
 |text|previous, 0|
-</center>
-
 > 注意: 0.8.2版本中Fill语句内至少指定一种填充类型。
 
-### 查询结果的分页控制
-为方便用户在对IoTDB进行查询时更好的进行结果阅读，IoTDB为用户提供了[LIMIT/SLIMIT](/#/Documents/0.8.2/chap5/sec1)子句以及[OFFSET/SOFFSET](/#/Documents/0.8.2/chap5/sec1)子句。使用LIMIT和SLIMIT子句可以允许用户对查询结果的行数和列数进行控制，使用OFFSET和SOFFSET子句可以允许用户设定结果展示的起始位置。
+## 查询结果的分页控制
+
+为方便用户在对IoTDB进行查询时更好的进行结果阅读，IoTDB为用户提供了[LIMIT/SLIMIT](/zh/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html)子句以及[OFFSET/SOFFSET](/zh/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html)子句。使用LIMIT和SLIMIT子句可以允许用户对查询结果的行数和列数进行控制，使用OFFSET和SOFFSET子句可以允许用户设定结果展示的起始位置。
 
 值得说明的是，LIMIT/SLIMIT子句以及OFFSET/SOFFSET子句均不改变查询的实际执行过程，仅对查询返回的结果进行约束。
 
-本章节主要介绍查询结果分页控制的相关示例。同时你也可以使用[Java JDBC](/#/Documents/0.8.2/chap6/sec1)标准接口来执行相关的查询语句。
+本章节主要介绍查询结果分页控制的相关示例。同时你也可以使用[Java JDBC](/zh/document/V0.8.x/UserGuide/6-JDBC%20API/1-JDBC%20API.html)标准接口来执行相关的查询语句。
 
-#### 查询结果的行数控制
+### 查询结果的行数控制
 
 通过使用LIMIT和OFFSET子句，用户可以对查询结果进行与行有关的控制。我们将通过以下几个例子来示范如何使用LIMIT和OFFSET子句对查询结果的行数进行控制。
 
@@ -363,7 +360,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517266-6e2fe080-aa39-11e9-8015-154a8e8ace30.png"></center>
 
-#### 查询结果的列数控制
+### 查询结果的列数控制
 
 SLIMIT子句与LIMIT的子句用法相同，可以被用于与WHERE子句、GROUP BY等子句组合，也可以与FILL子句组合，我们将通过以下几个例子来示范如何使用SLIMIT和SOFFSET子句对查询结果的行数进行控制。
 
@@ -434,7 +431,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577867-577b5780-1ef6-11e9-978c-e02c1294bcc5.jpg"></center>
 
-#### 查询结果的行列控制
+### 查询结果的行列控制
 
 除查询结果的行或列控制，IoTDB允许用户同时对查询结果进行行列控制。下面示范一个完整的带有LIMIT子句和SLIMIT子句的例子。
 
@@ -451,7 +448,7 @@ select * from root.ln.wf01.wt01 limit 10 offset 100 slimit 2 soffset 0
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577879-64984680-1ef6-11e9-9d7b-57dd60fab60e.jpg"></center>
 
-#### 错误情况的处理
+### 错误情况的处理
 
 当LIMIT/SLIMIT的参数N/SN超出结果集大小时，IoTDB将正常返回全部结果。例如如下SQL语句的执行结果仅有6行，我们通过limit语句选取其前100行：
 

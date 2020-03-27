@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,9 +19,8 @@
 
 -->
 
-# 第2章 IoTDB基本概念
+# 数据类型
 
-## 数据类型
 IoTDB支持:
 * BOOLEAN（布尔值）
 * INT32（整型）
@@ -32,7 +31,7 @@ IoTDB支持:
 
 一共六种数据类型。
 
-其中**FLOAT**与**DOUBLE**类型的序列，如果编码方式采用[RLE](/#/Documents/0.8.2/chap2/sec3)或[TS_2DIFF](/#/Documents/0.8.2/chap2/sec3)可以指定MAX_POINT_NUMBER，该项为浮点数的小数点后位数，具体指定方式请参见本文[第5.1节](/#/Documents/0.8.2/chap5/sec1)，若不指定则系统会根据配置文件`tsfile-format.properties`文件中的[float_precision项](/#/Documents/0.8.2/chap4/sec2)配置。
+其中**FLOAT**与**DOUBLE**类型的序列，如果编码方式采用[RLE](/zh/document/V0.8.x/UserGuide/2-Concept%20Key%20Concepts%20and%20Terminology/3-Encoding.html)或[TS_2DIFF](/zh/document/V0.8.x/UserGuide/2-Concept%20Key%20Concepts%20and%20Terminology/3-Encoding.html)可以指定MAX_POINT_NUMBER，该项为浮点数的小数点后位数，具体指定方式请参见本文[第5.1节](/zh/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html)，若不指定则系统会根据配置文件`tsfile-format.properties`文件中的[float_precision项](/zh/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html)配置。
 
 当系统中用户输入的数据类型与该时间序列的数据类型不对应时，系统会提醒类型错误，如下所示，二阶差分不支持布尔类型的编码：
 

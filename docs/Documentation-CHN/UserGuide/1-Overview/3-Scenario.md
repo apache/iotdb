@@ -1,29 +1,6 @@
-<!--
+# 应用场景
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
-
--->
-
-# 第1章: IoTDB概述
-
-## 应用场景
-
-### 场景1
+## 场景1
 
 某公司采用表面贴装技术（SMT）生产芯片：需要首先在芯片上的焊接点处印刷（即涂抹）锡膏，然后将元器件放置在锡膏上，进而通过加热熔化锡膏并冷却，使得元器件被焊接在芯片上。上述流程采用自动化生产线。为了确保产品质量合格，在印刷锡膏后，需要通过光学设备对锡膏印刷的质量进行评估：采用三维锡膏印刷检测（SPI）设备对每个焊接点上的锡膏的体积（v）、高度（h）、面积（a）、水平偏移（px）、竖直偏移（py）进行度量。
 
@@ -37,7 +14,7 @@
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51579026-77ad1580-1efa-11e9-8345-564b22d70286.jpg">
 
-### 场景2
+## 场景2
 
 某公司拥有多座风力发电机，公司在每个发电机上安装了上百种传感器，分别采集该发电机的工作状态、工作环境中的风速等信息。
 
@@ -51,7 +28,7 @@
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51579064-8f849980-1efa-11e9-8cd6-a7339cd0540f.jpg">
 
-### 场景3
+## 场景3
 
 某工厂在厂区范围内拥有多种机械手设备，这些机械手设备的硬件配置有限，很难搭载复杂的应用程序。在每个机械手设备上工厂安装了很多种传感器，用以对机械手的工作状态、温度等信息进行监控。由于工厂的网络环境原因，在工厂内部的机械手均处于工厂内部局域网内，无法连接外部网络。同时，工厂中会有少量服务器能够直接连接外部公网。
 
@@ -65,7 +42,7 @@
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51579085-9dd2b580-1efa-11e9-97b9-f56bc8d342b0.jpg">
 
-### 场景4
+## 场景4
 
 某汽车公司在其下属的汽车上均安装了传感器采集车辆的行驶状态等监控信息。这些汽车设备的硬件配置有限，很难搭载复杂的应用程序。安装传感器的汽车可以通过窄带物联网相互连接，也可以通过窄带物联网将数据发送至外部网络。
 

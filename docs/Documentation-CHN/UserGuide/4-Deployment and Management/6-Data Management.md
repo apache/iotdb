@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,30 +19,27 @@
 
 -->
 
-# 第4章 系统部署与管理
-
-
-## 数据管理
+# 数据管理
 
 本节将介绍IoTDB的数据存储方式，便于您对IoTDB的数据管理有一个直观的了解。
 
 IoTDB需要存储的数据分为三类，分别为数据文件、系统文件以及写前日志文件。
 
-### 数据文件
+## 数据文件
 
-数据文件存储了用户写入IoTDB系统的所有数据。包含TsFile文件和其他文件，其中，TsFile文件可以通过配置项`tsfile_dir`配置存储路径（详情见[tsfile_dir配置项](/#/Documents/0.8.2/chap4/sec2)），其他文件可通过[data_dir配置项](/#/Documents/0.8.2/chap4/sec2)进行配置。
+数据文件存储了用户写入IoTDB系统的所有数据。包含TsFile文件和其他文件，其中，TsFile文件可以通过配置项`tsfile_dir`配置存储路径（详情见[tsfile_dir配置项](/zh/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html)），其他文件可通过[data_dir配置项](/zh/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html)进行配置。
 
-为了更好的支持用户对于磁盘空间扩展等存储需求，IoTDB为TsFile的存储配置增加了多文件目录的存储方式，用户可自主配置多个存储路径作为数据的持久化位置（详情见[tsfile_dir配置项](/#/Documents/0.8.2/chap4/sec2)），并可以指定或自定义目录选择策略（详情见[mult_dir_strategy配置项](/#/Documents/0.8.2/chap4/sec2)）。
+为了更好的支持用户对于磁盘空间扩展等存储需求，IoTDB为TsFile的存储配置增加了多文件目录的存储方式，用户可自主配置多个存储路径作为数据的持久化位置（详情见[tsfile_dir配置项](/zh/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html)），并可以指定或自定义目录选择策略（详情见[mult_dir_strategy配置项](/zh/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html)）。
 
-### 系统文件
+## 系统文件
 
-系统文件包括Restore文件和Schema文件，存储了数据文件的元数据信息。可通过sys_dir配置项进行配置（详情见[sys_dir配置项](/#/Documents/0.8.2/chap4/sec2)）。
+系统文件包括Restore文件和Schema文件，存储了数据文件的元数据信息。可通过sys_dir配置项进行配置（详情见[sys_dir配置项](/zh/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html)）。
 
-### 写前日志文件
+## 写前日志文件
 
-写前日志文件存储了系统的写前日志。可通过`wal_dir`配置项进行配置（详情见[wal_dir配置项](/#/Documents/0.8.2/chap4/sec2)）。
+写前日志文件存储了系统的写前日志。可通过`wal_dir`配置项进行配置（详情见[wal_dir配置项](/zh/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html)）。
 
-### 数据存储目录设置举例
+## 数据存储目录设置举例
 
 接下来我们将举一个数据目录配置的例子，来具体说明如何配置数据的存储目录。
 

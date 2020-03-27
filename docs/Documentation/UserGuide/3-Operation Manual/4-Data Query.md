@@ -1,32 +1,10 @@
-<!--
+# Data Query
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+## Time Slice Query
 
-        http://www.apache.org/licenses/LICENSE-2.0
+This chapter mainly introduces the relevant examples of time slice query using IoTDB SELECT statements. Detailed SQL syntax and usage specifications can be found in [SQL Documentation](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html). You can also use the [Java JDBC](/document/V0.8.x/UserGuide/6-JDBC%20API/1-JDBC%20API.html) standard interface to execute related queries.
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
-
--->
-
-# Chapter 3: Operation Manual
-
-## Data Query
-### Time Slice Query
-
-This chapter mainly introduces the relevant examples of time slice query using IoTDB SELECT statements. Detailed SQL syntax and usage specifications can be found in [SQL Documentation](/#/Documents/0.8.2/chap5/sec1). You can also use the [Java JDBC](/#/Documents/0.8.2/chap6/sec1) standard interface to execute related queries.
-
-#### Select a Column of Data Based on a Time Interval
+### Select a Column of Data Based on a Time Interval
 
 The SQL statement is:
 
@@ -41,7 +19,7 @@ The execution result of this SQL statement is as follows:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280074-da1c0a00-a7e9-11e9-8eb8-3809428043a8.png"></center>
 
-#### Select Multiple Columns of Data Based on a Time Interval
+### Select Multiple Columns of Data Based on a Time Interval
 
 The SQL statement is:
 
@@ -55,7 +33,8 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 The execution result of this SQL statement is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280328-40a12800-a7ea-11e9-85b9-3b8db67673a3.png"></center>
 
-#### Select Multiple Columns of Data for the Same Device According to Multiple Time Intervals
+### Select Multiple Columns of Data for the Same Device According to Multiple Time Intervals
+
 IoTDB supports specifying multiple time interval conditions in a query. Users can combine time interval conditions at will according to their needs. For example, the SQL statement is:
 
 ```
@@ -68,8 +47,8 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 The execution result of this SQL statement is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280449-780fd480-a7ea-11e9-8ed0-70fa9dfda80f.png"></center>
 
+### Choose Multiple Columns of Data for Different Devices According to Multiple Time Intervals
 
-#### Choose Multiple Columns of Data for Different Devices According to Multiple Time Intervals
 The system supports the selection of data in any column in a query, i.e., the selected columns can come from different devices. For example, the SQL statement is:
 
 ```
@@ -82,8 +61,9 @@ The selected timeseries are "the power supply status of ln group wf01 plant wt01
 The execution result of this SQL statement is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
 
-### Down-Frequency Aggregate Query
-This section mainly introduces the related examples of down-frequency aggregation query, using the [GROUP BY clause](/#/Documents/0.8.2/chap5/sec1), which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. IoTDB supports partitioning result sets according to time intervals, and by default results are sorted by time in ascending order. You can also use the [Java JDBC](/#/Documents/0.8.2/chap6/sec1) standard interface to execute related queries.
+## Down-Frequency Aggregate Query
+
+This section mainly introduces the related examples of down-frequency aggregation query, using the [GROUP BY clause](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html), which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. IoTDB supports partitioning result sets according to time intervals, and by default results are sorted by time in ascending order. You can also use the [Java JDBC](/document/V0.8.x/UserGuide/6-JDBC%20API/1-JDBC%20API.html) standard interface to execute related queries.
 
 The GROUP BY statement provides users with three types of specified parameters:
 
@@ -94,10 +74,10 @@ The GROUP BY statement provides users with three types of specified parameters:
 The actual meanings of the three types of parameters are shown in Figure 3.2 below. Among them, the paramter 2 is optional. Next we will give three typical examples of frequency reduction aggregation: parameter 2 specified, parameter 2 not specified, and time filtering conditions specified.
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577465-e8513380-1ef4-11e9-84c6-d0690f2a8113.jpg">
-
 **Figure 3.2 The actual meanings of the three types of parameters**</center>
 
-#### Down-Frequency Aggregate Query without Specifying the Time Axis Origin Position
+### Down-Frequency Aggregate Query without Specifying the Time Axis Origin Position
+
 The SQL statement is:
 
 ```
@@ -117,7 +97,8 @@ Since there is data for each time period in the result range to be displayed, th
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577537-277f8480-1ef5-11e9-9b0f-c477f3b71acb.jpg"></center>
 
-#### Down-Frequency Aggregate Query Specifying the Time Axis Origin Position
+### Down-Frequency Aggregate Query Specifying the Time Axis Origin Position
+
 The SQL statement is:
 
 ```
@@ -138,7 +119,8 @@ Since there is data for each time period in the result range to be displayed, th
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577563-3a925480-1ef5-11e9-88da-2d7e3eb4c951.jpg"></center>
 
-#### Down-Frequency Aggregate Query Specifying the Time Filtering Conditions
+### Down-Frequency Aggregate Query Specifying the Time Filtering Conditions
+
 The SQL statement is:
 
 ```
@@ -162,14 +144,16 @@ It is worth noting that the path after SELECT in GROUP BY statement must be aggr
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517091-fbbf0080-aa38-11e9-8623-cdadf1ccf5d6.png"></center>
 
-### Automated Fill
+## Automated Fill
+
 In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.
 
 Automated fill function refers to filling empty values according to the user's specified method and effective time range when performing timeseries queries for single or multiple columns. If the queried point's value is not null, the fill function will not work.
 
 > Note: In the current version 0.8.2, IoTDB provides users with two methods: Previous and Linear. The previous method fills blanks with previous value. The linear method fills blanks through linear fitting. And the fill function can only be used when performing point-in-time queries.
 
-#### Fill Function
+### Fill Function
+
 * Previous Function
 
 When the value of the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows (see Section 7.1.3.6 for detailed syntax):
@@ -199,7 +183,7 @@ which means:
 
 Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp of 2017-11-01T16:37:50.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
 
-On the [sample data](/#/Documents/0.8.2/chap3/sec1), the execution result of this statement is shown below:
+On the [sample data](/document/V0.8.x/UserGuide/3-Operation%20Manual/1-Sample%20Data.html), the execution result of this statement is shown below:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577616-67df0280-1ef5-11e9-9dff-2eb8342074eb.jpg"></center>
 
 It is worth noting that if there is no value in the specified valid time range, the system will not fill the null value, as shown below:
@@ -233,7 +217,7 @@ which means:
 
 Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 21.927326, the next timestamp 2017-11-01T16:39:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 25.311783 to perform linear fitting calculation: 21.927326 + (25.311783-21.927326)/60s*50s = 24.747707
 
-On the [sample data](/#/Documents/0.8.2/chap3/sec1), the execution result of this statement is shown below:
+On the [sample data](/document/V0.8.x/UserGuide/3-Operation%20Manual/1-Sample%20Data.html), the execution result of this statement is shown below:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577727-d4f29800-1ef5-11e9-8ff3-3bb519da3993.jpg"></center>
 
 #### Correspondence between Data Type and Fill Method
@@ -271,13 +255,14 @@ When the fill method is not specified, each data type bears its own default fill
 
 > Note: In version 0.8.2, at least one fill method should be specified in the Fill statement.
 
-### Row and Column Control over Query Results
+## Row and Column Control over Query Results
 
-IoTDB provides [LIMIT/SLIMIT](/#/Documents/0.8.2/chap5/sec1) clause and [OFFSET/SOFFSET](/#/Documents/0.8.2/chap5/sec1) clause in order to make users have more control over query results. The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
+IoTDB provides [LIMIT/SLIMIT](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) clause and [OFFSET/SOFFSET](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) clause in order to make users have more control over query results. The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
 
-This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](/#/Documents/0.8.2/chap6/sec1) standard interface to execute queries.
+This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](/document/V0.8.x/UserGuide/6-JDBC%20API/1-JDBC%20API.html) standard interface to execute queries.
 
-#### Row Control over Query Results
+### Row Control over Query Results
+
 By using LIMIT and OFFSET clauses, users can control the query results in a row-related manner. We will demonstrate how to use LIMIT and OFFSET clauses through the following examples.
 
 * Example 1: basic LIMIT clause
@@ -351,7 +336,7 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517266-6e2fe080-aa39-11e9-8015-154a8e8ace30.png"></center>
 
-#### Column Control over Query Results
+### Column Control over Query Results
 
 By using SLIMIT and SOFFSET clauses, users can control the query results in a column-related manner. We will demonstrate how to use SLIMIT and SOFFSET clauses through the following examples.
 
@@ -421,7 +406,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577867-577b5780-1ef6-11e9-978c-e02c1294bcc5.jpg"></center>
 
-#### Row and Column Control over Query Results
+### Row and Column Control over Query Results
 
 In addition to row or column control over query results, IoTDB allows users to control both rows and columns of query results. Here is a complete example with both LIMIT clauses and SLIMIT clauses.
 
@@ -438,7 +423,7 @@ The result is shown below:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577879-64984680-1ef6-11e9-9d7b-57dd60fab60e.jpg"></center>
 
-####  Error Handling
+### Error Handling
 
 When the parameter N/SN of LIMIT/SLIMIT exceeds the size of the result set, IoTDB will return all the results as expected. For example, the query result of the original SQL statement consists of six rows, and we select the first 100 rows through the LIMIT clause:
 

@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,8 +19,7 @@
 
 -->
 
-# 第2章 IoTDB基本概念
-## 主要概念及术语
+# 主要概念及术语
 
 IoTDB中涉及如下基本概念：
 
@@ -96,7 +95,8 @@ LayerName: Identifier | STAR
 
 在用户在输入时间戳时，可以使用LONG类型的时间戳或DATETIME-INPUT类型的时间戳，其中DATETIME-INPUT类型的时间戳支持格式如表所示：
 
-<center>**DATETIME-INPUT类型支持格式**
+<center>**DATETIME-INPUT类型支持格式**</center>
+
 
 |format|
 |:---|
@@ -126,11 +126,10 @@ LayerName: Identifier | STAR
 |yyyy.MM.dd'T'HH:mm:ss.SSSZZ|
 |ISO8601 standard time format|
 
-</center>
-
 IoTDB在显示时间戳时可以支持LONG类型以及DATETIME-DISPLAY类型，其中DATETIME-DISPLAY类型可以支持用户自定义时间格式。自定义时间格式的语法如表所示：
 
-<center>**DATETIME-DISPLAY自定义时间格式的语法**
+<center>**DATETIME-DISPLAY自定义时间格式的语法**</center>
+
 
 |Symbol|Meaning|Presentation|Examples|
 |:---:|:---:|:---:|:---:|
@@ -164,11 +163,9 @@ IoTDB在显示时间戳时可以支持LONG类型以及DATETIME-DISPLAY类型，�
 | '|	escape for text	|delimiter|	　|
 | ''|	single quote|	literal	|'|
 
-</center>
-
 * 值
 
-一个时间序列的值是由实际中的传感器向IoTDB发送的数值。这个值可以按照数据类型被IoTDB存储，同时用户也可以针对这个值的数据类型选择压缩方式，以及对应的编码方式。数据类型与对应编码的详细信息请参见本文[数据类型](/#/Documents/latest/chap2/sec2)与[编码方式](/#/Documents/latest/chap2/sec3)节。
+一个时间序列的值是由实际中的传感器向IoTDB发送的数值。这个值可以按照数据类型被IoTDB存储，同时用户也可以针对这个值的数据类型选择压缩方式，以及对应的编码方式。数据类型与对应编码的详细信息请参见本文[数据类型](/zh/document/V0.8.x/UserGuide/2-Concept%20Key%20Concepts%20and%20Terminology/2-Data%20Type.html)与[编码方式](/zh/document/V0.8.x/UserGuide/2-Concept%20Key%20Concepts%20and%20Terminology/3-Encoding.html)节。
 
 * 数据点
 

@@ -1,39 +1,18 @@
-<!--
+# Data Import
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
-
--->
-
-# Chapter 3: Operation Manual
-
-## Data Import
-### Import Historical Data
+## Import Historical Data
 
 This feature is not supported in version 0.8.2.
 
-### Import Real-time Data
+## Import Real-time Data
 
-IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](/#/Documents/0.8.2/chap5/sec1) in [Cli/Shell tools](/#/Tools/Cli), or using [Java JDBC](/#/Documents/0.8.2/chap6/sec1) to perform single or batch execution of [INSERT SQL statement](/#/Documents/0.8.2/chap5/sec1).
+IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) in Cli/Shell tools, or using [Java JDBC](/document/V0.8.x/UserGuide/6-JDBC%20API/1-JDBC%20API.html) to perform single or batch execution of [INSERT SQL statement](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html).
 
-This section mainly introduces the use of [INSERT SQL statement](/#/Documents/0.8.2/chap5/sec1) for real-time data import in the scenario. See Section 5.1 for a detailed syntax of [INSERT SQL statement](/#/Documents/0.8.2/chap5/sec1).
+This section mainly introduces the use of [INSERT SQL statement](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) for real-time data import in the scenario. See Section 5.1 for a detailed syntax of [INSERT SQL statement](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html).
 
-#### Use of INSERT Statements
-The [INSERT SQL statement](/#/Documents/0.8.2/chap5/sec1) statement can be used to insert data into one or more specified timeseries that have been created. For each point of data inserted, it consists of a [timestamp](/#/Documents/0.8.2/chap2/sec1) and a sensor acquisition value of a numerical type (see [Data Type](/#/Documents/0.8.2/chap2/sec2)).
+### Use of INSERT Statements
+
+The [INSERT SQL statement](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) statement can be used to insert data into one or more specified timeseries that have been created. For each point of data inserted, it consists of a [timestamp](/document/V0.8.x/UserGuide/2-Concept%20Key%20Concepts%20and%20Terminology/1-Key%20Concepts%20and%20Terminology.html) and a sensor acquisition value of a numerical type (see [Data Type](/document/V0.8.x/UserGuide/2-Concept%20Key%20Concepts%20and%20Terminology/2-Data%20Type.html)).
 
 In the scenario of this section, take two timeseries `root.ln.wf02.wt02.status` and `root.ln.wf02.wt02.hardware` as an example, and their data types are BOOLEAN and TEXT, respectively.
 
@@ -63,7 +42,8 @@ The result is shown below. From the query results, it can be seen that the inser
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51605021-c2ee1500-1f48-11e9-8f6b-ba9b48875a41.png"></center>
 
-### Error Handling of INSERT Statements
+## Error Handling of INSERT Statements
+
 If the user inserts data into a non-existent timeseries, for example, execute the following commands:
 
 ```

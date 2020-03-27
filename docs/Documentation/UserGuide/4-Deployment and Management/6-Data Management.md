@@ -1,48 +1,24 @@
-<!--
-
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
-
--->
-
-# Chapter 4: Deployment and Management
-
-
-## Data Management
+# Data Management
 
 In IoTDB, there are many kinds of data needed to be storage. In this section, we will introduce IoTDB's data storage strategy in order to give you an intuitive understanding of IoTDB's data management.
 
 The data that IoTDB stores is divided into three categories, namely data files, system files, and pre-write log files.
 
-### Data Files
+## Data Files
 
-Data files store all the data that the user wrote to IoTDB, which contains TsFile and other files. TsFile storage directory can be configured with the `tsfile_dir` configuration item (see [file layer](/#/Documents/0.8.2/chap4/sec2) for details). Other files can be configured through [data_dir](/#/Documents/0.8.2/chap4/sec2) configuration item (see [Engine Layer](/#/Documents/0.8.2/chap4/sec2) for details).
+Data files store all the data that the user wrote to IoTDB, which contains TsFile and other files. TsFile storage directory can be configured with the `tsfile_dir` configuration item (see [file layer](/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html) for details). Other files can be configured through [data_dir](/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html) configuration item (see [Engine Layer](/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html) for details).
 
-In order to better support users' storage requirements such as disk space expansion, IoTDB supports multiple file directorys storage methods for TsFile storage configuration. Users can set multiple storage paths as data storage locations( see [tsfile_dir](/#/Documents/0.8.2/chap4/sec2) configuration item), and you can specify or customize the directory selection policy (see [mult_dir_strategy](/#/Documents/0.8.2/chap4/sec2) configuration item for details).
+In order to better support users' storage requirements such as disk space expansion, IoTDB supports multiple file directorys storage methods for TsFile storage configuration. Users can set multiple storage paths as data storage locations( see [tsfile_dir](/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html) configuration item), and you can specify or customize the directory selection policy (see [mult_dir_strategy](/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html) configuration item for details).
 
-### System Files
+## System Files
 
-System files include restore files and schema files, which store metadata information of data in IoTDB. It can be configured through the `sys_dir` configuration item (see [System Layer](/#/Documents/0.8.2/chap4/sec2) for details).
+System files include restore files and schema files, which store metadata information of data in IoTDB. It can be configured through the `sys_dir` configuration item (see [System Layer](/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html) for details).
 
-### Pre-write Log Files
+## Pre-write Log Files
 
-Pre-write log files store WAL files. It can be configured through the `wal_dir` configuration item (see [System Layer](/#/Documents/0.8.2/chap4/sec2) for details).
+Pre-write log files store WAL files. It can be configured through the `wal_dir` configuration item (see [System Layer](/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html) for details).
 
-### Example of Setting Data storage Directory
+## Example of Setting Data storage Directory
 
 For a clearer understanding of configuring the data storage directory, we will give an excample in this section.
 
