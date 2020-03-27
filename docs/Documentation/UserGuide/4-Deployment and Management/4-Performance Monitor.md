@@ -1,33 +1,35 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
 
-# Chapter 4: Deployment and Management
-## Performance Monitor
-### Introduction
+# Performance Monitor
+
+## Introduction
 
 In order to grasp the performance of iotdb, we add this module to count the time-consuming of each operation. This module can statistic the avg time-consuming of each operation and the proportion of each operation fall into a time range. The output is in log_measure.log file. A output example is in below.  
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/60937461-14296f80-a303-11e9-9602-a7bed624bfb3.png">
- 
-### Configuration parameter
+
+## Configuration parameter
 
 location：conf/iotdb-engine.properties
 
@@ -39,11 +41,11 @@ location：conf/iotdb-engine.properties
 |performance\_stat\_display\_interval|60000|The interval of display statistic result in ms.|
 |performance_stat_memory_in_kb|20|The memory used for performance_stat in kb.|
 </center>
- 
-### JMX MBean
+
+## JMX MBean
 
 Connect to jconsole with port 31999，and choose ‘MBean’in menu bar. Expand the sidebar and choose 'org.apache.iotdb.db.cost.statistic'. You can Find：
- 
+
 <img style="width:100%; max-width:600px; max-height:200px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/60937484-30c5a780-a303-11e9-8e92-04c413df2088.png">
 
 **Attribute**
@@ -60,8 +62,8 @@ Connect to jconsole with port 31999，and choose ‘MBean’in menu bar. Expand 
 3. stopStatistic：Stop the statistics.
 4. clearStatisticalState(): clear current stat result, reset statistical result.
 5. changeOperationSwitch(String operationName, Boolean operationState):set whether to monitor operation status. The param 'operationName' is the name of operation, defined in attribute operationSwitch. The param operationState is the state of operation. If state-switch successful the function will return true, else return false.
- 
-### Adding Custom Monitoring Items for developer of IOTDB
+
+## Adding Custom Monitoring Items for developer of IOTDB
 
 **Add Operation**
 

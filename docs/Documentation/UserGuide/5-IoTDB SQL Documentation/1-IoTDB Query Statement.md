@@ -1,39 +1,38 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
 
-# Chapter 5: IoTDB SQL Documentation
+# IoTDB Query Statement
 
 In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a SQL-like query language for interacting with IoTDB, the query language can be devided into 4 major parts:
 
-* Schema Statement: statements about schema management are all listed in this section.
-* Data Management Statement: statements about data management (such as: data insertion, data query, etc.) are all listed in this section.
-* Database Management Statement: statements about database management and authentication are all listed in this section.
-* Functions: functions that IoTDB offers are all listed in this section.
+- Schema Statement: statements about schema management are all listed in this section.
+- Data Management Statement: statements about data management (such as: data insertion, data query, etc.) are all listed in this section.
+- Database Management Statement: statements about database management and authentication are all listed in this section.
+- Functions: functions that IoTDB offers are all listed in this section.
 
 All of these statements are write in IoTDB's own syntax, for details about the syntax composition, please check the `Reference` section.
 
-## IoTDB Query Statement
-
-
-### Schema Statement
+## Schema Statement
 
 * Set Storage Group
 
@@ -97,7 +96,7 @@ Eg: IoTDB > SHOW STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
-### Data Management Statement
+## Data Management Statement
 
 * Insert Record Statement
 
@@ -242,7 +241,7 @@ Note: <SLIMITClause> can only effect in Prefixpath and StarPath.
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
 
-### Database Management Statement
+## Database Management Statement
 
 * Create User
 
@@ -408,7 +407,7 @@ password:=identifier
 Eg: IoTDB > UPDATE USER tempuser SET PASSWORD newpwd;
 ```
 
-### Functions
+## Functions
 
 * COUNT
 

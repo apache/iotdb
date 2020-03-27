@@ -1,35 +1,36 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
 
-# Chapter 4: Deployment and Management
-
-## System Monitor
+# System Monitor
 
 Currently, IoTDB provides users to use Java's JConsole tool to monitor system status or use IoTDB's open API to check data status.
 
-### System Status Monitoring
+## System Status Monitoring
 
 After starting JConsole tool and connecting to IoTDB server, you will have a basic look at IoTDB system status(CPU Occupation, in-memory information, etc.). See [official documentation](https://docs.oracle.com/javase/7/docs/technotes/guides/management/jconsole.html) for more informations.
 
-#### JMX MBean Monitoring
+### JMX MBean Monitoring
+
 By using JConsole tool and connecting with JMX you can see some system statistics and parameters.
 This section describes how to use the JConsole ```Mbean``` tab to monitor the number of files opened by the IoTDB service process, the size of the data file, and so on. Once connected to JMX, you can find the ```MBean``` named ```org.apache.iotdb.service``` through the ```MBeans``` tab, as shown in the following Figure.
 
@@ -37,7 +38,7 @@ This section describes how to use the JConsole ```Mbean``` tab to monitor the nu
 
 There are several attributes under Monitor, including the numbers of files opened in different folders, the data file size statistics and the values of some system parameters. By double-clicking the value corresponding to an attribute it can also display a line chart of that attribute. In particular, all the opened file count statistics are currently only supported on ```MacOS``` and most ```Linux``` distro except ```CentOS```. For the OS not supported these statistics will return ```-2```. See the following section for specific introduction of the Monitor attributes.
 
-##### MBean Monitor Attributes List
+#### MBean Monitor Attributes List
 
 * DataSizeInByte
 
@@ -146,13 +147,13 @@ There are several attributes under Monitor, including the numbers of files opene
 |Unit| Second |
 |Type| Long |
 
-### Data Status Monitoring
+## Data Status Monitoring
 
 This module is the statistical monitoring method provided by IoTDB for users to store data information. We will record the statistical data in the system and store it in the database. The current 0.8.2 version of IoTDB does not provide statistics for writing data.
 
 The user can choose to enable or disable the data statistics monitoring function (set the `enable_stat_monitor` item in the configuration file, see [Engine Layer](/#/Documents/0.8.2/chap4/sec2) for details).
 
-#### Writing Data Monitor
+### Writing Data Monitor
 
 The current statistics of writing data by the system can be divided into two major modules: **Global Writing Data Statistics** and **Storage Group Writing Data Statistics**. **Global Writing Data Statistics** records the point number written by the user and the number of requests. **Storage Group Writing Data Statistics** records data of a certain storage group. 
 
@@ -262,7 +263,7 @@ Here are the writing data statistics:
 > 
 > \<storage\_group\_name\> should be replaced by real storage group name, and the '.' in storage group need to be replaced by '_'. For example, the storage group name is 'root.a.b', when using in the statistics, it will change to 'root\_a\_b'
 
-##### Example
+#### Example
 
 Here we give some example of using writing data statistics.
 
@@ -284,7 +285,7 @@ If you want to know the current timeseries point in the system, you can use `MAX
 select MAX_VALUE(TOTAL_POINTS_SUCCESS) from root.stats.write.root_ln
 ```
 
-#### File Size Monitor
+### File Size Monitor
 
 Sometimes we are concerned about how the data file size of IoTDB is changing, maybe to help calculate how much disk space is left or the data ingestion speed. The File Size Monitor provides several statistics to show how different types of file-sizes change. 
 

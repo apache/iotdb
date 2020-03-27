@@ -1,36 +1,38 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
 
-# Chapter 3: Operation Manual
+# Data Model Selection
 
 ## Data Model Selection
 
-Before importing data to IoTDB, we first select the appropriate data storage model according to the [sample data](/#/Documents/0.8.2/chap3/sec1), and then create the storage group and timeseries using [SET STORAGE GROUP](/#/Documents/0.8.2/chap5/sec1) statement and [CREATE TIMESERIES](/#/Documents/0.8.2/chap5/sec1) statement respectively.
+Before importing data to IoTDB, we first select the appropriate data storage model according to the [sample data](/document/V0.8.x/UserGuide/3-Operation%20Manual/1-Sample%20Data.html), and then create the storage group and timeseries using [SET STORAGE GROUP](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) statement and [CREATE TIMESERIES](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) statement respectively.
 
 ### Storage Model Selection
-According to the data attribute layers described in [sample data](/#/Documents/0.8.2/chap3/sec1), we can express it as an attribute hierarchy structure based on the coverage of attributes and the subordinate relationship between them, as shown in Figure 3.1 below. Its hierarchical relationship is: power group layer - power plant layer - device layer - sensor layer. ROOT is the root node, and each node of sensor layer is called a leaf node. In the process of using IoTDB, you can directly connect the attributes on the path from ROOT node to each leaf node with ".", thus forming the name of a timeseries in IoTDB. For example, The left-most path in Figure 3.1 can generate a timeseries named `ROOT.ln.wf01.wt01.status`.
+According to the data attribute layers described in [sample data](/document/V0.8.x/UserGuide/3-Operation%20Manual/1-Sample%20Data.html), we can express it as an attribute hierarchy structure based on the coverage of attributes and the subordinate relationship between them, as shown in Figure 3.1 below. Its hierarchical relationship is: power group layer - power plant layer - device layer - sensor layer. ROOT is the root node, and each node of sensor layer is called a leaf node. In the process of using IoTDB, you can directly connect the attributes on the path from ROOT node to each leaf node with ".", thus forming the name of a timeseries in IoTDB. For example, The left-most path in Figure 3.1 can generate a timeseries named `ROOT.ln.wf01.wt01.status`.
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577327-7aa50780-1ef4-11e9-9d75-cadabb62444e.jpg">
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577327-7aa50780-1ef4-11e9-9d75-cadabb62444e.jpg"></center>
 
-**Figure 3.1 Attribute hierarchy structure**</center>
+**Figure 3.1 Attribute hierarchy structure**
 
 After getting the name of the timeseries, we need to set up the storage group according to the actual scenario and scale of the data. Because in the scenario of this chapter data is usually arrived in the unit of groups (i.e., data may be across electric fields and devices), in order to avoid frequent switching of IO when writing data, and to meet the user's requirement of physical isolation of data in the unit of  groups, we set the storage group at the group layer.
 
@@ -52,7 +54,7 @@ Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.excepti
 ```
 
 ### Show Storage Group
-After the storage group is created, we can use the [SHOW STORAGE GROUP](/#/Documents/0.8.2/chap5/sec1) statement to view all the storage groups. The SQL statement is as follows:
+After the storage group is created, we can use the [SHOW STORAGE GROUP](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) statement to view all the storage groups. The SQL statement is as follows:
 
 ```
 IoTDB> show storage group
@@ -80,7 +82,7 @@ IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODIN
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
-Please refer to [Encoding](/#/Documents/0.8.2/chap2/sec3) for correspondence between data type and encoding.
+Please refer to [Encoding](/document/V0.8.x/UserGuide/2-Concept%20Key%20Concepts%20and%20Terminology/3-Encoding.html) for correspondence between data type and encoding.
 
 ### Show Timeseries
 
@@ -105,6 +107,6 @@ It is worth noting that when the queried path does not exist, the system will re
 
 Version 0.8.2 imposes some limitations on the scale of data that users can operate:
 
-Limit 1: Assuming that the JVM memory allocated to IoTDB at runtime is p and the user-defined size of data in memory written to disk ([group\_size\_in\_byte](/#/Documents/0.8.2/chap4/sec2)) is Q, then the number of storage groups should not exceed p/q.
+Limit 1: Assuming that the JVM memory allocated to IoTDB at runtime is p and the user-defined size of data in memory written to disk ([group\_size\_in\_byte](/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html)) is Q, then the number of storage groups should not exceed p/q.
 
 Limit 2: The number of timeseries should not exceed the ratio of JVM memory allocated to IoTDB at run time to 20KB.

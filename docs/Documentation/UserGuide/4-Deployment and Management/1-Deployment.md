@@ -1,34 +1,34 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
 
-# Chapter 4: Deployment and Management
-
-## Deployment
+# Deployment
 
 IoTDB provides you two installation methods, you can refer to the following suggestions, choose one of them:
 
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 
-### Prerequisites
+## Prerequisites
 
 To install and use IoTDB, you need to have:
 
@@ -42,8 +42,7 @@ To install and use IoTDB, you need to have:
 
 3. Set the max open files num as 65535 to avoid "too many open files" problem.
 
-
-### Installation from  binary files
+## Installation from  binary files
 
 IoTDB provides you binary files which contains all the necessary components for the IoTDB system to run. You can get them on our website [http://tsfile.org/download](http://tsfile.org/download). 
 
@@ -74,7 +73,7 @@ iotdb/     <-- root path
 +- LICENSE    <-- LICENSE
 ```
 
-### Installation from source code
+## Installation from source code
 
 You can get the released source code from https://iotdb.apache.org/#/Download, or from the git repository https://github.com/apache/incubator-iotdb/tree/master
 
@@ -157,8 +156,6 @@ $IOTDB_HOME/
 +- lib/       <-- project dependencies
 ```
 
-<!-- > NOTE: We also provide already built JARs and project at [http://tsfile.org/download](http://tsfile.org/download) instead of build the jar package yourself. -->
-
-### Installation by Docker (Dockerfile)
+## Installation by Docker (Dockerfile)
 
 You can build and run a IoTDB docker image by following the guide of [Deployment by Docker](/#/Documents/0.8.2/chap4/sec7)

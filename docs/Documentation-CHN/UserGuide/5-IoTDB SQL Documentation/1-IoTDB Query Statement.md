@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,12 +19,7 @@
 
 -->
 
-# 第5章: IoTDB SQL文档
-
-## IoTDB查询语句
-
-
-### Schema语句
+# Schema语句
 
 * 设置存储组
 
@@ -88,7 +83,7 @@ Eg: IoTDB > SHOW STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
-### 数据管理语句
+## 数据管理语句
 
 * 插入记录语句
 
@@ -233,7 +228,7 @@ Note: <SLIMITClause> can only effect in Prefixpath and StarPath.
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
 
-### 数据库管理语句
+## 数据库管理语句
 
 * 创建用户
 
@@ -399,7 +394,7 @@ password:=identifier
 Eg: IoTDB > UPDATE USER tempuser SET PASSWORD newpwd;
 ```
 
-### 功能
+## 功能
 
 * COUNT
 

@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,23 +19,21 @@
 
 -->
 
-# 第3章 IoTDB操作指南
+# 数据模型选用与创建
 
-## 数据模型选用与创建
+在向IoTDB导入数据之前，首先要根据[样例数据](/zh/document/V0.8.x/UserGuide/3-Operation%20Manual/1-Sample%20Data.html)选择合适的数据存储模型，然后使用[SET STORAGE GROUP](/zh/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html)语句和[CREATE TIMESERIES](/zh/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html)语句设置存储组，并创建时间序列。
 
-在向IoTDB导入数据之前，首先要根据[样例数据](/#/Documents/0.8.2/chap3/sec1)选择合适的数据存储模型，然后使用[SET STORAGE GROUP](/#/Documents/0.8.2/chap5/sec1)语句和[CREATE TIMESERIES](/#/Documents/0.8.2/chap5/sec1)语句设置存储组，并创建时间序列。
+## 选用存储模型
 
-### 选用存储模型
+根据本文描述的[数据](/zh/document/V0.8.x/UserGuide/3-Operation%20Manual/1-Sample%20Data.html)属性层级，按照属性涵盖范围以及它们之间的从属关系，我们可将其表示为如下图3.1的属性层级组织结构，其层级关系为：集团层-电场层-设备层-传感器层。其中ROOT为根节点，传感器层的每一个节点称为叶子节点。在使用IoTDB的过程中，您可以直接将由ROOT节点到每一个叶子节点路径上的属性用“.”连接，将其作为一个IoTDB的时间序列的名称。图3.1中最左侧的路径可以生成一个名为`ROOT.ln.wf01.wt01.status`的时间序列。
 
-根据本文描述的[数据](/#/Documents/0.8.2/chap3/sec1)属性层级，按照属性涵盖范围以及它们之间的从属关系，我们可将其表示为如下图3.1的属性层级组织结构，其层级关系为：集团层-电场层-设备层-传感器层。其中ROOT为根节点，传感器层的每一个节点称为叶子节点。在使用IoTDB的过程中，您可以直接将由ROOT节点到每一个叶子节点路径上的属性用“.”连接，将其作为一个IoTDB的时间序列的名称。图3.1中最左侧的路径可以生成一个名为`ROOT.ln.wf01.wt01.status`的时间序列。
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577327-7aa50780-1ef4-11e9-9d75-cadabb62444e.jpg"></center>
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577327-7aa50780-1ef4-11e9-9d75-cadabb62444e.jpg">
-
-**图3.1 属性层级组织结构**</center>
+<center>**图3.1 属性层级组织结构**</center>
 
 得到时间序列的名称之后，我们需要根据数据的实际场景和规模设置存储组。由于在本文所述场景中，每次到达的数据通常以集团为单位（即数据可能为跨电场、跨设备的），为了写入数据时避免频繁切换IO降低系统速度，且满足用户以集团为单位进行物理隔离数据的要求，我们将存储组设置在集团层。
 
-### 创建存储组
+## 创建存储组
 
 存储模型选用后，我们可以根据存储模型建立相应的存储组。创建存储组的SQL语句如下所示：
 
@@ -53,9 +51,9 @@ IoTDB> set storage group to root.ln.wf01
 Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.exception.PathErrorException: The prefix of root.ln.wf01 has been set to the storage group.
 ```
 
-### 查看存储组
+## 查看存储组
 
-在存储组创建后，我们可以使用[SHOW STORAGE GROUP](/#/Documents/0.8.2/chap5/sec1)语句来查看所有的存储组，SQL语句如下所示：
+在存储组创建后，我们可以使用[SHOW STORAGE GROUP](/zh/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html)语句来查看所有的存储组，SQL语句如下所示：
 
 ```
 IoTDB> show storage group
@@ -64,7 +62,7 @@ IoTDB> show storage group
 执行结果为：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577338-84c70600-1ef4-11e9-9dab-605b32c02836.jpg"></center>
 
-### 创建时间序列
+## 创建时间序列
 
 根据建立的数据模型，我们可以分别在两个存储组中创建相应的时间序列。创建时间序列的SQL语句如下所示：
 
@@ -83,9 +81,9 @@ IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODIN
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
-详细的数据类型与编码方式的对应列表请参见[编码方式](/#/Documents/0.8.2/chap2/sec3)。
+详细的数据类型与编码方式的对应列表请参见[编码方式](/zh/document/V0.8.x/UserGuide/2-Concept%20Key%20Concepts%20and%20Terminology/3-Encoding.html)。
 
-### 查看时间序列
+## 查看时间序列
 
 目前，IoTDB支持两种查看时间序列的方式：
 
@@ -105,10 +103,10 @@ IoTDB> show timeseries root.ln
 
 需要注意的是，当查询路径不存在时，系统会返回0条时间序列。
 
-### 注意事项
+## 注意事项
 
 0.8.2版本对用户操作的数据规模进行一些限制：
 
-限制1：假设运行时IoTDB分配到的JVM内存大小为p，用户自定义的每次将内存中的数据写入到磁盘时的大小（[group_size_in_byte](/#/Documents/0.8.2/chap4/sec2)）为q。存储组的数量不能超过p/q。
+限制1：假设运行时IoTDB分配到的JVM内存大小为p，用户自定义的每次将内存中的数据写入到磁盘时的大小（[group_size_in_byte](/zh/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html)）为q。存储组的数量不能超过p/q。
 
 限制2：时间序列的数量不超过运行时IoTDB分配到的JVM内存与20KB的比值。

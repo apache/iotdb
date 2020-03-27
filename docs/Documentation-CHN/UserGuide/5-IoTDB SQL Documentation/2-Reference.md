@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,11 +19,9 @@
 
 -->
 
-# 第5章: IoTDB SQL文档
+# 参考
 
-## 参考
-
-### 关键字
+## 关键字
 
 ```
 Keywords for IoTDB (case insensitive):
@@ -36,7 +34,7 @@ Keywords with special meanings (case sensitive):
 * Logical symbol: AND, &, &&, OR, | , ||, NOT, !, TRUE, FALSE
 ```
 
-### 标识符
+## 标识符
 
 ```
 QUOTE := '\'';
@@ -91,7 +89,7 @@ eg. _abc123
 
 ```
 
-### 常量
+## 常量
 
 
 ```
