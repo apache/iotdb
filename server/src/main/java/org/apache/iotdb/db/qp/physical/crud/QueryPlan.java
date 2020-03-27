@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+
+import java.util.Collections;
+import java.util.List;
 
 public abstract class QueryPlan extends PhysicalPlan {
 
@@ -48,6 +50,9 @@ public abstract class QueryPlan extends PhysicalPlan {
   }
 
   public void setPaths(List<Path> paths) {
+    if (paths != null) {
+      Collections.sort(paths);
+    }
     this.paths = paths;
   }
 

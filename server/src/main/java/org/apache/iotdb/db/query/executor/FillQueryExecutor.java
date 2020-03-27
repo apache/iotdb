@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.executor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -32,10 +33,12 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
 import javax.activation.UnsupportedDataTypeException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class FillQueryExecutor {
 
@@ -59,7 +62,7 @@ public class FillQueryExecutor {
    *
    * @param context query context
    */
-  public QueryDataSet execute(QueryContext context)
+  public QueryDataSet execute(QueryContext context, FillQueryPlan fillQueryPlan)
       throws StorageEngineException, QueryProcessException, IOException {
     RowRecord record = new RowRecord(queryTime);
 
@@ -86,7 +89,7 @@ public class FillQueryExecutor {
       } else {
         fill = typeIFillMap.get(dataType).copy();
       }
-      configureFill(fill, dataType, path, context, queryTime);
+      configureFill(fill, dataType, path, fillQueryPlan.getAllSensorsInDevice(path.getDevice()), context, queryTime);
 
       TimeValuePair timeValuePair = fill.getFillResult();
       if (timeValuePair == null || timeValuePair.getValue() == null) {
@@ -101,10 +104,10 @@ public class FillQueryExecutor {
     return dataSet;
   }
 
-  protected void configureFill(IFill fill, TSDataType dataType, Path path, QueryContext context,
-      long queryTime) throws StorageEngineException, QueryProcessException {
+  protected void configureFill(IFill fill, TSDataType dataType, Path path, Set<String> allSensors, QueryContext context,
+                               long queryTime) throws StorageEngineException, QueryProcessException {
     fill.setDataType(dataType);
     fill.setQueryTime(queryTime);
-    fill.constructReaders(path, context);
+    fill.constructReaders(path, allSensors, context);
   }
 }

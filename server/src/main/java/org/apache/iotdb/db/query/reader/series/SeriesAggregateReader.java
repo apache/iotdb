@@ -28,15 +28,16 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
+import java.util.Set;
 
 
 public class SeriesAggregateReader implements IAggregateReader {
 
   private final SeriesReader seriesReader;
 
-  public SeriesAggregateReader(Path seriesPath, TSDataType dataType, QueryContext context,
-      QueryDataSource dataSource, Filter timeFilter, Filter valueFilter, TsFileFilter fileFilter) {
-    this.seriesReader = new SeriesReader(seriesPath, dataType, context, dataSource, timeFilter,
+  public SeriesAggregateReader(Path seriesPath, Set<String> allSensors,  TSDataType dataType, QueryContext context,
+                               QueryDataSource dataSource, Filter timeFilter, Filter valueFilter, TsFileFilter fileFilter) {
+    this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context, dataSource, timeFilter,
         valueFilter, fileFilter);
   }
 

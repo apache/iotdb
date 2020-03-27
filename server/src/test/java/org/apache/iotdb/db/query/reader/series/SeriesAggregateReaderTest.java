@@ -40,7 +40,9 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
@@ -70,8 +72,10 @@ public class SeriesAggregateReaderTest {
   public void aggregateTest() {
     try {
       Path path = new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0");
+      Set<String> allSensors = new HashSet<>();
+      allSensors.add("sensor0");
       QueryDataSource queryDataSource = new QueryDataSource(path, seqResources, unseqResources);
-      SeriesAggregateReader seriesReader = new SeriesAggregateReader(path, TSDataType.INT32,
+      SeriesAggregateReader seriesReader = new SeriesAggregateReader(path, allSensors, TSDataType.INT32,
           new QueryContext(), queryDataSource, null, null, null);
       AggregateResult aggregateResult = AggregateResultFactory
           .getAggrResultByName("count", TSDataType.INT32);

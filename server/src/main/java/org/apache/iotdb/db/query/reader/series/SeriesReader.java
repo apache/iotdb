@@ -44,15 +44,15 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.PriorityQueue;
+import java.util.*;
 import java.util.stream.Collectors;
 
 class SeriesReader {
 
   private final Path seriesPath;
+
+  // all the sensors in this device;
+  private final Set<String> allSensors;
   private final TSDataType dataType;
   private final QueryContext context;
 
@@ -109,6 +109,7 @@ class SeriesReader {
 
   SeriesReader(
       Path seriesPath,
+      Set<String> allSensors,
       TSDataType dataType,
       QueryContext context,
       QueryDataSource dataSource,
@@ -116,6 +117,7 @@ class SeriesReader {
       Filter valueFilter,
       TsFileFilter fileFilter) {
     this.seriesPath = seriesPath;
+    this.allSensors = allSensors;
     this.dataType = dataType;
     this.context = context;
     QueryUtils.filterQueryDataSource(dataSource, fileFilter);
@@ -128,6 +130,7 @@ class SeriesReader {
   @TestOnly
   SeriesReader(
       Path seriesPath,
+      Set<String> allSensors,
       TSDataType dataType,
       QueryContext context,
       List<TsFileResource> seqFileResource,
@@ -135,6 +138,7 @@ class SeriesReader {
       Filter timeFilter,
       Filter valueFilter) {
     this.seriesPath = seriesPath;
+    this.allSensors = allSensors;
     this.dataType = dataType;
     this.context = context;
     this.seqFileResource = new LinkedList<>(seqFileResource);
@@ -566,7 +570,7 @@ class SeriesReader {
      * Fill sequence TimeSeriesMetadata List until it is not empty
      */
     while (seqTimeSeriesMetadata.isEmpty() && !seqFileResource.isEmpty()) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.remove(0), seriesPath, context, timeFilter);
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.remove(0), seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
         seqTimeSeriesMetadata.add(timeseriesMetadata);
       }
@@ -576,7 +580,7 @@ class SeriesReader {
      * Fill unSequence TimeSeriesMetadata Priority Queue until it is not empty
      */
     while (unSeqTimeSeriesMetadata.isEmpty() && !unseqFileResource.isEmpty()) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, timeFilter);
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
         unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       }
@@ -631,13 +635,13 @@ class SeriesReader {
 
   private void unpackAllOverlappedTsFilesToTimeSeriesMetadata(long endTime) throws IOException {
     while (!unseqFileResource.isEmpty() && endTime >= unseqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, timeFilter);
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
         unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       }
     }
     while (!seqFileResource.isEmpty() && endTime >= seqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.remove(0), seriesPath, context, timeFilter);
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.remove(0), seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
         seqTimeSeriesMetadata.add(timeseriesMetadata);
       }

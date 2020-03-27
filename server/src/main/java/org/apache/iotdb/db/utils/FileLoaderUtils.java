@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -38,6 +34,12 @@ import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class FileLoaderUtils {
 
@@ -74,12 +76,12 @@ public class FileLoaderUtils {
   }
 
   public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, Path seriesPath,
-      QueryContext context, Filter timeFilter) throws IOException {
+                                                          QueryContext context, Filter timeFilter, Set<String> allSensors) throws IOException {
     TimeseriesMetadata timeSeriesMetadata;
     if (resource.isClosed()) {
       timeSeriesMetadata = TimeSeriesMetadataCache.getInstance()
           .get(new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(resource.getPath(),
-              seriesPath.getDevice(), seriesPath.getMeasurement()));
+              seriesPath.getDevice(), seriesPath.getMeasurement()), allSensors);
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
             new DiskChunkMetadataLoader(resource, seriesPath, context, timeFilter));

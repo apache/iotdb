@@ -191,22 +191,22 @@ public class IoTDBConfig {
   /**
    * Memory allocated for fileMetaData cache in read process
    */
-  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 3 / 39;
+  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 7 / 39;
 
   /**
    * Memory allocated for timeSeriesMetaData cache in read process
    */
-  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 5 / 39;
+  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 10 / 39;
 
   /**
    * Memory allocated for chunkMetaData cache in read process
    */
-  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead * 6 / 39;
+  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead * 5 / 39;
 
   /**
    * Memory allocated for chunk cache in read process
    */
-  private long allocateMemoryForChunkCache = allocateMemoryForRead * 10 / 39;
+  private long allocateMemoryForChunkCache = allocateMemoryForRead * 5 / 39;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default

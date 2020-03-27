@@ -28,7 +28,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -54,9 +56,22 @@ public class TimeSeriesMetadataCache {
 
   private TimeSeriesMetadataCache() {
     lruCache = new LRULinkedHashMap<TimeSeriesMetadataCacheKey, TimeseriesMetadata>(MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE, true) {
+      int count = 0;
+      long averageSize = 0;
       @Override
       protected long calEntrySize(TimeSeriesMetadataCacheKey key, TimeseriesMetadata value) {
-        return RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
+        if (count < 10) {
+          long currentSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
+          averageSize = (averageSize * count) + currentSize / (++count);
+          return currentSize;
+        } else if (count < 10000) {
+          count++;
+          return averageSize;
+        } else {
+          averageSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
+          count = 1;
+          return averageSize;
+        }
       }
     };
   }
@@ -65,7 +80,7 @@ public class TimeSeriesMetadataCache {
     return TimeSeriesMetadataCache.TimeSeriesMetadataCacheHolder.INSTANCE;
   }
 
-  public TimeseriesMetadata get(TimeSeriesMetadataCacheKey key) throws IOException {
+  public TimeseriesMetadata get(TimeSeriesMetadataCacheKey key, Set<String> allSensors) throws IOException {
     if (!cacheEnable) {
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
       return reader.readDeviceMetadata(key.device).get(key.measurement);
@@ -93,9 +108,19 @@ public class TimeSeriesMetadataCache {
       }
       printCacheLog(false);
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-      TimeseriesMetadata timeSeriesMetadata = reader.readDeviceMetadata(key.device).get(key.measurement);
-      lruCache.put(key, timeSeriesMetadata);
-      return timeSeriesMetadata;
+      Map<String, TimeseriesMetadata> timeSeriesMetadataMap = reader.readDeviceMetadata(key.device);
+      lruCache.put(key, timeSeriesMetadataMap.get(key.measurement));
+
+      if (!allSensors.isEmpty()) {
+        // put TimeSeriesMetadata of all sensors used in this query into cache
+        timeSeriesMetadataMap.forEach((sensor, timeSeriesMetadata) -> {
+          if (allSensors.contains(sensor)) {
+            lruCache.put(new TimeSeriesMetadataCacheKey(key.filePath, key.device, sensor), timeSeriesMetadata);
+          }
+        });
+      }
+
+      return lruCache.get(key);
     } catch (IOException e) {
       logger.error("something wrong happened while reading {}", key.filePath);
       throw e;

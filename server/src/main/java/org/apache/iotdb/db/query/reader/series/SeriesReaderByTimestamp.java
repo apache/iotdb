@@ -26,7 +26,9 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+
 import java.io.IOException;
+import java.util.Set;
 
 public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
@@ -34,9 +36,9 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   private BatchData batchData;
   private long currentTime = Long.MIN_VALUE;
 
-  public SeriesReaderByTimestamp(Path seriesPath, TSDataType dataType, QueryContext context,
-      QueryDataSource dataSource, TsFileFilter fileFilter) {
-    seriesReader = new SeriesReader(seriesPath, dataType, context,
+  public SeriesReaderByTimestamp(Path seriesPath, Set<String> allSensors,  TSDataType dataType, QueryContext context,
+                                 QueryDataSource dataSource, TsFileFilter fileFilter) {
+    seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context,
         dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null, fileFilter);
   }
 
