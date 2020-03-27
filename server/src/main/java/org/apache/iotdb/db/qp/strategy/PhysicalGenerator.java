@@ -383,11 +383,7 @@ public class PhysicalGenerator {
 
       queryPlan = alignByDevicePlan;
     } else {
-      if (queryPlan instanceof LastQueryPlan) {
-        queryPlan.setAlignByTime(true);
-      } else {
-        queryPlan.setAlignByTime(queryOperator.isAlignByTime());
-      }
+      queryPlan.setAlignByTime(queryOperator.isAlignByTime());
       List<Path> paths = queryOperator.getSelectedPaths();
       queryPlan.setPaths(paths);
 
