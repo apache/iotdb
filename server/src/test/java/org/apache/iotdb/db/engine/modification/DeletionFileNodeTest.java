@@ -30,15 +30,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import junit.framework.TestCase;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -47,9 +46,9 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 import org.junit.After;
@@ -172,7 +171,9 @@ public class DeletionFileNodeTest {
       assertEquals(3, modifications.size());
       int i = 0;
       for (Modification modification : modifications) {
-        TestCase.assertEquals(modification, realModifications[i++]);
+        assertEquals(modification.path, realModifications[i].path);
+        assertEquals(modification.type, realModifications[i].type);
+        i++;
       }
     } finally {
       accessor.close();
@@ -281,7 +282,9 @@ public class DeletionFileNodeTest {
     assertEquals(3, modifications.size());
     int i = 0;
     for (Modification modification : modifications) {
-      TestCase.assertEquals(modification, realModifications[i++]);
+      assertEquals(modification.path, realModifications[i].path);
+      assertEquals(modification.type, realModifications[i].type);
+      i++;
     }
   }
 }
