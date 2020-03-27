@@ -320,6 +320,11 @@ public class StorageGroupProcessor {
         // the process was interrupted before the merged files could be named
         continueFailedRenames(timeRangeFileFolder, MERGE_SUFFIX);
 
+        if (!timeRangeFileFolder.isDirectory()) {
+          logger.warn("{} is not a directory.", timeRangeFileFolder.getAbsolutePath());
+          continue;
+        }
+
         Collections.addAll(tsFiles,
             fsFactory.listFilesBySuffix(timeRangeFileFolder.getAbsolutePath(), TSFILE_SUFFIX));
       }
