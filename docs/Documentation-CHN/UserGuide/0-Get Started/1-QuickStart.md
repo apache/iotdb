@@ -1,25 +1,25 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
-    
-        http://www.apache.org/licenses/LICENSE-2.0
-    
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
-
-<!-- TOC -->
 
 ## 概览 
 
@@ -41,7 +41,7 @@
 
 # 快速入门
 
-本文将介绍关于IoTDB使用的基本流程，如果需要更多信息，请浏览我们官网的[指引](https://iotdb.apache.org/#/Documents/0.9.x/chap1/sec1).
+本文将介绍关于IoTDB使用的基本流程，如果需要更多信息，请浏览我们官网的[指引](/zh/document/V0.9.x/UserGuide/1-Overview/1-What%20is%20IoTDB.html).
 
 ## 安装环境
 
@@ -61,7 +61,7 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
 
 ### IoTDB下载
 
-您可以从这里下载程序：[下载](https://iotdb.apache.org/#/Download)
+您可以从这里下载程序：[下载](/download/)
 
 ### 配置文件
 
@@ -71,8 +71,8 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
   * 系统配置模块 (`tsfile-format.properties`, `iotdb-engine.properties`)
   * 日志配置模块 (`logback.xml`). 
 
-想要了解更多，请浏览[Chapter3: Server](https://iotdb.apache.org/#/Documents/0.9.x/chap3/sec1)
-	
+想要了解更多，请浏览[Chapter3: Server](/zh/document/V0.9.x/UserGuide/3-Server/1-Download.html)
+​	
 
 ## IoTDB试用
 
@@ -167,7 +167,7 @@ IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODIN
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 ```
 
-为了查看指定的时间序列，我们可以使用SHOW TIMESERIES <Path>语句，其中<Path>表示时间序列对应的路径，默认值为空，表示查看系统中所有的时间序列。下面是两个例子：
+为了查看指定的时间序列，我们可以使用SHOW TIMESERIES Path语句，其中Path表示时间序列对应的路径，默认值为空，表示查看系统中所有的时间序列。下面是两个例子：
 
 使用SHOW TIMESERIES语句查看系统中存在的所有时间序列，SQL语句如下：
 
@@ -264,7 +264,7 @@ IoTDB> quit
 IoTDB> exit
 ```
 
-想要浏览更多IoTDB数据库支持的命令，请浏览[SQL Reference](https://iotdb.apache.org/#/Documents/0.9.x/chap5/sec4).
+想要浏览更多IoTDB数据库支持的命令，请浏览[SQL Reference](/zh/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html).
 
 ### 停止IoTDB
 

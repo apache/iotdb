@@ -1,25 +1,28 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
-# Chapter 7: Ecosystem Integration
+
 # Spark IoTDB Connecter
+
 ## version
 
 The versions required for Spark and Java are as follow:
@@ -93,14 +96,12 @@ The existing data in the TsFile is as follows:
 <table style="text-align:center">
 	<tr><th colspan="4">device:root.ln.wf01.wt01</th><th colspan="4">device:root.ln.wf02.wt02</th></tr>
 	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th></tr>
-	<tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th><th>time</th><th>value</td></tr>
+	<tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
 	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td></tr>
 	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td></tr>
 	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td></tr>
 </table>
 </center>
-
-
 The wide(default) table form is as follows:
 
 | time | root.ln.wf02.wt02.temperature | root.ln.wf02.wt02.status | root.ln.wf02.wt02.hardware | root.ln.wf01.wt01.temperature | root.ln.wf01.wt01.status | root.ln.wf01.wt01.hardware |
@@ -116,14 +117,14 @@ You can also use narrow table form which as follows: (You can see part 4 about h
 
 | time | device_name                   | status                   | hardware                   | temperature |
 |------|-------------------------------|--------------------------|----------------------------|-------------------------------|
-|    1 | root.ln.wf02.wt01             | true                     | null                       | 2.2                           | 
-|    1 | root.ln.wf02.wt02             | true                     | null                       | null                          | 
-|    2 | root.ln.wf02.wt01             | null                     | null                       | 2.2                          |                 
-|    2 | root.ln.wf02.wt02             | false                    | aaa                        | null                           |                   
-|    3 | root.ln.wf02.wt01             | true                     | null                       | 2.1                           |                 
-|    4 | root.ln.wf02.wt02             | true                     | bbb                        | null                          |                  
-|    5 | root.ln.wf02.wt01             | false                    | null                       | null                          |                   
-|    6 | root.ln.wf02.wt02             | null                     | ccc                        | null                          |                   
+|    1 | root.ln.wf02.wt01             | true                     | null                       | 2.2                           |
+|    1 | root.ln.wf02.wt02             | true                     | null                       | null                          |
+|    2 | root.ln.wf02.wt01             | null                     | null                       | 2.2                          |
+|    2 | root.ln.wf02.wt02             | false                    | aaa                        | null                           |
+|    3 | root.ln.wf02.wt01             | true                     | null                       | 2.1                           |
+|    4 | root.ln.wf02.wt02             | true                     | bbb                        | null                          |
+|    5 | root.ln.wf02.wt01             | false                    | null                       | null                          |
+|    6 | root.ln.wf02.wt02             | null                     | ccc                        | null                          |
 
 # 4. Transform between wide and narrow table
 

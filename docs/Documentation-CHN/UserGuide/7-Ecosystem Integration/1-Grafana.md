@@ -1,42 +1,43 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
-# 第7章: 生态集成
-<!-- TOC -->
-## 概览
-
-- IoTDB-Grafana
-    - Grafana的安装与部署
-        - 安装
-        - simple-json-datasource数据源插件安装
-        - 启动Grafana
-    - IoTDB安装
-    - IoTDB-Grafana连接器安装
-        - 启动IoTDB-Grafana
-    - 使用Grafana
-        - 添加IoTDB数据源
-        - 操作Grafana
-
-<!-- /TOC -->
 
 # IoTDB-Grafana
+
+## 概要
+
+- IoTDB-Grafana
+  - Grafana的安装与部署
+    - 安装
+    - simple-json-datasource数据源插件安装
+    - 启动Grafana
+  - IoTDB安装
+  - IoTDB-Grafana连接器安装
+    - 启动IoTDB-Grafana
+  - 使用Grafana
+    - 添加IoTDB数据源
+    - 操作Grafana
+
+<!-- /TOC -->
 
 Grafana是开源的指标量监测和可视化工具，可用于展示时序数据和应用程序运行分析。Grafana支持Graphite，InfluxDB等国际主流时序时序数据库作为数据源。在IoTDB项目中，我们开发了Grafana展现IoTDB中时序数据的连接器IoTDB-Grafana，为您提供使用Grafana展示IoTDB数据库中的时序数据的可视化方法。
 

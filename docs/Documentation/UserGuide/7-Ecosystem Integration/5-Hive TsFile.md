@@ -1,24 +1,28 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
-# Chapter 7: Ecosystem Integration
+
+# Hive TsFile
+
 <!-- TOC -->
 ## Outline
 
@@ -33,6 +37,7 @@
 	    - Aggregate Clause Example
 	- What's Next
 		
+
 <!-- /TOC -->
 # TsFile-Hive-Connector User Guide
 
@@ -87,7 +92,7 @@ Added resources: [/Users/hive/incubator-iotdb/hive-connector/target/hive-connect
 To create a Tsfile-backed table, specify the `serde` as `org.apache.iotdb.hive.TsFileSerDe`, 
 specify the `inputformat` as `org.apache.iotdb.hive.TSFHiveInputFormat`, 
 and the `outputformat` as `org.apache.iotdb.hive.TSFHiveOutputFormat`.
- 
+
 Also provide a schema which only contains two fields: `time_stamp` and `sensor_id` for the table. 
 `time_stamp` is the time value of the time series 
 and `sensor_id` is the name of the sensor you want to extract from the tsfile to hive such as `sensor_1`. 

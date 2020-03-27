@@ -1,25 +1,26 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
 
-# Chapter 4: Client
 # Programming - TsFile API
 
 TsFile is a file format of Time Series we used in IoTDB. In this section, we would like to introduce the usage of this file format. 
@@ -41,35 +42,36 @@ There are two ways to use TsFile in your own project.
 	
 * Using as a maven dependency: 
 
-	Compile source codes and deploy to your local repository in three steps:
+  Compile source codes and deploy to your local repository in three steps:
 
-	* Get the source codes
-	
-		```
-		git clone https://github.com/apache/incubator-iotdb.git
-		```
-	* Compile the source codes and deploy 
-		
-		```
-		cd tsfile/
-		mvn clean install -Dmaven.test.skip=true
-		```
-	* add dependencies into your project:
-	
-	  ```
-		 <dependency>
-		   <groupId>org.apache.iotdb</groupId>
-		   <artifactId>tsfile</artifactId>
-		   <version>0.9.1</version>
-		 </dependency>
-	  ```
-	  
-	Or, you can download the dependencies from official Maven repository:
-	
-	* First, find your maven `settings.xml` on path: `${username}\.m2\settings.xml`
-	  , add this `<profile>` to `<profiles>`:
-	  ```
-	    <profile>
+  * Get the source codes
+
+  	```
+  	git clone https://github.com/apache/incubator-iotdb.git
+  	```
+  * Compile the source codes and deploy 
+  	
+  	```
+  	cd tsfile/
+  	mvn clean install -Dmaven.test.skip=true
+  	```
+  * add dependencies into your project:
+
+    ```
+  	 <dependency>
+  	   <groupId>org.apache.iotdb</groupId>
+  	   <artifactId>tsfile</artifactId>
+  	   <version>0.9.1</version>
+  	 </dependency>
+    ```
+    
+
+  Or, you can download the dependencies from official Maven repository:
+
+  * First, find your maven `settings.xml` on path: `${username}\.m2\settings.xml`
+    , add this `<profile>` to `<profiles>`:
+    ```
+      <profile>
            <id>allow-snapshots</id>
               <activation><activeByDefault>true</activeByDefault></activation>
            <repositories>
@@ -86,16 +88,16 @@ There are two ways to use TsFile in your own project.
               </repository>
            </repositories>
          </profile>
-	  ```
-	* Then add dependencies into your project:
-	
-	  ```
-		 <dependency>
-		   <groupId>org.apache.iotdb</groupId>
-		   <artifactId>tsfile</artifactId>
-		   <version>0.9.1</version>
-		 </dependency>
-	  ```
+    ```
+  * Then add dependencies into your project:
+
+    ```
+  	 <dependency>
+  	   <groupId>org.apache.iotdb</groupId>
+  	   <artifactId>tsfile</artifactId>
+  	   <version>0.9.1</version>
+  	 </dependency>
+    ```
 
 ## TSFile Usage
 This section demonstrates the detailed usages of TsFile.
@@ -113,18 +115,18 @@ a running train monitors its speed, oil meter, miles it has run, current passeng
 Table 1 illustrates a set of time-series data. The set showed in the following table contains one device named "device\_1" 
 with three measurements named "sensor\_1", "sensor\_2" and "sensor\_3". 
 
-<center>
 <table style="text-align:center">
     <tr><th colspan="6">device_1</th></tr>
     <tr><th colspan="2">sensor_1</th><th colspan="2">sensor_2</th><th colspan="2">sensor_3</th></tr>
-    <tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</td>
+    <tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
     <tr><td>1</td><td>1.2</td><td>1</td><td>20</td><td>2</td><td>50</td></tr>
     <tr><td>3</td><td>1.4</td><td>2</td><td>20</td><td>4</td><td>51</td></tr>
     <tr><td>5</td><td>1.1</td><td>3</td><td>21</td><td>6</td><td>52</td></tr>
     <tr><td>7</td><td>1.8</td><td>4</td><td>20</td><td>8</td><td>53</td></tr>
 </table>
 <span>A set of time-series data</span>
-</center>
+
+
 
 **One Line of Data**: In many industrial applications, a device normally contains more than one sensor and these sensors
  may have values at a same timestamp, which is called one line of data. 
@@ -151,7 +153,7 @@ device_1, 1490860659000, m1, 10, m2, 12.12
 A TsFile can be generated by following three steps and the complete code will be given in the section "Example for writing TsFile".
 
 * First, construct a `TsFileWriter` instance.
-    
+  
     Here are the available constructors:
     
     * Without pre-defined schema
@@ -187,7 +189,7 @@ A TsFile can be generated by following three steps and the complete code will be
     * config : The config of TsFile.
 
 * Second, add measurements
-    
+  
     Or you can make an instance of class `Schema` first and pass this to the constructor of class `TsFileWriter`
     
     The class `Schema` contains a map whose key is the name of one measurement schema, and the value is the schema itself.
@@ -208,7 +210,7 @@ A TsFile can be generated by following three steps and the complete code will be
     ```
     
     You can always use the following interface in `TsFileWriter` class to add additional measurements: 
-        
+    ​    
     ```
     public void addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
     ```
@@ -222,12 +224,12 @@ A TsFile can be generated by following three steps and the complete code will be
     ```
     
     **Parameters:**
-        
+    ​    
     * measurementID: The name of this measurement, typically the name of the sensor.
-        
+      
     * type: The data type, now support six types: `BOOLEAN`, `INT32`, `INT64`, `FLOAT`, `DOUBLE`, `TEXT`;
     
-    * encoding: The data encoding. See [Chapter 2-3](/#/Documents/progress/chap2/sec3).
+    * encoding: The data encoding. See [Chapter 2-3](/document/V0.9.x/UserGuide/2-Concept/3-Encoding.html).
     
     * compression: The data compression. Now supports `UNCOMPRESSED` and `SNAPPY`.
     
@@ -237,14 +239,14 @@ A TsFile can be generated by following three steps and the complete code will be
     > **Notice:** Although one measurement name can be used in multiple deltaObjects, the properties cannot be changed. I.e. 
         it's not allowed to add one measurement name for multiple times with different type or encoding.
         Here is a bad example:
-        
+    
         // The measurement "sensor_1" is float type
         addMeasurement(new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
         
         // This call will throw a WriteProcessException exception
         addMeasurement(new MeasurementSchema("sensor_1", TSDataType.INT32, TSEncoding.RLE));
 * Third, insert and write data continually.
-    
+  
     Use this interface to create a new `TSRecord`(a timestamp and device pair).
     
     ```
@@ -260,7 +262,7 @@ A TsFile can be generated by following three steps and the complete code will be
     ```
     
 * Finally, call `close` to finish this writing process. 
-    
+  
     ```
     public void close() throws IOException
     ```
@@ -269,7 +271,9 @@ A TsFile can be generated by following three steps and the complete code will be
 
 You should install TsFile to your local maven repository.
 
-See reference: [Installation](./1-Installation.md)
+```
+mvn clean install -pl tsfile -am -DskipTests
+```
 
 You could write a TsFile by constructing **TSRecord** if you have the **non-aligned** (e.g. not all sensors contain values) time series data.
 
@@ -422,18 +426,18 @@ public class TsFileWriteWithRowBatch {
 
 The set of time-series data in section "Time-series Data" is used here for a concrete introduction in this section. The set showed in the following table contains one deltaObject named "device\_1" with three measurements named "sensor\_1", "sensor\_2" and "sensor\_3". And the measurements has been simplified to do a simple illustration, which contains only 4 time-value pairs each.
 
-<center>
 <table style="text-align:center">
     <tr><th colspan="6">device_1</th></tr>
     <tr><th colspan="2">sensor_1</th><th colspan="2">sensor_2</th><th colspan="2">sensor_3</th></tr>
-    <tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</td>
+    <tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
     <tr><td>1</td><td>1.2</td><td>1</td><td>20</td><td>2</td><td>50</td></tr>
     <tr><td>3</td><td>1.4</td><td>2</td><td>20</td><td>4</td><td>51</td></tr>
     <tr><td>5</td><td>1.1</td><td>3</td><td>21</td><td>6</td><td>52</td></tr>
     <tr><td>7</td><td>1.8</td><td>4</td><td>20</td><td>8</td><td>53</td></tr>
 </table>
 <span>A set of time-series data</span>
-</center>
+
+
 
 #### Definition of Path
 
@@ -471,7 +475,7 @@ The `IExpression` is a filter expression interface and it will be passed to our 
 We create one or more filter expressions and may use binary filter operators to link them to our final expression.
 
 * **Create a Filter Expression**
-    
+  
     There are two types of filters.
     
      * TimeFilter: A filter for `time` in time-series data.
@@ -481,19 +485,19 @@ We create one or more filter expressions and may use binary filter operators to 
         Use the following relationships to get a `TimeFilter` object (value is a long int variable).
         <center>
         <table style="text-align:center">
-            <tr><th>Relationship</th><th>Description</td></tr>
-            <tr><td>TimeFilter.eq(value)</td><td>Choose the time equal to the value</td>
-            <tr><td>TimeFilter.lt(value)</td><td>Choose the time less than the value</td>
-            <tr><td>TimeFilter.gt(value)</td><td>Choose the time greater than the value</td>
-            <tr><td>TimeFilter.ltEq(value)</td><td>Choose the time less than or equal to the value</td>
-            <tr><td>TimeFilter.gtEq(value)</td><td>Choose the time greater than or equal to the value</td>
-            <tr><td>TimeFilter.notEq(value)</td><td>Choose the time not equal to the value</td>
-            <tr><td>TimeFilter.not(TimeFilter)</td><td>Choose the time not satisfy another TimeFilter</td>
+            <tr><th>Relationship</th><th>Description</th></tr>
+            <tr><td>TimeFilter.eq(value)</td><td>Choose the time equal to the value</td></tr>
+            <tr><td>TimeFilter.lt(value)</td><td>Choose the time less than the value</td></tr>
+            <tr><td>TimeFilter.gt(value)</td><td>Choose the time greater than the value</td></tr>
+            <tr><td>TimeFilter.ltEq(value)</td><td>Choose the time less than or equal to the value</td></tr>
+            <tr><td>TimeFilter.gtEq(value)</td><td>Choose the time greater than or equal to the value</td></tr></tr>
+            <tr><td>TimeFilter.notEq(value)</td><td>Choose the time not equal to the value</td></tr>
+            <tr><td>TimeFilter.not(TimeFilter)</td><td>Choose the time not satisfy another TimeFilter</td></tr>
         </table>
         </center>
         
      * ValueFilter: A filter for `value` in time-series data.
-        
+       
         ```
         IExpression valueFilterExpr = new SingleSeriesExpression(Path, ValueFilter);
         ```
@@ -506,7 +510,7 @@ We create one or more filter expressions and may use binary filter operators to 
 
      * BinaryExpression.and(Expression, Expression): Choose the value satisfy for both expressions.
      * BinaryExpression.or(Expression, Expression): Choose the value satisfy for at least one expression.
-     
+    
 
 ##### Filter Expression Examples
 
@@ -602,12 +606,12 @@ Here's the useful interfaces for user.
        DOUBLE,
        TEXT;
  * `RowRecord next() throws IOException;`
- 
+
     Get the next record.
     
     The class `RowRecord` consists of a `long` timestamp and a `List<Field>` for data in different sensors,
      we can use two getter methods to get them.
-     
+    
     ```
     long getTimestamp();
     List<Field> getFields();

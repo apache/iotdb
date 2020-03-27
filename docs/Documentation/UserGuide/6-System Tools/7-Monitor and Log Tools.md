@@ -1,26 +1,28 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
 
-# Chapter 6: System Tools
 # Monitor and Log Tools
+
 ## System Monitor
 
 Currently, IoTDB provides users to use Java's JConsole tool to monitor system status or use IoTDB's open API to check data status.
@@ -150,15 +152,15 @@ There are several attributes under Monitor, including the numbers of files opene
 
 This module is the statistical monitoring method provided by IoTDB for users to store data information. We will record the statistical data in the system and store it in the database. The current 0.9.1 version of IoTDB provides statistics for writing data.
 
-The user can choose to enable or disable the data statistics monitoring function (set the `enable_stat_monitor` item in the configuration file, see [Engine Layer](/#/Documents/progress/chap3/sec2) for details).
+The user can choose to enable or disable the data statistics monitoring function (set the `enable_stat_monitor` item in the configuration file, see [Engine Layer](/document/V0.9.x/UserGuide/3-Server/2-Single%20Node%20Setup.html) for details).
 
 #### Writing Data Monitor
 
 The current statistics of writing data by the system can be divided into two major modules: **Global Writing Data Statistics** and **Storage Group Writing Data Statistics**. **Global Writing Data Statistics** records the point number written by the user and the number of requests. **Storage Group Writing Data Statistics** records data of a certain storage group. 
 
-The system defaults to collect data every 5 seconds, and writes the statistics to the IoTDB and stores them in a system-specified locate. (If you need to change the statistic frequency, you can set The `back_loop_period_in_second entry` in the configuration file, see Section [Engine Layer](/#/Documents/progress/chap3/sec2) for details). After the system is refreshed or restarted, IoTDB does not recover the statistics, and the statistics data will restart from zero.
+The system defaults to collect data every 5 seconds, and writes the statistics to the IoTDB and stores them in a system-specified locate. (If you need to change the statistic frequency, you can set The `back_loop_period_in_second entry` in the configuration file, see Section [Engine Layer](/document/V0.9.x/UserGuide/3-Server/2-Single%20Node%20Setup.html) for details). After the system is refreshed or restarted, IoTDB does not recover the statistics, and the statistics data will restart from zero.
 
-In order to avoid the excessive use of statistical information, we add a mechanism to periodically clear invalid data for statistical information. The system will delete invalid data at regular intervals. The user can set the trigger frequency (`stat_monitor_retain_interval_in_second`, default is 600s, see section [Engine Layer](/#/Documents/progress/chap3/sec2) for details) to set the frequency of deleting data. By setting the valid data duration (`stat_monitor_detect_freq_in_second entry`, the default is 600s, see section [Engine Layer](/#/Documents/progress/chap3/sec2) for details) to set the time period of valid data, that is, the data within the time of the clear operation trigger time is stat_monitor_detect_freq_in_second is valid data. In order to ensure the stability of the system, it is not allowed to delete the statistics frequently. Therefore, if the configuration parameter time is less than the default value (600s), the system will abort the configuration parameter and uses the default parameter.
+In order to avoid the excessive use of statistical information, we add a mechanism to periodically clear invalid data for statistical information. The system will delete invalid data at regular intervals. The user can set the trigger frequency (`stat_monitor_retain_interval_in_second`, default is 600s, see section [Engine Layer](/document/V0.9.x/UserGuide/3-Server/2-Single%20Node%20Setup.html) for details) to set the frequency of deleting data. By setting the valid data duration (`stat_monitor_detect_freq_in_second entry`, the default is 600s, see section [Engine Layer](/document/V0.9.x/UserGuide/3-Server/2-Single%20Node%20Setup.html) for details) to set the time period of valid data, that is, the data within the time of the clear operation trigger time is stat_monitor_detect_freq_in_second is valid data. In order to ensure the stability of the system, it is not allowed to delete the statistics frequently. Therefore, if the configuration parameter time is less than the default value (600s), the system will abort the configuration parameter and uses the default parameter.
 
 It's convenient for you to use `select` clause to get the writing data statistics the same as other timeseires.
 
@@ -365,7 +367,7 @@ Here are the file size statistics:
 In order to grasp the performance of iotdb, we add this module to count the time-consumption of each operation. This module can compute the statistics of the avg time-consuming of each operation and the proportion of each operation whose time consumption falls into a time range. The output is in log_measure.log file. An output example is below.  
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/60937461-14296f80-a303-11e9-9602-a7bed624bfb3.png">
- 
+
 ### Configuration parameter
 
 location：conf/iotdb-engine.properties
@@ -378,11 +380,11 @@ location：conf/iotdb-engine.properties
 |performance\_stat\_display\_interval|60000|The interval of display statistic result in ms.|
 |performance_stat_memory_in_kb|20|The memory used for performance_stat in kb.|
 </center>
- 
+
 ### JMX MBean
 
 Connect to jconsole with port 31999，and choose ‘MBean’in menu bar. Expand the sidebar and choose 'org.apache.iotdb.db.cost.statistic'. You can Find：
- 
+
 <img style="width:100%; max-width:600px; max-height:200px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/60937484-30c5a780-a303-11e9-8e92-04c413df2088.png">
 
 **Attribute**
@@ -399,7 +401,7 @@ Connect to jconsole with port 31999，and choose ‘MBean’in menu bar. Expand 
 3. stopStatistic：Stop the statistics.
 4. clearStatisticalState(): clear current stat result, reset statistical result.
 5. changeOperationSwitch(String operationName, Boolean operationState):set whether to monitor a kind of operation. The param 'operationName' is the name of operation, defined in attribute operationSwitch. The param operationState is whether to enable the statistics or not. If the state is switched successfully, the function will return true, else return false.
- 
+
 ### Adding Custom Monitoring Items for contributors of IOTDB
 
 **Add Operation**

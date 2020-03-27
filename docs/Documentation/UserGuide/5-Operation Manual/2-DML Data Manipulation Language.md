@@ -1,35 +1,37 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
 
-# Chapter 5: Operation Manual
 # DML (Data Manipulation Language)
+
 ## INSERT
 ### Insert Real-time Data
 
-IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](/#/Documents/progress/chap5/sec4) in [Client/Shell tools](/#/Tools/Client), or using [Java JDBC](/#/Documents/progress/chap4/sec2) to perform single or batch execution of [INSERT SQL statement](/#/Documents/progress/chap5/sec4).
+IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html) in Client/Shell tools, or using [Java JDBC](/document/V0.9.x/UserGuide/4-Client/2-Programming%20-%20JDBC.html) to perform single or batch execution of [INSERT SQL statement](/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html).
 
-This section mainly introduces the use of [INSERT SQL statement](/#/Documents/progress/chap5/sec4) for real-time data import in the scenario. See Section 5.4 for a detailed syntax of [INSERT SQL statement](/#/Documents/progress/chap5/sec4).
+This section mainly introduces the use of [INSERT SQL statement](/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html) for real-time data import in the scenario. See Section 5.4 for a detailed syntax of [INSERT SQL statement](/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html).
 
 #### Use of INSERT Statements
-The [INSERT SQL statement](/#/Documents/progress/chap5/sec4) statement can be used to insert data into one or more specified timeseries that have been created. For each point of data inserted, it consists of a [timestamp](/#/Documents/progress/chap2/sec1) and a sensor acquisition value (see [Data Type](/#/Documents/progress/chap2/sec2)).
+The [INSERT SQL statement](/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html) statement can be used to insert data into one or more specified timeseries that have been created. For each point of data inserted, it consists of a [timestamp](/document/V0.9.x/UserGuide/2-Concept/1-Data%20Model%20and%20Terminology.html) and a sensor acquisition value (see [Data Type](/document/V0.9.x/UserGuide/2-Concept/2-Data%20Type.html)).
 
 In the scenario of this section, take two timeseries `root.ln.wf02.wt02.status` and `root.ln.wf02.wt02.hardware` as an example, and their data types are BOOLEAN and TEXT, respectively.
 
@@ -85,7 +87,7 @@ error: The TEXT data type should be covered by " or '
 ## SELECT
 ### Time Slice Query
 
-This chapter mainly introduces the relevant examples of time slice query using IoTDB SELECT statements. Detailed SQL syntax and usage specifications can be found in [SQL Documentation](/#/Documents/progress/chap5/sec4). You can also use the [Java JDBC](/#/Documents/progress/chap4/sec2) standard interface to execute related queries.
+This chapter mainly introduces the relevant examples of time slice query using IoTDB SELECT statements. Detailed SQL syntax and usage specifications can be found in [SQL Documentation](/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html). You can also use the [Java JDBC](/document/V0.9.x/UserGuide/4-Client/2-Programming%20-%20JDBC.html) standard interface to execute related queries.
 
 #### Select a Column of Data Based on a Time Interval
 
@@ -144,7 +146,7 @@ The execution result of this SQL statement is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
 
 ### Down-Frequency Aggregate Query
-This section mainly introduces the related examples of down-frequency aggregation query, using the [GROUP BY clause](/#/Documents/progress/chap5/sec4), which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. IoTDB supports partitioning result sets according to time intervals, and by default results are sorted by time in ascending order. You can also use the [Java JDBC](/#/Documents/progress/chap4/sec2) standard interface to execute related queries.
+This section mainly introduces the related examples of down-frequency aggregation query, using the [GROUP BY clause](/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html), which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. IoTDB supports partitioning result sets according to time intervals, and by default results are sorted by time in ascending order. You can also use the [Java JDBC](/document/V0.9.x/UserGuide/4-Client/2-Programming%20-%20JDBC.html) standard interface to execute related queries.
 
 The GROUP BY statement provides users with three types of specified parameters:
 
@@ -155,7 +157,6 @@ The GROUP BY statement provides users with three types of specified parameters:
 The actual meanings of the three types of parameters are shown in Figure 3.2 below. Among them, the paramter 2 is optional. Next we will give three typical examples of frequency reduction aggregation: parameter 2 specified, parameter 2 not specified, and time filtering conditions specified.
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577465-e8513380-1ef4-11e9-84c6-d0690f2a8113.jpg">
-
 **Figure 5.2 The actual meanings of the three types of parameters**</center>
 
 #### Down-Frequency Aggregate Query without Specifying the Time Axis Origin Position
@@ -241,7 +242,8 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[previous, <bef
 
 Detailed descriptions of all parameters are given in Table 3-4.
 
-<center>**Table 3-4 Previous fill paramter list**
+**Table 3-4 Previous fill paramter list**
+
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
@@ -249,8 +251,6 @@ Detailed descriptions of all parameters are given in Table 3-4.
 |T|query timestamp (only one can be specified); mandatory field|
 |data\_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
 |before\_range|represents the valid time range of the previous method. The previous method works when there are values in the [T-before\_range, T] range. When before\_range is not specified, before\_range takes the default value T; optional field|
-</center>
-
 Here we give an example of filling null values using the previous method. The SQL statement is as follows:
 
 ```
@@ -275,7 +275,8 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[linear, <befor
 ```
 Detailed descriptions of all parameters are given in Table 3-5.
 
-<center>**Table 3-5 Linear fill paramter list**
+**Table 3-5 Linear fill paramter list**
+
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
@@ -283,8 +284,6 @@ Detailed descriptions of all parameters are given in Table 3-5.
 |T|query timestamp (only one can be specified); mandatory field|
 |data_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
 |before\_range, after\_range|represents the valid time range of the linear method. The previous method works when there are values in the [T-before\_range, T+after\_range] range. When before\_range and after\_range are not explicitly specified, both before\_range and after\_range default to infinity; optional field|
-</center>
-
 Here we give an example of filling null values using the linear method. The SQL statement is as follows:
 
 ```
@@ -300,7 +299,8 @@ On the [sample data](https://raw.githubusercontent.com/apache/incubator-iotdb/ma
 #### Correspondence between Data Type and Fill Method
 Data types and the supported fill methods are shown in Table 3-6.
 
-<center>**Table 3-6 Data types and the supported fill methods**
+**Table 3-6 Data types and the supported fill methods**
+
 
 |Data Type|Supported Fill Methods|
 |:---|:---|
@@ -310,15 +310,14 @@ Data types and the supported fill methods are shown in Table 3-6.
 |float|previous, linear|
 |double|previous, linear|
 |text|previous|
-</center>
-
 It is worth noting that IoTDB will give error prompts for fill methods that are not supported by data types, as shown below:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577741-e340b400-1ef5-11e9-9238-a4eaf498ab84.jpg"></center>
 
 When the fill method is not specified, each data type bears its own default fill methods and parameters. The corresponding relationship is shown in Table 3-7.
 
-<center>**Table 3-7 Default fill methods and parameters for various data types**
+**Table 3-7 Default fill methods and parameters for various data types**
+
 
 |Data Type|Default Fill Methods and Parameters|
 |:---|:---|
@@ -328,15 +327,13 @@ When the fill method is not specified, each data type bears its own default fill
 |float|linear, 0, 0|
 |double|linear, 0, 0|
 |text|previous, 0|
-</center>
-
 > Note: In version 0.9.1, at least one fill method should be specified in the Fill statement.
 
 ### Row and Column Control over Query Results
 
-IoTDB provides [LIMIT/SLIMIT](/#/Documents/progress/chap5/sec4) clause and [OFFSET/SOFFSET](/#/Documents/progress/chap5/sec4) clause in order to make users have more control over query results. The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
+IoTDB provides [LIMIT/SLIMIT](/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html) clause and [OFFSET/SOFFSET](/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html) clause in order to make users have more control over query results. The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
 
-This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](/#/Documents/progress/chap4/sec2) standard interface to execute queries.
+This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](/document/V0.9.x/UserGuide/4-Client/2-Programming%20-%20JDBC.html) standard interface to execute queries.
 
 #### Row Control over Query Results
 By using LIMIT and OFFSET clauses, users can control the query results in a row-related manner. We will demonstrate how to use LIMIT and OFFSET clauses through the following examples.
@@ -563,7 +560,7 @@ delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
 ```
 
 ### Delete Multiple Timeseries
-When both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](/#/Documents/progress/chap2/sec1) can be used to delete the data. The SQL statement for this operation is:
+When both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](/document/V0.9.x/UserGuide/2-Concept/1-Data%20Model%20and%20Terminology.html) can be used to delete the data. The SQL statement for this operation is:
 
 ```
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;

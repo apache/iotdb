@@ -1,39 +1,26 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
 
-<!-- TOC -->
-
-## Outline
-
-- Frequently Asked Questions
-    - How can I identify my version of IoTDB?
-    - Where can I find IoTDB logs?
-    - Where can I find IoTDB data files?
-    - How do I know how many time series are stored in IoTDB?
-    - Can I use Hadoop and Spark to read TsFile in IoTDB?
-    - How does IoTDB handle duplicate points?
-    - How can I tell what type of the specific timeseries?
-    - How can I change IoTDB's Client time display format?
-
-<!-- /TOC -->
 # Frequently Asked Questions
 
 ## How can I identify my version of IoTDB?

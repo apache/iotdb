@@ -1,26 +1,28 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
 
-# 第6章: 系统工具
-## 监控与日志工具
+# 监控与日志工具
+
 ## 系统监控
 
 当前用户可以使用Java的JConsole工具对正在运行的IoTDB进程进行系统状态监控，或使用IoTDB为用户开放的接口查看数据统计量。
@@ -33,13 +35,13 @@
 
 本模块是IoTDB为用户提供的对其中存储数据信息的数据统计监控方式，我们会在系统中为您记录各个模块的数据统计信息，并将其汇总存入数据库中。当前版本的IoTDB提供IoTDB写入数据的统计功能。
 
-用户可以选择开启或关闭数据统计监控功能（您可以设定配置文件中的`enable_stat_monitor`项，详细信息参见[第3.4节](/#/Documents/progress/chap3/sec4)）。
+用户可以选择开启或关闭数据统计监控功能（您可以设定配置文件中的`enable_stat_monitor`项，详细信息参见[第3.4节](/zh/document/V0.9.x/UserGuide/3-Server/4-Config%20Manual.html)）。
 
 #### 写入数据统计
 
-系统目前对写入数据的统计可分为两大模块： 全局（Global） 写入数据统计和存储组（Storage Group） 写入数据统计。 全局统计量记录了所有写入数据的点数、请求数统计，存储组统计量对某一个存储组的写入数据进行了统计，系统默认设定每 5 秒 （若需更改统计频率，您可以设定配置文件中的`back_loop_period_in_second`项，详细信息参见本文[3.4节](/#/Documents/progress/chap3/sec4)） 将统计量写入 IoTDB 中，并以系统指定的命名方式存储。系统刷新或者重启后， IoTDB 不对统计量做恢复处理，统计量从零值重新开始计算。
+系统目前对写入数据的统计可分为两大模块： 全局（Global） 写入数据统计和存储组（Storage Group） 写入数据统计。 全局统计量记录了所有写入数据的点数、请求数统计，存储组统计量对某一个存储组的写入数据进行了统计，系统默认设定每 5 秒 （若需更改统计频率，您可以设定配置文件中的`back_loop_period_in_second`项，详细信息参见本文[3.4节](/zh/document/V0.9.x/UserGuide/3-Server/4-Config%20Manual.html)） 将统计量写入 IoTDB 中，并以系统指定的命名方式存储。系统刷新或者重启后， IoTDB 不对统计量做恢复处理，统计量从零值重新开始计算。
 
-为了避免统计信息占用过多空间，我们为统计信息加入定期清除无效数据的机制。系统将每隔一段时间删除无效数据。用户可以通过设置删除机制触发频率（`stat_monitor_retain_interval_in_second`项，默认为600s，详细信息参见本文[3.4节](/#/Documents/progress/chap3/sec4)）配置删除数据的频率，通过设置有效数据的期限（`stat_monitor_detect_freq_in_second`项，默认为600s，详细信息参见本文[3.4节](/#/Documents/progress/chap3/sec4)）设置有效数据的范围，即距离清除操作触发时间为`stat_monitor_detect_freq_in_second`以内的数据为有效数据。为了保证系统的稳定，不允许频繁地删除统计量，因此如果配置参数的时间小于默认值，系统不采用配置参数而使用默认参数。
+为了避免统计信息占用过多空间，我们为统计信息加入定期清除无效数据的机制。系统将每隔一段时间删除无效数据。用户可以通过设置删除机制触发频率（`stat_monitor_retain_interval_in_second`项，默认为600s，详细信息参见本文[3.4节](/zh/document/V0.9.x/UserGuide/3-Server/4-Config%20Manual.html)）配置删除数据的频率，通过设置有效数据的期限（`stat_monitor_detect_freq_in_second`项，默认为600s，详细信息参见本文[3.4节](/zh/document/V0.9.x/UserGuide/3-Server/4-Config%20Manual.html)）设置有效数据的范围，即距离清除操作触发时间为`stat_monitor_detect_freq_in_second`以内的数据为有效数据。为了保证系统的稳定，不允许频繁地删除统计量，因此如果配置参数的时间小于默认值，系统不采用配置参数而使用默认参数。
 
 注：当前版本统计的写入数据统计信息会同时统计用户写入的数据与系统内部监控数据。
 
@@ -160,15 +162,14 @@ select MAX_VALUE(TOTAL_POINTS_SUCCESS) from root.stats.write.root_ln
 
 配置文件位置：conf/iotdb-engine.properties
 
-<center>**表 -配置参数以及描述项**
+<center>**表 -配置参数以及描述项**</center>
+
 
 |参数|默认值|描述|
 |:---|:---|:---|
 |enable\_performance\_stat|false|是否开启性能监控模块|
 |performance\_stat\_display\_interval|60000|打印统计结果的时间延迟，以毫秒为单位|
 |performance_stat_memory_in_kb|20|性能监控模块使用的内存阈值，单位为KB|
-</center>
-
 ### 利用JMX MBean动态调节参数
 
 通过端口31999连接jconsole，并在上方菜单项中选择‘MBean’. 展开侧边框并选择 'org.apache.iotdb.db.cost.statistic'. 将会得到如下图所示结果：

@@ -1,26 +1,27 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
 
-# 第6章: 系统工具
-## 日志可视化工具
+# 日志可视化工具
 
 <!-- TOC -->
 
@@ -97,16 +98,16 @@
 ## 载入日志
 之后，点击`Load logs`按钮来让LogVisualizer准备对这些日志进行解析。如果准备成功，按钮上方将显示
 `Logs are successfully loaded`。否则将会弹出一个对话框提示错误，您需要根据错误内容进行相应处理。
- 
+
  <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/load_logs.png?raw=true">
- 
+
 ## 加载可视化计划
 接下来，您可以选择加载磁盘上已有的可视化计划或者新建计划。要加载已有的计划，只需要点击 `Load plans`
 按钮，并在弹出的对话框中选择想要加载的计划文件或者包含计划文件的文件夹。注意，如果选择文件夹，该文件
 夹必须只包含计划文件。
 
  <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/load_plan.png?raw=true">
- 
+
 ## 新建可视化计划
 现在，我们将展示如何使用图形界面创建一个新的可视化计划，您也可以参考已有的计划文件，使用文本编辑器编写。
 首先点击`Create plan`按钮并选择存放新计划的文件，新计划将出现在左边的列表。选择的文件名将作为新计划的
@@ -136,7 +137,7 @@
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/plot.png?raw=true">
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/statistics.png?raw=true">
- 
+
 # 使用方法(命令行)
 我们也提供了LogVisualizer的命令行版本，您可以通过`log-visualizer-cmd.sh` (或 `log-visualizer-cmd.bat`)
 来使用。使用时必须输入四个参数，它们是：`日志文件的路径`，`解析器配置文件的路径`，`可视化计划的路径`，

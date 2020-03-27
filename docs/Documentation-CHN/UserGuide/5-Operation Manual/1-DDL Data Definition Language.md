@@ -1,28 +1,29 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
 
-# 第5章 IoTDB操作指南
-## DDL (数据定义语言)
+# DDL (数据定义语言)
 
-### 创建存储组
+## 创建存储组
 
 我们可以根据存储模型建立相应的存储组。创建存储组的SQL语句如下所示：
 
@@ -40,9 +41,9 @@ IoTDB> set storage group to root.ln.wf01
 Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.exception.PathErrorException: The prefix of root.ln.wf01 has been set to the storage group.
 ```
 
-### 查看存储组
+## 查看存储组
 
-在存储组创建后，我们可以使用[SHOW STORAGE GROUP](/#/Documents/progress/chap5/sec4)语句来查看所有的存储组，SQL语句如下所示：
+在存储组创建后，我们可以使用[SHOW STORAGE GROUP](/zh/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html)语句来查看所有的存储组，SQL语句如下所示：
 
 ```
 IoTDB> show storage group
@@ -51,7 +52,7 @@ IoTDB> show storage group
 执行结果为：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577338-84c70600-1ef4-11e9-9dab-605b32c02836.jpg"></center>
 
-### 创建时间序列
+## 创建时间序列
 
 根据建立的数据模型，我们可以分别在两个存储组中创建相应的时间序列。创建时间序列的SQL语句如下所示：
 
@@ -70,9 +71,9 @@ IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODIN
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
-详细的数据类型与编码方式的对应列表请参见[编码方式](/#/Documents/progress/chap2/sec3)。
+详细的数据类型与编码方式的对应列表请参见[编码方式](/zh/document/V0.9.x/UserGuide/2-Concept/3-Encoding.html)。
 
-### 查看时间序列
+## 查看时间序列
 
 目前，IoTDB支持两种查看时间序列的方式：
 
@@ -92,7 +93,7 @@ IoTDB> show timeseries root.ln
 
 需要注意的是，当查询路径不存在时，系统会返回0条时间序列。
 
-### 统计时间序列总数
+## 统计时间序列总数
 
 IoTDB支持使用`COUNT TIMESERIES <Path>`来统计一条路径中的时间序列个数。SQL语句如下所示：
 ```
@@ -107,11 +108,11 @@ IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
 例如有如下时间序列（可以使用`show timeseries`展示所有时间序列）：
 
 <center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792072-cdc8a480-1200-11ea-8cec-321fef618a12.png"></center>
-   
+
 那么Metadata Tree如下所示：
 
 <center><img style="width:100%; max-width:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792176-1718f400-1201-11ea-861a-1a83c07ca144.jpg"></center>
-   
+
 可以看到，`root`被定义为`LEVEL=0`。那么当你输入如下语句时：
 
 ```
@@ -125,7 +126,8 @@ IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
 
 > 注意：时间序列的路径只是过滤条件，与level的定义无关。
 
-### 统计节点数
+## 统计节点数
+
 IoTDB支持使用`COUNT NODES <Path> LEVEL=<INTEGER>`来统计当前Metadata树下指定层级的节点个数，这条语句可以用来统计设备数。例如：
 
 ```
@@ -139,7 +141,8 @@ IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
 
 > 注意：时间序列的路径只是过滤条件，与level的定义无关。
 
-### 删除时间序列
+## 删除时间序列
+
 我们可以使用`DELETE TimeSeries <PrefixPath>`语句来删除我们之前创建的时间序列。SQL语句如下所示：
 ```
 IoTDB> delete timeseries root.ln.wf01.wt01.status
@@ -147,7 +150,8 @@ IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardwa
 IoTDB> delete timeseries root.ln.wf02.*
 ```
 
-### 查看设备
+## 查看设备
+
 与 `Show Timeseries` 相似，IoTDB 目前也支持两种方式查看设备。
 * `SHOW DEVICES` 语句显示当前所有的设备信息，等价于 `SHOW DEVICES root`。
 * `SHOW DEVICES <PrefixPath>` 语句规定了 `PrefixPath`，返回在给定的前缀路径下的设备信息。
@@ -158,19 +162,22 @@ IoTDB> show devices
 IoTDB> show devices root.ln
 ```
 
-## TTL
+# TTL
+
 IoTDB支持对存储组级别设置数据存活时间（TTL），这使得IoTDB可以定期、自动地删除一定时间之前的数据。合理使用TTL
 可以帮助您控制IoTDB占用的总磁盘空间以避免出现磁盘写满等异常。并且，随着文件数量的增多，查询性能往往随之下降,
 内存占用也会有所提高。及时地删除一些较老的文件有助于使查询性能维持在一个较高的水平和减少内存资源的占用。
 
-### 设置 TTL
+## 设置 TTL
+
 设置TTL的SQL语句如下所示：
 ```
 IoTDB> set ttl to root.ln 3600000
 ```
 这个例子表示在`root.ln`存储组中，只有最近一个小时的数据将会保存，旧数据会被移除或不可见。
 
-### 取消 TTL
+## 取消 TTL
+
 ```
 IoTDB> set ttl to root.ln 3600000。
 ```

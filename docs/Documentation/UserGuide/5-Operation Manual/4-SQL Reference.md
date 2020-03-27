@@ -1,26 +1,28 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
-# Chapter 5: Operation Manual
 
-## SQL Reference
+# SQL Reference
+
 In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a SQL-like query language for interacting with IoTDB, the query language can be devided into 4 major parts:
 
 * Schema Statement: statements about schema management are all listed in this section.
@@ -30,7 +32,7 @@ In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a S
 
 All of these statements are write in IoTDB's own syntax, for details about the syntax composition, please check the `Reference` section.
 
-### Show Version
+## Show Version
 
 ```sql
 show version
@@ -43,7 +45,7 @@ show version
 It costs 0.001s
 ```
 
-### Schema Statement
+## Schema Statement
 
 * Set Storage Group
 
@@ -184,7 +186,7 @@ Eg: IoTDB > SHOW CHILD PATHS root.ln.wf01
 Note: The path can only be prefix path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
-### Data Management Statement
+## Data Management Statement
 
 * Insert Record Statement
 
@@ -412,8 +414,7 @@ For example, "select s0,s0,s1 from root.sg.* group by device" is not equal to "s
    - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) group by device
 ```
 
-
-### Database Management Statement
+## Database Management Statement
 
 * Create User
 
@@ -579,7 +580,7 @@ password:=identifier
 Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
 ```
 
-### Functions
+## Functions
 
 * COUNT
 
@@ -673,7 +674,8 @@ Eg. SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.tempe
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
-### TTL
+## TTL
+
 IoTDB supports storage-level TTL settings, which means it is able to delete old data
 automatically and periodically. The benefit of using TTL is that hopefully you can control the 
 total disk space usage and prevent the machine from running out of disks. Moreover, the query
@@ -719,9 +721,9 @@ atomicity of data deletion is not guaranteed for efficiency concerns. So we reco
 not change the TTL once it is set or at least do not reset it frequently, unless you are determined 
 to suffer the unpredictability. 
 
-## Reference
+# Reference
 
-### Keywords
+## Keywords
 
 ```
 Keywords for IoTDB (case insensitive):
@@ -734,7 +736,7 @@ Keywords with special meanings (case insensitive):
 * Logical symbol: AND, &, &&, OR, | , ||, NOT, !, TRUE, FALSE
 ```
 
-### Identifiers
+## Identifiers
 
 ```
 QUOTE := '\'';
@@ -789,7 +791,7 @@ eg. _abc123
 
 ```
 
-### Literals
+## Literals
 
 
 ```

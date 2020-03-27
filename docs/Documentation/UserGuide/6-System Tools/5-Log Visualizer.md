@@ -1,27 +1,27 @@
 <!--
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+```
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+```
 
 -->
 
-# Chapter 6: System Tools
-
-## LogVisualizer
+# LogVisualizer
 
 <!-- TOC -->
 
@@ -59,7 +59,7 @@ from the beginning what logs exactly they long for, many less experienced progra
 time reading unrelated logs and filtering them out. Nevertheless, logs are mostly composed with 
 strings containing numbers which describe the system status and they are much less straight-forward for 
 humans to understand and compare than plots and statistics.
- 
+
 To reduce the difficulty of understanding what has happened behind these logs and better comparing
 them, we present a simple tool LogVisualizer to retrieve interesting (specified by the user) 
 variables in the log files, generate timeseries based on these observations and draw plots to show 
@@ -106,16 +106,16 @@ carefully and modify it for your logs.
 Then, click the `Load logs` button to let the LogVisualizer to prepare to read the logs. If the 
 preparation is successful, the label above will show `Logs are successfully loaded`, otherwise, a
 dialog will show you what has gone wrong and you should fix it accordingly.
- 
+
  <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/load_logs.png?raw=true">
- 
+
 ## Load plans
 Next, you can load existing visualization plans or create new ones. For loading existing plans, 
 just click the button `Load plans` and choose the log files or directories that contain log 
 files. Notice that if choose a directory, then the directory must only contain visualization plans.
 
  <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/load_plan.png?raw=true">
- 
+
 ## Create new plans
 Now, we will present an example of how to create a new plan. First, click the `Create plan` 
 button and choose a place to save the new plan, then the plan will show up in the list in the 
@@ -150,7 +150,7 @@ done browsing, you can click the button on the up-right to close the tab.
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/plot.png?raw=true">
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/statistics.png?raw=true">
- 
+
 # Usage(CommandLine)
  We also provide a command line tool of LogVisualizer, which is `log-visualizer-cmd.sh` 
  (or `log-visualizer-cmd.bat`). This tool takes exactly 4 parameters, which are: `the path of the log file` 
