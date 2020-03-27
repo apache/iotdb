@@ -140,7 +140,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private static List<SqlArgument> sqlArgumentsList = new ArrayList<>();
 
-  private boolean enableMetric = IoTDBDescriptor.getInstance().getConfig().isEnableMetricService();
+  private boolean enableHTTPService = IoTDBDescriptor.getInstance().getConfig().isEnableHTTPService();
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
 
   protected Planner processor;
@@ -609,7 +609,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       resp.setQueryId(queryId);
 
-      if (enableMetric) {
+      if (enableHTTPService) {
         long endTime = System.currentTimeMillis();
         SqlArgument sqlArgument = new SqlArgument(resp, plan, statement, startTime, endTime);
         synchronized (sqlArgumentList) {
@@ -1329,6 +1329,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @TestOnly
   public static void clearSqlArgumentsList() {
     sqlArgumentsList = new ArrayList<>();
+  }
 
   protected List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
       throws MetadataException {
