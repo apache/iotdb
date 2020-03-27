@@ -310,18 +310,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         }
         resp = Response.RESPONSE_AGREE;
       } else {
-        Log lastLog = logManager.getLastLog();
-        long lastPrevLogTerm = lastLog == null ? -1 : lastLog.getPreviousLogTerm();
-        long lastPrevLogId = lastLog == null ? -1 : lastLog.getPreviousLogIndex();
         // the incoming log points to an illegal position, reject it
-        logger.debug("{} cannot append the log because the last log does not match, "
-                + "local:term[{}],index[{}],previousTerm[{}],previousIndex[{}], "
-                + "request:term[{}],index[{}],previousTerm[{}],previousIndex[{}]",
-            name,
-            logManager.getLastLogTerm(), logManager.getLastLogIndex(),
-            lastPrevLogTerm, lastPrevLogId,
-            log.getCurrLogTerm(), log.getCurrLogIndex(),
-            log.getPreviousLogTerm(), log.getPreviousLogIndex());
+        logger.debug("{} cannot append the log because the last log does not match", name);
         resp = Response.RESPONSE_LOG_MISMATCH;
       }
     }

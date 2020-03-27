@@ -70,12 +70,6 @@ public interface LogManager {
   Snapshot getSnapshot();
 
   /**
-   * Get the last log in memory.
-   * @return the last log in memory, or null if there is no log in memory.
-   */
-  Log getLastLog();
-
-  /**
    * Take a snapshot of the committed logs instantly and discard the committed logs.
    */
   void takeSnapshot();
