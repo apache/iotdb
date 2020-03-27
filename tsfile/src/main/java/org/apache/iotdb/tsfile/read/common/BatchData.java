@@ -533,25 +533,6 @@ public class BatchData implements Serializable {
     return booleanRet.get(idx / capacity)[idx % capacity];
   }
 
-  public TsPrimitiveType getTsPrimitiveTypeByIndex(int idx) {
-    switch (dataType) {
-      case INT32:
-        return new TsInt(getIntByIndex(idx));
-      case INT64:
-        return new TsLong(getLongByIndex(idx));
-      case FLOAT:
-        return new TsFloat(getFloatByIndex(idx));
-      case DOUBLE:
-        return new TsDouble(getDoubleByIndex(idx));
-      case BOOLEAN:
-        return new TsBoolean(getBooleanByIndex(idx));
-      case TEXT:
-        return new TsBinary(getBinaryByIndex(idx));
-      default:
-        return null;
-    }
-  }
-
   public Object getValueInTimestamp(long time) {
     while (hasCurrent()) {
       if (currentTime() < time) {

@@ -20,17 +20,11 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class LastQueryPlan extends RawDataQueryPlan {
-  private Filter timeFilter;
 
   public LastQueryPlan() {
     super();
     setOperatorType(Operator.OperatorType.LAST);
-  }
-
-  public Filter getTimeFilter() {
-    return timeFilter;
   }
 }

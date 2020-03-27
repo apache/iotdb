@@ -251,7 +251,12 @@ public class PhysicalGenerator {
     } else {
       queryPlan = new RawDataQueryPlan();
     }
-    if (queryOperator.isAlignByDevice() && !(queryPlan instanceof LastQueryPlan)) {
+    if (queryPlan instanceof LastQueryPlan) {
+      // Last query result set will not be affected by alignment
+      queryPlan.setAlignByTime(true);
+      List<Path> paths = queryOperator.getSelectedPaths();
+      queryPlan.setPaths(paths);
+    } else if (queryOperator.isAlignByDevice()) {
       // below is the core realization of ALIGN_BY_DEVICE sql logic
       AlignByDevicePlan alignByDevicePlan = new AlignByDevicePlan();
       if (queryPlan instanceof GroupByPlan) {

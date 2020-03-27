@@ -177,18 +177,6 @@ public class QueryRouter implements IQueryRouter {
   @Override
   public QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
           throws StorageEngineException, QueryProcessException, IOException {
-    IExpression expression = lastQueryPlan.getExpression();
-    List<Path> deduplicatedPaths = lastQueryPlan.getDeduplicatedPaths();
-
-    IExpression optimizedExpression;
-    try {
-      optimizedExpression = expression == null ? null : ExpressionOptimizer.getInstance()
-          .optimize(expression, deduplicatedPaths);
-    } catch (QueryFilterOptimizationException e) {
-      throw new StorageEngineException(e.getMessage());
-    }
-    lastQueryPlan.setExpression(optimizedExpression);
-
     LastQueryExecutor lastQueryExecutor = new LastQueryExecutor(lastQueryPlan);
     return lastQueryExecutor.execute(context);
   }
