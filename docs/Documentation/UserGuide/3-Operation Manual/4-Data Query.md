@@ -1,23 +1,21 @@
 <!--
 
-```
-Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
-distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
-to you under the Apache License, Version 2.0 (the
-"License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+        http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an
-"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
-specific language governing permissions and limitations
-under the License.
-```
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 
@@ -25,7 +23,7 @@ under the License.
 
 ## Time Slice Query
 
-This chapter mainly introduces the relevant examples of time slice query using IoTDB SELECT statements. Detailed SQL syntax and usage specifications can be found in [SQL Documentation](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html). You can also use the [Java JDBC](/document/V0.8.x/UserGuide/6-JDBC%20API/1-JDBC%20API.html) standard interface to execute related queries.
+This chapter mainly introduces the relevant examples of time slice query using IoTDB SELECT statements. Detailed SQL syntax and usage specifications can be found in [SQL Documentation](../5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html). You can also use the [Java JDBC](../6-JDBC%20API/1-JDBC%20API.html) standard interface to execute related queries.
 
 ### Select a Column of Data Based on a Time Interval
 
@@ -86,7 +84,7 @@ The execution result of this SQL statement is as follows:
 
 ## Down-Frequency Aggregate Query
 
-This section mainly introduces the related examples of down-frequency aggregation query, using the [GROUP BY clause](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html), which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. IoTDB supports partitioning result sets according to time intervals, and by default results are sorted by time in ascending order. You can also use the [Java JDBC](/document/V0.8.x/UserGuide/6-JDBC%20API/1-JDBC%20API.html) standard interface to execute related queries.
+This section mainly introduces the related examples of down-frequency aggregation query, using the [GROUP BY clause](../5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html), which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. IoTDB supports partitioning result sets according to time intervals, and by default results are sorted by time in ascending order. You can also use the [Java JDBC](../6-JDBC%20API/1-JDBC%20API.html) standard interface to execute related queries.
 
 The GROUP BY statement provides users with three types of specified parameters:
 
@@ -206,7 +204,7 @@ which means:
 
 Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp of 2017-11-01T16:37:50.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
 
-On the [sample data](/document/V0.8.x/UserGuide/3-Operation%20Manual/1-Sample%20Data.html), the execution result of this statement is shown below:
+On the [sample data](../3-Operation%20Manual/1-Sample%20Data.html), the execution result of this statement is shown below:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577616-67df0280-1ef5-11e9-9dff-2eb8342074eb.jpg"></center>
 
 It is worth noting that if there is no value in the specified valid time range, the system will not fill the null value, as shown below:
@@ -240,7 +238,7 @@ which means:
 
 Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 21.927326, the next timestamp 2017-11-01T16:39:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 25.311783 to perform linear fitting calculation: 21.927326 + (25.311783-21.927326)/60s*50s = 24.747707
 
-On the [sample data](/document/V0.8.x/UserGuide/3-Operation%20Manual/1-Sample%20Data.html), the execution result of this statement is shown below:
+On the [sample data](../3-Operation%20Manual/1-Sample%20Data.html), the execution result of this statement is shown below:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577727-d4f29800-1ef5-11e9-8ff3-3bb519da3993.jpg"></center>
 
 #### Correspondence between Data Type and Fill Method
@@ -280,9 +278,9 @@ When the fill method is not specified, each data type bears its own default fill
 
 ## Row and Column Control over Query Results
 
-IoTDB provides [LIMIT/SLIMIT](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) clause and [OFFSET/SOFFSET](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) clause in order to make users have more control over query results. The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
+IoTDB provides [LIMIT/SLIMIT](../5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) clause and [OFFSET/SOFFSET](../5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) clause in order to make users have more control over query results. The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
 
-This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](/document/V0.8.x/UserGuide/6-JDBC%20API/1-JDBC%20API.html) standard interface to execute queries.
+This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](../6-JDBC%20API/1-JDBC%20API.html) standard interface to execute queries.
 
 ### Row Control over Query Results
 

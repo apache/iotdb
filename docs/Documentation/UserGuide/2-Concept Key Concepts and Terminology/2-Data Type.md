@@ -1,23 +1,21 @@
 <!--
 
-```
-Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
-distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
-to you under the Apache License, Version 2.0 (the
-"License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+        http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an
-"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
-specific language governing permissions and limitations
-under the License.
-```
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 
@@ -32,7 +30,7 @@ IoTDB supports six data types in total:
 * TEXT (String).
 
 
-The time series of **FLOAT** and **DOUBLE** type can specify (MAX\_POINT\_NUMBER, see [this page](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) for more information on how to specify), which is the number of digits after the decimal point of the floating point number, if the encoding method is [RLE](/document/V0.8.x/UserGuide/2-Concept%20Key%20Concepts%20and%20Terminology/3-Encoding.html) or [TS\_2DIFF](/document/V0.8.x/UserGuide/2-Concept%20Key%20Concepts%20and%20Terminology/3-Encoding.html) (Refer to [Create Timeseries Statement](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) for more information on how to specify). If MAX\_POINT\_NUMBER is not specified, the system will use [float\_precision](/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html) in the configuration file `tsfile-format.properties`.
+The time series of **FLOAT** and **DOUBLE** type can specify (MAX\_POINT\_NUMBER, see [this page](../5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) for more information on how to specify), which is the number of digits after the decimal point of the floating point number, if the encoding method is [RLE](../2-Concept%20Key%20Concepts%20and%20Terminology/3-Encoding.html) or [TS\_2DIFF](../2-Concept%20Key%20Concepts%20and%20Terminology/3-Encoding.html) (Refer to [Create Timeseries Statement](../5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html) for more information on how to specify). If MAX\_POINT\_NUMBER is not specified, the system will use [float\_precision](../4-Deployment%20and%20Management/2-Configuration.html) in the configuration file `tsfile-format.properties`.
 
 * For Float data value, The data range is (-Integer.MAX_VALUE, Integer.MAX_VALUE), rather than Float.MAX_VALUE, and the max_point_number is 19, it is because of the limition of function Math.round(float) in Java.
 * For Double data value, The data range is (-Long.MAX_VALUE, Long.MAX_VALUE), rather than Double.MAX_VALUE, and the max_point_number is 19, it is because of the limition of function Math.round(double) in Java (Long.MAX_VALUE=9.22E18).

@@ -165,7 +165,7 @@ IoTDB在显示时间戳时可以支持LONG类型以及DATETIME-DISPLAY类型，�
 
 * 值
 
-一个时间序列的值是由实际中的传感器向IoTDB发送的数值。这个值可以按照数据类型被IoTDB存储，同时用户也可以针对这个值的数据类型选择压缩方式，以及对应的编码方式。数据类型与对应编码的详细信息请参见本文[数据类型](/zh/document/V0.8.x/UserGuide/2-Concept%20Key%20Concepts%20and%20Terminology/2-Data%20Type.html)与[编码方式](/zh/document/V0.8.x/UserGuide/2-Concept%20Key%20Concepts%20and%20Terminology/3-Encoding.html)节。
+一个时间序列的值是由实际中的传感器向IoTDB发送的数值。这个值可以按照数据类型被IoTDB存储，同时用户也可以针对这个值的数据类型选择压缩方式，以及对应的编码方式。数据类型与对应编码的详细信息请参见本文[数据类型](../2-Concept%20Key%20Concepts%20and%20Terminology/2-Data%20Type.html)与[编码方式](../2-Concept%20Key%20Concepts%20and%20Terminology/3-Encoding.html)节。
 
 * 数据点
 

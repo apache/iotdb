@@ -1,23 +1,21 @@
 <!--
 
-```
-Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
-distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
-to you under the Apache License, Version 2.0 (the
-"License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+        http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an
-"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
-specific language governing permissions and limitations
-under the License.
-```
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 
@@ -25,7 +23,7 @@ under the License.
 
 IoTDB provides users with priviledge management operations, so as to ensure data security.
 
-We will show you basic user priviledge management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [Chapter 5: SQL Documentation](/document/V0.8.x/UserGuide/5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html). At the same time, in the JAVA programming environment, you can use the [Java JDBC](/document/V0.8.x/UserGuide/6-JDBC%20API/1-JDBC%20API.html) to execute priviledge management statements in a single or batch mode. 
+We will show you basic user priviledge management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [Chapter 5: SQL Documentation](../5-IoTDB%20SQL%20Documentation/1-IoTDB%20Query%20Statement.html). At the same time, in the JAVA programming environment, you can use the [Java JDBC](../6-JDBC%20API/1-JDBC%20API.html) to execute priviledge management statements in a single or batch mode. 
 
 ## Basic Concepts
 
@@ -47,7 +45,7 @@ There is a default user in IoTDB after the initial installation: root, and the d
 
 ## Priviledge Management Operation Examples
 
-According to the [sample data](/document/V0.8.x/UserGuide/3-Operation%20Manual/1-Sample%20Data.html), the sample data of IoTDB may belong to different power generation groups such as ln, sgcc, etc. Different power generation groups do not want others to obtain their own database data, so we need to have data priviledge isolated at the group layer.
+According to the [sample data](../3-Operation%20Manual/1-Sample%20Data.html), the sample data of IoTDB may belong to different power generation groups such as ln, sgcc, etc. Different power generation groups do not want others to obtain their own database data, so we need to have data priviledge isolated at the group layer.
 
 ### Create User
 

@@ -1,23 +1,21 @@
 <!--
 
-```
-Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
-distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
-to you under the Apache License, Version 2.0 (the
-"License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+        http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an
-"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
-specific language governing permissions and limitations
-under the License.
-```
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 
@@ -27,7 +25,7 @@ IoTDB allows users to configure IoTDB system logs (such as log output level) by 
 
 The default log configuration file is named logback.xml. The user can modify the configuration of the system running log by adding or changing the xml tree node parameters. It should be noted that the configuration of the system log using the log configuration file does not take effect immediately after the modification, instead, it will take effect after restarting the system. The usage of logback.xml is just as usual.
 
-At the same time, in order to facilitate the debugging of the system by the developers and DBAs, we provide several JMX interface to dynamically modify the log configuration, and configure the Log module of the system in real time without restarting the system. For detailed usage, see [Dynamic System Log Configuration](/document/V0.8.x/UserGuide/4-Deployment%20and%20Management/2-Configuration.html) section.
+At the same time, in order to facilitate the debugging of the system by the developers and DBAs, we provide several JMX interface to dynamically modify the log configuration, and configure the Log module of the system in real time without restarting the system. For detailed usage, see [Dynamic System Log Configuration](../4-Deployment%20and%20Management/2-Configuration.html) section.
 
 ## Dynamic System Log Configuration
 
