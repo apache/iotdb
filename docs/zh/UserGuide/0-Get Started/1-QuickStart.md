@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,24 +19,21 @@
 
 -->
 
-<!-- TOC -->
+# 快速入门
 
 ## 概览 
 
 - 快速入门
- - 安装环境
-    - IoTDB安装
-    - IoTDB试用
-        - 启动IoTDB
-        - 操作IoTDB
-            - 使用Cli/Shell工具
-            - IoTDB的基本操作
-        - 停止IoTDB
-            - 使用stop-server脚本强制停止
+- 安装环境
+  - IoTDB安装
+  - IoTDB试用
+    - 启动IoTDB
+    - 操作IoTDB
+      - 使用Cli/Shell工具
+      - IoTDB的基本操作
+    - 停止IoTDB
+      - 使用stop-server脚本强制停止
 
-<!-- /TOC -->
-
-# 快速入门
 ## 安装环境
 
 安装前需要保证设备上配有JDK>=1.8的运行环境，并配置好JAVA_HOME环境变量。
@@ -146,7 +143,7 @@ error: Timeseries root.ln.wf01.wt01.status already exist
 
 ``` 
 IoTDB> SHOW TIMESERIES
-``` 
+```
 
 执行结果为：
 ``` 
@@ -175,7 +172,7 @@ IoTDB> SHOW TIMESERIES
 ```
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 IoTDB> SHOW TIMESERIES
-``` 
+```
 
 执行结果为：
 ```
@@ -210,7 +207,7 @@ IoTDB> SHOW TIMESERIES
 为了查看指定的时间序列，我们可以使用SHOW TIMESERIES <Path>语句，查看时间序列root.ln.wf01.wt01.status的SQL语句如下：
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
-``` 
+```
 
 执行结果为：
 ```
@@ -228,7 +225,7 @@ It costs 0.02s.
 
 ```
 IoTDB> SHOW STORAGE GROUP
-``` 
+```
 
 执行结果为：
 ```

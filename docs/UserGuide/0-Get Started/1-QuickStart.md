@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,23 +19,20 @@
 
 -->
 
-<!-- TOC -->
+# Quick Start
 
 ## Outline
 
 - Quick Start
- - Prerequisites
-    - Installation
-        - Installation from source code
-    - Configure
-    - Start
-        - Start Server
-        - Start Client
-        - Have a try
-        - Stop Server
-
-<!-- /TOC -->
-# Quick Start
+- Prerequisites
+  - Installation
+    - Installation from source code
+  - Configure
+  - Start
+    - Start Server
+    - Start Client
+    - Have a try
+    - Stop Server
 
 This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website’s documents.
 
@@ -57,7 +54,7 @@ Here in the Quick Start, we give a brief introduction of using source code to in
 
 ### Installation from source code
 
-You can get the released source code from https://iotdb.apache.org/#/Download, or from the git repository https://github.com/apache/incubator-iotdb/tree/master
+You can get the released source code from https://iotdb.apache.org/download/, or from the git repository https://github.com/apache/incubator-iotdb/tree/master
 
 Now suppose your directory is like this:
 
