@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -165,7 +165,7 @@ IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODIN
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 ```
 
-为了查看指定的时间序列，我们可以使用SHOW TIMESERIES Path语句，其中Path表示时间序列对应的路径，默认值为空，表示查看系统中所有的时间序列。下面是两个例子：
+为了查看指定的时间序列，我们可以使用SHOW TIMESERIES \<Path\>语句，其中\<Path\>表示时间序列对应的路径，默认值为空，表示查看系统中所有的时间序列。下面是两个例子：
 
 使用SHOW TIMESERIES语句查看系统中存在的所有时间序列，SQL语句如下：
 
