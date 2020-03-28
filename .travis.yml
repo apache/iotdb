@@ -86,15 +86,15 @@ matrix:
       name: win-oraclejdk8
       before_install:
         - choco install jdk8 -params 'installdir=c:\\jdk8'
-        - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.1/binaries/apache-maven-3.6.1-bin.zip
-        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.1-bin.zip -o/c/mvn361
+        - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.zip
+        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.3-bin.zip -o/c/mvn363
       before_script:
         - export "JAVA_HOME=/c/jdk8"
         - export "PATH=/c/jdk8/bin:$PATH"
         - export "PATH=/c/jdk8/jre/bin:$PATH"
-        - export "MAVEN_HOME=/c/mvn361/apache-maven-3.6.1"
-        - export "M2_HOME=/c/mvn361/apache-maven-3.6.1"
-        - export "PATH=/c/mvn361/apache-maven-3.6.1/bin:$PATH"
+        - export "MAVEN_HOME=/c/mvn363/apache-maven-3.6.3"
+        - export "M2_HOME=/c/mvn363/apache-maven-3.6.3"
+        - export "PATH=/c/mvn363/apache-maven-3.6.3/bin:$PATH"
       script:
         - java -version
         - mvn -version
