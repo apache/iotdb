@@ -102,7 +102,7 @@ public class TsFileInputFormat<T> extends FileInputFormat<T> implements ResultTy
 					hadoopConf);
 			} else {
 				// Local File System
-				in = new DefaultTsFileInput(Paths.get(currentSplit.getPath().getPath()));
+				in = new DefaultTsFileInput(Paths.get(currentSplit.getPath().toUri()));
 			}
 		} catch (URISyntaxException e) {
 			throw new FlinkRuntimeException(e);
