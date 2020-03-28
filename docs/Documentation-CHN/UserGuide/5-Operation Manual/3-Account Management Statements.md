@@ -1,23 +1,21 @@
 <!--
 
-```
-Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
-distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
-to you under the Apache License, Version 2.0 (the
-"License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an
-"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
-specific language governing permissions and limitations
-under the License.
-```
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+    
+        http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 
@@ -25,7 +23,7 @@ under the License.
 
 IoTDB为用户提供了权限管理操作，从而为用户提供对于数据的权限管理功能，保障数据的安全。
 
-我们将通过以下几个具体的例子为您示范基本的用户权限操作，详细的SQL语句及使用方式详情请参见本文[第5.4节](/zh/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html)。同时，在JAVA编程环境中，您可以使用[JDBC API](/zh/document/V0.9.x/UserGuide/4-Client/2-Programming%20-%20JDBC.html)单条或批量执行权限管理类语句。
+我们将通过以下几个具体的例子为您示范基本的用户权限操作，详细的SQL语句及使用方式详情请参见本文[第5.4节](../5-Operation%20Manual/4-SQL%20Reference.html)。同时，在JAVA编程环境中，您可以使用[JDBC API](../4-Client/2-Programming%20-%20JDBC.html)单条或批量执行权限管理类语句。
 
 ## 基本概念
 
@@ -47,7 +45,7 @@ IoTDB为用户提供了权限管理操作，从而为用户提供对于数据的
 
 ## 权限操作示例 
 
-根据本文中描述的[样例数据](/#/Documents/progress/chap5/sec1)内容，IoTDB的样例数据可能同时属于ln, sgcc等不同发电集团，不同的发电集团不希望其他发电集团获取自己的数据库数据，因此我们需要将不同的数据在集团层进行权限隔离。
+根据本文中描述的[样例数据](../5-Operation%20Manual/1-DDL%20Data%20Definition%20Language.html)内容，IoTDB的样例数据可能同时属于ln, sgcc等不同发电集团，不同的发电集团不希望其他发电集团获取自己的数据库数据，因此我们需要将不同的数据在集团层进行权限隔离。
 
 ### 创建用户
 

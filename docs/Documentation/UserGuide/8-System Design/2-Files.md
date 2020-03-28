@@ -1,23 +1,21 @@
 <!--
 
-```
-Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
-distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
-to you under the Apache License, Version 2.0 (the
-"License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+        http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an
-"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
-specific language governing permissions and limitations
-under the License.
-```
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 
@@ -29,17 +27,17 @@ The data that IoTDB stores is divided into three categories, namely data files, 
 
 ## Data Files
 
-Data files store all the data that the user wrote to IoTDB, which contains TsFile and other files. TsFile storage directory can be configured with the `data_dirs` configuration item (see [file layer](/document/V0.9.x/UserGuide/3-Server/4-Config%20Manual.html) for details). Other files can be configured through [data_dirs](/document/V0.9.x/UserGuide/3-Server/4-Config%20Manual.html) configuration item (see [Engine Layer](/document/V0.9.x/UserGuide/3-Server/4-Config%20Manual.html) for details).
+Data files store all the data that the user wrote to IoTDB, which contains TsFile and other files. TsFile storage directory can be configured with the `data_dirs` configuration item (see [file layer](../3-Server/4-Config%20Manual.html) for details). Other files can be configured through [data_dirs](../3-Server/4-Config%20Manual.html) configuration item (see [Engine Layer](../3-Server/4-Config%20Manual.html) for details).
 
-In order to better support users' storage requirements such as disk space expansion, IoTDB supports multiple file directories storage methods for TsFile storage configuration. Users can set multiple storage paths as data storage locations( see [data_dirs](/document/V0.9.x/UserGuide/3-Server/4-Config%20Manual.html) configuration item), and you can specify or customize the directory selection policy (see [multi_dir_strategy](/document/V0.9.x/UserGuide/3-Server/4-Config%20Manual.html) configuration item for details).
+In order to better support users' storage requirements such as disk space expansion, IoTDB supports multiple file directories storage methods for TsFile storage configuration. Users can set multiple storage paths as data storage locations( see [data_dirs](../3-Server/4-Config%20Manual.html) configuration item), and you can specify or customize the directory selection policy (see [multi_dir_strategy](../3-Server/4-Config%20Manual.html) configuration item for details).
 
 ## System files
 
-System files include schema files, which store metadata information of data in IoTDB. It can be configured through the `base_dir` configuration item (see [System Layer](/document/V0.9.x/UserGuide/3-Server/4-Config%20Manual.html) for details).
+System files include schema files, which store metadata information of data in IoTDB. It can be configured through the `base_dir` configuration item (see [System Layer](../3-Server/4-Config%20Manual.html) for details).
 
 ## Pre-write Log Files
 
-Pre-write log files store WAL files. It can be configured through the `wal_dir` configuration item (see [System Layer](/document/V0.9.x/UserGuide/3-Server/2-Single%20Node%20Setup.html) for details).
+Pre-write log files store WAL files. It can be configured through the `wal_dir` configuration item (see [System Layer](../3-Server/2-Single%20Node%20Setup.html) for details).
 
 ## Example of Setting Data storage Directory
 

@@ -1,23 +1,21 @@
 <!--
 
-```
-Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
-distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
-to you under the Apache License, Version 2.0 (the
-"License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+        http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an
-"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
-specific language governing permissions and limitations
-under the License.
-```
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 
@@ -33,13 +31,13 @@ PLAIN编码，默认的编码方式，即不编码，支持多种数据类型，
 
 二阶差分编码，比较适合编码单调递增或者递减的序列数据，不适合编码波动较大的数据。
 
-二阶差分编码也可用于对浮点数进行编码，但在创建时间序列的时候需指定保留小数位数（MAX_POINT_NUMBER，具体指定方式参见本文[第5.4节](/zh/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html)）。比较适合存储某些浮点数值连续出现、单调调递增或者递减的序列数据，不适合存储对小数点后精度要求较高以及前后波动较大的序列数据。
+二阶差分编码也可用于对浮点数进行编码，但在创建时间序列的时候需指定保留小数位数（MAX_POINT_NUMBER，具体指定方式参见本文[第5.4节](../5-Operation%20Manual/4-SQL%20Reference.html)）。比较适合存储某些浮点数值连续出现、单调调递增或者递减的序列数据，不适合存储对小数点后精度要求较高以及前后波动较大的序列数据。
 
 * 游程编码（RLE）
 
 游程编码，比较适合存储某些整数值连续出现的序列，不适合编码大部分情况下前后值不一样的序列数据。
 
-游程编码也可用于对浮点数进行编码，，但在创建时间序列的时候需指定保留小数位数（MAX_POINT_NUMBER，具体指定方式参见本文本文[第5.4节](/zh/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html)）。比较适合存储某些浮点数值连续出现的序列数据，不适合存储对小数点后精度要求较高以及前后波动较大的序列数据。
+游程编码也可用于对浮点数进行编码，，但在创建时间序列的时候需指定保留小数位数（MAX_POINT_NUMBER，具体指定方式参见本文本文[第5.4节](../5-Operation%20Manual/4-SQL%20Reference.html)）。比较适合存储某些浮点数值连续出现的序列数据，不适合存储对小数点后精度要求较高以及前后波动较大的序列数据。
 
 * GORILLA编码（GORILLA）
 

@@ -1,23 +1,21 @@
 <!--
 
-```
-Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
-distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
-to you under the Apache License, Version 2.0 (the
-"License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+        http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an
-"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
-specific language governing permissions and limitations
-under the License.
-```
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 
@@ -25,7 +23,7 @@ under the License.
 
 IoTDB provides users with account priviledge management operations, so as to ensure data security.
 
-We will show you basic user priviledge management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [SQL Documentation](/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html). At the same time, in the JAVA programming environment, you can use the [Java JDBC](/document/V0.9.x/UserGuide/4-Client/2-Programming%20-%20JDBC.html) to execute priviledge management statements in a single or batch mode. 
+We will show you basic user priviledge management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [SQL Documentation](../5-Operation%20Manual/4-SQL%20Reference.html). At the same time, in the JAVA programming environment, you can use the [Java JDBC](../4-Client/2-Programming%20-%20JDBC.html) to execute priviledge management statements in a single or batch mode. 
 
 ## Basic Concepts
 

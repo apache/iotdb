@@ -1,23 +1,21 @@
 <!--
 
-```
-Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
-distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
-to you under the Apache License, Version 2.0 (the
-"License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+        http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an
-"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
-specific language governing permissions and limitations
-under the License.
-```
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 
@@ -41,7 +39,7 @@ under the License.
 
 # 快速入门
 
-本文将介绍关于IoTDB使用的基本流程，如果需要更多信息，请浏览我们官网的[指引](/zh/document/V0.9.x/UserGuide/1-Overview/1-What%20is%20IoTDB.html).
+本文将介绍关于IoTDB使用的基本流程，如果需要更多信息，请浏览我们官网的[指引](../1-Overview/1-What%20is%20IoTDB.html).
 
 ## 安装环境
 
@@ -71,7 +69,7 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
   * 系统配置模块 (`tsfile-format.properties`, `iotdb-engine.properties`)
   * 日志配置模块 (`logback.xml`). 
 
-想要了解更多，请浏览[Chapter3: Server](/zh/document/V0.9.x/UserGuide/3-Server/1-Download.html)
+想要了解更多，请浏览[Chapter3: Server](../3-Server/1-Download.html)
 ​	
 
 ## IoTDB试用
@@ -264,7 +262,7 @@ IoTDB> quit
 IoTDB> exit
 ```
 
-想要浏览更多IoTDB数据库支持的命令，请浏览[SQL Reference](/zh/document/V0.9.x/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html).
+想要浏览更多IoTDB数据库支持的命令，请浏览[SQL Reference](../5-Operation%20Manual/4-SQL%20Reference.html).
 
 ### 停止IoTDB
 
