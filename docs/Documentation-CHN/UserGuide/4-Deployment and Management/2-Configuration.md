@@ -221,7 +221,7 @@
 
 |名字| multi\_dir\_strategy |
 |:---:|:---|
-|描述| IoTDB在tsfile\_dir中为TsFile选择目录时采用的策略。可使用简单类名或类名全称。系统提供以下三种策略：<br>1. SequenceStrategy：IoTDB按顺序从tsfile\_dir中选择目录，依次遍历tsfile\_dir中的所有目录，并不断轮循；<br>2. MaxDiskUsableSpaceFirstStrategy：IoTDB优先选择tsfile\_dir中对应磁盘空余空间最大的目录；<br>3. MinFolderOccupiedSpaceFirstStrategy：IoTDB优先选择tsfile\_dir中已使用空间最小的目录；<br>4. （用户自定义策略）<br>您可以通过以下方法完成用户自定义策略：<br>1. 继承cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy类并实现自身的Strategy方法；<br>2. 将实现的类的完整类名（包名加类名，UserDfineStrategyPackage）填写到该配置项；<br>3. 将该类jar包添加到工程中。 |
+|描述| IoTDB在tsfile\_dir中为TsFile选择目录时采用的策略。可使用简单类名或类名全称。系统提供以下三种策略：<br>1. SequenceStrategy：IoTDB按顺序从tsfile\_dir中选择目录，依次遍历tsfile\_dir中的所有目录，并不断轮循；<br>2. MaxDiskUsableSpaceFirstStrategy：IoTDB优先选择tsfile\_dir中对应磁盘空余空间最大的目录；<br>3. MinFolderOccupiedSpaceFirstStrategy：IoTDB优先选择tsfile\_dir中已使用空间最小的目录；<br>4. \<UserDfineStrategyPackage\>（用户自定义策略）<br>您可以通过以下方法完成用户自定义策略：<br>1. 继承cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy类并实现自身的Strategy方法；<br>2. 将实现的类的完整类名（包名加类名，UserDfineStrategyPackage）填写到该配置项；<br>3. 将该类jar包添加到工程中。 |
 |类型|String|
 |默认值| MaxDiskUsableSpaceFirstStrategy |
 |改后生效方式|重启服务器生效|
