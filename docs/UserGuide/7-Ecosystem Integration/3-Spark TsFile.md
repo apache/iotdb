@@ -34,7 +34,7 @@ With this connector, you can
 
 |Spark Version | Scala Version | Java Version | TsFile |
 |------------- | ------------- | ------------ |------------ |
-| `2.4.3`        | `2.11.8`        | `1.8`        | `0.10.0`|
+| `>= 2.2`        | `2.11`        | `1.8`        | `0.10.0`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
 
