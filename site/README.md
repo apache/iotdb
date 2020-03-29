@@ -70,3 +70,11 @@ Copy all files in dist/ folder to asf-site branch.
 └─ package.json
 ```
 
+## FAQ
+If you get an error on your MacOS:
+
+> gyp: No Xcode or CLT version detected! 
+
+Then, install CommandLine of Xcode: `sudo xcode-select --install`.
+If you have installed and the error still occurs, then `sudo xcode-select --reset`
+
