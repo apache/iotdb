@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-    
+
         http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -35,8 +35,8 @@ The implementation principle of the device-by-device query is mainly to calculat
 
 First explain the meaning of some important fields in AlignByDevicePlan:
 - `List<String> measurements`：The list of measurements that appear in the query.
-- `Map<Path, TSDataType> dataTypeMapping`: This variable inherits from the base class QueryPlan, and its main role is to provide the data type corresponding to the path of this query when calculating the execution path of each device.
-- `Map<String, Set<String>> deviceToMeasurementsMap`, `Map<String, IExpression> deviceToFilterMap`: These two fields are used to store the measurement points and filter conditions corresponding to the device.
+- `List<String> devices`: The list of devices got from prefix paths.
+- `Map<String, IExpression> deviceToFilterMap`: This field is used to store the filter conditions corresponding to the device.
 - `Map<String, TSDataType> measurementDataTypeMap`：AlignByDevicePlan requires that the data type of the sensor of the same name be the same for different devices. This field is a Map structure of `measurementName-> dataType`.  For example `root.sg.d1.s1` and` root.sg.d2.s1` should be of the same data type.
 - `enum MeasurementType`：Three measurement types are recorded.  Measurements that do not exist in any device are of type `NonExist`; measurements with single or double quotes are of type` Constant`; measurements that exist are of type `Exist`.
 - `Map<String, MeasurementType> measurementTypeMap`: This field is a Map structure of `measureName-> measurementType`, which is used to record all measurement types in the query.
@@ -108,9 +108,6 @@ The following example summarizes the variable information calculated through thi
   -  `s2 -> Exist`
   -  `"1" -> Constant`
   -  `s5 -> NonExist`
-- Measuring points for each device `deviceToMeasurementsMap`:
-  -  `root.sg.d1 -> s1, s2`
-  -  `root.sg.d2 -> s1`
 - Filter condition `deviceToFilterMap` for each device:
   -  `root.sg.d1 -> time = 1 AND root.sg.d1.s1 < 25`
   -  `root.sg.d2 -> time = 1 AND root.sg.d2.s1 < 25`
@@ -183,10 +180,10 @@ The work done by the `hasNextWithoutConstraint ()` method is mainly to determine
 
 The specific implementation logic is as follows:
 
-1. First determine whether the current result set is initialized and there is a next result. If it is, it returns true directly, that is, you can call the next () method to get the next RowRecord; otherwise, the result set is not initialized and proceeds to step 2.
-2. Iterate deviceIterator to get the devices needed for this execution, and then get the corresponding measurement points in the deviceToMeasurementsMap to get executeColumns.
-3. Concatenate the current device name and measurements to calculate the query path, data type, and filter conditions of the current device. The corresponding fields are `executePaths`,` tsDataTypes`, and `expression`. If it is an aggregate query, you need to calculate` executeAggregations`  .
-4. Determine whether the current subquery type is GroupByQuery, AggregationQuery, FillQuery or RawDataQuery. Perform the corresponding query and return the result set. The implementation logic [Raw data query](/document/master/SystemDesign/5-DataQuery/3-RawDataQuery.html)，[Aggregate query](/document/master/SystemDesign/5-DataQuery/4-AggregationQuery.html)，[Downsampling query](/document/master/SystemDesign/5-DataQuery/5-GroupByQuery.html)  can be referenced.
+1. First determine whether the current result set is initialized and there is a next result. If it is, it returns true directly, that is, you can call the `next()` method to get the next `RowRecord`; otherwise, the result set is not initialized and proceeds to step 2.
+2. Iterate `deviceIterator` to get the devices needed for this execution, and then find the device node from MManger by the device path to get all sensor nodes under it.
+3. Compare all measurements in the query and the sensor nodes under the current device to get the `executeColumns` which need to be queried. Then concatenate the current device name and measurements to calculate the query path, data type, and filter conditions of the current device. The corresponding fields are `executePaths`,` tsDataTypes`, and `expression`. If it is an aggregate query, you need to calculate `executeAggregations`.
+4. Determine whether the current subquery type is GroupByQuery, AggregationQuery, FillQuery or RawDataQuery. Perform the corresponding query and return the result set. The implementation logic [Raw data query](/#/SystemDesign/progress/chap5/sec3)，[Aggregate query](/#/SystemDesign/progress/chap5/sec4)，[Downsampling query](/#/SystemDesign/progress/chap5/sec5)  can be referenced.
 
 After initializing the result set through the `hasNextWithoutConstraint ()` method and ensuring that there is a next result, you can call `QueryDataSet.next ()` method to get the next `RowRecord`.
 

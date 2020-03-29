@@ -35,8 +35,8 @@ AlignByDevicePlan 即按设备对齐查询对应的表结构为：
 
 首先解释一下 AlignByDevicePlan 中一些重要字段的含义：
 - `List<String> measurements`：查询中出现的 measurement 列表。
-- `Map<Path, TSDataType> dataTypeMapping`: 该变量继承自基类 QueryPlan，其主要作用是在计算每个设备的执行路径时，提供此次查询的 paths 对应的数据类型。
-- `Map<String, Set<String>> deviceToMeasurementsMap`, `Map<String, IExpression> deviceToFilterMap`: 这两个字段分别用来存储设备对应的测点和过滤条件。
+- `List<String> devices`: 由前缀路径得到的设备列表。
+- `Map<String, IExpression> deviceToFilterMap`: 用来存储设备对应的过滤条件。
 - `Map<String, TSDataType> measurementDataTypeMap`：AlignByDevicePlan 要求不同设备的同名 sensor 数据类型一致，该字段是一个 `measurementName -> dataType` 的 Map 结构，用来验证同名 sensor 的数据类型一致性。如 `root.sg.d1.s1` 和 `root.sg.d2.s1` 应该是同一数据类型。
 - `enum MeasurementType`：记录三种 measurement 类型。在任何设备中都不存在的 measurement 为 `NonExist` 类型；有单引号或双引号的 measurement 为 `Constant` 类型；存在的 measurement 为 `Exist` 类型。
 - `Map<String, MeasurementType> measurementTypeMap`: 该字段是一个 `measureName -> measurementType` 的 Map 结构，用来记录查询中所有 measurement 的类型。
@@ -85,7 +85,7 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
 1. 检查查询类型是否为 groupByPlan, fillQueryPlan, aggregationPlan 这三类查询中的一种，如果是则对相应的变量进行赋值，并更改 `AlignByDevicePlan` 的查询类型。
 2. 遍历 SELECT 后缀路径，对每一个后缀路径设置一个中间变量为 `measurementSetOfGivenSuffix`，用来记录该后缀路径对应的所有 measurement。如果后缀路径以单引号或双引号开头，则直接在 `measurements` 中增加该值，并记录其类型为 `Constant` 类型。
 3. 否则将设备列表与该后缀路径拼接，得到完整的路径，如果拼接后的路径不存在，需要进一步判断该 measurement 是否在其它设备中存在，如果都没有则暂时识别为 `NonExist`，如果后续出现设备存在该 measurement，则覆盖 `NonExist` 值为 `Exist`。
-4. 如果拼接后路径存在，则证明 measurement 是 `Exist` 类型，需要检验数据类型的一致性，不满足返回错误信息，满足则记录下该 Measurement，对 `measurementSetOfGivenSuffix`, `deviceToMeasurementsMap` 等进行更新。
+4. 如果拼接后路径存在，则证明 measurement 是 `Exist` 类型，需要检验数据类型的一致性，不满足返回错误信息，满足则记录下该 Measurement，对 `measurementSetOfGivenSuffix` 等进行更新。
 5. 在一层 suffix 循环结束后，将该层循环中出现的 `measurementSetOfGivenSuffix` 加入 `measurements` 中。在整个循环结束后，将循环中得到的变量信息赋值到 AlignByDevicePlan 中。此处得到的 measurements 列表是未经过去重的，在生成 `ColumnHeader` 时将进行去重。
 6. 最后调用 `concatFilterByDevice()` 方法计算 `deviceToFilterMap`，得到将每个设备分别拼接后对应的 Filter 信息。
 
@@ -108,9 +108,6 @@ Map<String, IExpression> concatFilterByDevice(List<String> devices,
   -  `s2 -> Exist`
   -  `"1" -> Constant`
   -  `s5 -> NonExist`
-- 每个设备的测点 `deviceToMeasurementsMap`:
-  -  `root.sg.d1 -> s1, s2`
-  -  `root.sg.d2 -> s1`
 - 每个设备的过滤条件 `deviceToFilterMap`：
   -  `root.sg.d1 -> time = 1 AND root.sg.d1.s1 < 25`
   -  `root.sg.d2 -> time = 1 AND root.sg.d2.s1 < 25`
@@ -184,8 +181,8 @@ private void getAlignByDeviceQueryHeaders(
 其具体实现逻辑如下：
 
 1. 首先判断当前结果集是否被初始化且有下一个结果，如果是则直接返回 true，即当前可以调用 `next()` 方法获取下一个 `RowRecord`；否则设置结果集未被初始化进入步骤2.
-2. 迭代 `deviceIterator` 获取本次执行需要的设备，之后 `deviceToMeasurementsMap` 中取得该设备对应的测点，得到 `executeColumns`.
-3. 拼接当前设备名与 measurements，计算当前设备的查询路径、数据类型及过滤条件，得到对应的字段分别为 `executePaths`, `tsDataTypes`, `expression`，如果是聚合查询，则还需要计算 `executeAggregations`。
+2. 迭代 `deviceIterator` 获取本次执行需要的设备，之后通过设备路径在 MManager 中查询到该设备节点，并取得该设备节点下的所有传感器节点，保存为 `measurementOfGivenDevice`.
+3. 遍历当前查询中的所有 measurement，将其与执行设备的所有传感器节点进行比较，得到该设备需要查询的列 `executeColumns`. 之后拼接当前设备名与 measurements，计算当前设备的查询路径、数据类型及过滤条件，得到对应的字段分别为 `executePaths`, `tsDataTypes`, `expression`，如果是聚合查询，则还需要计算 `executeAggregations`。
 4. 判断当前子查询类型为 GroupByQuery, AggregationQuery, FillQuery 或 RawDataQuery 进行对应的查询并返回结果集，实现逻辑可参考[原始数据查询](/#/SystemDesign/progress/chap5/sec3)，[聚合查询](/#/SystemDesign/progress/chap5/sec4)，[降采样查询](/#/SystemDesign/progress/chap5/sec5)。
 
 通过 `hasNextWithoutConstraint()` 方法初始化结果集并确保有下一结果后，则可调用 `QueryDataSet.next()` 方法获取下一个 `RowRecord`.
