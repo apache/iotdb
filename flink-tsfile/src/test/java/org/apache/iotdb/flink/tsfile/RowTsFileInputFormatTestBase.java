@@ -22,10 +22,9 @@ package org.apache.iotdb.flink.tsfile;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
-import org.apache.flink.configuration.Configuration;
 
 import org.apache.flink.types.Row;
-import org.apache.iotdb.flink.tool.TsFileWriteTool;
+import org.apache.iotdb.flink.util.TsFileWriteUtil;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.constant.QueryConstant;
@@ -57,7 +56,7 @@ public abstract class RowTsFileInputFormatTestBase {
 	public void prepareSourceTsFile() throws Exception {
 		tmpDir = String.join(
 			File.separator,
-			TsFileWriteTool.TMP_DIR,
+			TsFileWriteUtil.TMP_DIR,
 			UUID.randomUUID().toString());
 		new File(tmpDir).mkdirs();
 		sourceTsFilePath1 = String.join(
@@ -66,8 +65,8 @@ public abstract class RowTsFileInputFormatTestBase {
 		sourceTsFilePath2 = String.join(
 			File.separator,
 			tmpDir, "source2.tsfile");
-		TsFileWriteTool.create1(sourceTsFilePath1);
-		TsFileWriteTool.create2(sourceTsFilePath2);
+		TsFileWriteUtil.create1(sourceTsFilePath1);
+		TsFileWriteUtil.create2(sourceTsFilePath2);
 	}
 
 	@After

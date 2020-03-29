@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.flink.tool;
+package org.apache.iotdb.flink.util;
 
 import java.io.File;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -30,9 +30,9 @@ import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
- * An example of writing data to TsFile
+ * Utils used to prepare TsFiles for testing.
  */
-public class TsFileWriteTool {
+public class TsFileWriteUtil {
 
 	public static final String TMP_DIR = "target";
 

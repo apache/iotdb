@@ -28,7 +28,10 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
 
-public class Utils {
+/**
+ * Utils used to prepare source TsFiles for the examples.
+ */
+public class TsFlieUtils {
 
 	public static void writeTsFile(String path) {
 		try {
