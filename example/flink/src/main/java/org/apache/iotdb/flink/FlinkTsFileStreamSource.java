@@ -37,11 +37,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * The example of reading TsFile via Flink DataStream API.
+ */
 public class FlinkTsFileStreamSource {
 
 	public static void main(String[] args) throws IOException {
 		String path = "test.tsfile";
-		Utils.writeTsFile(path);
+		TsFlieUtils.writeTsFile(path);
 		new File(path).deleteOnExit();
 		String[] filedNames = {
 			QueryConstant.RESERVED_TIME,
