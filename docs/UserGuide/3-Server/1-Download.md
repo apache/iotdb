@@ -40,11 +40,11 @@ To use IoTDB, you need to have:
 >### Installation from  binary files
 
 You can download the binary file from:
-[Here](/download/)
+[Here](/Download/)
 
 ## Installation from source code
 
-You can get the released source code from https://iotdb.apache.org/#/Download, or from the git repository https://github.com/apache/incubator-iotdb/tree/master
+You can get the released source code from https://iotdb.apache.org/Download/, or from the git repository https://github.com/apache/incubator-iotdb/tree/master
 You can download the source code from:
 
 ```
@@ -71,4 +71,4 @@ After build, the IoTDB server will be at the folder "server/target/iotdb-server-
 
 ## Installation by Docker (Dockerfile)
 
-You can build and run a IoTDB docker image by following the guide of [Deployment by Docker](/document/master/UserGuide/3-Server/5-Docker%20Image.html)
+You can build and run a IoTDB docker image by following the guide of [Deployment by Docker](../3-Server/5-Docker%20Image.html)
