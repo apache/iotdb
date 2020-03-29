@@ -110,26 +110,6 @@ public class MemChunkReader implements IChunkReader, IPointReader {
     return batchData;
   }
 
-  private BatchData nextPageDataWithTerminateTime(long terminateTime) throws IOException {
-    BatchData batchData = new BatchData(dataType);
-    if (hasCachedTimeValuePair) {
-      hasCachedTimeValuePair = false;
-      if (cachedTimeValuePair.getTimestamp() <= terminateTime) {
-        batchData.putAnObject(
-            cachedTimeValuePair.getTimestamp(), cachedTimeValuePair.getValue().getValue());
-      }
-    }
-    while (timeValuePairIterator.hasNextTimeValuePair()) {
-      TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
-      if (filter == null
-          || filter.satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())
-              && timeValuePair.getTimestamp() <= terminateTime) {
-        batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
-      }
-    }
-    return batchData;
-  }
-
   @Override
   public void close() {
     // Do nothing because mem chunk reader will not open files
@@ -140,13 +120,5 @@ public class MemChunkReader implements IChunkReader, IPointReader {
     // we treat one ReadOnlyMemChunk as one Page
     return Collections.singletonList(
         new MemPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
-  }
-
-  @Override
-  public List<IPageReader> getPageReaderListWithTerminateTime(long terminateTime)
-      throws IOException {
-    return Collections.singletonList(
-        new MemPageReader(nextPageDataWithTerminateTime(terminateTime),
-            readOnlyMemChunk.getChunkMetaData().getStatistics()));
   }
 }

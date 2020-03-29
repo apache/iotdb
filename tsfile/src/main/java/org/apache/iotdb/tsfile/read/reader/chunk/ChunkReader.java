@@ -158,10 +158,4 @@ public class ChunkReader implements IChunkReader {
   public List<IPageReader> getPageReaderList() {
     return pageReaderList;
   }
-
-  @Override
-  public List<IPageReader> getPageReaderListWithTerminateTime(long terminateTime)
-      throws IOException {
-    return pageReaderList;
-  }
 }

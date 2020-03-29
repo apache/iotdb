@@ -24,6 +24,7 @@ import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -550,6 +551,16 @@ public class BatchData implements Serializable {
       default:
         return null;
     }
+  }
+
+  public TimeValuePair getLastPairBeforeOrEqualTimestamp(long queryTime) {
+    TimeValuePair resultPair = new TimeValuePair(Long.MIN_VALUE, null);
+    while (hasCurrent() && (currentTime() <= queryTime)) {
+      resultPair.setTimestamp(currentTime());
+      resultPair.setValue(currentTsPrimitiveType());
+      next();
+    }
+    return resultPair;
   }
 
   public Object getValueInTimestamp(long time) {
