@@ -66,7 +66,7 @@ public class RaftLogManager {
             long ci = findConflict(entries);
             if (ci == 0 || ci <= committed) {
                 logger.error("entry {} conflict with committed entry [committed({})]", ci, committed);
-                throw new TruncateCommittedEntryException();
+                throw new TruncateCommittedEntryException(ci, committed);
             } else {
                 long offset = lastIndex + 1;
                 append(entries.subList((int) (ci - offset), entries.size()));
@@ -109,11 +109,7 @@ public class RaftLogManager {
         List<Log> entries = new ArrayList<>();
         long offset = unCommittedEntryManager.getFirstUnCommittedIndex();
         if (low < offset) {
-            try {
-                entries.addAll(committedEntryManager.getEntries(low, Math.min(high, offset)));
-            } catch (EntryUnavailableException e) {
-                logger.error("can not find log in committedEntryManager which index is {}", offset);
-            }
+            entries.addAll(committedEntryManager.getEntries(low, Math.min(high, offset)));
         }
         if (high > offset) {
             List<Log> unCommittedEntries = null;
@@ -144,7 +140,7 @@ public class RaftLogManager {
         return term > getLastTerm() || (term == getLastTerm() && lastIndex >= getLastIndex());
     }
 
-    private long append(List<Log> entries) throws TruncateCommittedEntryException {
+    private long append(List<Log> entries) throws TruncateCommittedEntryException{
         if (entries.size() == 0) {
             return getLastIndex();
         }
@@ -184,12 +180,13 @@ public class RaftLogManager {
         }
         long first = getFirstIndex();
         if (low < first) {
-            throw new EntryCompactedException();
+            logger.error("CheckBound out of index: parameter: {} , lower bound: {} ", low, high);
+            throw new EntryCompactedException(low, first);
         }
         long upper = getLastIndex() + 1;
         if (high > upper) {
-            logger.error("CheckBound out of index: parameter: {}/{} , boundary: {}/{} ", low, high, first, upper);
-            throw new EntryUnavailableException();
+            logger.error("CheckBound out of index: parameter: {} , upper bound: {} ", first, upper);
+            throw new EntryUnavailableException(high, upper);
         }
     }
 }

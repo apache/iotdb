@@ -1,9 +1,6 @@
 package org.apache.iotdb.cluster.log;
 
-import org.apache.iotdb.cluster.exception.EntryStabledException;
-import org.apache.iotdb.cluster.exception.EntryUnavailableException;
-import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
-import org.apache.iotdb.cluster.exception.TruncateCommittedEntryException;
+import org.apache.iotdb.cluster.exception.*;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +33,7 @@ public class UnCommittedEntryManager {
     /**
      * maybeLastIndex returns the last index if it has at least one uncommitted entry.
      *
-     * @return set to -1 if unstable entries are empty, or return the last index.
+     * @return set to -1 if entries are empty, or return the last entry index.
      */
     public long maybeLastIndex() {
         int entryNum = entries.size();
@@ -49,7 +46,7 @@ public class UnCommittedEntryManager {
     /**
      * maybeTerm returns the term for given index.
      *
-     * @param index
+     * @param index request entry index
      * @return set to -1 if the entry for this index cannot be found, or return the entry's term.
      */
     public long maybeTerm(long index) {
@@ -64,11 +61,11 @@ public class UnCommittedEntryManager {
     }
 
     /**
-     * stableTo remove useless prefix entries as long as these entries has been committed,
+     * stableTo remove useless prefix entries as long as these entries has been committed and persisted,
      * It is often called after snapshot persistence and log persistence.
      *
-     * @param index
-     * @param term
+     * @param index request entry index
+     * @param term  request entry term
      */
     public void stableTo(long index, long term) {
         long entryTerm = maybeTerm(index);
@@ -82,57 +79,43 @@ public class UnCommittedEntryManager {
 
     /**
      * truncateAndAppend append uncommitted entries.It will truncate conflict entries if it find inconsistencies.
+     * Node that the caller must handle the case when len > entries.size()
      *
-     * @param entries
+     * @param appendingEntries request entries
      * @throws TruncateCommittedEntryException
      */
-    public void truncateAndAppend(List<Log> entries) throws TruncateCommittedEntryException {
-        long after = entries.get(0).getCurrLogIndex();
+    public void truncateAndAppend(List<Log> appendingEntries) throws TruncateCommittedEntryException {
+        long after = appendingEntries.get(0).getCurrLogIndex();
         long len = after - offset;
-        if (len == this.entries.size()) {
-            // after is the next index in the entries
-            // directly append
-            this.entries.addAll(entries);
-        } else if (len < 0) {
+        if (len < 0) {
             // The log is being truncated to before our current offset
             // portion, which is committed entries
             // throws exception
             logger.error("The logs which first index is {} are going to truncate committed logs", after);
-            throw new TruncateCommittedEntryException();
+            throw new TruncateCommittedEntryException(after, offset);
+        } else if (len == entries.size()) {
+            // after is the next index in the entries
+            // directly append
+            entries.addAll(appendingEntries);
         } else {
             // truncate wrong entries
             // then append
             logger.info("truncate the entries after index {}", after);
-            this.entries.subList((int) (after - offset), this.entries.size()).clear();
-            this.entries.addAll(entries);
+            entries.subList((int) (after - offset), entries.size()).clear();
+            entries.addAll(appendingEntries);
         }
     }
 
     /**
      * getEntries pack entries from low to high - 1, just like slice (entries[low:high]).
-     *
-     * @param low
-     * @param high
-     * @throws GetEntriesWrongParametersException
-     * @throws EntryStabledException
-     * @throws EntryUnavailableException
-     */
-    public List<Log> getEntries(long low, long high) throws GetEntriesWrongParametersException, EntryStabledException, EntryUnavailableException {
-        checkBound(low, high);
-        return entries.subList((int) (low - offset), (int) (high - offset));
-    }
-
-    /**
-     * checkBound check whether the parameters passed meet the following properties.
      * offset <= low <= high <= offset+entries.size().
      *
-     * @param low
-     * @param high
+     * @param low  request index low bound
+     * @param high request index upper bound
      * @throws GetEntriesWrongParametersException
-     * @throws EntryStabledException
      * @throws EntryUnavailableException
      */
-    private void checkBound(long low, long high) throws GetEntriesWrongParametersException, EntryStabledException, EntryUnavailableException {
+    public List<Log> getEntries(long low, long high) throws GetEntriesWrongParametersException, EntryUnavailableException {
         if (low >= high) {
             logger.error("invalid getEntries: parameter: {} >= {}", low, high);
             throw new GetEntriesWrongParametersException(low, high);
@@ -140,12 +123,13 @@ public class UnCommittedEntryManager {
         long upper = offset + entries.size();
         if (low < offset) {
             logger.error("invalid getEntries: parameter: {}/{} , boundary: {}/{}", low, high, offset, upper);
-            throw new EntryStabledException();
+            low = offset;
         }
         if (high > upper) {
             logger.error("invalid getEntries: parameter: {}/{} , boundary: {}/{}", low, high, offset, upper);
-            throw new EntryUnavailableException();
+            throw new EntryUnavailableException(high, upper);
         }
+        return entries.subList((int) (low - offset), (int) (high - offset));
     }
 
     @TestOnly
@@ -155,7 +139,7 @@ public class UnCommittedEntryManager {
     }
 
     @TestOnly
-    public List<Log> getEntries() {
+    public List<Log> getAllEntries() {
         return entries;
     }
 }
