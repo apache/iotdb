@@ -1279,6 +1279,9 @@ public class StorageGroupProcessor {
         continue;
       }
 
+      long partitionId = getTimePartitionFromTsFileResource(tsFileResource);
+      deletion.setVersionNum(getVersionControllerByTimePartitionId(partitionId).nextVersion());
+
       // write deletion into modification file
       tsFileResource.getModFile().write(deletion);
       // remember to close mod file
