@@ -83,7 +83,7 @@ public class RawDataQueryPlan extends QueryPlan {
   }
 
   public Set<String> getAllSensorsInDevice(String device) {
-    return deviceToSensors.getOrDefault(device, Collections.EMPTY_SET);
+    return deviceToSensors.getOrDefault(device, Collections.emptySet());
   }
 
 }
