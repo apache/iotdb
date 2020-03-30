@@ -51,6 +51,16 @@
             <artifactId>osgi.cmpn</artifactId>
             <version>6.0.0</version>
         </dependency>
+        <dependency>
+            <groupId>org.ops4j.pax.jdbc</groupId>
+            <artifactId>pax-jdbc-common</artifactId>
+            <version>1.4.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.core</artifactId>
+            <version>6.0.0</version>
+        </dependency>
     </dependencies>
     <build>
         <resources>
@@ -106,6 +116,7 @@
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
+                <version>4.2.1</version>
                 <executions>
                     <execution>
                         <id>bundle-manifest</id>
@@ -118,7 +129,7 @@
                 <configuration>
                     <exportScr>true</exportScr>
                     <instructions>
-                        <_include>-bnd.bnd</_include>
+                        <_include>osgi.bnd</_include>
                         <_removeheaders>Bnd-LastModified,Built-By</_removeheaders>
                         <Embed-Dependency>dependencies</Embed-Dependency>
                     </instructions>
