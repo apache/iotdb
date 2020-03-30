@@ -31,6 +31,14 @@
     <properties>
         <frontend-maven-plugin.version>1.9.1</frontend-maven-plugin.version>
     </properties>
+
+    <distributionManagement>
+        <site>
+            <id>apache.website</id>
+            <url>scm:git:https://gitbox.apache.org/repos/asf/incubator-iotdb-website.git</url>
+        </site>
+    </distributionManagement>
+
     <build>
         <plugins>
             <!-- copy source codes into vue required folders-->
@@ -300,7 +308,27 @@
                     </execution>
                 </executions>
             </plugin>
-
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-scm-publish-plugin</artifactId>
+                <configuration>
+                    <!-- mono-module doesn't require site:stage -->
+                    <content>${project.build.directory}/vue-source/src/.vuepress/dist</content>
+                    <!-- branch where to deploy -->
+                    <scmBranch>asf-site</scmBranch>
+                </configuration>
+            </plugin>
+<!--            <plugin>-->
+<!--                <groupId>org.simplify4u.plugins</groupId>-->
+<!--                <artifactId>sitemapxml-maven-plugin</artifactId>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <goals>-->
+<!--                            <goal>gen</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
         </plugins>
     </build>
 </project>
