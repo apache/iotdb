@@ -85,6 +85,58 @@
                             </resources>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>copy-other-md-files-to-development</id>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/vue-source/src/Development</outputDirectory>
+                            <!-- output directory -->
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/../tsfile</directory>
+                                    <includes>
+                                        <include>format-changelist.md</include>
+                                    </includes>
+                                </resource>
+                                <resource>
+                                    <directory>${basedir}/../service-rpc</directory>
+                                    <includes>
+                                        <include>rpc-changelist.md</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-other-md-files-to-zh-development</id>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/vue-source/src/zh/Development</outputDirectory>
+                            <!-- output directory -->
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/../tsfile</directory>
+                                    <includes>
+                                        <include>format-changelist.md</include>
+                                    </includes>
+                                </resource>
+                                <resource>
+                                    <directory>${basedir}/../service-rpc</directory>
+                                    <includes>
+                                        <include>rpc-changelist.md</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <!-- mv UserGuide of master into master folder -->
