@@ -27,7 +27,7 @@ IoTDB official website：https://iotdb.apache.org/
 
 Code library：https://github.com/apache/incubator-iotdb/tree/master
 
-Get started quickly：http://iotdb.apache.org/document/master/UserGuide/0-Get%20Started/1-QuickStart.html
+Get started quickly：http://iotdb.apache.org/UserGuide/master/0-Get%20Started/1-QuickStart.html
 
 ## Subscribe to mailing list
 
@@ -39,7 +39,7 @@ Follow method: Send an email to dev-subscribe@iotdb.apache.org with the email yo
 
 ## New features, bug feedback, improvements, and more
 
-All features or bugs that you want IoTDB to do can be raised on Jira：https://issues.apache.org/jira/projects/IOTDB/issues/IOTDB-9?filter=allopenissues
+All features or bugs that you want IoTDB to do can be raised on Jira：https://issues.apache.org/jira/projects/IOTDB/issues
 
 You can choose issue types: bug, improvement, new feature, etc.  New issues will be automatically synchronized to the mailing list, and subsequent discussions can be left on jira or on the mailing list.  When the issue is resolved, close the issue.
 
