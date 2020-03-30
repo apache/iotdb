@@ -518,7 +518,7 @@ public class StorageEngine implements IService {
     return processor != null && processor.isFileAlreadyExist(tsFileResource, partitionNum);
   }
 
-  public long getTimePartitionInterval() {
+  public static long getTimePartitionInterval() {
     return timePartitionInterval;
   }
 

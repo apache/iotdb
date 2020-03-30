@@ -119,19 +119,16 @@ public class MergeTask implements Callable<Void> {
 
     Set<String> devices = MManager.getInstance().getDevices(storageGroupName);
     Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>();
+    List<Path> unmergedSeries = new ArrayList<>();
     for (String device : devices) {
       InternalMNode deviceNode = (InternalMNode) MManager.getInstance().getNodeByPath(device);
       for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
-        measurementSchemaMap.put(new Path(device, entry.getKey()), ((LeafMNode) entry.getValue()).getSchema());
+        Path path = new Path(device, entry.getKey());
+        measurementSchemaMap.put(path, ((LeafMNode) entry.getValue()).getSchema());
+        unmergedSeries.add(path);
       }
     }
     resource.setMeasurementSchemaMap(measurementSchemaMap);
-
-    List<String> storageGroupPaths = MManager.getInstance().getAllTimeseriesName(storageGroupName + ".*");
-    List<Path> unmergedSeries = new ArrayList<>();
-    for (String path : storageGroupPaths) {
-      unmergedSeries.add(new Path(path));
-    }
 
     mergeLogger.logMergeStart();
 

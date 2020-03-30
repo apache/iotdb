@@ -104,11 +104,6 @@ public class TsFileResource {
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  /**
-   * set to false if we failed to get TimeSeriesMetadata
-   */
-  private boolean canGetTimeSeriesMetadata = true;
-
   public TsFileResource() {
   }
 
@@ -472,14 +467,6 @@ public class TsFileResource {
 
   public void setProcessor(TsFileProcessor processor) {
     this.processor = processor;
-  }
-
-  public boolean canGetTimeSeriesMetadata() {
-    return canGetTimeSeriesMetadata;
-  }
-
-  public void setCanGetTimeSeriesMetadata(boolean canGetTimeSeriesMetadata) {
-    this.canGetTimeSeriesMetadata = canGetTimeSeriesMetadata;
   }
 
   public TimeseriesMetadata getTimeSeriesMetadata() {
