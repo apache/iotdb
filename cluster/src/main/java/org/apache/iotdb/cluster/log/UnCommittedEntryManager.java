@@ -4,6 +4,7 @@ import org.apache.iotdb.cluster.exception.EntryStabledException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
 import org.apache.iotdb.cluster.exception.TruncateCommittedEntryException;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,7 +93,7 @@ public class UnCommittedEntryManager {
             // after is the next index in the entries
             // directly append
             this.entries.addAll(entries);
-        } else if (len <= 0) {
+        } else if (len < 0) {
             // The log is being truncated to before our current offset
             // portion, which is committed entries
             // throws exception
@@ -132,8 +133,8 @@ public class UnCommittedEntryManager {
      * @throws EntryUnavailableException
      */
     private void checkBound(long low, long high) throws GetEntriesWrongParametersException, EntryStabledException, EntryUnavailableException {
-        if (low > high) {
-            logger.error("invalid getEntries: parameter: {} > {}", low, high);
+        if (low >= high) {
+            logger.error("invalid getEntries: parameter: {} >= {}", low, high);
             throw new GetEntriesWrongParametersException(low, high);
         }
         long upper = offset + entries.size();
@@ -145,5 +146,16 @@ public class UnCommittedEntryManager {
             logger.error("invalid getEntries: parameter: {}/{} , boundary: {}/{}", low, high, offset, upper);
             throw new EntryUnavailableException();
         }
+    }
+
+    @TestOnly
+    public UnCommittedEntryManager(long offset, List<Log> entries) {
+        this.offset = offset;
+        this.entries = entries;
+    }
+
+    @TestOnly
+    public List<Log> getEntries() {
+        return entries;
     }
 }

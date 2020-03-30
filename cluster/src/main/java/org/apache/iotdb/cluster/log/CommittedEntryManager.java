@@ -20,9 +20,7 @@ public class CommittedEntryManager {
     public CommittedEntryManager(HardState hardState, Snapshot snapshot) {
         this.hardState = hardState;
         this.snapshot = snapshot;
-        PhysicalPlanLog dummy = new PhysicalPlanLog();
-        dummy.setCurrLogIndex(snapshot.getLastLogIndex());
-        dummy.setCurrLogTerm(snapshot.getLastLogTerm());
+        PhysicalPlanLog dummy = new PhysicalPlanLog(snapshot.getLastLogIndex(),snapshot.getLastLogTerm());
         entries = new ArrayList<Log>() {{
             add(dummy);
         }};
@@ -49,9 +47,7 @@ public class CommittedEntryManager {
         }
         snapshot = snap;
         entries.clear();
-        Log dummy = new PhysicalPlanLog();
-        dummy.setCurrLogIndex(snap.getLastLogIndex());
-        dummy.setCurrLogTerm(snap.getLastLogTerm());
+        Log dummy = new PhysicalPlanLog(snap.getLastLogIndex(),snap.getLastLogTerm());
         entries.add(dummy);
     }
 
@@ -96,9 +92,7 @@ public class CommittedEntryManager {
             throw new EntryUnavailableException();
         }
         int index = (int) (compactIndex - offset);
-        PhysicalPlanLog dummy = new PhysicalPlanLog();
-        dummy.setCurrLogIndex(entries.get(index).getCurrLogTerm());
-        dummy.setCurrLogTerm(entries.get(index).getCurrLogIndex());
+        PhysicalPlanLog dummy = new PhysicalPlanLog(entries.get(index).getCurrLogTerm(),entries.get(index).getCurrLogIndex());
         entries.clear();
         entries.add(dummy);
     }
