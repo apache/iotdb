@@ -471,8 +471,22 @@ public class PhysicalGenerator {
       return;
     }
     RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
-
     Set<String> columnSet = new HashSet<>();
+    // if it's a last query, no need to sort by device
+    if (queryPlan instanceof LastQueryPlan) {
+      for (int i = 0; i < paths.size(); i++) {
+        Path path = paths.get(i);
+        String column = path.toString();
+        if (!columnSet.contains(column)) {
+          TSDataType seriesType = dataTypes.get(i);
+          rawDataQueryPlan.addDeduplicatedPaths(path);
+          rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
+          columnSet.add(column);
+        }
+      }
+      return;
+    }
+
     int index = 0;
     for (Pair<Path, Integer> indexedPath : indexedPaths) {
       Path path = indexedPath.left;
