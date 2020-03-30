@@ -204,7 +204,7 @@ IoTDB> SHOW TIMESERIES
 }
 ```
 
-为了查看指定的时间序列，我们可以使用SHOW TIMESERIES <Path>语句，查看时间序列root.ln.wf01.wt01.status的SQL语句如下：
+为了查看指定的时间序列，我们可以使用SHOW TIMESERIES \<Path\>语句，查看时间序列root.ln.wf01.wt01.status的SQL语句如下：
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 ```

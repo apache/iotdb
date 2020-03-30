@@ -54,7 +54,7 @@ Here in the Quick Start, we give a brief introduction of using source code to in
 
 ### Installation from source code
 
-You can get the released source code from https://iotdb.apache.org/download/, or from the git repository https://github.com/apache/incubator-iotdb/tree/master
+You can get the released source code from https://iotdb.apache.org/Download/, or from the git repository https://github.com/apache/incubator-iotdb/tree/master
 
 Now suppose your directory is like this:
 
