@@ -316,17 +316,22 @@
                     <scmBranch>asf-site</scmBranch>
                 </configuration>
             </plugin>
-            <!--            <plugin>-->
-            <!--                <groupId>org.simplify4u.plugins</groupId>-->
-            <!--                <artifactId>sitemapxml-maven-plugin</artifactId>-->
-            <!--                <executions>-->
-            <!--                    <execution>-->
-            <!--                        <goals>-->
-            <!--                            <goal>gen</goal>-->
-            <!--                        </goals>-->
-            <!--                    </execution>-->
-            <!--                </executions>-->
-            <!--            </plugin>-->
+            <plugin>
+                <groupId>org.simplify4u.plugins</groupId>
+                <artifactId>sitemapxml-maven-plugin</artifactId>
+                <configuration>
+                    <siteOutputDirectory>${project.build.directory}/vue-source/src/.vuepress/dist</siteOutputDirectory>
+                    <maxDepth>5</maxDepth>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>gen</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>
