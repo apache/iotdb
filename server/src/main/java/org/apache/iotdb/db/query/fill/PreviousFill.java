@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.fill;
 
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -74,9 +75,12 @@ public class PreviousFill extends IFill {
   public void constructReaders(Path path, QueryContext context)
       throws StorageEngineException {
     Filter timeFilter = constructFilter();
-    executor = new PreviousFillExecutor(path, dataType, context,
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
-        timeFilter, null, null, queryTime);
+    QueryDataSource queryDataSource =
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
+    // update filter by TTL
+    timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
+    executor = new PreviousFillExecutor(
+        path, dataType, context, queryDataSource, timeFilter, null, null, queryTime);
   }
 
 }
