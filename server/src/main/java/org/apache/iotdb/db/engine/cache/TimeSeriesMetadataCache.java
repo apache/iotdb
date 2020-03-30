@@ -62,7 +62,7 @@ public class TimeSeriesMetadataCache {
       protected long calEntrySize(TimeSeriesMetadataCacheKey key, TimeseriesMetadata value) {
         if (count < 10) {
           long currentSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
-          averageSize = (averageSize * count) + currentSize / (++count);
+          averageSize = ((averageSize * count) + currentSize) / (++count);
           return currentSize;
         } else if (count < 10000) {
           count++;
@@ -114,9 +114,10 @@ public class TimeSeriesMetadataCache {
 
       if (!allSensors.isEmpty()) {
         // put TimeSeriesMetadata of all sensors used in this query into cache
-        timeSeriesMetadataMap.forEach((sensor, timeSeriesMetadata) -> {
-          if (allSensors.contains(sensor)) {
-            lruCache.put(new TimeSeriesMetadataCacheKey(key.filePath, key.device, sensor), timeSeriesMetadata);
+        allSensors.forEach(sensor -> {
+          if (timeSeriesMetadataMap.containsKey(sensor)) {
+            lruCache.put(new TimeSeriesMetadataCacheKey(key.filePath, key.device, sensor),
+                timeSeriesMetadataMap.get(sensor));
           }
         });
       }

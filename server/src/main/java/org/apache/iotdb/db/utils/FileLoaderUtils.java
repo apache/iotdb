@@ -75,6 +75,13 @@ public class FileLoaderUtils {
     }
   }
 
+
+  /**
+   *
+   * @param resource TsFile
+   * @param seriesPath Timeseries path
+   * @param allSensors measurements queried at the same time of this device
+   */
   public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, Path seriesPath,
                                                           QueryContext context, Filter timeFilter, Set<String> allSensors) throws IOException {
     TimeseriesMetadata timeSeriesMetadata;
