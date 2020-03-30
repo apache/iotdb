@@ -39,7 +39,7 @@ IoTDB为您提供了两种安装方式，您可以参考下面的建议，任选
 
 ## 从官网下载二进制可执行文件
 
-您可以从[http://iotdb.apache.org/#/Download](http://iotdb.apache.org/#/Download)上下载已经编译好的可执行程序iotdb-xxx.tar.gz或者iotdb-xxx.zip，该压缩包包含了IoTDB系统运行所需的所有必要组件。
+您可以从[http://iotdb.apache.org/Download/](http://iotdb.apache.org/Download/)上下载已经编译好的可执行程序iotdb-xxx.tar.gz或者iotdb-xxx.zip，该压缩包包含了IoTDB系统运行所需的所有必要组件。
 
 ```
 NOTE:
@@ -77,7 +77,7 @@ server/     <-- root path
 
 ## 使用源码编译
 
-您可以获取已发布的源码https://iotdb.apache.org/#/Download，或者从git仓库获取https://github.com/apache/incubator-iotdb/tree/master
+您可以获取已发布的源码https://iotdb.apache.org/Download/，或者从git仓库获取https://github.com/apache/incubator-iotdb/tree/master
 
 源码克隆后，进入到源码文件夹目录下，使用以下命令进行编译：
 
@@ -117,4 +117,4 @@ $IOTDB_HOME/
 
 ## 通过Docker安装 (Dockerfile)
 
-你可以通过[这份指南](/zh/document/master/UserGuide/3-Server/5-Docker%20Image.html)编译并运行一个IoTDB docker image。
+你可以通过[这份指南](../3-Server/5-Docker%20Image.html)编译并运行一个IoTDB docker image。
