@@ -57,9 +57,15 @@ public class RawDataQueryPlan extends QueryPlan {
     this.deduplicatedPaths.add(path);
   }
 
-  public void setDeduplicatedPaths(
-      List<Path> deduplicatedPaths) {
-    deduplicatedPaths.forEach(path -> deviceToSensors.computeIfAbsent(path.getDevice(), key -> new HashSet<>()).add(path.getMeasurement()));
+  /**
+   * used for AlignByDevice Query, the query is executed by each device, So we only maintain
+   * measurements of current device.
+   */
+  public void setDeduplicatedPaths(List<Path> deduplicatedPaths) {
+    deviceToSensors.clear();
+    deduplicatedPaths.forEach(
+        path -> deviceToSensors.computeIfAbsent(path.getDevice(), key -> new HashSet<>())
+            .add(path.getMeasurement()));
     this.deduplicatedPaths = deduplicatedPaths;
   }
 

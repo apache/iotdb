@@ -35,7 +35,7 @@ public class Path implements Serializable, Comparable<Path> {
   private String measurement = null;
   private String device = null;
   private String fullPath;
-  private String illegalPathArgument = "Path parameter is null";
+  private static final String illegalPathArgument = "Path parameter is null";
 
   public Path(StringContainer pathSc) {
     if (pathSc == null) {
