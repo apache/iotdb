@@ -109,7 +109,8 @@ public class TimeSeriesMetadataCache {
       printCacheLog(false);
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
       Map<String, TimeseriesMetadata> timeSeriesMetadataMap = reader.readDeviceMetadata(key.device);
-      lruCache.put(key, timeSeriesMetadataMap.get(key.measurement));
+      TimeseriesMetadata res = timeSeriesMetadataMap.get(key.measurement);
+      lruCache.put(key, res);
 
       if (!allSensors.isEmpty()) {
         // put TimeSeriesMetadata of all sensors used in this query into cache
@@ -119,8 +120,7 @@ public class TimeSeriesMetadataCache {
           }
         });
       }
-
-      return lruCache.get(key);
+      return res;
     } catch (IOException e) {
       logger.error("something wrong happened while reading {}", key.filePath);
       throw e;

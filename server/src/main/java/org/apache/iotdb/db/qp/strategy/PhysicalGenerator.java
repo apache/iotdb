@@ -38,6 +38,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.*;
 
@@ -441,6 +442,12 @@ public class PhysicalGenerator {
     List<TSDataType> dataTypes = getSeriesTypes(paths);
     queryPlan.setDataTypes(dataTypes);
 
+    List<Pair<Path, Integer>> indexedPaths = new ArrayList<>();
+    for (int i = 0; i < paths.size(); i++) {
+      indexedPaths.add(new Pair<>(paths.get(i), i));
+    }
+    indexedPaths.sort(Comparator.comparing(pair -> pair.left));
+
     // deduplicate from here
     if (queryPlan instanceof AlignByDevicePlan) {
       return;
@@ -448,17 +455,17 @@ public class PhysicalGenerator {
     if (queryPlan instanceof AggregationPlan) {
       AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
       List<String> aggregations = aggregationPlan.getAggregations();
-
       Set<String> columnSet = new HashSet<>();
-      for (int i = 0; i < paths.size(); i++) {
-        Path path = paths.get(i);
-        String column = aggregations.get(i) + "(" + path.toString() + ")";
+      int index = 0;
+      for (Pair<Path, Integer> indexedPath : indexedPaths) {
+        String column = aggregations.get(indexedPath.right) + "(" + indexedPath.left.toString() + ")";
         if (!columnSet.contains(column)) {
-          aggregationPlan.addDeduplicatedPaths(path);
-          TSDataType seriesType = dataTypes.get(i);
+          aggregationPlan.addDeduplicatedPaths(indexedPath.left);
+          TSDataType seriesType = dataTypes.get(indexedPath.right);
           aggregationPlan.addDeduplicatedDataTypes(seriesType);
-          aggregationPlan.addDeduplicatedAggregations(aggregations.get(i));
+          aggregationPlan.addDeduplicatedAggregations(aggregations.get(indexedPath.right));
           columnSet.add(column);
+          aggregationPlan.addColumn(column, index++);
         }
       }
       return;
@@ -466,14 +473,16 @@ public class PhysicalGenerator {
     RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
 
     Set<String> columnSet = new HashSet<>();
-    for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
+    int index = 0;
+    for (Pair<Path, Integer> indexedPath : indexedPaths) {
+      Path path = indexedPath.left;
       String column = path.toString();
       if (!columnSet.contains(column)) {
-        TSDataType seriesType = dataTypes.get(i);
+        TSDataType seriesType = dataTypes.get(indexedPath.right);
         rawDataQueryPlan.addDeduplicatedPaths(path);
         rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
         columnSet.add(column);
+        rawDataQueryPlan.addColumn(column, index++);
       }
     }
   }
