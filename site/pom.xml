@@ -274,7 +274,7 @@
                         <goals>
                             <goal>install-node-and-npm</goal>
                         </goals>
-                        <phase>generate-resources</phase>
+                        <phase>package</phase>
                         <configuration>
                             <nodeVersion>v11.5.0</nodeVersion>
                             <npmVersion>6.4.1</npmVersion>
@@ -287,7 +287,7 @@
                             <goal>npm</goal>
                         </goals>
                         <!-- optional: default phase is "generate-resources" -->
-                        <phase>generate-resources</phase>
+                        <phase>package</phase>
                         <!-- Optional configuration which provides for running any npm command -->
                         <configuration>
                             <arguments>install</arguments>
@@ -296,7 +296,7 @@
                     <!-- Build and minify static files -->
                     <execution>
                         <id>npm run build</id>
-                        <phase>compile</phase>
+                        <phase>package</phase>
                         <goals>
                             <goal>npm</goal>
                         </goals>
