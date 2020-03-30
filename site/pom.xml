@@ -31,14 +31,12 @@
     <properties>
         <frontend-maven-plugin.version>1.9.1</frontend-maven-plugin.version>
     </properties>
-
     <distributionManagement>
         <site>
             <id>apache.website</id>
             <url>scm:git:https://gitbox.apache.org/repos/asf/incubator-iotdb-website.git</url>
         </site>
     </distributionManagement>
-
     <build>
         <plugins>
             <!-- copy source codes into vue required folders-->
@@ -268,7 +266,7 @@
                 <version>1.9.1</version>
                 <configuration>
                     <installDirectory>${project.build.directory}/tools</installDirectory>
-                    <workingDirectory>${project.build.directory}/vue-source/src</workingDirectory>
+                    <workingDirectory>${project.build.directory}/vue-source</workingDirectory>
                 </configuration>
                 <executions>
                     <execution>
@@ -318,17 +316,17 @@
                     <scmBranch>asf-site</scmBranch>
                 </configuration>
             </plugin>
-<!--            <plugin>-->
-<!--                <groupId>org.simplify4u.plugins</groupId>-->
-<!--                <artifactId>sitemapxml-maven-plugin</artifactId>-->
-<!--                <executions>-->
-<!--                    <execution>-->
-<!--                        <goals>-->
-<!--                            <goal>gen</goal>-->
-<!--                        </goals>-->
-<!--                    </execution>-->
-<!--                </executions>-->
-<!--            </plugin>-->
+            <!--            <plugin>-->
+            <!--                <groupId>org.simplify4u.plugins</groupId>-->
+            <!--                <artifactId>sitemapxml-maven-plugin</artifactId>-->
+            <!--                <executions>-->
+            <!--                    <execution>-->
+            <!--                        <goals>-->
+            <!--                            <goal>gen</goal>-->
+            <!--                        </goals>-->
+            <!--                    </execution>-->
+            <!--                </executions>-->
+            <!--            </plugin>-->
         </plugins>
     </build>
 </project>
