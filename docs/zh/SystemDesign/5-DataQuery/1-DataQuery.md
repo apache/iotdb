@@ -33,8 +33,8 @@
 
 ## 相关文档
 
-* [基础查询组件](/zh/document/master/SystemDesign/5-DataQuery/2-SeriesReader.html)
-* [原始数据查询](/zh/document/master/SystemDesign/5-DataQuery/3-RawDataQuery.html)
-* [聚合查询](/zh/document/master/SystemDesign/5-DataQuery/4-AggregationQuery.html)
-* [降采样查询](/zh/document/master/SystemDesign/5-DataQuery/5-GroupByQuery.html)
-* [最近时间戳查询](/zh/document/master/SystemDesign/5-DataQuery/6-LastQuery.html)
+* [基础查询组件](/zh/SystemDesign/5-DataQuery/2-SeriesReader.html)
+* [原始数据查询](/zh/SystemDesign/5-DataQuery/3-RawDataQuery.html)
+* [聚合查询](/zh/SystemDesign/5-DataQuery/4-AggregationQuery.html)
+* [降采样查询](/zh/SystemDesign/5-DataQuery/5-GroupByQuery.html)
+* [最近时间戳查询](/zh/SystemDesign/5-DataQuery/6-LastQuery.html)

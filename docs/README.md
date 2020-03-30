@@ -18,11 +18,6 @@
     under the License.
 
 -->
-
----
-home: true
----
-
 <Home/>
 
 <FooterFixed/>
