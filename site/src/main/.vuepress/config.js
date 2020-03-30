@@ -20,7 +20,7 @@ var config = {
     head: [
 		['link', { rel: 'icon', href: '/favicon.ico' }],
 		["meta", {name: "Description", content: "Apache IoTDB: Time Series Database for IoT"}],
-        ["meta", {name: "Keywords", content: "TSDB, time series, time series database, IoTDB, IoT database, IoT data management"}],
+        ["meta", {name: "Keywords", content: "TSDB, time series, time series database, IoTDB, IoT database, IoT data management,时序数据库, 时间序列管理, IoTDB, 物联网数据库, 实时数据库, 物联网数据管理, 物联网数据"}],
         ["meta", {name: "baidu-site-verification", content: "wfKETzB3OT"}],
         ["meta", {name: "google-site-verification", content: "mZWAoRY0yj_HAr-s47zHCGHzx5Ju-RVm5wDbPnwQYFo"}],
       ],
@@ -96,12 +96,10 @@ var config = {
 				  {
 					text: 'Development',
 					items: [
-					  { text: 'Questions and Contributing', link: '/Development/Development-Contributing'},
-					  { text: 'Developing in IDE', link: '/Development/Development-IDE'},
-					  { text: 'How to vote', link: '/Development/Development-VoteRelease'},
+					  { text: 'How to vote', link: '/Development/VoteRelease'},
+					  { text: 'ContributeGuide', link: '/Development/ContributeGuide'},
 					  { text: 'Changelist of TsFile', link: '/Development/format-changelist'},
 					  { text: 'Changelist of RPC', link: '/Development/rpc-changelist'},
-					  { text: 'ContributeGuide', link: '/Development/ContributeGuide'},
 					]
 				  },
 				  {
@@ -512,12 +510,10 @@ var config = {
 				  {
 					text: '发展',
 					items: [
-					  { text: '问题与贡献', link: '/zh/Development/Development-Contributing'},
-					  { text: '在IDE中开发', link: '/zh/Development/Development-IDE'},
-					  { text: '如何投票', link: '/zh/Development/Development-VoteRelease'},
+					  { text: '如何投票', link: '/zh/Development/VoteRelease'},
+					  { text: '开发指南', link: '/zh/Development/ContributeGuide'},
 					  { text: 'TsFile的更改列表', link: '/zh/Development/format-changelist'},
 					  { text: 'RPC变更清单', link: '/zh/Development/rpc-changelist'},
-					  { text: '开发指南', link: '/zh/Development/ContributeGuide'},
 					]
 				  },
 				  {
