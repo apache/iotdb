@@ -90,22 +90,21 @@ public class TsFileMetaDataCache {
   /**
    * get the TsFileMetaData for given TsFile.
    *
-   * @param tsFileResource -given TsFile
+   * @param filePath -given TsFile
    */
-  public TsFileMetadata get(TsFileResource tsFileResource) throws IOException {
+  public TsFileMetadata get(String filePath) throws IOException {
     if (!cacheEnable) {
-      return FileLoaderUtils.getTsFileMetadata(tsFileResource);
+      return FileLoaderUtils.getTsFileMetadata(filePath);
     }
 
-    String path = tsFileResource.getPath().intern();
     cacheRequestNum.incrementAndGet();
 
     lock.readLock().lock();
     try {
-      if (cache.containsKey(path)) {
+      if (cache.containsKey(filePath)) {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
-        return cache.get(path);
+        return cache.get(filePath);
       }
     } finally {
       lock.readLock().unlock();
@@ -113,14 +112,14 @@ public class TsFileMetaDataCache {
 
     lock.writeLock().lock();
     try {
-      if (cache.containsKey(tsFileResource.getPath())) {
+      if (cache.containsKey(filePath)) {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
-        return cache.get(tsFileResource.getPath());
+        return cache.get(filePath);
       }
       printCacheLog(false);
-      TsFileMetadata fileMetaData = FileLoaderUtils.getTsFileMetadata(tsFileResource);
-      cache.put(tsFileResource.getPath(), fileMetaData);
+      TsFileMetadata fileMetaData = FileLoaderUtils.getTsFileMetadata(filePath);
+      cache.put(filePath, fileMetaData);
       return fileMetaData;
     } finally {
       lock.writeLock().unlock();

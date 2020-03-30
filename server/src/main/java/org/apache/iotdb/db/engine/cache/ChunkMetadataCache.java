@@ -84,25 +84,25 @@ public class ChunkMetadataCache {
   /**
    * get {@link ChunkMetadata}. THREAD SAFE.
    */
-  public List<ChunkMetadata> get(TsFileResource resource, Path seriesPath)
+  public List<ChunkMetadata> get(String filePath, Path seriesPath)
       throws IOException {
     if (!cacheEnable) {
-      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
       // bloom filter part
+      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
       BloomFilter bloomFilter = fileMetaData.getBloomFilter();
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
         if (logger.isDebugEnabled()) {
           logger.debug(String
-              .format("path not found by bloom filter, file is: %s, path is: %s", resource.getFile(), seriesPath));
+              .format("path not found by bloom filter, file is: %s, path is: %s", filePath, seriesPath));
         }
         return new ArrayList<>();
       }
       // If timeseries isn't included in the tsfile, empty list is returned.
-      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource.getPath(), true);
+      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
       return tsFileReader.getChunkMetadataList(seriesPath);
     }
 
-    String key = (resource.getPath() + IoTDBConstant.PATH_SEPARATOR
+    String key = (filePath + IoTDBConstant.PATH_SEPARATOR
         + seriesPath.getDevice() + seriesPath.getMeasurement()).intern();
 
     cacheRequestNum.incrementAndGet();
@@ -126,14 +126,14 @@ public class ChunkMetadataCache {
         return new ArrayList<>(lruCache.get(key));
       }
       printCacheLog(false);
-      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
       // bloom filter part
+      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
       BloomFilter bloomFilter = fileMetaData.getBloomFilter();
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
         return new ArrayList<>();
       }
       List<ChunkMetadata> chunkMetaDataList = FileLoaderUtils
-          .getChunkMetadataList(seriesPath, resource);
+          .getChunkMetadataList(seriesPath, filePath);
       lruCache.put(key, chunkMetaDataList);
       return chunkMetaDataList;
     } finally {

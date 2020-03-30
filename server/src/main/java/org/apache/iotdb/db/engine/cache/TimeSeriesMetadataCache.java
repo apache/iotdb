@@ -20,13 +20,15 @@
 package org.apache.iotdb.db.engine.cache;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
@@ -82,6 +84,13 @@ public class TimeSeriesMetadataCache {
 
   public TimeseriesMetadata get(TimeSeriesMetadataCacheKey key, Set<String> allSensors) throws IOException {
     if (!cacheEnable) {
+      // bloom filter part
+      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(key.filePath);
+      BloomFilter bloomFilter = fileMetaData.getBloomFilter();
+      if (bloomFilter != null && !bloomFilter
+          .contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+        return null;
+      }
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
       return reader.readDeviceMetadata(key.device).get(key.measurement);
     }
@@ -107,6 +116,13 @@ public class TimeSeriesMetadataCache {
         return lruCache.get(key);
       }
       printCacheLog(false);
+      // bloom filter part
+      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(key.filePath);
+      BloomFilter bloomFilter = fileMetaData.getBloomFilter();
+      if (bloomFilter != null && !bloomFilter
+          .contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+        return null;
+      }
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
       Map<String, TimeseriesMetadata> timeSeriesMetadataMap = reader.readDeviceMetadata(key.device);
       TimeseriesMetadata res = timeSeriesMetadataMap.get(key.measurement);

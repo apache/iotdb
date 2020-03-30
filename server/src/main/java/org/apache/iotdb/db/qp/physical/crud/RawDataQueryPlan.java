@@ -22,7 +22,6 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-
 import java.util.*;
 
 public class RawDataQueryPlan extends QueryPlan {

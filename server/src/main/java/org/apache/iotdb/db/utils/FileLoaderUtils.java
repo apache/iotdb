@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -128,7 +127,7 @@ public class FileLoaderUtils {
       return new ArrayList<>();
     }
     if (resource.isClosed()) {
-      chunkMetadataList = ChunkMetadataCache.getInstance().get(resource, seriesPath);
+      chunkMetadataList = ChunkMetadataCache.getInstance().get(resource.getPath(), seriesPath);
     } else {
       chunkMetadataList = resource.getChunkMetadataList();
     }
@@ -161,19 +160,13 @@ public class FileLoaderUtils {
     return chunkMetadataList;
   }
 
-  public static List<ChunkMetadata> getChunkMetadataList(Path path, TsFileResource resource) throws IOException {
-    if (!resource.isClosed()) {
-      throw new IOException("The TsFile is not closed: " + resource.getFile().getAbsolutePath());
-    }
-    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource.getPath(), true);
+  public static List<ChunkMetadata> getChunkMetadataList(Path path, String filePath) throws IOException {
+    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
     return tsFileReader.getChunkMetadataList(path);
   }
 
-  public static TsFileMetadata getTsFileMetadata(TsFileResource resource) throws IOException {
-    if (!resource.isClosed()) {
-      throw new IOException("The TsFile is not closed: " + resource.getFile().getAbsolutePath());
-    }
-    TsFileSequenceReader reader = FileReaderManager.getInstance().get(resource.getPath(), true);
+  public static TsFileMetadata getTsFileMetadata(String filePath) throws IOException {
+    TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
     return reader.readFileMetadata();
   }
 }
