@@ -52,7 +52,9 @@ All changes in the target folder will be ignored by Git.
 
 ## Deploy Manually
 
-Copy all files in dist/ folder to asf-site branch.
+run `mvn package scm-publish:publish-scm`.
+ 
+Apache ID and passwored is needed.
 
 ## Directory Structure
 
