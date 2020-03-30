@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 import java.io.IOException;
+import java.util.Set;
 
 public abstract class IFill {
 
@@ -50,10 +51,10 @@ public abstract class IFill {
 
   public abstract IFill copy();
 
-  public void constructReaders(Path path, QueryContext context)
+  public void constructReaders(Path path, Set<String> allSensors, QueryContext context)
       throws StorageEngineException, QueryProcessException {
     Filter timeFilter = constructFilter();
-    allDataReader = new SeriesRawDataBatchReader(path, dataType, context,
+    allDataReader = new SeriesRawDataBatchReader(path, allSensors, dataType, context,
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
         timeFilter, null, null);
   }

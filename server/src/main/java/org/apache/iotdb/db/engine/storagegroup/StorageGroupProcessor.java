@@ -365,6 +365,7 @@ public class StorageGroupProcessor {
           logger.warn("{} is not a directory.", partitionFolder.getAbsolutePath());
           continue;
         }
+
         Collections.addAll(tsFiles,
             fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX));
         }

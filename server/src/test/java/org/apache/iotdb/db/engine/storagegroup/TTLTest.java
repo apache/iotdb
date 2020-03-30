@@ -20,15 +20,6 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -36,11 +27,11 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.Planner;
@@ -65,6 +56,12 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+
+import static org.junit.Assert.*;
 
 public class TTLTest {
 
@@ -201,7 +198,9 @@ public class TTLTest {
     assertTrue(seqResource.size() < 4);
     assertEquals(0, unseqResource.size());
     Path path = new Path(sg1, s1);
-    IBatchReader reader = new SeriesRawDataBatchReader(path, TSDataType.INT64,
+    Set<String> allSensors = new HashSet<>();
+    allSensors.add(s1);
+    IBatchReader reader = new SeriesRawDataBatchReader(path, allSensors, TSDataType.INT64,
         EnvironmentUtils.TEST_QUERY_CONTEXT, dataSource, null, null, null);
 
     int cnt = 0;
