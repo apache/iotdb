@@ -1,5 +1,5 @@
 {
-  "name": "Apache IoTDB (incubating)",
+  "name": "IoTDB",
   "version": "1.0.0",
   "description": "Apache IoTDB (incubating) Website",
   "main": "index.js",
