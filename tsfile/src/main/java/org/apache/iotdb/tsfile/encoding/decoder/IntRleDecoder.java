@@ -94,7 +94,8 @@ public class IntRleDecoder extends RleDecoder {
       result = currentBuffer[bitPackingNum - currentCount - 1];
       break;
     default:
-      throw new TsFileDecodingException(String.format("tsfile-encoding IntRleDecoder: not a valid mode %s", mode));
+      throw new TsFileDecodingException(
+          String.format("tsfile-encoding IntRleDecoder: not a valid mode %s", mode));
     }
 
     if (!hasNextPackage()) {

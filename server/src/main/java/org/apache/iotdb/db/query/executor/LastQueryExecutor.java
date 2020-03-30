@@ -54,8 +54,8 @@ public class LastQueryExecutor {
   private List<TSDataType> dataTypes;
 
   public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
-    this.selectedSeries = lastQueryPlan.getPaths();
-    this.dataTypes = lastQueryPlan.getDataTypes();
+    this.selectedSeries = lastQueryPlan.getDeduplicatedPaths();
+    this.dataTypes = lastQueryPlan.getDeduplicatedDataTypes();
   }
 
   /**

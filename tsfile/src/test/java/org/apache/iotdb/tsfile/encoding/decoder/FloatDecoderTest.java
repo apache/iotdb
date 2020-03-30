@@ -145,7 +145,8 @@ public class FloatDecoderTest {
     logger.debug("{} // {}", value + 2, value2_);
   }
 
-  private void testFloatLength(TSEncoding encoding, List<Float> valueList, int maxPointValue, boolean isDebug,
+  private void testFloatLength(TSEncoding encoding, List<Float> valueList, int maxPointValue,
+      boolean isDebug,
       int repeatCount) throws Exception {
     Encoder encoder = new FloatEncoder(encoding, TSDataType.FLOAT, maxPointValue);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -170,7 +171,8 @@ public class FloatDecoderTest {
     }
   }
 
-  private void testDoubleLength(TSEncoding encoding, List<Double> valueList, int maxPointValue, boolean isDebug,
+  private void testDoubleLength(TSEncoding encoding, List<Double> valueList, int maxPointValue,
+      boolean isDebug,
       int repeatCount) throws Exception {
     Encoder encoder = new FloatEncoder(encoding, TSDataType.DOUBLE, maxPointValue);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();

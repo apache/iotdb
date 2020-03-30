@@ -57,7 +57,7 @@ public abstract class Decoder {
   /**
    * get Decoder object by type.
    *
-   * @param type     TSEncoding type
+   * @param type TSEncoding type
    * @param dataType TSDataType
    * @return Decoder object
    */
@@ -67,49 +67,54 @@ public abstract class Decoder {
       return new PlainDecoder(endian);
     } else if (type == TSEncoding.RLE) {
       switch (dataType) {
-      case BOOLEAN:
-      case INT32:
-        return new IntRleDecoder(EndianType.BIG_ENDIAN);
-      case INT64:
-        return new LongRleDecoder(EndianType.BIG_ENDIAN);
-      case FLOAT:
-      case DOUBLE:
-        return new FloatDecoder(TSEncoding.valueOf(type.toString()), dataType);
-      default:
-        throw new TsFileDecodingException("Decoder not found:" + type + " , DataType is :" + dataType);
+        case BOOLEAN:
+        case INT32:
+          return new IntRleDecoder(EndianType.BIG_ENDIAN);
+        case INT64:
+          return new LongRleDecoder(EndianType.BIG_ENDIAN);
+        case FLOAT:
+        case DOUBLE:
+          return new FloatDecoder(TSEncoding.valueOf(type.toString()), dataType);
+        default:
+          throw new TsFileDecodingException(
+              "Decoder not found:" + type + " , DataType is :" + dataType);
       }
     } else if (type == TSEncoding.TS_2DIFF) {
       switch (dataType) {
-      case INT32:
-        return new DeltaBinaryDecoder.IntDeltaDecoder();
-      case INT64:
-        return new DeltaBinaryDecoder.LongDeltaDecoder();
-      case FLOAT:
-      case DOUBLE:
-        return new FloatDecoder(TSEncoding.valueOf(type.toString()), dataType);
-      default:
-        throw new TsFileDecodingException("Decoder not found:" + type + " , DataType is :" + dataType);
+        case INT32:
+          return new DeltaBinaryDecoder.IntDeltaDecoder();
+        case INT64:
+          return new DeltaBinaryDecoder.LongDeltaDecoder();
+        case FLOAT:
+        case DOUBLE:
+          return new FloatDecoder(TSEncoding.valueOf(type.toString()), dataType);
+        default:
+          throw new TsFileDecodingException(
+              "Decoder not found:" + type + " , DataType is :" + dataType);
       }
     } else if (type == TSEncoding.GORILLA) {
       switch (dataType) {
-      case FLOAT:
-        return new SinglePrecisionDecoder();
-      case DOUBLE:
-        return new DoublePrecisionDecoder();
-      default:
-        throw new TsFileDecodingException("Decoder not found:" + type + " , DataType is :" + dataType);
+        case FLOAT:
+          return new SinglePrecisionDecoder();
+        case DOUBLE:
+          return new DoublePrecisionDecoder();
+        default:
+          throw new TsFileDecodingException(
+              "Decoder not found:" + type + " , DataType is :" + dataType);
       }
     } else if (type == TSEncoding.REGULAR) {
       switch (dataType) {
-      case INT32:
-        return new RegularDataDecoder.IntRegularDecoder();
-      case INT64:
-        return new RegularDataDecoder.LongRegularDecoder();
-      default:
-        throw new TsFileDecodingException("Decoder not found:" + type + " , DataType is :" + dataType);
+        case INT32:
+          return new RegularDataDecoder.IntRegularDecoder();
+        case INT64:
+          return new RegularDataDecoder.LongRegularDecoder();
+        default:
+          throw new TsFileDecodingException(
+              "Decoder not found:" + type + " , DataType is :" + dataType);
       }
     } else {
-      throw new TsFileDecodingException("Decoder not found:" + type + " , DataType is :" + dataType);
+      throw new TsFileDecodingException(
+          "Decoder not found:" + type + " , DataType is :" + dataType);
     }
   }
 

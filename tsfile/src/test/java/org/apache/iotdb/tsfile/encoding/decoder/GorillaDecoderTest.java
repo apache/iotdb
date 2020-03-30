@@ -201,7 +201,8 @@ public class GorillaDecoderTest {
     }
   }
 
-  private void testFloatLength(List<Float> valueList, boolean isDebug, int repeatCount) throws Exception {
+  private void testFloatLength(List<Float> valueList, boolean isDebug, int repeatCount)
+      throws Exception {
     Encoder encoder = new SinglePrecisionEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
@@ -229,7 +230,8 @@ public class GorillaDecoderTest {
     }
   }
 
-  private void testDoubleLength(List<Double> valueList, boolean isDebug, int repeatCount) throws Exception {
+  private void testDoubleLength(List<Double> valueList, boolean isDebug, int repeatCount)
+      throws Exception {
     Encoder encoder = new DoublePrecisionEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {

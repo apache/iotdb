@@ -76,20 +76,20 @@ public enum TSDataType {
    */
   public short serialize() {
     switch (this) {
-    case BOOLEAN:
-      return 0;
-    case INT32:
-      return 1;
-    case INT64:
-      return 2;
-    case FLOAT:
-      return 3;
-    case DOUBLE:
-      return 4;
-    case TEXT:
-      return 5;
-    default:
-      return -1;
+      case BOOLEAN:
+        return 0;
+      case INT32:
+        return 1;
+      case INT64:
+        return 2;
+      case FLOAT:
+        return 3;
+      case DOUBLE:
+        return 4;
+      case TEXT:
+        return 5;
+      default:
+        return -1;
     }
   }
 }

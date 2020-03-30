@@ -45,12 +45,12 @@ public interface IUnCompressor {
       throw new CompressionTypeNotSupportedException("NULL");
     }
     switch (name) {
-    case UNCOMPRESSED:
-      return new NoUnCompressor();
-    case SNAPPY:
-      return new SnappyUnCompressor();
-    default:
-      throw new CompressionTypeNotSupportedException(name.toString());
+      case UNCOMPRESSED:
+        return new NoUnCompressor();
+      case SNAPPY:
+        return new SnappyUnCompressor();
+      default:
+        throw new CompressionTypeNotSupportedException(name.toString());
     }
   }
 
@@ -75,18 +75,19 @@ public interface IUnCompressor {
    * uncompress the byte array.
    *
    * @param byteArray -to be uncompressed bytes
-   * @param offset    -offset
-   * @param length    -length
-   * @param output    -output byte
+   * @param offset -offset
+   * @param length -length
+   * @param output -output byte
    * @param outOffset -
    * @return the valid length of the output array
    */
-  int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset) throws IOException;
+  int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
+      throws IOException;
 
   /**
    * if the data is large, using this function is better.
    *
-   * @param compressed   MUST be DirectByteBuffer
+   * @param compressed MUST be DirectByteBuffer
    * @param uncompressed MUST be DirectByteBuffer
    */
   int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException;
@@ -111,7 +112,8 @@ public interface IUnCompressor {
     }
 
     @Override
-    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset) throws IOException {
+    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
+        throws IOException {
       throw new IOException("NoUnCompressor does not support this method.");
     }
 
@@ -149,13 +151,15 @@ public interface IUnCompressor {
       try {
         return Snappy.uncompress(bytes);
       } catch (IOException e) {
-        logger.error("tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte", e);
+        logger.error(
+            "tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte", e);
       }
       return new byte[0];
     }
 
     @Override
-    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset) throws IOException {
+    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
+        throws IOException {
       Snappy.uncompressedLength(byteArray, offset, length);
       return Snappy.uncompress(byteArray, offset, length, output, outOffset);
     }
@@ -169,7 +173,8 @@ public interface IUnCompressor {
       try {
         return Snappy.uncompress(compressed, uncompressed);
       } catch (IOException e) {
-        logger.error("tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte", e);
+        logger.error(
+            "tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte", e);
       }
       return 0;
     }

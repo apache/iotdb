@@ -41,30 +41,27 @@ public interface IMetadataQuerier {
    * this will load all chunk metadata of given paths into cache.
    *
    * <p>
-   * call this method before calling getChunkMetaDataList() will accelerate the
-   * reading of chunk metadata, which will only read TsDeviceMetaData once
+   * call this method before calling getChunkMetaDataList() will accelerate the reading of chunk
+   * metadata, which will only read TsDeviceMetaData once
    */
   void loadChunkMetaDatas(List<Path> paths) throws IOException;
 
   /**
-   *
-   * @param measurement
    * @return the corresponding data type.
    * @throws NoMeasurementException if the measurement not exists.
-   * @throws IOException
    */
   TSDataType getDataType(Path path) throws NoMeasurementException, IOException;
 
   /**
    * Convert the space partition constraint to the time partition constraint.
    *
-   * @param paths                  selected paths in a query expression
+   * @param paths selected paths in a query expression
    * @param spacePartitionStartPos the start position of the space partition
-   * @param spacePartitionEndPos   the end position of the space partition
+   * @param spacePartitionEndPos the end position of the space partition
    * @return the converted time partition constraint
    */
-  List<TimeRange> convertSpace2TimePartition(List<Path> paths, long spacePartitionStartPos, long spacePartitionEndPos)
-      throws IOException;
+  List<TimeRange> convertSpace2TimePartition(List<Path> paths, long spacePartitionStartPos,
+      long spacePartitionEndPos) throws IOException;
 
   /**
    * clear caches (if used) to release memory.

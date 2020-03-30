@@ -256,8 +256,7 @@ public class TimeRange implements Comparable<TimeRange> {
     List<TimeRange> remains = new ArrayList<>();
 
     for (TimeRange prev : timeRangesPrev) {
-      // +2 is to keep consistent with the definition of `intersects` of two closed
-      // intervals
+      // +2 is to keep consistent with the definition of `intersects` of two closed intervals
       if (prev.min >= max + 2) {
         // break early since timeRangesPrev is sorted
         break;
@@ -266,8 +265,7 @@ public class TimeRange implements Comparable<TimeRange> {
       if (intersects(prev)) {
         if (prev.contains(this)) {
           // e.g., this=[3,5], prev=[1,10]
-          // e.g., this=[3,5], prev=[3,5] Note that in this case, prev contains this and
-          // vice versa.
+          // e.g., this=[3,5], prev=[3,5] Note that in this case, prev contains this and vice versa.
           return remains;
         } else if (this.contains(prev)) {
           if (prev.min > this.min && prev.max == this.max) {
@@ -278,8 +276,7 @@ public class TimeRange implements Comparable<TimeRange> {
             // return the final result because timeRangesPrev is sorted
             return remains;
           } else if (prev.min == this.min) {
-            // Note prev.max < this.max
-            // e.g., this=[1,10], prev=[1,4]
+            // Note prev.max < this.max e.g., this=[1,10], prev=[1,4]
             min = prev.max;
             leftClose = false;
           } else {

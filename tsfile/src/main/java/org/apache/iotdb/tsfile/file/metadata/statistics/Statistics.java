@@ -32,19 +32,16 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 /**
- * This class is used for recording statistic information of each measurement in
- * a delta file. While writing processing, the processor records the statistics
- * information. Statistics includes maximum, minimum and null value count up to
- * version 0.0.1.<br>
- * Each data type extends this Statistic as super class.<br>
- *
+ * This class is used for recording statistic information of each measurement in a delta file. While
+ * writing processing, the processor records the statistics information. Statistics includes
+ * maximum, minimum and null value count up to version 0.0.1.<br> Each data type extends this
+ * Statistic as super class.<br>
  */
 public abstract class Statistics<T> {
 
   private static final Logger LOG = LoggerFactory.getLogger(Statistics.class);
   /**
-   * isEmpty being false means this statistic has been initialized and the max and
-   * min is not null;
+   * isEmpty being false means this statistic has been initialized and the max and min is not null;
    */
   protected boolean isEmpty = true;
 
@@ -69,20 +66,20 @@ public abstract class Statistics<T> {
    */
   public static Statistics getStatsByType(TSDataType type) {
     switch (type) {
-    case INT32:
-      return new IntegerStatistics();
-    case INT64:
-      return new LongStatistics();
-    case TEXT:
-      return new BinaryStatistics();
-    case BOOLEAN:
-      return new BooleanStatistics();
-    case DOUBLE:
-      return new DoubleStatistics();
-    case FLOAT:
-      return new FloatStatistics();
-    default:
-      throw new UnknownColumnTypeException(type.toString());
+      case INT32:
+        return new IntegerStatistics();
+      case INT64:
+        return new LongStatistics();
+      case TEXT:
+        return new BinaryStatistics();
+      case BOOLEAN:
+        return new BooleanStatistics();
+      case DOUBLE:
+        return new DoubleStatistics();
+      case FLOAT:
+        return new FloatStatistics();
+      default:
+        throw new UnknownColumnTypeException(type.toString());
     }
   }
 
@@ -373,7 +370,8 @@ public abstract class Statistics<T> {
     throw new UnsupportedOperationException();
   }
 
-  public static Statistics deserialize(InputStream inputStream, TSDataType dataType) throws IOException {
+  public static Statistics deserialize(InputStream inputStream, TSDataType dataType)
+      throws IOException {
     Statistics statistics = getStatsByType(dataType);
     statistics.setCount(ReadWriteIOUtils.readLong(inputStream));
     statistics.setStartTime(ReadWriteIOUtils.readLong(inputStream));

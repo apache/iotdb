@@ -161,8 +161,7 @@ public class IntPacker {
     int k = 0;
     while (idx < length) {
       int[] tv = new int[8];
-      // decode 8 values one time, current result will be saved in the array named
-      // 'tv'
+      // decode 8 values one time, current result will be saved in the array named 'tv'
       unpack8Values(buf, idx, tv);
       for (int i = 0; i < 8; i++) {
         values[k + i] = tv[i];

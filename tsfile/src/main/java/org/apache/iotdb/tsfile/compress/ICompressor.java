@@ -48,12 +48,12 @@ public interface ICompressor extends Serializable {
       throw new CompressionTypeNotSupportedException("NULL");
     }
     switch (name) {
-    case UNCOMPRESSED:
-      return new NoCompressor();
-    case SNAPPY:
-      return new SnappyCompressor();
-    default:
-      throw new CompressionTypeNotSupportedException(name.toString());
+      case UNCOMPRESSED:
+        return new NoCompressor();
+      case SNAPPY:
+        return new SnappyCompressor();
+      default:
+        throw new CompressionTypeNotSupportedException(name.toString());
     }
   }
 
