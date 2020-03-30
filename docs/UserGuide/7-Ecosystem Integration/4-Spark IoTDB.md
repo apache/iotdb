@@ -25,7 +25,7 @@ The versions required for Spark and Java are as follow:
 
 | Spark Version | Scala Version | Java Version | TsFile |
 | ------------- | ------------- | ------------ |------------ |
-| `>= 2.2`        | `2.11`        | `1.8`        | `0.10.0`|
+| `2.4.3`        | `2.11`        | `1.8`        | `0.10.0`|
 
 
 ## install

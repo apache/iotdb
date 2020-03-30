@@ -35,7 +35,7 @@ Second-order differential encoding is more suitable for encoding monotonically i
 
 Run-length encoding is more suitable for storing sequence with continuous integer values, and is not recommended for sequence data with most of the time different values.
 
-Run-length encoding can also be used to encode floating-point numbers, but it is necessary to specify reserved decimal digits (MAX\_POINT\_NUMBER, see [this page](/document/master/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html) for more information on how to specify) when creating time series. It is more suitable for storing sequence data where floating-point values appear continuously, monotonously increasing or decreasing, and it is not suitable for storing sequence data with high precision requirements after the decimal point or with large fluctuations.
+Run-length encoding can also be used to encode floating-point numbers, but it is necessary to specify reserved decimal digits (MAX\_POINT\_NUMBER, see [this page](../5-Operation%20Manual/4-SQL%20Reference.html) for more information on how to specify) when creating time series. It is more suitable for storing sequence data where floating-point values appear continuously, monotonously increasing or decreasing, and it is not suitable for storing sequence data with high precision requirements after the decimal point or with large fluctuations.
 
 * GORILLA
 
