@@ -18,6 +18,21 @@
  */
 package org.apache.iotdb.db.service;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.sql.SQLException;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -87,10 +102,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
-  private static final int DELETE_SIZE = 50;
+  private static final int DELETE_SIZE = 20;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
-  public static Vector<SqlArgument> sqlArgumentsList = new Vector<>();
+
+  private boolean enableMetric = IoTDBDescriptor.getInstance().getConfig().isEnableMetricService();
+  private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
 
   protected Planner processor;
   protected IPlanExecutor executor;
@@ -440,9 +457,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
-    long startTime = System.currentTimeMillis();
-    TSExecuteStatementResp resp;
-    SqlArgument sqlArgument;
     try {
       if (!checkLogin(req.getSessionId())) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -457,19 +471,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       PhysicalPlan physicalPlan =
           processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
       if (physicalPlan.isQuery()) {
-        resp =
-            internalExecuteQueryStatement(
-                req.statementId,
-                physicalPlan,
-                req.fetchSize,
+        return internalExecuteQueryStatement(statement, req.statementId, physicalPlan, req.fetchSize,
                 sessionIdUsernameMap.get(req.getSessionId()));
-        long endTime = System.currentTimeMillis();
-        sqlArgument = new SqlArgument(resp, physicalPlan, statement, startTime, endTime);
-        sqlArgumentsList.add(sqlArgument);
-        if (sqlArgumentsList.size() > MAX_SIZE) {
-          sqlArgumentsList.subList(0, DELETE_SIZE).clear();
-        }
-        return resp;
       } else {
         return executeUpdateStatement(physicalPlan, req.getSessionId());
       }
@@ -495,10 +498,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
     try {
-      long startTime = System.currentTimeMillis();
-      TSExecuteStatementResp resp;
-      SqlArgument sqlArgument;
-
       if (!checkLogin(req.getSessionId())) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
         return RpcUtils.getTSExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
@@ -519,16 +518,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
       }
 
-      resp = internalExecuteQueryStatement(
-          req.statementId, physicalPlan, req.fetchSize,
+      return internalExecuteQueryStatement(statement, req.statementId, physicalPlan, req.fetchSize,
           sessionIdUsernameMap.get(req.getSessionId()));
-      long endTime = System.currentTimeMillis();
-      sqlArgument = new SqlArgument(resp, physicalPlan, statement, startTime, endTime);
-      sqlArgumentsList.add(sqlArgument);
-      if (sqlArgumentsList.size() > MAX_SIZE) {
-        sqlArgumentsList.subList(0, DELETE_SIZE).clear();
-      }
-      return resp;
+
     } catch (ParseCancellationException e) {
       logger.debug(e.getMessage());
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR,
@@ -544,9 +536,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
    *             AuthorPlan
    */
-  private TSExecuteStatementResp internalExecuteQueryStatement(
+  private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
       long statementId, PhysicalPlan plan, int fetchSize, String username) {
-    long t1 = System.currentTimeMillis();
+    long startTime = System.currentTimeMillis();
     long queryId = -1;
     try {
       TSExecuteStatementResp resp = getQueryResp(plan, username); // column headers
@@ -582,6 +574,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         resp.setQueryDataSet(result);
       }
       resp.setQueryId(queryId);
+
+      if (enableMetric) {
+        long endTime = System.currentTimeMillis();
+        SqlArgument sqlArgument = new SqlArgument(resp, plan, statement, startTime, endTime);
+        synchronized (sqlArgumentList) {
+          sqlArgumentList.add(sqlArgument);
+          if (sqlArgumentList.size() >= MAX_SIZE) {
+            sqlArgumentList.subList(0, DELETE_SIZE).clear();
+          }
+        }
+      }
+
       return resp;
     } catch (Exception e) {
       logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
@@ -594,7 +598,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     } finally {
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, t1);
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, startTime);
     }
   }
 
@@ -1279,6 +1283,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return execRet
         ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
         : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
+  }
+
+  public static List<SqlArgument> getSqlArgumentList() {
+    return sqlArgumentList;
   }
 
   private long generateQueryId(boolean isDataQuery) {
