@@ -30,7 +30,7 @@
     letter-spacing: 0.03em;
     color: #777;
     text-align: center;"
-      >(孵化中)物联网数据库</p>
+      >物联网数据库</p>
       <p style="font-size: 20px;margin: 50px 0 10px 0;text-align:justify!important;">
 Apache IoTDB（孵化中）（物联网数据库）是一个集成数据专为时间序列数据设计的管理引擎。 它为用户提供以下服务数据收集，存储和分析。 由于其轻巧的结构，高性能和丰富的功能集，以及与Apache的深度集成Hadoop和Spark，Apache IoTDB（孵化中）可以满足海量需求物联网中的数据存储，高速数据提取和复杂数据分析工业领域。
       </p>

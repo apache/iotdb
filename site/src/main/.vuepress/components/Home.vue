@@ -30,7 +30,7 @@
     letter-spacing: 0.03em;
     color: #777;
     text-align: center;"
-      >(incubating)Database for Internet of Things</p>
+      >Database for Internet of Things</p>
       <p style="font-size: 20px;margin: 50px 0 10px 0;text-align:justify!important;">
         Apache IoTDB (incubating) (Database for Internet of Things) is an integrated data
         management engine designed for timeseries data. It provides users with services for
