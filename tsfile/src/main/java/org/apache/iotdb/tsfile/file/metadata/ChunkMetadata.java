@@ -29,9 +29,9 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /**
- * MetaData of one chunk.
+ * Metadata of one chunk.
  */
-public class ChunkMetaData {
+public class ChunkMetadata {
 
   private String measurementUid;
 
@@ -60,7 +60,7 @@ public class ChunkMetaData {
 
   private Statistics statistics;
 
-  private ChunkMetaData() {
+  private ChunkMetadata() {
   }
 
   /**
@@ -71,7 +71,7 @@ public class ChunkMetaData {
    * @param fileOffset file offset
    * @param statistics value statistics
    */
-  public ChunkMetaData(String measurementUid, TSDataType tsDataType, long fileOffset,
+  public ChunkMetadata(String measurementUid, TSDataType tsDataType, long fileOffset,
       Statistics statistics) {
     this.measurementUid = measurementUid;
     this.tsDataType = tsDataType;
@@ -141,8 +141,8 @@ public class ChunkMetaData {
    * @param buffer ByteBuffer
    * @return ChunkMetaData object
    */
-  public static ChunkMetaData deserializeFrom(ByteBuffer buffer) {
-    ChunkMetaData chunkMetaData = new ChunkMetaData();
+  public static ChunkMetadata deserializeFrom(ByteBuffer buffer) {
+    ChunkMetadata chunkMetaData = new ChunkMetadata();
 
     chunkMetaData.measurementUid = ReadWriteIOUtils.readString(buffer);
     chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
@@ -185,12 +185,18 @@ public class ChunkMetaData {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    ChunkMetaData that = (ChunkMetaData) o;
+    ChunkMetadata that = (ChunkMetadata) o;
     return offsetOfChunkHeader == that.offsetOfChunkHeader &&
         version == that.version &&
         deletedAt == that.deletedAt &&
         Objects.equals(measurementUid, that.measurementUid) &&
         tsDataType == that.tsDataType &&
         Objects.equals(statistics, that.statistics);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(measurementUid, deletedAt, tsDataType, statistics,
+        version, offsetOfChunkHeader);
   }
 }

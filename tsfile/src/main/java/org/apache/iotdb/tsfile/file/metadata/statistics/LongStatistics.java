@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -52,8 +53,7 @@ public class LongStatistics extends Statistics<Long> {
     this.sumValue += sum;
   }
 
-  private void updateStats(long minValue, long maxValue, long firstValue, long lastValue,
-      double sumValue) {
+  private void updateStats(long minValue, long maxValue, long lastValue, double sumValue) {
     if (minValue < this.minValue) {
       this.minValue = minValue;
     }
@@ -101,7 +101,7 @@ public class LongStatistics extends Statistics<Long> {
       initializeStats(value, value, value, value, value);
       isEmpty = false;
     } else {
-      updateStats(value, value, value, value, value);
+      updateStats(value, value, value, value);
     }
   }
 
@@ -130,7 +130,7 @@ public class LongStatistics extends Statistics<Long> {
           longStats.getLastValue(), longStats.getSumValue());
       isEmpty = false;
     } else {
-      updateStats(longStats.getMinValue(), longStats.getMaxValue(), longStats.getFirstValue(), longStats.getLastValue(),
+      updateStats(longStats.getMinValue(), longStats.getMaxValue(), longStats.getLastValue(),
           longStats.getSumValue());
     }
 

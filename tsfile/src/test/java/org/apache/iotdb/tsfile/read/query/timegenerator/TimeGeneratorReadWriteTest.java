@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.write;
+package org.apache.iotdb.tsfile.read.query.timegenerator;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
@@ -51,6 +52,7 @@ import org.junit.Test;
 
 public class TimeGeneratorReadWriteTest {
 
+  private final String TEMPLATE_NAME = "template";
   private String tsfilePath = TestConstant.BASE_OUTPUT_PATH.concat("TimegeneratorReadWrite.tsfile");
 
   @Before
@@ -109,8 +111,8 @@ public class TimeGeneratorReadWriteTest {
     }
 
     Schema schema = new Schema();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+    schema.extendTemplate(TEMPLATE_NAME, new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+    schema.extendTemplate(TEMPLATE_NAME, new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
     TsFileWriter tsFileWriter = new TsFileWriter(new File(tsfilePath), schema);
 

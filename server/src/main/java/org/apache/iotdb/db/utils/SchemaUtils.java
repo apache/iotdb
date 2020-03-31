@@ -22,8 +22,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -33,43 +31,16 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 public class SchemaUtils {
 
-  private static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
-
   private SchemaUtils() {
+
   }
 
-  /**
-   * Construct the Schema of the FileNode named processorName.
-   *
-   * @param processorName the name of a FileNode.
-   * @return the schema of the FileNode named processorName.
-   */
-  public static Schema constructSchema(String processorName) throws MetadataException {
-    List<MeasurementSchema> columnSchemaList;
-    columnSchemaList = MManager.getInstance().getStorageGroupSchema(processorName);
-    return getSchemaFromColumnSchema(columnSchemaList);
-  }
-
-  /**
-   * getSchemaFromColumnSchema construct a Schema using the schema of the columns and device type.
-   *
-   * @param schemaList the schema of the columns in this file.
-   * @return a Schema contains the provided schemas.
-   */
-  private static Schema getSchemaFromColumnSchema(List<MeasurementSchema> schemaList) {
-    Schema schema = new Schema();
-    for (MeasurementSchema measurementSchema : schemaList) {
-      schema.registerMeasurement(measurementSchema);
-    }
-    return schema;
-  }
+  private static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
 
   public static void registerTimeseries(MeasurementSchema schema) {
     try {
@@ -78,21 +49,19 @@ public class SchemaUtils {
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();
       CompressionType compressionType = schema.getCompressor();
-      boolean result = MManager.getInstance().createTimeseries(path, dataType, encoding,
+      MManager.getInstance().createTimeseries(path, dataType, encoding,
           compressionType, Collections.emptyMap());
-      if (result) {
-        StorageEngine.getInstance().addTimeSeries(new Path(path), dataType, encoding,
-            compressionType, Collections.emptyMap());
-      }
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
-    } catch (MetadataException | StorageEngineException e) {
+    } catch (MetadataException e) {
       logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getMeasurementId(),
           e);
     }
 
   }
-  public static List<TSDataType> getSeriesTypesByPath(Collection<Path> paths) throws MetadataException {
+
+  public static List<TSDataType> getSeriesTypesByPath(Collection<Path> paths)
+      throws MetadataException {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : paths) {
       dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
@@ -101,7 +70,6 @@ public class SchemaUtils {
   }
 
   /**
-   *
    * @param paths time series paths
    * @param aggregation aggregation function, may be null
    * @return The data type of aggregation or (data type of paths if aggregation is null)
@@ -147,7 +115,6 @@ public class SchemaUtils {
   }
 
   /**
-   *
    * @param aggregation aggregation function
    * @return the data type of the aggregation or null if it aggregation is null
    */

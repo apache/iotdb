@@ -22,18 +22,18 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class TsFileMetaDataTest {
+public class TsFileMetadataTest {
 
-  public static final int VERSION = 123;
-  public static final String CREATED_BY = "tsf";
   final String PATH = TestConstant.BASE_OUTPUT_PATH.concat("output1.tsfile");
 
   @Before
@@ -50,19 +50,22 @@ public class TsFileMetaDataTest {
 
   @Test
   public void testWriteFileMetaData() throws IOException {
-    TsFileMetaData tsfMetaData = TestHelper.createSimpleFileMetaData();
+    TsFileMetadata tsfMetaData = TestHelper.createSimpleFileMetaData();
     serialized(tsfMetaData);
-    TsFileMetaData readMetaData = deSerialized();
-    Utils.isFileMetaDataEqual(tsfMetaData, readMetaData);
-    serialized(readMetaData);
+    TsFileMetadata readMetaData = deSerialized();
+    Assert.assertTrue(Utils.isFileMetaDataEqual(tsfMetaData, readMetaData));
   }
 
-  private TsFileMetaData deSerialized() {
+  private TsFileMetadata deSerialized() {
     FileInputStream fileInputStream = null;
-    TsFileMetaData metaData = null;
+    TsFileMetadata metaData = null;
     try {
       fileInputStream = new FileInputStream(new File(PATH));
-      metaData = TsFileMetaData.deserializeFrom(fileInputStream, false);
+      FileChannel channel = fileInputStream.getChannel();
+      ByteBuffer buffer = ByteBuffer.allocate((int) channel.size());
+      channel.read(buffer);
+      buffer.rewind();
+      metaData = TsFileMetadata.deserializeFrom(buffer);
       return metaData;
     } catch (IOException e) {
       e.printStackTrace();
@@ -78,7 +81,7 @@ public class TsFileMetaDataTest {
     return metaData;
   }
 
-  private void serialized(TsFileMetaData metaData) {
+  private void serialized(TsFileMetadata metaData) {
     File file = new File(PATH);
     if (file.exists()) {
       file.delete();

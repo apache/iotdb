@@ -28,5 +28,6 @@ public class TsFileConstant {
   public static final String PATH_SEPARATOR = ".";
   public static final String PATH_SEPARATER_NO_REGEX = "\\.";
 
-  private TsFileConstant(){}
+  private TsFileConstant() {
+  }
 }

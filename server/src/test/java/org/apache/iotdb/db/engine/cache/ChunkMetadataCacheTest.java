@@ -30,13 +30,13 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -46,7 +46,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class DeviceMetaDataCacheTest {
+public class ChunkMetadataCacheTest {
 
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
@@ -60,10 +60,6 @@ public class DeviceMetaDataCacheTest {
   private StorageGroupProcessor storageGroupProcessor;
   private String systemDir = TestConstant.BASE_OUTPUT_PATH.concat("data")
           .concat(File.separator).concat("info");
-
-  static {
-    MManager.getInstance().init();
-  }
 
   @Before
   public void setUp() throws Exception {
@@ -122,7 +118,7 @@ public class DeviceMetaDataCacheTest {
   }
 
   @Test
-  public void test1() throws IOException {
+  public void test1() throws IOException, QueryProcessException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(false);
     QueryDataSource queryDataSource = storageGroupProcessor
         .query(storageGroup, measurementId5, context, null, null);
@@ -138,13 +134,13 @@ public class DeviceMetaDataCacheTest {
     Assert.assertTrue(unseqResources.get(2).isClosed());
     Assert.assertFalse(unseqResources.get(3).isClosed());
 
-    List<ChunkMetaData> metaDataList = DeviceMetaDataCache.getInstance()
-        .get(seqResources.get(0), new Path(storageGroup, measurementId5));
+    List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
+        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }
 
   @Test
-  public void test2() throws IOException {
+  public void test2() throws IOException, QueryProcessException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(true);
     QueryDataSource queryDataSource = storageGroupProcessor
         .query(storageGroup, measurementId5, context, null, null);
@@ -160,8 +156,8 @@ public class DeviceMetaDataCacheTest {
     Assert.assertTrue(unseqResources.get(2).isClosed());
     Assert.assertFalse(unseqResources.get(3).isClosed());
 
-    List<ChunkMetaData> metaDataList = DeviceMetaDataCache.getInstance()
-        .get(seqResources.get(0), new Path(storageGroup, measurementId5));
+    List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
+        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }
 

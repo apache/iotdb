@@ -18,10 +18,14 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,42 +42,43 @@ public class TsFileMetaDataCache {
 
   private static boolean cacheEnable = config.isMetaDataCacheEnable();
   private static final long MEMORY_THRESHOLD_IN_B = config.getAllocateMemoryForFileMetaDataCache();
+
   /**
-   * key: Tsfile path. value: TsFileMetaData
+   * TsFile path -> TsFileMetaData
    */
-  private LRULinkedHashMap<TsFileResource, TsFileMetaData> cache;
+  private final LRULinkedHashMap<String, TsFileMetadata> cache;
+  private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
   private AtomicLong cacheHitNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
   /**
-   * estimated size of a deviceIndexMap entry in TsFileMetaData.
+   * estimated size of a deviceMetaDataMap entry in TsFileMetaData.
    */
   private long deviceIndexMapEntrySize = 0;
-  /**
-   * estimated size of measurementSchema entry in TsFileMetaData.
-   */
-  private long measurementSchemaEntrySize = 0;
-  /**
-   * estimated size of version and CreateBy in TsFileMetaData.
-   */
-  private long versionAndCreatebySize = 10;
 
   private TsFileMetaDataCache() {
-    cache = new LRULinkedHashMap<TsFileResource, TsFileMetaData>(MEMORY_THRESHOLD_IN_B, true) {
+    cache = new LRULinkedHashMap<String, TsFileMetadata>(MEMORY_THRESHOLD_IN_B, true) {
       @Override
-      protected long calEntrySize(TsFileResource key, TsFileMetaData value) {
-        if (deviceIndexMapEntrySize == 0 && value.getDeviceMap().size() > 0) {
+      protected long calEntrySize(String key, TsFileMetadata value) {
+        if (deviceIndexMapEntrySize == 0 && value.getDeviceMetadataIndex() != null
+            && value.getDeviceMetadataIndex().size() > 0) {
           deviceIndexMapEntrySize = RamUsageEstimator
-              .sizeOf(value.getDeviceMap().entrySet().iterator().next());
+              .sizeOf(value.getDeviceMetadataIndex().entrySet().iterator().next());
         }
-        if (measurementSchemaEntrySize == 0 && value.getMeasurementSchema().size() > 0) {
-          measurementSchemaEntrySize = RamUsageEstimator
-              .sizeOf(value.getMeasurementSchema().entrySet().iterator().next());
+        // totalChunkNum, invalidChunkNum
+        long valueSize = 4 + 4L;
+
+        // deviceMetadataIndex
+        if (value.getDeviceMetadataIndex() != null) {
+          valueSize += value.getDeviceMetadataIndex().size() * deviceIndexMapEntrySize;
         }
-        long valueSize = value.getDeviceMap().size() * deviceIndexMapEntrySize
-            + measurementSchemaEntrySize * value.getMeasurementSchema().size()
-            + versionAndCreatebySize;
-        return key.getFile().getPath().length() * 2 + valueSize;
+
+        // versionInfo
+        if (value.getVersionInfo() != null) {
+          valueSize += value.getVersionInfo().size() * 16;
+        }
+        return key.getBytes(TSFileConfig.STRING_CHARSET).length + valueSize;
       }
     };
   }
@@ -85,37 +90,39 @@ public class TsFileMetaDataCache {
   /**
    * get the TsFileMetaData for given TsFile.
    *
-   * @param tsFileResource -given TsFile
+   * @param filePath -given TsFile
    */
-  public TsFileMetaData get(TsFileResource tsFileResource) throws IOException {
+  public TsFileMetadata get(String filePath) throws IOException {
     if (!cacheEnable) {
-      return TsFileMetadataUtils.getTsFileMetaData(tsFileResource);
+      return FileLoaderUtils.getTsFileMetadata(filePath);
     }
 
-    String path = tsFileResource.getFile().getPath();
-    Object internPath = path.intern();
     cacheRequestNum.incrementAndGet();
-    synchronized (cache) {
-      if (cache.containsKey(path)) {
+
+    lock.readLock().lock();
+    try {
+      if (cache.containsKey(filePath)) {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
-        return cache.get(path);
+        return cache.get(filePath);
       }
+    } finally {
+      lock.readLock().unlock();
     }
-    synchronized (internPath) {
-      synchronized (cache) {
-        if (cache.containsKey(tsFileResource)) {
-          cacheHitNum.incrementAndGet();
-          printCacheLog(true);
-          return cache.get(tsFileResource);
-        }
+
+    lock.writeLock().lock();
+    try {
+      if (cache.containsKey(filePath)) {
+        cacheHitNum.incrementAndGet();
+        printCacheLog(true);
+        return cache.get(filePath);
       }
       printCacheLog(false);
-      TsFileMetaData fileMetaData = TsFileMetadataUtils.getTsFileMetaData(tsFileResource);
-      synchronized (cache) {
-        cache.put(tsFileResource, fileMetaData);
-        return fileMetaData;
-      }
+      TsFileMetadata fileMetaData = FileLoaderUtils.getTsFileMetadata(filePath);
+      cache.put(filePath, fileMetaData);
+      return fileMetaData;
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 
@@ -134,7 +141,7 @@ public class TsFileMetaDataCache {
     }
   }
 
-  public double calculateTsfileMetaDataHitRatio() {
+  double calculateTsFileMetaDataHitRatio() {
     if (cacheRequestNum.get() != 0) {
       return cacheHitNum.get() * 1.0 / cacheRequestNum.get();
     } else {
@@ -144,17 +151,13 @@ public class TsFileMetaDataCache {
 
   public void remove(TsFileResource resource) {
     synchronized (cache) {
-      if (cache != null) {
-        cache.remove(resource);
-      }
+      cache.remove(resource.getPath());
     }
   }
 
   public void clear() {
     synchronized (cache) {
-      if (cache != null) {
-        cache.clear();
-      }
+      cache.clear();
     }
   }
 

@@ -25,13 +25,16 @@ import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.encoding.encoder.BitmapEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.iotdb.tsfile.encoding.decoder.BitmapDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.BitmapEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 
 @Deprecated
 public class BitmapDecoderTest {

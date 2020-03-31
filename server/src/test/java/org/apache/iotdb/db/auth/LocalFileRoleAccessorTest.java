@@ -33,7 +33,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class LocalFIleRoleAccessorTest {
+public class LocalFileRoleAccessorTest {
 
   private File testFolder;
   private LocalFileRoleAccessor accessor;
