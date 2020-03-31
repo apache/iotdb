@@ -43,7 +43,7 @@ All features or bugs that you want IoTDB to do can be raised on Jira：https://i
 
 You can choose issue types: bug, improvement, new feature, etc.  New issues will be automatically synchronized to the mailing list, and subsequent discussions can be left on jira or on the mailing list.  When the issue is resolved, close the issue.
 
-## Email discussion content (English)
+## Email discussion content
 
 * Joining the mailing list for the first time can introduce you briefly.  (Hi, I'm xxx ...)
 
