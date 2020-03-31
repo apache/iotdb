@@ -226,12 +226,12 @@ public class IoTDBSessionIT {
 
   @Test
   public void testChineseCharacter() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
     if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
       logger.error("The system does not support UTF-8, so skip Chinese test...");
       return;
     }
-    session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
     String storageGroup = "root.存储组1";
     String[] devices = new String[]{
         "设备1.指标1",
