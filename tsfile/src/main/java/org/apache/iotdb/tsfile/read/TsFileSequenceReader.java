@@ -612,12 +612,11 @@ public class TsFileSequenceReader implements AutoCloseable {
     boolean newChunkGroup = true;
     // not a complete file, we will recover it...
     long truncatedPosition = TSFileConfig.MAGIC_STRING.getBytes().length;
-    boolean goon = true;
     byte marker;
     int chunkCnt = 0;
     List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
     try {
-      while (goon && (marker = this.readMarker()) != MetaMarker.SEPARATOR) {
+      while ((marker = this.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
             // this is the first chunk of a new ChunkGroup.
@@ -629,27 +628,17 @@ public class TsFileSequenceReader implements AutoCloseable {
             // if there is something wrong with a chunk, we will drop the whole ChunkGroup
             // as different chunks may be created by the same insertions(sqls), and partial
             // insertion is not tolerable
-            ChunkHeader header = this.readChunkHeader();
-            measurementID = header.getMeasurementID();
+            ChunkHeader chunkHeader = this.readChunkHeader();
+            measurementID = chunkHeader.getMeasurementID();
             MeasurementSchema measurementSchema = new MeasurementSchema(measurementID,
-                header.getDataType(),
-                header.getEncodingType(), header.getCompressionType());
+                chunkHeader.getDataType(),
+                chunkHeader.getEncodingType(), chunkHeader.getCompressionType());
             measurementSchemaList.add(measurementSchema);
-            dataType = header.getDataType();
+            dataType = chunkHeader.getDataType();
             Statistics<?> chunkStatistics = Statistics.getStatsByType(dataType);
-            if (header.getNumOfPages() > 0) {
-              PageHeader pageHeader = this.readPageHeader(header.getDataType());
-              chunkStatistics.mergeStatistics(pageHeader.getStatistics());
-              this.skipPageData(pageHeader);
-            }
-            for (int j = 1; j < header.getNumOfPages() - 1; j++) {
+            for (int j = 0; j < chunkHeader.getNumOfPages(); j++) {
               // a new Page
-              PageHeader pageHeader = this.readPageHeader(header.getDataType());
-              chunkStatistics.mergeStatistics(pageHeader.getStatistics());
-              this.skipPageData(pageHeader);
-            }
-            if (header.getNumOfPages() > 1) {
-              PageHeader pageHeader = this.readPageHeader(header.getDataType());
+              PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType());
               chunkStatistics.mergeStatistics(pageHeader.getStatistics());
               this.skipPageData(pageHeader);
             }
@@ -660,8 +649,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
             // this is a chunk group
-            // if there is something wrong with the ChunkGroup Footer, we will drop this
-            // ChunkGroup
+            // if there is something wrong with the ChunkGroup Footer, we will drop this ChunkGroup
             // because we can not guarantee the correctness of the deviceId.
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
             deviceID = chunkGroupFooter.getDeviceID();
@@ -681,7 +669,6 @@ public class TsFileSequenceReader implements AutoCloseable {
           default:
             // the disk file is corrupted, using this file may be dangerous
             MetaMarker.handleUnexpectedMarker(marker);
-            goon = false;
             logger.error(String
                 .format("Unrecognized marker detected, this file {%s} may be corrupted", file));
         }
