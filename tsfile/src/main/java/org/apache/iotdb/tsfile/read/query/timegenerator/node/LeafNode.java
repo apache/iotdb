@@ -19,8 +19,6 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
@@ -29,8 +27,7 @@ public class LeafNode implements Node {
 
   private IBatchReader reader;
 
-  private List<BatchData> batchDataList = new LinkedList<>();
-  private TimeColumn cachedTimeSeries;
+  private BatchData cacheData;
   private boolean hasCached;
 
   public LeafNode(IBatchReader reader) {
@@ -38,27 +35,24 @@ public class LeafNode implements Node {
   }
 
   @Override
-  public boolean hasNextTimeColumn() throws IOException {
+  public boolean hasNext() throws IOException {
     if (hasCached) {
       return true;
     }
-    while (reader.hasNextBatch()) {
-      BatchData currentBatch = reader.nextBatch();
-      if (currentBatch.hasCurrent()) {
-        batchDataList.add(currentBatch);
-        hasCached = true;
-        cachedTimeSeries = currentBatch.getTimeColumn();
-        break;
-      }
+    if (reader.hasNextBatch()) {
+      hasCached = true;
+      cacheData = reader.nextBatch();
     }
     return hasCached;
   }
 
   @Override
-  public TimeColumn nextTimeColumn() throws IOException {
-    if (hasCached || hasNextTimeColumn()) {
-      hasCached = false;
-      return cachedTimeSeries;
+  public long next() throws IOException {
+    if ((hasCached || hasNext())) {
+      long currentTime = cacheData.currentTime();
+      cacheData.next();
+      hasCached = cacheData.hasCurrent();
+      return currentTime;
     }
     throw new IOException("no more data");
   }
@@ -67,19 +61,7 @@ public class LeafNode implements Node {
    * Function for getting the value at the given time.
    */
   public Object currentValue(long time) {
-    while (!batchDataList.isEmpty()) {
-      BatchData oldestBatch = batchDataList.get(0);
-      Object value = oldestBatch.getValueInTimestamp(time);
-      if (value != null) {
-        return value;
-      }
-      if (!oldestBatch.hasCurrent()) {
-        batchDataList.remove(0);
-      } else {
-        return null;
-      }
-    }
-    return null;
+    return cacheData.getValueInTimestamp(time);
   }
 
   @Override

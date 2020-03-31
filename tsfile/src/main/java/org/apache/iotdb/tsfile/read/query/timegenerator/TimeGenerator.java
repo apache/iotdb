@@ -36,16 +36,13 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 /**
- * All SingleSeriesExpression involved in a IExpression will be transferred to a TimeGenerator tree
- * whose leaf nodes are all SeriesReaders, The TimeGenerator tree can generate the next timestamp
- * that satisfies the filter condition. Then we use this timestamp to get values in other series
- * that are not included in IExpression
+ * All SingleSeriesExpression involved in a IExpression will be transferred to a TimeGenerator tree whose leaf nodes are all SeriesReaders, The TimeGenerator tree can generate the next timestamp that satisfies the filter condition. Then we use this timestamp to get values in other series that are not included in IExpression
  */
 public abstract class TimeGenerator {
 
 
   private boolean hasCache;
-  private TimeColumn cacheTimes;
+  private long cacheTime;
 
   private HashMap<Path, List<LeafNode>> leafCache = new HashMap<>();
   private Node operatorNode;
@@ -55,22 +52,17 @@ public abstract class TimeGenerator {
       return true;
     }
 
-    while (operatorNode.hasNextTimeColumn()) {
-      cacheTimes = operatorNode.nextTimeColumn();
-      if (cacheTimes.hasCurrent()) {
-        hasCache = true;
-        break;
-      }
+    if (operatorNode.hasNext()) {
+      cacheTime = operatorNode.next();
+      hasCache = true;
     }
     return hasCache;
   }
 
   public long next() throws IOException {
     if (hasCache || hasNext()) {
-      long currentTime = cacheTimes.currentTime();
-      cacheTimes.next();
-      hasCache = cacheTimes.hasCurrent();
-      return currentTime;
+      hasCache = false;
+      return cacheTime;
     }
     throw new IOException("no more data");
   }
