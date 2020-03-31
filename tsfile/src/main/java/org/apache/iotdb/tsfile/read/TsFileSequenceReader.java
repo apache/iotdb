@@ -612,12 +612,11 @@ public class TsFileSequenceReader implements AutoCloseable {
     boolean newChunkGroup = true;
     // not a complete file, we will recover it...
     long truncatedPosition = TSFileConfig.MAGIC_STRING.getBytes().length;
-    boolean goon = true;
     byte marker;
     int chunkCnt = 0;
     List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
     try {
-      while (goon && (marker = this.readMarker()) != MetaMarker.SEPARATOR) {
+      while ((marker = this.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
             // this is the first chunk of a new ChunkGroup.
@@ -650,8 +649,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
             // this is a chunk group
-            // if there is something wrong with the ChunkGroup Footer, we will drop this
-            // ChunkGroup
+            // if there is something wrong with the ChunkGroup Footer, we will drop this ChunkGroup
             // because we can not guarantee the correctness of the deviceId.
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
             deviceID = chunkGroupFooter.getDeviceID();
@@ -670,20 +668,15 @@ public class TsFileSequenceReader implements AutoCloseable {
             break;
           default:
             // the disk file is corrupted, using this file may be dangerous
-            MetaMarker.handleUnexpectedMarker(marker);
-            goon = false;
-            logger.error(String
-                .format("Unrecognized marker detected, this file {%s} may be corrupted", file));
+            throw new IOException("Unexpected marker " + marker);
         }
       }
       // now we read the tail of the data section, so we are sure that the last
-      // ChunkGroupFooter is
-      // complete.
+      // ChunkGroupFooter is complete.
       truncatedPosition = this.position() - 1;
-    } catch (Exception e2) {
+    } catch (Exception e) {
       logger.info("TsFile {} self-check cannot proceed at position {} " + "recovered, because : {}",
-          file,
-          this.position(), e2.getMessage());
+          file, this.position(), e.getMessage());
     }
     // Despite the completeness of the data section, we will discard current
     // FileMetadata
