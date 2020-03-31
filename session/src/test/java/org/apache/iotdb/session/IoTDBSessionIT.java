@@ -51,8 +51,11 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBSessionIT {
+  private static Logger logger = LoggerFactory.getLogger(IoTDBSessionIT.class);
 
   private Session session;
 
@@ -225,6 +228,11 @@ public class IoTDBSessionIT {
   public void testChineseCharacter() throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
+    if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
+      logger.error("The system does not support UTF-8, so skip Chinese test...");
+      session.close();
+      return;
+    }
     String storageGroup = "root.存储组1";
     String[] devices = new String[]{
         "设备1.指标1",
