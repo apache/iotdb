@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -167,9 +168,9 @@ public class IoTDBSessionIT {
 
     // test insert batch
     Schema schema = new Schema();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId, "s1"), new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId, "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId, "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     RowBatch rowBatch = schema.createRowBatch("root.sg1.d1", 100);
 
@@ -218,6 +219,24 @@ public class IoTDBSessionIT {
     }
 
     session.testInsertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+  }
+
+  @Test
+  public void testChineseCharacter() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    String storageGroup = "root.存储组1";
+    String[] devices = new String[]{
+        "设备1.指标1",
+        "设备1.s2",
+        "d2.s1",
+        "d2.指标2"
+    };
+    session.setStorageGroup(storageGroup);
+    createTimeseriesInChinese(storageGroup, devices);
+    insertInChinese(storageGroup, devices);
+    session.deleteStorageGroup(storageGroup);
+    session.close();
   }
 
   @Test
@@ -273,10 +292,6 @@ public class IoTDBSessionIT {
 
     deleteStorageGroupTest();
 
-    // Test batch insertions when creating schema automatically is enabled
-    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-    conf.setAutoCreateSchemaEnabled(true);
-
     // set storage group but do not create timeseries
     session.setStorageGroup("root.sg3");
     insertRowBatchTest1("root.sg3.d1");
@@ -293,13 +308,12 @@ public class IoTDBSessionIT {
     // do not set storage group and create timeseries
     insertRowBatchTest1("root.sg5.d1");
 
-    conf.setAutoCreateSchemaEnabled(false);
-
     session.close();
   }
 
 
-  private void createTimeseriesForTime() throws StatementExecutionException, IoTDBConnectionException {
+  private void createTimeseriesForTime()
+      throws StatementExecutionException, IoTDBConnectionException {
     session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE,
@@ -333,6 +347,34 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d2.s3", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
+  }
+
+  private void createTimeseriesInChinese(String storageGroup, String[] devices)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (String path : devices) {
+      String fullPath = storageGroup + "." + path;
+      session.createTimeseries(fullPath, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    }
+  }
+
+  private void insertInChinese(String storageGroup, String[] devices)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (String path : devices) {
+      String fullPath = storageGroup + "." + path;
+      for (int i = 0; i < 10; i++) {
+        String[] ss = path.split("\\.");
+        String deviceId = storageGroup;
+        for (int j = 0; j < ss.length - 1; j++) {
+          deviceId += ("." + ss[j]);
+        }
+        String sensorId = ss[ss.length - 1];
+        List<String> measurements = new ArrayList<>();
+        List<String> values = new ArrayList<>();
+        measurements.add(sensorId);
+        values.add("100");
+        session.insert(deviceId, i, measurements, values);
+      }
+    }
   }
 
   private void insertInBatch() throws IoTDBConnectionException, BatchExecutionException {
@@ -397,9 +439,9 @@ public class IoTDBSessionIT {
   private void insertRowBatchTest1(String deviceId)
       throws IoTDBConnectionException, BatchExecutionException {
     Schema schema = new Schema();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId, "s1"), new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId, "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId, "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     RowBatch rowBatch = schema.createRowBatch(deviceId, 100);
 
@@ -467,7 +509,8 @@ public class IoTDBSessionIT {
     }
   }
 
-  private void queryForAlignByDevice() throws StatementExecutionException, IoTDBConnectionException {
+  private void queryForAlignByDevice()
+      throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet sessionDataSet = session
         .executeQueryStatement("select '11', s1, '11' from root.sg1.d1 align by device");
     sessionDataSet.setBatchSize(1024);
@@ -485,7 +528,8 @@ public class IoTDBSessionIT {
     sessionDataSet.closeOperationHandle();
   }
 
-  private void queryForAlignByDevice2() throws IoTDBConnectionException, StatementExecutionException {
+  private void queryForAlignByDevice2()
+      throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet sessionDataSet = session.executeQueryStatement(
         "select '11', s1, '11', s5, s1, s5 from root.sg1.d1 align by device");
     sessionDataSet.setBatchSize(1024);
@@ -667,9 +711,12 @@ public class IoTDBSessionIT {
   private void insertRowBatchTest2(String deviceId)
       throws IoTDBConnectionException, BatchExecutionException {
     Schema schema = new Schema();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId,"s1"), 
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId,"s2"), 
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId,"s3"), 
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     RowBatch rowBatch = schema.createRowBatch(deviceId, 256);
 
@@ -698,9 +745,12 @@ public class IoTDBSessionIT {
   private void insertRowBatchTest3(String deviceId)
       throws IoTDBConnectionException, BatchExecutionException {
     Schema schema = new Schema();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId,"s1"), 
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId,"s2"), 
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId,"s3"), 
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     RowBatch rowBatch = schema.createRowBatch(deviceId, 200);
 
@@ -729,12 +779,18 @@ public class IoTDBSessionIT {
   private void insertRowBatchTestForTime(String deviceId)
       throws IoTDBConnectionException, BatchExecutionException {
     Schema schema = new Schema();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId,"s1"),
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId,"s2"), 
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId,"s3"), 
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId,"s4"), 
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId,"s5"), 
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId,"s6"), 
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
     long count = 10000000;
     long begin = 0;
     //long begin = 1579414903000L;
@@ -752,9 +808,7 @@ public class IoTDBSessionIT {
         sensor[row] = i;
       }
       if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
-        long start = System.currentTimeMillis();
         session.insertBatch(rowBatch);
-        long val = System.currentTimeMillis() - start;
         rowBatch.reset();
       }
     }

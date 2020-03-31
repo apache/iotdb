@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.expression.util;
 
+import java.util.List;
+
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -29,8 +31,6 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-
-import java.util.List;
 
 public class ExpressionOptimizer {
 
@@ -45,7 +45,7 @@ public class ExpressionOptimizer {
   /**
    * try to remove GlobalTimeExpression.
    *
-   * @param expression     IExpression to be transferred
+   * @param expression IExpression to be transferred
    * @param selectedSeries selected series
    * @return an executable query filter, whether a GlobalTimeExpression or All leaf nodes are
    * SingleSeriesExpression
@@ -101,8 +101,7 @@ public class ExpressionOptimizer {
     IExpression regularRightIExpression = optimize(expression, selectedSeries);
     if (regularRightIExpression instanceof GlobalTimeExpression) {
       return combineTwoGlobalTimeFilter(globalTimeExpression,
-          (GlobalTimeExpression) regularRightIExpression,
-          relation);
+          (GlobalTimeExpression) regularRightIExpression, relation);
     }
     if (relation == ExpressionType.AND) {
       addTimeFilterToQueryFilter((globalTimeExpression).getFilter(), regularRightIExpression);
@@ -120,8 +119,8 @@ public class ExpressionOptimizer {
    * visits all leaf nodes, which are SingleSeriesExpressions, or AndExpression in right Expression,
    * merge them to the right position in leftExpression.
    *
-   * @param leftExpression  The IExpression transformed from GlobalTimeExpression, which might have
-   *                        already be updated and merged.
+   * @param leftExpression The IExpression transformed from GlobalTimeExpression, which might have
+   * already be updated and merged.
    * @param rightExpression The IExpression to be merged into the first IExpression
    * @return a merged IExpression, which is initially based on the input leftExpression
    */

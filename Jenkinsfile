@@ -135,6 +135,30 @@ pipeline {
             }
         }
 
+        stage('Deploy site') {
+            when {
+                branch 'master'
+            }
+            // Only the nodes labeled 'git-websites' have the credentials to commit to the.
+            agent {
+                node {
+                    label 'git-websites'
+                }
+            }
+            steps {
+                // Unstash the previously stashed site.
+                unstash 'incubator-iotdb-site'
+                // Publish the site with the scm-publish plugin.
+                sh 'mvn scm-publish:publish-scm -pl site'
+
+                // Clean up the snapshots directory (freeing up more space after deploying).
+                dir("target") {
+                    deleteDir()
+                }
+            }
+        }
+
+
         stage('Cleanup') {
             steps {
                 echo 'Cleaning up the workspace'

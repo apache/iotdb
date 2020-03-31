@@ -22,13 +22,14 @@ package org.apache.iotdb.tsfile.compress;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+
+import org.xerial.snappy.Snappy;
+
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.xerial.snappy.Snappy;
 
 /**
  * compress data according to type in schema.
- * TODO we need to modify MManger.flush method to avoid add Serializable interface
  */
 public interface ICompressor extends Serializable {
 
@@ -63,13 +64,12 @@ public interface ICompressor extends Serializable {
    *
    * @return byte length of compressed data.
    */
-  int compress(byte[] data, int offset, int length, byte[] compressed)
-      throws IOException;
+  int compress(byte[] data, int offset, int length, byte[] compressed) throws IOException;
 
   /**
    * If the data is large, this function is better than byte[].
    *
-   * @param data MUST be DirectByteBuffer for Snappy.
+   * @param data       MUST be DirectByteBuffer for Snappy.
    * @param compressed MUST be DirectByteBuffer for Snappy.
    * @return byte length of compressed data.
    */
