@@ -247,3 +247,26 @@ Here is a list of Status Code and related message:
 |601|NOT_LOGIN_ERROR|Has not logged in|
 |602|NO_PERMISSION_ERROR|No permissions for this operation|
 |603|UNINITIALIZED_AUTH_ERROR|Uninitialized authorizer|
+
+##How to try IoTDB JDBC using Karaf
+Suppose you have started Karaf 4.2.8.
+
+Put the iotdb-jdbc jars into your maven repository:
+`mvn install -DskipTests -pl iotdb-jdbc -am`
+
+In your Karaf client shell:
+feature:repo-add mvn:org.apache.iotdb/iotdb-jdbc/0.10.0-SNPASHOT/xml/features
+
+NOTE: that you must install JDBC first and then iotdb-feature
+
+```ini
+feature:install jdbc 
+feature:install iotdb-feature
+```
+Start a data source instance (supposed you have started IoTDB):
+
+```
+jdbc:ds-create -dc org.apache.iotdb.jdbc.IoTDBDriver -u root -p root -url "jdbc:iotdb://127.0.0.1:6667/" IoTDB
+```
+Try query:
+`jdbc:query IoTDB "select * from root"`

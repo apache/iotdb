@@ -26,9 +26,9 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IoTDbDataSource implements DataSource {
+public class IoTDBDataSource implements DataSource {
 
-    private final Logger logger = LoggerFactory.getLogger(IoTDbDataSource.class);
+    private final Logger logger = LoggerFactory.getLogger(IoTDBDataSource.class);
 
     private String url;
     private String user;
@@ -36,11 +36,11 @@ public class IoTDbDataSource implements DataSource {
     private Properties properties;
     private Integer port = 6667;
 
-    public IoTDbDataSource() {
+    public IoTDBDataSource() {
         properties = new Properties();
     }
 
-    public IoTDbDataSource(String url, String user, String password, Integer port) {
+    public IoTDBDataSource(String url, String user, String password, Integer port) {
         this.url = url;
         this.properties = new Properties();
         properties.setProperty("user",user);

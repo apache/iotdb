@@ -32,11 +32,11 @@ public class IoTDbDataSourceFactory implements DataSourceFactory {
     private final Logger logger = LoggerFactory.getLogger(IoTDbDataSourceFactory.class);
     @Override
     public DataSource createDataSource(Properties properties) throws SQLException {
-       IoTDbDataSource ds = new IoTDbDataSource();
+       IoTDBDataSource ds = new IoTDBDataSource();
        setProperties(ds, properties);
        return  ds;
     }
-    public void setProperties(IoTDbDataSource ds, Properties prop){
+    public void setProperties(IoTDBDataSource ds, Properties prop){
         Properties properties = (Properties)prop.clone();
         String url = (String)properties.remove(DataSourceFactory.JDBC_URL);
         if(url!=null){
