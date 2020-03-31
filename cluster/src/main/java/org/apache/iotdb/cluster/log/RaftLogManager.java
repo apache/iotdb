@@ -112,12 +112,7 @@ public class RaftLogManager {
             entries.addAll(committedEntryManager.getEntries(low, Math.min(high, offset)));
         }
         if (high > offset) {
-            List<Log> unCommittedEntries = null;
-            try {
-                unCommittedEntries = unCommittedEntryManager.getEntries(Math.max(low, offset), high);
-            } catch (EntryStabledException e) {
-                logger.error("can not find log in unCommittedEntryManager which index is {}", Math.max(low, offset));
-            }
+            List<Log> unCommittedEntries = unCommittedEntryManager.getEntries(Math.max(low, offset), high);
             if (unCommittedEntries != null) {
                 entries.addAll(unCommittedEntries);
             }
@@ -125,7 +120,7 @@ public class RaftLogManager {
         return entries;
     }
 
-    public Log getLogByIndex(long index) throws EntryCompactedException, EntryUnavailableException, EntryStabledException, GetEntriesWrongParametersException {
+    public Log getLogByIndex(long index) throws EntryCompactedException, EntryUnavailableException, GetEntriesWrongParametersException {
         Log log = null;
         if (index > committed) {
             log = unCommittedEntryManager.getEntries(index, index + 1).get(0);

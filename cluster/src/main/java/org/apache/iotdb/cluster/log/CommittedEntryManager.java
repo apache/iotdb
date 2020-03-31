@@ -3,6 +3,7 @@ package org.apache.iotdb.cluster.log;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,13 +15,12 @@ public class CommittedEntryManager {
     private static final Logger logger = LoggerFactory.getLogger(CommittedEntryManager.class);
 
     private HardState hardState;
-    private Snapshot snapshot;
+    private RaftSnapshot snapshot;
     private List<Log> entries;
 
-    public CommittedEntryManager(HardState hardState, Snapshot snapshot) {
-        this.hardState = hardState;
+    public CommittedEntryManager(RaftSnapshot snapshot) {
         this.snapshot = snapshot;
-        PhysicalPlanLog dummy = new PhysicalPlanLog(snapshot.getLastLogIndex(), snapshot.getLastLogTerm());
+        PhysicalPlanLog dummy = new PhysicalPlanLog(snapshot.getLastIndex(), snapshot.getLastTerm());
         entries = new ArrayList<Log>() {{
             add(dummy);
         }};
@@ -34,20 +34,20 @@ public class CommittedEntryManager {
         return hardState;
     }
 
-    public Snapshot getSnapshot() {
+    public RaftSnapshot getSnapshot() {
         return snapshot;
     }
 
-    public void applyingSnapshot(Snapshot snap) {
-        long localIndex = snapshot.getLastLogIndex();
-        long snapIndex = snap.getLastLogIndex();
+    public void applyingSnapshot(RaftSnapshot snap) {
+        long localIndex = snapshot.getLastIndex();
+        long snapIndex = snap.getLastIndex();
         if (localIndex >= snapIndex) {
             logger.info("requested index is older than the existing snapshot");
             return;
         }
         snapshot = snap;
         entries.clear();
-        Log dummy = new PhysicalPlanLog(snap.getLastLogIndex(), snap.getLastLogTerm());
+        Log dummy = new PhysicalPlanLog(snap.getLastIndex(), snap.getLastTerm());
         entries.add(dummy);
     }
 
@@ -77,7 +77,7 @@ public class CommittedEntryManager {
     public List<Log> getEntries(long low, long high) throws EntryCompactedException {
         long offset = entries.get(0).getCurrLogIndex();
         if (low <= offset || entries.size() == 1) {
-            logger.error("entries before request index ({}) have been compacted, and the compactIndex is {}", low, offset);
+            logger.error("entries before request index ({}) have been compacted, and the compactIndex is ({})", low, offset);
             throw new EntryCompactedException(low, offset);
         }
         if (high > getLastIndex() + 1) {
@@ -87,10 +87,10 @@ public class CommittedEntryManager {
         return entries.subList((int) (low - offset), (int) (high - offset));
     }
 
-    public void compactEntries(long compactIndex) throws EntryCompactedException, EntryUnavailableException {
+    public void compactEntries(long compactIndex) throws EntryUnavailableException {
         long offset = entries.get(0).getCurrLogIndex();
-        if (compactIndex < offset) {
-            logger.error("entries before request index ({}) have been compacted, and the compactIndex is {}", compactIndex, offset);
+        if (compactIndex <= offset) {
+            logger.error("entries before request index ({}) have been compacted, and the compactIndex is ({})", compactIndex, offset);
             return;
         }
         if (compactIndex > getLastIndex()) {
@@ -119,10 +119,24 @@ public class CommittedEntryManager {
         if (entries.size() - offset == 0) {
             entries.addAll(appendingEntries);
         } else if (entries.size() - offset > 0) {
+            //maybe not throw a exception is better.It depends on the caller's implementation.
+//            logger.error("The logs which first index is {} are going to truncate committed logs", appendingEntries.get(0).getCurrLogIndex());
+//            throw new TruncateCommittedEntryException(appendingEntries.get(0).getCurrLogIndex(),getLastIndex());
             entries.subList((int) offset, entries.size()).clear();
             entries.addAll(appendingEntries);
         } else {
             logger.error("missing log entry [last: {}, append at: {}]", getLastIndex(), appendingEntries.get(0).getCurrLogIndex());
         }
+    }
+
+    @TestOnly
+    public CommittedEntryManager(List<Log> entries,RaftSnapshot snapshot) {
+        this.entries = entries;
+        this.snapshot = snapshot;
+    }
+
+    @TestOnly
+    public List<Log> getAllEntries() {
+        return entries;
     }
 }
