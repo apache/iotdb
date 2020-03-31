@@ -230,6 +230,7 @@ public class IoTDBSessionIT {
     session.open();
     if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
       logger.error("The system does not support UTF-8, so skip Chinese test...");
+      session.close();
       return;
     }
     String storageGroup = "root.存储组1";
