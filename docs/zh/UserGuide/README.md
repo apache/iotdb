@@ -18,13 +18,10 @@
     under the License.
 
 -->
+---
+home: true
+---
 
-# TsFile
+<Home_zh/>
 
-TsFile is the data file of IoTDB.
-
-## Related
-
-* [File Format](/SystemDesign/1-TsFile/2-Format.html)
-* [Write Process](/SystemDesign/1-TsFile/3-Write.html)
-* [Read Process](/SystemDesign/1-TsFile/4-Read.html)
+<FooterFixed/>
