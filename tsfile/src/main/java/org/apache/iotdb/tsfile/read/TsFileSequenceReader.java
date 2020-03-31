@@ -612,11 +612,12 @@ public class TsFileSequenceReader implements AutoCloseable {
     boolean newChunkGroup = true;
     // not a complete file, we will recover it...
     long truncatedPosition = TSFileConfig.MAGIC_STRING.getBytes().length;
+    boolean goon = true;
     byte marker;
     int chunkCnt = 0;
     List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
     try {
-      while ((marker = this.readMarker()) != MetaMarker.SEPARATOR) {
+      while (goon && (marker = this.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
             // this is the first chunk of a new ChunkGroup.
@@ -649,7 +650,8 @@ public class TsFileSequenceReader implements AutoCloseable {
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
             // this is a chunk group
-            // if there is something wrong with the ChunkGroup Footer, we will drop this ChunkGroup
+            // if there is something wrong with the ChunkGroup Footer, we will drop this
+            // ChunkGroup
             // because we can not guarantee the correctness of the deviceId.
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
             deviceID = chunkGroupFooter.getDeviceID();
@@ -669,6 +671,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           default:
             // the disk file is corrupted, using this file may be dangerous
             MetaMarker.handleUnexpectedMarker(marker);
+            goon = false;
             logger.error(String
                 .format("Unrecognized marker detected, this file {%s} may be corrupted", file));
         }
