@@ -23,13 +23,10 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 import java.io.IOException;
 import java.util.Set;
@@ -38,8 +35,6 @@ public abstract class IFill {
 
   long queryTime;
   TSDataType dataType;
-
-  IBatchReader allDataReader;
 
   public IFill(TSDataType dataType, long queryTime) {
     this.dataType = dataType;
@@ -51,23 +46,14 @@ public abstract class IFill {
 
   public abstract IFill copy();
 
-  public void constructReaders(Path path, Set<String> allSensors, QueryContext context)
-      throws StorageEngineException, QueryProcessException {
-    Filter timeFilter = constructFilter();
-    allDataReader = new SeriesRawDataBatchReader(path, allSensors, dataType, context,
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
-        timeFilter, null, null);
-  }
-
-  public void setAllDataReader(IBatchReader allDataReader) {
-    this.allDataReader = allDataReader;
-  }
+  public abstract void configureFill(Path path, Set<String> allSensors, QueryContext context)
+      throws StorageEngineException, QueryProcessException;
 
   public Filter getFilter() {
     return constructFilter();
   }
 
-  public abstract TimeValuePair getFillResult() throws IOException, UnSupportedFillTypeException;
+  public abstract TimeValuePair getFillResult(QueryContext context) throws IOException, UnSupportedFillTypeException;
 
   public TSDataType getDataType() {
     return this.dataType;
