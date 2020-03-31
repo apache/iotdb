@@ -54,9 +54,9 @@ public class Chunk {
   public long getDeletedAt() {
     return deletedAt;
   }
-  
+
   public EndianType getEndianType() {
-	  return endianType;
+    return endianType;
   }
 
   public void setDeletedAt(long deletedAt) {

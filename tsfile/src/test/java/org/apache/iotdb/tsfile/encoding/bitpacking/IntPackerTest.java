@@ -23,7 +23,10 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.Random;
+
 import org.junit.Test;
+
+import org.apache.iotdb.tsfile.encoding.bitpacking.IntPacker;
 
 public class IntPackerTest {
 

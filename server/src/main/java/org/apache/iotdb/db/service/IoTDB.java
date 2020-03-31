@@ -99,8 +99,8 @@ public class IoTDB implements IoTDBMBean {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
       registerManager.register(MetricsService.getInstance());
     }
-    registerManager.register(StorageEngine.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
+    registerManager.register(StorageEngine.getInstance());
 
     // When registering statMonitor, we should start recovering some statistics
     // with latest values stored

@@ -41,7 +41,7 @@ Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.excepti
 
 ## 查看存储组
 
-在存储组创建后，我们可以使用[SHOW STORAGE GROUP](/zh/document/master/UserGuide/5-Operation%20Manual/4-SQL%20Reference.html)语句来查看所有的存储组，SQL语句如下所示：
+在存储组创建后，我们可以使用[SHOW STORAGE GROUP](../5-Operation%20Manual/4-SQL%20Reference.html)语句来查看所有的存储组，SQL语句如下所示：
 
 ```
 IoTDB> show storage group
@@ -69,7 +69,7 @@ IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODIN
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
-详细的数据类型与编码方式的对应列表请参见[编码方式](/zh/document/master/UserGuide/2-Concept/3-Encoding.html)。
+详细的数据类型与编码方式的对应列表请参见[编码方式](../2-Concept/3-Encoding.html)。
 
 ## 查看时间序列
 

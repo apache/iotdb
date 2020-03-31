@@ -21,10 +21,12 @@ package org.apache.iotdb.tsfile.fileSystem.fileOutputFactory;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
-import org.apache.iotdb.tsfile.write.writer.DefaultTsFileOutput;
-import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.iotdb.tsfile.write.writer.DefaultTsFileOutput;
+import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
 public class LocalFSOutputFactory implements FileOutputFactory {
 

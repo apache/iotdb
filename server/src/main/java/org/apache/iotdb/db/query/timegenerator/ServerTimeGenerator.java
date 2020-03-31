@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.query.timegenerator;
 
-import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
@@ -33,6 +33,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
+import java.io.IOException;
+
 /**
  * A timestamp generator for query with filter. e.g. For query clause "select s1, s2 form root where
  * s3 < 0 and time > 100", this class can iterate back to every timestamp of the query.
@@ -40,6 +42,7 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 public class ServerTimeGenerator extends TimeGenerator {
 
   protected QueryContext context;
+  protected RawDataQueryPlan queryPlan;
 
   public ServerTimeGenerator(QueryContext context) {
     this.context = context;
@@ -48,9 +51,10 @@ public class ServerTimeGenerator extends TimeGenerator {
   /**
    * Constructor of EngineTimeGenerator.
    */
-  public ServerTimeGenerator(IExpression expression, QueryContext context)
+  public ServerTimeGenerator(IExpression expression, QueryContext context, RawDataQueryPlan queryPlan)
       throws StorageEngineException {
     this.context = context;
+    this.queryPlan = queryPlan;
     try {
       super.constructNode(expression);
     } catch (IOException e) {
@@ -74,6 +78,6 @@ public class ServerTimeGenerator extends TimeGenerator {
       throw new IOException(e);
     }
 
-    return new SeriesRawDataBatchReader(path, dataType, context, queryDataSource, null, filter, null);
+    return new SeriesRawDataBatchReader(path, queryPlan.getAllSensorsInDevice(path.getDevice()), dataType, context, queryDataSource, null, filter, null);
   }
 }

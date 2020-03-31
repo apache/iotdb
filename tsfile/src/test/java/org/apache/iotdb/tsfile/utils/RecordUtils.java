@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
@@ -28,6 +29,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,12 +41,11 @@ public class RecordUtils {
   private static final Logger LOG = LoggerFactory.getLogger(RecordUtils.class);
 
   /**
-   * support input format: {@code <deviceId>,<timestamp>,[<measurementId>,<value>,]}.CSV line is separated by ","
+   * support input format: {@code <deviceId>,<timestamp>,[<measurementId>,<value>,]}.CSV line is
+   * separated by ","
    *
-   * @param str
-   *            - input string
-   * @param schema
-   *            - constructed file schema
+   * @param str    - input string
+   * @param schema - constructed file schema
    * @return TSRecord constructed from str
    */
   public static TSRecord parseSimpleTupleRecord(String str, Schema schema) {
@@ -68,13 +69,15 @@ public class RecordUtils {
     for (int i = 2; i < items.length - 1; i += 2) {
       // get measurementId and value
       measurementId = items[i].trim();
-      type = schema.getMeasurementDataType(measurementId);
-      if (type == null) {
+      MeasurementSchema measurementSchema = schema.getSeriesSchema(new Path(deviceId, measurementId));
+      if (measurementSchema == null) {
         LOG.warn("measurementId:{},type not found, pass", measurementId);
         continue;
       }
+      type = measurementSchema.getType();
       String value = items[i + 1].trim();
-      // if value is not null, wrap it with corresponding DataPoint and add to TSRecord
+      // if value is not null, wrap it with corresponding DataPoint and add to
+      // TSRecord
       if (!"".equals(value)) {
         try {
           switch (type) {

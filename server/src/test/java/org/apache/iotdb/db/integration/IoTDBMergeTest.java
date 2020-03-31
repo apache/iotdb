@@ -43,10 +43,9 @@ public class IoTDBMergeTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-
-    EnvironmentUtils.envSetUp();
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1);
+    EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
 

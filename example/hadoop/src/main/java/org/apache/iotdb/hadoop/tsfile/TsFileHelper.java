@@ -18,19 +18,19 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 
 public class TsFileHelper {
 
@@ -59,20 +59,22 @@ public class TsFileHelper {
 
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < 2; i++) {
-        schema.registerMeasurement(
-                new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
+        schema.registerTimeseries(new Path(Constant.DEVICE_1, Constant.SENSOR_PREFIX + (i + 1)),
+            new MeasurementSchema(Constant.SENSOR_PREFIX + (i + 1), TSDataType.INT64,
+                TSEncoding.TS_2DIFF));
       }
 
       for (int i = 2; i < sensorNum; i++) {
-        schema.registerMeasurement(
-                new MeasurementSchema("sensor_" + (i + 1), TSDataType.DOUBLE, TSEncoding.TS_2DIFF));
+        schema.registerTimeseries(new Path(Constant.DEVICE_1, Constant.SENSOR_PREFIX + (i + 1)),
+            new MeasurementSchema(Constant.SENSOR_PREFIX + (i + 1), TSDataType.DOUBLE,
+                TSEncoding.TS_2DIFF));
       }
 
       // add measurements into TSFileWriter
       TsFileWriter tsFileWriter = new TsFileWriter(file, schema);
 
       // construct the row batch
-      RowBatch rowBatch = schema.createRowBatch("device_1");
+      RowBatch rowBatch = schema.createRowBatch(Constant.DEVICE_1);
 
       long[] timestamps = rowBatch.timestamps;
       Object[] values = rowBatch.values;

@@ -27,7 +27,7 @@ Home Page：https://iotdb.apache.org/
 
 Repository：https://github.com/apache/incubator-iotdb/tree/master
 
-Quick start：http://iotdb.apache.org/document/master/UserGuide/0-Get%20Started/1-QuickStart.html
+Quick start：http://iotdb.apache.org/UserGuide/master/0-Get%20Started/1-QuickStart.html
 
 Jira：https://issues.apache.org/jira/projects/IOTDB/issues/IOTDB-9?filter=allopenissues
 

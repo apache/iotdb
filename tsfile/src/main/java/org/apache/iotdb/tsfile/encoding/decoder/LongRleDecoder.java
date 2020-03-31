@@ -21,13 +21,15 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.encoding.bitpacking.LongPacker;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Decoder for long value using rle or bit-packing.
@@ -73,24 +75,21 @@ public class LongRleDecoder extends RleDecoder {
       try {
         readNext();
       } catch (IOException e) {
-        logger.error(
-            "tsfile-encoding IntRleDecoder: error occurs when reading all encoding number, length "
-                + "is {}, bit width is {}",
-            length, bitWidth, e);
+        logger.error("tsfile-encoding IntRleDecoder: error occurs when reading all encoding number, length "
+            + "is {}, bit width is {}", length, bitWidth, e);
       }
     }
     --currentCount;
     long result;
     switch (mode) {
-      case RLE:
-        result = currentValue;
-        break;
-      case BIT_PACKED:
-        result = currentBuffer[bitPackingNum - currentCount - 1];
-        break;
-      default:
-        throw new TsFileDecodingException(
-            String.format("tsfile-encoding LongRleDecoder: not a valid mode %s", mode));
+    case RLE:
+      result = currentValue;
+      break;
+    case BIT_PACKED:
+      result = currentBuffer[bitPackingNum - currentCount - 1];
+      break;
+    default:
+      throw new TsFileDecodingException(String.format("tsfile-encoding LongRleDecoder: not a valid mode %s", mode));
     }
 
     if (!hasNextPackage()) {
@@ -106,13 +105,11 @@ public class LongRleDecoder extends RleDecoder {
 
   @Override
   protected void readNumberInRle() throws IOException {
-    currentValue = ReadWriteForEncodingUtils
-        .readLongLittleEndianPaddedOnBitWidth(byteCache, bitWidth);
+    currentValue = ReadWriteForEncodingUtils.readLongLittleEndianPaddedOnBitWidth(byteCache, bitWidth);
   }
 
   @Override
-  protected void readBitPackingBuffer(int bitPackedGroupCount, int lastBitPackedNum)
-      throws IOException {
+  protected void readBitPackingBuffer(int bitPackedGroupCount, int lastBitPackedNum) throws IOException {
     currentBuffer = new long[bitPackedGroupCount * TSFileConfig.RLE_MIN_REPEATED_NUM];
     byte[] bytes = new byte[bitPackedGroupCount * bitWidth];
     int bytesToRead = bitPackedGroupCount * bitWidth;
