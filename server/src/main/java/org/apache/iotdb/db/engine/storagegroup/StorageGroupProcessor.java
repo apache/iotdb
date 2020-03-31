@@ -1700,15 +1700,10 @@ public class StorageGroupProcessor {
 
   /**
    * If the historical versions of a file is a sub-set of the given file's, remove it to reduce
-<<<<<<< HEAD
-   * unnecessary merge. Only used when the file sender and the receiver share the same file close
-   * policy.
-=======
    * unnecessary merge. Only used when the file sender and the receiver share the same file
    * close policy.
    * Warning: DO NOT REMOVE
    * @param resource
->>>>>>> master
    */
   @SuppressWarnings("unused")
   public void removeFullyOverlapFiles(TsFileResource resource) {
