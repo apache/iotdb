@@ -58,7 +58,6 @@ public class TsFileRecoverPerformer {
   private String insertFilePath;
   private String logNodePrefix;
   private VersionController versionController;
-  private LogReplayer logReplayer;
   private TsFileResource resource;
   private boolean acceptUnseq;
   private boolean isLastFile;
@@ -188,7 +187,7 @@ public class TsFileRecoverPerformer {
   private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter)
       throws StorageGroupProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
-    this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, resource.getModFile(),
+    LogReplayer logReplayer = new LogReplayer(logNodePrefix, insertFilePath, resource.getModFile(),
         versionController, resource, recoverMemTable, acceptUnseq);
     logReplayer.replayLogs();
     try {
