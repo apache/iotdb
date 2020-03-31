@@ -21,7 +21,7 @@
 
 # 一、work process
 
-## Main link
+## Resources
 
 IoTDB official website：https://iotdb.apache.org/
 
