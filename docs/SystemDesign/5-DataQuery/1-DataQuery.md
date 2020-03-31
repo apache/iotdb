@@ -33,8 +33,8 @@ In order to achieve the above kinds of queries, a basic query component for a si
 
 ## Related documents
 
-* [Basic query components](/document/master/SystemDesign/5-DataQuery/2-SeriesReader.html)
-* [Raw data query](/document/master/SystemDesign/5-DataQuery/3-RawDataQuery.html)
-* [Aggregate query](/document/master/SystemDesign/5-DataQuery/4-AggregationQuery.html)
-* [Downsampling query](/document/master/SystemDesign/5-DataQuery/5-GroupByQuery.html)
-* [Recent timestamp query](/document/master/SystemDesign/5-DataQuery/6-LastQuery.html)
+* [Basic query components](/SystemDesign/5-DataQuery/2-SeriesReader.html)
+* [Raw data query](/SystemDesign/5-DataQuery/3-RawDataQuery.html)
+* [Aggregate query](/SystemDesign/5-DataQuery/4-AggregationQuery.html)
+* [Downsampling query](/SystemDesign/5-DataQuery/5-GroupByQuery.html)
+* [Recent timestamp query](/SystemDesign/5-DataQuery/6-LastQuery.html)

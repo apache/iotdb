@@ -236,7 +236,7 @@ jline:jline:2.14.5
 
 BSD 3-Clause
 ------------
-org.antlr:antlr-runtime:3.5.2
+org.antlr:antlr-runtime:4.7.1
 
 
 MIT License

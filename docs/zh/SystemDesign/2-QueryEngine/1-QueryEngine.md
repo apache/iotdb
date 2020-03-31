@@ -60,5 +60,5 @@
 
 ## 相关文档
 
-* [查询计划生成器](/zh/document/master/SystemDesign/2-QueryEngine/2-Planner.html)
-* [计划执行器](/zh/document/master/SystemDesign/2-QueryEngine/3-PlanExecutor.html)
+* [查询计划生成器](/zh/SystemDesign/2-QueryEngine/2-Planner.html)
+* [计划执行器](/zh/SystemDesign/2-QueryEngine/3-PlanExecutor.html)

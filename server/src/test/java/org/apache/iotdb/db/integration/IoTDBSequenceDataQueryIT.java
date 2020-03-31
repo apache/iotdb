@@ -32,6 +32,7 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -160,7 +161,8 @@ public class IoTDBSequenceDataQueryIT {
   }
 
   @Test
-  public void readWithoutFilterTest() throws IOException, StorageEngineException {
+  public void readWithoutFilterTest()
+      throws IOException, StorageEngineException, QueryProcessException {
 
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
@@ -189,8 +191,7 @@ public class IoTDBSequenceDataQueryIT {
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      RowRecord rowRecord = queryDataSet.next();
-      // System.out.println("===" + rowRecord.toString());
+      queryDataSet.next();
       cnt++;
     }
     assertEquals(1000, cnt);
@@ -199,7 +200,8 @@ public class IoTDBSequenceDataQueryIT {
   }
 
   @Test
-  public void readWithTimeFilterTest() throws IOException, StorageEngineException {
+  public void readWithTimeFilterTest()
+      throws IOException, StorageEngineException, QueryProcessException {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -225,7 +227,6 @@ public class IoTDBSequenceDataQueryIT {
       RowRecord rowRecord = queryDataSet.next();
       String value = rowRecord.getFields().get(0).getStringValue();
       long time = rowRecord.getTimestamp();
-      // System.out.println(time + "===" + rowRecord.toString());
       assertEquals("" + time % 17, value);
       cnt++;
     }
@@ -235,7 +236,8 @@ public class IoTDBSequenceDataQueryIT {
   }
 
   @Test
-  public void readWithValueFilterTest() throws IOException, StorageEngineException {
+  public void readWithValueFilterTest()
+      throws IOException, StorageEngineException, QueryProcessException {
     // select * from root where root.vehicle.d0.s0 >=14
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
@@ -270,8 +272,7 @@ public class IoTDBSequenceDataQueryIT {
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      RowRecord rowRecord = queryDataSet.next();
-      // System.out.println("readWithValueFilterTest===" + rowRecord.toString());
+      queryDataSet.next();
       cnt++;
     }
     assertEquals(count, cnt);
