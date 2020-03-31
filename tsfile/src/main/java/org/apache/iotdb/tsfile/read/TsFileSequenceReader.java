@@ -563,7 +563,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    *
    * @param newSchema   @OUT. the measurement schema in the file will be added into this parameter.
    *                    (can be null)
-   * @param chunkMetadataListMap   @OUT. the treeMap (Path -> ChunkmetadataList)
+   * @param chunkGroupMetadataList   @OUT. the treeMap (Path -> ChunkmetadataList)
    *                    (can be null)
    * @param fastFinish  if true and the file is complete, then newSchema and newMetaData parameter
    *                    will be not modified.
@@ -572,7 +572,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
 
   public long selfCheck(Map<Path, MeasurementSchema> newSchema,
-      Map<Path, List<ChunkMetadata>> chunkMetadataListMap,
+      List<Pair<String, List<ChunkMetadata>>> chunkGroupMetadataList,
       boolean fastFinish) throws IOException {
     File checkFile = FSFactoryProducer.getFSFactory().getFile(this.file);
     long fileSize;
@@ -586,7 +586,8 @@ public class TsFileSequenceReader implements AutoCloseable {
     TSDataType dataType;
     long fileOffsetOfChunk;
 
-    List<ChunkMetadata> chunks = null;
+    // ChunkMetadata of current ChunkGroup
+    List<ChunkMetadata> chunkMetadataList = null;
     String deviceID;
 
     int position = TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
@@ -622,7 +623,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             // this is the first chunk of a new ChunkGroup.
             if (newChunkGroup) {
               newChunkGroup = false;
-              chunks = new ArrayList<>();
+              chunkMetadataList = new ArrayList<>();
             }
             fileOffsetOfChunk = this.position() - 1;
             // if there is something wrong with a chunk, we will drop the whole ChunkGroup
@@ -654,7 +655,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             }
             currentChunk = new ChunkMetadata(measurementID, dataType, fileOffsetOfChunk,
                 chunkStatistics);
-            chunks.add(currentChunk);
+            chunkMetadataList.add(currentChunk);
             chunkCnt++;
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
@@ -669,12 +670,7 @@ public class TsFileSequenceReader implements AutoCloseable {
                 newSchema.putIfAbsent(new Path(deviceID, tsSchema.getMeasurementId()), tsSchema);
               }
             }
-            if (chunkMetadataListMap != null) {
-              for (ChunkMetadata chunk : chunks) {
-                Path path = new Path(deviceID, chunk.getMeasurementUid());
-                chunkMetadataListMap.computeIfAbsent(path, k -> new ArrayList<>()).add(chunk);
-              }
-            }
+            chunkGroupMetadataList.add(new Pair<>(deviceID, chunkMetadataList));
             newChunkGroup = true;
             truncatedPosition = this.position();
 

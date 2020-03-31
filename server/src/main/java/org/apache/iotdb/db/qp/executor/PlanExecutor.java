@@ -571,9 +571,10 @@ public class PlanExecutor implements IPlanExecutor {
                 file.getAbsolutePath()));
       }
       Map<Path, MeasurementSchema> schemaMap = new HashMap<>();
-      Map<Path, List<ChunkMetadata>> chunkMetaDataListMap = new HashMap<>();
+
+      List<Pair<String, List<ChunkMetadata>>> chunkGroupMetadataList = new ArrayList<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
-        reader.selfCheck(schemaMap, chunkMetaDataListMap, false);
+        reader.selfCheck(schemaMap, chunkGroupMetadataList, false);
       }
 
       FileLoaderUtils.checkTsFileResource(tsFileResource);
@@ -586,7 +587,7 @@ public class PlanExecutor implements IPlanExecutor {
 
       //create schemas if they doesn't exist
       if (plan.isAutoCreateSchema()) {
-        createSchemaAutomatically(chunkMetaDataListMap, schemaMap, plan.getSgLevel());
+        createSchemaAutomatically(chunkGroupMetadataList, schemaMap, plan.getSgLevel());
       }
 
       StorageEngine.getInstance().loadNewTsFile(tsFileResource);
@@ -596,36 +597,34 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private void createSchemaAutomatically(Map<Path, List<ChunkMetadata>> chunkMetaDataListMap,
+  private void createSchemaAutomatically(
+      List<Pair<String, List<ChunkMetadata>>> chunkGroupMetadataList,
       Map<Path, MeasurementSchema> knownSchemas, int sgLevel)
       throws QueryProcessException, MetadataException {
-    if (chunkMetaDataListMap.isEmpty()) {
+    if (chunkGroupMetadataList.isEmpty()) {
       return;
     }
-    for (Entry<Path, List<ChunkMetadata>> entry : chunkMetaDataListMap.entrySet()) {
-      String device = entry.getKey().getDevice();
+
+    Set<Path> registeredSeries = new HashSet<>();
+    for (Pair<String, List<ChunkMetadata>> chunkGroupMetadata : chunkGroupMetadataList) {
+      String device = chunkGroupMetadata.left;
       MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(device, true, sgLevel);
-      for (ChunkMetadata chunkMetaData : entry.getValue()) {
-        String measurement = chunkMetaData.getMeasurementUid();
-        String fullPath = device + IoTDBConstant.PATH_SEPARATOR + measurement;
-        MeasurementSchema schema = knownSchemas.get(entry.getKey());
-        if (schema == null) {
-          throw new MetadataException(String
-              .format("Can not get the schema of measurement [%s]", measurement));
-        }
-        if (!node.hasChild(measurement)) {
-          try {
-            mManager.createTimeseries(fullPath, schema.getType(), schema.getEncodingType(),
-                schema.getCompressor(), Collections.emptyMap());
-          } catch (MetadataException e) {
-            if (!e.getMessage().contains("already exist")) {
-              throw e;
-            }
+      for (ChunkMetadata chunkMetadata : chunkGroupMetadata.right) {
+        Path series = new Path(chunkGroupMetadata.left, chunkMetadata.getMeasurementUid());
+        if (!registeredSeries.contains(series)) {
+          registeredSeries.add(series);
+          MeasurementSchema schema = knownSchemas.get(series);
+          if (schema == null) {
+            throw new MetadataException(String.format("Can not get the schema of measurement [%s]",
+                    chunkMetadata.getMeasurementUid()));
           }
-        }
-        if (node.getChild(measurement) instanceof InternalMNode) {
-          throw new QueryProcessException(
-              String.format("Current Path is not leaf node. %s", fullPath));
+          if (!node.hasChild(chunkMetadata.getMeasurementUid())) {
+            mManager.createTimeseries(series.getFullPath(), schema.getType(),
+                schema.getEncodingType(), schema.getCompressor(), Collections.emptyMap());
+          } else if (node.getChild(chunkMetadata.getMeasurementUid()) instanceof InternalMNode) {
+            throw new QueryProcessException(
+                String.format("Current Path is not leaf node. %s", series));
+          }
         }
       }
     }

@@ -59,7 +59,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   /**
    * all chunk group metadata which have been serialized on disk.
    */
-  private Map<String, Map<String, List<ChunkMetadata>>> metadatas = new HashMap<>();
+  private Map<String, Map<String, List<ChunkMetadata>>> metadatasForQuery = new HashMap<>();
 
   /**
    * @param file a given tsfile path you want to (continue to) write
@@ -90,7 +90,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         }
 
         // uncompleted file
-        truncatedPosition = reader.selfCheck(knownSchemas, chunkMetadataListMap, true);
+        truncatedPosition = reader.selfCheck(knownSchemas, chunkGroupMetadataList, true);
         totalChunkNum = reader.getTotalChunkNum();
         if (truncatedPosition == TsFileCheckStatus.INCOMPATIBLE_FILE) {
           out.close();
@@ -168,8 +168,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   public List<ChunkMetadata> getVisibleMetadataList(String deviceId, String measurementId,
       TSDataType dataType) {
     List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
-    if (metadatas.containsKey(deviceId) && metadatas.get(deviceId).containsKey(measurementId)) {
-      for (ChunkMetadata chunkMetaData : metadatas.get(deviceId).get(measurementId)) {
+    if (metadatasForQuery.containsKey(deviceId) && metadatasForQuery.get(deviceId).containsKey(measurementId)) {
+      for (ChunkMetadata chunkMetaData : metadatasForQuery.get(deviceId).get(measurementId)) {
         // filter: if adevice'sensor is defined as float type, and data has been persistent.
         // Then someone deletes the timeseries and recreate it with Int type. We have to ignore
         // all the stale data.
@@ -179,6 +179,10 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       }
     }
     return chunkMetadataList;
+  }
+
+  public Map<String, Map<String, List<ChunkMetadata>>> getMetadatasForQuery() {
+    return metadatasForQuery;
   }
 
   /**
@@ -194,13 +198,13 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         String deviceId = pair.left;
         for (ChunkMetadata chunkMetaData : rowMetaDataList) {
           String measurementId = chunkMetaData.getMeasurementUid();
-          if (!metadatas.containsKey(deviceId)) {
-            metadatas.put(deviceId, new HashMap<>());
+          if (!metadatasForQuery.containsKey(deviceId)) {
+            metadatasForQuery.put(deviceId, new HashMap<>());
           }
-          if (!metadatas.get(deviceId).containsKey(measurementId)) {
-            metadatas.get(deviceId).put(measurementId, new ArrayList<>());
+          if (!metadatasForQuery.get(deviceId).containsKey(measurementId)) {
+            metadatasForQuery.get(deviceId).put(measurementId, new ArrayList<>());
           }
-          metadatas.get(deviceId).get(measurementId).add(chunkMetaData);
+          metadatasForQuery.get(deviceId).get(measurementId).add(chunkMetaData);
         }
       }
     }
@@ -218,10 +222,10 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    */
   private List<Pair<String, List<ChunkMetadata>>> getAppendedRowMetadata() {
     List<Pair<String, List<ChunkMetadata>>> append = new ArrayList<>();
-    if (lastFlushedChunkGroupIndex < chunkGroupInfoList.size()) {
-      append.addAll(chunkGroupInfoList
-          .subList(lastFlushedChunkGroupIndex, chunkGroupInfoList.size()));
-      lastFlushedChunkGroupIndex = chunkGroupInfoList.size();
+    if (lastFlushedChunkGroupIndex < chunkGroupMetadataList.size()) {
+      append.addAll(chunkGroupMetadataList
+          .subList(lastFlushedChunkGroupIndex, chunkGroupMetadataList.size()));
+      lastFlushedChunkGroupIndex = chunkGroupMetadataList.size();
     }
     return append;
   }
