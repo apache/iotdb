@@ -81,9 +81,6 @@ public class TsFileRecoverPerformer {
    */
   public RestorableTsFileIOWriter recover() throws StorageGroupProcessorException {
 
-    IMemTable recoverMemTable = new PrimitiveMemTable();
-    this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, resource.getModFile(),
-        versionController, resource, recoverMemTable, acceptUnseq);
     File insertFile = FSFactoryProducer.getFSFactory().getFile(insertFilePath);
     if (!insertFile.exists()) {
       logger.error("TsFile {} is missing, will skip its recovery.", insertFilePath);
@@ -197,7 +194,6 @@ public class TsFileRecoverPerformer {
     try {
       if (!recoverMemTable.isEmpty()) {
         // flush logs
-
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable,
             restorableTsFileIOWriter, resource.getFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
