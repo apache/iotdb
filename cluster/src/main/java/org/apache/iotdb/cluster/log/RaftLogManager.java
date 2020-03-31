@@ -56,7 +56,7 @@ public class RaftLogManager {
         if (term != -1) {
             return term;
         }
-        return committedEntryManager.getTerm(index);
+        return committedEntryManager.maybeTerm(index);
     }
 
     public long getFirstIndex() {

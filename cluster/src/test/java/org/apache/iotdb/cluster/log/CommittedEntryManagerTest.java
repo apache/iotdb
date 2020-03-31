@@ -40,7 +40,7 @@ public class CommittedEntryManagerTest {
 			public RaftSnapshot applyingSnapshot;
 			public long testIndex;
 
-			public CommittedEntryManagerTester(List<Log> entries, RaftSnapshot snapshot,RaftSnapshot applyingSnapshot,long testIndex) {
+			public CommittedEntryManagerTester(List<Log> entries, RaftSnapshot snapshot, RaftSnapshot applyingSnapshot, long testIndex) {
 				this.entries = entries;
 				this.snapshot = snapshot;
 				this.applyingSnapshot = applyingSnapshot;
@@ -52,27 +52,27 @@ public class CommittedEntryManagerTest {
 				add(new PhysicalPlanLog(3, 3));
 				add(new PhysicalPlanLog(4, 4));
 				add(new PhysicalPlanLog(5, 5));
-			}}, new RaftSnapshot(new SnapshotMeta(3,3)),new RaftSnapshot(new SnapshotMeta(3,3)),3));
+			}}, new RaftSnapshot(new SnapshotMeta(3, 3)), new RaftSnapshot(new SnapshotMeta(3, 3)), 3));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
 				add(new PhysicalPlanLog(3, 3));
 				add(new PhysicalPlanLog(4, 4));
 				add(new PhysicalPlanLog(5, 5));
-			}},new RaftSnapshot(new SnapshotMeta(3,3)), new RaftSnapshot(new SnapshotMeta(4,4)),4));
+			}}, new RaftSnapshot(new SnapshotMeta(3, 3)), new RaftSnapshot(new SnapshotMeta(4, 4)), 4));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
 				add(new PhysicalPlanLog(3, 3));
 				add(new PhysicalPlanLog(4, 4));
 				add(new PhysicalPlanLog(5, 5));
-			}}, new RaftSnapshot(new SnapshotMeta(3,3)),new RaftSnapshot(new SnapshotMeta(5,5)),5));
+			}}, new RaftSnapshot(new SnapshotMeta(3, 3)), new RaftSnapshot(new SnapshotMeta(5, 5)), 5));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
 				add(new PhysicalPlanLog(3, 3));
 				add(new PhysicalPlanLog(4, 4));
 				add(new PhysicalPlanLog(5, 5));
-			}}, new RaftSnapshot(new SnapshotMeta(3,3)),new RaftSnapshot(new SnapshotMeta(7,7)),7));
+			}}, new RaftSnapshot(new SnapshotMeta(3, 3)), new RaftSnapshot(new SnapshotMeta(7, 7)), 7));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
-			CommittedEntryManager instance = new CommittedEntryManager(test.entries,test.snapshot);
+			CommittedEntryManager instance = new CommittedEntryManager(test.entries);
 			instance.applyingSnapshot(test.applyingSnapshot);
-			assertEquals(test.testIndex, (long)instance.getDummyIndex());
+			assertEquals(test.testIndex, (long) instance.getDummyIndex());
 		}
 	}
 
@@ -98,7 +98,7 @@ public class CommittedEntryManagerTest {
 			}}, 3));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
-			CommittedEntryManager instance = new CommittedEntryManager(test.entries,null);
+			CommittedEntryManager instance = new CommittedEntryManager(test.entries);
 			long index = instance.getDummyIndex();
 			assertEquals(test.testIndex, index);
 		}
@@ -126,7 +126,7 @@ public class CommittedEntryManagerTest {
 			}}, 4));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
-			CommittedEntryManager instance = new CommittedEntryManager(test.entries,null);
+			CommittedEntryManager instance = new CommittedEntryManager(test.entries);
 			long index = instance.getFirstIndex();
 			assertEquals(test.testIndex, index);
 		}
@@ -154,14 +154,14 @@ public class CommittedEntryManagerTest {
 			}}, 5));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
-			CommittedEntryManager instance = new CommittedEntryManager(test.entries,null);
+			CommittedEntryManager instance = new CommittedEntryManager(test.entries);
 			long index = instance.getLastIndex();
 			assertEquals(test.testIndex, index);
 		}
 	}
 
 	@Test
-	public void getTerm() {
+	public void maybeTerm() {
 		class CommittedEntryManagerTester {
 			public List<Log> entries;
 			public long index;
@@ -186,8 +186,8 @@ public class CommittedEntryManagerTest {
 			add(new CommittedEntryManagerTester(entries, 6, -1));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
-			CommittedEntryManager instance = new CommittedEntryManager(test.entries,null);
-			long term = instance.getTerm(test.index);
+			CommittedEntryManager instance = new CommittedEntryManager(test.entries);
+			long term = instance.maybeTerm(test.index);
 			assertEquals(test.testTerm, term);
 		}
 	}
@@ -237,7 +237,7 @@ public class CommittedEntryManagerTest {
 			add(new CommittedEntryManagerTester(entries, 3, 4, null, EntryCompactedException.class));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
-			CommittedEntryManager instance = new CommittedEntryManager(test.entries,null);
+			CommittedEntryManager instance = new CommittedEntryManager(test.entries);
 			try {
 				List<Log> answer = instance.getEntries(test.low, test.high);
 				if (test.throwClass != null) {
@@ -287,7 +287,7 @@ public class CommittedEntryManagerTest {
 			add(new CommittedEntryManagerTester(entries, 10, null, EntryUnavailableException.class));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
-			CommittedEntryManager instance = new CommittedEntryManager(test.entries,null);
+			CommittedEntryManager instance = new CommittedEntryManager(test.entries);
 			try {
 				instance.compactEntries(test.compactIndex);
 				if (test.throwClass != null) {
@@ -395,7 +395,6 @@ public class CommittedEntryManagerTest {
 				add(new PhysicalPlanLog(4, 5));
 			}}));
 			// direct append
-			// truncate incoming entries, truncate the existing entries and append
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
 				add(new PhysicalPlanLog(3, 3));
 				add(new PhysicalPlanLog(4, 4));
@@ -410,7 +409,7 @@ public class CommittedEntryManagerTest {
 			}}));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
-			CommittedEntryManager instance = new CommittedEntryManager(test.entries,null);
+			CommittedEntryManager instance = new CommittedEntryManager(test.entries);
 			instance.append(test.toAppend);
 			assertEquals(test.testEntries, instance.getAllEntries());
 		}

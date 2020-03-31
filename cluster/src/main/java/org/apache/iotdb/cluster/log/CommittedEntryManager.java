@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log;
 
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
+import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
@@ -33,56 +34,89 @@ public class CommittedEntryManager {
 
     private static final Logger logger = LoggerFactory.getLogger(CommittedEntryManager.class);
 
+    //the state that raft nodes must persist such as voteFor, currentTerm
     private HardState hardState;
-    private RaftSnapshot snapshot;
+    //memory cache for persistent logs
     private List<Log> entries;
 
-    public CommittedEntryManager(RaftSnapshot snapshot) {
-        this.snapshot = snapshot;
-        PhysicalPlanLog dummy = new PhysicalPlanLog(snapshot.getLastIndex(), snapshot.getLastTerm());
+    /**
+     * Note that it is better to use applyingSnapshot to update dummy as soon as such an instance is created.
+     */
+    public CommittedEntryManager() {
         entries = new ArrayList<Log>() {{
-            add(dummy);
+            add(new PhysicalPlanLog(-1,-1));
         }};
     }
 
+    /**
+     * setHardState set the hardState.
+     */
     public void setHardState(HardState hardState) {
         this.hardState = hardState;
     }
 
+    /**
+     * getHardState return the raftNode hardState.
+     *
+     * @return hardState
+     */
     public HardState getHardState() {
         return hardState;
     }
 
-    public RaftSnapshot getSnapshot() {
-        return snapshot;
-    }
-
-    public void applyingSnapshot(RaftSnapshot snap) {
-        long localIndex = snapshot.getLastIndex();
-        long snapIndex = snap.getLastIndex();
+    /**
+     * ApplySnapshot overwrites the contents of this object with
+     * those of the given snapshot.
+     * Note that this function is only used if you want to override all the contents, otherwise please use compactEntries.
+     *
+     * @param snapshot snapshot
+     */
+    public void applyingSnapshot(RaftSnapshot snapshot) {
+        long localIndex = getDummyIndex();
+        long snapIndex = snapshot.getLastIndex();
         if (localIndex >= snapIndex) {
             logger.info("requested index is older than the existing snapshot");
             return;
         }
-        snapshot = snap;
         entries.clear();
-        Log dummy = new PhysicalPlanLog(snap.getLastIndex(), snap.getLastTerm());
+        Log dummy = new PhysicalPlanLog(snapshot.getLastIndex(), snapshot.getLastTerm());
         entries.add(dummy);
     }
 
+    /**
+     * getDummyIndex return the last entry's index which have been compacted.
+     *
+     * @return dummyIndex
+     */
     public Long getDummyIndex() {
         return entries.get(0).getCurrLogIndex();
     }
 
+    /**
+     * getFirstIndex return the first entry's index which have not been compacted.
+     *
+     * @return firstIndex
+     */
     public Long getFirstIndex() {
         return getDummyIndex() + 1;
     }
 
+    /**
+     * getLastIndex return the last entry's index which have been committed and persisted.
+     *
+     * @return getLastIndex
+     */
     public Long getLastIndex() {
         return entries.get(0).getCurrLogIndex() + entries.size() - 1;
     }
 
-    public long getTerm(long index) {
+    /**
+     * maybeTerm returns the term for given index.
+     *
+     * @param index request entry index
+     * @return set to -1 if the entry for this index cannot be found, or return the entry's term.
+     */
+    public long maybeTerm(long index) {
         long offset = entries.get(0).getCurrLogIndex();
         if (index < offset) {
             return -1;
@@ -93,7 +127,20 @@ public class CommittedEntryManager {
         return entries.get((int) (index - offset)).getCurrLogTerm();
     }
 
-    public List<Log> getEntries(long low, long high) throws EntryCompactedException {
+    /**
+     * getEntries pack entries from low to high - 1, just like slice (entries[low:high]).
+     * dummyIndex < low < high <= dummyIndex + entries.size().
+     *
+     * @param low  request index low bound
+     * @param high request index upper bound
+     * @throws GetEntriesWrongParametersException
+     * @throws EntryCompactedException
+     */
+    public List<Log> getEntries(long low, long high) throws EntryCompactedException, GetEntriesWrongParametersException {
+        if (high <= low) {
+            logger.error("invalid getEntries: parameter: {} >= {}", low, high);
+            throw new GetEntriesWrongParametersException(low, high);
+        }
         long offset = entries.get(0).getCurrLogIndex();
         if (low <= offset || entries.size() == 1) {
             logger.error("entries before request index ({}) have been compacted, and the compactIndex is ({})", low, offset);
@@ -106,6 +153,12 @@ public class CommittedEntryManager {
         return entries.subList((int) (low - offset), (int) (high - offset));
     }
 
+    /**
+     * compactEntries discards all log entries prior to compactIndex.
+     *
+     * @param compactIndex request compactIndex
+     * @throws EntryUnavailableException
+     */
     public void compactEntries(long compactIndex) throws EntryUnavailableException {
         long offset = entries.get(0).getCurrLogIndex();
         if (compactIndex <= offset) {
@@ -122,6 +175,12 @@ public class CommittedEntryManager {
         entries.subList(1, index + 1).clear();
     }
 
+    /**
+     * append append committed entries.It will truncate conflict entries if it find inconsistencies.
+     * maybe not throw a exception is better.It depends on the caller's implementation.
+     *
+     * @param appendingEntries request entries
+     */
     public void append(List<Log> appendingEntries) {
         if (appendingEntries.size() == 0) {
             return;
@@ -138,7 +197,6 @@ public class CommittedEntryManager {
         if (entries.size() - offset == 0) {
             entries.addAll(appendingEntries);
         } else if (entries.size() - offset > 0) {
-            //maybe not throw a exception is better.It depends on the caller's implementation.
 //            logger.error("The logs which first index is {} are going to truncate committed logs", appendingEntries.get(0).getCurrLogIndex());
 //            throw new TruncateCommittedEntryException(appendingEntries.get(0).getCurrLogIndex(),getLastIndex());
             entries.subList((int) offset, entries.size()).clear();
@@ -149,9 +207,8 @@ public class CommittedEntryManager {
     }
 
     @TestOnly
-    public CommittedEntryManager(List<Log> entries, RaftSnapshot snapshot) {
+    public CommittedEntryManager(List<Log> entries) {
         this.entries = entries;
-        this.snapshot = snapshot;
     }
 
     @TestOnly

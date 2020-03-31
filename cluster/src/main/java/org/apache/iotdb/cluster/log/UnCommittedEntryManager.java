@@ -127,7 +127,7 @@ public class UnCommittedEntryManager {
 
     /**
      * getEntries pack entries from low to high - 1, just like slice (entries[low:high]).
-     * offset <= low <= high <= offset+entries.size().
+     * offset <= low < high <= offset + entries.size().
      *
      * @param low  request index low bound
      * @param high request index upper bound
