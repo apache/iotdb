@@ -26,7 +26,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IoTDbDataSource implements DataSource {
+public class IoTDBDataSource implements DataSource {
 
     private final Logger logger = LoggerFactory.getLogger(IoTDbDataSource.class);
 
