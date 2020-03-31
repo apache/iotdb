@@ -20,10 +20,12 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -470,5 +472,13 @@ public class TsFileResource {
 
   public TimeseriesMetadata getTimeSeriesMetadata() {
     return timeSeriesMetadata;
+  }
+
+  public long getTimePartition() {
+    if (startTimeMap != null && !startTimeMap.isEmpty()) {
+      return StorageEngine.getTimePartition(startTimeMap.values().iterator().next());
+    }
+    String[] splits = FilePathUtils.splitTsFilePath(this);
+    return Long.parseLong(splits[splits.length - 2]);
   }
 }

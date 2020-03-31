@@ -46,8 +46,4 @@ public class FilePathUtils {
     return resource.getFile().getAbsolutePath().split(PATH_SPLIT_STRING);
   }
 
-  public static long getTsFileResourcePartition(TsFileResource resource) {
-    String[] splits = splitTsFilePath(resource);
-    return Long.parseLong(splits[splits.length - 2]);
-  }
 }

@@ -498,7 +498,7 @@ public class StorageEngine implements IService {
         if (!sequenceFile.isClosed()) {
           continue;
         }
-        long partitionNum = FilePathUtils.getTsFileResourcePartition(sequenceFile);
+        long partitionNum = sequenceFile.getTimePartition();
         Map<Long, List<TsFileResource>> storageGroupFiles = ret.computeIfAbsent(entry.getKey()
             , n -> new HashMap<>());
         storageGroupFiles.computeIfAbsent(partitionNum, n -> new ArrayList<>()).add(sequenceFile);
