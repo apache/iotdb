@@ -32,7 +32,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class IoTDBSimpleQueryTest {
+public class IoTDBSimpleQueryIT {
 
   @Before
   public void setUp() throws Exception {
