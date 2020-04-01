@@ -163,14 +163,14 @@ public class CommittedEntryManagerTest {
 	@Test
 	public void maybeTerm() {
 		class CommittedEntryManagerTester {
-			public List<Log> entries;
 			public long index;
 			public long testTerm;
+			public Class throwClass;
 
-			public CommittedEntryManagerTester(List<Log> entries, long index, long testTerm) {
-				this.entries = entries;
+			public CommittedEntryManagerTester(long index, long testTerm, Class throwClass) {
 				this.index = index;
 				this.testTerm = testTerm;
+				this.throwClass = throwClass;
 			}
 		}
 		List<Log> entries = new ArrayList<Log>() {{
@@ -179,30 +179,40 @@ public class CommittedEntryManagerTest {
 			add(new PhysicalPlanLog(5, 5));
 		}};
 		List<CommittedEntryManagerTester> tests = new ArrayList<CommittedEntryManagerTester>() {{
-			add(new CommittedEntryManagerTester(entries, 2, -1));
-			add(new CommittedEntryManagerTester(entries, 3, 3));
-			add(new CommittedEntryManagerTester(entries, 4, 4));
-			add(new CommittedEntryManagerTester(entries, 5, 5));
-			add(new CommittedEntryManagerTester(entries, 6, -1));
+			add(new CommittedEntryManagerTester(3, 3, null));
+			add(new CommittedEntryManagerTester(4, 4, null));
+			add(new CommittedEntryManagerTester(5, 5, null));
+			// entries that have been compacted;
+			add(new CommittedEntryManagerTester(2, 0, EntryCompactedException.class));
+			// entries that have not been committed;
+			add(new CommittedEntryManagerTester(6, -1, null));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
-			CommittedEntryManager instance = new CommittedEntryManager(test.entries);
-			long term = instance.maybeTerm(test.index);
-			assertEquals(test.testTerm, term);
+			CommittedEntryManager instance = new CommittedEntryManager(entries);
+			try {
+				long term = instance.maybeTerm(test.index);
+				if (test.throwClass != null) {
+					fail("The expected exception is not thrown");
+				} else {
+					assertEquals(test.testTerm, term);
+				}
+			} catch (Exception e) {
+				if (!e.getClass().getName().equals(test.throwClass.getName())) {
+					fail("An unexpected exception was thrown.");
+				}
+			}
 		}
 	}
 
 	@Test
 	public void getEntries() {
 		class CommittedEntryManagerTester {
-			public List<Log> entries;
 			public long low;
 			public long high;
 			public List<Log> testEntries;
 			public Class throwClass;
 
-			public CommittedEntryManagerTester(List<Log> entries, long low, long high, List<Log> testEntries, Class throwClass) {
-				this.entries = entries;
+			public CommittedEntryManagerTester(long low, long high, List<Log> testEntries, Class throwClass) {
 				this.low = low;
 				this.high = high;
 				this.testEntries = testEntries;
@@ -216,28 +226,31 @@ public class CommittedEntryManagerTest {
 			add(new PhysicalPlanLog(6, 6));
 		}};
 		List<CommittedEntryManagerTester> tests = new ArrayList<CommittedEntryManagerTester>() {{
-			add(new CommittedEntryManagerTester(entries, 4, 5, new ArrayList<Log>() {{
+			add(new CommittedEntryManagerTester(4, 4, new ArrayList<>(), null));
+			add(new CommittedEntryManagerTester(4, 5, new ArrayList<Log>() {{
 				add(new PhysicalPlanLog(4, 4));
 			}}, null));
-			add(new CommittedEntryManagerTester(entries, 4, 6, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
-			}}, null));
-			add(new CommittedEntryManagerTester(entries, 4, 7, new ArrayList<Log>() {{
+			add(new CommittedEntryManagerTester(4, 6, new ArrayList<Log>() {{
 				add(new PhysicalPlanLog(4, 4));
 				add(new PhysicalPlanLog(5, 5));
-				add(new PhysicalPlanLog(6, 6));
 			}}, null));
-			add(new CommittedEntryManagerTester(entries, 4, 8, new ArrayList<Log>() {{
+			add(new CommittedEntryManagerTester(4, 7, new ArrayList<Log>() {{
 				add(new PhysicalPlanLog(4, 4));
 				add(new PhysicalPlanLog(5, 5));
 				add(new PhysicalPlanLog(6, 6));
 			}}, null));
-			add(new CommittedEntryManagerTester(entries, 2, 6, null, EntryCompactedException.class));
-			add(new CommittedEntryManagerTester(entries, 3, 4, null, EntryCompactedException.class));
+			// entries that have not been committed;
+			add(new CommittedEntryManagerTester(4, 8, new ArrayList<Log>() {{
+				add(new PhysicalPlanLog(4, 4));
+				add(new PhysicalPlanLog(5, 5));
+				add(new PhysicalPlanLog(6, 6));
+			}}, null));
+			// entries that have been compacted;
+			add(new CommittedEntryManagerTester(2, 6, null, EntryCompactedException.class));
+			add(new CommittedEntryManagerTester(3, 4, null, EntryCompactedException.class));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
-			CommittedEntryManager instance = new CommittedEntryManager(test.entries);
+			CommittedEntryManager instance = new CommittedEntryManager(entries);
 			try {
 				List<Log> answer = instance.getEntries(test.low, test.high);
 				if (test.throwClass != null) {
@@ -268,23 +281,50 @@ public class CommittedEntryManagerTest {
 				this.throwClass = throwClass;
 			}
 		}
-		List<Log> entries = new ArrayList<Log>() {{
-			add(new PhysicalPlanLog(3, 3));
-			add(new PhysicalPlanLog(4, 4));
-			add(new PhysicalPlanLog(5, 5));
-		}};
 		List<CommittedEntryManagerTester> tests = new ArrayList<CommittedEntryManagerTester>() {{
-			add(new CommittedEntryManagerTester(entries, 2, entries, null));
-			add(new CommittedEntryManagerTester(entries, 3, entries, null));
-			add(new CommittedEntryManagerTester(entries, 4, new ArrayList<Log>() {{
+			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
+				add(new PhysicalPlanLog(3, 3));
+				add(new PhysicalPlanLog(4, 4));
+				add(new PhysicalPlanLog(5, 5));
+			}}, 2, new ArrayList<Log>() {{
+				add(new PhysicalPlanLog(3, 3));
 				add(new PhysicalPlanLog(4, 4));
 				add(new PhysicalPlanLog(5, 5));
 			}}, null));
-			add(new CommittedEntryManagerTester(entries, 5, new ArrayList<Log>() {{
+			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
+				add(new PhysicalPlanLog(3, 3));
+				add(new PhysicalPlanLog(4, 4));
+				add(new PhysicalPlanLog(5, 5));
+			}}, 3, new ArrayList<Log>() {{
+				add(new PhysicalPlanLog(3, 3));
+				add(new PhysicalPlanLog(4, 4));
 				add(new PhysicalPlanLog(5, 5));
 			}}, null));
-			add(new CommittedEntryManagerTester(entries, 6, null, EntryUnavailableException.class));
-			add(new CommittedEntryManagerTester(entries, 10, null, EntryUnavailableException.class));
+			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
+				add(new PhysicalPlanLog(3, 3));
+				add(new PhysicalPlanLog(4, 4));
+				add(new PhysicalPlanLog(5, 5));
+			}}, 4, new ArrayList<Log>() {{
+				add(new PhysicalPlanLog(4, 4));
+				add(new PhysicalPlanLog(5, 5));
+			}}, null));
+			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
+				add(new PhysicalPlanLog(3, 3));
+				add(new PhysicalPlanLog(4, 4));
+				add(new PhysicalPlanLog(5, 5));
+			}}, 5, new ArrayList<Log>() {{
+				add(new PhysicalPlanLog(5, 5));
+			}}, null));
+			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
+				add(new PhysicalPlanLog(3, 3));
+				add(new PhysicalPlanLog(4, 4));
+				add(new PhysicalPlanLog(5, 5));
+			}}, 6, null, EntryUnavailableException.class));
+			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
+				add(new PhysicalPlanLog(3, 3));
+				add(new PhysicalPlanLog(4, 4));
+				add(new PhysicalPlanLog(5, 5));
+			}}, 10, null, EntryUnavailableException.class));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
 			CommittedEntryManager instance = new CommittedEntryManager(test.entries);
@@ -293,7 +333,7 @@ public class CommittedEntryManagerTest {
 				if (test.throwClass != null) {
 					fail("The expected exception is not thrown");
 				} else {
-					assertEquals(test.testEntries, test.entries);
+					assertEquals(test.testEntries, instance.getAllEntries());
 				}
 			} catch (Exception e) {
 				if (!e.getClass().getName().equals(test.throwClass.getName())) {

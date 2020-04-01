@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.log;
 
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
-import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
@@ -44,7 +43,7 @@ public class CommittedEntryManager {
      */
     public CommittedEntryManager() {
         entries = new ArrayList<Log>() {{
-            add(new PhysicalPlanLog(-1,-1));
+            add(new PhysicalPlanLog(-1, -1));
         }};
     }
 
@@ -75,7 +74,7 @@ public class CommittedEntryManager {
         long localIndex = getDummyIndex();
         long snapIndex = snapshot.getLastIndex();
         if (localIndex >= snapIndex) {
-            logger.info("requested index is older than the existing snapshot");
+            logger.info("requested snapshot is older than the existing snapshot");
             return;
         }
         entries.clear();
@@ -115,11 +114,13 @@ public class CommittedEntryManager {
      *
      * @param index request entry index
      * @return set to -1 if the entry for this index cannot be found, or return the entry's term.
+     * @throws EntryCompactedException
      */
-    public long maybeTerm(long index) {
+    public long maybeTerm(long index) throws EntryCompactedException {
         long offset = entries.get(0).getCurrLogIndex();
         if (index < offset) {
-            return -1;
+            logger.info("invalid committedEntryManager maybeTerm: parameter: index({}) < firstIndex({})", index, offset);
+            throw new EntryCompactedException(index, offset);
         }
         if ((int) (index - offset) >= entries.size()) {
             return -1;
@@ -130,27 +131,27 @@ public class CommittedEntryManager {
     /**
      * getEntries pack entries from low to high - 1, just like slice (entries[low:high]).
      * dummyIndex < low < high <= dummyIndex + entries.size().
+     * Note that caller must ensure low < high.
      *
      * @param low  request index low bound
      * @param high request index upper bound
-     * @throws GetEntriesWrongParametersException
      * @throws EntryCompactedException
      */
-    public List<Log> getEntries(long low, long high) throws EntryCompactedException, GetEntriesWrongParametersException {
-        if (high <= low) {
-            logger.error("invalid getEntries: parameter: {} >= {}", low, high);
-            throw new GetEntriesWrongParametersException(low, high);
+    public List<Log> getEntries(long low, long high) throws EntryCompactedException {
+        if (low > high) {
+            logger.error("invalid getEntries: parameter: {} > {}", low, high);
         }
-        long offset = entries.get(0).getCurrLogIndex();
-        if (low <= offset || entries.size() == 1) {
-            logger.error("entries before request index ({}) have been compacted, and the compactIndex is ({})", low, offset);
-            throw new EntryCompactedException(low, offset);
+        long dummyIndex = getDummyIndex();
+        if (low <= dummyIndex || entries.size() == 1) {
+            logger.info("entries before request index ({}) have been compacted, and the compactIndex is ({})", low, dummyIndex);
+            throw new EntryCompactedException(low, dummyIndex);
         }
-        if (high > getLastIndex() + 1) {
-            logger.debug("entries high ({}) is out of bound lastIndex ({})", high, getLastIndex());
-            high = getLastIndex() + 1;
+        long lastIndex = getLastIndex();
+        if (high > lastIndex + 1) {
+            logger.error("entries high ({}) is out of bound lastIndex ({}),adjust 'high' to {}", high, lastIndex, lastIndex);
+            high = lastIndex + 1;
         }
-        return entries.subList((int) (low - offset), (int) (high - offset));
+        return entries.subList((int) (low - dummyIndex), (int) (high - dummyIndex));
     }
 
     /**
@@ -160,16 +161,16 @@ public class CommittedEntryManager {
      * @throws EntryUnavailableException
      */
     public void compactEntries(long compactIndex) throws EntryUnavailableException {
-        long offset = entries.get(0).getCurrLogIndex();
-        if (compactIndex <= offset) {
-            logger.info("entries before request index ({}) have been compacted, and the compactIndex is ({})", compactIndex, offset);
+        long dummyIndex = getDummyIndex();
+        if (compactIndex <= dummyIndex) {
+            logger.info("entries before request index ({}) have been compacted, and the compactIndex is ({})", compactIndex, dummyIndex);
             return;
         }
         if (compactIndex > getLastIndex()) {
             logger.error("compact ({}) is out of bound lastIndex ({})", compactIndex, getLastIndex());
             throw new EntryUnavailableException(compactIndex, getLastIndex());
         }
-        int index = (int) (compactIndex - offset);
+        int index = (int) (compactIndex - dummyIndex);
         PhysicalPlanLog dummy = new PhysicalPlanLog(entries.get(index).getCurrLogTerm(), entries.get(index).getCurrLogIndex());
         entries.set(0, dummy);
         entries.subList(1, index + 1).clear();

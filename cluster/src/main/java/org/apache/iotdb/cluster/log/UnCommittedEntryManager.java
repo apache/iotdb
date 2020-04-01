@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.log;
 
-import org.apache.iotdb.cluster.exception.*;
+import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,15 +66,19 @@ public class UnCommittedEntryManager {
      * maybeTerm returns the term for given index.
      *
      * @param index request entry index
-     * @return set to -1 if the entry for this index cannot be found, or return the entry's term.
+     * @return set to -1 if index < index,throw exception if index > last, or return the entry's term.
+     * @throws EntryUnavailableException
      */
-    public long maybeTerm(long index) {
+    public long maybeTerm(long index) throws EntryUnavailableException {
         if (index < offset) {
+            logger.error("invalid unCommittedEntryManager maybeTerm: parameter: index({}) < offset({})", index, offset);
             return -1;
         }
         long last = maybeLastIndex();
         if (last == -1 || index > last) {
-            return -1;
+            long boundary = last == -1 ? offset - 1 : last;
+            logger.info("invalid unCommittedEntryManager maybeTerm: parameter: index({}) > lastIndex({})", index, boundary);
+            throw new EntryUnavailableException(index, boundary);
         }
         return entries.get((int) (index - offset)).getCurrLogTerm();
     }
@@ -87,31 +91,34 @@ public class UnCommittedEntryManager {
      * @param term  request entry term
      */
     public void stableTo(long index, long term) {
-        long entryTerm = maybeTerm(index);
-        // only update the uncommitted entries if term is matched with
-        // an uncommitted entry.
-        if (entryTerm == term) {
-            entries.subList(0, (int) (index + 1 - offset)).clear();
-            offset = index + 1;
+        try {
+            long entryTerm = maybeTerm(index);
+            // only update the uncommitted entries if term is matched with
+            // an uncommitted entry.
+            if (entryTerm == term) {
+                entries.subList(0, (int) (index + 1 - offset)).clear();
+                offset = index + 1;
+            }
+        } catch (EntryUnavailableException e) {
+            logger.info(e.getMessage());
         }
     }
 
     /**
      * truncateAndAppend append uncommitted entries.It will truncate conflict entries if it find inconsistencies.
-     * Node that the caller must handle the case when len > entries.size()
+     * Node that the caller must handle the case when len > entries.size() and ensure not to truncate entries which are managed by CommittedEntryManager.
      *
      * @param appendingEntries request entries
-     * @throws TruncateCommittedEntryException
      */
-    public void truncateAndAppend(List<Log> appendingEntries) throws TruncateCommittedEntryException {
+    public void truncateAndAppend(List<Log> appendingEntries) {
         long after = appendingEntries.get(0).getCurrLogIndex();
         long len = after - offset;
         if (len < 0) {
             // The log is being truncated to before our current offset
             // portion, which is committed entries
-            // throws exception
+            offset = after;
+            entries = appendingEntries;
             logger.error("The logs which first index is {} are going to truncate committed logs", after);
-            throw new TruncateCommittedEntryException(after, offset);
         } else if (len == entries.size()) {
             // after is the next index in the entries
             // directly append
@@ -120,33 +127,39 @@ public class UnCommittedEntryManager {
             // truncate wrong entries
             // then append
             logger.info("truncate the entries after index {}", after);
-            entries.subList((int) (after - offset), entries.size()).clear();
+            int truncateIndex = (int) (after - offset);
+            if (truncateIndex < entries.size()) {
+                entries.subList(truncateIndex, entries.size()).clear();
+            }
             entries.addAll(appendingEntries);
         }
     }
 
     /**
-     * getEntries pack entries from low to high - 1, just like slice (entries[low:high]).
+     * getEntries pack entries from low to high, just like slice (entries[low:high]).
      * offset <= low < high <= offset + entries.size().
+     * Note that caller must ensure low < high.
      *
      * @param low  request index low bound
      * @param high request index upper bound
-     * @throws GetEntriesWrongParametersException
-     * @throws EntryUnavailableException
      */
-    public List<Log> getEntries(long low, long high) throws GetEntriesWrongParametersException, EntryUnavailableException {
-        if (low >= high) {
-            logger.error("invalid getEntries: parameter: {} >= {}", low, high);
-            throw new GetEntriesWrongParametersException(low, high);
+    public List<Log> getEntries(long low, long high) {
+        if (low > high) {
+            logger.error("invalid unCommittedEntryManager getEntries: parameter: {} > {}", low, high);
         }
         long upper = offset + entries.size();
+        if (low > upper) {
+            logger.error("unCommittedEntryManager getEntries[{},{}) out of bound : [{},{}]", low, high, offset, upper);
+            return new ArrayList<>();
+        }
         if (low < offset) {
-            logger.debug("invalid getEntries: parameter: {}/{} , boundary: {}/{}", low, high, offset, upper);
+            logger.error("unCommittedEntryManager getEntries[{},{}) out of bound : [{},{}]", low, high, offset, upper);
             low = offset;
         }
         if (high > upper) {
-            logger.error("invalid getEntries: parameter: {}/{} , boundary: {}/{}", low, high, offset, upper);
-            throw new EntryUnavailableException(high, upper);
+            logger.info("unCommittedEntryManager getEntries[{},{}) out of bound : [{},{}] , adjust 'high' to {}", low, high, offset, upper, upper);
+            //not throw a exception to support getEntries(low, Integer.MAX_VALUE);
+            high = upper;
         }
         return entries.subList((int) (low - offset), (int) (high - offset));
     }
