@@ -35,52 +35,29 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * All SingleSeriesExpression involved in a IExpression will be transferred to a TimeGenerator tree
- * whose leaf nodes are all SeriesReaders, The TimeGenerator tree can generate the next timestamp
- * that satisfies the filter condition. Then we use this timestamp to get values in other series
- * that are not included in IExpression
+ * All SingleSeriesExpression involved in a IExpression will be transferred to a TimeGenerator tree whose leaf nodes are all SeriesReaders, The TimeGenerator tree can generate the next timestamp that satisfies the filter condition. Then we use this timestamp to get values in other series that are not included in IExpression
  */
 public abstract class TimeGenerator {
-
-
-  private boolean hasCache;
-  private TimeColumn cacheTimes;
 
   private HashMap<Path, List<LeafNode>> leafCache = new HashMap<>();
   private Node operatorNode;
 
   public boolean hasNext() throws IOException {
-    if (hasCache) {
-      return true;
-    }
-
-    while (operatorNode.hasNextTimeColumn()) {
-      cacheTimes = operatorNode.nextTimeColumn();
-      if (cacheTimes.hasCurrent()) {
-        hasCache = true;
-        break;
-      }
-    }
-    return hasCache;
+    return operatorNode.hasNext();
   }
 
   public long next() throws IOException {
-    if (hasCache || hasNext()) {
-      long currentTime = cacheTimes.currentTime();
-      cacheTimes.next();
-      hasCache = cacheTimes.hasCurrent();
-      return currentTime;
-    }
-    throw new IOException("no more data");
+    return operatorNode.next();
   }
 
   public Object getValue(Path path, long time) {
     for (LeafNode leafNode : leafCache.get(path)) {
-      Object value = leafNode.currentValue(time);
-      if (value != null) {
-        return value;
+      if (!leafNode.currentTimeIs(time)) {
+        continue;
       }
+      return leafNode.currentValue();
     }
+
     return null;
   }
 
@@ -117,7 +94,7 @@ public abstract class TimeGenerator {
         return new AndNode(leftChild, rightChild);
       }
       throw new UnSupportedDataTypeException(
-              "Unsupported ExpressionType when construct OperatorNode: " + expression.getType());
+          "Unsupported ExpressionType when construct OperatorNode: " + expression.getType());
     }
   }
 
