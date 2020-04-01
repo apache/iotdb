@@ -46,7 +46,8 @@ public abstract class IFill {
 
   public abstract IFill copy();
 
-  public abstract void configureFill(Path path, Set<String> allSensors, QueryContext context)
+  public abstract void configureFill(Path path, TSDataType dataType, long queryTime,
+      Set<String> sensors, QueryContext context)
       throws StorageEngineException, QueryProcessException;
 
   public Filter getFilter() {

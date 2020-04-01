@@ -81,7 +81,7 @@ public class FillQueryExecutor {
             break;
           case BOOLEAN:
           case TEXT:
-            fill = new PreviousFill(path, dataType, queryTime, defaultFillInterval);
+            fill = new PreviousFill(dataType, queryTime, defaultFillInterval);
             break;
           default:
             throw new UnsupportedDataTypeException("do not support datatype " + dataType);
@@ -89,9 +89,8 @@ public class FillQueryExecutor {
       } else {
         fill = typeIFillMap.get(dataType).copy();
       }
-      fill.setDataType(dataType);
-      fill.setQueryTime(queryTime);
-      fill.configureFill(path, fillQueryPlan.getAllSensorsInDevice(path.getDevice()), context);
+      fill.configureFill(path, dataType, queryTime,
+          fillQueryPlan.getAllSensorsInDevice(path.getDevice()), context);
 
       TimeValuePair timeValuePair = fill.getFillResult(context);
       if (timeValuePair == null || timeValuePair.getValue() == null) {

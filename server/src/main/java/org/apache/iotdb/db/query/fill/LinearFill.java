@@ -93,10 +93,13 @@ public class LinearFill extends IFill {
   }
 
   @Override
-  public void configureFill(Path path, Set<String> allSensors, QueryContext context)
+  public void configureFill(Path path, TSDataType dataType, long queryTime,
+      Set<String> sensors, QueryContext context)
       throws StorageEngineException, QueryProcessException {
+    this.dataType = dataType;
+    this.queryTime = queryTime;
     Filter timeFilter = constructFilter();
-    dataReader = new SeriesRawDataBatchReader(path, allSensors, dataType, context,
+    dataReader = new SeriesRawDataBatchReader(path, sensors, dataType, context,
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
         timeFilter, null, null);
   }

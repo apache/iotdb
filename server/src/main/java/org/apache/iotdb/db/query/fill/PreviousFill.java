@@ -70,9 +70,8 @@ public class PreviousFill extends IFill {
   private ChunkMetadata lastChunkMetadata;
   private List<ChunkMetadata> chunkMetadatas;
 
-  public PreviousFill(Path seriesPath, TSDataType dataType, long queryTime, long beforeRange) {
+  public PreviousFill(TSDataType dataType, long queryTime, long beforeRange) {
     super(dataType, queryTime);
-    this.seriesPath = seriesPath;
     this.beforeRange = beforeRange;
     this.chunkMetadatas = new ArrayList<>();
   }
@@ -83,7 +82,7 @@ public class PreviousFill extends IFill {
 
   @Override
   public IFill copy() {
-    return new PreviousFill(seriesPath, dataType,  queryTime, beforeRange);
+    return new PreviousFill(dataType,  queryTime, beforeRange);
   }
 
   @Override
@@ -117,12 +116,15 @@ public class PreviousFill extends IFill {
   }
 
   @Override
-  public void configureFill(Path path, Set<String> sensors, QueryContext context)
+  public void configureFill(Path path, TSDataType dataType, long queryTime,
+      Set<String> sensors, QueryContext context)
       throws StorageEngineException, QueryProcessException {
-    seriesPath = path;
-    allSensors = sensors;
+    this.seriesPath = path;
+    this.dataType = dataType;
+    this.queryTime = queryTime;
+    this.allSensors = sensors;
     this.timeFilter = constructFilter();
-    dataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
+    this.dataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
     // update filter by TTL
     timeFilter = dataSource.updateFilterUsingTTL(timeFilter);
   }
