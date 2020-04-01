@@ -146,8 +146,6 @@ pipeline {
                 }
             }
             steps {
-                // Unstash the previously stashed site.
-                unstash 'incubator-iotdb-site'
                 // Publish the site with the scm-publish plugin.
                 sh 'mvn scm-publish:publish-scm -pl site'
 
