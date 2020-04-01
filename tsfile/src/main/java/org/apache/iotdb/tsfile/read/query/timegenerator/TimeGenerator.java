@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read.query.timegenerator;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -30,12 +29,14 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-
 import java.io.IOException;
 import java.util.*;
 
 /**
- * All SingleSeriesExpression involved in a IExpression will be transferred to a TimeGenerator tree whose leaf nodes are all SeriesReaders, The TimeGenerator tree can generate the next timestamp that satisfies the filter condition. Then we use this timestamp to get values in other series that are not included in IExpression
+ * All SingleSeriesExpression involved in a IExpression will be transferred to a TimeGenerator tree
+ * whose leaf nodes are all SeriesReaders, The TimeGenerator tree can generate the next timestamp
+ * that satisfies the filter condition. Then we use this timestamp to get values in other series
+ * that are not included in IExpression
  */
 public abstract class TimeGenerator {
 
