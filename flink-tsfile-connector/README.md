@@ -23,7 +23,7 @@
 ## 1. About TsFile-Flink-Connector
 
 TsFile-Flink-Connector implements the support of Flink for external data sources of Tsfile type. 
-This enables users to read, write and query Tsfile by Flink via DataStream/DataSet API.
+This enables users to read Tsfile by Flink via DataStream/DataSet API.
 
 With this connector, you can
 * load a single TsFile or multiple TsFiles(only for DataSet), from either the local file system or hdfs, into Flink
