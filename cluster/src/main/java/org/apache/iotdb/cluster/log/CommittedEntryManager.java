@@ -129,8 +129,8 @@ public class CommittedEntryManager {
     }
 
     /**
-     * getEntries pack entries from low to high - 1, just like slice (entries[low:high]).
-     * dummyIndex < low < high <= dummyIndex + entries.size().
+     * getEntries pack entries from low through high - 1, just like slice (entries[low:high]).
+     * dummyIndex < low < high.
      * Note that caller must ensure low < high.
      *
      * @param low  request index low bound
