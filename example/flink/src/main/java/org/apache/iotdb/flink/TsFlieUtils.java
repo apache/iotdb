@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 
 import java.io.File;
 
@@ -33,21 +34,20 @@ import java.io.File;
  */
 public class TsFlieUtils {
 
+	private static final String DEFAULT_TEMPLATE = "template";
+
 	public static void writeTsFile(String path) {
 		try {
 			File f = FSFactoryProducer.getFSFactory().getFile(path);
 			if (f.exists()) {
 				f.delete();
 			}
-			TsFileWriter tsFileWriter = new TsFileWriter(f);
+			Schema schema = new Schema();
+			schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+			schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+			schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
-			// add measurements into file schema
-			tsFileWriter
-				.addMeasurement(new MeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.RLE));
-			tsFileWriter
-				.addMeasurement(new MeasurementSchema("sensor_2", TSDataType.INT64, TSEncoding.RLE));
-			tsFileWriter
-				.addMeasurement(new MeasurementSchema("sensor_3", TSDataType.INT64, TSEncoding.RLE));
+			TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
 
 			// construct TSRecord
 			for (int i = 0; i < 100; i++) {

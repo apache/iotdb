@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 
 /**
  * Utils used to prepare TsFiles for testing.
@@ -35,21 +36,19 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 public class TsFileWriteUtil {
 
 	public static final String TMP_DIR = "target";
+	private static final String DEFAULT_TEMPLATE = "template";
 
 	public static void create1(String tsfilePath) throws Exception {
 		File f = new File(tsfilePath);
 		if (f.exists()) {
 			f.delete();
 		}
-		TsFileWriter tsFileWriter = new TsFileWriter(f);
+		Schema schema = new Schema();
+		schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+		schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+		schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
-		// add measurements into file schema
-		tsFileWriter
-			.addMeasurement(new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
-		tsFileWriter
-			.addMeasurement(new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
-		tsFileWriter
-			.addMeasurement(new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
+		TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
 
 		// construct TSRecord
 		TSRecord tsRecord = new TSRecord(1, "device_1");
@@ -139,15 +138,12 @@ public class TsFileWriteUtil {
 		if (f.exists()) {
 			f.delete();
 		}
-		TsFileWriter tsFileWriter = new TsFileWriter(f);
+		Schema schema = new Schema();
+		schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+		schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+		schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
-		// add measurements into file schema
-		tsFileWriter
-			.addMeasurement(new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
-		tsFileWriter
-			.addMeasurement(new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
-		tsFileWriter
-			.addMeasurement(new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
+		TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
 
 		// construct TSRecord
 		TSRecord tsRecord = new TSRecord(9, "device_1");
