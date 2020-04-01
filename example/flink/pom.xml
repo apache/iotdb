@@ -48,7 +48,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>flink-tsfile</artifactId>
+            <artifactId>flink-tsfile-connector</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

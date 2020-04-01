@@ -27,9 +27,8 @@
         <version>0.10.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>flink-tsfile</artifactId>
+    <artifactId>flink-tsfile-connector</artifactId>
     <packaging>jar</packaging>
-    <name>IoTDB Flink-TsFile</name>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>

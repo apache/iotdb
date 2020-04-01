@@ -137,7 +137,7 @@ matrix:
         # now, grafana has no tests; spark-* tests are written by scala
         - mvn post-integration-test -Pcode-coverage -Pcoveralls -pl '!site','!distribution' -am
       after_success:
-        - mvn coveralls:report -DserviceName=travis_ci -pl tsfile,server,jdbc,client,session,hive-connector,flink-iotdb-connector
+        - mvn coveralls:report -DserviceName=travis_ci -pl tsfile,server,jdbc,client,session,hive-connector,flink-iotdb-connector,flink-tsfile-connector
     - os: linux
       name: website checker
       dist: xenial
