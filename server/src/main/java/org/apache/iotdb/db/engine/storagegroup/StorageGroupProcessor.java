@@ -1493,7 +1493,7 @@ public class StorageGroupProcessor {
    */
   public void loadNewTsFileForSync(TsFileResource newTsFileResource) throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getFile();
-    long newFilePartitionId = getNewFilePartitionId(newTsFileResource);
+    long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock();
     mergeLock.writeLock().lock();
     try {
@@ -1529,7 +1529,7 @@ public class StorageGroupProcessor {
    */
   public void loadNewTsFile(TsFileResource newTsFileResource) throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getFile();
-    long newFilePartitionId = getNewFilePartitionId(newTsFileResource);
+    long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock();
     mergeLock.writeLock().lock();
     try {
@@ -1575,40 +1575,6 @@ public class StorageGroupProcessor {
       mergeLock.writeLock().unlock();
       writeUnlock();
     }
-  }
-
-  /**
-   * Check and get the partition id of a TsFile to be inserted using the start times and end
-   * times of devices.
-   * TODO: when the partition violation happens, split the file and load into different partitions
-   * @throws LoadFileException if the data of the file cross partitions or it is empty
-   */
-  private long getNewFilePartitionId(TsFileResource resource) throws LoadFileException {
-    long partitionId = -1;
-    for (Long startTime : resource.getStartTimeMap().values()) {
-      long p = StorageEngine.getTimePartition(startTime);
-      if (partitionId == -1) {
-        partitionId = p;
-      } else {
-        if (partitionId != p) {
-          throw new PartitionViolationException(resource);
-        }
-      }
-    }
-    for (Long endTime : resource.getEndTimeMap().values()) {
-      long p = StorageEngine.getTimePartition(endTime);
-      if (partitionId == -1) {
-        partitionId = p;
-      } else {
-        if (partitionId != p) {
-          throw new PartitionViolationException(resource);
-        }
-      }
-    }
-    if (partitionId == -1) {
-      throw new LoadEmptyFileException();
-    }
-    return partitionId;
   }
 
   /**
