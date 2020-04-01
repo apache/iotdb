@@ -80,7 +80,7 @@ public class TsFileIOWriter {
   protected List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
 
   private long markedPosition;
-  private String deviceId;
+  private String currentChunkGroupDeviceId;
   private long currentChunkGroupStartOffset;
   private List<Pair<Long, Long>> versionInfo = new ArrayList<>();
 
@@ -133,7 +133,7 @@ public class TsFileIOWriter {
   }
 
   public void startChunkGroup(String deviceId) throws IOException {
-    this.deviceId = deviceId;
+    this.currentChunkGroupDeviceId = deviceId;
     currentChunkGroupStartOffset = out.getPosition();
     logger.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
     chunkMetadataList = new ArrayList<>();
@@ -143,16 +143,16 @@ public class TsFileIOWriter {
    * end chunk and write some log. If there is no data in the chunk group, nothing will be flushed.
    */
   public void endChunkGroup() throws IOException {
-    if (deviceId == null || chunkMetadataList.isEmpty()) {
+    if (currentChunkGroupDeviceId == null || chunkMetadataList.isEmpty()) {
       return;
     }
     long dataSize = out.getPosition() - currentChunkGroupStartOffset;
-    ChunkGroupFooter chunkGroupFooter = new ChunkGroupFooter(deviceId, dataSize,
+    ChunkGroupFooter chunkGroupFooter = new ChunkGroupFooter(currentChunkGroupDeviceId, dataSize,
         chunkMetadataList.size());
     chunkGroupFooter.serializeTo(out.wrapAsStream());
-    chunkGroupMetadataList.add(new ChunkGroupMetadata(deviceId, chunkMetadataList));
+    chunkGroupMetadataList.add(new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
     logger.debug("end chunk group:{}", chunkMetadataList);
-    deviceId = null;
+    currentChunkGroupDeviceId = null;
     chunkMetadataList = null;
   }
 
