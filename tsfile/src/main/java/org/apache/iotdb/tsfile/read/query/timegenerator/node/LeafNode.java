@@ -30,6 +30,9 @@ public class LeafNode implements Node {
   private BatchData cacheData;
   private boolean hasCached;
 
+  private long cachedTime;
+  private Object cachedValue;
+
   public LeafNode(IBatchReader reader) {
     this.reader = reader;
   }
@@ -39,29 +42,49 @@ public class LeafNode implements Node {
     if (hasCached) {
       return true;
     }
-    if (reader.hasNextBatch()) {
+    if (cacheData != null && cacheData.hasCurrent()) {
+      cachedTime = cacheData.currentTime();
+      cachedValue = cacheData.currentValue();
       hasCached = true;
-      cacheData = reader.nextBatch();
+      return true;
     }
-    return hasCached;
+    if (reader.hasNextBatch()) {
+      cacheData = reader.nextBatch();
+      if (cacheData.hasCurrent()) {
+        cachedTime = cacheData.currentTime();
+        cachedValue = cacheData.currentValue();
+        hasCached = true;
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override
   public long next() throws IOException {
     if ((hasCached || hasNext())) {
-      long currentTime = cacheData.currentTime();
+      hasCached = false;
       cacheData.next();
-      hasCached = cacheData.hasCurrent();
-      return currentTime;
+      return cachedTime;
     }
     throw new IOException("no more data");
   }
 
   /**
+   * Check whether the current time equals the given time.
+   *
+   * @param time the given time
+   * @return True if the current time equals the given time. False if not.
+   */
+  public boolean currentTimeIs(long time) {
+    return cachedTime == time;
+  }
+
+  /**
    * Function for getting the value at the given time.
    */
-  public Object currentValue(long time) {
-    return cacheData.getValueInTimestamp(time);
+  public Object currentValue() {
+    return cachedValue;
   }
 
   @Override
