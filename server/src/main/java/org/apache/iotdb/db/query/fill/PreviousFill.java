@@ -74,7 +74,6 @@ public class PreviousFill extends IFill {
     super(dataType, queryTime);
     this.seriesPath = seriesPath;
     this.beforeRange = beforeRange;
-    this.timeFilter = constructFilter();
     this.chunkMetadatas = new ArrayList<>();
   }
 
@@ -120,7 +119,9 @@ public class PreviousFill extends IFill {
   @Override
   public void configureFill(Path path, Set<String> sensors, QueryContext context)
       throws StorageEngineException, QueryProcessException {
+    seriesPath = path;
     allSensors = sensors;
+    this.timeFilter = constructFilter();
     dataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
     // update filter by TTL
     timeFilter = dataSource.updateFilterUsingTTL(timeFilter);
@@ -210,8 +211,9 @@ public class PreviousFill extends IFill {
           resource, seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
         // The last seq file satisfies timeFilter, pick up the last chunk
-        List<ChunkMetadata> chunkMetadatas = timeseriesMetadata.getChunkMetadataList();
-        lastChunkMetadata = chunkMetadatas.get(chunkMetadatas.size() - 1);
+        List<ChunkMetadata> chunkMetadata = timeseriesMetadata.getChunkMetadataList();
+        lastChunkMetadata = chunkMetadata.get(chunkMetadata.size() - 1);
+        chunkMetadatas.addAll(chunkMetadata);
         break;
       }
       seqFileResource.remove(index);
@@ -232,16 +234,6 @@ public class PreviousFill extends IFill {
         break;
       }
       unseqFileResource.poll();
-    }
-
-    // unpack overlapped seq files and fill chunkMetadata list
-    for (int index = seqFileResource.size() - 1; index >= 0; index--) {
-      if (lastChunkMetadata != null
-          && (lastChunkMetadata.getStartTime()
-          <= seqFileResource.get(index).getEndTimeMap().get(seriesPath.getDevice()))) {
-        chunkMetadatas.addAll(FileLoaderUtils.loadChunkMetadataFromTsFileResource(
-            seqFileResource.remove(index), seriesPath, context));
-      }
     }
 
     // unpack all overlapped unseq files and fill chunkMetadata list
