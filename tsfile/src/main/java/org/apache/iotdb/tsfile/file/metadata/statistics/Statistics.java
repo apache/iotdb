@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -30,13 +26,16 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+
 /**
  * This class is used for recording statistic information of each measurement in a delta file. While
- * writing processing, the processor records the statistics information. Statistics includes maximum,
- * minimum and null value count up to version 0.0.1.<br> Each data type extends this Statistic as
- * super class.<br>
- *
- * @param <T> data type for Statistics
+ * writing processing, the processor records the statistics information. Statistics includes
+ * maximum, minimum and null value count up to version 0.0.1.<br> Each data type extends this
+ * Statistic as super class.<br>
  */
 public abstract class Statistics<T> {
 
@@ -55,12 +54,17 @@ public abstract class Statistics<T> {
   private long endTime = Long.MIN_VALUE;
 
   /**
+   * If the statistics has been modified, it can't be used.
+   */
+  private boolean canUseStatistics = true;
+
+  /**
    * static method providing statistic instance for respective data type.
    *
    * @param type - data type
    * @return Statistics
    */
-  public static Statistics<?> getStatsByType(TSDataType type) {
+  public static Statistics getStatsByType(TSDataType type) {
     switch (type) {
       case INT32:
         return new IntegerStatistics();
@@ -82,13 +86,13 @@ public abstract class Statistics<T> {
   public abstract TSDataType getType();
 
   public int getSerializedSize() {
-   return 24 // count, startTime, endTime
-       + getStatsSize();
+    return 24 // count, startTime, endTime
+        + getStatsSize();
   }
 
   public abstract int getStatsSize();
 
-  public int serialize(OutputStream outputStream) throws IOException{
+  public int serialize(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(count, outputStream);
     byteLen += ReadWriteIOUtils.write(startTime, outputStream);
@@ -142,10 +146,9 @@ public abstract class Statistics<T> {
   /**
    * merge parameter to this statistic
    *
-   * @param stats input statistics
    * @throws StatisticsClassException cannot merge statistics
    */
-  public void mergeStatistics(Statistics<?> stats) {
+  public void mergeStatistics(Statistics stats) {
     if (this.getClass() == stats.getClass()) {
       if (stats.startTime < this.startTime) {
         this.startTime = stats.startTime;
@@ -160,8 +163,7 @@ public abstract class Statistics<T> {
     } else {
       String thisClass = this.getClass().toString();
       String statsClass = stats.getClass().toString();
-      LOG.warn("Statistics classes mismatched,no merge: {} v.s. {}",
-          thisClass, statsClass);
+      LOG.warn("Statistics classes mismatched,no merge: {} v.s. {}", thisClass, statsClass);
 
       throw new StatisticsClassException(this.getClass(), stats.getClass());
     }
@@ -237,8 +239,8 @@ public abstract class Statistics<T> {
     if (time[0] < startTime) {
       startTime = time[0];
     }
-    if (time[batchSize-1] > this.endTime) {
-      endTime = time[batchSize-1];
+    if (time[batchSize - 1] > this.endTime) {
+      endTime = time[batchSize - 1];
     }
     count += batchSize;
     updateStats(values, batchSize);
@@ -248,8 +250,8 @@ public abstract class Statistics<T> {
     if (time[0] < startTime) {
       startTime = time[0];
     }
-    if (time[batchSize-1] > this.endTime) {
-      endTime = time[batchSize-1];
+    if (time[batchSize - 1] > this.endTime) {
+      endTime = time[batchSize - 1];
     }
     count += batchSize;
     updateStats(values, batchSize);
@@ -259,8 +261,8 @@ public abstract class Statistics<T> {
     if (time[0] < startTime) {
       startTime = time[0];
     }
-    if (time[batchSize-1] > this.endTime) {
-      endTime = time[batchSize-1];
+    if (time[batchSize - 1] > this.endTime) {
+      endTime = time[batchSize - 1];
     }
     count += batchSize;
     updateStats(values, batchSize);
@@ -270,8 +272,8 @@ public abstract class Statistics<T> {
     if (time[0] < startTime) {
       startTime = time[0];
     }
-    if (time[batchSize-1] > this.endTime) {
-      endTime = time[batchSize-1];
+    if (time[batchSize - 1] > this.endTime) {
+      endTime = time[batchSize - 1];
     }
     count += batchSize;
     updateStats(values, batchSize);
@@ -281,8 +283,8 @@ public abstract class Statistics<T> {
     if (time[0] < startTime) {
       startTime = time[0];
     }
-    if (time[batchSize-1] > this.endTime) {
-      endTime = time[batchSize-1];
+    if (time[batchSize - 1] > this.endTime) {
+      endTime = time[batchSize - 1];
     }
     count += batchSize;
     updateStats(values, batchSize);
@@ -292,8 +294,8 @@ public abstract class Statistics<T> {
     if (time[0] < startTime) {
       startTime = time[0];
     }
-    if (time[batchSize-1] > this.endTime) {
-      endTime = time[batchSize-1];
+    if (time[batchSize - 1] > this.endTime) {
+      endTime = time[batchSize - 1];
     }
     count += batchSize;
     updateStats(values, batchSize);
@@ -411,6 +413,14 @@ public abstract class Statistics<T> {
 
   public void setCount(long count) {
     this.count = count;
+  }
+
+  public boolean canUseStatistics() {
+    return canUseStatistics;
+  }
+
+  public void setCanUseStatistics(boolean canUseStatistics) {
+    this.canUseStatistics = canUseStatistics;
   }
 
   @Override

@@ -35,7 +35,7 @@ import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.utils.MergeUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -219,8 +219,8 @@ public class RecoverMergeTask extends MergeTask {
       RestorableTsFileIOWriter mergeFileWriter) throws IOException {
     mergeContext.getUnmergedChunkStartTimes().get(tsFileResource).put(path, new ArrayList<>());
 
-    List<ChunkMetaData> seqFileChunks = resource.queryChunkMetadata(path, tsFileResource);
-    List<ChunkMetaData> mergeFileChunks =
+    List<ChunkMetadata> seqFileChunks = resource.queryChunkMetadata(path, tsFileResource);
+    List<ChunkMetadata> mergeFileChunks =
         mergeFileWriter.getVisibleMetadataList(path.getDevice(), path.getMeasurement(), null);
     mergeContext.getMergedChunkCnt().compute(tsFileResource, (k, v) -> v == null ?
         mergeFileChunks.size() : v + mergeFileChunks.size());
@@ -228,8 +228,8 @@ public class RecoverMergeTask extends MergeTask {
     int mergeChunkIndex = 0;
     int unmergedCnt = 0;
     while (seqChunkIndex < seqFileChunks.size() && mergeChunkIndex < mergeFileChunks.size()) {
-      ChunkMetaData seqChunk = seqFileChunks.get(seqChunkIndex);
-      ChunkMetaData mergedChunk = mergeFileChunks.get(mergeChunkIndex);
+      ChunkMetadata seqChunk = seqFileChunks.get(seqChunkIndex);
+      ChunkMetadata mergedChunk = mergeFileChunks.get(mergeChunkIndex);
       if (seqChunk.getStartTime() < mergedChunk.getStartTime()) {
         // this seqChunk is unmerged
         unmergedCnt ++;

@@ -63,8 +63,9 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   protected boolean ignoreTimeStamp;
 
 
+
   public AbstractIoTDBResultSet(Statement statement, List<String> columnNameList,
-                                List<String> columnTypeList, boolean ignoreTimeStamp, TSIService.Iface client,
+                                List<String> columnTypeList, Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp, TSIService.Iface client,
                                 String sql, long queryId, long sessionId)
           throws SQLException {
     this.statement = statement;
@@ -81,14 +82,30 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
     if(!ignoreTimeStamp) {
       this.columnOrdinalMap.put(TIMESTAMP_STR, 1);
     }
-    this.columnTypeDeduplicatedList = new ArrayList<>();
-    int index = START_INDEX;
-    for (int i = 0; i < columnNameList.size(); i++) {
-      String name = columnNameList.get(i);
-      this.columnNameList.add(name);
-      if (!columnOrdinalMap.containsKey(name)) {
-        columnOrdinalMap.put(name, index++);
-        columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
+    if (columnNameIndex != null) {
+      this.columnTypeDeduplicatedList = new ArrayList<>(columnNameIndex.size());
+      for (int i = 0; i < columnNameIndex.size(); i++) {
+        columnTypeDeduplicatedList.add(null);
+      }
+      for (int i = 0; i < columnNameList.size(); i++) {
+        String name = columnNameList.get(i);
+        this.columnNameList.add(name);
+        if (!columnOrdinalMap.containsKey(name)) {
+          int index = columnNameIndex.get(name);
+          columnOrdinalMap.put(name, index+START_INDEX);
+          columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
+        }
+      }
+    } else {
+      this.columnTypeDeduplicatedList = new ArrayList<>();
+      int index = START_INDEX;
+      for (int i = 0; i < columnNameList.size(); i++) {
+        String name = columnNameList.get(i);
+        this.columnNameList.add(name);
+        if (!columnOrdinalMap.containsKey(name)) {
+          columnOrdinalMap.put(name, index++);
+          columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
+        }
       }
     }
     this.ignoreTimeStamp = ignoreTimeStamp;

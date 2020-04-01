@@ -560,6 +560,8 @@ public class IoTDBDescriptor {
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
         conf.setAllocateMemoryForChunkCache(
             maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+        conf.setAllocateMemoryForTimeSeriesMetaDataCache(
+            maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
       } catch (Exception e) {
         throw new RuntimeException(
             "Each subsection of configuration item filemeta_chunkmeta_free_memory_proportion should be an integer, which is "

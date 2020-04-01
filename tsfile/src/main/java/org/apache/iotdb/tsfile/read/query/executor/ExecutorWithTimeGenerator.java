@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
@@ -64,7 +64,7 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
 
     // the size of hasFilter is equal to selectedPathList, if a series has a filter, it is true,
     // otherwise false
-    List<Boolean> cached = removeFilteredPaths(expression, selectedPathList);
+    List<Boolean> cached = markFilterdPaths(expression, selectedPathList);
     List<FileSeriesReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
@@ -74,15 +74,15 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
       boolean cachedValue = cachedIterator.next();
       Path selectedPath = selectedPathIterator.next();
 
-      List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(selectedPath);
-      if (chunkMetaDataList.size() != 0) {
-        dataTypes.add(chunkMetaDataList.get(0).getDataType());
+      List<ChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(selectedPath);
+      if (chunkMetadataList.size() != 0) {
+        dataTypes.add(chunkMetadataList.get(0).getDataType());
         if (cachedValue) {
           readersOfSelectedSeries.add(null);
           continue;
         }
         FileSeriesReaderByTimestamp seriesReader = new FileSeriesReaderByTimestamp(chunkLoader,
-            chunkMetaDataList);
+            chunkMetadataList);
         readersOfSelectedSeries.add(seriesReader);
       } else {
         selectedPathIterator.remove();
@@ -94,7 +94,7 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
         readersOfSelectedSeries);
   }
 
-  private List<Boolean> removeFilteredPaths(IExpression expression, List<Path> selectedPaths) {
+  private List<Boolean> markFilterdPaths(IExpression expression, List<Path> selectedPaths) {
 
     List<Boolean> cached = new ArrayList<>();
     HashSet<Path> filteredPaths = new HashSet<>();
