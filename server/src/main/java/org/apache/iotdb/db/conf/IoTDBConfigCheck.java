@@ -28,8 +28,8 @@ import java.util.Properties;
 
 public class IoTDBConfigCheck {
 
-  // this file is located in data/system/schema/system_properties.
-  // If user delete folder "data", system_properties can reset.
+  // this file is located in data/system/schema/system.properties
+  // If user delete folder "data", system.properties can reset.
   public static final String PROPERTIES_FILE_NAME = "system.properties";
   public static final String SCHEMA_DIR =
           IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
@@ -81,7 +81,7 @@ public class IoTDBConfigCheck {
   }
 
   private void checkFile(String filepath) {
-    // create file : read timestamp precision from engine.properties, create system_properties.txt
+    // create file : read timestamp precision from engine.properties, create system.properties
     // use output stream to write timestamp precision to file.
     File file = SystemFileFactory.INSTANCE
             .getFile(filepath + File.separator + PROPERTIES_FILE_NAME);
@@ -104,24 +104,44 @@ public class IoTDBConfigCheck {
             .getFile(filepath + File.separator + PROPERTIES_FILE_NAME);
     try (FileInputStream inputStream = new FileInputStream(inputFile.toString())) {
       properties.load(new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET));
-      if (!properties.getProperty("timestamp_precision").equals(timestampPrecision)) {
-        logger.error("Wrong timestamp precision, please set as: " + properties
-                .getProperty("timestamp_precision") + " !");
-        System.exit(-1);
-      }
-      if (!(Long.parseLong(properties.getProperty("storage_group_time_range"))
-              == partitionInterval)) {
-        logger.error("Wrong storage group time range, please set as: " + properties
-                .getProperty("storage_group_time_range") + " !");
-        System.exit(-1);
-      }
-      if (!(properties.getProperty("tsfile_storage_fs").equals(tsfileFileSystem))) {
-        logger.error("Wrong tsfile file system, please set as: " + properties
-            .getProperty("tsfile_storage_fs") + " !");
-        System.exit(-1);
+      // need to upgrade
+      if (!properties.containsKey("storage_group_time_range")) {
+        properties.setProperty("storage_group_time_range", String.valueOf(partitionInterval));
+      } else {
+        checkProperties();
+        return;
       }
     } catch (IOException e) {
       logger.error("Load system.properties from {} failed.", file.getAbsolutePath(), e);
+    }
+
+    // it's an old version system.properties
+    // try to add the storage_group_time_range property in system.properties
+    try (FileOutputStream outputStream = new FileOutputStream(file.toString())) {
+      properties.store(outputStream, "System properties:");
+      checkProperties();
+    }  catch (IOException e) {
+      logger.error("Something went wrong while upgrading teh system.properties. The file is {}.", file.getAbsolutePath(), e);
+    }
+
+  }
+
+  private void checkProperties() {
+    if (!properties.getProperty("timestamp_precision").equals(timestampPrecision)) {
+      logger.error("Wrong timestamp precision, please set as: " + properties
+              .getProperty("timestamp_precision") + " !");
+      System.exit(-1);
+    }
+    if (!(Long.parseLong(properties.getProperty("storage_group_time_range"))
+            == partitionInterval)) {
+      logger.error("Wrong storage group time range, please set as: " + properties
+              .getProperty("storage_group_time_range") + " !");
+      System.exit(-1);
+    }
+    if (!(properties.getProperty("tsfile_storage_fs").equals(tsfileFileSystem))) {
+      logger.error("Wrong tsfile file system, please set as: " + properties
+              .getProperty("tsfile_storage_fs") + " !");
+      System.exit(-1);
     }
   }
 }
