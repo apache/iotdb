@@ -58,7 +58,6 @@ public class TsFileRecoverPerformer {
   private String insertFilePath;
   private String logNodePrefix;
   private VersionController versionController;
-  private LogReplayer logReplayer;
   private TsFileResource resource;
   private boolean acceptUnseq;
   private boolean isLastFile;
@@ -81,9 +80,6 @@ public class TsFileRecoverPerformer {
    */
   public RestorableTsFileIOWriter recover() throws StorageGroupProcessorException {
 
-    IMemTable recoverMemTable = new PrimitiveMemTable();
-    this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, resource.getModFile(),
-        versionController, resource, recoverMemTable, acceptUnseq);
     File insertFile = FSFactoryProducer.getFSFactory().getFile(insertFilePath);
     if (!insertFile.exists()) {
       logger.error("TsFile {} is missing, will skip its recovery.", insertFilePath);
@@ -191,13 +187,12 @@ public class TsFileRecoverPerformer {
   private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter)
       throws StorageGroupProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
-    this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, resource.getModFile(),
+    LogReplayer logReplayer = new LogReplayer(logNodePrefix, insertFilePath, resource.getModFile(),
         versionController, resource, recoverMemTable, acceptUnseq);
     logReplayer.replayLogs();
     try {
       if (!recoverMemTable.isEmpty()) {
         // flush logs
-
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable,
             restorableTsFileIOWriter, resource.getFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
