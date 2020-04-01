@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.log.LogManager;
 import org.apache.iotdb.cluster.log.manage.serializable.LogManagerMeta;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -193,9 +194,7 @@ public abstract class MemoryLogManager implements LogManager {
     logBuffer.subList(0, length).clear();
   }
 
-  /**
-   * only for test
-   */
+  @TestOnly
   public LogManagerMeta getMeta() {
     LogManagerMeta managerMeta = new LogManagerMeta();
     managerMeta.setCommitLogIndex(commitLogIndex);
@@ -204,6 +203,7 @@ public abstract class MemoryLogManager implements LogManager {
     return managerMeta;
   }
 
+  @TestOnly
   public void setMeta(LogManagerMeta meta) {
     commitLogIndex = meta.getCommitLogIndex();
     lastLogId = meta.getLastLogId();

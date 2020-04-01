@@ -27,16 +27,21 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SyncLogDequeSerializer implements LogDequeSerializer {
+
+  private static final Logger logger = LoggerFactory.getLogger(SyncLogDequeSerializer.class);
 
   File logFile;
   File metaFile;
@@ -55,6 +60,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
 
   /**
    * for log tools
+   *
    * @param logPath log dir path
    */
   public SyncLogDequeSerializer(String logPath) {
@@ -62,15 +68,12 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
         .getFile(logPath + File.separator + "logData");
     metaFile = SystemFileFactory.INSTANCE
         .getFile(logPath + File.separator + "logMeta");
-    String name = logFile.getAbsolutePath();
     init();
   }
 
   /**
-   * log in disk is
-   * size of log | log buffer
-   * meta in disk is
-   * firstLogPosition | size of log meta | log meta buffer
+   * log in disk is size of log | log buffer meta in disk is firstLogPosition | size of log meta |
+   * log meta buffer
    */
   public SyncLogDequeSerializer() {
     String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
@@ -81,7 +84,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     init();
   }
 
-  // only for test
+  @TestOnly
   public void setMaxRemovedLogSize(long maxRemovedLogSize) {
     this.maxRemovedLogSize = maxRemovedLogSize;
   }
@@ -96,13 +99,13 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
       if (!logFile.getParentFile().exists()) {
         logFile.getParentFile().mkdir();
         logFile.createNewFile();
-        logFile.createNewFile();
+        metaFile.createNewFile();
       }
 
       logOutputStream = new FileOutputStream(logFile, true);
       metaOutputStream = new FileOutputStream(metaFile, true);
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error in init log file: " + e.getMessage());
     }
   }
 
@@ -112,9 +115,9 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     int totalSize = 0;
     // write into disk
     try {
-      totalSize += ReadWriteIOUtils.write(data, logOutputStream);
+      totalSize = ReadWriteIOUtils.write(data, logOutputStream);
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error in log serialization: " + e.getMessage());
     }
 
     logSizeDeque.addLast(totalSize);
@@ -128,13 +131,13 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   }
 
   @Override
-  public void truncateLog(int count, LogManagerMeta meta){
+  public void truncateLog(int count, LogManagerMeta meta) {
     truncateLogIntern(count);
     serializeMeta(meta);
   }
 
-  private void truncateLogIntern(int count){
-    if(logSizeDeque.size() > count){
+  private void truncateLogIntern(int count) {
+    if (logSizeDeque.size() > count) {
       throw new IllegalArgumentException("truncate log count is bigger than total log count");
     }
 
@@ -142,11 +145,11 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     for (int i = 0; i < count; i++) {
       size += logSizeDeque.removeLast();
     }
-    // write into disk
+    // truncate file
     try {
       logOutputStream.getChannel().truncate(logFile.length() - size);
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error in log serialization: " + e.getMessage());
     }
   }
 
@@ -177,47 +180,39 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     }
 
     List<Log> result = new ArrayList<>();
-    long count = 0;
     try {
       FileInputStream logReader = new FileInputStream(logFile);
       FileChannel logChannel = logReader.getChannel();
+      long actuallySkippedBytes = logReader.skip(removedLogSize);
+      if (actuallySkippedBytes != removedLogSize) {
+        logger.error(
+            "Error in log serialization, skipped file length isn't consistent with removedLogSize!");
+        return result;
+      }
       while (logChannel.position() < logFile.length()) {
         // actual log
-        if (count >= firstLogPosition) {
-          Log log = readLog(logReader, false);
-          result.add(log);
-        }
-        // removed log, skip
-        else {
-          readLog(logReader, true);
-        }
-        count++;
+        Log log = readLog(logReader);
+        result.add(log);
       }
       logReader.close();
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error in log serialization: " + e.getMessage());
     }
 
     return result;
   }
 
   // read single log
-  private Log readLog(FileInputStream logReader, boolean canSkip) throws IOException {
+  private Log readLog(FileInputStream logReader) throws IOException {
     int logSize = ReadWriteIOUtils.readInt(logReader);
     int totalSize = Integer.BYTES + logSize;
-
-    if (canSkip) {
-      logReader.skip(logSize);
-      removedLogSize += totalSize;
-      return null;
-    }
 
     Log log = null;
 
     try {
       log = parser.parse(ByteBuffer.wrap(ReadWriteIOUtils.readBytes(logReader, logSize)));
     } catch (UnknownLogTypeException e) {
-      e.printStackTrace();
+      logger.error("Error in log serialization: " + e.getMessage());
     }
 
     logSizeDeque.addLast(totalSize);
@@ -231,11 +226,12 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
       try {
         FileInputStream metaReader = new FileInputStream(metaFile);
         firstLogPosition = ReadWriteIOUtils.readLong(metaReader);
+        removedLogSize = ReadWriteIOUtils.readLong(metaReader);
         meta = LogManagerMeta.deserialize(
             ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(metaReader)));
         metaReader.close();
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error("Error in log serialization: " + e.getMessage());
       }
     }
 
@@ -247,11 +243,12 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     try {
       metaOutputStream.getChannel().truncate(0);
       ReadWriteIOUtils.write(firstLogPosition, metaOutputStream);
+      ReadWriteIOUtils.write(removedLogSize, metaOutputStream);
       ReadWriteIOUtils.write(meta.serialize(), metaOutputStream);
 
       this.meta = meta;
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error in log serialization: " + e.getMessage());
     }
 
   }
@@ -262,7 +259,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
       logOutputStream.close();
       metaOutputStream.close();
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error in log serialization: " + e.getMessage());
     }
   }
 
@@ -272,8 +269,11 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     try {
       FileInputStream reader = new FileInputStream(logFile);
       // skip removed file
-      for (int i = 0; i < firstLogPosition; i++) {
-        readLog(reader, true);
+      long actuallySkippedBytes = reader.skip(removedLogSize);
+      if (actuallySkippedBytes != removedLogSize) {
+        logger.error(
+            "Error in log serialization, skipped file length isn't consistent with removedLogSize!");
+        return;
       }
 
       // begin to write
@@ -287,9 +287,9 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
       int blockSize = 4096;
       long curPosition = reader.getChannel().position();
       while (curPosition < logFile.length()) {
-        long size = Math.min(blockSize, logFile.length() - curPosition);
-        logOutputStream.write(ReadWriteIOUtils.readBytes(reader, (int) size));
-        curPosition = reader.getChannel().position();
+        long transferSize = Math.min(blockSize, logFile.length() - curPosition);
+        reader.getChannel().transferTo(curPosition, transferSize, logOutputStream.getChannel());
+        curPosition += transferSize;
       }
 
       // rename file
@@ -299,7 +299,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
       reader.close();
       logOutputStream = new FileOutputStream(logFile, true);
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error in log serialization: " + e.getMessage());
     }
 
     // re init and serialize
