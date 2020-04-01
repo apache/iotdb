@@ -1318,10 +1318,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
-  public static List<SqlArgument> getSqlArgumentList() {
-    return sqlArgumentList;
-  }
-
   private long generateQueryId(boolean isDataQuery) {
     return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
   }

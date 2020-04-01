@@ -1,0 +1,15 @@
+{
+  "type" : "insert",
+  "targets" : [
+    {
+      "deviceId" : "root.vehicle.d0",
+      "measurements" : [
+        "s0", "s1", "s2", "s3"
+      ],
+      "time" : 100,
+      "values" : [
+        "1", "2", "3", "4"
+      ]
+    }
+  ]
+}

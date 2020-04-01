@@ -18,18 +18,14 @@
  */
 package org.apache.iotdb.db.rest.service;
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -37,23 +33,22 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.constant.DatetimeUtils;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.rest.model.TimeValue;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -63,7 +58,18 @@ import org.slf4j.LoggerFactory;
 public class RestService {
 
   protected Planner planner = new Planner();
+  private RestParser restParser = new RestParser();
   private static final Logger logger = LoggerFactory.getLogger(RestService.class);
+  private IPlanExecutor executor;
+
+  private RestService() {
+    try {
+      executor = new PlanExecutor();
+    } catch (QueryProcessException e) {
+      logger.error(String.valueOf(e));
+    }
+  }
+
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
   private String username;
 
@@ -76,10 +82,10 @@ public class RestService {
     String sql = "SELECT " + suffixPath + " FROM"
         + prefixPath + " WHERE time > " + from + " and time < " + to;
     logger.info(sql);
-    QueryOperator queryOperator = generateOperator(suffixPath, prefixPath, timeRange);
+    QueryOperator queryOperator = restParser.generateOperator(suffixPath, prefixPath, timeRange);
     QueryPlan plan = (QueryPlan) planner.logicalPlanToPhysicalPlan(queryOperator);
     List<Path> paths = plan.getPaths();
-    if (!checkLogin()) {
+    if (checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
     }
 
@@ -88,7 +94,6 @@ public class RestService {
       throw new AuthException("Don't have permissions");
     }
 
-    IPlanExecutor executor = new PlanExecutor();
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     QueryDataSet queryDataSet = executor.processQuery(plan, context);
     String[] args;
@@ -104,7 +109,7 @@ public class RestService {
   }
 
   private boolean checkLogin() {
-    return username != null;
+    return username == null;
   }
 
   private boolean checkAuthorization(List<Path> paths, PhysicalPlan plan) throws AuthException {
@@ -112,101 +117,8 @@ public class RestService {
   }
 
 
-  /**
-   * generate select statement operator
-   */
-  private QueryOperator generateOperator(String suffixPath, String prefixPath, Pair<String, String> timeRange) {
-    FilterOperator binaryOp = new FilterOperator(SQLConstant.KW_AND);
-    long timeLeft;
-    long timeRight;
-    if(!NumberUtils.isDigits(timeRange.left)) {
-      timeLeft = parseTimeFormat(timeRange.left);
-      binaryOp.addChildOperator(
-          new BasicFunctionOperator(SQLConstant.GREATERTHAN,
-              new Path(SQLConstant.RESERVED_TIME),
-              String.valueOf(timeLeft)
-          )
-      );
-    } else {
-      binaryOp.addChildOperator(
-          new BasicFunctionOperator(SQLConstant.GREATERTHAN,
-              new Path(SQLConstant.RESERVED_TIME),
-              timeRange.left
-          )
-      );
-    }
-
-    if(!NumberUtils.isDigits(timeRange.right)) {
-      timeRight = parseTimeFormat(timeRange.right);
-      binaryOp.addChildOperator(
-          new BasicFunctionOperator(SQLConstant.LESSTHAN,
-              new Path(SQLConstant.RESERVED_TIME),
-              String.valueOf(timeRight)
-          )
-      );
-    } else {
-      binaryOp.addChildOperator(
-          new BasicFunctionOperator(SQLConstant.LESSTHAN,
-              new Path(SQLConstant.RESERVED_TIME),
-              timeRange.right
-          )
-      );
-    }
-    QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
-    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    selectOp.addSelectPath(new Path(suffixPath));
-    FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
-    fromOp.addPrefixTablePath(new Path(prefixPath));
-    queryOp.setFilterOperator(binaryOp);
-    queryOp.setSelectOperator(selectOp);
-    queryOp.setFromOperator(fromOp);
-    return queryOp;
-  }
-
-  /**
-   * function for parsing time format.
-   */
-  private long parseTimeFormat(String timestampStr) {
-    if (timestampStr == null || timestampStr.trim().equals("")) {
-      throw new SQLParserException("input timestamp cannot be empty");
-    }
-    if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
-      return System.currentTimeMillis();
-    }
-    try {
-      return DatetimeUtils.convertDatetimeStrToLong(timestampStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    } catch (Exception e) {
-      throw new SQLParserException(String
-          .format("Input time format %s error. "
-              + "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or "
-              + "refer to user document for more info.", timestampStr));
-    }
-  }
-
   public void setUsername(String username) {
     this.username = username;
-  }
-
-  /**
-   * get request body JSON.
-   *
-   * @param request http request
-   * @return request JSON
-   * @throws JSONException JSONException
-   */
-  public JSONObject getRequestBodyJson(HttpServletRequest request){
-    try {
-      BufferedReader br = new BufferedReader(new InputStreamReader(request.getInputStream()));
-      StringBuilder sb = new StringBuilder();
-      String line;
-      while ((line = br.readLine()) != null) {
-        sb.append(line);
-      }
-      return JSON.parseObject(sb.toString());
-    } catch (IOException e) {
-      logger.error("getRequestBodyJson failed", e);
-    }
-    return null;
   }
 
   /**
@@ -263,6 +175,54 @@ public class RestService {
       dataPoints.add(jsonArray);
     }
     obj.put("datapoints", dataPoints);
+  }
+
+  public boolean setStorageGroup(String storageGroup) throws QueryProcessException {
+    if(checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return false;
+    }
+    SetStorageGroupPlan plan = new SetStorageGroupPlan(new Path(storageGroup));
+    return executeNonQuery(plan);
+  }
+
+  public boolean createTimeSeries(String path, String dataType,
+      String encoding, String compressor) throws QueryProcessException {
+    if(checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return false;
+    }
+    CreateTimeSeriesPlan plan =
+        new CreateTimeSeriesPlan(
+            new Path(path),
+            TSDataType.valueOf(dataType.trim().toUpperCase()),
+            TSEncoding.valueOf(encoding.trim().toUpperCase()),
+            CompressionType.findByShortName(compressor.trim().toUpperCase()),
+            new HashMap<>());
+    return executeNonQuery(plan);
+  }
+
+  public boolean insert(String deviceId, long time, List<String> measurements,
+      List<String> values) throws QueryProcessException {
+    if(checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return false;
+    }
+    InsertPlan plan = new InsertPlan();
+    plan.setDeviceId(deviceId);
+    plan.setTime(time);
+    plan.setMeasurements(measurements.toArray(new String[0]));
+    plan.setValues(values.toArray(new String[0]));
+    return executeNonQuery(plan);
+  }
+
+  private boolean executeNonQuery(PhysicalPlan plan) throws QueryProcessException {
+
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new QueryProcessException(
+          "Current system mode is read-only, does not support non-query operation");
+    }
+    return executor.processNonQuery(plan);
   }
 
   public static RestService getInstance() {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metrics;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.codahale.metrics.Gauge;
@@ -91,7 +92,7 @@ public class MetricsSystem {
 
     metricRegistry.register(MetricRegistry.name(sourceName, USED_PHYSICAL_MEMORY),
         (Gauge<Long>) () -> serverArgument.getUsedPhysicalMemory());
-    return (JSONObject) JSONObject.parse(om.writeValueAsString(metricRegistry));
+    return (JSONObject) JSON.parse(om.writeValueAsString(metricRegistry));
   }
 
   public JSONObject serverJson() {
@@ -140,4 +141,11 @@ public class MetricsSystem {
     return jsonArray;
   }
 
+  public static MetricsSystem getInstance() {
+    return MetricsSystemHolder.INSTANCE;
+  }
+
+  private static class MetricsSystemHolder {
+    private static final MetricsSystem INSTANCE = new MetricsSystem();
+  }
 }
