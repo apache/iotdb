@@ -39,40 +39,25 @@ import java.util.*;
  */
 public abstract class TimeGenerator {
 
-
-  private boolean hasCache;
-  private long cacheTime;
-
   private HashMap<Path, List<LeafNode>> leafCache = new HashMap<>();
   private Node operatorNode;
 
   public boolean hasNext() throws IOException {
-    if (hasCache) {
-      return true;
-    }
-
-    if (operatorNode.hasNext()) {
-      cacheTime = operatorNode.next();
-      hasCache = true;
-    }
-    return hasCache;
+    return operatorNode.hasNext();
   }
 
   public long next() throws IOException {
-    if (hasCache || hasNext()) {
-      hasCache = false;
-      return cacheTime;
-    }
-    throw new IOException("no more data");
+    return operatorNode.next();
   }
 
   public Object getValue(Path path, long time) {
     for (LeafNode leafNode : leafCache.get(path)) {
-      Object value = leafNode.currentValue(time);
-      if (value != null) {
-        return value;
+      if (!leafNode.currentTimeIs(time)) {
+        continue;
       }
+      return leafNode.currentValue();
     }
+
     return null;
   }
 
@@ -109,7 +94,7 @@ public abstract class TimeGenerator {
         return new AndNode(leftChild, rightChild);
       }
       throw new UnSupportedDataTypeException(
-              "Unsupported ExpressionType when construct OperatorNode: " + expression.getType());
+          "Unsupported ExpressionType when construct OperatorNode: " + expression.getType());
     }
   }
 
