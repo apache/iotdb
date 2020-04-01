@@ -215,6 +215,10 @@ public class SeqTsFileRecoverTest {
         versionController, resource, true, true);
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     RestorableTsFileIOWriter writer = performer.recover();
+
+    writer.makeMetadataVisible();
+    assertEquals(11, writer.getMetadatasForQuery().size());
+
     assertTrue(writer.canWrite());
     writer.endFile();
 

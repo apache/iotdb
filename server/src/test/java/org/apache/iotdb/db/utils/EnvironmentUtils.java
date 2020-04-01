@@ -231,6 +231,11 @@ public class EnvironmentUtils {
     }
   }
 
+  public static void restartDaemon() {
+    stopDaemon();
+    reactiveDaemon();
+  }
+
   private static void createAllDir() {
     // create sequential files
     for (String path : directoryManager.getAllSequenceFileFolders()) {

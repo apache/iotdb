@@ -42,9 +42,9 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IoTDBLoadExternalTsfileTest {
+public class IoTDBLoadExternalTsfileIT {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLoadExternalTsfileTest.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLoadExternalTsfileIT.class);
   private static String[] insertSequenceSqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle",
       "SET STORAGE GROUP TO root.test",
