@@ -474,6 +474,10 @@ public class TsFileResource {
     return timeSeriesMetadata;
   }
 
+  /**
+   * make sure Either the startTimeMap is not empty
+   *           Or the path contains a partition folder
+   */
   public long getTimePartition() {
     if (startTimeMap != null && !startTimeMap.isEmpty()) {
       return StorageEngine.getTimePartition(startTimeMap.values().iterator().next());

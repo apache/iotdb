@@ -112,6 +112,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -571,7 +572,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
       Map<Path, MeasurementSchema> schemaMap = new HashMap<>();
 
-      List<Pair<String, List<ChunkMetadata>>> chunkGroupMetadataList = new ArrayList<>();
+      List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
         reader.selfCheck(schemaMap, chunkGroupMetadataList, false);
       }
@@ -597,7 +598,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void createSchemaAutomatically(
-      List<Pair<String, List<ChunkMetadata>>> chunkGroupMetadataList,
+      List<ChunkGroupMetadata> chunkGroupMetadataList,
       Map<Path, MeasurementSchema> knownSchemas, int sgLevel)
       throws QueryProcessException, MetadataException {
     if (chunkGroupMetadataList.isEmpty()) {
@@ -605,11 +606,11 @@ public class PlanExecutor implements IPlanExecutor {
     }
 
     Set<Path> registeredSeries = new HashSet<>();
-    for (Pair<String, List<ChunkMetadata>> chunkGroupMetadata : chunkGroupMetadataList) {
-      String device = chunkGroupMetadata.left;
+    for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
+      String device = chunkGroupMetadata.getDevice();
       MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(device, true, sgLevel);
-      for (ChunkMetadata chunkMetadata : chunkGroupMetadata.right) {
-        Path series = new Path(chunkGroupMetadata.left, chunkMetadata.getMeasurementUid());
+      for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
+        Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
         if (!registeredSeries.contains(series)) {
           registeredSeries.add(series);
           MeasurementSchema schema = knownSchemas.get(series);

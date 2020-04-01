@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -40,7 +41,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -51,7 +51,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * TSFileIOWriter is used to construct metadata and write data stored in memory to output stream.
+ * TsFileIOWriter is used to construct metadata and write data stored in memory to output stream.
  */
 public class TsFileIOWriter {
 
@@ -76,8 +76,8 @@ public class TsFileIOWriter {
   private ChunkMetadata currentChunkMetadata;
   // current flushed ChunkGroup
   protected List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
-  // all flushed ChunkGroup,  device -> List<ChunkMetadata>
-  protected List<Pair<String, List<ChunkMetadata>>> chunkGroupMetadataList = new ArrayList<>();
+  // all flushed ChunkGroups
+  protected List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
 
   private long markedPosition;
   private String deviceId;
@@ -150,7 +150,7 @@ public class TsFileIOWriter {
     ChunkGroupFooter chunkGroupFooter = new ChunkGroupFooter(deviceId, dataSize,
         chunkMetadataList.size());
     chunkGroupFooter.serializeTo(out.wrapAsStream());
-    chunkGroupMetadataList.add(new Pair<>(deviceId, chunkMetadataList));
+    chunkGroupMetadataList.add(new ChunkGroupMetadata(deviceId, chunkMetadataList));
     logger.debug("end chunk group:{}", chunkMetadataList);
     deviceId = null;
     chunkMetadataList = null;
@@ -226,9 +226,9 @@ public class TsFileIOWriter {
 
     // group ChunkMetadata by series
     Map<Path, List<ChunkMetadata>> chunkMetadataListMap = new TreeMap<>();
-    for (Pair<String, List<ChunkMetadata>> chunkGroupMetadata: chunkGroupMetadataList) {
-      for (ChunkMetadata chunkMetadata : chunkGroupMetadata.right) {
-        Path series = new Path(chunkGroupMetadata.left, chunkMetadata.getMeasurementUid());
+    for (ChunkGroupMetadata chunkGroupMetadata: chunkGroupMetadataList) {
+      for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
+        Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
         chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
       }
     }
@@ -336,9 +336,9 @@ public class TsFileIOWriter {
   public Map<String, List<ChunkMetadata>> getDeviceChunkMetadataMap() {
     Map<String, List<ChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
 
-    for (Pair<String, List<ChunkMetadata>> chunkGroupMetadata : chunkGroupMetadataList) {
-      deviceChunkMetadataMap.computeIfAbsent(chunkGroupMetadata.left, k -> new ArrayList<>())
-          .addAll(chunkGroupMetadata.right);
+    for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
+      deviceChunkMetadataMap.computeIfAbsent(chunkGroupMetadata.getDevice(), k -> new ArrayList<>())
+          .addAll(chunkGroupMetadata.getChunkMetadataList());
     }
     return deviceChunkMetadataMap;
   }
@@ -391,12 +391,13 @@ public class TsFileIOWriter {
     Map<Path, Integer> startTimeIdxes = new HashMap<>();
     chunkStartTimes.forEach((p, t) -> startTimeIdxes.put(p, 0));
 
-    Iterator<Pair<String, List<ChunkMetadata>>> chunkGroupMetaDataIterator = chunkGroupMetadataList.iterator();
+    Iterator<ChunkGroupMetadata> chunkGroupMetaDataIterator = chunkGroupMetadataList.iterator();
     while (chunkGroupMetaDataIterator.hasNext()) {
-      Pair<String, List<ChunkMetadata>> chunkGroupMetaData = chunkGroupMetaDataIterator.next();
-      String deviceId = chunkGroupMetaData.left;
-      int chunkNum = chunkGroupMetaData.right.size();
-      Iterator<ChunkMetadata> chunkMetaDataIterator = chunkGroupMetaData.right.iterator();
+      ChunkGroupMetadata chunkGroupMetaData = chunkGroupMetaDataIterator.next();
+      String deviceId = chunkGroupMetaData.getDevice();
+      int chunkNum = chunkGroupMetaData.getChunkMetadataList().size();
+      Iterator<ChunkMetadata> chunkMetaDataIterator = chunkGroupMetaData.getChunkMetadataList()
+          .iterator();
       while (chunkMetaDataIterator.hasNext()) {
         ChunkMetadata chunkMetaData = chunkMetaDataIterator.next();
         Path path = new Path(deviceId, chunkMetaData.getMeasurementUid());

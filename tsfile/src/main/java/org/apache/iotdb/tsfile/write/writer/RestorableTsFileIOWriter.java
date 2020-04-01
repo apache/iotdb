@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -191,20 +192,20 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    */
 
   public void makeMetadataVisible() {
-    List<Pair<String, List<ChunkMetadata>>> newlyFlushedMetadataList = getAppendedRowMetadata();
+    List<ChunkGroupMetadata> newlyFlushedMetadataList = getAppendedRowMetadata();
     if (!newlyFlushedMetadataList.isEmpty()) {
-      for (Pair<String, List<ChunkMetadata>> pair : newlyFlushedMetadataList) {
-        List<ChunkMetadata> rowMetaDataList = pair.right;
-        String deviceId = pair.left;
+      for (ChunkGroupMetadata chunkGroupMetadata : newlyFlushedMetadataList) {
+        List<ChunkMetadata> rowMetaDataList = chunkGroupMetadata.getChunkMetadataList();
+        String device = chunkGroupMetadata.getDevice();
         for (ChunkMetadata chunkMetaData : rowMetaDataList) {
           String measurementId = chunkMetaData.getMeasurementUid();
-          if (!metadatasForQuery.containsKey(deviceId)) {
-            metadatasForQuery.put(deviceId, new HashMap<>());
+          if (!metadatasForQuery.containsKey(device)) {
+            metadatasForQuery.put(device, new HashMap<>());
           }
-          if (!metadatasForQuery.get(deviceId).containsKey(measurementId)) {
-            metadatasForQuery.get(deviceId).put(measurementId, new ArrayList<>());
+          if (!metadatasForQuery.get(device).containsKey(measurementId)) {
+            metadatasForQuery.get(device).put(measurementId, new ArrayList<>());
           }
-          metadatasForQuery.get(deviceId).get(measurementId).add(chunkMetaData);
+          metadatasForQuery.get(device).get(measurementId).add(chunkMetaData);
         }
       }
     }
@@ -220,8 +221,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    *
    * @return a list of Device ChunkMetadataList Pair
    */
-  private List<Pair<String, List<ChunkMetadata>>> getAppendedRowMetadata() {
-    List<Pair<String, List<ChunkMetadata>>> append = new ArrayList<>();
+  private List<ChunkGroupMetadata> getAppendedRowMetadata() {
+    List<ChunkGroupMetadata> append = new ArrayList<>();
     if (lastFlushedChunkGroupIndex < chunkGroupMetadataList.size()) {
       append.addAll(chunkGroupMetadataList
           .subList(lastFlushedChunkGroupIndex, chunkGroupMetadataList.size()));

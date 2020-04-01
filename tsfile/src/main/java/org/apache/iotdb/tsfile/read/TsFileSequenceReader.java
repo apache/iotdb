@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -561,10 +562,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   /**
    * Self Check the file and return the position before where the data is safe.
    *
-   * @param newSchema   @OUT. the measurement schema in the file will be added into this parameter.
-   *                    (can be null)
-   * @param chunkGroupMetadataList   @OUT. the treeMap (Path -> ChunkmetadataList)
-   *                    (can be null)
+   * @param newSchema   the schema on each time series in the file
+   * @param chunkGroupMetadataList  ChunkGroupMetadata List
    * @param fastFinish  if true and the file is complete, then newSchema and newMetaData parameter
    *                    will be not modified.
    * @return the position of the file that is fine. All data after the position in the file should
@@ -572,8 +571,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
 
   public long selfCheck(Map<Path, MeasurementSchema> newSchema,
-      List<Pair<String, List<ChunkMetadata>>> chunkGroupMetadataList,
-      boolean fastFinish) throws IOException {
+      List<ChunkGroupMetadata> chunkGroupMetadataList, boolean fastFinish) throws IOException {
     File checkFile = FSFactoryProducer.getFSFactory().getFile(this.file);
     long fileSize;
     if (!checkFile.exists()) {
@@ -658,7 +656,7 @@ public class TsFileSequenceReader implements AutoCloseable {
                 newSchema.putIfAbsent(new Path(deviceID, tsSchema.getMeasurementId()), tsSchema);
               }
             }
-            chunkGroupMetadataList.add(new Pair<>(deviceID, chunkMetadataList));
+            chunkGroupMetadataList.add(new ChunkGroupMetadata(deviceID, chunkMetadataList));
             newChunkGroup = true;
             truncatedPosition = this.position();
 
