@@ -147,7 +147,7 @@ pipeline {
             }
             steps {
                 // Publish the site with the scm-publish plugin.
-                sh 'mvn scm-publish:publish-scm -pl site'
+                sh 'mvn package scm-publish:publish-scm -pl site'
 
                 // Clean up the snapshots directory (freeing up more space after deploying).
                 dir("target") {
