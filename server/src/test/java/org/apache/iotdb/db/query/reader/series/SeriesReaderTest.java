@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.db.query.reader.series;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -42,6 +35,16 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class SeriesReaderTest {
 
@@ -66,8 +69,10 @@ public class SeriesReaderTest {
   @Test
   public void batchTest() {
     try {
+      Set<String> allSensors = new HashSet<>();
+      allSensors.add("sensor0");
       SeriesReader seriesReader = new SeriesReader(
-          new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
+          new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"), allSensors,
           TSDataType.INT32, new QueryContext(), seqResources, unseqResources, null, null);
       IBatchReader batchReader = new SeriesRawDataBatchReader(seriesReader);
       int count = 0;
@@ -99,8 +104,10 @@ public class SeriesReaderTest {
   @Test
   public void pointTest() {
     try {
+      Set<String> allSensors = new HashSet<>();
+      allSensors.add("sensor0");
       SeriesReader seriesReader = new SeriesReader(
-          new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
+          new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"), allSensors,
           TSDataType.INT32, new QueryContext(), seqResources, unseqResources, null, null);
       IPointReader pointReader = new SeriesRawDataPointReader(seriesReader);
       long expectedTime = 0;

@@ -38,11 +38,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSFreqType;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 /**
@@ -358,19 +356,6 @@ public class ReadWriteIOUtils {
 
   public static int write(TSEncoding encoding, ByteBuffer buffer) {
     short n = encoding.serialize();
-    return write(n, buffer);
-  }
-
-  /**
-   * TSFreqType.
-   */
-  public static int write(TSFreqType freqType, OutputStream outputStream) throws IOException {
-    short n = freqType.serialize();
-    return write(n, outputStream);
-  }
-
-  public static int write(TSFreqType freqType, ByteBuffer buffer) {
-    short n = freqType.serialize();
     return write(n, buffer);
   }
 
@@ -746,15 +731,6 @@ public class ReadWriteIOUtils {
     return TSEncoding.deserialize(n);
   }
 
-  public static TSFreqType readFreqType(InputStream inputStream) throws IOException {
-    short n = readShort(inputStream);
-    return TSFreqType.deserialize(n);
-  }
-
-  public static TSFreqType readFreqType(ByteBuffer buffer) {
-    short n = readShort(buffer);
-    return TSFreqType.deserialize(n);
-  }
 
   /**
    * to check whether the byte buffer is reach the magic string

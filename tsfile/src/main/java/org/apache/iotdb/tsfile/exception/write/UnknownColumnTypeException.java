@@ -21,8 +21,8 @@ package org.apache.iotdb.tsfile.exception.write;
 import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 
 /**
- * This Exception is used while getting an unknown column type. <br> This Exception extends super
- * class {@link TsFileRuntimeException}
+ * This Exception is used while getting an unknown column type. <br>
+ * This Exception extends super class {@link TsFileRuntimeException}
  */
 public class UnknownColumnTypeException extends TsFileRuntimeException {
 

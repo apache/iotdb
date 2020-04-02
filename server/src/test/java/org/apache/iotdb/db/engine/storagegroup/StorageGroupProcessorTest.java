@@ -28,18 +28,20 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -108,7 +110,7 @@ public class StorageGroupProcessorTest {
 
     processor.delete(deviceId, measurementId, 15L);
 
-    Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = null;
+    Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = null;
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
       pair = tsfileProcessor
           .query(deviceId, measurementId, TSDataType.INT32, TSEncoding.RLE, Collections.emptyMap(),
@@ -131,7 +133,7 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testSequenceSyncClose() throws WriteProcessException {
+  public void testSequenceSyncClose() throws WriteProcessException, QueryProcessException {
     for (int j = 1; j <= 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -150,7 +152,8 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testIoTDBRowBatchWriteAndSyncClose() throws WriteProcessException {
+  public void testIoTDBRowBatchWriteAndSyncClose()
+      throws WriteProcessException, QueryProcessException {
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -159,8 +162,13 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
+    MeasurementSchema[] schemas = new MeasurementSchema[2];
+    schemas[0] = new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN);
+    schemas[1] = new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
+
     BatchInsertPlan batchInsertPlan1 = new BatchInsertPlan("root.vehicle.d0", measurements,
         dataTypes);
+    batchInsertPlan1.setSchemas(schemas);
 
     long[] times = new long[100];
     Object[] columns = new Object[2];
@@ -181,6 +189,7 @@ public class StorageGroupProcessorTest {
 
     BatchInsertPlan batchInsertPlan2 = new BatchInsertPlan("root.vehicle.d0", measurements,
         dataTypes);
+    batchInsertPlan2.setSchemas(schemas);
 
     for (int r = 50; r < 149; r++) {
       times[r - 50] = r;
@@ -207,7 +216,7 @@ public class StorageGroupProcessorTest {
 
 
   @Test
-  public void testSeqAndUnSeqSyncClose() throws WriteProcessException {
+  public void testSeqAndUnSeqSyncClose() throws WriteProcessException, QueryProcessException {
 
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
@@ -239,7 +248,7 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testMerge() throws WriteProcessException {
+  public void testMerge() throws WriteProcessException, QueryProcessException {
 
     mergeLock = new AtomicLong(0);
     for (int j = 21; j <= 30; j++) {
@@ -277,8 +286,7 @@ public class StorageGroupProcessorTest {
 
   class DummySGP extends StorageGroupProcessor {
 
-    DummySGP(String systemInfoDir, String storageGroupName)
-        throws StorageGroupProcessorException, MetadataException {
+    DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
       super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy());
     }
 

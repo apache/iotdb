@@ -27,8 +27,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class SeriesRawDataBatchReader implements ManagedSeriesReader {
 
@@ -45,9 +48,9 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     this.seriesReader = seriesReader;
   }
 
-  public SeriesRawDataBatchReader(Path seriesPath, TSDataType dataType, QueryContext context,
-      QueryDataSource dataSource, Filter timeFilter, Filter valueFilter, TsFileFilter fileFilter) {
-    this.seriesReader = new SeriesReader(seriesPath, dataType, context, dataSource, timeFilter,
+  public SeriesRawDataBatchReader(Path seriesPath, Set<String> allSensors, TSDataType dataType, QueryContext context,
+                                  QueryDataSource dataSource, Filter timeFilter, Filter valueFilter, TsFileFilter fileFilter) {
+    this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context, dataSource, timeFilter,
         valueFilter, fileFilter);
   }
 
@@ -55,7 +58,7 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
   public SeriesRawDataBatchReader(Path seriesPath, TSDataType dataType, QueryContext context,
       List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
       Filter timeFilter, Filter valueFilter) {
-    this.seriesReader = new SeriesReader(seriesPath, dataType, context, seqFileResource,
+    this.seriesReader = new SeriesReader(seriesPath, new HashSet<>(), dataType, context, seqFileResource,
         unseqFileResource, timeFilter, valueFilter);
   }
 
@@ -79,10 +82,18 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     }
 
     /*
-     * consume next chunk finally
+     * consume chunk data secondly
      */
-    while (seriesReader.hasNextChunk()) {
-      if (readPageData()) {
+    if (readChunkData()) {
+      hasCachedBatchData = true;
+      return true;
+    }
+
+    /*
+     * consume next file finally
+     */
+    while (seriesReader.hasNextFile()) {
+      if (readChunkData()) {
         hasCachedBatchData = true;
         return true;
       }
@@ -125,6 +136,14 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     this.hasRemaining = hasRemaining;
   }
 
+  private boolean readChunkData() throws IOException {
+    while (seriesReader.hasNextChunk()) {
+      if (readPageData()) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   private boolean readPageData() throws IOException {
     while (seriesReader.hasNextPage()) {

@@ -191,17 +191,22 @@ public class IoTDBConfig {
   /**
    * Memory allocated for fileMetaData cache in read process
    */
-  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 3 / 39;
+  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 7 / 39;
+
+  /**
+   * Memory allocated for timeSeriesMetaData cache in read process
+   */
+  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 10 / 39;
 
   /**
    * Memory allocated for chunkMetaData cache in read process
    */
-  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead * 6 / 39;
+  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead * 5 / 39;
 
   /**
    * Memory allocated for chunk cache in read process
    */
-  private long allocateMemoryForChunkCache = allocateMemoryForRead * 10 / 39;
+  private long allocateMemoryForChunkCache = allocateMemoryForRead * 5 / 39;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
@@ -486,7 +491,7 @@ public class IoTDBConfig {
   //wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
 
-  private int queryCacheSizeInMetric = 200;
+  private int queryCacheSizeInMetric =50;
 
   public IoTDBConfig() {
     // empty constructor
@@ -1063,6 +1068,14 @@ public class IoTDBConfig {
 
   void setAllocateMemoryForFileMetaDataCache(long allocateMemoryForFileMetaDataCache) {
     this.allocateMemoryForFileMetaDataCache = allocateMemoryForFileMetaDataCache;
+  }
+
+  public long getAllocateMemoryForTimeSeriesMetaDataCache() {
+    return allocateMemoryForTimeSeriesMetaDataCache;
+  }
+
+  public void setAllocateMemoryForTimeSeriesMetaDataCache(long allocateMemoryForTimeSeriesMetaDataCache) {
+    this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
   }
 
   public long getAllocateMemoryForChunkMetaDataCache() {
