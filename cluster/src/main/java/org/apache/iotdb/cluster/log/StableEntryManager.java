@@ -32,4 +32,10 @@ public class StableEntryManager {
 
     public void append(List<Log> entries) {
     }
+
+    public void applyingSnapshot(RaftSnapshot snapshot) {
+    }
+
+    public void removeCompactedEntries(long index) {
+    }
 }

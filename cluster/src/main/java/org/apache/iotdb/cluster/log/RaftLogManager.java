@@ -31,11 +31,11 @@ public class RaftLogManager {
 
     private static final Logger logger = LoggerFactory.getLogger(RaftLogManager.class);
 
-    //manage uncommitted entries
+    // manage uncommitted entries
     UnCommittedEntryManager unCommittedEntryManager;
-    //manage committed entries in memory as a cache
+    // manage committed entries in memory as a cache
     CommittedEntryManager committedEntryManager;
-    //manage committed entries in disk for safety
+    // manage committed entries in disk for safety
     StableEntryManager stableEntryManager;
 
     private long committed;
@@ -46,13 +46,13 @@ public class RaftLogManager {
         this.stableEntryManager = stableEntryManager;
         long last = committedEntryManager.getLastIndex();
         this.unCommittedEntryManager = new UnCommittedEntryManager(last + 1);
-        //must apply [first,last] to state machine
+        //must have applied entry [compactIndex,last] to state machine
         this.committed = last;
         this.applied = last;
     }
 
     /**
-     * getCommitIndex return the log module's commitIndex.
+     * Return the raftNode's commitIndex.
      *
      * @return commitIndex
      */
@@ -61,7 +61,8 @@ public class RaftLogManager {
     }
 
     /**
-     * setCommitIndex set the log module's commitIndex.
+     * Set the raftNode's commitIndex.
+     *
      * @param commitIndex request commitIndex
      */
     public void setCommitIndex(long commitIndex) {
@@ -69,7 +70,7 @@ public class RaftLogManager {
     }
 
     /**
-     * getApplyIndex return the log module's applyIndex.
+     * Return the log module's applyIndex.
      *
      * @return applyIndex
      */
@@ -78,7 +79,7 @@ public class RaftLogManager {
     }
 
     /**
-     * getFirstIndex return the first entry index which have not been compacted.
+     * Return the first entry's index which have not been compacted.
      *
      * @return firstIndex
      */
@@ -87,7 +88,7 @@ public class RaftLogManager {
     }
 
     /**
-     * getFirstIndex return the last entry index which been added into log module.
+     * Return the last entry's index which have been added into log module.
      *
      * @return lastIndex
      */
@@ -99,19 +100,19 @@ public class RaftLogManager {
         return committedEntryManager.getLastIndex();
     }
 
-
     /**
-     * getTerm returns the term for given index.
+     * Returns the term for given index.
      *
      * @param index request entry index
-     * @return throw EntryCompactedException if index < dummyIndex, throw EntryUnavailableException if index > lastIndex, otherwise return the entry's term.
+     * @return throw EntryCompactedException if index < dummyIndex, throw EntryUnavailableException
+     * if index > lastIndex, otherwise return the entry's term for given index
      * @throws EntryUnavailableException
      * @throws EntryCompactedException
      */
     public long getTerm(long index) throws EntryUnavailableException, EntryCompactedException {
         long dummyIndex = getFirstIndex() - 1;
         if (index < dummyIndex) {
-            logger.info("invalid getTerm: parameter: index({}) < firstIndex({})", index, dummyIndex);
+            logger.info("invalid getTerm: parameter: index({}) < compactIndex({})", index, dummyIndex);
             throw new EntryCompactedException(index, dummyIndex);
         }
         long lastIndex = getLastIndex();
@@ -126,10 +127,10 @@ public class RaftLogManager {
     }
 
     /**
-     * getTerm returns the last entry's term.
+     * Return the last entry's term.
      * If it goes wrong, there must be an unexpected exception.
      *
-     * @return last entry's term.
+     * @return last entry's term
      */
     public long getLastTerm() {
         long term = -1;
@@ -142,13 +143,14 @@ public class RaftLogManager {
     }
 
     /**
-     * maybeAppend is only used by follower node to support leader's complicated log replication rpcs
+     * Used by follower node to support leader's complicated log replication rpc parameters.
      *
-     * @param lastIndex leader's matchIndex for this follower node
-     * @param lastTerm the entry's term which index is leader's matchIndex for this follower node
+     * @param lastIndex    leader's matchIndex for this follower node
+     * @param lastTerm     the entry's term which index is leader's matchIndex for this follower node
      * @param leaderCommit leader's commitIndex
-     * @param entries entries sent from the leader node.Note that the leader must ensure entries[0].index = lastIndex + 1
-     * @return returns -1 if the entries cannot be appended. Otherwise, it returns last index of new entries
+     * @param entries      entries sent from the leader node
+     *                     Note that the leader must ensure entries[0].index = lastIndex + 1
+     * @return -1 if the entries cannot be appended, otherwise the last index of new entries
      */
     public long maybeAppend(long lastIndex, long lastTerm, long leaderCommit, List<Log> entries) {
         if (matchTerm(lastTerm, lastIndex)) {
@@ -167,10 +169,11 @@ public class RaftLogManager {
     }
 
     /**
-     * append is used by leader node or MaybeAppend to directly append to unCommittedEntryManager.
+     * Used by leader node or MaybeAppend to directly append to unCommittedEntryManager.
+     * Note that the caller should ensure entries[0].index > committed.
      *
-     * @param entries Note that the caller should ensure entries[0].index = committed
-     * @return returns the newly generated lastIndex
+     * @param entries appendingEntries
+     * @return the newly generated lastIndex
      */
     public long append(List<Log> entries) {
         if (entries.size() == 0) {
@@ -185,10 +188,11 @@ public class RaftLogManager {
     }
 
     /**
-     * commitTo is used by leader node or MaybeAppend to persist committed entries from unCommittedEntryManager to stableEntryManager and committedEntryManager.
+     * Used by leader node or MaybeAppend to persist committed entries
+     * from unCommittedEntryManager to stableEntryManager and committedEntryManager.
      *
      * @param commitIndex request commitIndex
-     * @return returns the local commitIndex
+     * @return the newly commitIndex
      */
     public long commitTo(long commitIndex) {
         if (committed < commitIndex) {
@@ -202,35 +206,54 @@ public class RaftLogManager {
     }
 
     /**
-     * logValid return whether the entry with certain index is available in log module.
+     * Return whether the entry with certain index is available in log module.
      *
      * @param index request index
-     * @return return true or false
+     * @return true or false
      */
     public boolean logValid(long index) {
-        return index >= committedEntryManager.getFirstIndex();
+        return index >= getFirstIndex() && index <= getLastIndex();
     }
 
+    /**
+     * Overwrites the contents of this object with those of the given snapshot.
+     *
+     * @param snapshot leader's snapshot
+     */
+    public void applyingSnapshot(RaftSnapshot snapshot){
+        logger.info("log module starts to restore snapshot [index: {}, term: {}]", snapshot.getLastIndex(), snapshot.getLastTerm());
+        try{
+            committedEntryManager.compactEntries(snapshot.getLastIndex());
+            stableEntryManager.removeCompactedEntries(snapshot.getLastIndex());
+        }catch (EntryUnavailableException e){
+            committedEntryManager.applyingSnapshot(snapshot);
+            unCommittedEntryManager.applyingSnapshot(snapshot);
+            stableEntryManager.applyingSnapshot(snapshot);
+        }
+        if(this.committed < snapshot.getLastIndex()) {
+            this.committed = snapshot.getLastIndex();
+        }
+    }
 
     /**
-     * isLogUpToDate determines if the given (lastIndex,term) log is more up-to-date
+     * Determines if the given (lastTerm, lastIndex) log is more up-to-date
      * by comparing the index and term of the last entries in the existing logs.
      * If the logs have last entries with different terms, then the log with the
      * later term is more up-to-date. If the logs end with the same term, then
      * whichever log has the larger lastIndex is more up-to-date. If the logs are
      * the same, the given log is up-to-date.
      *
-     * @param lastTerm candidate's lastTerm
+     * @param lastTerm  candidate's lastTerm
      * @param lastIndex candidate's lastIndex
-     * @return return true or false
+     * @return true or false
      */
     public boolean isLogUpToDate(long lastTerm, long lastIndex) {
         return lastTerm > getLastTerm() || (lastTerm == getLastTerm() && lastIndex >= getLastIndex());
     }
 
     /**
-     * getEntries pack entries from low through high - 1, just like slice (entries[low:high]).
-     * firstIndex <= low < high <= lastIndex.
+     * Pack entries from low through high - 1, just like slice (entries[low:high]).
+     * firstIndex <= low <= high <= lastIndex.
      *
      * @param low  request index low bound
      * @param high request index upper bound
@@ -251,8 +274,8 @@ public class RaftLogManager {
     }
 
     /**
-     * checkBound check whether the parameters passed in satisfy the following properties.
-     * firstIndex <= low < high.
+     * Check whether the parameters passed in satisfy the following properties.
+     * firstIndex <= low <= high.
      *
      * @param low  request index low bound
      * @param high request index upper bound
@@ -269,26 +292,12 @@ public class RaftLogManager {
             logger.error("CheckBound out of index: parameter: {} , lower bound: {} ", low, high);
             throw new EntryCompactedException(low, first);
         }
-        long upper = getLastIndex() + 1;
-        if (high > upper) {
-            logger.info("CheckBound out of index: parameter: {} , upper bound: {} ", first, upper);
-        }
     }
 
-//    public Log getLogByIndex(long index) throws EntryCompactedException {
-//        Log log = null;
-//        if (index > committed) {
-//            log = unCommittedEntryManager.getEntries(index, index + 1).get(0);
-//        } else {
-//            log = committedEntryManager.getEntries(index, index + 1).get(0);
-//        }
-//        return log;
-//    }
-
     /**
-     * matchTerm returns whether the parameters passed in match.
+     * Returns whether the index and term passed in match.
      *
-     * @param term request entry term
+     * @param term  request entry term
      * @param index request entry index
      * @return true or false
      */
@@ -303,16 +312,16 @@ public class RaftLogManager {
     }
 
     /**
-     *  findConflict finds the index of the conflict.
-     *  It returns the first pair of conflicting entries between the existing
-     *  entries and the given entries, if there are any.
-     *  If there is no conflicting entries, and the existing entries contains
-     *  all the given entries, zero will be returned.
-     *  If there is no conflicting entries, but the given entries contains new
-     *  entries, the index of the first new entry will be returned.
-     *  An entry is considered to be conflicting if it has the same index but
-     *  a different term.
-     *  The index of the given entries MUST be continuously increasing.
+     * findConflict finds the index of the conflict.
+     * It returns the first pair of conflicting entries between the existing
+     * entries and the given entries, if there are any.
+     * If there is no conflicting entries, and the existing entries contains
+     * all the given entries, zero will be returned.
+     * If there is no conflicting entries, but the given entries contains new
+     * entries, the index of the first new entry will be returned.
+     * An entry is considered to be conflicting if it has the same index but
+     * a different term.
+     * The index of the given entries MUST be continuously increasing.
      *
      * @param entries request entries
      * @return 0 or conflictIndex

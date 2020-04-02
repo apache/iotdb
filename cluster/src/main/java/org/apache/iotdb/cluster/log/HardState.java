@@ -19,12 +19,76 @@
 
 package org.apache.iotdb.cluster.log;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
+
+
 public class HardState {
     public long currentTerm;
     public long voteFor;
 
+    public HardState() {
+    }
+
     public HardState(long currentTerm, long voteFor) {
         this.currentTerm = currentTerm;
         this.voteFor = voteFor;
+    }
+
+    public static HardState deserialize(ByteBuffer buffer) {
+        HardState res = new HardState();
+        res.currentTerm = ReadWriteIOUtils.readLong(buffer);
+        res.voteFor = ReadWriteIOUtils.readLong(buffer);
+        return res;
+    }
+
+    public ByteBuffer serialize() {
+        ByteBuffer byteBuffer = ByteBuffer.allocate(Long.BYTES * 2);
+        byteBuffer.putLong(currentTerm);
+        byteBuffer.putLong(voteFor);
+        byteBuffer.flip();
+        return byteBuffer;
+    }
+
+    public long getCurrentTerm() {
+        return currentTerm;
+    }
+
+    public void setCurrentTerm(long currentTerm) {
+        this.currentTerm = currentTerm;
+    }
+
+    public long getVoteFor() {
+        return voteFor;
+    }
+
+    public void setVoteFor() {
+        this.voteFor = voteFor;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof HardState)) {
+            return false;
+        }
+        HardState that = (HardState) o;
+        return new EqualsBuilder()
+                .append(currentTerm, that.currentTerm)
+                .append(voteFor, that.voteFor)
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return new HashCodeBuilder(17, 37)
+                .append(currentTerm)
+                .append(voteFor)
+                .toHashCode();
     }
 }

@@ -430,6 +430,39 @@ public class RaftLogManagerTest {
 		}
 	}
 
+	@Test
+	public void applyingSnapshot() {
+		long index = 100;
+		long term = 100;
+		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+		committedEntryManager.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(index, term)));
+		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager());
+		instance.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(index, term)));
+		assertEquals(instance.getLastIndex(), term);
+		List<Log> entries = new ArrayList<>();
+		for (int i = 1; i <= 10; i++) {
+			entries.add(new PhysicalPlanLog(index + i, index + i));
+		}
+		instance.maybeAppend(index, term, index, entries);
+		assertEquals(1, instance.committedEntryManager.getAllEntries().size());
+		assertEquals(10, instance.unCommittedEntryManager.getAllEntries().size());
+		assertEquals(100, instance.getCommitIndex());
+		instance.commitTo(105);
+		assertEquals(101, instance.getFirstIndex());
+		assertEquals(6, instance.committedEntryManager.getAllEntries().size());
+		assertEquals(5, instance.unCommittedEntryManager.getAllEntries().size());
+		assertEquals(105, instance.getCommitIndex());
+		instance.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(103, 103)));
+		assertEquals(104, instance.getFirstIndex());
+		assertEquals(3, instance.committedEntryManager.getAllEntries().size());
+		assertEquals(5, instance.unCommittedEntryManager.getAllEntries().size());
+		assertEquals(105, instance.getCommitIndex());
+		instance.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(108, 108)));
+		assertEquals(109, instance.getFirstIndex());
+		assertEquals(1, instance.committedEntryManager.getAllEntries().size());
+		assertEquals(0, instance.unCommittedEntryManager.getAllEntries().size());
+		assertEquals(108, instance.getCommitIndex());
+	}
 
 	@Test
 	public void getEntries() {
@@ -470,9 +503,6 @@ public class RaftLogManagerTest {
 			add(new RaftLogManagerTester(offset + 1, offset + 2, new ArrayList<Log>() {{
 				add(new PhysicalPlanLog(offset + 1, offset + 1));
 			}}, null));
-			add(new RaftLogManagerTester(offset + num - 1, offset + num, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(offset + num - 1, offset + num - 1));
-			}}, null));
 			add(new RaftLogManagerTester(half - 1, half + 1, new ArrayList<Log>() {{
 				add(new PhysicalPlanLog(half - 1, half - 1));
 				add(new PhysicalPlanLog(half, half));
@@ -489,7 +519,7 @@ public class RaftLogManagerTest {
 			}}, null));
 			add(new RaftLogManagerTester(last, last + 1, new ArrayList<>(), null));
 			add(new RaftLogManagerTester(last + 1, last + 2, new ArrayList<>(), null));
-			//test GetEntriesWrongParametersException
+			// test GetEntriesWrongParametersException
 			add(new RaftLogManagerTester(offset + 1, offset, null, GetEntriesWrongParametersException.class));
 			// test EntryCompactedException
 			add(new RaftLogManagerTester(offset - 1, offset + 1, null, EntryCompactedException.class));

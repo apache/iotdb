@@ -204,6 +204,34 @@ public class UnCommittedEntryManagerTest {
   }
 
   @Test
+  public void applyingSnapshot() {
+    class UnCommittedEntryManagerTester extends UnCommitEntryManagerTesterBase {
+      public RaftSnapshot snapshot;
+      public long testOffset;
+
+      public UnCommittedEntryManagerTester(List<Log> entries, long offset, RaftSnapshot snapshot, long testOffset) {
+        super(entries, offset);
+        this.snapshot = snapshot;
+        this.testOffset = testOffset;
+      }
+    }
+    List<UnCommittedEntryManagerTester> tests = new ArrayList<UnCommittedEntryManagerTester>() {{
+      // empty entries
+      add(new UnCommittedEntryManagerTester(new ArrayList<>(), 5, new RaftSnapshot(new SnapshotMeta(6, 6)), 7));
+      // normal case
+      add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
+        add(new PhysicalPlanLog(5, 1));
+      }}, 5, new RaftSnapshot(new SnapshotMeta(20, 20)), 21));
+    }};
+    for (UnCommittedEntryManagerTester test : tests) {
+      UnCommittedEntryManager instance = new UnCommittedEntryManager(test.offset, test.entries);
+      instance.applyingSnapshot(test.snapshot);
+      assertEquals(test.testOffset, instance.getFirstUnCommittedIndex());
+      assertEquals(0, instance.getAllEntries().size());
+    }
+  }
+
+  @Test
   public void truncateAndAppend() {
     class UnCommittedEntryManagerTester extends UnCommitEntryManagerTesterBase {
       public List<Log> toAppend;
@@ -301,13 +329,13 @@ public class UnCommittedEntryManagerTest {
   @Test
   public void getEntries() {
     class UnCommittedEntryManagerTester {
-      public long from;
-      public long to;
+      public long low;
+      public long high;
       public List<Log> testEntries;
 
-      public UnCommittedEntryManagerTester(long from, long to, List<Log> testEntries) {
-        this.from = from;
-        this.to = to;
+      public UnCommittedEntryManagerTester(long low, long high, List<Log> testEntries) {
+        this.low = low;
+        this.high = high;
         this.testEntries = testEntries;
       }
     }
@@ -338,7 +366,7 @@ public class UnCommittedEntryManagerTest {
       add(new UnCommittedEntryManagerTester(last + 1, last + 1, new ArrayList<>()));
     }};
     for (UnCommittedEntryManagerTester test : tests) {
-      List<Log> answer = instance.getEntries(test.from, test.to);
+      List<Log> answer = instance.getEntries(test.low, test.high);
       assertEquals(test.testEntries, answer);
     }
   }
