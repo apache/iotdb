@@ -292,7 +292,7 @@ select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <
 示例 1：查询 root.ln.wf01.wt01.speed 的最新数据点
 
 ```
-> select last status from root.ln.wf01.wt01
+> select last speed from root.ln.wf01.wt01
 
 | Time | Path                    | Value |
 | ---  | ----------------------- | ----- |
