@@ -22,8 +22,6 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
-import org.apache.iotdb.db.query.reader.chunk.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -34,14 +32,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
-import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -246,7 +241,7 @@ class SeriesReader {
   }
 
   private void unpackOneTimeSeriesMetadata(TimeseriesMetadata timeSeriesMetadata) throws IOException {
-    cachedChunkMetadata.addAll(timeSeriesMetadata.getChunkMetadataList());
+    cachedChunkMetadata.addAll(FileLoaderUtils.loadChunkMetadata(timeSeriesMetadata));
   }
 
   boolean isChunkOverlapped() throws IOException {
@@ -343,12 +338,8 @@ class SeriesReader {
   }
 
   private void unpackOneChunkMetaData(ChunkMetadata chunkMetaData) throws IOException {
-    initChunkReader(chunkMetaData)
-        .getPageReaderList()
-        .forEach(
-            pageReader ->
-                cachedPageReaders.add(
-                    new VersionPageReader(chunkMetaData.getVersion(), pageReader)));
+    FileLoaderUtils.loadPageReader(chunkMetaData, timeFilter)
+            .forEach(pageReader -> cachedPageReaders.add(new VersionPageReader(chunkMetaData.getVersion(), pageReader)));
   }
 
   /**
@@ -529,23 +520,6 @@ class SeriesReader {
       return cachedBatchData;
     }
     throw new IOException("No more batch data");
-  }
-
-  private IChunkReader initChunkReader(ChunkMetadata metaData) throws IOException {
-    if (metaData == null) {
-      throw new IOException("Can't init null chunkMeta");
-    }
-    IChunkReader chunkReader;
-    IChunkLoader chunkLoader = metaData.getChunkLoader();
-    if (chunkLoader instanceof MemChunkLoader) {
-      MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
-      chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
-    } else {
-      Chunk chunk = chunkLoader.getChunk(metaData);
-      chunkReader = new ChunkReader(chunk, timeFilter);
-      chunkReader.hasNextSatisfiedPage();
-    }
-    return chunkReader;
   }
 
   private LinkedList<TsFileResource> sortUnSeqFileResources(

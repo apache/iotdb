@@ -146,7 +146,7 @@ public class FileSeriesReaderByTimestamp {
   }
 
   private void initChunkReader(ChunkMetadata chunkMetaData) throws IOException {
-    Chunk chunk = chunkLoader.getChunk(chunkMetaData);
+    Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
     this.chunkReader = new ChunkReaderByTimestamp(chunk);
   }
 

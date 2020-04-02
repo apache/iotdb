@@ -27,6 +27,9 @@ import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
 import java.io.IOException;
 
+/**
+ * To read one chunk from disk, and only used in iotdb server module
+ */
 public class DiskChunkLoader implements IChunkLoader {
 
   private TsFileSequenceReader reader;
@@ -36,7 +39,7 @@ public class DiskChunkLoader implements IChunkLoader {
   }
 
   @Override
-  public Chunk getChunk(ChunkMetadata chunkMetaData) throws IOException {
+  public Chunk loadChunk(ChunkMetadata chunkMetaData) throws IOException {
     return ChunkCache.getInstance().get(chunkMetaData, reader);
   }
 
