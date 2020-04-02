@@ -44,8 +44,6 @@
         <url>ssh://git@github.com:apache/incubator-iotdb.git</url>
         <tag>rel/0.10</tag>
     </scm>
-
-
     <!-- Only configure the site distribution as the rest is handled by the apache parent -->
     <distributionManagement>
         <site>
@@ -53,12 +51,10 @@
             <url>scm:git:https://gitbox.apache.org/repos/asf/incubator-iotdb-website.git</url>
         </site>
     </distributionManagement>
-
     <issueManagement>
         <system>Jira</system>
         <url>https://issues.apache.org/jira/browse/iotdb</url>
     </issueManagement>
-
     <mailingLists>
         <mailingList>
             <name>Apache IoTDB Developer List</name>
@@ -82,7 +78,6 @@
             <archive>http://mail-archives.apache.org/mod_mbox/iotdb-notifications/</archive>
         </mailingList>
     </mailingLists>
-
     <modules>
         <module>tsfile</module>
         <module>service-rpc</module>
