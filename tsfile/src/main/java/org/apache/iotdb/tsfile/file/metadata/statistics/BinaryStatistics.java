@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -42,15 +43,14 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public int getStatsSize() {
-    return 4 + firstValue.getValues().length
-        + 4 + lastValue.getValues().length;
+    return 4 + firstValue.getValues().length + 4 + lastValue.getValues().length;
   }
 
   /**
    * initialize Statistics.
    *
    * @param first the first value
-   * @param last the last value
+   * @param last  the last value
    */
   private void initializeStats(Binary first, Binary last) {
     this.firstValue = first;

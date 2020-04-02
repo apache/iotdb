@@ -23,20 +23,28 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.BitSet;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+
 /**
- * <p> RegularDataEncoder is an encoder for compressing data in type of integer and long. We adapt a
- * hypothesis that the difference between each data point is the same, which it means the data is
- * regular. </p> <p>To encode the regular data, we first create an array as a block to store the data
- * loaded into the encoder. While it reach the default block size, start calculating the delta between
- * each data point in this block in order to checkout whether there are missing points exist in the data.
- * If there is, create a bitmap for this block to denote the position of missing points. Next, store
- * the data info (the data size, the minimum delta value and the first data point of this block) and the
- * bitmap with its info into the result byte array output stream.</p>
+ * <p>
+ * RegularDataEncoder is an encoder for compressing data in type of integer and
+ * long. We adapt a hypothesis that the difference between each data point is
+ * the same, which it means the data is regular.
+ * </p>
+ * <p>
+ * To encode the regular data, we first create an array as a block to store the
+ * data loaded into the encoder. While it reach the default block size, start
+ * calculating the delta between each data point in this block in order to
+ * checkout whether there are missing points exist in the data. If there is,
+ * create a bitmap for this block to denote the position of missing points.
+ * Next, store the data info (the data size, the minimum delta value and the
+ * first data point of this block) and the bitmap with its info into the result
+ * byte array output stream.
+ * </p>
  */
 public abstract class RegularDataEncoder extends Encoder {
 
@@ -93,7 +101,8 @@ public abstract class RegularDataEncoder extends Encoder {
   }
 
   /**
-   * calling this method to flush all values which haven't encoded to result byte array.
+   * calling this method to flush all values which haven't encoded to result byte
+   * array.
    */
   @Override
   public void flush(ByteArrayOutputStream out) {
@@ -161,7 +170,8 @@ public abstract class RegularDataEncoder extends Encoder {
 
     @Override
     public long getMaxByteSize() {
-      // The meaning of 20 is: identifier(4)+bitmapLength(4)+index(4)+minDeltaBase(4)+firstValue(4)
+      // The meaning of 20 is:
+      // identifier(4)+bitmapLength(4)+index(4)+minDeltaBase(4)+firstValue(4)
       return (long) 20 + (writeIndex * 2 / 8) + (writeIndex * 4);
     }
 
@@ -171,7 +181,8 @@ public abstract class RegularDataEncoder extends Encoder {
       if (writeIndex > 1) {
         previousValue = data[0];
         minDeltaBase = data[1] - data[0];
-        // calculate minimum elapsed of the data and check whether the missing point exists
+        // calculate minimum elapsed of the data and check whether the missing point
+        // exists
         for (int i = 1; i < writeIndex; i++) {
           int delta = data[i] - previousValue; // calculate delta
           if (delta != minDeltaBase) {
@@ -285,7 +296,8 @@ public abstract class RegularDataEncoder extends Encoder {
 
     @Override
     public long getMaxByteSize() {
-      // The meaning of 20 is: identifier(4)+bitmapLength(4)+index(4)+minDeltaBase(8)+firstValue(8)
+      // The meaning of 20 is:
+      // identifier(4)+bitmapLength(4)+index(4)+minDeltaBase(8)+firstValue(8)
       return (long) 28 + (writeIndex * 2 / 8) + (writeIndex * 8);
     }
 
@@ -295,7 +307,8 @@ public abstract class RegularDataEncoder extends Encoder {
       if (writeIndex > 1) {
         previousValue = data[0];
         minDeltaBase = data[1] - data[0];
-        // calculate minimum elapsed of the data and check whether the missing point exists
+        // calculate minimum elapsed of the data and check whether the missing point
+        // exists
         for (int i = 1; i < writeIndex; i++) {
           long delta = data[i] - previousValue; // calculate delta
           if (delta != minDeltaBase) {

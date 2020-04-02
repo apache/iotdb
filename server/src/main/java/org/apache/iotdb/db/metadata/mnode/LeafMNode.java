@@ -73,7 +73,6 @@ public class LeafMNode extends MNode {
     return Collections.emptyMap();
   }
 
-  @Override
   public MeasurementSchema getSchema() {
     return schema;
   }

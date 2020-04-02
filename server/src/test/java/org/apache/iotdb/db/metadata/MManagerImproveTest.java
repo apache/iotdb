@@ -77,7 +77,7 @@ public class MManagerImproveTest {
   }
 
   @Test
-  public void analyseTimeCost() throws MetadataException, WriteProcessException {
+  public void analyseTimeCost() throws MetadataException {
     mManager = MManager.getInstance();
 
     long startTime, endTime;
@@ -115,7 +115,7 @@ public class MManagerImproveTest {
   }
 
   private void doOriginTest(String deviceId, List<String> measurementList)
-      throws MetadataException, WriteProcessException {
+      throws MetadataException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       assertTrue(mManager.isPathExist(path));
@@ -125,7 +125,7 @@ public class MManagerImproveTest {
   }
 
   private void doPathLoopOnceTest(String deviceId, List<String> measurementList)
-      throws MetadataException, WriteProcessException {
+      throws MetadataException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       TSDataType dataType = mManager.getSeriesType(path);
@@ -133,23 +133,20 @@ public class MManagerImproveTest {
     }
   }
 
-  private void doCacheTest(String deviceId, List<String> measurementList)
-      throws MetadataException {
+  private void doCacheTest(String deviceId, List<String> measurementList) throws MetadataException {
     MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
     for (String s : measurementList) {
       assertTrue(node.hasChild(s));
-      MNode measurementNode = node.getChild(s);
-      assertTrue(measurementNode instanceof LeafMNode);
+      LeafMNode measurementNode = (LeafMNode) node.getChild(s);
       TSDataType dataType = measurementNode.getSchema().getType();
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
 
   @Test
-  public void improveTest() throws MetadataException, WriteProcessException, CacheException {
+  public void improveTest() throws MetadataException {
     mManager = MManager.getInstance();
 
-    long startTime, endTime;
     String[] deviceIdList = new String[DEVICE_NUM];
     for (int i = 0; i < DEVICE_NUM; i++) {
       deviceIdList[i] = "root.t1.v2.d" + i;
@@ -159,11 +156,11 @@ public class MManagerImproveTest {
       measurementList.add("s" + i);
     }
 
-    startTime = System.currentTimeMillis();
+    long startTime = System.currentTimeMillis();
     for (String deviceId : deviceIdList) {
       doOriginTest(deviceId, measurementList);
     }
-    endTime = System.currentTimeMillis();
+    long endTime = System.currentTimeMillis();
     logger.debug("origin:\t" + (endTime - startTime));
 
     startTime = System.currentTimeMillis();

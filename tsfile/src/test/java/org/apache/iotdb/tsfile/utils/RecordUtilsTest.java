@@ -22,17 +22,19 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.List;
 
+import org.junit.Before;
+import org.junit.Test;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.junit.Before;
-import org.junit.Test;
 
 public class RecordUtilsTest {
 
@@ -41,19 +43,18 @@ public class RecordUtilsTest {
   private static Schema generateTestData() {
     Schema schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32,
-        TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64,
-        TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.FLOAT,
-        TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.DOUBLE,
-        TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerMeasurement(new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
-    schema.registerMeasurement(new MeasurementSchema("s6", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d1.s1"),
+        new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d1.s2"),
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d1.s3"),
+        new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d1.s4"),
+        new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d1.s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d1.s6"), new MeasurementSchema("s6", TSDataType.TEXT, TSEncoding.PLAIN));
     return schema;
   }
-
 
   @Before
   public void prepare() throws WriteProcessException {

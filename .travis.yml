@@ -140,7 +140,7 @@ matrix:
         - mvn -version
         # Output something every 10 minutes or Travis kills the job
         - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-        - travis_wait 20 mvn -B clean integration-test
+        - travis_wait 40 mvn -B clean integration-test
         # Killing background sleep loop
         - kill %1
 
@@ -200,6 +200,13 @@ matrix:
         # now, grafana has no tests; spark-* tests are written by scala
         - mvn post-integration-test -Pcode-coverage 
         - mvn coveralls:report -Dservice_name=travis_ci -pl tsfile,jdbc,server,session,client,hadoop,hive-connector
+
+    - os: linux
+      name: website checker
+      dist: xenial
+      jdk: openjdk8
+      script:
+        - mvn clean package -pl site
 
 cache:
   directories:
