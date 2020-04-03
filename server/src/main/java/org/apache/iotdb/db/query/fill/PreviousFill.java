@@ -178,11 +178,11 @@ public class PreviousFill extends IFill {
       MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
       chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
     } else {
-      Chunk chunk = chunkLoader.getChunk(metaData);
+      Chunk chunk = chunkLoader.loadChunk(metaData);
       chunkReader = new ChunkReader(chunk, timeFilter);
       chunkReader.hasNextSatisfiedPage();
     }
-    return chunkReader.getPageReaderList();
+    return chunkReader.loadPageReaderList();
   }
 
   private PriorityQueue<TsFileResource> sortUnSeqFileResourcesInDecendingOrder(
@@ -213,7 +213,7 @@ public class PreviousFill extends IFill {
           resource, seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
         // The last seq file satisfies timeFilter, pick up the last chunk
-        List<ChunkMetadata> chunkMetadata = timeseriesMetadata.getChunkMetadataList();
+        List<ChunkMetadata> chunkMetadata = timeseriesMetadata.loadChunkMetadataList();
         lastChunkMetadata = chunkMetadata.get(chunkMetadata.size() - 1);
         chunkMetadatas.addAll(chunkMetadata);
         break;
@@ -226,7 +226,7 @@ public class PreviousFill extends IFill {
       TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
           resource, seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
-        List<ChunkMetadata> chunkMetadatas = timeseriesMetadata.getChunkMetadataList();
+        List<ChunkMetadata> chunkMetadatas = timeseriesMetadata.loadChunkMetadataList();
         ChunkMetadata lastUnseqChunkMetadata = chunkMetadatas.get(chunkMetadatas.size() - 1);
         if (lastChunkMetadata == null) {
           lastChunkMetadata = lastUnseqChunkMetadata;
