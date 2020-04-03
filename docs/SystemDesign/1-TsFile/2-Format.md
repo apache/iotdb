@@ -66,16 +66,30 @@
 
 Here is a graph about the TsFile structure.
 
-![TsFile Breakdown](https://user-images.githubusercontent.com/40447846/61616997-6fad1300-ac9c-11e9-9c17-46785ebfbc88.png)
+![TsFile Breakdown](https://user-images.githubusercontent.com/7240743/78322525-93518880-75a1-11ea-8d5e-b438caa86d41.png)
+
+This TsFile contains two devices: d1, d2. Each device contains three measurements: s1, s2, s3. 6 timeseries in total, d1 is blue, d2 is purple. Each timeseries contains 2 Chunks.
+
+There are three parts of metadata
+
+* ChunkMetadata list that grouped by timeseries
+* TimeseriesMetadata that ordered by timeseries
+* TsFileMetadata
+
+Query Process：e.g., read d1.s1
+
+* deserialize TsFileMetadata，get the position and length of all TimeseriesMetadata of d1
+* deserialize all TimeseriesMetadata of d1，get the TimeseriesMetadata of d1.s1
+* according to TimeseriesMetadata of d1.s1，deserialize all ChunkMetadata of d1.s1 
+* according to each ChunkMetadata of d1.s1，read its Chunk
 
 #### 1.2.1 Magic String and Version Number
 
-A TsFile begins with a 6-byte magic string (`TsFile`) and a 6-byte version number (`000001`).
-
+A TsFile begins with a 6-byte magic string (`TsFile`) and a 6-byte version number (`000002`).
 
 #### 1.2.2 Data
 
-The content of a TsFile file can be divided as two parts: data and metadata. There is a byte `0x02` as the marker between
+The content of a TsFile file can be divided as two parts: data (Chunk) and metadata (XXMetadata). There is a byte `0x02` as the marker between
 data and metadata.
 
 The data section is an array of `ChunkGroup`, each ChunkGroup represents a *device*.
@@ -86,7 +100,7 @@ The `ChunkGroup` has an array of `Chunk`, a following byte `0x00` as the marker,
 
 ##### Chunk
 
-A `Chunk` represents a *sensor*. There is a byte `0x01` as the marker, following a `ChunkHeader` and an array of `Page`.
+A `Chunk` represents the data of a *measurement* in a time range, data points in Chunks are in time ascending order. There is a byte `0x01` as the marker, following a `ChunkHeader` and an array of `Page`.
 
 ##### ChunkHeader
 
