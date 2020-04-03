@@ -65,16 +65,30 @@
 
 下图是关于TsFile的结构图。
 
-![TsFile Breakdown](https://user-images.githubusercontent.com/40447846/61616997-6fad1300-ac9c-11e9-9c17-46785ebfbc88.png)
+![TsFile Breakdown](https://user-images.githubusercontent.com/7240743/78330206-05cc6380-75b6-11ea-96c7-06f6f7346f6a.png)
+
+此文件包括两个设备 d1、d2，每个设备包含三个测点 s1、s2、s3，共 6 个时间序列，d1为蓝色，d2为紫色。每个时间序列包含两个 Chunk。
+
+元数据分为三部分
+
+* 按时间序列组织的 ChunkMetadata 列表
+* 按时间序列组织的 TimeseriesMetadata
+* TsFileMetadata
+
+查询流程：以查 d1.s1 为例
+
+* 反序列化 TsFileMetadata，得到 d1 的所有 TimeseriesMetadata 的位置
+* 反序列化 d1 的所有 TimeseriesMetadata，并得到 d1.s1 的 TimeseriesMetadata
+* 根据 d1.s1 的 TimeseriesMetadata，反序列化其所有 ChunkMetadata
+* 根据 d1.s1 的每一个 ChunkMetadata，读取其 Chunk 数据
 
 #### 1.2.1 文件签名和版本号
 
-TsFile 是由 6 个字节的 "Magic String" (`TsFile`) 和 6 个字节的版本号 (`000001`)组成。
-
+TsFile文件头由 6 个字节的 "Magic String" (`TsFile`) 和 6 个字节的版本号 (`000002`)组成。
 
 #### 1.2.2 数据文件
 
-TsFile文件的内容可以划分为两个部分: 数据和元数据。数据和元数据之间是由一个字节的 `0x02` 做为分隔符。
+TsFile文件的内容可以划分为两个部分: 数据（Chunk）和元数据（XXMetadata）。数据和元数据之间是由一个字节的 `0x02` 做为分隔符。
 
 `ChunkGroup` 存储了一个 *设备(device)* 一段时间的数据。
 
@@ -84,7 +98,7 @@ TsFile文件的内容可以划分为两个部分: 数据和元数据。数据和
 
 ##### Chunk
 
-一个 `Chunk` 存储了一个 *传感器(sensor)* 的数据。`Chunk` 是由一个字节的分隔符 `0x01`, 一个 `ChunkHeader` 和若干个 `Page` 构成。
+一个 `Chunk` 存储了一个 *测点(measurement)* 一段时间的数据，Chunk 内数据是按时间递增序存储的。`Chunk` 是由一个字节的分隔符 `0x01`, 一个 `ChunkHeader` 和若干个 `Page` 构成。
 
 ##### ChunkHeader
 
