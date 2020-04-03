@@ -30,8 +30,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
-import org.apache.iotdb.db.query.reader.chunk.MemChunkReader;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -39,17 +37,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class PreviousFill extends IFill {
@@ -140,8 +134,7 @@ public class PreviousFill extends IFill {
       return constructLastPair(
           chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), dataType);
     }
-    List<IPageReader> pageReaders =
-        unpackChunkReaderToPageReaderList(chunkMetaData);
+    List<IPageReader> pageReaders = FileLoaderUtils.loadPageReader(chunkMetaData, timeFilter);
     for (int i = pageReaders.size() - 1; i >= 0; i--) {
       IPageReader pageReader = pageReaders.get(i);
       Statistics pageStatistics = pageReader.getStatistics();
@@ -162,23 +155,6 @@ public class PreviousFill extends IFill {
 
   private boolean shouldUpdate(long time, long version, long newTime, long newVersion) {
     return time < newTime || (time == newTime && version < newVersion);
-  }
-
-  private List<IPageReader> unpackChunkReaderToPageReaderList(ChunkMetadata metaData) throws IOException {
-    if (metaData == null) {
-      throw new IOException("Can't init null chunkMeta");
-    }
-    IChunkReader chunkReader;
-    IChunkLoader chunkLoader = metaData.getChunkLoader();
-    if (chunkLoader instanceof MemChunkLoader) {
-      MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
-      chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
-    } else {
-      Chunk chunk = chunkLoader.loadChunk(metaData);
-      chunkReader = new ChunkReader(chunk, timeFilter);
-      chunkReader.hasNextSatisfiedPage();
-    }
-    return chunkReader.loadPageReaderList();
   }
 
   private PriorityQueue<TsFileResource> sortUnSeqFileResourcesInDecendingOrder(
@@ -212,8 +188,6 @@ public class PreviousFill extends IFill {
         // The last seq file satisfies timeFilter, pick up the last chunk
         timeseriesMetadataList.add(timeseriesMetadata);
         lastTimeseriesMetadata = timeseriesMetadata;
-        //List<ChunkMetadata> chunkMetadata = timeseriesMetadata.loadChunkMetadataList();
-        //lastChunkMetadata = chunkMetadata.get(chunkMetadata.size() - 1);
         break;
       }
       seqFileResource.remove(index);
@@ -224,8 +198,6 @@ public class PreviousFill extends IFill {
       TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
           resource, seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
-        // List<ChunkMetadata> chunkMetadatas = timeseriesMetadata.loadChunkMetadataList();
-        // ChunkMetadata lastUnseqChunkMetadata = chunkMetadatas.get(chunkMetadatas.size() - 1);
         if (lastTimeseriesMetadata == null
             || (lastTimeseriesMetadata.getStatistics().getEndTime()
                 < timeseriesMetadata.getStatistics().getEndTime())) {
