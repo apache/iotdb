@@ -89,7 +89,7 @@ A TsFile begins with a 6-byte magic string (`TsFile`) and a 6-byte version numbe
 
 #### 1.2.2 Data
 
-The content of a TsFile file can be divided as two parts: data and metadata. There is a byte `0x02` as the marker between
+The content of a TsFile file can be divided as two parts: data (Chunk) and metadata (XXMetadata). There is a byte `0x02` as the marker between
 data and metadata.
 
 The data section is an array of `ChunkGroup`, each ChunkGroup represents a *device*.
@@ -100,7 +100,7 @@ The `ChunkGroup` has an array of `Chunk`, a following byte `0x00` as the marker,
 
 ##### Chunk
 
-A `Chunk` represents a *sensor*. There is a byte `0x01` as the marker, following a `ChunkHeader` and an array of `Page`.
+A `Chunk` represents the data of a *measurement* in a time range, data points in Chunks are in time ascending order. There is a byte `0x01` as the marker, following a `ChunkHeader` and an array of `Page`.
 
 ##### ChunkHeader
 
