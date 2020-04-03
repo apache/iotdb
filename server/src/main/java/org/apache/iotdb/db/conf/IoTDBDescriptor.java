@@ -134,6 +134,10 @@ public class IoTDBDescriptor {
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
 
+      conf.setJmxUser(properties.getProperty("jmx_user", conf.getJmxUser()));
+
+      conf.setJmxPassword(properties.getProperty("jmx_password", conf.getJmxPassword()));
+
       conf.setTimestampPrecision(properties.getProperty("timestamp_precision",
           conf.getTimestampPrecision()));
 

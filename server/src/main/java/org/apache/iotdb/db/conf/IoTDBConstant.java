@@ -33,6 +33,7 @@ public class IoTDBConstant {
   public static final String SERVER_RMI_ID = "java.rmi.server.randomIDs";
   public static final String RMI_SERVER_HOST_NAME = "java.rmi.server.hostname";
   public static final String JMX_REMOTE_RMI_PORT = "com.sun.management.jmxremote.rmi.port";
+  public static final String JMX_REMOTE_AUTHENTICATE = "com.sun.management.jmxremote.authenticate";
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
   public static final String JMX_TYPE = "type";
 
