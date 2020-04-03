@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,18 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.controller;
+package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-
-import java.io.IOException;
 import java.util.List;
 
-public interface IChunkMetadataLoader {
+/**
+ * Only maintained when writing, not serialized to TsFile
+ */
+public class ChunkGroupMetadata {
 
-  /**
-   * read all chunk metadata of one time series in one file.
-   */
-  List<ChunkMetadata> loadChunkMetadataList() throws IOException;
+  private String device;
 
+  private List<ChunkMetadata> chunkMetadataList;
+
+  public ChunkGroupMetadata(String device, List<ChunkMetadata> chunkMetadataList) {
+    this.device = device;
+    this.chunkMetadataList = chunkMetadataList;
+  }
+
+  public String getDevice() {
+    return device;
+  }
+
+  public List<ChunkMetadata> getChunkMetadataList() {
+    return chunkMetadataList;
+  }
 }

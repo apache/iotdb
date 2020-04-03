@@ -34,7 +34,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class IoTDBFlushQueryMergeTest {
+public class IoTDBFlushQueryMergeIT {
 
   private static String[] sqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",

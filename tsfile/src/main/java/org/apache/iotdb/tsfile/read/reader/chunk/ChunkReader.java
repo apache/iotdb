@@ -157,7 +157,7 @@ public class ChunkReader implements IChunkReader {
   }
 
   @Override
-  public List<IPageReader> getPageReaderList() {
+  public List<IPageReader> loadPageReaderList() {
     return pageReaderList;
   }
 }
