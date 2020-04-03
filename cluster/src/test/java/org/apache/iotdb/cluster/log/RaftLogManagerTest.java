@@ -127,6 +127,65 @@ public class RaftLogManagerTest {
 	}
 
 	@Test
+	public void maybeCommit() {
+		class RaftLogManagerTester {
+			public long leaderCommit;
+			public long term;
+			public long testCommittedEntryManagerSize;
+			public long testUnCommittedEntryManagerSize;
+			public long testCommitIndex;
+			public boolean testCommit;
+
+			public RaftLogManagerTester(long leaderCommit, long term, long testCommittedEntryManagerSize, long testUnCommittedEntryManagerSize, long testCommitIndex, boolean testCommit) {
+				this.leaderCommit = leaderCommit;
+				this.term = term;
+				this.testCommittedEntryManagerSize = testCommittedEntryManagerSize;
+				this.testUnCommittedEntryManagerSize = testUnCommittedEntryManagerSize;
+				this.testCommitIndex = testCommitIndex;
+				this.testCommit = testCommit;
+			}
+		}
+		long offset = 100;
+		long num = 100;
+		long half = offset + num / 2;
+		long last = offset + num;
+		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+		committedEntryManager.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(offset, offset)));
+		for (long i = 1; i < num / 2; i++) {
+			long index = i;
+			committedEntryManager.append(new ArrayList<Log>() {{
+				add(new PhysicalPlanLog(offset + index, offset + index));
+			}});
+		}
+		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager());
+		for (long i = num / 2; i < num; i++) {
+			long index = i;
+			instance.append(new ArrayList<Log>() {{
+				add(new PhysicalPlanLog(offset + index, offset + index));
+			}});
+		}
+		List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
+			// term small leaderCommit
+			add(new RaftLogManagerTester(offset - 10, offset - 9, num / 2, num / 2, half - 1, false));
+			add(new RaftLogManagerTester(offset - 10, offset - 10, num / 2, num / 2, half - 1, false));
+			add(new RaftLogManagerTester(half - 1, half - 1, num / 2, num / 2, half - 1, false));
+			// normal case
+			add(new RaftLogManagerTester(half, half + 1, num / 2, num / 2, half - 1, false));
+			add(new RaftLogManagerTester(half, half, num / 2 + 1, num / 2 - 1, half, true));
+			add(new RaftLogManagerTester(last - 1, last - 1, num, 0, last - 1, true));
+			// test large leaderCommit
+			add(new RaftLogManagerTester(last, last, num, 0, last - 1, false));
+		}};
+		for (RaftLogManagerTester test : tests) {
+			boolean answer = instance.maybeCommit(test.leaderCommit, test.term);
+			assertEquals(test.testCommittedEntryManagerSize, instance.committedEntryManager.getAllEntries().size());
+			assertEquals(test.testUnCommittedEntryManagerSize, instance.unCommittedEntryManager.getAllEntries().size());
+			assertEquals(test.testCommitIndex, instance.getCommitIndex());
+			assertEquals(test.testCommit, answer);
+		}
+	}
+
+	@Test
 	public void commitTo() {
 		class RaftLogManagerTester {
 			public long commitTo;

@@ -143,7 +143,7 @@ public class RaftLogManager {
     }
 
     /**
-     * Used by follower node to support leader's complicated log replication rpc parameters.
+     * Used by follower node to support leader's complicated log replication rpc parameters and try to commit entries.
      *
      * @param lastIndex    leader's matchIndex for this follower node
      * @param lastTerm     the entry's term which index is leader's matchIndex for this follower node
@@ -188,21 +188,18 @@ public class RaftLogManager {
     }
 
     /**
-     * Used by leader node or MaybeAppend to persist committed entries
-     * from unCommittedEntryManager to stableEntryManager and committedEntryManager.
+     * Used by leader node to try to commit entries.
      *
-     * @param commitIndex request commitIndex
-     * @return the newly commitIndex
+     * @param leaderCommit leader's commitIndex
+     * @param term         the entry's term which index is leaderCommit in leader's log module
+     * @return true or false
      */
-    public long commitTo(long commitIndex) {
-        if (committed < commitIndex) {
-            List<Log> entries = unCommittedEntryManager.getEntries(unCommittedEntryManager.getFirstUnCommittedIndex(), commitIndex + 1);
-            stableEntryManager.append(entries);
-            committedEntryManager.append(entries);
-            unCommittedEntryManager.stableTo(commitIndex, entries.get(entries.size() - 1).getCurrLogTerm());
-            committed = commitIndex;
+    public boolean maybeCommit(long leaderCommit, long term) {
+        if (leaderCommit > committed && matchTerm(leaderCommit, term)) {
+            commitTo(leaderCommit);
+            return true;
         }
-        return committed;
+        return false;
     }
 
     /**
@@ -220,17 +217,17 @@ public class RaftLogManager {
      *
      * @param snapshot leader's snapshot
      */
-    public void applyingSnapshot(RaftSnapshot snapshot){
+    public void applyingSnapshot(RaftSnapshot snapshot) {
         logger.info("log module starts to restore snapshot [index: {}, term: {}]", snapshot.getLastIndex(), snapshot.getLastTerm());
-        try{
+        try {
             committedEntryManager.compactEntries(snapshot.getLastIndex());
             stableEntryManager.removeCompactedEntries(snapshot.getLastIndex());
-        }catch (EntryUnavailableException e){
+        } catch (EntryUnavailableException e) {
             committedEntryManager.applyingSnapshot(snapshot);
             unCommittedEntryManager.applyingSnapshot(snapshot);
             stableEntryManager.applyingSnapshot(snapshot);
         }
-        if(this.committed < snapshot.getLastIndex()) {
+        if (this.committed < snapshot.getLastIndex()) {
             this.committed = snapshot.getLastIndex();
         }
     }
@@ -271,6 +268,24 @@ public class RaftLogManager {
             entries.addAll(unCommittedEntryManager.getEntries(Math.max(low, offset), high));
         }
         return entries;
+    }
+
+    /**
+     * Used by MaybeCommit or MaybeAppend to persist committed entries
+     * from unCommittedEntryManager to stableEntryManager and committedEntryManager.
+     *
+     * @param commitIndex request commitIndex
+     * @return the newly commitIndex
+     */
+    protected long commitTo(long commitIndex) {
+        if (committed < commitIndex) {
+            List<Log> entries = unCommittedEntryManager.getEntries(unCommittedEntryManager.getFirstUnCommittedIndex(), commitIndex + 1);
+            stableEntryManager.append(entries);
+            committedEntryManager.append(entries);
+            unCommittedEntryManager.stableTo(commitIndex, entries.get(entries.size() - 1).getCurrLogTerm());
+            committed = commitIndex;
+        }
+        return committed;
     }
 
     /**
