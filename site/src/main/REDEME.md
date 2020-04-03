@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,8 +21,8 @@
 # Document format
 
 - All mds will be compiled into html, REDEME.md will be compiled into index.html, and xx.md will be compiled into xx.html
-- The tags in md must have a beginning and an end. For example, <tr> must have a </ tr> corresponding to it, and it is strictly corresponding; if you need to insert tags in the document, such as List <String>, you can add this into the code block.  ``, You can also add \ before the two ** angle brackets, such as \<String\>
--  Tags cannot be cross-nested, such as <p> <center> </ p> </ center> This is not allowed
+- The tags in md must have a beginning and an end. For example, \<tr> must have a \</ tr> corresponding to it, and it is strictly corresponding; if you need to insert tags in the document, such as List \<String>, you can add this into the code block.  ``, You can also add \ before the two  angle brackets, such as \<\\String\\>
+-  Tags cannot be cross-nested, such as \<p> \<center>\</p>\</center> This is not allowed
 - The first-level title of the article is the title of the sidebar of the document, so the largest chapter title of the document is not needed
 
 # Contributing documents

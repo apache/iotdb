@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,11 +18,12 @@
     under the License.
 
 -->
+
 # 文档格式
 
 - 所有的md都会被编译成html，REDEME.md编译为index.html，xx.md编译为xx.html
-- md内标签必须有开头有结尾，比如<tr>必须有</tr>与之对应，而且是严格对应；如果文档中需要插入标签，比如List<String>，可以加这个放入代码块中```，也可以在**俩个**尖括号前加上\，如\<String\>
--  标签不能交叉嵌套，比如<p><center></p></center>这是不允许的
+- md内标签必须有开头有结尾，比如\<tr>必须有\</tr>与之对应，而且是严格对应；如果文档中需要插入标签，比如List\<String>，可以加这个放入代码块中```，也可以在**俩个**尖括号前加上\，如\<\\String\\>
+-  标签不能交叉嵌套，比如\<p>\<center>\</p>\</center>这是不允许的
 - 文章的一级标题就是该文档对应sidebar的标题，所以文档最大的章节标题就不需要了
 
 # 贡献文档
