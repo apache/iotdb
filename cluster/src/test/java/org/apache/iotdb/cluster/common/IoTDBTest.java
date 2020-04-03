@@ -97,10 +97,12 @@ public class IoTDBTest {
     for (int i = 0; i < measurements.length; i++) {
       measurements[i] = TestUtils.getTestMeasurement(i);
     }
-    TSDataType[] dataTypes = new TSDataType[10];
-    Arrays.fill(dataTypes, TSDataType.DOUBLE);
+    MeasurementSchema[] schemas = new MeasurementSchema[10];
+    for (int i = 0; i < measurements.length; i++) {
+      schemas[i] = TestUtils.getTestSchema(sgNum, i);
+    }
     insertPlan.setMeasurements(measurements);
-    insertPlan.setDataTypes(dataTypes);
+    insertPlan.setSchemas(schemas);
 
     String[] values = new String[10];
     for (int i = timeOffset; i < timeOffset + size; i++) {

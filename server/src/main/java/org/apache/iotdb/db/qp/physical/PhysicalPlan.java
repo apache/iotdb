@@ -89,15 +89,38 @@ public abstract class PhysicalPlan {
     isQuery = query;
   }
 
-  public void serializeTo(DataOutputStream stream) throws IOException {
+  /**
+   * Serialize the plan into the given buffer. All necessary fields will be serialized.
+   * @param stream
+   * @throws IOException
+   */
+  public void serializeToFully(DataOutputStream stream) throws IOException {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
-  public void serializeTo(ByteBuffer buffer) {
+  /**
+   * Deserialize the plan from the given buffer. This must be used with serializeToFully.
+   * @param buffer
+   */
+  public void deserializeFromFully(ByteBuffer buffer) {
+    deserializeFromWAL(buffer);
+  }
+
+  /**
+   * Serialize the plan into the given buffer. This is provided for WAL, so fields that can be
+   * recovered will not be serialized.
+   * @param buffer
+   */
+  public void serializeToWAL(ByteBuffer buffer) {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
-  public void deserializeFrom(ByteBuffer buffer) {
+  /**
+   * Deserialize the plan from the given buffer. This is provided for WAL, and must be used with
+   * serializeToWAL.
+   * @param buffer
+   */
+  public void deserializeFromWAL(ByteBuffer buffer) {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
@@ -142,23 +165,23 @@ public abstract class PhysicalPlan {
       switch (type) {
         case INSERT:
           plan = new InsertPlan();
-          plan.deserializeFrom(buffer);
+          plan.deserializeFromWAL(buffer);
           break;
         case DELETE:
           plan = new DeletePlan();
-          plan.deserializeFrom(buffer);
+          plan.deserializeFromWAL(buffer);
           break;
         case BATCHINSERT:
           plan = new BatchInsertPlan();
-          plan.deserializeFrom(buffer);
+          plan.deserializeFromWAL(buffer);
           break;
         case SET_STORAGE_GROUP:
           plan = new SetStorageGroupPlan();
-          plan.deserializeFrom(buffer);
+          plan.deserializeFromWAL(buffer);
           break;
         case CREATE_TIMESERIES:
           plan = new CreateTimeSeriesPlan();
-          plan.deserializeFrom(buffer);
+          plan.deserializeFromWAL(buffer);
           break;
         default:
           throw new IOException("unrecognized log type " + type);

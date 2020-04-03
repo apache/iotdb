@@ -104,7 +104,7 @@ public class DeletePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serializeTo(DataOutputStream stream) throws IOException {
+  public void serializeToFully(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.DELETE.ordinal();
     stream.writeByte((byte) type);
     stream.writeLong(deleteTime);
@@ -112,7 +112,7 @@ public class DeletePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serializeTo(ByteBuffer buffer) {
+  public void serializeToWAL(ByteBuffer buffer) {
     int type = PhysicalPlanType.DELETE.ordinal();
     buffer.put((byte) type);
     buffer.putLong(deleteTime);
@@ -120,7 +120,7 @@ public class DeletePlan extends PhysicalPlan {
   }
 
   @Override
-  public void deserializeFrom(ByteBuffer buffer) {
+  public void deserializeFromWAL(ByteBuffer buffer) {
     this.deleteTime = buffer.getLong();
     this.paths = new ArrayList();
     this.paths.add(new Path(readString(buffer)));

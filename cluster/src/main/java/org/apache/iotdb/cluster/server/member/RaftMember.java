@@ -742,7 +742,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
-      plan.serializeTo(dataOutputStream);
+      plan.serializeToFully(dataOutputStream);
       AtomicReference<TSStatus> status = new AtomicReference<>();
       ExecutNonQueryReq req = new ExecutNonQueryReq();
       req.setPlanBytes(byteArrayOutputStream.toByteArray());
@@ -855,7 +855,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
     try {
       // process the plan locally
-      PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
+      PhysicalPlan plan = PhysicalPlanLog.PhysicalPlanFactory.create(request.planBytes);
       logger.debug("{}: Received a plan {}", name, plan);
       resultHandler.onComplete(executeNonQuery(plan));
     } catch (Exception e) {

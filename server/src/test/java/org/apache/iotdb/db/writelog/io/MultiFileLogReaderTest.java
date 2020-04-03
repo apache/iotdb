@@ -51,7 +51,7 @@ public class MultiFileLogReaderTest {
 
       ByteBuffer buffer = ByteBuffer.allocate(64*1024);
       for (PhysicalPlan plan : fileLogs[i]) {
-        plan.serializeTo(buffer);
+        plan.serializeToWAL(buffer);
       }
       ILogWriter writer = new LogWriter(logFiles[i]);
       writer.write(buffer);

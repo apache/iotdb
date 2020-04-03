@@ -41,7 +41,6 @@ import org.junit.Test;
 
 public class QueryCoordinatorTest {
 
-  private MetaGroupMember metaGroupMember;
   private TestMetaClient metaClient;
   private Map<Node, NodeStatus> nodeStatusMap;
   private Map<Node, Long> nodeLatencyMap;
@@ -76,7 +75,7 @@ public class QueryCoordinatorTest {
       }
     };
 
-    metaGroupMember = new MetaGroupMember() {
+    MetaGroupMember metaGroupMember = new MetaGroupMember() {
       @Override
       public AsyncClient connectNode(Node node) {
         metaClient.setNode(node);

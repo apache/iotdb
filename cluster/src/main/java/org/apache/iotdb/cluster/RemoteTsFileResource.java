@@ -47,14 +47,14 @@ public class RemoteTsFileResource extends TsFileResource {
     this.endTimeMap = new ConcurrentHashMap<>();
   }
 
-  private RemoteTsFileResource(TsFileResource other) {
+  private RemoteTsFileResource(TsFileResource other) throws IOException {
     super(other);
     md5 = getFileMd5(other);
     withModification = new File(getModFile().getFilePath()).exists();
     setClosed(true);
   }
 
-  public RemoteTsFileResource(TsFileResource other, Node source) {
+  public RemoteTsFileResource(TsFileResource other, Node source) throws IOException {
     this(other);
     this.source = source;
     this.isRemote = true;

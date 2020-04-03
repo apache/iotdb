@@ -291,12 +291,12 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void fetchSingleSeriesByTimestamp(Node header, long readerId, ByteBuffer timeBuffer,
+  public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     DataGroupMember member = getDataMember(header, resultHandler,
         "Fetch by timestamp:" + readerId);
     if (member != null) {
-      member.fetchSingleSeriesByTimestamp(header, readerId, timeBuffer, resultHandler);
+      member.fetchSingleSeriesByTimestamp(header, readerId, time, resultHandler);
     }
   }
 

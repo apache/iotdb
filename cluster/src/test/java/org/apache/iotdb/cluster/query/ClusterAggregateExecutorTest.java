@@ -52,7 +52,7 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
 
     QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     executor = new ClusterAggregateExecutor(plan, testMetaMember);
-    QueryDataSet queryDataSet = executor.executeWithoutValueFilter(context);
+    QueryDataSet queryDataSet = executor.executeWithoutValueFilter(context, plan);
     assertTrue(queryDataSet.hasNext());
     RowRecord record = queryDataSet.next();
     List<Field> fields = record.getFields();
@@ -66,7 +66,7 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
 
   @Test
   public void testFilter()
-      throws StorageEngineException, IOException {
+      throws StorageEngineException, IOException, QueryProcessException {
     AggregationPlan plan = new AggregationPlan();
     List<Path> paths = Arrays.asList(
         new Path(TestUtils.getTestSeries(0, 0)),
@@ -92,7 +92,7 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
 
     QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     executor = new ClusterAggregateExecutor(plan, testMetaMember);
-    QueryDataSet queryDataSet = executor.executeWithValueFilter(context);
+    QueryDataSet queryDataSet = executor.executeWithValueFilter(context, plan);
     assertTrue(queryDataSet.hasNext());
     RowRecord record = queryDataSet.next();
     List<Field> fields = record.getFields();

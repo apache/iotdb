@@ -25,6 +25,7 @@ import org.apache.iotdb.cluster.query.groupby.ClusterGroupByNoVFilterDataSet;
 import org.apache.iotdb.cluster.query.groupby.ClusterGroupByVFilterDataSet;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -55,13 +56,13 @@ public class ClusterQueryRouter extends QueryRouter {
 
   @Override
   protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(
-      QueryContext context, GroupByPlan plan) throws StorageEngineException {
+      QueryContext context, GroupByPlan plan) throws StorageEngineException, QueryProcessException {
     return new ClusterGroupByNoVFilterDataSet(context, plan, metaGroupMember);
   }
 
   @Override
   protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(QueryContext context,
-      GroupByPlan plan) throws StorageEngineException {
+      GroupByPlan plan) throws StorageEngineException, QueryProcessException {
     return new ClusterGroupByVFilterDataSet(context, plan, metaGroupMember);
   }
 

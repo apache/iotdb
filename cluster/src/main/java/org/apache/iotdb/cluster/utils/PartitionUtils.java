@@ -107,7 +107,7 @@ public class PartitionUtils {
 
   public static int calculateStorageGroupSlotByTime(String storageGroupName, long timestamp,
       int slotNum) {
-    long partitionInstance = StorageEngine.fromTimeToTimePartition(timestamp);
+    long partitionInstance = StorageEngine.getTimePartition(timestamp);
     int hash = Murmur128Hash.hash(storageGroupName, partitionInstance, HASH_SALT);
     return Math.abs(hash % slotNum);
   }
@@ -122,11 +122,12 @@ public class PartitionUtils {
   public static BatchInsertPlan copy(BatchInsertPlan plan, long[] times, Object[] values) {
     BatchInsertPlan newPlan = new BatchInsertPlan(plan.getDeviceId(), plan.getMeasurements());
     newPlan.setDataTypes(plan.getDataTypes());
-    //according to TSServiceImpl.insertBatch(), only the deviceId, measreuments, dataTypes,
+    //according to TSServiceImpl.insertBatch(), only the deviceId, measurements, dataTypes,
     //times, columns, and rowCount are need to be maintained.
     newPlan.setColumns(values);
     newPlan.setTimes(times);
     newPlan.setRowCount(times.length);
+    newPlan.setSchemas(plan.getSchemas());
     return newPlan;
   }
 

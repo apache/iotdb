@@ -108,7 +108,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serializeTo(DataOutputStream stream) throws IOException {
+  public void serializeToFully(DataOutputStream stream) throws IOException {
     stream.writeByte((byte) PhysicalPlanType.CREATE_TIMESERIES.ordinal());
     byte[] pathBytes = path.getFullPath().getBytes();
     stream.writeInt(pathBytes.length);
@@ -119,7 +119,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
-  public void deserializeFrom(ByteBuffer buffer) {
+  public void deserializeFromWAL(ByteBuffer buffer) {
     int length = buffer.getInt();
     byte[] pathBytes = new byte[length];
     buffer.get(pathBytes);

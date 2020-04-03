@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster;
 
-import java.sql.SQLException;
 import java.util.Collections;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;

@@ -339,7 +339,7 @@ public class DataGroupMemberTest extends MemberTest {
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setTime(0);
     insertPlan.setMeasurements(new String[]{"s0"});
-    insertPlan.setDataTypes(new TSDataType[]{TSDataType.DOUBLE});
+    insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestSchema(0, 0)});
     insertPlan.setValues(new String[]{"1.0"});
     processor.insert(insertPlan);
     processor.asyncCloseAllWorkingTsFileProcessors();
@@ -485,7 +485,7 @@ public class DataGroupMemberTest extends MemberTest {
   public void testQuerySingleSeries() throws QueryProcessException, InterruptedException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setDataTypes(new TSDataType[] {TSDataType.DOUBLE});
+    insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestSchema(0, 0)});
     insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -544,7 +544,7 @@ public class DataGroupMemberTest extends MemberTest {
       InterruptedException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setDataTypes(new TSDataType[] {TSDataType.DOUBLE});
+    insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestSchema(0, 0)});
     insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -602,7 +602,7 @@ public class DataGroupMemberTest extends MemberTest {
   public void testQuerySingleSeriesByTimestamp() throws QueryProcessException, InterruptedException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setDataTypes(new TSDataType[] {TSDataType.DOUBLE});
+    insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestSchema(0, 0)});
     insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -639,21 +639,15 @@ public class DataGroupMemberTest extends MemberTest {
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0),
         dataResult);
 
-    ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES + Long.BYTES * 5);
     for (int i = 5; i < 10; i++) {
-      byteBuffer.putLong(i);
+      synchronized (dataResult) {
+        dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
+            dataHandler);
+        dataResult.wait(200);
+      }
+      Object value =  SerializeUtils.deserializeObject(dataResult.get());
+      assertEquals(i * 1.0, (Double) value, 0.00001);
     }
-    byteBuffer.flip();
-    synchronized (dataResult) {
-      dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, byteBuffer,
-          dataHandler);
-      dataResult.wait(200);
-    }
-    Object[] value =  SerializeUtils.deserializeObjects(dataResult.get());
-    for (int i = 5; i < 10; i++) {
-      assertEquals(i * 1.0, (Double) value[i - 5], 0.00001);
-    }
-
 
     dataGroupMember.endQuery(TestUtils.getNode(0), TestUtils.getNode(1), 0,
         new GenericHandler<>(TestUtils.getNode(0), null));
@@ -664,7 +658,7 @@ public class DataGroupMemberTest extends MemberTest {
       InterruptedException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setDataTypes(new TSDataType[] {TSDataType.DOUBLE});
+    insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestSchema(0, 0)});
     insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -700,20 +694,16 @@ public class DataGroupMemberTest extends MemberTest {
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0),
         dataResult);
-    ByteBuffer byteBuffer = ByteBuffer.allocate(Long.BYTES * 4);
     for (int i = 5; i < 9; i++) {
-      byteBuffer.putLong(i);
+      synchronized (dataResult) {
+        dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
+            dataHandler);
+        dataResult.wait(200);
+      }
+      Object value =  SerializeUtils.deserializeObject(dataResult.get());
+      assertEquals(i * 1.0, (Double) value, 0.00001);
     }
-    byteBuffer.flip();
-    synchronized (dataResult) {
-      dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, byteBuffer,
-          dataHandler);
-      dataResult.wait(200);
-    }
-    Object[] value =  SerializeUtils.deserializeObjects(dataResult.get());
-    for (int i = 5; i < 9; i++) {
-      assertEquals(i * 1.0, (Double) value[i - 5], 0.00001);
-    }
+
 
     dataGroupMember.endQuery(TestUtils.getNode(0), TestUtils.getNode(1), 0,
         new GenericHandler<>(TestUtils.getNode(0), null));
@@ -739,7 +729,7 @@ public class DataGroupMemberTest extends MemberTest {
   public void testFetchWithoutQuery() throws InterruptedException {
     AtomicReference<Exception> result = new AtomicReference<>();
     synchronized (result) {
-      dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), 0, ByteBuffer.allocate(0),
+      dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), 0, 0,
           new AsyncMethodCallback<ByteBuffer>() {
             @Override
             public void onComplete(ByteBuffer buffer) {
@@ -888,6 +878,7 @@ public class DataGroupMemberTest extends MemberTest {
     request.setQueryId(queryContext.getQueryId());
     request.setRequestor(TestUtils.getNode(0));
     request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
+    request.setDeviceMeasurements(Collections.singleton(TestUtils.getTestMeasurement(0)));
 
     DataGroupMember dataGroupMember;
     AtomicReference<Long> resultRef;

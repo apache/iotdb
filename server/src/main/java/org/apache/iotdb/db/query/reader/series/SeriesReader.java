@@ -41,7 +41,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-class SeriesReader {
+public class SeriesReader {
 
   private final Path seriesPath;
 
@@ -101,7 +101,7 @@ class SeriesReader {
   private BatchData cachedBatchData;
 
 
-  SeriesReader(
+  public SeriesReader(
       Path seriesPath,
       Set<String> allSensors,
       TSDataType dataType,

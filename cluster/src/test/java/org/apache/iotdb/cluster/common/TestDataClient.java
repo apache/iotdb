@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.cluster.common;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.client.DataClient;
+import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
@@ -36,17 +34,13 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
-import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MemberTest;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 
 public class TestDataClient extends DataClient {
@@ -88,10 +82,10 @@ public class TestDataClient extends DataClient {
   }
 
   @Override
-  public void fetchSingleSeriesByTimestamp(Node header, long readerId, ByteBuffer timeBytes,
+  public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(() -> dataGroupMemberMap.get(header).fetchSingleSeriesByTimestamp(header,
-        readerId, timeBytes, resultHandler)).start();
+        readerId, time, resultHandler)).start();
   }
 
   @Override
@@ -105,7 +99,7 @@ public class TestDataClient extends DataClient {
       AsyncMethodCallback<TSStatus> resultHandler) {
     new Thread(() -> {
       try {
-        PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
+        PhysicalPlan plan = PhysicalPlanLog.PhysicalPlanFactory.create(request.planBytes);
         planExecutor.processNonQuery(plan);
         resultHandler.onComplete(StatusUtils.OK);
       } catch (IOException | QueryProcessException e) {

@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.log.manage;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -70,7 +69,6 @@ public class MemoryLogManagerTest {
     List<Log> testLogs = TestUtils.prepareTestLogs(10);
     assertEquals(-1, logManager.getLastLogIndex());
     assertEquals(-1, logManager.getLastLogTerm());
-    assertNull(logManager.getLastLog());
     assertFalse(logManager.logValid(5));
 
     for (Log testLog : testLogs) {
@@ -78,7 +76,6 @@ public class MemoryLogManagerTest {
     }
     assertEquals(9, logManager.getLastLogIndex());
     assertEquals(9, logManager.getLastLogTerm());
-    assertEquals(testLogs.get(9), logManager.getLastLog());
     assertEquals(testLogs.subList(3, 7), logManager.getLogs(3, 7));
     assertTrue(logManager.logValid(5));
   }
@@ -99,7 +96,6 @@ public class MemoryLogManagerTest {
     assertTrue(logManager.appendLog(testLog));
     assertEquals(6, logManager.getLastLogIndex());
     assertEquals(11, logManager.getLastLogTerm());
-    assertEquals(testLog, logManager.getLastLog());
     assertEquals(testLogs.subList(0, 5), logManager.getLogs(0, 5));
     assertTrue(logManager.logValid(6));
     assertFalse(logManager.logValid(8));
@@ -121,7 +117,6 @@ public class MemoryLogManagerTest {
     assertFalse(logManager.appendLog(testLog));
     assertEquals(9, logManager.getLastLogIndex());
     assertEquals(9, logManager.getLastLogTerm());
-    assertEquals(testLogs.get(9), logManager.getLastLog());
     assertEquals(testLogs.subList(3, 7), logManager.getLogs(3, 7));
     assertTrue(logManager.logValid(5));
 
@@ -133,7 +128,6 @@ public class MemoryLogManagerTest {
     assertFalse(logManager.appendLog(testLog));
     assertEquals(9, logManager.getLastLogIndex());
     assertEquals(9, logManager.getLastLogTerm());
-    assertEquals(testLogs.get(9), logManager.getLastLog());
     assertEquals(testLogs.subList(3, 7), logManager.getLogs(3, 7));
     assertTrue(logManager.logValid(5));
   }
