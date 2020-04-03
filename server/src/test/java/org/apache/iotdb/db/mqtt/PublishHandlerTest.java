@@ -15,23 +15,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.mqtt;
+package org.apache.iotdb.db.mqtt;
 
 import com.alibaba.fastjson.JSON;
+import io.moquette.interception.messages.InterceptPublishMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.handler.codec.mqtt.*;
+import org.apache.iotdb.db.qp.executor.IPlanExecutor;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
-public class JSONPayloadFormatTest {
+public class PublishHandlerTest {
 
     @Test
-    public void format() {
+    public void onPublish() throws Exception {
+        IPlanExecutor executor = mock(IPlanExecutor.class);
+        PayloadFormatter payloadFormat = PayloadFormatManager.getPayloadFormat("json");
+        PublishHandler handler = new PublishHandler(executor, payloadFormat);
+
         Map<String,Object> tuple = new HashMap();
         tuple.put("device", "root.sg.d1");
         tuple.put("timestamp", System.currentTimeMillis());
@@ -40,12 +50,12 @@ public class JSONPayloadFormatTest {
         String payload = JSON.toJSONString(tuple);
         ByteBuf buf = Unpooled.copiedBuffer(payload, StandardCharsets.UTF_8);
 
-        JSONPayloadFormatter formatter = new JSONPayloadFormatter();
-        Message message = formatter.format(buf);
+        MqttPublishVariableHeader variableHeader = new MqttPublishVariableHeader("root.sg.d1", 1);
+        MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBLISH, false, MqttQoS.AT_LEAST_ONCE, false, 1);
 
-        assertEquals(tuple.get("device"), message.getDevice());
-        assertEquals(tuple.get("timestamp"), message.getTimestamp());
-        assertEquals(tuple.get("measurements"), message.getMeasurements().get(0));
-        assertEquals(tuple.get("values"), Double.parseDouble(message.getValues().get(0)));
+        MqttPublishMessage publishMessage = new MqttPublishMessage(fixedHeader, variableHeader, buf);
+        InterceptPublishMessage message = new InterceptPublishMessage(publishMessage, null, null);
+        handler.onPublish(message);
+        verify(executor).processNonQuery(any(InsertPlan.class));
     }
 }

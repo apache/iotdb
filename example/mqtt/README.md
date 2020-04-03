@@ -22,12 +22,11 @@
 
 ## Function
 ```
-The example is to show how to send data to IoTDB MQTT broker from a mqtt client.
+The example is to show how to send data to IoTDB from a mqtt client.
 ```
 
 ## Usage
 
 * Launch the IoTDB server.
 * setup storage group `SET STORAGE GROUP TO root.sg` and create time timeseries `CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN`.
-* launch the MQTT broker for IoTDB.
-* Run `org.apache.iotdb.mqtt.MQTTClient` to run the mqtt client and send events to broker.
+* Run `org.apache.iotdb.mqtt.MQTTClient` to run the mqtt client and send events to server.

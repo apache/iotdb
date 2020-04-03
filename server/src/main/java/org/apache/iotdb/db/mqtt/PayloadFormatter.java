@@ -15,21 +15,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.mqtt;
+package org.apache.iotdb.db.mqtt;
 
-import org.junit.Test;
+import io.netty.buffer.ByteBuf;
 
-import static org.junit.Assert.*;
+/**
+ * PayloadFormatter format the payload to the messages.
+ */
+public interface PayloadFormatter {
+    /**
+     *
+     * @param payload
+     * @return
+     */
+    Message format(ByteBuf payload);
 
-public class BrokerAuthenticatorTest {
-
-    @Test
-    public void checkValid() {
-        String username = "user01";
-        String password = "pass006";
-        BrokerAuthenticator authenticator = new BrokerAuthenticator(username, password);
-        assertEquals(true, authenticator.checkValid(null, username, password.getBytes()));
-        assertNotEquals(true, authenticator.checkValid(null, username, "foo".getBytes()));
-        assertNotEquals(true, authenticator.checkValid(null, username, null));
-    }
+    /**
+     *
+     * @return
+     */
+    String getName();
 }

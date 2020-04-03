@@ -15,28 +15,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.mqtt;
+package org.apache.iotdb.db.mqtt;
 
 import io.moquette.broker.security.IAuthenticator;
 import org.apache.commons.lang.StringUtils;
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The MQTT broker authenticator.
  */
 public class BrokerAuthenticator implements IAuthenticator {
-    private String username;
-    private String password;
-
-    public BrokerAuthenticator(String username, String password) {
-        this.username = username;
-        this.password = password;
-    }
+    private static final Logger LOG = LoggerFactory.getLogger(BrokerAuthenticator.class);
 
     @Override
     public boolean checkValid(String clientId, String username, byte[] password) {
-        if (StringUtils.isNotBlank(username) && password != null) {
-            return this.username.equals(username) && this.password.equals(new String(password));
+        if (StringUtils.isBlank(username) || password == null) {
+            return false;
         }
-        return false;
+
+        try {
+            IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+            return authorizer.login(username, new String(password));
+        } catch (AuthException e) {
+            LOG.info("meet error while logging in.", e);
+            return false;
+        }
     }
 }

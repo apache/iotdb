@@ -15,14 +15,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.mqtt;
+package org.apache.iotdb.db.mqtt;
 
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 public class PayloadFormatManagerTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void getPayloadFormat() {
         PayloadFormatManager.getPayloadFormat("txt");
+    }
+
+    @Test
+    public void getDefaultPayloadFormat() {
+        assertNotNull(PayloadFormatManager.getPayloadFormat("json"));
     }
 }

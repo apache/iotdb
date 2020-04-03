@@ -24,42 +24,35 @@
 It was designed as an extremely lightweight publish/subscribe messaging transport.
 It is useful for connections with remote locations where a small code footprint is required and/or network bandwidth is at a premium.
 
-The MQTT v3.1(an OASIS Standard) protocol support for IoTDB. This module includes the MQTT broker that allows remote devices send messages into IoTDB server directly.
+IoTDB supports the MQTT v3.1(an OASIS Standard) protocol.
+IoTDB server includes a built-in MQTT service that allows remote devices send messages into IoTDB server directly.
 
-![iotdb-mqtt](iotdb-mqtt.png)
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357432-0c71cf80-75e4-11ea-98aa-c43a54d469ce.png">
 
 
-## MQTT Broker
-The MQTT Broker provide the ability of direct connection to IoTDB through MQTT. It listen the publish messages from MQTT clients and then
-write the data into local or remote IoTDB server immediately. 
+## Built-in MQTT Service
+The Built-in MQTT Service provide the ability of direct connection to IoTDB through MQTT. It listen the publish messages from MQTT clients
+ and then write the data into storage immediately. 
 The messages payload can be format to events by `PayloadFormatter` which loaded by java SPI, and the default implementation is `JSONPayloadFormatter`.
-The configuration of the broker locate `${IOTDB_HOME}/${IOTDB_CONF}/iotdb-mqtt-broker.properties`, and the startup scripts locate`${IOTDB_HOME}/sbin/start-mqtt-broker.sh (.bat for windows platform)`
 
-![iotdb-mqtt-design](iotdb-mqtt-design.png)
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
 
-## MQTT Broker Configuration
-The MQTT Broker load configuration from local IoTDB server `${IOTDB_HOME}/${IOTDB_CONF}/iotdb-mqtt-broker.properties` by default.
-If the local config file not exists, then load from classpath `/iotdb-mqtt-broker.properties`. Otherwise, load from the system defaults.
+## MQTT Configurations
+The IoTDB MQTT service load configurations from `${IOTDB_HOME}/${IOTDB_CONF}/iotdb-engine.properties` by default.
 
 Configurations are as following:
 
 | NAME        | DESCRIPTION           | DEFAULT  |
 | ------------- |:-------------:|:------:|
-| mqtt_broker_host      | the broker server address *Required* | 0.0.0.0 |
-| mqtt_broker_port      | the broker port  *Required*    |   1883 |
-| mqtt_broker_user | the broker username *Required*     |    root |
-| mqtt_broker_password | the broker password *Required*       |    root |
-| mqtt_broker_handler_pool_size | the publish handler pool size      |    1 |
-| mqtt_broker_payload_formatter | the message payload formatter      |    json |
-| iotdb_host      | the iotdb address *Required* | 127.0.0.1 |
-| iotdb_port      | the iotdb port *Required*   |   6667 |
-| iotdb_user | the iotdb username *Required*     |    root |
-| iotdb_password | the iotdb password *Required*       |    root |
-
+| enable_mqtt_service      | whether to enable the mqtt service | true |
+| mqtt_host      | the mqtt service binding host | 0.0.0.0 |
+| mqtt_port      | the mqtt service binding port    |   1883 |
+| mqtt_handler_pool_size | the handler pool size for handing the mqtt messages      |    1 |
+| mqtt_payload_formatter | the mqtt message payload formatter     |    json |
 
 
 ## Examples
-The following is an example which a mqtt client send events to MQTT broker.
+The following is an example which a mqtt client send messages to IoTDB server.
 
  ```java
         MQTT mqtt = new MQTT();

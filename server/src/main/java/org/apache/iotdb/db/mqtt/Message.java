@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.mqtt;
+package org.apache.iotdb.db.mqtt;
 
 import java.util.List;
 

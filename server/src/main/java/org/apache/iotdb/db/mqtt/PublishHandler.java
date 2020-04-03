@@ -15,15 +15,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.mqtt;
+package org.apache.iotdb.db.mqtt;
 
 import io.moquette.interception.AbstractInterceptHandler;
 import io.moquette.interception.messages.InterceptPublishMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttQoS;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.session.Session;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.executor.IPlanExecutor;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,31 +37,21 @@ import org.slf4j.LoggerFactory;
 public class PublishHandler extends AbstractInterceptHandler {
     private static final Logger LOG = LoggerFactory.getLogger(PublishHandler.class);
 
-    private Session session;
+    private IPlanExecutor executor;
     private PayloadFormatter payloadFormat;
-    static boolean testing = false;
 
-    public PublishHandler(MQTTBrokerConfig config) {
-        payloadFormat = PayloadFormatManager.getPayloadFormat(config.getPayloadFormatter());
-        initSession(config);
-    }
-
-    public void initSession(MQTTBrokerConfig config) {
-        if (testing) {
-            return;
-        }
-        session = new Session(config.getIotDBHost(), config.getIotDBPort(),
-                config.getIotDBUsername(), config.getIotDBPassword());
+    public PublishHandler(IoTDBConfig config) {
+        this.payloadFormat = PayloadFormatManager.getPayloadFormat(config.getMqttPayloadFormatter());
         try {
-            session.open();
-        } catch (IoTDBConnectionException e) {
-            throw new RuntimeException("Connect to IoTDB server failure, please check the db status.", e);
+            this.executor = new PlanExecutor();
+        } catch (QueryProcessException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    //  for testing
-    void setSession(Session session) {
-        this.session = session;
+    protected PublishHandler(IPlanExecutor executor, PayloadFormatter payloadFormat) {
+        this.executor = executor;
+        this.payloadFormat = payloadFormat;
     }
 
     @Override
@@ -81,14 +75,27 @@ public class PublishHandler extends AbstractInterceptHandler {
             return;
         }
 
-        TSStatus status;
+        InsertPlan plan = new InsertPlan();
+        plan.setDeviceId(event.getDevice());
+        plan.setTime(event.getTimestamp());
+        plan.setMeasurements(event.getMeasurements().toArray(new String[event.getMeasurements().size()]));
+        plan.setValues(event.getValues().toArray(new String[event.getValues().size()]));
+
+        boolean status;
         try {
-            status = session.insert(event.getDevice(), event.getTimestamp(),
-                    event.getMeasurements(), event.getValues());
-        } catch (Exception e) {
+            status = executeNonQuery(plan);
+        } catch (QueryProcessException e) {
             throw new RuntimeException(e);
         }
 
-        LOG.debug("send event result: {}", status);
+        LOG.debug("event process result: {}", status);
+    }
+
+    private boolean executeNonQuery(PhysicalPlan plan) throws QueryProcessException {
+        if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+            throw new QueryProcessException(
+                    "Current system mode is read-only, does not support non-query operation");
+        }
+        return executor.processNonQuery(plan);
     }
 }

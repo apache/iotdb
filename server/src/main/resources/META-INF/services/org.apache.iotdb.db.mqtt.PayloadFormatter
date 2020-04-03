@@ -17,20 +17,4 @@
 # under the License.
 #
 
-
-####################
-### MQTT Broker Configuration
-####################
-mqtt_broker_host=0.0.0.0
-mqtt_broker_port=1883
-mqtt_broker_user=root
-mqtt_broker_password=root
-
-
-####################
-### IoTDB Server Configuration
-####################
-iotdb_host=127.0.0.1
-iotdb_port=6667
-iotdb_user=root
-iotdb_password=root
+org.apache.iotdb.db.mqtt.JSONPayloadFormatter
