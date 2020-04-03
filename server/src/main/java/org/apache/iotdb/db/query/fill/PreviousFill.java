@@ -61,7 +61,8 @@ public class PreviousFill extends IFill {
 
   private QueryDataSource dataSource;
 
-  private ChunkMetadata lastChunkMetadata;
+  //private ChunkMetadata lastChunkMetadata;
+  private TimeseriesMetadata lastTimeseriesMetadata;
   private List<TimeseriesMetadata> timeseriesMetadataList;
 
   public PreviousFill(TSDataType dataType, long queryTime, long beforeRange) {
@@ -210,8 +211,9 @@ public class PreviousFill extends IFill {
       if (timeseriesMetadata != null) {
         // The last seq file satisfies timeFilter, pick up the last chunk
         timeseriesMetadataList.add(timeseriesMetadata);
-        List<ChunkMetadata> chunkMetadata = timeseriesMetadata.loadChunkMetadataList();
-        lastChunkMetadata = chunkMetadata.get(chunkMetadata.size() - 1);
+        lastTimeseriesMetadata = timeseriesMetadata;
+        //List<ChunkMetadata> chunkMetadata = timeseriesMetadata.loadChunkMetadataList();
+        //lastChunkMetadata = chunkMetadata.get(chunkMetadata.size() - 1);
         break;
       }
       seqFileResource.remove(index);
@@ -222,12 +224,12 @@ public class PreviousFill extends IFill {
       TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
           resource, seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
-        List<ChunkMetadata> chunkMetadatas = timeseriesMetadata.loadChunkMetadataList();
-        ChunkMetadata lastUnseqChunkMetadata = chunkMetadatas.get(chunkMetadatas.size() - 1);
-        if (lastChunkMetadata == null) {
-          lastChunkMetadata = lastUnseqChunkMetadata;
-        } else if (lastChunkMetadata.getEndTime() < lastUnseqChunkMetadata.getEndTime()) {
-          lastChunkMetadata = lastUnseqChunkMetadata;
+        // List<ChunkMetadata> chunkMetadatas = timeseriesMetadata.loadChunkMetadataList();
+        // ChunkMetadata lastUnseqChunkMetadata = chunkMetadatas.get(chunkMetadatas.size() - 1);
+        if (lastTimeseriesMetadata == null
+            || (lastTimeseriesMetadata.getStatistics().getEndTime()
+                < timeseriesMetadata.getStatistics().getEndTime())) {
+          lastTimeseriesMetadata = timeseriesMetadata;
         }
         break;
       }
@@ -236,8 +238,8 @@ public class PreviousFill extends IFill {
 
     // unpack all overlapped unseq files and fill chunkMetadata list
     while (!unseqFileResource.isEmpty()
-        && (lastChunkMetadata == null
-        || (lastChunkMetadata.getStartTime()
+        && (lastTimeseriesMetadata == null
+        || (lastTimeseriesMetadata.getStatistics().getStartTime()
         <= unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice())))) {
       timeseriesMetadataList.add(
           FileLoaderUtils.loadTimeSeriesMetadata(
