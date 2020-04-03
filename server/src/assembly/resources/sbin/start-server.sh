@@ -27,8 +27,15 @@ if [ -z "${IOTDB_HOME}" ]; then
   export IOTDB_HOME="`dirname "$0"`/.."
 fi
 
+
 IOTDB_CONF=${IOTDB_HOME}/conf
 # IOTDB_LOGS=${IOTDB_HOME}/logs
+
+if [ $# -ge 2 ] && [ "$1" == "-c" ] && [ -d "$2" ]; then
+  IOTDB_CONF=$2
+  shift 2
+fi
+CONF_PARAMS=$*
 
 if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
     if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
@@ -53,8 +60,9 @@ launch_service()
 	iotdb_parms="$iotdb_parms -DIOTDB_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DIOTDB_CONF=${IOTDB_CONF}"
+	iotdb_parms="$iotdb_parms -DTSFILE_CONF=${IOTDB_CONF}"
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
-	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS $iotdb_parms -cp "$CLASSPATH"  "$class"
+	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS $iotdb_parms -cp "$CLASSPATH"  "$class" $CONF_PARAMS
 	return $?
 }
 
