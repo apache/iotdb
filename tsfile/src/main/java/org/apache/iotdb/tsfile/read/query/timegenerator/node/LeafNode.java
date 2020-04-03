@@ -19,8 +19,6 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
@@ -29,57 +27,64 @@ public class LeafNode implements Node {
 
   private IBatchReader reader;
 
-  private List<BatchData> batchDataList = new LinkedList<>();
-  private TimeColumn cachedTimeSeries;
+  private BatchData cacheData;
   private boolean hasCached;
+
+  private long cachedTime;
+  private Object cachedValue;
 
   public LeafNode(IBatchReader reader) {
     this.reader = reader;
   }
 
   @Override
-  public boolean hasNextTimeColumn() throws IOException {
+  public boolean hasNext() throws IOException {
     if (hasCached) {
       return true;
     }
-    while (reader.hasNextBatch()) {
-      BatchData currentBatch = reader.nextBatch();
-      if (currentBatch.hasCurrent()) {
-        batchDataList.add(currentBatch);
+    if (cacheData != null && cacheData.hasCurrent()) {
+      cachedTime = cacheData.currentTime();
+      cachedValue = cacheData.currentValue();
+      hasCached = true;
+      return true;
+    }
+    if (reader.hasNextBatch()) {
+      cacheData = reader.nextBatch();
+      if (cacheData.hasCurrent()) {
+        cachedTime = cacheData.currentTime();
+        cachedValue = cacheData.currentValue();
         hasCached = true;
-        cachedTimeSeries = currentBatch.getTimeColumn();
-        break;
+        return true;
       }
     }
-    return hasCached;
+    return false;
   }
 
   @Override
-  public TimeColumn nextTimeColumn() throws IOException {
-    if (hasCached || hasNextTimeColumn()) {
+  public long next() throws IOException {
+    if ((hasCached || hasNext())) {
       hasCached = false;
-      return cachedTimeSeries;
+      cacheData.next();
+      return cachedTime;
     }
     throw new IOException("no more data");
   }
 
   /**
+   * Check whether the current time equals the given time.
+   *
+   * @param time the given time
+   * @return True if the current time equals the given time. False if not.
+   */
+  public boolean currentTimeIs(long time) {
+    return cachedTime == time;
+  }
+
+  /**
    * Function for getting the value at the given time.
    */
-  public Object currentValue(long time) {
-    while (!batchDataList.isEmpty()) {
-      BatchData oldestBatch = batchDataList.get(0);
-      Object value = oldestBatch.getValueInTimestamp(time);
-      if (value != null) {
-        return value;
-      }
-      if (!oldestBatch.hasCurrent()) {
-        batchDataList.remove(0);
-      } else {
-        return null;
-      }
-    }
-    return null;
+  public Object currentValue() {
+    return cachedValue;
   }
 
   @Override

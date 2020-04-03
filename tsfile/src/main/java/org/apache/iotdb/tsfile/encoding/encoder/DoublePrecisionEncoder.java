@@ -20,7 +20,7 @@
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 /**
@@ -31,7 +31,7 @@ public class DoublePrecisionEncoder extends GorillaEncoder {
   private long preValue;
 
   public DoublePrecisionEncoder() {
-    //do nothing
+    // do nothing
   }
 
   @Override
@@ -64,14 +64,14 @@ public class DoublePrecisionEncoder extends GorillaEncoder {
           writeBit(false, out);
           writeBits(tmp, out, TSFileConfig.DOUBLE_LENGTH - 1 - leadingZeroNum, tailingZeroNum);
         } else {
-          // case: write '11', leading zero num of value, effective bits len and effective bit value
+          // case: write '11', leading zero num of value, effective bits len and effective
+          // bit value
           writeBit(true, out);
           writeBit(true, out);
           writeBits(leadingZeroNumTmp, out, TSFileConfig.DOUBLE_LEADING_ZERO_LENGTH - 1, 0);
-          writeBits((long)TSFileConfig.DOUBLE_LENGTH - leadingZeroNumTmp - tailingZeroNumTmp, out,
+          writeBits((long) TSFileConfig.DOUBLE_LENGTH - leadingZeroNumTmp - tailingZeroNumTmp, out,
               TSFileConfig.DOUBLE_VALUE_LENGTH - 1, 0);
-          writeBits(tmp, out, TSFileConfig.DOUBLE_LENGTH - 1 - leadingZeroNumTmp,
-              tailingZeroNumTmp);
+          writeBits(tmp, out, TSFileConfig.DOUBLE_LENGTH - 1 - leadingZeroNumTmp, tailingZeroNumTmp);
         }
       }
       preValue = nextValue;

@@ -20,13 +20,16 @@
 package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
 import java.io.IOException;
 
+/**
+ * To read one chunk from disk, and only used in iotdb server module
+ */
 public class DiskChunkLoader implements IChunkLoader {
 
   private TsFileSequenceReader reader;
@@ -36,7 +39,7 @@ public class DiskChunkLoader implements IChunkLoader {
   }
 
   @Override
-  public Chunk getChunk(ChunkMetaData chunkMetaData) throws IOException {
+  public Chunk loadChunk(ChunkMetadata chunkMetaData) throws IOException {
     return ChunkCache.getInstance().get(chunkMetaData, reader);
   }
 

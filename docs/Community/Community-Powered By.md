@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -41,4 +41,8 @@ A common practice you can take is to create software identifiers (Maven coordina
 To add yourself to the list, please email dev@iotdb.apache.org with your organization name, URL, a list of IoTDB components you are using, and a short description of your use case.
 
 - School of Software (Tsinghua University), and National Engineering Laboratery for Big Data Software  that initially launched IoTDB  
-	- We have both graduate students and a team of professional software engineers working on the stack
+  - We have both graduate students and a team of professional software engineers working on the stack
+
+
+
+<FooterFixed/>

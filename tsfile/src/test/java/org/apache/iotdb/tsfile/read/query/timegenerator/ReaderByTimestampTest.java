@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -62,10 +62,10 @@ public class ReaderByTimestampTest {
   @Test
   public void readByTimestamp() throws IOException {
     CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
-    List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
+    List<ChunkMetadata> chunkMetadataList = metadataQuerierByFile
         .getChunkMetaDataList(new Path("d1.s1"));
     AbstractFileSeriesReader seriesReader = new FileSeriesReader(seriesChunkLoader,
-        chunkMetaDataList, null);
+        chunkMetadataList, null);
 
     List<Long> timeList = new ArrayList<>();
     List<Object> valueList = new ArrayList<>();
@@ -89,7 +89,7 @@ public class ReaderByTimestampTest {
 
     FileSeriesReaderByTimestamp seriesReaderFromSingleFileByTimestamp = new FileSeriesReaderByTimestamp(
         seriesChunkLoader,
-        chunkMetaDataList);
+        chunkMetadataList);
 
     for (long time : timeList) {
       Object value = seriesReaderFromSingleFileByTimestamp.getValueInTimestamp(time);

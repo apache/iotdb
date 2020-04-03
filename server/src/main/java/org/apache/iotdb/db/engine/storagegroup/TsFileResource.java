@@ -18,33 +18,33 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
+import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileResource {
 
@@ -90,12 +90,17 @@ public class TsFileResource {
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
    * process.
    */
-  private List<ChunkMetaData> chunkMetaDataList;
+  private List<ChunkMetadata> chunkMetadataList;
 
   /**
    * Mem chunk data. Only be set in a temporal TsFileResource in a query process.
    */
   private List<ReadOnlyMemChunk> readOnlyMemChunk;
+
+  /**
+   * used for unsealed file to get TimeseriesMetadata
+   */
+  private TimeseriesMetadata timeSeriesMetadata;
 
   private ReentrantReadWriteLock writeQueryLock = new ReentrantReadWriteLock();
 
@@ -104,7 +109,7 @@ public class TsFileResource {
   public TsFileResource() {
   }
 
-  public TsFileResource(TsFileResource other) {
+  public TsFileResource(TsFileResource other) throws IOException {
     this.file = other.file;
     this.startTimeMap = other.startTimeMap;
     this.endTimeMap = other.endTimeMap;
@@ -113,8 +118,9 @@ public class TsFileResource {
     this.closed = other.closed;
     this.deleted = other.deleted;
     this.isMerging = other.isMerging;
-    this.chunkMetaDataList = other.chunkMetaDataList;
+    this.chunkMetadataList = other.chunkMetadataList;
     this.readOnlyMemChunk = other.readOnlyMemChunk;
+    generateTimeSeriesMetadata();
     this.writeQueryLock = other.writeQueryLock;
     this.fsFactory = other.fsFactory;
     this.historicalVersions = other.historicalVersions;
@@ -146,12 +152,48 @@ public class TsFileResource {
       Map<String, Long> startTimeMap,
       Map<String, Long> endTimeMap,
       List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<ChunkMetaData> chunkMetaDataList) {
+      List<ChunkMetadata> chunkMetadataList) throws IOException {
     this.file = file;
     this.startTimeMap = startTimeMap;
     this.endTimeMap = endTimeMap;
-    this.chunkMetaDataList = chunkMetaDataList;
+    this.chunkMetadataList = chunkMetadataList;
     this.readOnlyMemChunk = readOnlyMemChunk;
+    generateTimeSeriesMetadata();
+  }
+
+  private void generateTimeSeriesMetadata() throws IOException {
+    if (chunkMetadataList.isEmpty() && readOnlyMemChunk.isEmpty()) {
+      timeSeriesMetadata = null;
+    }
+    timeSeriesMetadata = new TimeseriesMetadata();
+    timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
+    timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
+
+    if (!chunkMetadataList.isEmpty()) {
+      timeSeriesMetadata.setMeasurementId(chunkMetadataList.get(0).getMeasurementUid());
+      TSDataType dataType = chunkMetadataList.get(0).getDataType();
+      timeSeriesMetadata.setTSDataType(dataType);
+    } else if (!readOnlyMemChunk.isEmpty()) {
+      timeSeriesMetadata.setMeasurementId(readOnlyMemChunk.get(0).getMeasurementUid());
+      TSDataType dataType = readOnlyMemChunk.get(0).getDataType();
+      timeSeriesMetadata.setTSDataType(dataType);
+    }
+    if (timeSeriesMetadata.getTSDataType() != null) {
+      Statistics seriesStatistics = Statistics.getStatsByType(timeSeriesMetadata.getTSDataType());
+      // flush chunkMetadataList one by one
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+      }
+
+      for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
+        if (!memChunk.isEmpty()) {
+          seriesStatistics.mergeStatistics(memChunk.getChunkMetaData().getStatistics());
+        }
+      }
+      timeSeriesMetadata.setStatistics(seriesStatistics);
+    } else {
+      timeSeriesMetadata = null;
+    }
   }
 
   public void serialize() throws IOException {
@@ -237,8 +279,8 @@ public class TsFileResource {
     endTimeMap.put(device, time);
   }
 
-  public List<ChunkMetaData> getChunkMetaDataList() {
-    return chunkMetaDataList;
+  public List<ChunkMetadata> getChunkMetadataList() {
+    return chunkMetadataList;
   }
 
   public List<ReadOnlyMemChunk> getReadOnlyMemChunk() {
@@ -264,6 +306,10 @@ public class TsFileResource {
     return file;
   }
 
+  public String getPath() {
+    return file.getPath();
+  }
+
   public long getFileSize() {
     return file.length();
   }
@@ -287,7 +333,7 @@ public class TsFileResource {
       modFile = null;
     }
     processor = null;
-    chunkMetaDataList = null;
+    chunkMetadataList = null;
   }
 
   TsFileProcessor getUnsealedFileProcessor() {
@@ -423,5 +469,55 @@ public class TsFileResource {
 
   public void setProcessor(TsFileProcessor processor) {
     this.processor = processor;
+  }
+
+  public TimeseriesMetadata getTimeSeriesMetadata() {
+    return timeSeriesMetadata;
+  }
+
+  /**
+   * make sure Either the startTimeMap is not empty
+   *           Or the path contains a partition folder
+   */
+  public long getTimePartition() {
+    if (startTimeMap != null && !startTimeMap.isEmpty()) {
+      return StorageEngine.getTimePartition(startTimeMap.values().iterator().next());
+    }
+    String[] splits = FilePathUtils.splitTsFilePath(this);
+    return Long.parseLong(splits[splits.length - 2]);
+  }
+
+  /**
+   * Used when load new TsFiles not generated by the server
+   * Check and get the time partition
+   * TODO: when the partition violation happens, split the file and load into different partitions
+   * @throws PartitionViolationException if the data of the file cross partitions or it is empty
+   */
+  public long getTimePartitionWithCheck() throws PartitionViolationException {
+    long partitionId = -1;
+    for (Long startTime : startTimeMap.values()) {
+      long p = StorageEngine.getTimePartition(startTime);
+      if (partitionId == -1) {
+        partitionId = p;
+      } else {
+        if (partitionId != p) {
+          throw new PartitionViolationException(this);
+        }
+      }
+    }
+    for (Long endTime : endTimeMap.values()) {
+      long p = StorageEngine.getTimePartition(endTime);
+      if (partitionId == -1) {
+        partitionId = p;
+      } else {
+        if (partitionId != p) {
+          throw new PartitionViolationException(this);
+        }
+      }
+    }
+    if (partitionId == -1) {
+      throw new PartitionViolationException(this);
+    }
+    return partitionId;
   }
 }

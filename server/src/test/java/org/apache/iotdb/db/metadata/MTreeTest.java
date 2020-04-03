@@ -60,13 +60,14 @@ public class MTreeTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
+    boolean hasException = false;
     try {
       root.createTimeseries("root.laptop.d1.s1.b", TSDataType.INT32, TSEncoding.RLE,
               TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
     } catch (MetadataException e) {
-      Assert.assertEquals(
-          String.format("Path [%s] already exist", "root.laptop.d1.s1", "s1"), e.getMessage());
+      hasException = true;
     }
+    Assert.assertTrue(hasException);
   }
 
   @Test

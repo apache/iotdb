@@ -19,14 +19,13 @@
 
 package org.apache.iotdb.tsfile.write.record.datapoint;
 
+import java.io.IOException;
+import java.math.BigDecimal;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-
-import java.io.IOException;
-import java.math.BigDecimal;
 
 /**
  * This is a abstract class representing a data point. DataPoint consists of a measurement id and a
@@ -91,8 +90,8 @@ public abstract class DataPoint {
       }
     } catch (Exception e) {
       throw new UnSupportedDataTypeException(
-          String.format("Data type of %s is %s, but input value is %s", measurementId,
-              dataType, value));
+          String.format("Data type of %s is %s, but input value is %s", measurementId, dataType,
+              value));
     }
 
     return dataPoint;

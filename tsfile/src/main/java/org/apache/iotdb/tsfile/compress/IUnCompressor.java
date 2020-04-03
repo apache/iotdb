@@ -21,11 +21,13 @@ package org.apache.iotdb.tsfile.compress;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xerial.snappy.Snappy;
+
+import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
 /**
  * uncompress data according to type in metadata.
@@ -52,8 +54,7 @@ public interface IUnCompressor {
     }
   }
 
-  int getUncompressedLength(byte[] array, int offset, int length)
-      throws IOException;
+  int getUncompressedLength(byte[] array, int offset, int length) throws IOException;
 
   /**
    * get the uncompressed length.
@@ -80,8 +81,7 @@ public interface IUnCompressor {
    * @param outOffset -
    * @return the valid length of the output array
    */
-  int uncompress(byte[] byteArray, int offset, int length, byte[] output,
-      int outOffset)
+  int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
       throws IOException;
 
   /**

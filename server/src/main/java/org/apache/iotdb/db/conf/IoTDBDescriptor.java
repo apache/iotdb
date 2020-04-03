@@ -338,9 +338,9 @@ public class IoTDBDescriptor {
       TSFileDescriptor.getInstance().getConfig()
           .setTSFileStorageFs(
               properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().name()));
-      TSFileDescriptor.getInstance().getConfig().setKerberosKeytabFilePath(
+      TSFileDescriptor.getInstance().getConfig().setCoreSitePath(
           properties.getProperty("core_site_path", conf.getCoreSitePath()));
-      TSFileDescriptor.getInstance().getConfig().setKerberosPrincipal(
+      TSFileDescriptor.getInstance().getConfig().setHdfsSitePath(
           properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()));
       TSFileDescriptor.getInstance().getConfig()
           .setHdfsIp(properties.getProperty("hdfs_ip", conf.getRawHDFSIp()).split(","));
@@ -559,6 +559,8 @@ public class IoTDBDescriptor {
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
         conf.setAllocateMemoryForChunkCache(
             maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+        conf.setAllocateMemoryForTimeSeriesMetaDataCache(
+            maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
       } catch (Exception e) {
         throw new RuntimeException(
             "Each subsection of configuration item filemeta_chunkmeta_free_memory_proportion should be an integer, which is "
