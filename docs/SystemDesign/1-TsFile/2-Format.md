@@ -85,7 +85,7 @@ Query Process：e.g., read d1.s1
 
 #### 1.2.1 Magic String and Version Number
 
-A TsFile begins with a 6-byte magic string (`TsFile`) and a 6-byte version number (`000001`).
+A TsFile begins with a 6-byte magic string (`TsFile`) and a 6-byte version number (`000002`).
 
 #### 1.2.2 Data
 
