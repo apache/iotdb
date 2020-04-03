@@ -26,26 +26,19 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
-import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
-import org.apache.iotdb.db.query.reader.chunk.MemChunkReader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.MemChunkMetadataLoader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.iotdb.tsfile.read.reader.IChunkReader;
-import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 public class FileLoaderUtils {
 
@@ -175,23 +168,5 @@ public class FileLoaderUtils {
   public static TsFileMetadata getTsFileMetadata(String filePath) throws IOException {
     TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
     return reader.readFileMetadata();
-  }
-
-  public static List<IPageReader> unpackChunkReaderToPageReaderList(
-      ChunkMetadata metaData, Filter timeFilter) throws IOException {
-    if (metaData == null) {
-      throw new IOException("Can't init null chunkMeta");
-    }
-    IChunkReader chunkReader;
-    IChunkLoader chunkLoader = metaData.getChunkLoader();
-    if (chunkLoader instanceof MemChunkLoader) {
-      MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
-      chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
-    } else {
-      Chunk chunk = chunkLoader.getChunk(metaData);
-      chunkReader = new ChunkReader(chunk, timeFilter);
-      chunkReader.hasNextSatisfiedPage();
-    }
-    return chunkReader.getPageReaderList();
   }
 }
