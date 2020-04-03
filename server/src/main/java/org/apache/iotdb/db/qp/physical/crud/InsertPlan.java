@@ -157,7 +157,7 @@ public class InsertPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serializeToFully(DataOutputStream stream) throws IOException {
+  public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.INSERT.ordinal();
     stream.writeByte((byte) type);
     stream.writeLong(time);
@@ -170,17 +170,13 @@ public class InsertPlan extends PhysicalPlan {
       putString(stream, m);
     }
 
-    for (MeasurementSchema schema : schemas) {
-      schema.serializeTo(stream);
-    }
-
     for (String m : values) {
       putString(stream, m);
     }
   }
 
   @Override
-  public void serializeToWAL(ByteBuffer buffer) {
+  public void serialize(ByteBuffer buffer) {
     int type = PhysicalPlanType.INSERT.ordinal();
     buffer.put((byte) type);
     buffer.putLong(time);
@@ -199,7 +195,7 @@ public class InsertPlan extends PhysicalPlan {
   }
 
   @Override
-  public void deserializeFromWAL(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) {
     this.time = buffer.getLong();
     this.deviceId = readString(buffer);
 
@@ -208,29 +204,6 @@ public class InsertPlan extends PhysicalPlan {
     this.measurements = new String[measurementSize];
     for (int i = 0; i < measurementSize; i++) {
       measurements[i] = readString(buffer);
-    }
-
-    this.values = new String[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      values[i] = readString(buffer);
-    }
-  }
-
-  @Override
-  public void deserializeFromFully(ByteBuffer buffer) {
-    this.time = buffer.getLong();
-    this.deviceId = readString(buffer);
-
-    int measurementSize = buffer.getInt();
-
-    this.measurements = new String[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      measurements[i] = readString(buffer);
-    }
-
-    this.schemas = new MeasurementSchema[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      schemas[i] = MeasurementSchema.deserializeFrom(buffer);
     }
 
     this.values = new String[measurementSize];

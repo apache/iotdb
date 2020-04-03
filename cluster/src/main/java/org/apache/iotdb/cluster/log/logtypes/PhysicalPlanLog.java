@@ -28,7 +28,6 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan.PhysicalPlanType;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -65,7 +64,7 @@ public class PhysicalPlanLog extends Log {
       dataOutputStream.writeLong(getCurrLogIndex());
       dataOutputStream.writeLong(getCurrLogTerm());
 
-      plan.serializeToFully(dataOutputStream);
+      plan.serialize(dataOutputStream);
     } catch (IOException e) {
       // unreachable
     }
@@ -82,7 +81,7 @@ public class PhysicalPlanLog extends Log {
     setCurrLogTerm(buffer.getLong());
 
     try {
-      plan = PhysicalPlanLog.PhysicalPlanFactory.create(buffer);
+      plan = PhysicalPlan.Factory.create(buffer);
     } catch (IOException e) {
       logger.error("Cannot parse a physical plan", e);
     }
@@ -120,47 +119,5 @@ public class PhysicalPlanLog extends Log {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), plan);
-  }
-
-  public static class PhysicalPlanFactory {
-
-    private PhysicalPlanFactory() {
-      // hidden initializer
-    }
-
-    public static PhysicalPlan create(ByteBuffer buffer) throws IOException {
-      int typeNum = buffer.get();
-      if (typeNum >= PhysicalPlan.PhysicalPlanType.values().length) {
-        throw new IOException("unrecognized log type " + typeNum);
-      }
-      PhysicalPlan.PhysicalPlanType type = PhysicalPlan.PhysicalPlanType.values()[typeNum];
-      PhysicalPlan plan;
-      // TODO-Cluster: support more plans
-      switch (type) {
-        case INSERT:
-          plan = new InsertPlan();
-          plan.deserializeFromFully(buffer);
-          break;
-        case DELETE:
-          plan = new DeletePlan();
-          plan.deserializeFromFully(buffer);
-          break;
-        case BATCHINSERT:
-          plan = new BatchInsertPlan();
-          plan.deserializeFromFully(buffer);
-          break;
-        case SET_STORAGE_GROUP:
-          plan = new SetStorageGroupPlan();
-          plan.deserializeFromFully(buffer);
-          break;
-        case CREATE_TIMESERIES:
-          plan = new CreateTimeSeriesPlan();
-          plan.deserializeFromFully(buffer);
-          break;
-        default:
-          throw new IOException("unrecognized log type " + type);
-      }
-      return plan;
-    }
   }
 }

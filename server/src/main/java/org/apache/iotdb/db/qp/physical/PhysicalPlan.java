@@ -94,16 +94,8 @@ public abstract class PhysicalPlan {
    * @param stream
    * @throws IOException
    */
-  public void serializeToFully(DataOutputStream stream) throws IOException {
+  public void serialize(DataOutputStream stream) throws IOException {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
-  }
-
-  /**
-   * Deserialize the plan from the given buffer. This must be used with serializeToFully.
-   * @param buffer
-   */
-  public void deserializeFromFully(ByteBuffer buffer) {
-    deserializeFromWAL(buffer);
   }
 
   /**
@@ -111,7 +103,7 @@ public abstract class PhysicalPlan {
    * recovered will not be serialized.
    * @param buffer
    */
-  public void serializeToWAL(ByteBuffer buffer) {
+  public void serialize(ByteBuffer buffer) {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
@@ -120,7 +112,7 @@ public abstract class PhysicalPlan {
    * serializeToWAL.
    * @param buffer
    */
-  public void deserializeFromWAL(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
@@ -165,23 +157,23 @@ public abstract class PhysicalPlan {
       switch (type) {
         case INSERT:
           plan = new InsertPlan();
-          plan.deserializeFromWAL(buffer);
+          plan.deserialize(buffer);
           break;
         case DELETE:
           plan = new DeletePlan();
-          plan.deserializeFromWAL(buffer);
+          plan.deserialize(buffer);
           break;
         case BATCHINSERT:
           plan = new BatchInsertPlan();
-          plan.deserializeFromWAL(buffer);
+          plan.deserialize(buffer);
           break;
         case SET_STORAGE_GROUP:
           plan = new SetStorageGroupPlan();
-          plan.deserializeFromWAL(buffer);
+          plan.deserialize(buffer);
           break;
         case CREATE_TIMESERIES:
           plan = new CreateTimeSeriesPlan();
-          plan.deserializeFromWAL(buffer);
+          plan.deserialize(buffer);
           break;
         default:
           throw new IOException("unrecognized log type " + type);

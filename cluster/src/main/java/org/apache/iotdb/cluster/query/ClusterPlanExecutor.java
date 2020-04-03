@@ -20,18 +20,24 @@
 package org.apache.iotdb.cluster.query;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,5 +91,41 @@ public class ClusterPlanExecutor extends PlanExecutor {
   protected List<String[]> getTimeseriesSchemas(String path) {
     // TODO-Cluster: enable meta queries
     throw new UnsupportedOperationException("Not implemented");
+  }
+
+  @Override
+  protected MeasurementSchema[] getSeriesSchemas(String[] measurementList, String deviceId,
+      String[] strValues) throws MetadataException {
+
+    MNode node = MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(deviceId);
+    boolean allSeriesExists = true;
+    for (String measurement : measurementList) {
+      if (!node.hasChild(measurement)) {
+        allSeriesExists = false;
+        break;
+      }
+    }
+
+    if (allSeriesExists) {
+      return super.getSeriesSchemas(measurementList, deviceId, strValues);
+    }
+
+    // some schemas does not exist locally, fetch them from the remote side
+    List<String> schemasToPull = new ArrayList<>();
+    for (String s : measurementList) {
+      schemasToPull.add(deviceId + IoTDBConstant.PATH_SEPARATOR + s);
+    }
+    List<MeasurementSchema> schemas = metaGroupMember.pullTimeSeriesSchemas(schemasToPull);
+    for (MeasurementSchema schema : schemas) {
+      SchemaUtils.registerTimeseries(schema);
+    }
+
+    if (schemas.size() == measurementList.length) {
+      // all schemas can be fetched from the remote side
+      return schemas.toArray(new MeasurementSchema[0]);
+    } else {
+      // some schemas does not exist in the remote side, check if we can use auto-creation
+      return super.getSeriesSchemas(measurementList, deviceId, strValues);
+    }
   }
 }

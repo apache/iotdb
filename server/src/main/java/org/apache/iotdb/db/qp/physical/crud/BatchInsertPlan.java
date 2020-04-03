@@ -127,7 +127,7 @@ public class BatchInsertPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serializeToFully(DataOutputStream stream) throws IOException {
+  public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     stream.writeByte((byte) type);
 
@@ -215,7 +215,7 @@ public class BatchInsertPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serializeToWAL(ByteBuffer buffer) {
+  public void serialize(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     buffer.put((byte) type);
 
@@ -312,7 +312,7 @@ public class BatchInsertPlan extends PhysicalPlan {
   }
 
   @Override
-  public void deserializeFromWAL(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) {
     this.deviceId = readString(buffer);
 
     int measurementSize = buffer.getInt();

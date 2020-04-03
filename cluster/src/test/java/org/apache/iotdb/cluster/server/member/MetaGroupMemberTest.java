@@ -291,7 +291,7 @@ public class MetaGroupMemberTest extends MemberTest {
                 AsyncMethodCallback<TSStatus> resultHandler) {
               new Thread(() -> {
                 try {
-                  PhysicalPlan plan = PhysicalPlanLog.PhysicalPlanFactory.create(request.planBytes);
+                  PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
                   planExecutor.processNonQuery(plan);
                   resultHandler.onComplete(StatusUtils.OK);
                 } catch (IOException | QueryProcessException e) {

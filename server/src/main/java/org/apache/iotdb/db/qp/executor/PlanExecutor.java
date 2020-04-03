@@ -697,26 +697,8 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
-      MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
       String[] strValues = insertPlan.getValues();
-      MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
-
-      for (int i = 0; i < measurementList.length; i++) {
-        String measurement = measurementList[i];
-        if (!node.hasChild(measurement)) {
-          if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
-            throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
-          }
-          TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValues[i]);
-          Path path = new Path(deviceId, measurement);
-
-          mManager.createTimeseries(path.toString(), dataType, getDefaultEncoding(dataType),
-                  TSFileDescriptor.getInstance().getConfig().getCompressor(),
-              Collections.emptyMap());
-        }
-        LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
-        schemas[i] = measurementNode.getSchema();
-      }
+      MeasurementSchema[] schemas = getSeriesSchemas(measurementList, deviceId, strValues);
       insertPlan.setSchemas(schemas);
       StorageEngine.getInstance().insert(insertPlan);
     } catch (StorageEngineException | MetadataException e) {
@@ -724,6 +706,29 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
+  protected MeasurementSchema[] getSeriesSchemas(String[] measurementList, String deviceId,
+      String[] strValues) throws MetadataException {
+    MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
+
+    MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
+    for (int i = 0; i < measurementList.length; i++) {
+      String measurement = measurementList[i];
+      if (!node.hasChild(measurement)) {
+        if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+          throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
+        }
+        TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValues[i]);
+        Path path = new Path(deviceId, measurement);
+
+        mManager.createTimeseries(path.toString(), dataType, getDefaultEncoding(dataType),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
+      LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
+      schemas[i] = measurementNode.getSchema();
+    }
+    return schemas;
+  }
   /**
    * Get default encoding by dataType
    */
