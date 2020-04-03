@@ -66,7 +66,7 @@
 
 Here is a graph about the TsFile structure.
 
-![TsFile Breakdown](https://user-images.githubusercontent.com/7240743/78322525-93518880-75a1-11ea-8d5e-b438caa86d41.png)
+![TsFile Breakdown](https://user-images.githubusercontent.com/7240743/78330206-05cc6380-75b6-11ea-96c7-06f6f7346f6a.png)
 
 This TsFile contains two devices: d1, d2. Each device contains three measurements: s1, s2, s3. 6 timeseries in total, d1 is blue, d2 is purple. Each timeseries contains 2 Chunks.
 
