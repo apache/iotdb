@@ -92,11 +92,13 @@ public class NodeReport {
    */
   public static class DataMemberReport extends RaftMemberReport {
     Node header;
+    long headerLatency;
 
     public DataMemberReport(NodeCharacter character, Node leader, long term, long lastLogTerm,
-        long lastLogIndex, Node header, boolean isReadOnly) {
+        long lastLogIndex, Node header, boolean isReadOnly, long headerLatency) {
       super(character, leader, term, lastLogTerm, lastLogIndex, isReadOnly);
       this.header = header;
+      this.headerLatency = headerLatency;
     }
 
     @Override
@@ -109,6 +111,7 @@ public class NodeReport {
           ", lastLogTerm=" + lastLogTerm +
           ", lastLogIndex=" + lastLogIndex +
           ", readOnly=" + isReadOnly +
+          ", headerLatency=" + headerLatency +
           '}';
     }
   }

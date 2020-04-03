@@ -58,6 +58,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
+import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
@@ -1178,7 +1179,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   public DataMemberReport genReport() {
     return new DataMemberReport(character, leader, term.get(),
-        logManager.getLastLogTerm(), logManager.getLastLogIndex(), getHeader(), readOnly);
+        logManager.getLastLogTerm(), logManager.getLastLogIndex(), getHeader(), readOnly,
+        QueryCoordinator.getINSTANCE().getLastResponseLatency(getHeader()));
   }
 
   @TestOnly
