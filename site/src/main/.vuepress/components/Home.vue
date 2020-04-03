@@ -195,7 +195,7 @@ export default {
     },
     addRoutes2() {
       this.$router.push("/UserGuide/V0.9.x/1-Overview/1-What%20is%20IoTDB.html");
-    },
+    }
   }
 };
 </script>
