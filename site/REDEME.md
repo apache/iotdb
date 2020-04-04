@@ -18,12 +18,71 @@
     under the License.
 
 -->
+
+[TOC]
+
+# Website description
+
+## IoTDB website
+
+[![Build Status](https://builds.apache.org/view/I/view/IoTDB/job/IoTDB%20Website/badge/icon)](https://builds.apache.org/view/I/view/IoTDB/job/IoTDB%20Website/)
+
+See https://iotdb.apache.org/
+
+## Build Setup
+
+run `mvn site -DskipTests` for:
+
+- get docs from the master branch and all lagecy docs remotely.
+- download node.js and npm;
+- run `npm install` and `npm run build`
+
+## How to Debug
+
+after running `mvn site -DskipTests`, all source codes are copied into target/vue-source
+
+then if you want to debug, just run 
+
+```
+# serve with hot reload at localhost:8080
+npm run dev
+
+# build for production with minification
+npm run build
+```
+
+Remeber, only the changes of site/src can be logged by Git. 
+All changes in the target folder will be ignored by Git.
+
+## Deploy Manually
+
+run `mvn package scm-publish:publish-scm`.
+
+Apache ID and passwored is needed.
+
+## FAQ
+
+If you get an error on your MacOS:
+
+> gyp: No Xcode or CLT version detected! 
+
+Then, install CommandLine of Xcode: `sudo xcode-select --install`.
+If you have installed and the error still occurs, then `sudo xcode-select --reset`
+
 # Document format
 
 - All mds will be compiled into html, REDEME.md will be compiled into index.html, and xx.md will be compiled into xx.html
 - The tags in md must have a beginning and an end. For example, \<tr> must have a \</ tr> corresponding to it, and it is strictly corresponding; if you need to insert tags in the document, such as List \<String>, you can add this into the code block.  ``, You can also add \ before the two  angle brackets, such as \<\\String\\>
--  Tags cannot be cross-nested, such as \<p> \<center>\</p>\</center> This is not allowed
+- Tags cannot be cross-nested, such as \<p> \<center>\</p>\</center> This is not allowed
 - The first-level title of the article is the title of the sidebar of the document, so the largest chapter title of the document is not needed
+
+## Add vue component to the document
+
+Place the components in the .vuepress / components directory
+
+Use \<component/> directly in the md file
+
+Tutorial on the use of vue componentshttps://cn.vuejs.org/v2/guide/components.html
 
 # Contributing documents
 
@@ -36,9 +95,28 @@ Head, base, title, description, etc. need hardly be modified
 
 See specific configuration information https://www.vuepress.cn/config/
 
- 
+ head,base,title,description
 
-Where locales
+```js
+    head: [
+		["meta", {name: "Description", content: "Apache IoTDB: Time Series Database for IoT"}],
+        ["meta", {name: "Keywords", content: "TSDB, time series, time series database, IoTDB, IoT database, IoT data management,时序数据库, 时间序列管理, IoTDB, 物联网数据库, 实时数据库, 物联网数据管理, 物联网数据"}],
+        ["meta", {name: "baidu-site-verification", content: "wfKETzB3OT"}],
+        ["meta", {name: "google-site-verification", content: "mZWAoRY0yj_HAr-s47zHCGHzx5Ju-RVm5wDbPnwQYFo"}],
+      ],
+```
+
+Additional tags that need to be injected into the HTML `<head>` of the current page, each tag can be specified in the format of `[tagName, {attrName: attrValue}, innerHTML?]`
+
+base:The base path of the deployment site. If you want to deploy your site to a sub-path, you will need to set it.
+
+title:The title of the website, it will be used as the prefix of all page titles. At the same time, under the default theme, it will be displayed on the navigation bar (navbar)
+
+description:The description of the website, which will be rendered into the HTML of the current page with the `<meta>` tag.
+
+See specific configuration information https://www.vuepress.cn/config/
+
+## locales
 
 ```js
 	locales: {
@@ -59,8 +137,6 @@ Represents / jumps English links, / zh / jumps Chinese links.
 
 The storage structure of the file is as follows.
 
-README.md is compiled to index.html by default, and the rest of xx.md is compiled to xx.html
-
 ```
 docs
 ├─ Userguide
@@ -75,6 +151,8 @@ docs
       └─ README.md
    ├─ etc.
 ```
+
+## nav
 
 nav indicates the top navigation bar. Modify nav and pay attention to the Chinese or English version you modify.
 
@@ -94,13 +172,15 @@ Where title represents the title of one of the nav, and items is the drop-down l
 				  },
 ```
 
-sidebar: the first one is a jump link, and children is the jump link that supplements this document
+## sidebar
 
-The total link is the domain name of the site + the specified language version (/ or / zh /) + the link of the sidebar + the link of the children
+The first one is a jump link, and children is the jump link that supplements this document
+
+**The total link is the domain name of the site + the specified language version (/ or / zh /) + the link of the sidebar + the link of the children**
 
 For other sidebar property configuration, see vuepress tutorialhttps://vuepress.vuejs.org/theme/default-theme-config.html#sidebar
 
-If you find it difficult to find in progress, directly ctrl + F search / UserGuide / master / Jump to that piece, Chinese is / zh / UserGuide / master /
+If you find it difficult to find in progress, directly ctrl + F search **/UserGuide/master/** Jump to that piece, Chinese is **/zh/UserGuide/master/**
 
 ![1585915743956](https://user-images.githubusercontent.com/37333508/78359162-121ce480-75e7-11ea-87ab-7ab61d5cda39.png)
 
