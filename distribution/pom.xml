@@ -92,12 +92,6 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>mqtt-iotdb</artifactId>
-            <version>${project.version}</version>
-            <type>zip</type>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-client</artifactId>
             <version>${project.version}</version>
             <type>zip</type>
