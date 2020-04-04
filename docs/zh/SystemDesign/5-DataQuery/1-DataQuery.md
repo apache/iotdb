@@ -28,6 +28,7 @@
 * 降采样查询
 * 单点补空值查询
 * 最新数据查询
+* 按设备对齐查询
 
 为了实现以上几种查询，IoTDB 查询引擎中设计了针对单个时间序列的基础查询组件，在此基础上，实现了多种查询功能。
 
@@ -38,3 +39,5 @@
 * [聚合查询](/zh/SystemDesign/5-DataQuery/4-AggregationQuery.html)
 * [降采样查询](/zh/SystemDesign/5-DataQuery/5-GroupByQuery.html)
 * [最近时间戳查询](/zh/SystemDesign/5-DataQuery/6-LastQuery.html)
+* [按设备对齐查询](/zh/SystemDesign/5-DataQuery/7-AlignByDeviceQuery.html)
+* [查询中的数据删改处理](/zh/SystemDesign/5-DataQuery/8-ModificationHandle.html)

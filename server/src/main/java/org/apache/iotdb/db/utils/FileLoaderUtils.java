@@ -26,14 +26,22 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
+import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
+import org.apache.iotdb.db.query.reader.chunk.MemChunkReader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.MemChunkMetadataLoader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -82,7 +90,7 @@ public class FileLoaderUtils {
    * @param allSensors measurements queried at the same time of this device
    */
   public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, Path seriesPath,
-                                                          QueryContext context, Filter timeFilter, Set<String> allSensors) throws IOException {
+      QueryContext context, Filter timeFilter, Set<String> allSensors) throws IOException {
     TimeseriesMetadata timeSeriesMetadata;
     if (resource.isClosed()) {
       timeSeriesMetadata = TimeSeriesMetadataCache.getInstance()
@@ -116,6 +124,40 @@ public class FileLoaderUtils {
     }
     return timeSeriesMetadata;
   }
+
+  /**
+   * load all chunk metadata of one time series in one file.
+   * @param timeSeriesMetadata the corresponding TimeSeriesMetadata in that file.
+   */
+  public static List<ChunkMetadata> loadChunkMetadataList(TimeseriesMetadata timeSeriesMetadata)
+      throws IOException {
+    return timeSeriesMetadata.loadChunkMetadataList();
+  }
+
+
+  /**
+   * load all page readers in one chunk that satisfying the timeFilter
+   * @param chunkMetaData the corresponding chunk metadata
+   * @param timeFilter it should be a TimeFilter instead of a ValueFilter
+   */
+  public static List<IPageReader> loadPageReaderList(ChunkMetadata chunkMetaData, Filter timeFilter)
+      throws IOException {
+    if (chunkMetaData == null) {
+      throw new IOException("Can't init null chunkMeta");
+    }
+    IChunkReader chunkReader;
+    IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
+    if (chunkLoader instanceof MemChunkLoader) {
+      MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
+      chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
+    } else {
+      Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
+      chunkReader = new ChunkReader(chunk, timeFilter);
+      chunkReader.hasNextSatisfiedPage();
+    }
+    return chunkReader.loadPageReaderList();
+  }
+
 
   /**
    * load all ChunkMetadatas belong to the seriesPath
