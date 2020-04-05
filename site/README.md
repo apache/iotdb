@@ -27,7 +27,7 @@ See https://iotdb.apache.org/
 
 ## Build Setup
 
-run `mvn site -DskipTests` for:
+run `mvn package -DskipTests -Pwebsite` for:
 
 - get docs from the master branch and all lagecy docs remotely.
 - download node.js and npm;
