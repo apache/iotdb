@@ -139,7 +139,7 @@ matrix:
       jdk: openjdk8
       script:
         # now, grafana has no tests; spark-* tests are written by scala
-        - mvn post-integration-test -Pcode-coverage -Pcoveralls
+        - mvn post-integration-test -Pcode-coverage -Pcoveralls -pl '!site','!distribution' -am
         - mvn coveralls:report -Dservice_name=travis_ci -pl '!grafana','!spark-iotdb-connector','!spark-tsfile','!distribution','!site' -am
         #-  mvn coveralls:report -Dservice_name=travis_ci -Pcoveralls
     - os: linux
@@ -147,7 +147,7 @@ matrix:
       dist: xenial
       jdk: openjdk8
       script:
-        - mvn clean package -pl site -Pwebsite
+        - mvn clean package -pl site
 
 cache:
   directories:
@@ -170,7 +170,7 @@ script:
     - mvn -B apache-rat:check
     # Output something every 10 minutes or Travis kills the job
     - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-    - mvn -B clean test integration-test
+    - mvn -B clean test integration-test -pl '!site' -am
     # Killing background sleep loop
     - kill %1
 
