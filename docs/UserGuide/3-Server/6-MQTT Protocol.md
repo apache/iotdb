@@ -39,8 +39,8 @@ The MQTT topic is corresponding to IoTDB timeseries. The following is an MQTT me
 {
 "device":"root.sg.d1",
 "timestamp":1586076045524,
-"measurements":"s1",
-"values":0.530635
+"measurements":["s1", "s2"],
+"values":[0.530635, 0.120328]
 }
 ```
 
@@ -77,8 +77,8 @@ The following is an example which a mqtt client send messages to IoTDB server.
             String payload = String.format("{\n" +
                     "\"device\":\"root.sg.d1\",\n" +
                     "\"timestamp\":%d,\n" +
-                    "\"measurements\":\"s1\"\n" +
-                    "\"values\":%f,\n" +
+                    "\"measurements\":[\"s1\"],\n" +
+                    "\"values\":[%f]\n" +
                     "}", System.currentTimeMillis(), random.nextDouble());
 
             connection.publish("root.sg.d1.s1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);

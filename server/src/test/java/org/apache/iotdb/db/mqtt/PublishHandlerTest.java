@@ -42,8 +42,8 @@ public class PublishHandlerTest {
         String payload = "{\n" +
                 "\"device\":\"root.sg.d1\",\n" +
                 "\"timestamp\":1586076045524,\n" +
-                "\"measurements\":\"s1\",\n" +
-                "\"values\":0.530635\n" +
+                "\"measurements\":[\"s1\"],\n" +
+                "\"values\":[0.530635]\n" +
                 "}";
 
         ByteBuf buf = Unpooled.copiedBuffer(payload, StandardCharsets.UTF_8);

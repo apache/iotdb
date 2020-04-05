@@ -38,8 +38,8 @@ public class MQTTClient {
             String payload = String.format("{\n" +
                     "\"device\":\"root.sg.d1\",\n" +
                     "\"timestamp\":%d,\n" +
-                    "\"measurements\":\"s1\",\n" +
-                    "\"values\":%f\n" +
+                    "\"measurements\":[\"s1\"],\n" +
+                    "\"values\":[%f]\n" +
                     "}", System.currentTimeMillis(), random.nextDouble());
 
             connection.publish("root.sg.d1.s1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
