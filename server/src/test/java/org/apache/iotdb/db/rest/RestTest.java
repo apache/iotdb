@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.rest;
 
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import java.io.File;
 import java.io.FileInputStream;
@@ -54,14 +53,11 @@ public class RestTest {
   private static final String INSERT_URI
       = "http://localhost:8181/rest/insert";
 
-  private static final String METRICS1
-      = "http://localhost:8181/rest/sql_arguments";
-
-  private static final String METRICS2
+  private static final String SERVER_INFORMATION_URL
       = "http://localhost:8181/rest/server_information";
 
-  private static final String METRICS3
-      = "http://127.0.0.1:8181/rest/version";
+  private static final String VERSION_URL
+      = "http://localhost:8181/rest/version";
 
   @Before
   public void setUp() throws Exception {
@@ -110,11 +106,30 @@ public class RestTest {
     //query
     String file4 = RestTest.class.getClassLoader().getResource("query.json").getFile();
     String json4 = readToString(file4);
-    Response response = client.target(QUERY_URI)
+    Response response4 = client.target(QUERY_URI)
         .request(MediaType.APPLICATION_JSON).header("Authorization", "Basic " + encodedUserPassword)
         .post(Entity.entity(JSONObject.parse(json4), MediaType.APPLICATION_JSON));
-    String result4 = response.readEntity(String.class);
+    String result4 = response4.readEntity(String.class);
     Assert.assertEquals("[{\"datapoints\":[[1,\"1.1\"],[2,\"2.2\"],[3,\"3.3\"],[4,\"4.4\"],[5,\"5.5\"]],\"target\":\"root.ln.wf01.wt01.temperature\"}]", result4);
+
+    Response response5 = client.target(VERSION_URL).request(MediaType.TEXT_PLAIN).get();
+    String result = response5.readEntity(String.class);
+    Assert.assertEquals(IoTDBConstant.VERSION, result);
+
+    Response response6 = client.target(SERVER_INFORMATION_URL).request(MediaType.APPLICATION_JSON).get();
+    String result6 = response6.readEntity(String.class);
+    JSONObject serverInfo = (JSONObject) JSONObject.parse(result6);
+    if((int) serverInfo.get("cpu_ratio") < 0 ||
+        (int) serverInfo.get("cores") < 0 ||
+        (int) serverInfo.get("total_memory") < 0 ||
+        (int) serverInfo.get("port") < 0 ||
+        Integer.parseInt((String) serverInfo.get("totalPhysical_memory")) < 0 ||
+        (int) serverInfo.get("free_memory") < 0 ||
+        Integer.parseInt((String) serverInfo.get("freePhysical_memory")) < 0 ||
+        Integer.parseInt((String) serverInfo.get("usedPhysical_memory")) < 0 ||
+        (int) serverInfo.get("max_memory") < 0) {
+      Assert.fail();
+    }
   }
 
   private static String readToString(String fileName) {
@@ -135,56 +150,6 @@ public class RestTest {
       System.err.println("The OS does not support " + encoding);
       e.printStackTrace();
       return null;
-    }
-  }
-
-  @Test
-  public void testVersion() {
-    Response response = client.target(METRICS3).request(MediaType.TEXT_PLAIN).get();
-    String result = response.readEntity(String.class);
-    Assert.assertEquals(IoTDBConstant.VERSION, result);
-  }
-
-  @Test
-  public void testSql() {
-    Response response1 = client.target(METRICS1).request(MediaType.APPLICATION_JSON).get();
-    String result1 = response1.readEntity(String.class);
-    System.out.println(result1);
-    JSONArray sqlArray = (JSONArray) JSONArray.parse(result1);
-    JSONObject sql = sqlArray.getJSONObject(0);
-    Assert.assertEquals("[root.vehicle.d0.s0, "
-        + "root.vehicle.d0.s1, "
-        + "root.vehicle.d0.s2, "
-        + "root.vehicle.d0.s3, "
-        + "root.vehicle.d0.s4, "
-        + "root.ln.wf01.wt01.status, "
-        + "root.ln.wf01.wt01.temperature, "
-        + "root.ln.wf01.wt01.hardware]", sql.get("path"));
-    Assert.assertEquals("RawDataQueryPlan", sql.get("physicalPlan"));
-    if ((int) sql.get("time") < 0) {
-      Assert.fail();
-    }
-    Assert.assertEquals("QUERY", sql.get("operatorType"));
-    Assert.assertEquals("select * from root", sql.get("sql"));
-    Assert.assertEquals("FINISHED", sql.get("status"));
-  }
-
-  @Test
-  public void testServerInfo() {
-    Response response2 = client.target(METRICS2).request(MediaType.APPLICATION_JSON).get();
-    String result2 = response2.readEntity(String.class);
-    System.out.println(result2);
-    JSONObject serverInfo = (JSONObject) JSONObject.parse(result2);
-    if((int) serverInfo.get("cpu_ratio") < 0 ||
-        (int) serverInfo.get("cores") < 0 ||
-        (int) serverInfo.get("total_memory") < 0 ||
-        (int) serverInfo.get("port") < 0 ||
-        Integer.parseInt((String) serverInfo.get("totalPhysical_memory")) < 0 ||
-        (int) serverInfo.get("free_memory") < 0 ||
-        Integer.parseInt((String) serverInfo.get("freePhysical_memory")) < 0 ||
-        Integer.parseInt((String) serverInfo.get("usedPhysical_memory")) < 0 ||
-        (int) serverInfo.get("max_memory") < 0) {
-      Assert.fail();
     }
   }
 }
