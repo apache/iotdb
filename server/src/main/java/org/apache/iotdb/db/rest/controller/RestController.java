@@ -25,16 +25,22 @@ import static org.apache.iotdb.db.rest.constant.RestConstant.DATA_TYPE;
 import static org.apache.iotdb.db.rest.constant.RestConstant.DEVICE_ID;
 import static org.apache.iotdb.db.rest.constant.RestConstant.ENCODING;
 import static org.apache.iotdb.db.rest.constant.RestConstant.FAIL;
+import static org.apache.iotdb.db.rest.constant.RestConstant.FROM;
 import static org.apache.iotdb.db.rest.constant.RestConstant.INSERT;
 import static org.apache.iotdb.db.rest.constant.RestConstant.MEASUREMENTS;
 import static org.apache.iotdb.db.rest.constant.RestConstant.NO_TARGET;
+import static org.apache.iotdb.db.rest.constant.RestConstant.RANGE;
 import static org.apache.iotdb.db.rest.constant.RestConstant.REQUEST_NULL;
 import static org.apache.iotdb.db.rest.constant.RestConstant.SET_STORAGE_GROUP;
 import static org.apache.iotdb.db.rest.constant.RestConstant.SUCCESS;
+import static org.apache.iotdb.db.rest.constant.RestConstant.TABLE;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TARGET;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TARGETS;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TIME;
+import static org.apache.iotdb.db.rest.constant.RestConstant.TIMESERIE;
+import static org.apache.iotdb.db.rest.constant.RestConstant.TO;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TYPE;
+import static org.apache.iotdb.db.rest.constant.RestConstant.UNCOMPRESSED;
 import static org.apache.iotdb.db.rest.constant.RestConstant.VALUES;
 import static org.apache.iotdb.db.rest.constant.RestConstant.WRONG_TYPE;
 
@@ -92,8 +98,8 @@ public class RestController {
       jsonArray.add(REQUEST_NULL);
       return jsonArray;
     }
-    JSONObject range = (JSONObject) jsonObject.get("range");
-    Pair<String, String> timeRange = new Pair<>((String) range.get("from"), (String) range.get("to"));
+    JSONObject range = (JSONObject) jsonObject.get(RANGE);
+    Pair<String, String> timeRange = new Pair<>((String) range.get(FROM), (String) range.get(TO));
     JSONArray array = (JSONArray) jsonObject.get(TARGETS); // metricsJson array is []
     JSONArray result = new JSONArray();
     for (int i = 0; i < array.size(); i++) {
@@ -106,13 +112,13 @@ public class RestController {
       String type = restService.getJsonType(jsonObject);
       JSONObject obj = new JSONObject();
       obj.put(TARGET, timeseries);
-      if (type.equals("table")) {
+      if (type.equals(TABLE)) {
         try {
           restService.setJsonTable(obj, timeseries, timeRange);
         } catch (Exception e) {
           result.add(i, timeseries + COLON + e.getMessage());
         }
-      } else if (type.equals("timeserie")) {
+      } else if (type.equals(TIMESERIE)) {
         try {
           restService.setJsonTimeseries(obj, timeseries, timeRange);
         } catch (Exception e) {
@@ -140,15 +146,12 @@ public class RestController {
     JSONArray result = new JSONArray();
     for (Object o : array) {
       JSONObject object = (JSONObject) o;
-      if (!object.containsKey(TARGET)) {
-        result.add(NO_TARGET);
-      }
       String deviceID = (String) object.get(DEVICE_ID);
       JSONArray measurements = (JSONArray) object.get(MEASUREMENTS);
-      String time = (String) object.get(TIME);
+      Integer time = (Integer) object.get(TIME);
       JSONArray values  = (JSONArray) object.get(VALUES);
       try {
-        if (restService.insert(deviceID, Long.parseLong(time), getList(measurements), getList(values))) {
+        if (restService.insert(deviceID, time, getList(measurements), getList(values))) {
           result.add(deviceID + COLON + SUCCESS);
         } else {
           result.add(deviceID + COLON + FAIL);
@@ -183,6 +186,9 @@ public class RestController {
       String dataType = (String) object.get(DATA_TYPE);
       String encoding = (String) object.get(ENCODING);
       String compressor = (String) object.get(COMPRESSOR);
+      if(compressor == null) {
+        compressor = UNCOMPRESSED;
+      }
       try {
         if (restService.createTimeSeries(timeseries, dataType, encoding, compressor)) {
           result.add(timeseries + COLON + SUCCESS);
@@ -230,8 +236,8 @@ public class RestController {
    */
   private List<String> getList(JSONArray jsonArray) {
     List<String> list = new ArrayList<>();
-    for (int i = 0; i <= jsonArray.size(); i++) {
-      list.add((String) jsonArray.get(i));
+    for (Object o : jsonArray) {
+      list.add((String) o);
     }
     return list;
   }

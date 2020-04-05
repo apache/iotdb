@@ -2,29 +2,18 @@
   "type" : "createTimeSeries",
   "targets" : [
     {
-      "target": "root.vehicle.d0.s0",
-      "datatype": "INT32",
-      "encoding": "RLE",
-      "compressor": "UNCOMPRESSED"
-    },
-    {
-      "target": "root.vehicle.d0.s1",
-      "datatype": "INT64",
-      "encoding": "RLE"
-    },
-    {
-      "target": "root.vehicle.d0.s2",
-      "datatype": "FLOAT",
-      "encoding": "RLE"
-    },
-    {
-      "target": "root.vehicle.d0.s3",
-      "datatype": "TEXT",
+      "target": "root.ln.wf01.wt01.status",
+      "datatype": "BOOLEAN",
       "encoding": "PLAIN"
     },
     {
-      "target": "root.vehicle.d0.s4",
-      "datatype": "BOOLEAN",
+      "target": "root.ln.wf01.wt01.temperature",
+      "datatype": "FLOAT",
+      "encoding": "PLAIN"
+    },
+    {
+      "target": "root.ln.wf01.wt01.hardware",
+      "datatype": "INT32",
       "encoding": "PLAIN"
     }
   ]

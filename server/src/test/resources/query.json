@@ -1,0 +1,13 @@
+{
+  "range": {
+    "from": "0",
+    "to": "6"
+  },
+  "targets": [
+    {
+    "target": "root.ln.wf01.wt01.temperature",
+    "type": "timeserie"
+    }
+  ]
+}
+

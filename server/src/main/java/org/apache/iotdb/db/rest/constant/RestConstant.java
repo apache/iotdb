@@ -41,4 +41,16 @@ public class RestConstant {
   public static final String INSERT = "insert";
 
   public static final String VALUES = "values";
+
+  public static final String UNCOMPRESSED = "UNCOMPRESSED";
+
+  public static final String RANGE = "range";
+
+  public static final String FROM = "from";
+
+  public static final String TO = "to";
+
+  public static final String TABLE = "table";
+
+  public static final String TIMESERIE = "timeserie";
 }

@@ -92,7 +92,7 @@ public class MetricsSystem {
 
     metricRegistry.register(MetricRegistry.name(sourceName, USED_PHYSICAL_MEMORY),
         (Gauge<Long>) () -> serverArgument.getUsedPhysicalMemory());
-    return (JSONObject) JSON.parse(om.writeValueAsString(metricRegistry));
+    return (JSONObject) JSONObject.parse(om.writeValueAsString(metricRegistry));
   }
 
   public JSONObject serverJson() {

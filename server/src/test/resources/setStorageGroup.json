@@ -1,7 +1,6 @@
 {
   "type" : "setStorageGroup",
   "targets" : [
-    "root.vehicle.d0",
-    "root.vehicle.d1"
+    "root.ln.wf01.wt01"
   ]
 }

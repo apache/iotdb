@@ -20,21 +20,19 @@ package org.apache.iotdb.db.rest;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.Base64;
-import java.util.Locale;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -44,8 +42,17 @@ public class RestTest {
 
   private Client client = ClientBuilder.newClient();
 
-  private static final String REST_URI
+  private static final String QUERY_URI
       = "http://localhost:8181/rest/query";
+
+  private static final String SET_STORAGE_GROUP_URI
+      = "http://localhost:8181/rest/setStorageGroup";
+
+  private static final String CREATE_TIME_SERIES_URI
+      = "http://localhost:8181/rest/createTimeSeries";
+
+  private static final String INSERT_URI
+      = "http://localhost:8181/rest/insert";
 
   private static final String METRICS1
       = "http://localhost:8181/rest/sql_arguments";
@@ -54,130 +61,81 @@ public class RestTest {
       = "http://localhost:8181/rest/server_information";
 
   private static final String METRICS3
-      = "http://localhost:8181/rest/version";
-
-  private static String[] creationSqls = new String[]{
-      "SET STORAGE GROUP TO root.vehicle.d0",
-      "SET STORAGE GROUP TO root.vehicle.d1",
-
-      "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-      "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
-      "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-      "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-      "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN"
-  };
-  private static String[] dataSet2 = new String[]{
-      "SET STORAGE GROUP TO root.ln.wf01.wt01",
-      "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-      "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN",
-      "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
-          + "values(1, 1.1, false, 11)",
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
-          + "values(2, 2.2, true, 22)",
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
-          + "values(3, 3.3, false, 33 )",
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
-          + "values(4, 4.4, false, 44)",
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
-          + "values(5, 5.5, false, 55)"
-  };
+      = "http://127.0.0.1:8181/rest/version";
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.setEnableRestService(true);
     EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
-    Class.forName(Config.JDBC_DRIVER_NAME);
     TSServiceImpl.clearSqlArgumentsList();
-    prepareData();
   }
 
   @After
   public void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
   }
 
-  private void prepareData() {
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-            "root");
-        Statement statement = connection.createStatement()) {
-
-      for (String sql : creationSqls) {
-        statement.execute(sql);
-      }
-
-      for (String sql : dataSet2) {
-        statement.execute(sql);
-      }
-
-      // prepare BufferWrite file
-      String insertTemplate = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)"
-          + " VALUES(%d,%d,%d,%f,%s,%s)";
-      for (int i = 5000; i < 7000; i++) {
-        statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "true"));
-      }
-      statement.execute("flush");
-      for (int i = 7500; i < 8500; i++) {
-        statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
-      }
-      statement.execute("flush");
-      // prepare Unseq-File
-      for (int i = 500; i < 1500; i++) {
-        statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "true"));
-      }
-      statement.execute("flush");
-      for (int i = 3000; i < 6500; i++) {
-        statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
-      }
-      statement.execute("merge");
-
-      // prepare BufferWrite cache
-      for (int i = 9000; i < 10000; i++) {
-        statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "true"));
-      }
-      // prepare Overflow cache
-      for (int i = 2000; i < 2500; i++) {
-        statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
-      }
-
-      statement.execute("select * from root");
-
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
-
   @Test
-  public void testQuery() {
-    String json1 = "{\n"
-        + "  \"range\": {\n"
-        + "    \"from\": \"0\",\n"
-        + "    \"to\": \"300\",\n"
-        + "  },\n"
-        + "  \n"
-        + "  \"targets\": [\n"
-        + "     { \"target\": \"root.ln.wf01.wt01.temperature\", \"type\": \"timeserie\" },\n"
-        + "  ]\n"
-        + "}";
-
+  public void testSQL(){
+    // set storage group
+    String file1 = RestTest.class.getClassLoader().getResource("setStorageGroup.json").getFile();
+    String json1 = readToString(file1);
     String userAndPassword = "root:root";
     String encodedUserPassword = new String(Base64.getEncoder().encode(userAndPassword.getBytes()));
-    Response response = client.target(REST_URI)
+    Response response1 = client.target(SET_STORAGE_GROUP_URI)
         .request(MediaType.APPLICATION_JSON).header("Authorization", "Basic " + encodedUserPassword)
         .post(Entity.entity(JSONObject.parse(json1), MediaType.APPLICATION_JSON));
-    String result = response.readEntity(String.class);
-    Assert.assertEquals("[{\"datapoints\":[[1,\"1.1\"],[2,\"2.2\"],[3,\"3.3\"],[4,\"4.4\"],[5,\"5.5\"]],\"target\":\"root.ln.wf01.wt01.temperature\"}]"
-        , result);
+    String result1 = response1.readEntity(String.class);
+    Assert.assertEquals("[\"root.ln.wf01.wt01:success\"]", result1);
+
+    //create time series
+    String file2 = RestTest.class.getClassLoader().getResource("createTimeSeries.json").getFile();
+    String json2 = readToString(file2);
+    Response response2 = client.target(CREATE_TIME_SERIES_URI)
+        .request(MediaType.APPLICATION_JSON).header("Authorization", "Basic " + encodedUserPassword)
+        .post(Entity.entity(JSONObject.parse(json2), MediaType.APPLICATION_JSON));
+    String result2 = response2.readEntity(String.class);
+    Assert.assertEquals("[\"root.ln.wf01.wt01.status:success\",\"root.ln.wf01.wt01.temperature:success\",\"root.ln.wf01.wt01.hardware:success\"]", result2);
+
+    //insert
+    String file3 = RestTest.class.getClassLoader().getResource("insert.json").getFile();
+    String json3 = readToString(file3);
+    Response response3 = client.target(INSERT_URI)
+        .request(MediaType.APPLICATION_JSON).header("Authorization", "Basic " + encodedUserPassword)
+        .post(Entity.entity(JSONObject.parse(json3), MediaType.APPLICATION_JSON));
+    String result3 = response3.readEntity(String.class);
+    Assert.assertEquals("[\"root.ln.wf01.wt01:success\",\"root.ln.wf01.wt01:success\",\"root.ln.wf01.wt01:success\",\"root.ln.wf01.wt01:success\",\"root.ln.wf01.wt01:success\"]", result3);
+
+    //query
+    String file4 = RestTest.class.getClassLoader().getResource("query.json").getFile();
+    String json4 = readToString(file4);
+    Response response = client.target(QUERY_URI)
+        .request(MediaType.APPLICATION_JSON).header("Authorization", "Basic " + encodedUserPassword)
+        .post(Entity.entity(JSONObject.parse(json4), MediaType.APPLICATION_JSON));
+    String result4 = response.readEntity(String.class);
+    Assert.assertEquals("[{\"datapoints\":[[1,\"1.1\"],[2,\"2.2\"],[3,\"3.3\"],[4,\"4.4\"],[5,\"5.5\"]],\"target\":\"root.ln.wf01.wt01.temperature\"}]", result4);
+  }
+
+  private static String readToString(String fileName) {
+    String encoding = "UTF-8";
+    File file = new File(fileName);
+    long fileLength = file.length();
+    byte[] fileContent = new byte[(int) fileLength];
+    try {
+      FileInputStream in = new FileInputStream(file);
+      in.read(fileContent);
+      in.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    try {
+      return new String(fileContent, encoding);
+    } catch (UnsupportedEncodingException e) {
+      System.err.println("The OS does not support " + encoding);
+      e.printStackTrace();
+      return null;
+    }
   }
 
   @Test
