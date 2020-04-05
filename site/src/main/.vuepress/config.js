@@ -116,8 +116,8 @@ var config = {
 				  {
 					text: 'wiki',
 					items: [
-						{ text: 'github documents', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation'},
-						{ text: 'confluence', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
+						{ text: 'github documents', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation',rel:''},
+						{ text: 'confluence', link: 'https://cwiki.apache.org/confluence/display/iotdb',rel:''},
 					  ]
 				  },
 			],
@@ -531,8 +531,8 @@ var config = {
 				  {
 					text: 'wiki',
 					items: [
-						{ text: 'github文档', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation'},
-						{ text: 'confluence', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
+						{ text: 'github文档', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation',rel:''},
+						{ text: 'confluence', link: 'https://cwiki.apache.org/confluence/display/iotdb',rel:''},
 					  ]
 				  },
 			],
