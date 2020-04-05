@@ -17,7 +17,6 @@
  */
 package org.apache.iotdb.db.mqtt;
 
-import com.alibaba.fastjson.JSON;
 import io.moquette.interception.messages.InterceptPublishMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -27,8 +26,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -42,12 +39,13 @@ public class PublishHandlerTest {
         PayloadFormatter payloadFormat = PayloadFormatManager.getPayloadFormat("json");
         PublishHandler handler = new PublishHandler(executor, payloadFormat);
 
-        Map<String,Object> tuple = new HashMap();
-        tuple.put("device", "root.sg.d1");
-        tuple.put("timestamp", System.currentTimeMillis());
-        tuple.put("measurements", "s1");
-        tuple.put("values", 36.51D);
-        String payload = JSON.toJSONString(tuple);
+        String payload = "{\n" +
+                "\"device\":\"root.sg.d1\",\n" +
+                "\"timestamp\":1586076045524,\n" +
+                "\"measurements\":\"s1\",\n" +
+                "\"values\":0.530635\n" +
+                "}";
+
         ByteBuf buf = Unpooled.copiedBuffer(payload, StandardCharsets.UTF_8);
 
         MqttPublishVariableHeader variableHeader = new MqttPublishVariableHeader("root.sg.d1", 1);

@@ -34,6 +34,15 @@ IoTDB server includes a built-in MQTT service that allows remote devices send me
 The Built-in MQTT Service provide the ability of direct connection to IoTDB through MQTT. It listen the publish messages from MQTT clients
  and then write the data into storage immediately. 
 The messages payload can be format to events by `PayloadFormatter` which loaded by java SPI, and the default implementation is `JSONPayloadFormatter`.
+The MQTT topic is corresponding to IoTDB timeseries. The following is an MQTT message payload example:
+```json
+{
+"device":"root.sg.d1",
+"timestamp":1586076045524,
+"measurements":"s1",
+"values":0.530635
+}
+```
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
 
@@ -65,13 +74,13 @@ The following is an example which a mqtt client send messages to IoTDB server.
 
         Random random = new Random();
         for (int i = 0; i < 10; i++) {
-            Map<String,Object> tuple = new HashMap();
-            tuple.put("device", "root.sg.d1");
-            tuple.put("timestamp", System.currentTimeMillis());
-            tuple.put("measurements", "s1");
-            tuple.put("values", random.nextDouble());
+            String payload = String.format("{\n" +
+                    "\"device\":\"root.sg.d1\",\n" +
+                    "\"timestamp\":%d,\n" +
+                    "\"measurements\":\"s1\"\n" +
+                    "\"values\":%f,\n" +
+                    "}", System.currentTimeMillis(), random.nextDouble());
 
-            String payload = JSON.toJSONString(tuple);
             connection.publish("root.sg.d1.s1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
 
             Thread.sleep(1000);

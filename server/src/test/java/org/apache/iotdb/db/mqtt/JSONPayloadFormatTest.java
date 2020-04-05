@@ -17,35 +17,32 @@
  */
 package org.apache.iotdb.db.mqtt;
 
-import com.alibaba.fastjson.JSON;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class JSONPayloadFormatTest {
 
     @Test
     public void format() {
-        Map<String,Object> tuple = new HashMap();
-        tuple.put("device", "root.sg.d1");
-        tuple.put("timestamp", System.currentTimeMillis());
-        tuple.put("measurements", "s1");
-        tuple.put("values", 36.51D);
-        String payload = JSON.toJSONString(tuple);
+        String payload = "{\n" +
+                "\"device\":\"root.sg.d1\",\n" +
+                "\"timestamp\":1586076045524,\n" +
+                "\"measurements\":\"s1\",\n" +
+                "\"values\":0.530635\n" +
+                "}";
         ByteBuf buf = Unpooled.copiedBuffer(payload, StandardCharsets.UTF_8);
 
         JSONPayloadFormatter formatter = new JSONPayloadFormatter();
         Message message = formatter.format(buf);
 
-        assertEquals(tuple.get("device"), message.getDevice());
-        assertEquals(tuple.get("timestamp"), message.getTimestamp());
-        assertEquals(tuple.get("measurements"), message.getMeasurements().get(0));
-        assertEquals(tuple.get("values"), Double.parseDouble(message.getValues().get(0)));
+        assertEquals("root.sg.d1", message.getDevice());
+        assertEquals(Long.valueOf(1586076045524L), message.getTimestamp());
+        assertEquals("s1", message.getMeasurements().get(0));
+        assertEquals(0.530635D, Double.parseDouble(message.getValues().get(0)), 0);
     }
 }

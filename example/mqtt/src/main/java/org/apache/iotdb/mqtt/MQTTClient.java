@@ -17,13 +17,10 @@
  */
 package org.apache.iotdb.mqtt;
 
-import com.alibaba.fastjson.JSON;
 import org.fusesource.mqtt.client.BlockingConnection;
 import org.fusesource.mqtt.client.MQTT;
 import org.fusesource.mqtt.client.QoS;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 
 public class MQTTClient {
@@ -38,13 +35,13 @@ public class MQTTClient {
 
         Random random = new Random();
         for (int i = 0; i < 10; i++) {
-            Map<String,Object> tuple = new HashMap();
-            tuple.put("device", "root.sg.d1");
-            tuple.put("timestamp", System.currentTimeMillis());
-            tuple.put("measurements", "s1");
-            tuple.put("values", random.nextDouble());
+            String payload = String.format("{\n" +
+                    "\"device\":\"root.sg.d1\",\n" +
+                    "\"timestamp\":%d,\n" +
+                    "\"measurements\":\"s1\",\n" +
+                    "\"values\":%f\n" +
+                    "}", System.currentTimeMillis(), random.nextDouble());
 
-            String payload = JSON.toJSONString(tuple);
             connection.publish("root.sg.d1.s1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
 
             Thread.sleep(1000);
