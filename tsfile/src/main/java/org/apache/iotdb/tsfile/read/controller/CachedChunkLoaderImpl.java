@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import java.io.IOException;
 
 /**
- * Read one Chunk and cache it into a LRUCache.
+ * Read one Chunk and cache it into a LRUCache, only used in tsfile module.
  */
 public class CachedChunkLoaderImpl implements IChunkLoader {
 
@@ -59,7 +59,7 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
   }
 
   @Override
-  public Chunk getChunk(ChunkMetadata chunkMetaData) throws IOException {
+  public Chunk loadChunk(ChunkMetadata chunkMetaData) throws IOException {
     Chunk chunk = chunkCache.get(chunkMetaData);
     return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
   }

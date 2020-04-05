@@ -446,6 +446,7 @@ var config = {
 							'5-DataQuery/5-GroupByQuery',
 							'5-DataQuery/6-LastQuery',
 							'5-DataQuery/7-AlignByDeviceQuery',
+							'5-DataQuery/8-ModificationHandle',
 						]
 					},
 					{
@@ -508,7 +509,7 @@ var config = {
 					]
 				  },
 				  {
-					text: '发展',
+					text: '开发',
 					items: [
 					  { text: '如何投票', link: '/zh/Development/VoteRelease'},
 					  { text: '开发指南', link: '/zh/Development/ContributeGuide'},
@@ -860,6 +861,7 @@ var config = {
 							'5-DataQuery/5-GroupByQuery',
 							'5-DataQuery/6-LastQuery',
 							'5-DataQuery/7-AlignByDeviceQuery',
+							'5-DataQuery/8-ModificationHandle',
 						]
 					},
 					{

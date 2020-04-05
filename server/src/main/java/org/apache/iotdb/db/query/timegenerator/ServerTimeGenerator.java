@@ -78,6 +78,6 @@ public class ServerTimeGenerator extends TimeGenerator {
       throw new IOException(e);
     }
 
-    return new SeriesRawDataBatchReader(path, queryPlan.getAllSensorsInDevice(path.getDevice()), dataType, context, queryDataSource, null, filter, null);
+    return new SeriesRawDataBatchReader(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context, queryDataSource, null, filter, null);
   }
 }

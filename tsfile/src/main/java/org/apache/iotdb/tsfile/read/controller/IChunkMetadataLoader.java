@@ -28,6 +28,6 @@ public interface IChunkMetadataLoader {
   /**
    * read all chunk metadata of one time series in one file.
    */
-  List<ChunkMetadata> getChunkMetadataList() throws IOException;
+  List<ChunkMetadata> loadChunkMetadataList() throws IOException;
 
 }

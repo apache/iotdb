@@ -113,7 +113,7 @@ public class TimeseriesMetadata {
     this.chunkMetadataLoader = chunkMetadataLoader;
   }
 
-  public List<ChunkMetadata> getChunkMetadataList() throws IOException {
-    return chunkMetadataLoader.getChunkMetadataList();
+  public List<ChunkMetadata> loadChunkMetadataList() throws IOException {
+    return chunkMetadataLoader.loadChunkMetadataList();
   }
 }

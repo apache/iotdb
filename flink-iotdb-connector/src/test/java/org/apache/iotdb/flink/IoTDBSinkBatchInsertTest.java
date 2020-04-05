@@ -19,7 +19,7 @@
 package org.apache.iotdb.flink;
 
 import com.google.common.collect.Lists;
-import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -33,7 +33,7 @@ import static org.mockito.Mockito.*;
 public class IoTDBSinkBatchInsertTest {
 
     private IoTDBSink ioTDBSink;
-    private Session session;
+    private SessionPool pool;
 
     @Before
     public void setUp() throws Exception {
@@ -42,8 +42,8 @@ public class IoTDBSinkBatchInsertTest {
         ioTDBSink = new IoTDBSink(options, new DefaultIoTSerializationSchema());
         ioTDBSink.withBatchSize(3);
 
-        session = mock(Session.class);
-        ioTDBSink.setSession(session);
+        pool = mock(SessionPool.class);
+        ioTDBSink.setSessionPool(pool);
     }
 
     @Test
@@ -55,7 +55,7 @@ public class IoTDBSinkBatchInsertTest {
         tuple.put("values", "36.5");
         ioTDBSink.invoke(tuple, null);
 
-        verifyZeroInteractions(session);
+        verifyZeroInteractions(pool);
 
         tuple = new HashMap();
         tuple.put("device", "root.sg.D01");
@@ -64,7 +64,7 @@ public class IoTDBSinkBatchInsertTest {
         tuple.put("values", "37.2");
         ioTDBSink.invoke(tuple, null);
 
-        verifyZeroInteractions(session);
+        verifyZeroInteractions(pool);
 
         tuple = new HashMap();
         tuple.put("device", "root.sg.D01");
@@ -73,7 +73,7 @@ public class IoTDBSinkBatchInsertTest {
         tuple.put("values", "37.1");
         ioTDBSink.invoke(tuple, null);
 
-        verify(session).insertInBatch(any(List.class), any(List.class), any(List.class), any(List.class));
+        verify(pool).insertInBatch(any(List.class), any(List.class), any(List.class), any(List.class));
 
         tuple = new HashMap();
         tuple.put("device", "root.sg.D01");
@@ -82,7 +82,7 @@ public class IoTDBSinkBatchInsertTest {
         tuple.put("values", "36.5");
         ioTDBSink.invoke(tuple, null);
 
-        verifyZeroInteractions(session);
+        verifyZeroInteractions(pool);
     }
 
     @Test
@@ -93,10 +93,10 @@ public class IoTDBSinkBatchInsertTest {
         tuple.put("measurements", "temperature");
         tuple.put("values", "36.5");
         ioTDBSink.invoke(tuple, null);
-        verifyZeroInteractions(session);
+        verifyZeroInteractions(pool);
 
         ioTDBSink.close();
-        verify(session).insertInBatch(any(List.class), any(List.class), any(List.class), any(List.class));
-        verify(session).close();
+        verify(pool).insertInBatch(any(List.class), any(List.class), any(List.class), any(List.class));
+        verify(pool).close();
     }
 }
