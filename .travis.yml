@@ -139,8 +139,9 @@ matrix:
       jdk: openjdk8
       script:
         # now, grafana has no tests; spark-* tests are written by scala
-        - mvn post-integration-test -Pcode-coverage  -pl '!distribution' -am
-        - mvn coveralls:report -Dservice_name=travis_ci -pl '!grafana','!spark-iotdb-connector','!spark-tsfile','!distribution','!site'
+        - mvn post-integration-test -Pcode-coverage -Pcoveralls
+        - mvn coveralls:report -Dservice_name=travis_ci -pl '!grafana','!spark-iotdb-connector','!spark-tsfile','!distribution','!site' -am
+        #-  mvn coveralls:report -Dservice_name=travis_ci -Pcoveralls
     - os: linux
       name: website checker
       dist: xenial
