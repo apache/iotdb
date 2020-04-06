@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log;
 
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -206,10 +207,10 @@ public class UnCommittedEntryManagerTest {
   @Test
   public void applyingSnapshot() {
     class UnCommittedEntryManagerTester extends UnCommitEntryManagerTesterBase {
-      public RaftSnapshot snapshot;
+      public Snapshot snapshot;
       public long testOffset;
 
-      public UnCommittedEntryManagerTester(List<Log> entries, long offset, RaftSnapshot snapshot, long testOffset) {
+      public UnCommittedEntryManagerTester(List<Log> entries, long offset, Snapshot snapshot, long testOffset) {
         super(entries, offset);
         this.snapshot = snapshot;
         this.testOffset = testOffset;
@@ -217,11 +218,11 @@ public class UnCommittedEntryManagerTest {
     }
     List<UnCommittedEntryManagerTester> tests = new ArrayList<UnCommittedEntryManagerTester>() {{
       // empty entries
-      add(new UnCommittedEntryManagerTester(new ArrayList<>(), 5, new RaftSnapshot(new SnapshotMeta(6, 6)), 7));
+      add(new UnCommittedEntryManagerTester(new ArrayList<>(), 5, new SimpleSnapshot(6, 6), 7));
       // normal case
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
         add(new PhysicalPlanLog(5, 1));
-      }}, 5, new RaftSnapshot(new SnapshotMeta(20, 20)), 21));
+      }}, 5, new SimpleSnapshot(20, 20), 21));
     }};
     for (UnCommittedEntryManagerTester test : tests) {
       UnCommittedEntryManager instance = new UnCommittedEntryManager(test.offset, test.entries);

@@ -112,8 +112,8 @@ public class UnCommittedEntryManager {
      *
      * @param snapshot leader's snapshot
      */
-    public void applyingSnapshot(RaftSnapshot snapshot) {
-        this.offset = snapshot.getLastIndex() + 1;
+    public void applyingSnapshot(Snapshot snapshot) {
+        this.offset = snapshot.getLastLogIndex() + 1;
         this.entries.clear();
     }
 

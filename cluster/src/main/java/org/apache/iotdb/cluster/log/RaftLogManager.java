@@ -217,18 +217,18 @@ public class RaftLogManager {
      *
      * @param snapshot leader's snapshot
      */
-    public void applyingSnapshot(RaftSnapshot snapshot) {
-        logger.info("log module starts to restore snapshot [index: {}, term: {}]", snapshot.getLastIndex(), snapshot.getLastTerm());
+    public void applyingSnapshot(Snapshot snapshot) {
+        logger.info("log module starts to restore snapshot [index: {}, term: {}]", snapshot.getLastLogIndex(), snapshot.getLastLogTerm());
         try {
-            committedEntryManager.compactEntries(snapshot.getLastIndex());
-            stableEntryManager.removeCompactedEntries(snapshot.getLastIndex());
+            committedEntryManager.compactEntries(snapshot.getLastLogIndex());
+            stableEntryManager.removeCompactedEntries(snapshot.getLastLogIndex());
         } catch (EntryUnavailableException e) {
             committedEntryManager.applyingSnapshot(snapshot);
             unCommittedEntryManager.applyingSnapshot(snapshot);
             stableEntryManager.applyingSnapshot(snapshot);
         }
-        if (this.committed < snapshot.getLastIndex()) {
-            this.committed = snapshot.getLastIndex();
+        if (this.committed < snapshot.getLastLogIndex()) {
+            this.committed = snapshot.getLastLogIndex();
         }
     }
 

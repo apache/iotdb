@@ -71,15 +71,15 @@ public class CommittedEntryManager {
      *
      * @param snapshot snapshot
      */
-    public void applyingSnapshot(RaftSnapshot snapshot) {
+    public void applyingSnapshot(Snapshot snapshot) {
         long localIndex = getDummyIndex();
-        long snapIndex = snapshot.getLastIndex();
+        long snapIndex = snapshot.getLastLogIndex();
         if (localIndex >= snapIndex) {
             logger.info("requested snapshot is older than the existing snapshot");
             return;
         }
         entries.clear();
-        entries.add(new PhysicalPlanLog(snapshot.getLastIndex(), snapshot.getLastTerm()));
+        entries.add(new PhysicalPlanLog(snapshot.getLastLogIndex(), snapshot.getLastLogTerm()));
     }
 
     /**

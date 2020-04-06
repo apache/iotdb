@@ -23,6 +23,7 @@ import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -51,7 +52,7 @@ public class RaftLogManagerTest {
 		long half = offset + num / 2;
 		long last = offset + num;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
-		committedEntryManager.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(offset, offset)));
+		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
 		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager());
 		for (long i = 1; i < num; i++) {
 			long index = i;
@@ -86,11 +87,11 @@ public class RaftLogManagerTest {
 	public void getFirstIndex() {
 		long offset = 100;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
-		committedEntryManager.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(offset, offset)));
+		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
 		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager());
 		assertEquals(offset + 1, instance.getFirstIndex());
 		long newOffset = offset + 20;
-		committedEntryManager.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(newOffset, newOffset)));
+		committedEntryManager.applyingSnapshot(new SimpleSnapshot(newOffset, newOffset));
 		assertEquals(newOffset + 1, instance.getFirstIndex());
 	}
 
@@ -99,7 +100,7 @@ public class RaftLogManagerTest {
 		long offset = 100;
 		long num = 100;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
-		committedEntryManager.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(offset, offset)));
+		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
 		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager());
 		for (long i = 1; i < num; i++) {
 			long index = i;
@@ -115,7 +116,7 @@ public class RaftLogManagerTest {
 		long offset = 100;
 		long num = 100;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
-		committedEntryManager.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(offset, offset)));
+		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
 		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager());
 		for (long i = 1; i < num; i++) {
 			long index = i;
@@ -150,7 +151,7 @@ public class RaftLogManagerTest {
 		long half = offset + num / 2;
 		long last = offset + num;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
-		committedEntryManager.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(offset, offset)));
+		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
 		for (long i = 1; i < num / 2; i++) {
 			long index = i;
 			committedEntryManager.append(new ArrayList<Log>() {{
@@ -205,7 +206,7 @@ public class RaftLogManagerTest {
 		long half = offset + num / 2;
 		long last = offset + num;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
-		committedEntryManager.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(offset, offset)));
+		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
 		for (long i = 1; i < num / 2; i++) {
 			long index = i;
 			committedEntryManager.append(new ArrayList<Log>() {{
@@ -252,7 +253,7 @@ public class RaftLogManagerTest {
 		long half = offset + num / 2;
 		long last = offset + num;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
-		committedEntryManager.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(offset, offset)));
+		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
 		for (long i = 1; i < num / 2; i++) {
 			long index = i;
 			committedEntryManager.append(new ArrayList<Log>() {{
@@ -353,7 +354,7 @@ public class RaftLogManagerTest {
 		}};
 		for (RaftLogManagerTester test : tests) {
 			CommittedEntryManager committedEntryManager = new CommittedEntryManager();
-			committedEntryManager.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(0, 0)));
+			committedEntryManager.applyingSnapshot(new SimpleSnapshot(0, 0));
 			RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager());
 			instance.append(previousEntries);
 			instance.setCommitIndex(commit);
@@ -418,7 +419,7 @@ public class RaftLogManagerTest {
 		}};
 		for (RaftLogManagerTester test : tests) {
 			CommittedEntryManager committedEntryManager = new CommittedEntryManager();
-			committedEntryManager.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(0, 0)));
+			committedEntryManager.applyingSnapshot(new SimpleSnapshot(0, 0));
 			committedEntryManager.append(previousEntries);
 			RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager());
 			instance.append(test.appendingEntries);
@@ -450,7 +451,7 @@ public class RaftLogManagerTest {
 		long half = offset + num / 2;
 		long last = offset + num;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
-		committedEntryManager.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(offset, offset)));
+		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
 		for (long i = 1; i < num / 2; i++) {
 			long index = i;
 			committedEntryManager.append(new ArrayList<Log>() {{
@@ -494,9 +495,9 @@ public class RaftLogManagerTest {
 		long index = 100;
 		long term = 100;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
-		committedEntryManager.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(index, term)));
+		committedEntryManager.applyingSnapshot(new SimpleSnapshot(index, term));
 		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager());
-		instance.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(index, term)));
+		instance.applyingSnapshot(new SimpleSnapshot(index, term));
 		assertEquals(instance.getLastIndex(), term);
 		List<Log> entries = new ArrayList<>();
 		for (int i = 1; i <= 10; i++) {
@@ -511,12 +512,12 @@ public class RaftLogManagerTest {
 		assertEquals(6, instance.committedEntryManager.getAllEntries().size());
 		assertEquals(5, instance.unCommittedEntryManager.getAllEntries().size());
 		assertEquals(105, instance.getCommitIndex());
-		instance.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(103, 103)));
+		instance.applyingSnapshot(new SimpleSnapshot(103, 103));
 		assertEquals(104, instance.getFirstIndex());
 		assertEquals(3, instance.committedEntryManager.getAllEntries().size());
 		assertEquals(5, instance.unCommittedEntryManager.getAllEntries().size());
 		assertEquals(105, instance.getCommitIndex());
-		instance.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(108, 108)));
+		instance.applyingSnapshot(new SimpleSnapshot(108, 108));
 		assertEquals(109, instance.getFirstIndex());
 		assertEquals(1, instance.committedEntryManager.getAllEntries().size());
 		assertEquals(0, instance.unCommittedEntryManager.getAllEntries().size());
@@ -543,7 +544,7 @@ public class RaftLogManagerTest {
 		long half = offset + num / 2;
 		long last = offset + num;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
-		committedEntryManager.applyingSnapshot(new RaftSnapshot(new SnapshotMeta(offset, offset)));
+		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
 		for (long i = 1; i < num / 2; i++) {
 			long index = i;
 			committedEntryManager.append(new ArrayList<Log>() {{

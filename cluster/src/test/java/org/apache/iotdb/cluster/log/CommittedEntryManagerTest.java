@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.log;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -36,11 +37,11 @@ public class CommittedEntryManagerTest {
 	public void applyingSnapshot() {
 		class CommittedEntryManagerTester {
 			public List<Log> entries;
-			public RaftSnapshot snapshot;
-			public RaftSnapshot applyingSnapshot;
+			public Snapshot snapshot;
+			public Snapshot applyingSnapshot;
 			public long testIndex;
 
-			public CommittedEntryManagerTester(List<Log> entries, RaftSnapshot snapshot, RaftSnapshot applyingSnapshot, long testIndex) {
+			public CommittedEntryManagerTester(List<Log> entries, Snapshot snapshot, Snapshot applyingSnapshot, long testIndex) {
 				this.entries = entries;
 				this.snapshot = snapshot;
 				this.applyingSnapshot = applyingSnapshot;
@@ -52,22 +53,22 @@ public class CommittedEntryManagerTest {
 				add(new PhysicalPlanLog(3, 3));
 				add(new PhysicalPlanLog(4, 4));
 				add(new PhysicalPlanLog(5, 5));
-			}}, new RaftSnapshot(new SnapshotMeta(3, 3)), new RaftSnapshot(new SnapshotMeta(3, 3)), 3));
+			}}, new SimpleSnapshot(3, 3), new SimpleSnapshot(3, 3), 3));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
 				add(new PhysicalPlanLog(3, 3));
 				add(new PhysicalPlanLog(4, 4));
 				add(new PhysicalPlanLog(5, 5));
-			}}, new RaftSnapshot(new SnapshotMeta(3, 3)), new RaftSnapshot(new SnapshotMeta(4, 4)), 4));
+			}}, new SimpleSnapshot(3, 3), new SimpleSnapshot(4, 4), 4));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
 				add(new PhysicalPlanLog(3, 3));
 				add(new PhysicalPlanLog(4, 4));
 				add(new PhysicalPlanLog(5, 5));
-			}}, new RaftSnapshot(new SnapshotMeta(3, 3)), new RaftSnapshot(new SnapshotMeta(5, 5)), 5));
+			}}, new SimpleSnapshot(3, 3), new SimpleSnapshot(5, 5), 5));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
 				add(new PhysicalPlanLog(3, 3));
 				add(new PhysicalPlanLog(4, 4));
 				add(new PhysicalPlanLog(5, 5));
-			}}, new RaftSnapshot(new SnapshotMeta(3, 3)), new RaftSnapshot(new SnapshotMeta(7, 7)), 7));
+			}}, new SimpleSnapshot(3, 3), new SimpleSnapshot(7, 7), 7));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
 			CommittedEntryManager instance = new CommittedEntryManager(test.entries);
