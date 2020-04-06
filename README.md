@@ -122,7 +122,7 @@ Then the binary version (including both server and client) can be found at **dis
 configuration files are under "conf" folder
 
   * environment config module (`iotdb-env.bat`, `iotdb-env.sh`),
-  * system config module (`tsfile-format.properties`, `iotdb-engine.properties`)
+  * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`).
 
 For more, see [Chapter3: Server](https://iotdb.apache.org/#/Documents/0.9.x/chap3/sec1) and [Chapter4: Client](https://iotdb.apache.org/#/Documents/0.9.x/chap4/sec1) in detail.

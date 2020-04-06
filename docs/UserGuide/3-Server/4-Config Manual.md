@@ -27,8 +27,7 @@ Before starting to use IoTDB, you need to config the configuration files first. 
 In total, we provide users three kinds of configurations module: 
 
 * environment configuration file (`iotdb-env.bat`, `iotdb-env.sh`). The default configuration file for the environment configuration item. Users can configure the relevant system configuration items of JAVA-JVM in the file.
-* system configuration file (`tsfile-format.properties`, `iotdb-engine.properties`). 
-	* `tsfile-format.properties`: The default configuration file for the IoTDB file layer configuration item. Users can configure the information about the TsFile, such as the data size written to the disk per time(`group_size_in_byte`). 
+* system configuration file (`iotdb-engine.properties`). 
 	* `iotdb-engine.properties`: The default configuration file for the IoTDB engine layer configuration item. Users can configure the IoTDB engine related parameters in the file, such as JDBC service listening port (`rpc_port`), unsequence data storage directory (`unsequence_data_dir`), etc.
 * log configuration file (`logback.xml`)
 

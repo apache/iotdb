@@ -66,7 +66,7 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
 配置文件在"conf"文件夹下，包括：
 
   * 环境配置模块 (`iotdb-env.bat`, `iotdb-env.sh`), 
-  * 系统配置模块 (`tsfile-format.properties`, `iotdb-engine.properties`)
+  * 系统配置模块 (`iotdb-engine.properties`)
   * 日志配置模块 (`logback.xml`). 
 
 想要了解更多，请浏览[Chapter3: Server](../3-Server/1-Download.html)

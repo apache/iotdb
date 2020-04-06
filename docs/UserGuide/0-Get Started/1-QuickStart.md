@@ -51,7 +51,7 @@ You can download the binary file from:
 configuration files are under "conf" folder
 
   * environment config module (`iotdb-env.bat`, `iotdb-env.sh`), 
-  * system config module (`tsfile-format.properties`, `iotdb-engine.properties`)
+  * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`). 
 
 For more, see [Chapter3: Server](../3-Server/1-Download.html) in detail.

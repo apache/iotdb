@@ -687,15 +687,11 @@ public class TsFileRead {
 
 ```
 
-## User-specified config file path
+## Change TsFile Config
 
-Default config file `tsfile-format.properties.template` is located at `/tsfile/src/main/resources` directory. If you want to use your own path, you can:
-```
-System.setProperty(TsFileConstant.TSFILE_CONF, "your config file path");
-```
-and then call:
 ```
 TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+config.setXXX();
 ```
 
 ## Bloom filter
@@ -704,7 +700,7 @@ Bloom filter checks whether a given time series is in the tsfile before loading 
 If you want to learn more about its mechanism, you can refer to: [wiki page of bloom filter](https://en.wikipedia.org/wiki/Bloom_filter).
 
 #### configuration 
-you can control the false positive rate of bloom filter by the following parameter in the config file `tsfile-format.properties` which located at `/server/src/assembly/resources/conf` directory
+you can control the false positive rate of bloom filter by the following parameter in the config file `iotdb-engine.properties` which located at `/server/src/assembly/resources/conf` directory
 ```
 # The acceptable error rate of bloom filter, should be in [0.01, 0.1], default is 0.05
 bloom_filter_error_rate=0.05

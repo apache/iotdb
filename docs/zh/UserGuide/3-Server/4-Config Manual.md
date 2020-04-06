@@ -23,13 +23,11 @@
 
 为方便IoTDB Server的配置与管理，IoTDB Server为用户提供三种配置项，使得用户可以在启动服务器或服务器运行时对其进行配置。
 
-三种配置项的配置文件均位于IoTDB安装目录：`$IOTDB_HOME/conf`文件夹下,其中涉及server配置的共有3个文件，分别为：`iotdb-env.sh`, `tsfile-format.properties`, `iotdb-engine.properties`。用户可以通过更改其中的配置项对系统运行的相关配置项进行配置。
+三种配置项的配置文件均位于IoTDB安装目录：`$IOTDB_HOME/conf`文件夹下,其中涉及server配置为：`iotdb-env.sh`, `iotdb-engine.properties`。用户可以通过更改其中的配置项对系统运行的相关配置项进行配置。
 
 配置文件的说明如下：
 
 * `iotdb-env.sh`：环境配置项的默认配置文件。用户可以在文件中配置JAVA-JVM的相关系统配置项。
-
-* `tsfile-format.properties`：IoTDB文件层系统配置项的默认配置文件。用户可以在文件中配置IoTDB存储时TsFile文件的相关信息，如每次将内存中的数据写入到磁盘时的数据大小(`group_size_in_byte`)，内存中每个列打一次包的大小(`page_size_in_byte`)等。
 
 * `iotdb-engine.properties`：IoTDB引擎层系统配置项的默认配置文件。用户可以在文件中配置IoTDB引擎运行时的相关参数，如JDBC服务监听端口(`rpc_port`)、overflow数据文件存储目录(`overflow_data_dir`)等。
 
@@ -76,7 +74,7 @@
 
 ## 系统配置项
 
-系统配置项是IoTDB Server运行的核心配置，它主要用于设置IoTDB Server文件层和引擎层的参数，便于用户根据自身需求调整Server的相关配置，以达到较好的性能表现。系统配置项可分为两大模块：文件层配置项和引擎层配置项。用户可以通过查看`tsfile-format.properties`, `iotdb-engine.properties`,文件查看和修改两种配置项的内容。在0.7.0版本中字符串类型的配置项大小写敏感。
+系统配置项是IoTDB Server运行的核心配置，它主要用于设置IoTDB Server文件层和引擎层的参数，便于用户根据自身需求调整Server的相关配置，以达到较好的性能表现。系统配置项可分为两大模块：文件层配置项和引擎层配置项。用户可以通过查看`iotdb-engine.properties`,文件查看和修改两种配置项的内容。在0.7.0版本中字符串类型的配置项大小写敏感。
 
 ### 文件层配置
 
