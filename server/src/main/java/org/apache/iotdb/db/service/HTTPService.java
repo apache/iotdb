@@ -135,7 +135,7 @@ public class HTTPService implements HTTPServiceMBean, IService {
     } catch (Exception e) {
       logger
           .error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(),
-              e);
+              e.getMessage());
       executorService.shutdownNow();
     }
     checkAndWaitPortIsClosed();
