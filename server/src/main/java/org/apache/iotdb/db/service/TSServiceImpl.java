@@ -1074,22 +1074,26 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSStatus insert(TSInsertReq req) {
-    if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
-    }
+    try {
+      if (!checkLogin(req.getSessionId())) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+      }
 
-    InsertPlan plan = new InsertPlan();
-    plan.setDeviceId(req.getDeviceId());
-    plan.setTime(req.getTimestamp());
-    plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
-    plan.setValues(req.getValues().toArray(new String[0]));
+      InsertPlan plan = new InsertPlan();
+      plan.setDeviceId(req.getDeviceId());
+      plan.setTime(req.getTimestamp());
+      plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
+      plan.setValues(req.getValues().toArray(new String[0]));
 
-    TSStatus status = checkAuthority(plan, req.getSessionId());
-    if (status != null) {
-      return status;
+      TSStatus status = checkAuthority(plan, req.getSessionId());
+      if (status != null) {
+        return status;
+      }
+      return executePlan(plan);
+    } catch (Exception e) {
+      logger.error("meet error when insert", e);
     }
-    return executePlan(plan);
   }
 
   @Override
