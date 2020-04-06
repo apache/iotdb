@@ -25,7 +25,7 @@ Java VisualVM提供了一个可视化的界面，用于查看Java应用程序在
 
 ## 配置
 
-如果你为 JMX 配置了用户访问权限和密码（也就是`com.sun.management.jmxremote.authenticate`为 true），你需要编辑`iotdb-engine.properties`中的用户配置。相关配置项包括：
+JMX 访问权限认证设置默认打开，因此你需要编辑`iotdb-engine.properties`中的 JMX 用户名和密码。相关配置项包括：
 
 * jmx\_user
 
@@ -44,8 +44,6 @@ Java VisualVM提供了一个可视化的界面，用于查看Java应用程序在
 |类型| String |
 |默认值| password |
 |改后生效方式|重启服务器生效|
-
-用户名和密码需要与`com.sun.management.jmxremote.password.file`文件中的配置保持一致。
 
 ## 使用
 

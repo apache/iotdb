@@ -25,7 +25,7 @@ Java VisualVM is a tool that provides a visual interface for viewing detailed in
 
 ## Config
 
-If you have set access and password for JMX (that is, `com.sun.management.jmxremote.authenticate` is true), you need to edit user config in `iotdb-engine.properties`. Related configurations are:
+JMX authenticate configuration is `true` by default, so you need to edit JMX user name and password in `iotdb-engine.properties`. Related configurations are:
 
 * jmx\_user
 
@@ -44,8 +44,6 @@ If you have set access and password for JMX (that is, `com.sun.management.jmxrem
 |Type| String |
 |Default| password |
 |Effective|After restart system|
-
-User name and password should be consistent with your JMX config in `com.sun.management.jmxremote.password.file`.
 
 ## Usage
 
