@@ -101,11 +101,11 @@ public class MTree implements Serializable {
     if (cur instanceof LeafMNode) {
       throw new PathAlreadyExistException(cur.getFullPath());
     }
-    MNode leaf = new LeafMNode(cur, nodeNames[nodeNames.length - 1], dataType, encoding,
-        compressor, props);
-    if (cur.hasChild(leaf.getName())) {
-      throw new MetadataException(String.format("The timeseries %s has already existed.", path));
+    String leafName = nodeNames[nodeNames.length - 1];
+    if (cur.hasChild(leafName)) {
+      throw new PathAlreadyExistException(String.format("Path %s has already existed.", path));
     }
+    MNode leaf = new LeafMNode(cur, leafName, dataType, encoding, compressor, props);
     cur.addChild(leaf);
   }
 
