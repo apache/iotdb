@@ -559,8 +559,6 @@
                             <exclude>LICENSE-binary</exclude>
                             <!-- json does not support comments-->
                             <exclude>**/*.json</exclude>
-                            <!-- downloadJDK is used by travis-CI only-->
-                            <exclude>downloadJDK</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
