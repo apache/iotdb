@@ -713,17 +713,7 @@ public class PlanExecutor implements IPlanExecutor {
           }
           TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValues[i]);
           Path path = new Path(deviceId, measurement);
-
-          try {
-            mManager.createTimeseries(path.toString(), dataType, getDefaultEncoding(dataType),
-                TSFileDescriptor.getInstance().getConfig().getCompressor(),
-                Collections.emptyMap());
-          } catch (PathAlreadyExistException e) {
-            if (logger.isDebugEnabled()) {
-              logger.debug("Ignore PathAlreadyExistException when Concurrent inserting"
-                  + " a non-exist time series {}", path.getFullPath());
-            }
-          }
+          internalCreateTimeseries(path.toString(), dataType);
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
         schemas[i] = measurementNode.getSchema();
@@ -732,6 +722,22 @@ public class PlanExecutor implements IPlanExecutor {
       StorageEngine.getInstance().insert(insertPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
+    }
+  }
+
+  /**
+   * create timeseries with ignore PathAlreadyExistException
+   */
+  private void internalCreateTimeseries(String path, TSDataType dataType) throws MetadataException {
+    try {
+      mManager.createTimeseries(path, dataType, getDefaultEncoding(dataType),
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap());
+    } catch (PathAlreadyExistException e) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("Ignore PathAlreadyExistException when Concurrent inserting"
+            + " a non-exist time series {}", path);
+      }
     }
   }
 
@@ -779,16 +785,7 @@ public class PlanExecutor implements IPlanExecutor {
           }
           Path path = new Path(deviceId, measurementList[i]);
           TSDataType dataType = dataTypes[i];
-          try {
-            mManager.createTimeseries(path.getFullPath(), dataType, getDefaultEncoding(dataType),
-                TSFileDescriptor.getInstance().getConfig().getCompressor(),
-                Collections.emptyMap());
-          } catch (PathAlreadyExistException e) {
-            if (logger.isDebugEnabled()) {
-              logger.debug("Ignore PathAlreadyExistException when Concurrent inserting"
-                  + " a non-exist time series {}", path.getFullPath());
-            }
-          }
+          internalCreateTimeseries(path.getFullPath(), dataType);
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurementList[i]);
 
