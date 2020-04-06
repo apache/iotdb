@@ -98,7 +98,7 @@ public class RocketMQConsumer {
   }
 
   /**
-   * Subscribe topic and add regiser Listener
+   * Subscribe topic and add register Listener
    * @throws MQClientException
    */
   public void prepareConsume() throws MQClientException {
