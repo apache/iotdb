@@ -683,7 +683,9 @@ config.setXXX()
   如果要了解有关其机制的更多信息，可以参考： [wiki page of bloom filter](https://en.wikipedia.org/wiki/Bloom_filter).
 
 #### 配置
-您可以通过`/ server / src / assembly / resources / conf`目录中的配置文件`iotdb-engine.properties`中的以下参数来控制Bloom过滤器的误报率。
+
+您可以通过修改 TSFileConfig 里的 bloomFilterErrorRate 参数来控制Bloom过滤器的误报率。
+
 ```
 # The acceptable error rate of bloom filter, should be in [0.01, 0.1], default is 0.05
 bloom_filter_error_rate=0.05
