@@ -103,7 +103,7 @@ public class MTree implements Serializable {
     }
     String leafName = nodeNames[nodeNames.length - 1];
     if (cur.hasChild(leafName)) {
-      throw new PathAlreadyExistException(String.format("Path %s has already existed.", path));
+      throw new PathAlreadyExistException(path);
     }
     MNode leaf = new LeafMNode(cur, leafName, dataType, encoding, compressor, props);
     cur.addChild(leaf);
