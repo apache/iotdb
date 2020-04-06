@@ -280,7 +280,7 @@ public class DataGroupMemberTest extends MemberTest {
   public void testSendSnapshot() {
     PartitionedSnapshot<FileSnapshot> partitionedSnapshot =
         new PartitionedSnapshot<>(FileSnapshot::new);
-    partitionedSnapshot.setLastLogId(100);
+    partitionedSnapshot.setLastLogIndex(100);
     partitionedSnapshot.setLastLogTerm(100);
 
     for (int i = 0; i < 3; i++) {

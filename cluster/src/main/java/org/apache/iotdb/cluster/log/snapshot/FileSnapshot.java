@@ -19,20 +19,17 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.*;
 
 /**
  * FileSnapshot records the data files in a slot and their md5 (or other verification).
@@ -113,7 +110,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
     return "FileSnapshot{" +
         "timeseriesSchemas=" + timeseriesSchemas.size() +
         ", dataFiles=" + dataFiles.size() +
-        ", lastLogId=" + lastLogId +
+        ", lastLogIndex=" + lastLogIndex +
         ", lastLogTerm=" + lastLogTerm +
         '}';
   }

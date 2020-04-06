@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
@@ -38,6 +32,9 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
+import java.util.Map.Entry;
 
 /**
  * PartitionedSnapshotLogManager provides a PartitionedSnapshot as snapshot, dividing each log to
@@ -75,7 +72,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
       for (Entry<Integer, T> entry : slotSnapshots.entrySet()) {
         partitionedSnapshot.putSnapshot(entry.getKey(), entry.getValue());
       }
-      partitionedSnapshot.setLastLogId(snapshotLastLogId);
+      partitionedSnapshot.setLastLogIndex(snapshotLastLogId);
       partitionedSnapshot.setLastLogTerm(snapshotLastLogTerm);
       return partitionedSnapshot;
     }

@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
+import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.LogParser;
+import org.apache.iotdb.cluster.log.Snapshot;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -26,12 +33,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.log.LogParser;
-import org.apache.iotdb.cluster.log.Snapshot;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * SimpleSnapshot keeps the committed logs in a memory list.
@@ -46,7 +47,7 @@ public class SimpleSnapshot extends Snapshot {
 
   public SimpleSnapshot(List<Log> snapshot) {
     this.snapshot = snapshot;
-    this.lastLogId = snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogIndex();
+    this.lastLogIndex = snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogIndex();
     this.lastLogTerm = snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogTerm();
   }
 
@@ -82,7 +83,7 @@ public class SimpleSnapshot extends Snapshot {
         logger.error("Cannot recognize log", e);
       }
     }
-    this.lastLogId = snapshot.isEmpty()? -1 : snapshot.get(snapshot.size() - 1).getCurrLogIndex();
+    this.lastLogIndex = snapshot.isEmpty()? -1 : snapshot.get(snapshot.size() - 1).getCurrLogIndex();
     this.lastLogTerm = snapshot.isEmpty()? -1 : snapshot.get(snapshot.size() - 1).getCurrLogTerm();
 
     subDeserialize(buffer);
@@ -98,7 +99,7 @@ public class SimpleSnapshot extends Snapshot {
 
   public void add(Log log) {
     snapshot.add(log);
-    lastLogId = log.getCurrLogIndex();
+    lastLogIndex = log.getCurrLogIndex();
     lastLogTerm = log.getCurrLogTerm();
   }
 

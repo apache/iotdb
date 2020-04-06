@@ -67,7 +67,7 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
         dataOutputStream.writeInt(entry.getKey());
         dataOutputStream.write(entry.getValue().serialize().array());
       }
-      dataOutputStream.writeLong(getLastLogId());
+      dataOutputStream.writeLong(getLastLogIndex());
       dataOutputStream.writeLong(getLastLogTerm());
     } catch (IOException e) {
       // unreachable
@@ -85,7 +85,7 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
       snapshot.deserialize(buffer);
       slotSnapshots.put(slot, snapshot);
     }
-    setLastLogId(buffer.getLong());
+    setLastLogIndex(buffer.getLong());
     setLastLogTerm(buffer.getLong());
   }
 
@@ -106,7 +106,7 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
   public String toString() {
     return "PartitionedSnapshot{" +
         "slotSnapshots=" + slotSnapshots.size() +
-        ", lastLogId=" + lastLogId +
+        ", lastLogIndex=" + lastLogIndex +
         ", lastLogTerm=" + lastLogTerm +
         '}';
   }
