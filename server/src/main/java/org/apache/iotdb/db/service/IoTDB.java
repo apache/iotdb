@@ -50,7 +50,6 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public static void main(String[] args) {
-    logger.error("{}: add by qihouliang.{} ", IoTDBConstant.GLOBAL_DB_NAME, args);
     IoTDBDescriptor.getInstance().replaceProps(args);
     IoTDBConfigCheck.getInstance().checkConfig();
     IoTDB daemon = IoTDB.getInstance();

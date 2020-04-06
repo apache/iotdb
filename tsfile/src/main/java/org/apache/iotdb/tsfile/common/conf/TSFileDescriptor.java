@@ -97,7 +97,6 @@ public class TSFileDescriptor {
       }
     } else {
       url += (File.separatorChar + TSFileConfig.CONFIG_FILE_NAME);
-      logger.error("add by qihouliang, url={}", url);
     }
     try {
       inputStream = new FileInputStream(new File(url));

@@ -31,15 +31,16 @@ fi
 IOTDB_CONF=${IOTDB_HOME}/conf
 # IOTDB_LOGS=${IOTDB_HOME}/logs
 
-last_arg=$0
+is_conf_path=false
 for arg do
   shift
   if [ "$arg" == "-c" ]; then
-    last_arg=$arg
+    is_conf_path=true
     continue
   fi
-  if [ "$last_arg" == "-c" ]; then
+  if [ $is_conf_path == true ]; then
     IOTDB_CONF=$arg
+    is_conf_path=false
     continue
   fi
   last_arg=$arg
