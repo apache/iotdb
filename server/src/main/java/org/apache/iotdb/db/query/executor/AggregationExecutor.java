@@ -88,7 +88,7 @@ public class AggregationExecutor {
     Map<Path, List<Integer>> pathToAggrIndexesMap = groupAggregationsBySeries(selectedSeries);
     AggregateResult[] aggregateResultList = new AggregateResult[selectedSeries.size()];
     for (Map.Entry<Path, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
-      List<AggregateResult> aggregateResults = aggregateOneSeries(entry, aggregationPlan.getAllSensorsInDevice(entry.getKey().getDevice()), timeFilter, context);
+      List<AggregateResult> aggregateResults = aggregateOneSeries(entry, aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()), timeFilter, context);
       int index = 0;
       for (int i : entry.getValue()) {
         aggregateResultList[i] = aggregateResults.get(index);
@@ -109,7 +109,7 @@ public class AggregationExecutor {
    */
   protected List<AggregateResult> aggregateOneSeries(
       Map.Entry<Path, List<Integer>> pathToAggrIndexes,
-      Set<String> sensors,
+      Set<String> measurements,
       Filter timeFilter, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException {
     List<AggregateResult> aggregateResultList = new ArrayList<>();
@@ -123,11 +123,11 @@ public class AggregationExecutor {
           .getAggrResultByName(aggregations.get(i), tsDataType);
       aggregateResultList.add(aggregateResult);
     }
-    aggregateOneSeries(seriesPath, sensors, context, timeFilter, tsDataType, aggregateResultList, null);
+    aggregateOneSeries(seriesPath, measurements, context, timeFilter, tsDataType, aggregateResultList, null);
     return aggregateResultList;
   }
 
-  public static void aggregateOneSeries(Path seriesPath, Set<String> sensors, QueryContext context, Filter timeFilter,
+  public static void aggregateOneSeries(Path seriesPath, Set<String> measurements, QueryContext context, Filter timeFilter,
       TSDataType tsDataType, List<AggregateResult> aggregateResultList, TsFileFilter fileFilter)
       throws StorageEngineException, IOException, QueryProcessException {
 
@@ -140,7 +140,7 @@ public class AggregationExecutor {
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
-    IAggregateReader seriesReader = new SeriesAggregateReader(seriesPath, sensors,
+    IAggregateReader seriesReader = new SeriesAggregateReader(seriesPath, measurements,
         tsDataType, context, queryDataSource, timeFilter, null, null);
     aggregateFromReader(seriesReader, aggregateResultList);
   }
@@ -269,7 +269,7 @@ public class AggregationExecutor {
 
   protected IReaderByTimestamp getReaderByTime(Path path, RawDataQueryPlan queryPlan, TSDataType dataType,
       QueryContext context) throws StorageEngineException, QueryProcessException {
-    return new SeriesReaderByTimestamp(path, queryPlan.getAllSensorsInDevice(path.getDevice()), dataType, context,
+    return new SeriesReaderByTimestamp(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
         QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
   }
 
