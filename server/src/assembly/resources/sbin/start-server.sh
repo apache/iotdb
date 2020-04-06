@@ -43,7 +43,6 @@ for arg do
     is_conf_path=false
     continue
   fi
-  last_arg=$arg
   set -- "$@" "$arg"
 done
 
