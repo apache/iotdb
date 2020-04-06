@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mqtt;
 import java.util.List;
 
 /**
- * Message describes the information sent from the devices.
+ * Message describes the information sometime sent from the devices.
  */
 public class Message {
     private String device;
@@ -59,5 +59,15 @@ public class Message {
 
     public void setValues(List<String> values) {
         this.values = values;
+    }
+
+    @Override
+    public String toString() {
+        return "Message{" +
+                "device='" + device + '\'' +
+                ", timestamp=" + timestamp +
+                ", measurements=" + measurements +
+                ", values=" + values +
+                '}';
     }
 }
