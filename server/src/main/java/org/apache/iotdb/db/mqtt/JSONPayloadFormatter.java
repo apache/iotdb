@@ -18,22 +18,24 @@
 package org.apache.iotdb.db.mqtt;
 
 import com.alibaba.fastjson.JSON;
+import com.google.common.collect.Lists;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 /**
  * The JSON payload formatter.
  */
 public class JSONPayloadFormatter implements PayloadFormatter {
     @Override
-    public Message format(ByteBuf payload) {
+    public List<Message> format(ByteBuf payload) {
         if (payload == null) {
             return null;
         }
         String txt = payload.toString(StandardCharsets.UTF_8);
         Message event = JSON.parseObject(txt, Message.class);
-        return event;
+        return Lists.newArrayList(event);
     }
 
     @Override

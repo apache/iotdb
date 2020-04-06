@@ -31,6 +31,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 /**
  * PublishHandler handle the messages from MQTT clients.
  */
@@ -70,25 +72,32 @@ public class PublishHandler extends AbstractInterceptHandler {
         LOG.debug("Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
                 clientId, username, qos, topic, payload);
 
-        Message event = payloadFormat.format(payload);
-        if (event == null) {
+        List<Message> events = payloadFormat.format(payload);
+        if (events == null) {
             return;
         }
 
-        InsertPlan plan = new InsertPlan();
-        plan.setDeviceId(event.getDevice());
-        plan.setTime(event.getTimestamp());
-        plan.setMeasurements(event.getMeasurements().toArray(new String[event.getMeasurements().size()]));
-        plan.setValues(event.getValues().toArray(new String[event.getValues().size()]));
+        // since device ids from messages maybe different, so we use the InsertPlan not BatchInsertPlan.
+        for (Message event : events) {
+            if (event == null) {
+                continue;
+            }
 
-        boolean status;
-        try {
-            status = executeNonQuery(plan);
-        } catch (QueryProcessException e) {
-            throw new RuntimeException(e);
+            InsertPlan plan = new InsertPlan();
+            plan.setDeviceId(event.getDevice());
+            plan.setTime(event.getTimestamp());
+            plan.setMeasurements(event.getMeasurements().toArray(new String[event.getMeasurements().size()]));
+            plan.setValues(event.getValues().toArray(new String[event.getValues().size()]));
+
+            boolean status;
+            try {
+                status = executeNonQuery(plan);
+            } catch (QueryProcessException e) {
+                throw new RuntimeException(e);
+            }
+
+            LOG.debug("event process result: {}", status);
         }
-
-        LOG.debug("event process result: {}", status);
     }
 
     private boolean executeNonQuery(PhysicalPlan plan) throws QueryProcessException {

@@ -38,7 +38,7 @@ public class JSONPayloadFormatTest {
         ByteBuf buf = Unpooled.copiedBuffer(payload, StandardCharsets.UTF_8);
 
         JSONPayloadFormatter formatter = new JSONPayloadFormatter();
-        Message message = formatter.format(buf);
+        Message message = formatter.format(buf).get(0);
 
         assertEquals("root.sg.d1", message.getDevice());
         assertEquals(Long.valueOf(1586076045524L), message.getTimestamp());
