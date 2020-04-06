@@ -31,10 +31,21 @@ fi
 IOTDB_CONF=${IOTDB_HOME}/conf
 # IOTDB_LOGS=${IOTDB_HOME}/logs
 
-if [ $# -ge 2 ] && [ "$1" == "-c" ] && [ -d "$2" ]; then
-  IOTDB_CONF=$2
-  shift 2
-fi
+last_arg=$0
+for arg do
+  shift
+  if [ "$arg" == "-c" ]; then
+    last_arg=$arg
+    continue
+  fi
+  if [ "$last_arg" == "-c" ]; then
+    IOTDB_CONF=$arg
+    continue
+  fi
+  last_arg=$arg
+  set -- "$@" "$arg"
+done
+
 CONF_PARAMS=$*
 
 if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
