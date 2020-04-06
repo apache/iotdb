@@ -55,14 +55,13 @@ public class PreviousFill extends IFill {
 
   private QueryDataSource dataSource;
 
-  //private ChunkMetadata lastChunkMetadata;
-  private TimeseriesMetadata lastTimeseriesMetadata;
-  private List<TimeseriesMetadata> timeseriesMetadataList;
+  private TimeseriesMetadata lastSeqTimeseriesMetadata;
+  private List<TimeseriesMetadata> unseqTimeseriesMetadataList;
 
   public PreviousFill(TSDataType dataType, long queryTime, long beforeRange) {
     super(dataType, queryTime);
     this.beforeRange = beforeRange;
-    this.timeseriesMetadataList = new ArrayList<>();
+    this.unseqTimeseriesMetadataList = new ArrayList<>();
   }
 
   public PreviousFill(long beforeRange) {
@@ -106,11 +105,31 @@ public class PreviousFill extends IFill {
     return getTimeseriesLastPoint();
   }
 
-  private  TimeValuePair getTimeseriesLastPoint() throws IOException {
+  private TimeValuePair getTimeseriesLastPoint() throws IOException {
     TimeValuePair lastPoint = new TimeValuePair(Long.MIN_VALUE, null);
     long lastVersion = 0;
-    while (!timeseriesMetadataList.isEmpty()) {
-      TimeseriesMetadata timeseriesMetadata = timeseriesMetadataList.remove(0);
+    if (lastSeqTimeseriesMetadata != null) {
+      if (lastSeqTimeseriesMetadata.getStatistics().getEndTime() <= queryTime) {
+        lastPoint = constructLastPair(
+            lastSeqTimeseriesMetadata.getStatistics().getEndTime(),
+            lastSeqTimeseriesMetadata.getStatistics().getLastValue(), dataType);
+      } else {
+        List<ChunkMetadata> seqChunkMetadataList =
+            lastSeqTimeseriesMetadata.loadChunkMetadataList();
+
+        for (int i = seqChunkMetadataList.size() - 1; i >= 0; i--) {
+          lastPoint = getChunkLastPoint(seqChunkMetadataList.get(i));
+          // last point of this sequence chunk is valid, quit the loop
+          if (lastPoint.getValue() != null) {
+            lastVersion = seqChunkMetadataList.get(i).getVersion();
+            break;
+          }
+        }
+      }
+    }
+
+    while (!unseqTimeseriesMetadataList.isEmpty()) {
+      TimeseriesMetadata timeseriesMetadata = unseqTimeseriesMetadataList.remove(0);
       List<ChunkMetadata> chunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         TimeValuePair lastChunkPoint = getChunkLastPoint(chunkMetadata);
@@ -180,14 +199,22 @@ public class PreviousFill extends IFill {
     List<TsFileResource> seqFileResource = dataSource.getSeqResources();
     PriorityQueue<TsFileResource> unseqFileResource =
         sortUnSeqFileResourcesInDecendingOrder(dataSource.getUnseqResources());
+
+    TimeseriesMetadata lastTimeseriesMetadata = null;
     for (int index = seqFileResource.size() - 1; index >= 0; index--) {
       TsFileResource resource = seqFileResource.get(index);
       TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
           resource, seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
-        // The last seq file satisfies timeFilter, pick up the last chunk
-        timeseriesMetadataList.add(timeseriesMetadata);
+        lastSeqTimeseriesMetadata = timeseriesMetadata;
         lastTimeseriesMetadata = timeseriesMetadata;
+        // last sequence TimeseriesMetadata endTime satisfies timeFilter and is larger than
+        // any unseq file endTimes, then skip all the unseq files
+        long seqLastPoint = lastTimeseriesMetadata.getStatistics().getEndTime();
+        if (unseqFileResource.isEmpty() || (seqLastPoint <= queryTime &&
+            seqLastPoint > unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()))) {
+          return;
+        }
         break;
       }
       seqFileResource.remove(index);
@@ -213,7 +240,7 @@ public class PreviousFill extends IFill {
         && (lastTimeseriesMetadata == null
         || (lastTimeseriesMetadata.getStatistics().getStartTime()
         <= unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice())))) {
-      timeseriesMetadataList.add(
+      unseqTimeseriesMetadataList.add(
           FileLoaderUtils.loadTimeSeriesMetadata(
               unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors));
     }
