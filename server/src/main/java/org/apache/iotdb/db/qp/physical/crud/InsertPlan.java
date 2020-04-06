@@ -157,7 +157,7 @@ public class InsertPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serializeTo(DataOutputStream stream) throws IOException {
+  public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.INSERT.ordinal();
     stream.writeByte((byte) type);
     stream.writeLong(time);
@@ -170,17 +170,13 @@ public class InsertPlan extends PhysicalPlan {
       putString(stream, m);
     }
 
-    for (MeasurementSchema schema : schemas) {
-      schema.serializeTo(stream);
-    }
-
     for (String m : values) {
       putString(stream, m);
     }
   }
 
   @Override
-  public void serializeTo(ByteBuffer buffer) {
+  public void serialize(ByteBuffer buffer) {
     int type = PhysicalPlanType.INSERT.ordinal();
     buffer.put((byte) type);
     buffer.putLong(time);
@@ -199,7 +195,7 @@ public class InsertPlan extends PhysicalPlan {
   }
 
   @Override
-  public void deserializeFrom(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) {
     this.time = buffer.getLong();
     this.deviceId = readString(buffer);
 

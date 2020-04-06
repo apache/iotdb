@@ -21,9 +21,11 @@ package org.apache.iotdb.cluster.query;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
@@ -46,7 +48,8 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
   }
 
   @Override
-  protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context)
+  protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context,
+      RawDataQueryPlan dataQueryPlan)
       throws StorageEngineException {
     Filter timeFilter = null;
     if (optimizedExpression != null) {
@@ -59,7 +62,8 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
       ManagedSeriesReader reader;
-      reader = metaGroupMember.getSeriesReader(path, dataType, timeFilter,
+      reader = metaGroupMember.getSeriesReader(path,
+          dataQueryPlan.getAllSensorsInDevice(path.getDevice()), dataType, timeFilter,
           null, context);
       readersOfSelectedSeries.add(reader);
     }
@@ -67,15 +71,16 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
   }
 
   @Override
-  protected IReaderByTimestamp getReaderByTimestamp(Path path, TSDataType dataType,
+  protected IReaderByTimestamp getReaderByTimestamp(Path path,
+      Set<String> deviceMeasurements, TSDataType dataType,
       QueryContext context)
-      throws StorageEngineException {
-    return metaGroupMember.getReaderByTimestamp(path, dataType, context);
+      throws StorageEngineException, QueryProcessException {
+    return metaGroupMember.getReaderByTimestamp(path, deviceMeasurements, dataType, context);
   }
 
   @Override
   protected TimeGenerator getTimeGenerator(IExpression queryExpression,
-      QueryContext context) throws StorageEngineException {
-    return new ClusterTimeGenerator(queryExpression, context, metaGroupMember);
+      QueryContext context, RawDataQueryPlan rawDataQueryPlan) throws StorageEngineException {
+    return new ClusterTimeGenerator(queryExpression, context, metaGroupMember, rawDataQueryPlan);
   }
 }

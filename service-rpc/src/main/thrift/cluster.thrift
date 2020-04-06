@@ -105,14 +105,14 @@ struct Node {
 }
 
 // leader -> follower
-struct StartUpStatus{
+struct StartUpStatus {
  1: required long partitionInterval
  2: required int hashSalt
  3: required int replicationNumber
 }
 
 // follower -> leader
-struct CheckStatusResponse{
+struct CheckStatusResponse {
  1: required bool partitionalIntervalEquals
  2: required bool hashSaltEquals
  3: required bool replicationNumEquals
@@ -160,6 +160,7 @@ struct SingleSeriesQueryRequest {
   5: required Node requester
   6: required Node header
   7: required int dataTypeOrdinal
+  8: required set<string> deviceMeasurements
 }
 
 // the spec and load of a node, for query coordinating
@@ -175,6 +176,7 @@ struct GetAggrResultRequest {
   5: required Node header
   6: required long queryId
   7: required Node requestor
+  8: required set<string> deviceMeasurements
 }
 
 struct GroupByRequest {
@@ -185,6 +187,7 @@ struct GroupByRequest {
   5: required list<int> aggregationTypeOrdinals
   6: required Node header
   7: required Node requestor
+  8: required set<string> deviceMeasurements
 }
 
 service RaftService {
@@ -276,9 +279,8 @@ service TSDataService extends RaftService {
    * querySingleSeriesByTimestamp.
    * @return a ByteBuffer containing the serialized value or an empty buffer if there
    * are not more results.
-   * TODO-Cluster: make this a batched interface
    **/
-   binary fetchSingleSeriesByTimestamp(1:Node header, 2:long readerId, 3:binary timeBytes)
+   binary fetchSingleSeriesByTimestamp(1:Node header, 2:long readerId, 3:long timestamp)
 
   /**
   * Find the local query established for the remote query and release all its resource.

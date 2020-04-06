@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.log.manage;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -47,7 +48,7 @@ import org.junit.Test;
 public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
 
   @Test
-  public void testSnapshot() throws QueryProcessException, StorageGroupNotSetException {
+  public void testSnapshot() throws QueryProcessException, StorageGroupNotSetException, IOException {
     PartitionTable partitionTable = TestUtils.getPartitionTable(3);
     LogApplier applier = new TestLogApplier();
     FilePartitionedSnapshotLogManager manager = new FilePartitionedSnapshotLogManager(applier,
@@ -83,7 +84,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
   }
 
   @Test
-  public void testRemoteSnapshots() {
+  public void testRemoteSnapshots() throws IOException {
     PartitionTable partitionTable = TestUtils.getPartitionTable(3);
     LogApplier applier = new TestLogApplier();
     FilePartitionedSnapshotLogManager manager = new FilePartitionedSnapshotLogManager(applier,

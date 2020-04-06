@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster;
 
-import java.sql.SQLException;
 import java.util.Collections;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -68,7 +67,7 @@ public class ClientMain {
     TSOpenSessionResp openResp = client.openSession(openReq);
     long sessionId = openResp.getSessionId();
 
-    testInsertion(client, sessionId);
+    //testInsertion(client, sessionId);
 
     testQuery(client, sessionId);
 
@@ -138,15 +137,11 @@ public class ClientMain {
 
 
 
-  private static void testInsertion(Client client, long sessionId) throws TException,
-      InterruptedException {
+  private static void testInsertion(Client client, long sessionId) throws TException {
     logger.info(client.setStorageGroup(sessionId, "root.beijing").toString());
     logger.info(client.setStorageGroup(sessionId, "root.shanghai").toString());
     logger.info(client.setStorageGroup(sessionId, "root.guangzhou").toString());
     logger.info(client.setStorageGroup(sessionId, "root.shenzhen").toString());
-
-    // wait until the storage group creations are committed
-    Thread.sleep(3000);
 
     TSCreateTimeseriesReq req = new TSCreateTimeseriesReq();
     req.setSessionId(sessionId);
@@ -161,9 +156,6 @@ public class ClientMain {
     logger.info(client.createTimeseries(req).toString());
     req.setPath("root.shenzhen.d1.s1");
     logger.info(client.createTimeseries(req).toString());
-
-    // wait until the timeseries creations are committed
-    Thread.sleep(3000);
 
     TSInsertReq insertReq = new TSInsertReq();
     insertReq.setMeasurements(Collections.singletonList("s1"));

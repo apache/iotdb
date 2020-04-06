@@ -22,13 +22,12 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
-import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
@@ -56,7 +55,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   // to register the ClusterMonitor that helps monitoring the cluster
   private RegisterManager registerManager = new RegisterManager();
 
-  public MetaClusterServer() throws QueryProcessException, StartupException {
+  public MetaClusterServer() throws QueryProcessException {
     super();
     member = new MetaGroupMember(protocolFactory, thisNode);
   }

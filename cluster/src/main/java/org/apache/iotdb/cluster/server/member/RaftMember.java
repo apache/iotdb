@@ -742,7 +742,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
-      plan.serializeTo(dataOutputStream);
+      plan.serialize(dataOutputStream);
       AtomicReference<TSStatus> status = new AtomicReference<>();
       ExecutNonQueryReq req = new ExecutNonQueryReq();
       req.setPlanBytes(byteArrayOutputStream.toByteArray());

@@ -28,7 +28,6 @@ import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestClientFactory;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.junit.Test;
 import org.mockito.Mock;

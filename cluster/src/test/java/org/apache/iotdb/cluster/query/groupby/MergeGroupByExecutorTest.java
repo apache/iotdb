@@ -1,6 +1,7 @@
 package org.apache.iotdb.cluster.query.groupby;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.BaseQueryTest;
@@ -15,7 +16,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.Test;
 
 public class MergeGroupByExecutorTest extends BaseQueryTest {
@@ -28,7 +28,8 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     Filter timeFilter = null;
 
-    MergeGroupByExecutor groupByExecutor = new MergeGroupByExecutor(path, dataType, context,
+    MergeGroupByExecutor groupByExecutor = new MergeGroupByExecutor(path,
+        Collections.singleton(path.getMeasurement()), dataType, context,
         timeFilter, testMetaMember);
     AggregationType[] types = AggregationType.values();
     for (AggregationType type : types) {
@@ -55,7 +56,8 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     Filter timeFilter = TimeFilter.gtEq(3);
 
-    MergeGroupByExecutor groupByExecutor = new MergeGroupByExecutor(path, dataType, context,
+    MergeGroupByExecutor groupByExecutor = new MergeGroupByExecutor(path,
+        Collections.singleton(path.getMeasurement()), dataType, context,
         timeFilter, testMetaMember);
     AggregationType[] types = AggregationType.values();
     for (AggregationType type : types) {

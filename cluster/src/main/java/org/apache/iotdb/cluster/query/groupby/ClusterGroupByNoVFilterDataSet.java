@@ -1,7 +1,9 @@
 package org.apache.iotdb.cluster.query.groupby;
 
+import java.util.Set;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
@@ -16,7 +18,8 @@ public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDat
   private MetaGroupMember metaGroupMember;
 
   public ClusterGroupByNoVFilterDataSet(QueryContext context,
-      GroupByPlan groupByPlan, MetaGroupMember metaGroupMember) throws StorageEngineException {
+      GroupByPlan groupByPlan, MetaGroupMember metaGroupMember)
+      throws StorageEngineException, QueryProcessException {
     this.paths = groupByPlan.getDeduplicatedPaths();
     this.dataTypes = groupByPlan.getDeduplicatedDataTypes();
 
@@ -36,8 +39,10 @@ public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDat
   }
 
   @Override
-  protected GroupByExecutor getGroupByExecutor(Path path, TSDataType dataType, QueryContext context,
+  protected GroupByExecutor getGroupByExecutor(Path path,
+      Set<String> deviceMeasurements, TSDataType dataType, QueryContext context,
       Filter timeFilter, TsFileFilter fileFilter) {
-    return new MergeGroupByExecutor(path, dataType, context, timeFilter, metaGroupMember);
+    return new MergeGroupByExecutor(path, deviceMeasurements, dataType, context, timeFilter,
+        metaGroupMember);
   }
 }

@@ -81,6 +81,10 @@ public class QueryCoordinator {
   private NodeStatus getNodeStatus(Node node) {
     // avoid duplicated computing of concurrent queries
     NodeStatus nodeStatus = nodeStatusMap.computeIfAbsent(node, n -> new NodeStatus());
+    if (node.equals(metaGroupMember.getThisNode())) {
+      return nodeStatus;
+    }
+
     long currTime = System.currentTimeMillis();
     if (currTime - nodeStatus.getLastUpdateTime() > NODE_STATUS_UPDATE_INTERVAL_MS
         || nodeStatus.getStatus() == null) {
@@ -110,5 +114,10 @@ public class QueryCoordinator {
       }
     }
     return nodeStatus;
+  }
+
+  public long getLastResponseLatency(Node node) {
+    NodeStatus nodeStatus = getNodeStatus(node);
+    return nodeStatus.getLastResponseLatency();
   }
 }

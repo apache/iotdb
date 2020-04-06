@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.log;
 
+import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 
@@ -72,7 +73,7 @@ public interface LogManager {
   /**
    * Take a snapshot of the committed logs instantly and discard the committed logs.
    */
-  void takeSnapshot();
+  void takeSnapshot() throws IOException;
 
   LogApplier getApplier();
 

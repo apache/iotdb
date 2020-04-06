@@ -22,10 +22,7 @@ package org.apache.iotdb.cluster.common;
 import java.util.NoSuchElementException;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class TestManagedSeriesReader implements ManagedSeriesReader, IReaderByTimestamp {
 
@@ -70,15 +67,6 @@ public class TestManagedSeriesReader implements ManagedSeriesReader, IReaderByTi
       batchData.next();
     }
     return null;
-  }
-
-  @Override
-  public Object[] getValuesInTimestamps(long[] timestamps) {
-    Object[] rst = new Object[timestamps.length];
-    for (int i = 0; i < timestamps.length; i++) {
-      rst[i] = getValueInTimestamp(timestamps[i]);
-    }
-    return rst;
   }
 
 

@@ -53,7 +53,7 @@ public class LogWriterReaderTest {
     plans.add(insertPlan2);
     plans.add(deletePlan);
     for (PhysicalPlan plan : plans) {
-      plan.serializeTo(logsBuffer);
+      plan.serialize(logsBuffer);
     }
   }
 

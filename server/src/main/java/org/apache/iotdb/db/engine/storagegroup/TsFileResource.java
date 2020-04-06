@@ -162,18 +162,19 @@ public class TsFileResource {
   }
 
   private void generateTimeSeriesMetadata() throws IOException {
-    if (chunkMetadataList.isEmpty() && readOnlyMemChunk.isEmpty()) {
+    if ((chunkMetadataList == null ||chunkMetadataList.isEmpty())
+        && (readOnlyMemChunk == null || readOnlyMemChunk.isEmpty())) {
       timeSeriesMetadata = null;
     }
     timeSeriesMetadata = new TimeseriesMetadata();
     timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
 
-    if (!chunkMetadataList.isEmpty()) {
+    if (!(chunkMetadataList == null ||chunkMetadataList.isEmpty())) {
       timeSeriesMetadata.setMeasurementId(chunkMetadataList.get(0).getMeasurementUid());
       TSDataType dataType = chunkMetadataList.get(0).getDataType();
       timeSeriesMetadata.setTSDataType(dataType);
-    } else if (!readOnlyMemChunk.isEmpty()) {
+    } else if (!(readOnlyMemChunk == null || readOnlyMemChunk.isEmpty())) {
       timeSeriesMetadata.setMeasurementId(readOnlyMemChunk.get(0).getMeasurementUid());
       TSDataType dataType = readOnlyMemChunk.get(0).getDataType();
       timeSeriesMetadata.setTSDataType(dataType);

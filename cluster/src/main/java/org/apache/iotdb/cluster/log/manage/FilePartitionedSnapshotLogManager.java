@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +63,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   }
 
   @Override
-  public void takeSnapshot() {
+  public void takeSnapshot() throws IOException {
     // make sure every remote snapshot is pulled before creating local snapshot
     waitRemoteSnapshots();
 
@@ -88,7 +89,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     }
   }
 
-  private void collectTsFiles() {
+  private void collectTsFiles() throws IOException {
     slotSnapshots.clear();
     // TODO-Cluster#349: the collection is re-collected each time to prevent inconsistency when
     //  some of them are removed during two snapshots. Incremental addition or removal may be

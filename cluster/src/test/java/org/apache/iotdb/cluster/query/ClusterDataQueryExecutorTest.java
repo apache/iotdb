@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.query;
 import java.io.IOException;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -36,18 +37,18 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
   private ClusterDataQueryExecutor queryExecutor;
 
   @Test
-  public void testNoFilter() throws IOException, StorageEngineException {
+  public void testNoFilter() throws IOException, StorageEngineException, QueryProcessException {
     RawDataQueryPlan plan = new RawDataQueryPlan();
     plan.setDeduplicatedPaths(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true)), plan);
     checkSequentialDataset(dataSet, 0, 20);
   }
 
   @Test
-  public void testFilter() throws IOException, StorageEngineException {
+  public void testFilter() throws IOException, StorageEngineException, QueryProcessException {
     IExpression expression = new SingleSeriesExpression(new Path(TestUtils.getTestSeries(0, 0)),
         ValueFilter.gtEq(5.0));
     RawDataQueryPlan plan = new RawDataQueryPlan();
@@ -56,7 +57,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
     plan.setExpression(expression);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     QueryDataSet dataSet = queryExecutor.executeWithValueFilter(
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true)), plan);
     checkSequentialDataset(dataSet, 5, 15);
   }
 
