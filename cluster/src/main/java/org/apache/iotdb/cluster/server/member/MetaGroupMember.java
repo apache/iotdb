@@ -654,7 +654,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
 
     logger.info("A node {} wants to join this cluster", node);
-    if (node == thisNode) {
+    if (node.equals(thisNode)) {
       resultHandler.onError(new AddSelfException());
       return;
     }
@@ -848,7 +848,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             logger.error("Cannot send log to node {}", node, e);
           }
         } else {
-          // node == this node, decrease counters of all groups the local node is in
+          // node equals this node, decrease counters of all groups the local node is in
           for (int j = 0; j < REPLICATION_NUM; j++) {
             int nodeIndex = i - j;
             if (nodeIndex < 0) {
@@ -2042,14 +2042,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     Map<Node, Boolean> nodeStatus = new HashMap<>();
     for (Node node : allNodes) {
-      nodeStatus.put(node, thisNode == node);
+      nodeStatus.put(node, thisNode.equals(node));
     }
     NodeStatusHandler nodeStatusHandler = new NodeStatusHandler(nodeStatus);
     try {
       synchronized (nodeStatus) {
         for (Node node : allNodes) {
           TSMetaService.AsyncClient client = (AsyncClient) connectNode(node);
-          if (node != thisNode && client != null) {
+          if (!node.equals(thisNode) && client != null) {
             client.checkAlive(nodeStatusHandler);
           }
         }
