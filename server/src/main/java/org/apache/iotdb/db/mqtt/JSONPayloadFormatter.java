@@ -45,11 +45,11 @@ import java.util.List;
  * }
  */
 public class JSONPayloadFormatter implements PayloadFormatter {
-    public static final String JSON_KEY_DEVICE = "device";
-    public static final String JSON_KEY_TIMESTAMP = "timestamp";
-    public static final String JSON_KEY_TIMESTAMPS = "timestamps";
-    public static final String JSON_KEY_MEASUREMENTS = "measurements";
-    public static final String JSON_KEY_VALUES = "values";
+    private static final String JSON_KEY_DEVICE = "device";
+    private static final String JSON_KEY_TIMESTAMP = "timestamp";
+    private static final String JSON_KEY_TIMESTAMPS = "timestamps";
+    private static final String JSON_KEY_MEASUREMENTS = "measurements";
+    private static final String JSON_KEY_VALUES = "values";
 
     @Override
     public List<Message> format(ByteBuf payload) {
