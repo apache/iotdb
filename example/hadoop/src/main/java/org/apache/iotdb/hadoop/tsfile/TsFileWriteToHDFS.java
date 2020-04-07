@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -41,7 +42,7 @@ public class TsFileWriteToHDFS {
   private static final Logger logger = LoggerFactory.getLogger(TsFileWriteToHDFS.class);
 
   public static void main(String[] args) {
-    config.setTSFileStorageFs("HDFS");
+    config.setTSFileStorageFs(FSType.HDFS);
 
     String path = "hdfs://localhost:9000/test.tsfile";
     File f = FSFactoryProducer.getFSFactory().getFile(path);
