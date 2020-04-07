@@ -58,7 +58,7 @@ set IOTDB_CONF=%IOTDB_HOME%\conf
 set IOTDB_LOGS=%IOTDB_HOME%\logs
 
 @setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
-set CONF_PARAMS="-s"
+set CONF_PARAMS=-s
 set is_conf_path=false
 for %%i in (%*) do (
 	IF "%%i" == "-c" (
