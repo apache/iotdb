@@ -36,7 +36,7 @@
         management engine designed for timeseries data. It provides users with services for
         data collection, storage and analysis. Due to its light-weight architecture, high
         performance and rich feature set together with its deep integration with Apache
-        Hadoop and Spark, Apache IoTDB (incubating) can meet the requirements of massive
+        Hadoop, Spark and Flink, Apache IoTDB (incubating) can meet the requirements of massive
         data storage, high-speed data ingestion and complex data analysis in the IoT
         industrial fields.
       </p>
