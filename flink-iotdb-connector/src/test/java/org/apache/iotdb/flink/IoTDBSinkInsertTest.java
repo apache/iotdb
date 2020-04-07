@@ -19,7 +19,7 @@
 package org.apache.iotdb.flink;
 
 import com.google.common.collect.Lists;
-import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -34,7 +34,7 @@ import static org.mockito.Mockito.verify;
 public class IoTDBSinkInsertTest {
 
     private IoTDBSink ioTDBSink;
-    private Session session;
+    private SessionPool pool;
 
     @Before
     public void setUp() throws Exception {
@@ -42,8 +42,8 @@ public class IoTDBSinkInsertTest {
         options.setTimeseriesOptionList(Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
         ioTDBSink = new IoTDBSink(options, new DefaultIoTSerializationSchema());
 
-        session = mock(Session.class);
-        ioTDBSink.setSession(session);
+        pool = mock(SessionPool.class);
+        ioTDBSink.setSessionPool(pool);
     }
 
     @Test
@@ -55,12 +55,12 @@ public class IoTDBSinkInsertTest {
         tuple.put("values", "36.5");
 
         ioTDBSink.invoke(tuple, null);
-        verify(session).insert(any(String.class), any(Long.class), any(List.class), any(List.class));
+        verify(pool).insert(any(String.class), any(Long.class), any(List.class), any(List.class));
     }
 
     @Test
     public void close() throws Exception {
         ioTDBSink.close();
-        verify(session).close();
+        verify(pool).close();
     }
 }
