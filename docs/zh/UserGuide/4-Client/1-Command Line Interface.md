@@ -54,12 +54,12 @@ IOTDB为用户提供Client/Shell工具用于启动客户端和服务端程序。
 Linux系统与MacOS系统启动命令如下：
 
 ```
-  Shell > ./sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
+  Shell > sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 Windows系统启动命令如下：
 
 ```
-  Shell > \sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
+  Shell > sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 回车后即可成功启动客户端。启动后出现如图提示即为启动成功。
 ```
@@ -95,12 +95,12 @@ IoTDB>
 Linux系统与MacOS系统启动命令如下：
 
 ```
-  Shell >./sbin/start-client.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > sbin/start-client.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```
 Windows系统启动命令如下：
 
 ```
-  Shell > \sbin\start-client.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > sbin\start-client.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```
 ## Cli / Shell的-e参数
 当您想要通过脚本的方式通过Cli / Shell对IoTDB进行批量操作时，可以使用-e参数。通过使用该参数，您可以在不进入客户端输入模式的情况下操作IoTDB。
@@ -110,7 +110,7 @@ Windows系统启动命令如下：
 针对Client/Shell工具的-e参数用法如下：
 
 ```
-  Shell > ./sbin/start-client.sh -h {host} -p {port} -u {user} -pw {password} -e {sql for iotdb}
+  Shell > sbin/start-client.sh -h {host} -p {port} -u {user} -pw {password} -e {sql for iotdb}
 ```
 
 为了更好的解释-e参数的使用，可以参考下面的例子。
