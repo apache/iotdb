@@ -27,7 +27,6 @@ if [ -z "${IOTDB_HOME}" ]; then
   export IOTDB_HOME="`dirname "$0"`/.."
 fi
 
-
 IOTDB_CONF=${IOTDB_HOME}/conf
 # IOTDB_LOGS=${IOTDB_HOME}/logs
 

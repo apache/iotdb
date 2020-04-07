@@ -56,9 +56,9 @@ public class IoTDBDescriptor {
 
   public void replaceProps(String[] params) {
     Options options = new Options();
-    Option opt = new Option("rpc_port", "rpc_port", true, "The jdbc service listens on the port");
-    opt.setRequired(false);
-    options.addOption(opt);
+    Option rpcPort = new Option("rpc_port", "rpc_port", true, "The jdbc service listens on the port");
+    rpcPort.setRequired(false);
+    options.addOption(rpcPort);
 
     boolean ok = parseCommandLine(options, params);
     if (!ok) {
