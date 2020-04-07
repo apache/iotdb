@@ -50,7 +50,9 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public static void main(String[] args) {
-    IoTDBDescriptor.getInstance().replaceProps(args);
+    if (args.length > 0) {
+      IoTDBDescriptor.getInstance().replaceProps(args);
+    }
     IoTDBConfigCheck.getInstance().checkConfig();
     IoTDB daemon = IoTDB.getInstance();
     daemon.active();
