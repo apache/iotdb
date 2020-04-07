@@ -63,6 +63,7 @@ import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -127,9 +128,12 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PlanExecutor implements IPlanExecutor {
 
+  private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
   // for data query
   protected IQueryRouter queryRouter;
   // for system schema
@@ -709,10 +713,7 @@ public class PlanExecutor implements IPlanExecutor {
           }
           TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValues[i]);
           Path path = new Path(deviceId, measurement);
-
-          mManager.createTimeseries(path.toString(), dataType, getDefaultEncoding(dataType),
-                  TSFileDescriptor.getInstance().getConfig().getCompressor(),
-              Collections.emptyMap());
+          internalCreateTimeseries(path.toString(), dataType);
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
         schemas[i] = measurementNode.getSchema();
@@ -721,6 +722,22 @@ public class PlanExecutor implements IPlanExecutor {
       StorageEngine.getInstance().insert(insertPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
+    }
+  }
+
+  /**
+   * create timeseries with ignore PathAlreadyExistException
+   */
+  private void internalCreateTimeseries(String path, TSDataType dataType) throws MetadataException {
+    try {
+      mManager.createTimeseries(path, dataType, getDefaultEncoding(dataType),
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap());
+    } catch (PathAlreadyExistException e) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("Ignore PathAlreadyExistException when Concurrent inserting"
+            + " a non-exist time series {}", path);
+      }
     }
   }
 
@@ -768,9 +785,7 @@ public class PlanExecutor implements IPlanExecutor {
           }
           Path path = new Path(deviceId, measurementList[i]);
           TSDataType dataType = dataTypes[i];
-          mManager.createTimeseries(path.getFullPath(), dataType, getDefaultEncoding(dataType),
-                  TSFileDescriptor.getInstance().getConfig().getCompressor(),
-                  Collections.emptyMap());
+          internalCreateTimeseries(path.getFullPath(), dataType);
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurementList[i]);
 

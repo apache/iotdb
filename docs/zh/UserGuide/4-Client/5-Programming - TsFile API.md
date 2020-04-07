@@ -681,15 +681,11 @@ public class TsFileRead {
 
 ```
 
-## 指定配置文件路径
+## 修改 TsFile 配置项
 
-默认的配置文件`tsfile-format.properties.template`存放在`/tsfile/src/main/resources`目录下。如果您想使用自定义的路径:
-```
-System.setProperty(TsFileConstant.TSFILE_CONF, "your config file path");
-```
-然后调用:
 ```
 TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+config.setXXX();
 ```
 
 ## Bloom filter
@@ -698,8 +694,10 @@ TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 如果你想了解更多关于它的细节，你可以参考: [wiki page of bloom filter](https://en.wikipedia.org/wiki/Bloom_filter).
 
 #### 配置 
-您可以通过`/server/src/assembly/resources/conf`目录下的`tsfile-format.properties`配置文件中的以下参数来控制bloom过滤器的误报率：
+
+您可以通过修改 TsFileConfig 中的配置项来控制bloom过滤器的误报率：
+
 ```
 # The acceptable error rate of bloom filter, should be in [0.01, 0.1], default is 0.05
-bloom_filter_error_rate=0.05
+bloomFilterErrorRate=0.05
 ```
