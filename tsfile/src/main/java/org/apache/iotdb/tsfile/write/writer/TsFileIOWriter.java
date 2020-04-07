@@ -100,8 +100,8 @@ public class TsFileIOWriter {
   public TsFileIOWriter(File file) throws IOException {
     this.out = new DefaultTsFileOutput(file);
     this.file = file;
-    if (resourceLogger.isInfoEnabled()) {
-      resourceLogger.info("{} writer is opened.", file.getName());
+    if (resourceLogger.isDebugEnabled()) {
+      resourceLogger.debug("{} writer is opened.", file.getName());
     }
     startFile();
   }
@@ -135,7 +135,9 @@ public class TsFileIOWriter {
   public void startChunkGroup(String deviceId) throws IOException {
     this.currentChunkGroupDeviceId = deviceId;
     currentChunkGroupStartOffset = out.getPosition();
-    logger.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
+    if (logger.isDebugEnabled()) {
+      logger.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
+    }
     chunkMetadataList = new ArrayList<>();
   }
 
@@ -151,7 +153,6 @@ public class TsFileIOWriter {
         chunkMetadataList.size());
     chunkGroupFooter.serializeTo(out.wrapAsStream());
     chunkGroupMetadataList.add(new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
-    logger.debug("end chunk group:{}", chunkMetadataList);
     currentChunkGroupDeviceId = null;
     chunkMetadataList = null;
   }
@@ -176,18 +177,10 @@ public class TsFileIOWriter {
         out.getPosition(),
         statistics);
 
-    // flush ChunkHeader to TsFileIOWriter
-    if (logger.isDebugEnabled()) {
-      logger.debug("start series chunk:{}, file position {}", measurementSchema, out.getPosition());
-    }
-
     ChunkHeader header = new ChunkHeader(measurementSchema.getMeasurementId(), dataSize, tsDataType,
         compressionCodecName, encodingType, numOfPages);
     header.serializeTo(out.wrapAsStream());
 
-    if (logger.isDebugEnabled()) {
-      logger.debug("finish series chunk:{} header, file position {}", header, out.getPosition());
-    }
   }
 
   /**
@@ -201,8 +194,10 @@ public class TsFileIOWriter {
     chunkHeader.serializeTo(out.wrapAsStream());
     out.write(chunk.getData());
     endCurrentChunk();
-    logger.debug("end flushing a chunk:{}, totalvalue:{}", currentChunkMetadata,
-        chunkMetadata.getNumOfPoints());
+    if (logger.isDebugEnabled()) {
+      logger.debug("end flushing a chunk:{}, totalvalue:{}", currentChunkMetadata,
+          chunkMetadata.getNumOfPoints());
+    }
   }
 
   /**
