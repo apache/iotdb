@@ -35,7 +35,9 @@
 
 如果你希望将TSFile存储在HDFS上，可以遵循以下步骤：
 
-首先，使用maven打包server和Hadoop模块：`mvn clean package -pl server,hadoop -am -Dmaven.test.skip=true`
+首先下载对应版本的源码发布版或者下载 github 仓库，发布版代码的 tag 为 release/x.x.x
+
+使用maven打包server和Hadoop模块：`mvn clean package -pl server,hadoop -am -Dmaven.test.skip=true`
 
 然后，将Hadoop模块的target jar包`hadoop-tsfile-0.10.0-jar-with-dependencies.jar`复制到server模块的target lib文件夹 `.../server/target/iotdb-server-0.10.0/lib`下。
 

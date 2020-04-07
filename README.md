@@ -21,7 +21,7 @@
 
 # IoTDB
 [![Build Status](https://www.travis-ci.org/apache/incubator-iotdb.svg?branch=master)](https://www.travis-ci.org/apache/incubator-iotdb)
-[![codecov](https://codecov.io/gh/thulab/incubator-iotdb/branch/master/graph/badge.svg)](https://codecov.io/gh/thulab/incubator-iotdb)
+[![coveralls](https://coveralls.io/repos/github/apache/incubator-iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/incubator-iotdb/badge.svg?branch=master)
 [![GitHub release](https://img.shields.io/github/release/apache/incubator-iotdb.svg)](https://github.com/apache/incubator-iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/incubator-iotdb.svg)
@@ -130,7 +130,7 @@ Then the binary version (including both server and client) can be found at **dis
 configuration files are under "conf" folder
 
   * environment config module (`iotdb-env.bat`, `iotdb-env.sh`),
-  * system config module (`tsfile-format.properties`, `iotdb-engine.properties`)
+  * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`).
 
 For more information, please see [Chapter3: Server](https://iotdb.apache.org/#/Documents/progress/chap3/sec1) and [Chapter4: Client](https://iotdb.apache.org/#/Documents/progress/chap4/sec1) in detail.

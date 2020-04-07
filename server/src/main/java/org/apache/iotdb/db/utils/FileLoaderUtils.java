@@ -90,7 +90,7 @@ public class FileLoaderUtils {
    * @param allSensors measurements queried at the same time of this device
    */
   public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, Path seriesPath,
-                                                          QueryContext context, Filter timeFilter, Set<String> allSensors) throws IOException {
+      QueryContext context, Filter timeFilter, Set<String> allSensors) throws IOException {
     TimeseriesMetadata timeSeriesMetadata;
     if (resource.isClosed()) {
       timeSeriesMetadata = TimeSeriesMetadataCache.getInstance()
@@ -129,7 +129,8 @@ public class FileLoaderUtils {
    * load all chunk metadata of one time series in one file.
    * @param timeSeriesMetadata the corresponding TimeSeriesMetadata in that file.
    */
-  public static List<ChunkMetadata> loadChunkMetadata(TimeseriesMetadata timeSeriesMetadata) throws IOException {
+  public static List<ChunkMetadata> loadChunkMetadataList(TimeseriesMetadata timeSeriesMetadata)
+      throws IOException {
     return timeSeriesMetadata.loadChunkMetadataList();
   }
 
@@ -139,26 +140,24 @@ public class FileLoaderUtils {
    * @param chunkMetaData the corresponding chunk metadata
    * @param timeFilter it should be a TimeFilter instead of a ValueFilter
    */
-  public static List<IPageReader> loadPageReader(ChunkMetadata chunkMetaData, Filter timeFilter) throws IOException {
-    return initChunkReader(chunkMetaData, timeFilter).loadPageReaderList();
-  }
-
-  private static IChunkReader initChunkReader(ChunkMetadata metaData, Filter timeFilter) throws IOException {
-    if (metaData == null) {
+  public static List<IPageReader> loadPageReaderList(ChunkMetadata chunkMetaData, Filter timeFilter)
+      throws IOException {
+    if (chunkMetaData == null) {
       throw new IOException("Can't init null chunkMeta");
     }
     IChunkReader chunkReader;
-    IChunkLoader chunkLoader = metaData.getChunkLoader();
+    IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
     if (chunkLoader instanceof MemChunkLoader) {
       MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
       chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
     } else {
-      Chunk chunk = chunkLoader.loadChunk(metaData);
+      Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
       chunkReader = new ChunkReader(chunk, timeFilter);
       chunkReader.hasNextSatisfiedPage();
     }
-    return chunkReader;
+    return chunkReader.loadPageReaderList();
   }
+
 
   /**
    * load all ChunkMetadatas belong to the seriesPath
