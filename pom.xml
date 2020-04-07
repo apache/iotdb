@@ -1211,19 +1211,6 @@
         </profile>
         <!-- upload code coverage report to coveralls.io-->
         <!-- to enable coveralls locally, you need to get the repoToken from https://coveralls.io/github/apache/incubator-iotdb.
-             use `mvn post-integration-test -pl hadoop  -Pcode-coverage -Pcoveralls -DrepoToken=TOKEN`-->
-        <profile>
-            <id>coveralls</id>
-            <modules>
-                <!-- make sure the modules are synced with profile code-coverage-->
-                <module>tsfile</module>
-                <module>client</module>
-                <module>session</module>
-                <module>server</module>
-                <module>jdbc</module>
-                <module>hadoop</module>
-                <module>hive-connector</module>
-            </modules>
-        </profile>
+             use `mvn post-integration-test -Pcode-coverage -DrepoToken=TOKEN`-->
     </profiles>
 </project>
