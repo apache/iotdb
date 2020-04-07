@@ -61,12 +61,13 @@ public class ClusterMain {
       return;
     }
     String mode = args[0];
-    String[] params = Arrays.copyOfRange(args, 1, args.length);
-    // replace default conf params
-    ClusterDescriptor.getINSTANCE().replaceProps(params);
+    if (args.length > 1) {
+      String[] params = Arrays.copyOfRange(args, 1, args.length);
+      // replace default conf params
+      ClusterDescriptor.getINSTANCE().replaceProps(params);
+    }
 
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
-
     logger.info("Running mode {}", mode);
     try {
       if (MODE_START.equals(mode)) {
