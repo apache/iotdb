@@ -47,8 +47,6 @@ import org.slf4j.LoggerFactory;
  */
 public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
-  private static final Logger logger = LoggerFactory
-      .getLogger(RestorableTsFileIOWriter.class);
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   private long truncatedPosition = -1;
   private Map<Path, MeasurementSchema> knownSchemas = new HashMap<>();
