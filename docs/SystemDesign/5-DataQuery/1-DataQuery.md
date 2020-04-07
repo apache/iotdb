@@ -28,6 +28,7 @@ There are several types of data queries
 * Downsampling query
 * Single point supplementary null query
 * Latest data query
+* Align by device query
 
 In order to achieve the above kinds of queries, a basic query component for a single time series is designed in the IoTDB query engine, and on this basis, various query functions are implemented.
 
@@ -38,3 +39,5 @@ In order to achieve the above kinds of queries, a basic query component for a si
 * [Aggregate query](/SystemDesign/5-DataQuery/4-AggregationQuery.html)
 * [Downsampling query](/SystemDesign/5-DataQuery/5-GroupByQuery.html)
 * [Recent timestamp query](/SystemDesign/5-DataQuery/6-LastQuery.html)
+* [Align by device query](/SystemDesign/5-DataQuery/7-AlignByDeviceQuery.html)
+* [Modification handle](/SystemDesign/5-DataQuery/8-ModificationHandle.html)

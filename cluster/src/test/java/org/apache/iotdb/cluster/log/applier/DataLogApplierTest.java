@@ -58,11 +58,11 @@ public class DataLogApplierTest extends IoTDBTest {
         throws StorageGroupNotSetException {
       List<MeasurementSchema> ret = new ArrayList<>();
       for (String prefixPath : prefixPaths) {
-        if (prefixPath.equals(TestUtils.getTestSg(4))) {
+        if (prefixPath.startsWith(TestUtils.getTestSg(4))) {
           for (int i = 0; i < 10; i++) {
             ret.add(TestUtils.getTestSchema(4, i));
           }
-        } else if (!prefixPath.equals(TestUtils.getTestSg(5))) {
+        } else if (!prefixPath.startsWith(TestUtils.getTestSg(5))) {
           throw new StorageGroupNotSetException(prefixPath);
         }
       }
@@ -120,7 +120,7 @@ public class DataLogApplierTest extends IoTDBTest {
       applier.apply(log);
       fail("exception should be thrown");
     } catch (QueryProcessException e) {
-      assertEquals("org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException: Storage group is not set for current seriesPath: [root.test6]", e.getMessage());
+      assertEquals("org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException: Storage group is not set for current seriesPath: [root.test6.s0]", e.getMessage());
     }
   }
 

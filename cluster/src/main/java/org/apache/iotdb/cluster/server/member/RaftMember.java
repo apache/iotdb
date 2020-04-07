@@ -715,7 +715,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @return a TSStatus indicating if the forwarding is successful.
    */
   TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
-    if (node == thisNode || node == null) {
+    if (node == null || node.equals(thisNode)) {
       logger.debug("{}: plan {} has no where to be forwarded", name, plan);
       return StatusUtils.NO_LEADER;
     }

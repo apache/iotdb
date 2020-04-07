@@ -26,15 +26,15 @@ The following basic concepts are involved in IoTDB:
 
 * Device
 
-A devices is an installation equipped with sensors in real scenarios. In IoTDB, all sensors should have their corresponding devices.
+A devices is an installation equipped with measurements in real scenarios. In IoTDB, all measurements should have their corresponding devices.
 
-* Sensor
+* Measurement
 
-A sensor is a detection equipment in an actual scene, which can sense the information to be measured, and can transform the sensed information into an electrical signal or other desired form of information output and send it to IoTDB. In IoTDB, all data and paths stored are organized in units of sensors.
+A measurement is a detection equipment in an actual scene, which can sense the information to be measured, and can transform the sensed information into an electrical signal or other desired form of information output and send it to IoTDB. In IoTDB, all data and paths stored are organized in units of sensors.
 
 * Storage Group
 
-Storage groups are used to let users define how to organize and isolate different time series data on disk. Time series belonging to the same storage group will be continuously written to the same file in the corresponding folder. The file may be closed due to user commands or system policies, and hence the data coming next from these sensors will be stored in a new file in the same folder. Time series belonging to different storage groups are stored in different folders.
+Storage groups are used to let users define how to organize and isolate different time series data on disk. Time series belonging to the same storage group will be continuously written to the same file in the corresponding folder. The file may be closed due to user commands or system policies, and hence the data coming next from these measurements will be stored in a new file in the same folder. Time series belonging to different storage groups are stored in different folders.
 ## Connector
 > note:In this sample program, there are some update operations for historical data, so it is necessary to ensure the sequential transmission and consumption of data via RocketMQ. If there is no update operation in use, then there is no need to guarantee the order of data. IoTDB will process these data which may be disorderly.
 
