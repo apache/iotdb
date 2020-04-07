@@ -197,7 +197,4 @@ public class ClusterDescriptor {
     }
     return urlList;
   }
-
 }
-
-

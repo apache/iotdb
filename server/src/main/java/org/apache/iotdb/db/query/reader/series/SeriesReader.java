@@ -245,7 +245,7 @@ public class SeriesReader {
   }
 
   private void unpackOneTimeSeriesMetadata(TimeseriesMetadata timeSeriesMetadata) throws IOException {
-    cachedChunkMetadata.addAll(FileLoaderUtils.loadChunkMetadata(timeSeriesMetadata));
+    cachedChunkMetadata.addAll(FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata));
   }
 
   boolean isChunkOverlapped() throws IOException {
@@ -342,7 +342,7 @@ public class SeriesReader {
   }
 
   private void unpackOneChunkMetaData(ChunkMetadata chunkMetaData) throws IOException {
-    FileLoaderUtils.loadPageReader(chunkMetaData, timeFilter)
+    FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter)
             .forEach(pageReader -> cachedPageReaders.add(new VersionPageReader(chunkMetaData.getVersion(), pageReader)));
   }
 
