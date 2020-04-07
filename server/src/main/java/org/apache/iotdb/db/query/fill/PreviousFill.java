@@ -193,7 +193,7 @@ public class PreviousFill extends IFill {
   }
 
   /**
-   * find the last chunk metadata and unpack all overlapped seq/unseq files
+   * find the last TimeseriesMetadata and unpack all overlapped seq/unseq files
    */
   private void UnpackOverlappedFilesToTimeseriesMetadata(QueryContext context) throws IOException {
     List<TsFileResource> seqFileResource = dataSource.getSeqResources();
