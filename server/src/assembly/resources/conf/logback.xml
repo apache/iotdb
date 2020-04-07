@@ -29,6 +29,7 @@
             <fileNamePattern>${IOTDB_HOME}/logs/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>2MB</maxFileSize>
+                <maxBackupIndex>50</maxBackupIndex>
             </timeBasedFileNamingAndTriggeringPolicy>
         </rollingPolicy>
         <append>true</append>
@@ -48,6 +49,7 @@
             <fileNamePattern>${IOTDB_HOME}/logs/log-warn-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>2MB</maxFileSize>
+                <maxBackupIndex>50</maxBackupIndex>
             </timeBasedFileNamingAndTriggeringPolicy>
         </rollingPolicy>
         <append>true</append>
@@ -67,6 +69,7 @@
             <fileNamePattern>${IOTDB_HOME}/logs/log-info-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>200MB</maxFileSize>
+                <maxBackupIndex>50</maxBackupIndex>
             </timeBasedFileNamingAndTriggeringPolicy>
         </rollingPolicy>
         <append>true</append>
@@ -86,6 +89,7 @@
             <fileNamePattern>${IOTDB_HOME}/logs/log-debug-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>200MB</maxFileSize>
+                <maxBackupIndex>50</maxBackupIndex>
             </timeBasedFileNamingAndTriggeringPolicy>
         </rollingPolicy>
         <append>true</append>
@@ -118,6 +122,7 @@
             <fileNamePattern>${IOTDB_HOME}/logs/log-all-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>200MB</maxFileSize>
+                <maxBackupIndex>50</maxBackupIndex>
             </timeBasedFileNamingAndTriggeringPolicy>
         </rollingPolicy>
         <append>true</append>
@@ -135,6 +140,7 @@
             <fileNamePattern>${IOTDB_HOME}/logs/log-measure-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>200MB</maxFileSize>
+                <maxBackupIndex>50</maxBackupIndex>
             </timeBasedFileNamingAndTriggeringPolicy>
         </rollingPolicy>
         <append>true</append>
@@ -152,6 +158,7 @@
             <fileNamePattern>${IOTDB_HOME}/logs/log-sync-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>200MB</maxFileSize>
+                <maxBackupIndex>50</maxBackupIndex>
             </timeBasedFileNamingAndTriggeringPolicy>
         </rollingPolicy>
         <append>true</append>

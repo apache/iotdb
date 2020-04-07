@@ -27,6 +27,7 @@
             <fileNamePattern>${LOG_PATH}/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>2MB</maxFileSize>
+                <maxBackupIndex>50</maxBackupIndex>
             </timeBasedFileNamingAndTriggeringPolicy>
         </rollingPolicy>
         <append>true</append>
@@ -46,6 +47,7 @@
             <fileNamePattern>${LOG_PATH}/log-warn-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>2MB</maxFileSize>
+                <maxBackupIndex>50</maxBackupIndex>
             </timeBasedFileNamingAndTriggeringPolicy>
         </rollingPolicy>
         <append>true</append>
@@ -65,6 +67,7 @@
             <fileNamePattern>${LOG_PATH}/log-info-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>2MB</maxFileSize>
+                <maxBackupIndex>50</maxBackupIndex>
             </timeBasedFileNamingAndTriggeringPolicy>
         </rollingPolicy>
         <append>true</append>
@@ -84,6 +87,7 @@
             <fileNamePattern>${LOG_PATH}/log-debug-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>2MB</maxFileSize>
+                <maxBackupIndex>50</maxBackupIndex>
             </timeBasedFileNamingAndTriggeringPolicy>
         </rollingPolicy>
         <append>true</append>
