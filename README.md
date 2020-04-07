@@ -18,7 +18,7 @@
     under the License.
 
 -->
-[English](./README.md) | [中文](docs/zh/GIT_INDEX.md)
+[English](./README.md) | [中文](./README_ZH.md)
 
 # IoTDB
 [![Build Status](https://www.travis-ci.org/apache/incubator-iotdb.svg?branch=master)](https://www.travis-ci.org/apache/incubator-iotdb)
