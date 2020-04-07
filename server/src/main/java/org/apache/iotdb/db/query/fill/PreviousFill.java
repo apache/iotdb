@@ -153,7 +153,7 @@ public class PreviousFill extends IFill {
       return constructLastPair(
           chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), dataType);
     }
-    List<IPageReader> pageReaders = FileLoaderUtils.loadPageReader(chunkMetaData, timeFilter);
+    List<IPageReader> pageReaders = FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
     for (int i = pageReaders.size() - 1; i >= 0; i--) {
       IPageReader pageReader = pageReaders.get(i);
       Statistics pageStatistics = pageReader.getStatistics();
