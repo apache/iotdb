@@ -58,8 +58,8 @@ Apache IoTDB（孵化中）（物联网数据库）是一个集成数据专为�
 
     <div class="block">
         <el-carousel trigger="click" height="700px">
-          <el-carousel-item v-for="item in imgBlock" :key="item">
-            <img :src="item.src" alt="">
+          <el-carousel-item v-for="item in imgBlock" :key="item" style="text-align:center;">
+            <img :src="item.src" height="500px">
             <h3 style="font-size: 30px;color: #fcac45;text-align: center;line-height: 0px;">{{item.des}}</h3>
             <p style="font-size: 18px;padding:10px;line-height: 22px;text-align:justify!important;font-weight:bold;">{{item.detail}}</p>
           </el-carousel-item>
@@ -184,19 +184,6 @@ export default {
     };
   },
   methods: {
-    hover: function(e) {
-      e.currentTarget.style.boxShadow = "2px 2px 10px #909090";
-      e.currentTarget.firstElementChild.style.marginTop = "0px";
-      e.currentTarget.firstElementChild.nextElementSibling.style.display =
-        "block";
-    },
-    unhover: function(e) {
-      e.currentTarget.style.boxShadow = "";
-      e.currentTarget.firstElementChild.style.marginTop = "60px";
-      e.currentTarget.firstElementChild.nextElementSibling.style.display =
-        "none";
-    },
-
     addRoutes1() {
       this.$router.push("/zh/Download/");
     },

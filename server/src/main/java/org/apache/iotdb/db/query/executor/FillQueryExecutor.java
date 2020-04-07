@@ -89,7 +89,7 @@ public class FillQueryExecutor {
       } else {
         fill = typeIFillMap.get(dataType).copy();
       }
-      configureFill(fill, dataType, path, fillQueryPlan.getAllSensorsInDevice(path.getDevice()), context, queryTime);
+      configureFill(fill, dataType, path, fillQueryPlan.getAllMeasurementsInDevice(path.getDevice()), context, queryTime);
 
       TimeValuePair timeValuePair = fill.getFillResult();
       if (timeValuePair == null || timeValuePair.getValue() == null) {

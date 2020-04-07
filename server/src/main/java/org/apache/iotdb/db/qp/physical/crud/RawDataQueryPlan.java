@@ -29,7 +29,7 @@ public class RawDataQueryPlan extends QueryPlan {
   private List<Path> deduplicatedPaths = new ArrayList<>();
   private List<TSDataType> deduplicatedDataTypes = new ArrayList<>();
   private IExpression expression = null;
-  private Map<String, Set<String>> deviceToSensors = new HashMap<>();
+  private Map<String, Set<String>> deviceToMeasurements = new HashMap<>();
 
   public RawDataQueryPlan() {
     super();
@@ -52,7 +52,7 @@ public class RawDataQueryPlan extends QueryPlan {
   }
 
   public void addDeduplicatedPaths(Path path) {
-    deviceToSensors.computeIfAbsent(path.getDevice(), key -> new HashSet<>()).add(path.getMeasurement());
+    deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>()).add(path.getMeasurement());
     this.deduplicatedPaths.add(path);
   }
 
@@ -61,9 +61,9 @@ public class RawDataQueryPlan extends QueryPlan {
    * measurements of current device.
    */
   public void setDeduplicatedPaths(List<Path> deduplicatedPaths) {
-    deviceToSensors.clear();
+    deviceToMeasurements.clear();
     deduplicatedPaths.forEach(
-        path -> deviceToSensors.computeIfAbsent(path.getDevice(), key -> new HashSet<>())
+        path -> deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>())
             .add(path.getMeasurement()));
     this.deduplicatedPaths = deduplicatedPaths;
   }
@@ -81,8 +81,8 @@ public class RawDataQueryPlan extends QueryPlan {
     this.deduplicatedDataTypes = deduplicatedDataTypes;
   }
 
-  public Set<String> getAllSensorsInDevice(String device) {
-    return deviceToSensors.getOrDefault(device, Collections.emptySet());
+  public Set<String> getAllMeasurementsInDevice(String device) {
+    return deviceToMeasurements.getOrDefault(device, Collections.emptySet());
   }
 
 }
