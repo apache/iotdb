@@ -77,7 +77,7 @@ Users can start IoTDB by the start-server script under the sbin folder.
 
 #### Use Cli
 
-IoTDB offers different ways to interact with server, here we introduce basic steps of using Cli tool to insrert and query data.
+IoTDB offers different ways to interact with server, here we introduce basic steps of using Cli tool to insert and query data.
 
 After installing IoTDB, there is a default user 'root', its default password is also 'root'. Users can use this
 default user to login Cli to use IoTDB. The startup script of Cli is the start-client script in the folder sbin. When executing the script, user should assign  
@@ -112,7 +112,7 @@ IoTDB>
 
 Now, let us introduce the way of creating timeseries, inserting data and querying data. 
 
-The data in IoTDB is organized as timeseries, in each timeseries there are some data-time pairs, and every timeseries is owned by a storage group. Before defining a timeseries, we should difine a storage group using SET STORAGE GROUP, and here is an example: 
+The data in IoTDB is organized as timeseries, in each timeseries there are some data-time pairs, and every timeseries is owned by a storage group. Before defining a timeseries, we should define a storage group using SET STORAGE GROUP, and here is an example: 
 
 ``` 
 IoTDB> SET STORAGE GROUP TO root.ln
