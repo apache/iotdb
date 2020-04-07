@@ -144,7 +144,7 @@ Apache IoTDB（孵化中）（物联网数据库）是一个集成数据专为�
             title="与开源生态系统的紧密集成"
             width="400"
             trigger="hover"
-            content="Apache IoTDB（孵化中）可以支持分析生态系统，例如Hadoop，Spark和Grafana作为可视化工具。"
+            content="Apache IoTDB（孵化中）可以支持分析生态系统，例如Hadoop，Spark，Flink和Grafana作为可视化工具。"
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
              <img src="/img/home-icon6.png" style="width:40px;height:40px;">

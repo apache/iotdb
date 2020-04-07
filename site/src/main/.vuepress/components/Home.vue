@@ -150,7 +150,7 @@
             title="Intense integration with Open Source Ecosystem"
             width="400"
             trigger="hover"
-            content="Apache IoTDB (incubating) can support analysis ecosystems, for example, Hadoop, Spark, and Grafana as visualization tool."
+            content="Apache IoTDB (incubating) can support analysis ecosystems, for example, Hadoop, Spark, Flink and Grafana as visualization tool."
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
              <img src="/img/home-icon6.png" style="width:40px;height:40px;">
