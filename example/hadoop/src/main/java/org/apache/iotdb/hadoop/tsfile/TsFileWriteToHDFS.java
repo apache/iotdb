@@ -20,7 +20,6 @@
 package org.apache.iotdb.hadoop.tsfile;
 
 import java.io.File;
-import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -68,7 +67,7 @@ public class TsFileWriteToHDFS {
         tsFileWriter.write(tsRecord);
       }
     } catch (Exception e) {
-      logger.error("Failed to write TsFile on HDFS. ", e.getMessage());
+      logger.error("Failed to write TsFile on HDFS. {}", e.getMessage());
     }
   }
 }
