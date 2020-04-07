@@ -32,23 +32,19 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TsFileWriteToHDFS {
 
   private static TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+  private static final Logger logger = LoggerFactory.getLogger(TsFileWriteToHDFS.class);
 
   public static void main(String[] args) {
     config.setTSFileStorageFs("HDFS");
 
-    String path = "hdfs://10.211.55.4:9000/test1.tsfile";
+    String path = "hdfs://localhost:9000/test.tsfile";
     File f = FSFactoryProducer.getFSFactory().getFile(path);
-    if (!f.exists()) {
-      try {
-        f.createNewFile();
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_1, Constant.SENSOR_1),
           new MeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
@@ -71,7 +67,7 @@ public class TsFileWriteToHDFS {
         tsFileWriter.write(tsRecord);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Failed to write TsFile on HDFS. ", e.getMessage());
     }
   }
 }
