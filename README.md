@@ -18,6 +18,7 @@
     under the License.
 
 -->
+[English](./README.md) | [中文](docs/zh/GIT_INDEX.md)
 
 # IoTDB
 [![Build Status](https://www.travis-ci.org/apache/incubator-iotdb.svg?branch=master)](https://www.travis-ci.org/apache/incubator-iotdb)
@@ -98,7 +99,7 @@ IoTDB provides three installation methods, you can refer to the following sugges
 * Using Docker：The path to the dockerfile is https://github.com/apache/incubator-iotdb/tree/master/docker/src/main
 
 
-Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to Chapter 4 of the User Guide.
+Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to Chapter 3 of the User Guide.
 
 ## Build from source
 
