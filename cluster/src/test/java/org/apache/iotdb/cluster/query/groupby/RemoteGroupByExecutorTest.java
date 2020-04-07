@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.BaseQueryTest;
@@ -56,7 +57,9 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
     }
 
     List<GroupByExecutor> groupByExecutors = testMetaMember
-        .getGroupByExecutors(path, dataType, context, timeFilter, aggregationTypes);
+        .getGroupByExecutors(path, Collections.singleton(path.getMeasurement()), dataType,
+            context, timeFilter,
+            aggregationTypes);
 
     for (int i = 0; i < groupByExecutors.size(); i++) {
       GroupByExecutor groupByExecutor = groupByExecutors.get(i);
@@ -105,7 +108,8 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
     }
 
     List<GroupByExecutor> groupByExecutors = testMetaMember
-        .getGroupByExecutors(path, dataType, context, timeFilter, aggregationTypes);
+        .getGroupByExecutors(path, Collections.singleton(path.getMeasurement()), dataType, context
+            , timeFilter, aggregationTypes);
 
     for (int i = 0; i < groupByExecutors.size(); i++) {
       GroupByExecutor groupByExecutor = groupByExecutors.get(i);

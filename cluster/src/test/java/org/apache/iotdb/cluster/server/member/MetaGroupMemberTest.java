@@ -342,7 +342,7 @@ public class MetaGroupMemberTest extends MemberTest {
     dummyResponse.set(Response.RESPONSE_AGREE);
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setDataTypes(new TSDataType[]{TSDataType.DOUBLE});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -558,7 +558,7 @@ public class MetaGroupMemberTest extends MemberTest {
       throws QueryProcessException, StorageEngineException, IOException {
     mockDataClusterServer = true;
     InsertPlan insertPlan = new InsertPlan();
-    insertPlan.setDataTypes(new TSDataType[]{TSDataType.DOUBLE});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setDeviceId(TestUtils.getTestSg(i));
@@ -582,7 +582,8 @@ public class MetaGroupMemberTest extends MemberTest {
     try {
       for (int i = 0; i < 10; i++) {
         IReaderByTimestamp readerByTimestamp = metaGroupMember
-            .getReaderByTimestamp(new Path(TestUtils.getTestSeries(i, 0)), TSDataType.DOUBLE,
+            .getReaderByTimestamp(new Path(TestUtils.getTestSeries(i, 0)),
+                Collections.singleton(TestUtils.getTestMeasurement(0)), TSDataType.DOUBLE,
                 context);
         for (int j = 0; j < 10; j++) {
           assertEquals(j * 1.0, (double) readerByTimestamp.getValueInTimestamp(j), 0.00001);
@@ -597,7 +598,7 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testGetReader() throws QueryProcessException, StorageEngineException, IOException {
     mockDataClusterServer = true;
     InsertPlan insertPlan = new InsertPlan();
-    insertPlan.setDataTypes(new TSDataType[]{TSDataType.DOUBLE});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setDeviceId(TestUtils.getTestSg(i));
@@ -621,7 +622,8 @@ public class MetaGroupMemberTest extends MemberTest {
     try {
       for (int i = 0; i < 10; i++) {
         ManagedSeriesReader reader = metaGroupMember
-            .getSeriesReader(new Path(TestUtils.getTestSeries(i, 0)), TSDataType.DOUBLE,
+            .getSeriesReader(new Path(TestUtils.getTestSeries(i, 0)),
+                Collections.singleton(TestUtils.getTestMeasurement(0)), TSDataType.DOUBLE,
                 TimeFilter.gtEq(5),
                 ValueFilter.ltEq(8.0), context);
         assertTrue(reader.hasNextBatch());
@@ -713,7 +715,6 @@ public class MetaGroupMemberTest extends MemberTest {
       result.wait(500);
     }
     assertEquals(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE, (long) result.get());
-    assertNull(metaGroupMember.getLogManager().getLastLog());
 
     metaGroupMember.setPartitionTable(partitionTable);
     synchronized (result) {
@@ -721,7 +722,6 @@ public class MetaGroupMemberTest extends MemberTest {
       result.wait(500);
     }
     assertEquals(Response.RESPONSE_AGREE, (long) result.get());
-    assertEquals(log, metaGroupMember.getLogManager().getLastLog());
   }
 
   @Test

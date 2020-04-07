@@ -181,11 +181,6 @@ public abstract class MemoryLogManager implements LogManager {
   }
 
   @Override
-  public Log getLastLog() {
-    return logBuffer.isEmpty() ? null : logBuffer.get(logBuffer.size() - 1);
-  }
-
-  @Override
   public LogApplier getApplier() {
     return logApplier;
   }

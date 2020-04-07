@@ -22,10 +22,13 @@ package org.apache.iotdb.cluster.query;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
@@ -51,7 +54,7 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
 
   @Override
   protected List<AggregateResult> aggregateOneSeries(Entry<Path, List<Integer>> pathToAggrIndexes,
-      Filter timeFilter, QueryContext context) throws StorageEngineException {
+      Set<String> deviceMeasurements, Filter timeFilter, QueryContext context) throws StorageEngineException {
     Path seriesPath = pathToAggrIndexes.getKey();
     TSDataType tsDataType = dataTypes.get(pathToAggrIndexes.getValue().get(0));
     List<String> aggregationNames = new ArrayList<>();
@@ -59,19 +62,23 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
     for (int i : pathToAggrIndexes.getValue()) {
       aggregationNames.add(aggregations.get(i));
     }
-    return metaMember.getAggregateResult(seriesPath, aggregationNames, tsDataType, timeFilter, context);
+    return metaMember.getAggregateResult(seriesPath, deviceMeasurements, aggregationNames,
+        tsDataType, timeFilter,
+        context);
   }
 
   @Override
-  protected TimeGenerator getTimeGenerator(QueryContext context)
+  protected TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan rawDataQueryPlan)
       throws StorageEngineException {
-    return new ClusterTimeGenerator(expression, context, metaMember);
+    return new ClusterTimeGenerator(expression, context, metaMember, rawDataQueryPlan);
   }
 
   @Override
-  protected IReaderByTimestamp getReaderByTime(Path path, TSDataType dataType,
+  protected IReaderByTimestamp getReaderByTime(Path path,
+      RawDataQueryPlan dataQueryPlan, TSDataType dataType,
       QueryContext context)
-      throws StorageEngineException {
-    return metaMember.getReaderByTimestamp(path, dataType, context);
+      throws StorageEngineException, QueryProcessException {
+    return metaMember.getReaderByTimestamp(path, dataQueryPlan.getAllSensorsInDevice(path.getDevice()),
+        dataType, context);
   }
 }

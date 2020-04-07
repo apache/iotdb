@@ -94,6 +94,26 @@ public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPoin
   }
 
   @Override
+  public boolean hasNextFile() throws IOException {
+    return false;
+  }
+
+  @Override
+  public boolean canUseCurrentFileStatistics() throws IOException {
+    return false;
+  }
+
+  @Override
+  public Statistics currentFileStatistics() throws IOException {
+    return null;
+  }
+
+  @Override
+  public void skipCurrentFile() {
+
+  }
+
+  @Override
   public boolean hasNextChunk() {
     return false;
   }
@@ -151,11 +171,6 @@ public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPoin
 
   @Override
   public Object getValueInTimestamp(long timestamp) {
-    return null;
-  }
-
-  @Override
-  public Object[] getValuesInTimestamps(long[] timestamps) {
     return null;
   }
 }

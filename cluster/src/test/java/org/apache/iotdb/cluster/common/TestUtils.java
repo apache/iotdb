@@ -224,14 +224,14 @@ public class TestUtils {
     for (int j = 0; j < 10; j++) {
       insertPlan.setDeviceId(getTestSg(j));
       String[] measurements = new String[10];
-      TSDataType[] tsDataTypes = new TSDataType[10];
+      MeasurementSchema[] schemas = new MeasurementSchema[10];
       // 10 series each device, all double
       for (int i = 0; i < 10; i++) {
         measurements[i] = getTestMeasurement(i);
-        tsDataTypes[i] = TSDataType.DOUBLE;
+        schemas[i] = TestUtils.getTestSchema(j, i);
       }
       insertPlan.setMeasurements(measurements);
-      insertPlan.setDataTypes(tsDataTypes);
+      insertPlan.setSchemas(schemas);
       // the first sequential file
       for (int i = 10; i < 20; i++) {
         insertPlan.setTime(i);
@@ -273,9 +273,9 @@ public class TestUtils {
     // data for fill
     insertPlan.setDeviceId(getTestSg(0));
     String[] measurements = new String[]{getTestMeasurement(10)};
-    TSDataType[] tsDataTypes = new TSDataType[]{TSDataType.DOUBLE};
+    MeasurementSchema[] schemas = new MeasurementSchema[]{TestUtils.getTestSchema(0, 10)};
     insertPlan.setMeasurements(measurements);
-    insertPlan.setDataTypes(tsDataTypes);
+    insertPlan.setSchemas(schemas);
     for (int i : new int[]{0, 10}) {
       insertPlan.setTime(i);
       String[] values = new String[]{String.valueOf(i)};

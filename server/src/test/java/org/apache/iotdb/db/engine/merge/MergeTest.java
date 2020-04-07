@@ -29,7 +29,7 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -42,6 +42,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -87,7 +88,7 @@ abstract class MergeTest {
     unseqResources.clear();
     IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(prevMergeChunkThreshold);
     TsFileMetaDataCache.getInstance().clear();
-    DeviceMetaDataCache.getInstance().clear();
+    ChunkMetadataCache.getInstance().clear();
     MManager.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
     MergeManager.getINSTANCE().stop();
@@ -167,8 +168,11 @@ abstract class MergeTest {
       long valueOffset)
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
-      fileWriter.addMeasurement(measurementSchema);
+    for (String deviceId : deviceIds) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
+        fileWriter.registerTimeseries(
+            new Path(deviceId, measurementSchema.getMeasurementId()), measurementSchema);
+      }
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (int j = 0; j < deviceNum; j++) {
@@ -182,7 +186,7 @@ abstract class MergeTest {
         tsFileResource.updateEndTime(deviceIds[j], i);
       }
       if ((i + 1) % flushInterval == 0) {
-        fileWriter.flushForTest();
+        fileWriter.flushAllChunkGroups();
       }
     }
     fileWriter.close();

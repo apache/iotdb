@@ -55,18 +55,18 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
   }
 
   @Override
-  public Object[] getValuesInTimestamps(long[] timestamps) throws IOException {
+  public Object getValueInTimestamp(long timestamp) throws IOException {
     DataClient client = metaGroupMember.getDataClient(source);
     synchronized (fetchResult) {
       fetchResult.set(null);
       try {
-        client.fetchSingleSeriesByTimestamp(header, readerId, SerializeUtils.serializeLongs(timestamps),
+        client.fetchSingleSeriesByTimestamp(header, readerId, timestamp,
             handler);
         fetchResult.wait(connectionTimeoutInMS);
       } catch (TException | InterruptedException e) {
         throw new IOException(e);
       }
     }
-    return SerializeUtils.deserializeObjects(fetchResult.get());
+    return SerializeUtils.deserializeObject(fetchResult.get());
   }
 }

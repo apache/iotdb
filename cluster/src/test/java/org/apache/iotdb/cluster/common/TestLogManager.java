@@ -72,11 +72,6 @@ public class TestLogManager implements LogManager {
   }
 
   @Override
-  public Log getLastLog() {
-    return null;
-  }
-
-  @Override
   public void takeSnapshot() {
 
   }

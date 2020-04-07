@@ -58,6 +58,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
+import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
@@ -82,7 +83,6 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -636,7 +636,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
       PullSnapshotResp resp = new PullSnapshotResp();
       Map<Integer, ByteBuffer> resultMap = new HashMap<>();
-      logManager.takeSnapshot();
+      try {
+        logManager.takeSnapshot();
+      } catch (IOException e) {
+        resultHandler.onError(e);
+      }
 
       PartitionedSnapshot allSnapshot = (PartitionedSnapshot) logManager.getSnapshot();
       for (int requiredSlot : requiredSlots) {
@@ -817,12 +821,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @return
    * @throws StorageEngineException
    */
-  IPointReader getSeriesPointReader(Path path, TSDataType dataType, Filter timeFilter,
+  IPointReader getSeriesPointReader(Path path, Set<String> allSensors, TSDataType dataType,
+      Filter timeFilter,
       Filter valueFilter, QueryContext context)
-      throws StorageEngineException {
+      throws StorageEngineException, QueryProcessException {
     // pull the newest data
     if (syncLeader()) {
-      return new SeriesRawDataPointReader(getSeriesReader(path, dataType, timeFilter,
+      return new SeriesRawDataPointReader(getSeriesReader(path, allSensors, dataType, timeFilter,
           valueFilter, context));
     } else {
       throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
@@ -841,12 +846,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @return an IBatchReader or null if there is no satisfying data
    * @throws StorageEngineException
    */
-  IBatchReader getSeriesBatchReader(Path path, TSDataType dataType, Filter timeFilter,
+  IBatchReader getSeriesBatchReader(Path path, Set<String> allSensors, TSDataType dataType,
+      Filter timeFilter,
       Filter valueFilter, QueryContext context)
-      throws StorageEngineException {
+      throws StorageEngineException, QueryProcessException {
     // pull the newest data
     if (syncLeader()) {
-      SeriesReader seriesReader = getSeriesReader(path, dataType, timeFilter, valueFilter, context);
+      SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType, timeFilter,
+          valueFilter, context);
       if (seriesReader.isEmpty()) {
         return null;
       }
@@ -867,12 +874,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @return
    * @throws StorageEngineException
    */
-  private SeriesReader getSeriesReader(Path path, TSDataType dataType, Filter timeFilter,
-      Filter valueFilter, QueryContext context) throws StorageEngineException {
+  private SeriesReader getSeriesReader(Path path, Set<String> allSensors, TSDataType dataType,
+      Filter timeFilter,
+      Filter valueFilter, QueryContext context) throws StorageEngineException, QueryProcessException {
     List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
-    return new SeriesReader(path, dataType, context, queryDataSource,
+    return new SeriesReader(path, allSensors, dataType, context, queryDataSource,
         timeFilter, valueFilter, new SlotTsFileFilter(nodeSlots));
   }
 
@@ -886,10 +894,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @return an IReaderByTimestamp or null if there is no satisfying data
    * @throws StorageEngineException
    */
-  IReaderByTimestamp getReaderByTimestamp(Path path, TSDataType dataType, QueryContext context)
-      throws StorageEngineException {
+  IReaderByTimestamp getReaderByTimestamp(Path path, Set<String> allSensors, TSDataType dataType,
+      QueryContext context)
+      throws StorageEngineException, QueryProcessException {
     if (syncLeader()) {
-      SeriesReader seriesReader = getSeriesReader(path, dataType, TimeFilter.gtEq(Long.MIN_VALUE),
+      SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType,
+          TimeFilter.gtEq(Long.MIN_VALUE),
           null, context);
       if (seriesReader.isEmpty()) {
         return null;
@@ -927,6 +937,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     if (request.isSetValueFilterBytes()) {
       valueFilter = FilterFactory.deserialize(request.valueFilterBytes);
     }
+    Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
     // the same query from a requester correspond to a context here
     RemoteQueryContext queryContext = getQueryManager().getQueryContext(request.getRequester(),
@@ -934,7 +945,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
     try {
-      IBatchReader batchReader = getSeriesBatchReader(path, dataType, timeFilter,
+      IBatchReader batchReader = getSeriesBatchReader(path, deviceMeasurements, dataType, timeFilter,
           valueFilter, queryContext);
 
       // if the reader contains no data, send a special id of -1 to prevent the requester from
@@ -953,7 +964,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
           batchReader.close();
         }
       }
-    } catch (IOException | StorageEngineException e) {
+    } catch (IOException | StorageEngineException | QueryProcessException e) {
       resultHandler.onError(e);
     }
   }
@@ -977,13 +988,15 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
     Path path = new Path(request.getPath());
     TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
+    Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
     RemoteQueryContext queryContext = getQueryManager().getQueryContext(request.getRequester(),
         request.getQueryId());
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
     try {
-      IReaderByTimestamp readerByTimestamp = getReaderByTimestamp(path, dataType, queryContext);
+      IReaderByTimestamp readerByTimestamp = getReaderByTimestamp(path, deviceMeasurements, dataType,
+          queryContext);
       if (readerByTimestamp != null) {
         long readerId = getQueryManager().registerReaderByTime(readerByTimestamp);
         queryContext.registerLocalReader(readerId);
@@ -996,7 +1009,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
             request.getRequester(), request.getQueryId());
         resultHandler.onComplete(-1L);
       }
-    } catch (StorageEngineException e) {
+    } catch (StorageEngineException | QueryProcessException e) {
       resultHandler.onError(e);
     }
   }
@@ -1024,12 +1037,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * Return the data of the reader whose id is "readerId", using timestamps in "timeBuffer".
    * @param header
    * @param readerId
-   * @param timeBuffer the size of the timestamps is not serialized, every 8 bytes in the buffer
-   *                   is a timestamp
+   * @param time
    * @param resultHandler
    */
   @Override
-  public void fetchSingleSeriesByTimestamp(Node header, long readerId, ByteBuffer timeBuffer,
+  public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     IReaderByTimestamp reader = getQueryManager().getReaderByTimestamp(readerId);
     if (reader == null) {
@@ -1037,13 +1049,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       return;
     }
     try {
-      long[] timestamps = SerializeUtils.deserializeLongs(timeBuffer);
-      Object[] values = reader.getValuesInTimestamps(timestamps);
-      if (values != null) {
+      Object value = reader.getValueInTimestamp(time);
+      if (value != null) {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
-        SerializeUtils.serializeObjects(values, dataOutputStream);
+        SerializeUtils.serializeObject(value, dataOutputStream);
         resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       } else {
         resultHandler.onComplete(ByteBuffer.allocate(0));
@@ -1168,7 +1179,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   public DataMemberReport genReport() {
     return new DataMemberReport(character, leader, term.get(),
-        logManager.getLastLogTerm(), logManager.getLastLogIndex(), getHeader(), readOnly);
+        logManager.getLastLogTerm(), logManager.getLastLogIndex(), getHeader(), readOnly,
+        QueryCoordinator.getINSTANCE().getLastResponseLatency(getHeader()));
   }
 
   @TestOnly
@@ -1218,11 +1230,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
     RemoteQueryContext queryContext = queryManager
         .getQueryContext(request.getRequestor(), request.queryId);
+    Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
     // do the aggregations locally
     List<AggregateResult> results;
     try {
-       results = getAggrResult(aggregations, dataType, path, timeFilter, queryContext);
+       results = getAggrResult(aggregations, deviceMeasurements, dataType, path, timeFilter, queryContext);
        logger.trace("{}: aggregation results {}, queryId: {}", name, results, request.getQueryId());
     } catch (StorageEngineException | IOException | QueryProcessException | LeaderUnknownException e) {
       resultHandler.onError(e);
@@ -1258,7 +1271,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @throws QueryProcessException
    * @throws LeaderUnknownException
    */
-  public List<AggregateResult> getAggrResult(List<String> aggregations, TSDataType dataType, String path,
+  public List<AggregateResult> getAggrResult(List<String> aggregations,
+      Set<String> allSensors, TSDataType dataType, String path,
       Filter timeFilter, QueryContext context)
       throws IOException, StorageEngineException, QueryProcessException, LeaderUnknownException {
     if (!syncLeader()) {
@@ -1269,8 +1283,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       results.add(AggregateResultFactory.getAggrResultByName(aggregation, dataType));
     }
     List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
-    AggregationExecutor.aggregateOneSeries(new Path(path), context, timeFilter, dataType,
-        results, new SlotTsFileFilter(nodeSlots));
+    AggregationExecutor.aggregateOneSeries(new Path(path), allSensors, context, timeFilter,
+        dataType, results, new SlotTsFileFilter(nodeSlots));
     return results;
   }
 
@@ -1291,13 +1305,16 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @return
    * @throws StorageEngineException
    */
-  public LocalGroupByExecutor getGroupByExecutor(Path path, TSDataType dataType, Filter timeFilter,
-      List<Integer> aggregationTypes, QueryContext context) throws StorageEngineException {
+  public LocalGroupByExecutor getGroupByExecutor(Path path,
+      Set<String> deviceMeasurements, TSDataType dataType,
+      Filter timeFilter,
+      List<Integer> aggregationTypes, QueryContext context)
+      throws StorageEngineException, QueryProcessException {
     // pull the newest data
     if (syncLeader()) {
       List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
-      LocalGroupByExecutor executor = new LocalGroupByExecutor(path, dataType, context,
-          timeFilter, new SlotTsFileFilter(nodeSlots));
+      LocalGroupByExecutor executor = new LocalGroupByExecutor(path, deviceMeasurements, dataType
+          , context, timeFilter, new SlotTsFileFilter(nodeSlots));
       for (Integer aggregationType : aggregationTypes) {
         executor.addAggregateResult(AggregateResultFactory
             .getAggrResultByType(AggregationType.values()[aggregationType], dataType));
@@ -1327,11 +1344,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     long queryId = request.getQueryId();
     logger.debug("{}: {} is querying {} using group by, queryId: {}", name,
         request.getRequestor(), path, queryId);
+    Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
     RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequestor(), queryId);
     try {
-      LocalGroupByExecutor executor = getGroupByExecutor(path, dataType, timeFilter,
-          aggregationTypeOrdinals, queryContext);
+      LocalGroupByExecutor executor = getGroupByExecutor(path, deviceMeasurements, dataType,
+          timeFilter, aggregationTypeOrdinals, queryContext);
       if (!executor.isEmpty()) {
         long executorId = queryManager.registerGroupByExecutor(executor);
         logger.debug("{}: Build a GroupByExecutor of {} for {}, executorId: {}", name, path,
@@ -1343,7 +1361,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
             request.getRequestor(), request.getQueryId());
         resultHandler.onComplete(-1L);
       }
-    } catch (StorageEngineException e) {
+    } catch (StorageEngineException | QueryProcessException e) {
       resultHandler.onError(e);
     }
   }

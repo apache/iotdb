@@ -41,6 +41,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class BatchInsertPlan extends PhysicalPlan {
 
@@ -49,6 +50,8 @@ public class BatchInsertPlan extends PhysicalPlan {
   private String deviceId;
   private String[] measurements;
   private TSDataType[] dataTypes;
+  // only be set in insert
+  private MeasurementSchema[] schemas;
 
   private long[] times; // times should be sorted. It is done in the session API.
   private ByteBuffer timeBuffer;
@@ -124,7 +127,7 @@ public class BatchInsertPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serializeTo(DataOutputStream stream) throws IOException {
+  public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     stream.writeByte((byte) type);
 
@@ -212,7 +215,7 @@ public class BatchInsertPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serializeTo(ByteBuffer buffer) {
+  public void serialize(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     buffer.put((byte) type);
 
@@ -224,7 +227,7 @@ public class BatchInsertPlan extends PhysicalPlan {
     }
 
     for (TSDataType dataType : dataTypes) {
-      buffer.putShort(dataType.serialize());
+      dataType.serializeTo(buffer);
     }
 
     buffer.putInt(end - start);
@@ -309,7 +312,7 @@ public class BatchInsertPlan extends PhysicalPlan {
   }
 
   @Override
-  public void deserializeFrom(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) {
     this.deviceId = readString(buffer);
 
     int measurementSize = buffer.getInt();
@@ -355,6 +358,14 @@ public class BatchInsertPlan extends PhysicalPlan {
 
   public TSDataType[] getDataTypes() {
     return dataTypes;
+  }
+
+  public MeasurementSchema[] getSchemas() {
+    return schemas;
+  }
+
+  public void setSchemas(MeasurementSchema[] schemas) {
+    this.schemas = schemas;
   }
 
   public void setDataTypes(List<Integer> dataTypes) {

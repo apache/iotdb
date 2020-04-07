@@ -310,18 +310,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         }
         resp = Response.RESPONSE_AGREE;
       } else {
-        Log lastLog = logManager.getLastLog();
-        long lastPrevLogTerm = lastLog == null ? -1 : lastLog.getPreviousLogTerm();
-        long lastPrevLogId = lastLog == null ? -1 : lastLog.getPreviousLogIndex();
         // the incoming log points to an illegal position, reject it
-        logger.debug("{} cannot append the log because the last log does not match, "
-                + "local:term[{}],index[{}],previousTerm[{}],previousIndex[{}], "
-                + "request:term[{}],index[{}],previousTerm[{}],previousIndex[{}]",
-            name,
-            logManager.getLastLogTerm(), logManager.getLastLogIndex(),
-            lastPrevLogTerm, lastPrevLogId,
-            log.getCurrLogTerm(), log.getCurrLogIndex(),
-            log.getPreviousLogTerm(), log.getPreviousLogIndex());
+        logger.debug("{} cannot append the log because the last log does not match", name);
         resp = Response.RESPONSE_LOG_MISMATCH;
       }
     }
@@ -725,7 +715,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @return a TSStatus indicating if the forwarding is successful.
    */
   TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
-    if (node == thisNode || node == null) {
+    if (node == null || node.equals(thisNode)) {
       logger.debug("{}: plan {} has no where to be forwarded", name, plan);
       return StatusUtils.NO_LEADER;
     }
@@ -752,7 +742,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
-      plan.serializeTo(dataOutputStream);
+      plan.serialize(dataOutputStream);
       AtomicReference<TSStatus> status = new AtomicReference<>();
       ExecutNonQueryReq req = new ExecutNonQueryReq();
       req.setPlanBytes(byteArrayOutputStream.toByteArray());

@@ -21,6 +21,7 @@ package org.apache.iotdb.hadoop.tsfile;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -58,13 +59,13 @@ public class TsFileTestHelper {
       // the number of values to include in the row batch
       int sensorNum = 10;
 
-      // add measurements into file schema (all with INT64 data type)
+      // add timeseries into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
-        schema.registerMeasurement(
+        schema.registerTimeseries(new Path("device_1", "sensor_" + (i + 1)),
                 new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
       }
 
-      // add measurements into TSFileWriter
+      // add timeseries into TSFileWriter
       TsFileWriter tsFileWriter = new TsFileWriter(file, schema);
 
       // construct the row batch

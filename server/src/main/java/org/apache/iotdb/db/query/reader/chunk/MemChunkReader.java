@@ -116,7 +116,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   }
 
   @Override
-  public List<IPageReader> getPageReaderList() throws IOException {
+  public List<IPageReader> loadPageReaderList() throws IOException {
     // we treat one ReadOnlyMemChunk as one Page
     return Collections.singletonList(
         new MemPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));

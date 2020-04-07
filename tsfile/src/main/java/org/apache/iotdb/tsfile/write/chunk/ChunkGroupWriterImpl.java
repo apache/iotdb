@@ -26,7 +26,6 @@ import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
@@ -77,10 +76,10 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
 
   @Override
   public void write(RowBatch rowBatch) throws WriteProcessException, IOException {
-    List<MeasurementSchema> measurements = rowBatch.measurements;
-    for (int i = 0; i < measurements.size(); i++) {
-      String measurementId = measurements.get(i).getMeasurementId();
-      TSDataType dataType = measurements.get(i).getType();
+    List<MeasurementSchema> timeseries = rowBatch.getSchemas();
+    for (int i = 0; i < timeseries.size(); i++) {
+      String measurementId = timeseries.get(i).getMeasurementId();
+      TSDataType dataType = timeseries.get(i).getType();
       if (!chunkWriters.containsKey(measurementId)) {
         throw new NoMeasurementException("measurement id" + measurementId + " not found!");
       }

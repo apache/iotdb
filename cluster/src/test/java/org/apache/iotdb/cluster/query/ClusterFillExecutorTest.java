@@ -68,7 +68,7 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
     for (int i = 0; i < queryTimes.length; i++) {
       fillExecutor = new ClusterFillExecutor(plan.getDeduplicatedPaths(),
           plan.getDeduplicatedDataTypes(), queryTimes[i], plan.getFillType(), testMetaMember);
-      queryDataSet = fillExecutor.execute(context);
+      queryDataSet = fillExecutor.execute(context, plan);
       checkDoubleDataset(queryDataSet, answers[i]);
       assertFalse(queryDataSet.hasNext());
     }
@@ -101,7 +101,7 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
     for (int i = 0; i < queryTimes.length; i++) {
       fillExecutor = new ClusterFillExecutor(plan.getDeduplicatedPaths(),
           plan.getDeduplicatedDataTypes(), queryTimes[i], plan.getFillType(), testMetaMember);
-      queryDataSet = fillExecutor.execute(context);
+      queryDataSet = fillExecutor.execute(context, plan);
       checkDoubleDataset(queryDataSet, answers[i]);
       assertFalse(queryDataSet.hasNext());
     }

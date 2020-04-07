@@ -54,7 +54,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
     timeseriesSchemas = new HashSet<>();
   }
 
-  public void addFile(TsFileResource resource, Node header) {
+  public void addFile(TsFileResource resource, Node header) throws IOException {
     dataFiles.add(new RemoteTsFileResource(resource, header));
   }
 
