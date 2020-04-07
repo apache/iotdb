@@ -20,6 +20,7 @@
 package org.apache.iotdb.hadoop.tsfile;
 
 import java.io.File;
+import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -36,17 +37,19 @@ public class TsFileWriteToHDFS {
 
   private static TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
-
   public static void main(String[] args) {
     config.setTSFileStorageFs("HDFS");
 
-    try {
-      String path = "hdfs://localhost:9000/test.tsfile";
-      File f = FSFactoryProducer.getFSFactory().getFile(path);
-      if (!f.exists()) {
+    String path = "hdfs://10.211.55.4:9000/test1.tsfile";
+    File f = FSFactoryProducer.getFSFactory().getFile(path);
+    if (!f.exists()) {
+      try {
         f.createNewFile();
+      } catch (IOException e) {
+        e.printStackTrace();
       }
-      TsFileWriter tsFileWriter = new TsFileWriter(f);
+    }
+    try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_1, Constant.SENSOR_1),
           new MeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
       tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_1, Constant.SENSOR_2),
@@ -67,11 +70,8 @@ public class TsFileWriteToHDFS {
         // write TSRecord
         tsFileWriter.write(tsRecord);
       }
-
-      tsFileWriter.close();
-    } catch (Throwable e) {
+    } catch (Exception e) {
       e.printStackTrace();
-      System.out.println(e.getMessage());
     }
   }
 }
