@@ -103,7 +103,7 @@ server/     <-- root path
 
 否则，你需要检查错误语句，并修复问题。
 
-编译后，IoTDB项目会在名为iotdb的子文件夹下，该文件夹会包含以下内容：
+编译后，IoTDB 服务器会在 "server/target/iotdb-server-{project.version}" 文件夹下，包含以下内容：
 
 ```
 $IOTDB_HOME/
