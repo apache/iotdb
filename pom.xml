@@ -134,6 +134,19 @@
         <!-- By default, the argLine is empty-->
         <argLine/>
     </properties>
+    <repositories>
+        <!--   repository for moquette    -->
+        <repository>
+            <id>bintray</id>
+            <url>https://jcenter.bintray.com</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
         their version in sub-project's pom, but we have to claim themselves again
