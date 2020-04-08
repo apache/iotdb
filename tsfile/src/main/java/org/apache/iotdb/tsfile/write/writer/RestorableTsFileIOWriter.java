@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -93,9 +94,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         totalChunkNum = reader.getTotalChunkNum();
         if (truncatedPosition == TsFileCheckStatus.INCOMPATIBLE_FILE) {
           out.close();
-          boolean result = file.delete();
-          logger.warn("TsFile {} is incompatible. Delete it successfully {}", file.getAbsolutePath(), result);
-          throw new IOException(String.format("%s is not in TsFile format.", file.getAbsolutePath()));
+          throw new NotCompatibleTsFileException(
+              String.format("%s is not in TsFile format.", file.getAbsolutePath()));
         } else if (truncatedPosition == TsFileCheckStatus.ONLY_MAGIC_HEAD) {
           crashed = true;
           out.truncate(

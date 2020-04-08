@@ -27,10 +27,10 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -59,13 +59,17 @@ public class RestorableTsFileIOWriterTest {
   private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test.ts");
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  @Test(expected = IOException.class)
+  @Test(expected = NotCompatibleTsFileException.class)
   public void testBadHeadMagic() throws Exception {
     File file = fsFactory.getFile(FILE_NAME);
     FileWriter fWriter = new FileWriter(file);
     fWriter.write("Tsfile");
     fWriter.close();
-    new RestorableTsFileIOWriter(file);
+    try {
+      new RestorableTsFileIOWriter(file);
+    } finally {
+      assertTrue(file.delete());
+    }
   }
 
   @Test
