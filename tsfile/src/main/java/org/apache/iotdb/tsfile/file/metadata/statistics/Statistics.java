@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.oldstatistics.*;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -421,6 +422,64 @@ public abstract class Statistics<T> {
 
   public void setCanUseStatistics(boolean canUseStatistics) {
     this.canUseStatistics = canUseStatistics;
+  }
+  
+  public static Statistics upgradeOldStatistics(OldStatistics oldstatistics, 
+      TSDataType dataType, int numOfValues, long maxTimestamp, long minTimestamp) {
+    Statistics statistics = Statistics.getStatsByType(dataType);
+    statistics.setStartTime(minTimestamp);
+    statistics.setEndTime(maxTimestamp);
+    statistics.setCount(numOfValues);
+    statistics.setEmpty(false);
+    
+    switch (dataType) {
+      case INT32:
+        ((IntegerStatistics) statistics)
+        .initializeStats(((OldIntegerStatistics) oldstatistics).getMin(), 
+            ((OldIntegerStatistics) oldstatistics).getMax(), 
+            ((OldIntegerStatistics) oldstatistics).getFirst(),
+            ((OldIntegerStatistics) oldstatistics).getLast(),
+            ((OldIntegerStatistics) oldstatistics).getSum());
+        break;
+      case INT64:
+        ((LongStatistics) statistics)
+        .initializeStats(((OldLongStatistics) oldstatistics).getMin(), 
+            ((OldLongStatistics) oldstatistics).getMax(), 
+            ((OldLongStatistics) oldstatistics).getFirst(),
+            ((OldLongStatistics) oldstatistics).getLast(),
+            ((OldLongStatistics) oldstatistics).getSum());
+        break;
+      case TEXT:
+        ((BinaryStatistics) statistics)
+        .initializeStats(((OldBinaryStatistics) oldstatistics).getFirst(),
+            ((OldBinaryStatistics) oldstatistics).getLast());
+        break;
+      case BOOLEAN:
+        ((BooleanStatistics) statistics)
+        .initializeStats(((OldBooleanStatistics) oldstatistics).getFirst(),
+            ((OldBooleanStatistics) oldstatistics).getLast());
+        break;
+      case DOUBLE:
+        ((DoubleStatistics) statistics)
+        .initializeStats(((OldDoubleStatistics) oldstatistics).getMin(), 
+            ((OldDoubleStatistics) oldstatistics).getMax(), 
+            ((OldDoubleStatistics) oldstatistics).getFirst(),
+            ((OldDoubleStatistics) oldstatistics).getLast(),
+            ((OldDoubleStatistics) oldstatistics).getSum());
+        break;
+      case FLOAT:
+        ((FloatStatistics) statistics)
+        .initializeStats(((OldFloatStatistics) oldstatistics).getMin(), 
+            ((OldFloatStatistics) oldstatistics).getMax(), 
+            ((OldFloatStatistics) oldstatistics).getFirst(),
+            ((OldFloatStatistics) oldstatistics).getLast(),
+            ((OldFloatStatistics) oldstatistics).getSum());
+        break;
+      default:
+        throw new UnknownColumnTypeException(statistics.getType()
+            .toString());
+    }
+    return statistics;
   }
 
   @Override

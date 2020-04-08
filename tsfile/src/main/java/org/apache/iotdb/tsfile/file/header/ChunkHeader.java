@@ -129,9 +129,10 @@ public class ChunkHeader {
     if (isOldVersion) {
       // read maxTombstoneTime from old TsFile, has been removed in newer versions of TsFile
       ReadWriteIOUtils.readLong(buffer);
-      return new ChunkHeader(measurementID, dataSize, chunkHeaderSize, dataType, type, encoding, numOfPages, true);
     }
-    return new ChunkHeader(measurementID, dataSize, chunkHeaderSize, dataType, type, encoding, numOfPages, false);
+    return new ChunkHeader(measurementID, dataSize, 
+        chunkHeaderSize, dataType, type, encoding,
+        numOfPages, isOldVersion);
   }
 
   public int getSerializedSize() {

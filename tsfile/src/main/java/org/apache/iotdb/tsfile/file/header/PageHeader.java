@@ -26,6 +26,7 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.oldstatistics.OldStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -54,16 +55,17 @@ public class PageHeader {
   }
 
   public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType, 
-      boolean isOldVersion) {
+      boolean isOldVersion) throws IOException {
     int uncompressedSize = ReadWriteIOUtils.readInt(buffer);
     int compressedSize = ReadWriteIOUtils.readInt(buffer);
-    System.out.println(isOldVersion);
     if (isOldVersion) {
-      System.out.println(123321);
       int numOfValues = ReadWriteIOUtils.readInt(buffer);
       long maxTimestamp = ReadWriteIOUtils.readLong(buffer);
       long minTimestamp = ReadWriteIOUtils.readLong(buffer);
-      System.out.println(numOfValues + " " + maxTimestamp + " " + minTimestamp);
+      OldStatistics oldstatistics = OldStatistics.deserialize(buffer, dataType);
+      Statistics statistics = Statistics.upgradeOldStatistics(oldstatistics, dataType, 
+          numOfValues, maxTimestamp, minTimestamp);
+      return new PageHeader(uncompressedSize, compressedSize, statistics);
     }
     Statistics statistics = Statistics.deserialize(buffer, dataType);
     return new PageHeader(uncompressedSize, compressedSize, statistics);
