@@ -27,4 +27,5 @@ The example is to show how to send data to a IoTDB server from a Flink job.
 
 ## Usage
 
-* Run `org.apache.iotdb.flink.FlinkIoTDBSink.java` to launch the local iotDB server and run the flink job on local mini cluster.
+* Launch the IoTDB server.
+* Run `org.apache.iotdb.flink.FlinkIoTDBSink.java` to run the flink job on local mini cluster.
