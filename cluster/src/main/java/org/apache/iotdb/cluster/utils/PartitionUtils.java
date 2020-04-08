@@ -31,6 +31,7 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -102,6 +103,8 @@ public class PartitionUtils {
           //delete timeseries plan is global because all nodes may have its data
           || plan instanceof AuthorPlan
           || plan instanceof DeleteStorageGroupPlan
+          // data auth plan is global because all nodes must have all user info
+          || plan instanceof DataAuthPlan
     ;
   }
 
