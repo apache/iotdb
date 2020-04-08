@@ -49,6 +49,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 public class PreviousFill extends IFill {
 
   private Path seriesPath;
+  private QueryContext context;
   private long beforeRange;
   private Set<String> allSensors;
   private Filter timeFilter;
@@ -91,6 +92,7 @@ public class PreviousFill extends IFill {
       throws StorageEngineException, QueryProcessException {
     this.seriesPath = path;
     this.dataType = dataType;
+    this.context = context;
     this.queryTime = queryTime;
     this.allSensors = sensors;
     this.timeFilter = constructFilter();
@@ -108,6 +110,7 @@ public class PreviousFill extends IFill {
   private TimeValuePair getTimeseriesLastPoint() throws IOException {
     TimeValuePair lastPoint = new TimeValuePair(Long.MIN_VALUE, null);
     long lastVersion = 0;
+    // get the last point of sequence timeseriesMetadata
     if (lastSeqTimeseriesMetadata != null) {
       if (lastSeqTimeseriesMetadata.getStatistics().getEndTime() <= queryTime) {
         lastPoint = constructLastPair(
@@ -115,7 +118,7 @@ public class PreviousFill extends IFill {
             lastSeqTimeseriesMetadata.getStatistics().getLastValue(), dataType);
       } else {
         List<ChunkMetadata> seqChunkMetadataList =
-            lastSeqTimeseriesMetadata.loadChunkMetadataList();
+            FileLoaderUtils.loadChunkMetadataList(lastSeqTimeseriesMetadata);
 
         for (int i = seqChunkMetadataList.size() - 1; i >= 0; i--) {
           lastPoint = getChunkLastPoint(seqChunkMetadataList.get(i));
@@ -128,16 +131,16 @@ public class PreviousFill extends IFill {
       }
     }
 
-    while (!unseqTimeseriesMetadataList.isEmpty()) {
-      TimeseriesMetadata timeseriesMetadata = unseqTimeseriesMetadataList.remove(0);
-      List<ChunkMetadata> chunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
-      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        TimeValuePair lastChunkPoint = getChunkLastPoint(chunkMetadata);
-        if (shouldUpdate(lastPoint.getTimestamp(), lastVersion,
-            lastChunkPoint.getTimestamp(), chunkMetadata.getVersion())) {
-          lastPoint = lastChunkPoint;
-          lastVersion = chunkMetadata.getVersion();
-        }
+    PriorityQueue<ChunkMetadata> sortedChunkMetatdataList = sortUnseqChunkMetadatasByEndtime();
+    TimeValuePair lastChunkPoint = lastPoint;
+    while (!sortedChunkMetatdataList.isEmpty()
+        && lastChunkPoint.getTimestamp() < sortedChunkMetatdataList.peek().getEndTime()) {
+      ChunkMetadata chunkMetadata = sortedChunkMetatdataList.poll();
+      lastChunkPoint = getChunkLastPoint(chunkMetadata);
+      if (shouldUpdate(lastPoint.getTimestamp(), lastVersion,
+          lastChunkPoint.getTimestamp(), chunkMetadata.getVersion())) {
+        lastPoint = lastChunkPoint;
+        lastVersion = chunkMetadata.getVersion();
       }
     }
     return lastPoint;
@@ -146,10 +149,8 @@ public class PreviousFill extends IFill {
   private TimeValuePair getChunkLastPoint(ChunkMetadata chunkMetaData) throws IOException {
     TimeValuePair lastPoint = new TimeValuePair(0, null);
     Statistics chunkStatistics = chunkMetaData.getStatistics();
-    if (!timeFilter.satisfy(chunkStatistics)) {
-      return lastPoint;
-    }
-    if (containedByTimeFilter(chunkStatistics)) {
+
+    if (endtimeContainedByTimeFilter(chunkStatistics)) {
       return constructLastPair(
           chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), dataType);
     }
@@ -160,7 +161,7 @@ public class PreviousFill extends IFill {
       if (!timeFilter.satisfy(pageStatistics)) {
         continue;
       }
-      if (containedByTimeFilter(pageStatistics)) {
+      if (endtimeContainedByTimeFilter(pageStatistics)) {
         lastPoint = constructLastPair(
             pageStatistics.getEndTime(), pageStatistics.getLastValue(), dataType);
       } else {
@@ -192,6 +193,25 @@ public class PreviousFill extends IFill {
     return unseqTsFilesSet;
   }
 
+  private PriorityQueue<ChunkMetadata> sortUnseqChunkMetadatasByEndtime() throws IOException {
+    PriorityQueue<ChunkMetadata> chunkMetadataList =
+        new PriorityQueue<ChunkMetadata>(
+            (o1, o2) -> {
+              long endTime1 = o1.getEndTime();
+              long endTime2 = o2.getEndTime();
+              if (endTime1 < endTime2) {
+                return 1;
+              } else if (endTime1 > endTime2) {
+                return -1;
+              }
+              return Long.compare(o2.getVersion(), o1.getVersion());
+            });
+    while (!unseqTimeseriesMetadataList.isEmpty()) {
+      chunkMetadataList.addAll(unseqTimeseriesMetadataList.remove(0).loadChunkMetadataList());
+    }
+    return chunkMetadataList;
+  }
+
   /**
    * find the last TimeseriesMetadata and unpack all overlapped seq/unseq files
    */
@@ -200,54 +220,65 @@ public class PreviousFill extends IFill {
     PriorityQueue<TsFileResource> unseqFileResource =
         sortUnSeqFileResourcesInDecendingOrder(dataSource.getUnseqResources());
 
-    TimeseriesMetadata lastTimeseriesMetadata = null;
-    for (int index = seqFileResource.size() - 1; index >= 0; index--) {
-      TsFileResource resource = seqFileResource.get(index);
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
-          resource, seriesPath, context, timeFilter, allSensors);
-      if (timeseriesMetadata != null) {
-        lastSeqTimeseriesMetadata = timeseriesMetadata;
-        lastTimeseriesMetadata = timeseriesMetadata;
-        // last sequence TimeseriesMetadata endTime satisfies timeFilter and is larger than
-        // any unseq file endTimes, then skip all the unseq files
-        long seqLastPoint = lastTimeseriesMetadata.getStatistics().getEndTime();
-        if (unseqFileResource.isEmpty() || (seqLastPoint <= queryTime &&
-            seqLastPoint > unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()))) {
-          return;
-        }
-        break;
-      }
-      seqFileResource.remove(index);
-    }
+    TimeseriesMetadata lastTimeseriesMetadata = loadLastSeqTimeseriesMetadata(seqFileResource);
 
     while (!unseqFileResource.isEmpty()) {
-      TsFileResource resource = unseqFileResource.peek();
+      // last sequence TimeseriesMetadata endTime satisfies queryTime and is larger than
+      // any unseq file endTimes, then skip all the rest unseq files
+      if (lastTimeseriesMetadata != null
+          && (lastTimeseriesMetadata.getStatistics().getEndTime() <= queryTime
+              && lastTimeseriesMetadata.getStatistics().getEndTime()
+                  > unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()))) {
+        return;
+      }
       TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
-          resource, seriesPath, context, timeFilter, allSensors);
+          unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
         if (lastTimeseriesMetadata == null
             || (lastTimeseriesMetadata.getStatistics().getEndTime()
                 < timeseriesMetadata.getStatistics().getEndTime())) {
           lastTimeseriesMetadata = timeseriesMetadata;
         }
+        unseqTimeseriesMetadataList.add(timeseriesMetadata);
         break;
       }
-      unseqFileResource.poll();
     }
 
-    // unpack all overlapped unseq files and fill chunkMetadata list
+    // unpack all overlapped unseq files and fill unseqTimeseriesMetadata list
     while (!unseqFileResource.isEmpty()
-        && (lastTimeseriesMetadata == null
-        || (lastTimeseriesMetadata.getStatistics().getStartTime()
-        <= unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice())))) {
-      unseqTimeseriesMetadataList.add(
-          FileLoaderUtils.loadTimeSeriesMetadata(
-              unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors));
+        && (lastTimeseriesMetadata.getStatistics().getStartTime()
+        <= unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()))) {
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
+          unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
+      unseqTimeseriesMetadataList.add(timeseriesMetadata);
+      // current unseq timeseriesMetadata's last point is a valid result,
+      // then skip the rest unseq files
+      if (endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
+        break;
+      }
     }
   }
 
-  private boolean containedByTimeFilter(Statistics statistics) {
-    return timeFilter.containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
+  /**
+   * Pick up and cache the last sequence TimeseriesMetadata that satisfies timeFilter
+   */
+  private TimeseriesMetadata loadLastSeqTimeseriesMetadata(List<TsFileResource> seqFileResource)
+      throws IOException {
+    for (int index = seqFileResource.size() - 1; index >= 0; index--) {
+      TsFileResource resource = seqFileResource.get(index);
+      TimeseriesMetadata timeseriesMetadata =
+          FileLoaderUtils.loadTimeSeriesMetadata(
+              resource, seriesPath, context, timeFilter, allSensors);
+      if (timeseriesMetadata != null) {
+        lastSeqTimeseriesMetadata = timeseriesMetadata;
+        return timeseriesMetadata;
+      }
+    }
+    return null;
+  }
+
+  private boolean endtimeContainedByTimeFilter(Statistics statistics) {
+    return timeFilter.containStartEndTime(statistics.getEndTime(), statistics.getEndTime());
   }
 
   private TimeValuePair constructLastPair(long timestamp, Object value, TSDataType dataType) {
