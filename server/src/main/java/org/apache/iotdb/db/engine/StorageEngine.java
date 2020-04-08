@@ -248,13 +248,7 @@ public class StorageEngine implements IService {
    */
   public void insert(InsertPlan insertPlan) throws StorageEngineException {
 
-    StorageGroupProcessor storageGroupProcessor;
-    try {
-      storageGroupProcessor = getProcessor(insertPlan.getDeviceId());
-    } catch (Exception e) {
-      throw new StorageEngineException(
-          "get StorageGroupProcessor of device failed: " + insertPlan.getDeviceId(), e);
-    }
+    StorageGroupProcessor storageGroupProcessor = getProcessor(insertPlan.getDeviceId());
 
     // TODO monitor: update statistics
     try {
