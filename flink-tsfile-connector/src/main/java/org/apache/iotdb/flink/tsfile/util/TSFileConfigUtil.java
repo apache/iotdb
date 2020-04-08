@@ -58,7 +58,7 @@ public class TSFileConfigUtil {
 		globalConfig.setSdtMaxError(config.getSdtMaxError());
 		globalConfig.setTimeEncoder(config.getTimeEncoder());
 		globalConfig.setTimeSeriesDataType(config.getTimeSeriesDataType());
-		globalConfig.setTSFileStorageFs(config.getTSFileStorageFs().toString());
+		globalConfig.setTSFileStorageFs(config.getTSFileStorageFs());
 		globalConfig.setUseKerberos(config.isUseKerberos());
 		globalConfig.setValueEncoder(config.getValueEncoder());
 	}
