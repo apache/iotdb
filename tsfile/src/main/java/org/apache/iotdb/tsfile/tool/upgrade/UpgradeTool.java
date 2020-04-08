@@ -101,8 +101,8 @@ public class UpgradeTool {
    * @param updateFileName new version tsfile's absolute path
    */
   public static void upgradeOneTsfile(String tsfileName, String updateFileName) throws IOException {
-    TsfileUpgradeToolV0_8_0 updater = new TsfileUpgradeToolV0_8_0(tsfileName);
-    updater.upgradeFile(updateFileName);
+    TsfileUpgradeToolV0_9_0 updater = new TsfileUpgradeToolV0_9_0(tsfileName);
+    //updater.upgradeFile(updateFileName);
   }
 
 }

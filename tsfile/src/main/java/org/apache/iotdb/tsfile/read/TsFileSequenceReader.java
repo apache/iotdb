@@ -29,6 +29,11 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.OldChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.OldChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.OldTsDeviceMetadata;
+import org.apache.iotdb.tsfile.file.metadata.OldTsDeviceMetadataIndex;
+import org.apache.iotdb.tsfile.file.metadata.OldTsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -61,6 +66,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   protected String file;
   private TsFileInput tsFileInput;
+  private boolean isOldVersion;
   private long fileMetadataPos;
   private int fileMetadataSize;
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
@@ -101,6 +107,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (loadMetadataSize) {
         loadMetadataSize();
       }
+      this.isOldVersion = readVersionNumber().equals(TSFileConfig.OLD_VERSION);
     } catch (Throwable e) {
       tsFileInput.close();
       throw e;
@@ -135,6 +142,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   public TsFileSequenceReader(TsFileInput input, boolean loadMetadataSize) throws IOException {
     this.tsFileInput = input;
     try {
+      this.isOldVersion = readVersionNumber().equals(TSFileConfig.OLD_VERSION);
       if (loadMetadataSize) { // NOTE no autoRepair here
         loadMetadataSize();
       }
@@ -252,6 +260,10 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     return tsFileMetaData;
   }
+  
+  public OldTsFileMetadata readOldFileMetadata() throws IOException {
+    return OldTsFileMetadata.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
+  }
 
   /**
    * this function reads measurements and TimeseriesMetaDatas in given device
@@ -279,9 +291,17 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (cachedDeviceMetadata.containsKey(device)) {
         return cachedDeviceMetadata.get(device);
       }
-      readFileMetadata();
-      if (!tsFileMetaData.getDeviceMetadataIndex().containsKey(device)) {
-        return new HashMap<>();
+      if (isOldVersion) {
+        OldTsFileMetadata oldTsFileMetaData = readOldFileMetadata();
+        if (oldTsFileMetaData.getDeviceMetadataIndex(device) == null) {
+          return new HashMap<>();
+        }
+      }
+      else {
+        readFileMetadata();
+        if (!tsFileMetaData.getDeviceMetadataIndex().containsKey(device)) {
+          return new HashMap<>();
+        }
       }
       Map<String, TimeseriesMetadata> deviceMetadata = readDeviceMetadataFromDisk(device);
       cachedDeviceMetadata.put(device, deviceMetadata);
@@ -292,6 +312,9 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   private Map<String, TimeseriesMetadata> readDeviceMetadataFromDisk(String device) throws IOException {
+    if (readVersionNumber().equals(TSFileConfig.OLD_VERSION)) {
+      return constructDeviceMetadataFromOldFile(device);
+    }
     readFileMetadata();
     if (!tsFileMetaData.getDeviceMetadataIndex().containsKey(device)) {
       return Collections.emptyMap();
@@ -302,6 +325,42 @@ public class TsFileSequenceReader implements AutoCloseable {
     while (buffer.hasRemaining()) {
       TimeseriesMetadata tsMetaData = TimeseriesMetadata.deserializeFrom(buffer);
       deviceMetadata.put(tsMetaData.getMeasurementId(), tsMetaData);
+    }
+    return deviceMetadata;
+  }
+
+  private Map<String, TimeseriesMetadata> constructDeviceMetadataFromOldFile(String device)
+      throws IOException {
+    Map<String, TimeseriesMetadata> newDeviceMetadata = new HashMap<>();
+    OldTsFileMetadata oldTsFileMetaData = readOldFileMetadata();
+    
+    OldTsDeviceMetadataIndex index = oldTsFileMetaData.getDeviceMetadataIndex(device);
+    // read TsDeviceMetadata from file
+    OldTsDeviceMetadata tsDeviceMetadata = readOldTsDeviceMetaData(index);
+
+    // get all ChunkMetaData of this path included in all ChunkGroups of this device
+    for (OldChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
+      List<OldChunkMetadata> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
+          .getChunkMetaDataList();
+      for (OldChunkMetadata oldChunkMetadata : chunkMetaDataListInOneChunkGroup) {
+        newDeviceMetadata.computeIfAbsent(oldChunkMetadata.getMeasurementUid(), key -> new TimeseriesMetadata())
+        .addChunkMetadata(new ChunkMetadata(oldChunkMetadata));
+      }
+    }
+    return newDeviceMetadata;
+  }
+  
+  /**
+   * for old TsFile
+   * this function does not modify the position of the file reader.
+   */
+  private OldTsDeviceMetadata readOldTsDeviceMetaData(OldTsDeviceMetadataIndex index) throws IOException {
+    if (index == null) {
+      return null;
+    }
+    OldTsDeviceMetadata deviceMetadata = null;
+    if (deviceMetadata == null) {
+      deviceMetadata = OldTsDeviceMetadata.deserializeFrom(readData(index.getOffset(), index.getLen()));
     }
     return deviceMetadata;
   }
@@ -432,7 +491,8 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   private ChunkHeader readChunkHeader(long position, int chunkHeaderSize, boolean markerRead)
       throws IOException {
-    return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize, markerRead);
+    return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize, markerRead, 
+        isOldVersion);
   }
 
   /**
@@ -692,6 +752,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return List of ChunkMetaData
    */
   public List<ChunkMetadata> getChunkMetadataList(Path path) throws IOException {
+    if (this.isOldVersion) {
+      return getChunkMetadataListFromOldFile(path);
+    }
     Map<String, TimeseriesMetadata> timeseriesMetaDataMap =
         readDeviceMetadata(path.getDevice());
 
@@ -701,6 +764,38 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     List<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetaData);
     chunkMetadataList.sort(Comparator.comparingLong(ChunkMetadata::getStartTime));
+    return chunkMetadataList;
+  }
+
+  private List<ChunkMetadata> getChunkMetadataListFromOldFile(Path path) throws IOException {
+    OldTsFileMetadata tsFileMetadata = readOldFileMetadata();
+    if (!tsFileMetadata.containsDevice(path.getDevice())) {
+      return new ArrayList<>();
+    }
+
+    // get the index information of TsDeviceMetadata
+    OldTsDeviceMetadataIndex index = tsFileMetadata.getDeviceMetadataIndex(path.getDevice());
+
+    // read TsDeviceMetadata from file
+    OldTsDeviceMetadata tsDeviceMetadata = readOldTsDeviceMetaData(index);
+
+    // get all ChunkMetaData of this path included in all ChunkGroups of this device
+    List<OldChunkMetadata> oldChunkMetaDataList = new ArrayList<>();
+    for (OldChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
+      List<OldChunkMetadata> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
+          .getChunkMetaDataList();
+      for (OldChunkMetadata chunkMetaData : chunkMetaDataListInOneChunkGroup) {
+        if (path.getMeasurement().equals(chunkMetaData.getMeasurementUid())) {
+          chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
+          oldChunkMetaDataList.add(chunkMetaData);
+        }
+      }
+    }
+    oldChunkMetaDataList.sort(Comparator.comparingLong(OldChunkMetadata::getStartTime));
+    List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
+    for (OldChunkMetadata oldChunkMetaData : oldChunkMetaDataList) {
+      chunkMetadataList.add(new ChunkMetadata(oldChunkMetaData));
+    }
     return chunkMetadataList;
   }
 

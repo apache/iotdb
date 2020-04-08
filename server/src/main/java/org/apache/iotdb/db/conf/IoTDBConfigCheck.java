@@ -109,6 +109,10 @@ public class IoTDBConfigCheck {
                 .getProperty("timestamp_precision") + " !");
         System.exit(-1);
       }
+      if (properties.getProperty("storage_group_time_range") == null) {
+        logger.warn("Old TsFile");
+        return;
+      }
       if (!(Long.parseLong(properties.getProperty("storage_group_time_range"))
               == partitionInterval)) {
         logger.error("Wrong storage group time range, please set as: " + properties

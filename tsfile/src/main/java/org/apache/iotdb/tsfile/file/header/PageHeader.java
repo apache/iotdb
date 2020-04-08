@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.file.header;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -52,9 +53,18 @@ public class PageHeader {
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 
-  public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType) {
+  public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType, 
+      boolean isOldVersion) {
     int uncompressedSize = ReadWriteIOUtils.readInt(buffer);
     int compressedSize = ReadWriteIOUtils.readInt(buffer);
+    System.out.println(isOldVersion);
+    if (isOldVersion) {
+      System.out.println(123321);
+      int numOfValues = ReadWriteIOUtils.readInt(buffer);
+      long maxTimestamp = ReadWriteIOUtils.readLong(buffer);
+      long minTimestamp = ReadWriteIOUtils.readLong(buffer);
+      System.out.println(numOfValues + " " + maxTimestamp + " " + minTimestamp);
+    }
     Statistics statistics = Statistics.deserialize(buffer, dataType);
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
