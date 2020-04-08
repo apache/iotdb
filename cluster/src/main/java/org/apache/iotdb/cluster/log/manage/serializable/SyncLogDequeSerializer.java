@@ -26,7 +26,9 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
@@ -43,9 +45,9 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
 
   private static final Logger logger = LoggerFactory.getLogger(SyncLogDequeSerializer.class);
 
-  File logFile;
+  List<File> logFileList;
   File metaFile;
-  FileOutputStream logOutputStream;
+  FileOutputStream currentLogOutputStream;
   FileOutputStream metaOutputStream;
   LogParser parser = LogParser.getINSTANCE();
   private Deque<Integer> logSizeDeque = new ArrayDeque<>();
@@ -57,6 +59,11 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   // when the removedLogSize larger than this, we actually delete logs
   private long maxRemovedLogSize = ClusterDescriptor.getINSTANCE().getConfig()
       .getMaxRemovedLogSize();
+  // min time of available log
+  private long minAvailableTime = 0;
+  // max time of available log
+  private long maxAvailableTime = Long.MAX_VALUE;
+
 
   /**
    * for log tools
@@ -64,21 +71,19 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
    * @param logPath log dir path
    */
   public SyncLogDequeSerializer(String logPath) {
-    logFile = SystemFileFactory.INSTANCE
-        .getFile(logPath + File.separator + "logData");
+    logFileList = new ArrayList<>();
     metaFile = SystemFileFactory.INSTANCE
         .getFile(logPath + File.separator + "logMeta");
     init();
   }
 
   /**
-   * log in disk is size of log | log buffer meta in disk is firstLogPosition | size of log meta |
+   * log in disk is [size of log1 | log1 buffer] [size of log2 | log2 buffer]...
    * log meta buffer
    */
   public SyncLogDequeSerializer() {
     String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
-    logFile = SystemFileFactory.INSTANCE
-        .getFile(systemDir + File.separator + "raftLog" + File.separator + "logData");
+    logFileList = new ArrayList<>();
     metaFile = SystemFileFactory.INSTANCE
         .getFile(systemDir + File.separator + "raftLog" + File.separator + "logMeta");
     init();
@@ -96,17 +101,48 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   // init output stream
   private void init() {
     try {
-      if (!logFile.getParentFile().exists()) {
-        logFile.getParentFile().mkdir();
-        logFile.createNewFile();
+      if (!metaFile.getParentFile().exists()) {
+        metaFile.getParentFile().mkdir();
         metaFile.createNewFile();
+      } else {
+        for (File file : metaFile.getParentFile().listFiles()) {
+          if (file.getName().startsWith("data")) {
+            long fileTime = getFileTime(file);
+            // this means system down between save meta and data
+            if(fileTime <= minAvailableTime || fileTime >= maxAvailableTime){
+              file.delete();
+            }
+            else{
+              logFileList.add(file);
+            }
+          }
+        }
+        logFileList.sort(new Comparator<File>() {
+          @Override
+          public int compare(File o1, File o2) {
+            return Long.compare(Long.parseLong(o1.getName().split("-")[1]),
+                Long.parseLong(o2.getName().split("-")[1]));
+          }
+        });
       }
 
-      logOutputStream = new FileOutputStream(logFile, true);
+      // add init log file
+      if(logFileList.isEmpty()){
+        logFileList.add(createNewLogFile(metaFile.getParentFile().getPath()));
+      }
+
+      currentLogOutputStream = new FileOutputStream(getCurrentLogFile(), true);
       metaOutputStream = new FileOutputStream(metaFile, true);
     } catch (IOException e) {
       logger.error("Error in init log file: " + e.getMessage());
     }
+  }
+
+  private File createNewLogFile(String dirName) throws IOException {
+    File logFile = SystemFileFactory.INSTANCE
+        .getFile(dirName + File.separator + "data" + "-" + System.currentTimeMillis());
+    logFile.createNewFile();
+    return logFile;
   }
 
   @Override
@@ -115,7 +151,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     int totalSize = 0;
     // write into disk
     try {
-      totalSize = ReadWriteIOUtils.write(data, logOutputStream);
+      totalSize = ReadWriteIOUtils.write(data, currentLogOutputStream);
     } catch (IOException e) {
       logger.error("Error in log serialization: " + e.getMessage());
     }
@@ -136,8 +172,12 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     serializeMeta(meta);
   }
 
+  private File getCurrentLogFile() {
+    return logFileList.get(logFileList.size() - 1);
+  }
+
   private void truncateLogIntern(int count) {
-    if (logSizeDeque.size() > count) {
+    if (logSizeDeque.size() < count) {
       throw new IllegalArgumentException("truncate log count is bigger than total log count");
     }
 
@@ -146,11 +186,36 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
       size += logSizeDeque.removeLast();
     }
     // truncate file
-    try {
-      logOutputStream.getChannel().truncate(logFile.length() - size);
-    } catch (IOException e) {
-      logger.error("Error in log serialization: " + e.getMessage());
+    while(size > 0 ){
+      File currentLogFile = getCurrentLogFile();
+      // if the last file is smaller than truncate size, we can delete it directly
+      if(currentLogFile.length() < size){
+        size -= currentLogFile.length();
+        try {
+          currentLogOutputStream.close();
+          // if system down before delete, we can use this to delete file during recovery
+          maxAvailableTime = getFileTime(currentLogFile);
+          serializeMeta(meta);
+
+          currentLogFile.delete();
+          currentLogOutputStream = new FileOutputStream(getCurrentLogFile());
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+
+        logFileList.remove(logFileList.size() - 1);
+      }
+      // else we just truncate it
+      else{
+        try {
+          currentLogOutputStream.getChannel().truncate(getCurrentLogFile().length() - size);
+          break;
+        } catch (IOException e) {
+          logger.error("Error in log serialization: " + e.getMessage());
+        }
+      }
     }
+
   }
 
   @Override
@@ -160,13 +225,13 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
       removedLogSize += logSizeDeque.removeFirst();
     }
 
-    // do actual deletion
-    if (removedLogSize > maxRemovedLogSize) {
-      deleteRemovedLog();
-    }
-
     // firstLogPosition changed
     serializeMeta(meta);
+
+    // do actual deletion
+    if (removedLogSize > maxRemovedLogSize) {
+      openNewLogFile();
+    }
   }
 
   @Override
@@ -174,29 +239,38 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     if (meta == null) {
       recoverMeta();
     }
-
-    if (!logFile.exists()) {
-      return new ArrayList<>();
+    // if we can totally remove some old file, remove them
+    if(removedLogSize > 0){
+      actuallyDeleteFile();
     }
 
     List<Log> result = new ArrayList<>();
-    try {
-      FileInputStream logReader = new FileInputStream(logFile);
-      FileChannel logChannel = logReader.getChannel();
-      long actuallySkippedBytes = logReader.skip(removedLogSize);
-      if (actuallySkippedBytes != removedLogSize) {
-        logger.error(
-            "Error in log serialization, skipped file length isn't consistent with removedLogSize!");
-        return result;
+    // skip removal file
+    boolean shouldSkip = true;
+
+    for (File logFile : logFileList) {
+      try {
+        FileInputStream logReader = new FileInputStream(logFile);
+        FileChannel logChannel = logReader.getChannel();
+        if (shouldSkip) {
+          long actuallySkippedBytes = logReader.skip(removedLogSize);
+          if (actuallySkippedBytes != removedLogSize) {
+            logger.info(
+                "Error in log serialization, skipped file length isn't consistent with removedLogSize!");
+            return result;
+          }
+          shouldSkip = false;
+        }
+
+        while (logChannel.position() < logFile.length()) {
+          // actual log
+          Log log = readLog(logReader);
+          result.add(log);
+        }
+        logReader.close();
+      } catch (IOException e) {
+        logger.error("Error in log serialization: " + e.getMessage());
       }
-      while (logChannel.position() < logFile.length()) {
-        // actual log
-        Log log = readLog(logReader);
-        result.add(log);
-      }
-      logReader.close();
-    } catch (IOException e) {
-      logger.error("Error in log serialization: " + e.getMessage());
     }
 
     return result;
@@ -227,6 +301,8 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
         FileInputStream metaReader = new FileInputStream(metaFile);
         firstLogPosition = ReadWriteIOUtils.readLong(metaReader);
         removedLogSize = ReadWriteIOUtils.readLong(metaReader);
+        minAvailableTime = ReadWriteIOUtils.readLong(metaReader);
+        maxAvailableTime = ReadWriteIOUtils.readLong(metaReader);
         meta = LogManagerMeta.deserialize(
             ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(metaReader)));
         metaReader.close();
@@ -244,6 +320,8 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
       metaOutputStream.getChannel().truncate(0);
       ReadWriteIOUtils.write(firstLogPosition, metaOutputStream);
       ReadWriteIOUtils.write(removedLogSize, metaOutputStream);
+      ReadWriteIOUtils.write(minAvailableTime, metaOutputStream);
+      ReadWriteIOUtils.write(maxAvailableTime, metaOutputStream);
       ReadWriteIOUtils.write(meta.serialize(), metaOutputStream);
 
       this.meta = meta;
@@ -256,55 +334,75 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   @Override
   public void close() {
     try {
-      logOutputStream.close();
+      currentLogOutputStream.close();
       metaOutputStream.close();
     } catch (IOException e) {
       logger.error("Error in log serialization: " + e.getMessage());
     }
   }
 
-  // actually delete removed logs, this may take lots of times
-  // TODO : use an async method to delete file
-  private void deleteRemovedLog() {
-    try {
-      FileInputStream reader = new FileInputStream(logFile);
-      // skip removed file
-      long actuallySkippedBytes = reader.skip(removedLogSize);
-      if (actuallySkippedBytes != removedLogSize) {
-        logger.error(
-            "Error in log serialization, skipped file length isn't consistent with removedLogSize!");
-        return;
+  private String getLogDir() {
+    return IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "raftLog";
+  }
+
+  /**
+   * adjust maxRemovedLogSize to the first log file
+   */
+  private void adjustNextThreshold() {
+    maxRemovedLogSize = logFileList.get(0).length();
+  }
+
+  /**
+   * actually delete the data file which only contains removed data
+   */
+  private void actuallyDeleteFile() {
+    Iterator<File> logFileIterator = logFileList.iterator();
+    while (logFileIterator.hasNext()) {
+      File logFile = logFileIterator.next();
+      if (logFile.length() > removedLogSize) {
+        break;
       }
 
-      // begin to write
-      File tempLogFile = SystemFileFactory.INSTANCE
-          .getFile(
-              IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "raftLog"
-                  + File.separator + "logData.temp");
+      removedLogSize -= logFile.length();
+      // if system down before delete, we can use this to delete file during recovery
+      minAvailableTime = getFileTime(logFile);
+      serializeMeta(meta);
 
-      logOutputStream.close();
-      logOutputStream = new FileOutputStream(tempLogFile);
-      int blockSize = 4096;
-      long curPosition = reader.getChannel().position();
-      while (curPosition < logFile.length()) {
-        long transferSize = Math.min(blockSize, logFile.length() - curPosition);
-        reader.getChannel().transferTo(curPosition, transferSize, logOutputStream.getChannel());
-        curPosition += transferSize;
-      }
-
-      // rename file
       logFile.delete();
-      tempLogFile.renameTo(logFile);
-      logOutputStream.close();
-      reader.close();
-      logOutputStream = new FileOutputStream(logFile, true);
+      logFileIterator.remove();
+    }
+    adjustNextThreshold();
+  }
+
+  /**
+   * open a new log file for log data 1. if we can totally remove some old file, remove them 2.
+   * create a new log file for new log data
+   */
+  private void openNewLogFile() {
+    // 1. if we can totally remove some old file, remove them
+    actuallyDeleteFile();
+
+    // 2. create a new log file for new log data
+    try {
+      File newLogFile = createNewLogFile(getLogDir());
+      // save meta first
+      maxAvailableTime = getFileTime(newLogFile);
+      serializeMeta(meta);
+
+      logFileList.add(newLogFile);
+      currentLogOutputStream.close();
+      currentLogOutputStream = new FileOutputStream(newLogFile);
     } catch (IOException e) {
       logger.error("Error in log serialization: " + e.getMessage());
     }
+  }
 
-    // re init and serialize
-    removedLogSize = 0;
-    firstLogPosition = 0;
-    // meta will be serialized by caller
+  /**
+   * get file create time from file
+   * @param file file
+   * @return create time from file
+   */
+  private long getFileTime(File file){
+    return Long.parseLong(file.getName().split("-")[1]);
   }
 }
