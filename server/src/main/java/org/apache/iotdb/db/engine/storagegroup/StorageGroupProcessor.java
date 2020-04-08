@@ -375,7 +375,7 @@ public class StorageGroupProcessor {
       try {
         writer = recoverPerformer.recover();
       } catch (StorageGroupProcessorException e) {
-        logger.warn("skip InCompatible TsFile: {}", tsFileResource.getPath());
+        logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getPath(), e);
         continue;
       }
       if (i != tsFiles.size() - 1 || !writer.canWrite()) {
@@ -409,7 +409,7 @@ public class StorageGroupProcessor {
       try {
         writer = recoverPerformer.recover();
       } catch (StorageGroupProcessorException e) {
-        logger.warn("skip InCompatible TsFile: {}", tsFileResource.getPath());
+        logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getPath(), e);
         continue;
       }
       if (i != tsFiles.size() - 1 || !writer.canWrite()) {
