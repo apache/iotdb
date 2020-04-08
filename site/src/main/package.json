@@ -1,11 +1,11 @@
 {
   "name": "IoTDB",
   "version": "1.0.0",
-  "description": "Blogs built with vuepress",
+  "description": "Apache IoTDB (incubating) Website",
   "main": "index.js",
   "scripts": {
-    "dev": "vuepress dev docs",
-    "build": "vuepress build docs",
+    "dev": "vuepress dev src",
+    "build": "vuepress build src",
     "deploy": "node deploy.js"
   },
   "repository": {
@@ -13,17 +13,19 @@
     "url": ""
   },
   "keywords": [
-    "JavaScript",
-    "vue",
-    "mkdown",
-    "blog"
+    "IoTDB",
+    "Time Series Data",
+    "Database",
+    "NoSQL",
+	"TSDB",
+	"Time Series Database"
   ],
-  "author": "IoTDB",
-  "license": "ISC",
+  "author": "Apache IoTDB (incubating)",
+  "license": "Apache License 2.0",
   "bugs": {
-    "url": "https://github.com"
+    "url": "https://github.com/apache/incubator-iotdb"
   },
-  "homepage": "https://github.com/",
+  "homepage": "https://iotdb.apache.org",
   "devDependencies": {
     "gh-pages": "^2.0.1",
     "vuepress": "^1.3.1"
