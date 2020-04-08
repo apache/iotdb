@@ -18,7 +18,7 @@
     "Database",
     "NoSQL",
     "TSDB",
-   "Time Series Database"
+    "Time Series Database"
   ],
   "author": "Apache IoTDB (incubating)",
   "license": "Apache License 2.0",
