@@ -65,11 +65,7 @@ public class RestorableTsFileIOWriterTest {
     FileWriter fWriter = new FileWriter(file);
     fWriter.write("Tsfile");
     fWriter.close();
-    try {
-      RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
-    } finally {
-      assertTrue(file.delete());
-    }
+    new RestorableTsFileIOWriter(file);
   }
 
   @Test
