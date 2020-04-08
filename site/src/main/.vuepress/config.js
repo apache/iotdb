@@ -90,7 +90,8 @@ var config = {
 					items: [
 					  { text: 'People', link: '/Community/Community-Project Committers'},
 					  { text: 'Powered By', link: '/Community/Community-Powered By'},
-					  { text: 'History&Vision', link: '/Community/Community-History&Vision'},
+					  { text: 'github documents', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation'},
+					  { text: 'wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb',target:'_self', rel:''},
 					]
 				  },
 				  {
@@ -112,13 +113,6 @@ var config = {
 					  { text: 'Thanks', link: 'http://www.apache.org/foundation/thanks.html',target:'_self', rel:''},
 					  { text: 'Current Events', link: 'http://www.apache.org/events/current-event',target:'_self', rel:''},
 					]
-				  },
-				  {
-					text: 'Resources',
-					items: [
-						{ text: 'github documents', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation',target:'_self', rel:''},
-						{ text: 'wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb',target:'_self', rel:''},
-					  ]
 				  },
 			],
 			sidebar: {
@@ -503,9 +497,10 @@ var config = {
 				  {
 					text: '社区',
 					items: [
-					  { text: '开发人员', link: '/zh/Community/Community-Project Committers'},
-					  { text: '技术支持', link: '/zh/Community/Community-Powered By'},
-					  { text: '历史与视角', link: '/zh/Community/Community-History&Vision'},
+					    { text: '开发人员', link: '/zh/Community/Community-Project Committers'},
+					    { text: '技术支持', link: '/zh/Community/Community-Powered By'},
+						{ text: 'github文档', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation'},
+						{ text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb',target:'_self', rel:''},
 					]
 				  },
 				  {
@@ -527,13 +522,6 @@ var config = {
 					  { text: '致谢', link: 'http://www.apache.org/foundation/thanks.html',target:'_self', rel:''},
 					  { text: '现在发生的事', link: 'http://www.apache.org/events/current-event',target:'_self', rel:''},
 					]
-				  },
-				  {
-					text: '资源',
-					items: [
-						{ text: 'github文档', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation',target:'_self', rel:''},
-						{ text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb',target:'_self', rel:''},
-					  ]
 				  },
 			],
 			sidebar: {
