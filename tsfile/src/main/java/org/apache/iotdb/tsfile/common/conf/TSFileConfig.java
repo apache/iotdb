@@ -384,8 +384,8 @@ public class TSFileConfig {
     return this.TSFileStorageFs;
   }
 
-  public void setTSFileStorageFs(String TSFileStorageFs) {
-    this.TSFileStorageFs = FSType.valueOf(TSFileStorageFs);
+  public void setTSFileStorageFs(FSType fileStorageFs) {
+    this.TSFileStorageFs = fileStorageFs;
   }
 
   public String getCoreSitePath() {

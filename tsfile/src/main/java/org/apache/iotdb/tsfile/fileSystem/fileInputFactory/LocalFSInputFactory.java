@@ -25,7 +25,7 @@ import java.nio.file.Paths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
+import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 public class LocalFSInputFactory implements FileInputFactory {
@@ -34,7 +34,7 @@ public class LocalFSInputFactory implements FileInputFactory {
 
   public TsFileInput getTsFileInput(String filePath) {
     try {
-      return new DefaultTsFileInput(Paths.get(filePath));
+      return new LocalTsFileInput(Paths.get(filePath));
     } catch (IOException e) {
       logger.error("Failed to get TsFile input of file: {}, ", filePath, e);
       return null;

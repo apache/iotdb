@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -340,8 +341,8 @@ public class IoTDBDescriptor {
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
-          .setTSFileStorageFs(
-              properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().name()));
+          .setTSFileStorageFs(FSType.valueOf(
+              properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().name())));
       TSFileDescriptor.getInstance().getConfig().setCoreSitePath(
           properties.getProperty("core_site_path", conf.getCoreSitePath()));
       TSFileDescriptor.getInstance().getConfig().setHdfsSitePath(
