@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.tsfile.exception;
 
-public class NotCompatibleException extends TsFileRuntimeException {
+public class NotCompatibleTsFileException extends TsFileRuntimeException {
 
   private static final long serialVersionUID = -3765109817887078265L;
 
-  public NotCompatibleException(String message) {
+  public NotCompatibleTsFileException(String message) {
     super(message);
   }
 }
