@@ -47,7 +47,7 @@ import org.slf4j.LoggerFactory;
  */
 public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
-  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
+  private static final Logger logger = LoggerFactory.getLogger("FileMonitor");
   private long truncatedPosition = -1;
   private Map<Path, MeasurementSchema> knownSchemas = new HashMap<>();
 
@@ -65,8 +65,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @throws IOException if write failed, or the file is broken but autoRepair==false.
    */
   public RestorableTsFileIOWriter(File file) throws IOException {
-    if (resourceLogger.isDebugEnabled()) {
-      resourceLogger.debug("{} is opened.", file.getName());
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} is opened.", file.getName());
     }
     this.file = file;
     this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
@@ -93,8 +93,9 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         totalChunkNum = reader.getTotalChunkNum();
         if (truncatedPosition == TsFileCheckStatus.INCOMPATIBLE_FILE) {
           out.close();
-          throw new IOException(
-              String.format("%s is not in TsFile format.", file.getAbsolutePath()));
+          boolean result = file.delete();
+          logger.warn("TsFile {} is incompatible. Delete it successfully {}", file.getAbsolutePath(), result);
+          throw new IOException(String.format("%s is not in TsFile format.", file.getAbsolutePath()));
         } else if (truncatedPosition == TsFileCheckStatus.ONLY_MAGIC_HEAD) {
           crashed = true;
           out.truncate(

@@ -245,28 +245,20 @@ public class StorageGroupProcessor {
     logger.info("recover Storage Group  {}", storageGroupName);
 
     try {
-      // collect TsFiles from sequential and unsequential data directory
-      List<TsFileResource> seqTsFiles = getAllFiles(
+      // collect candidate TsFiles from sequential and unsequential data directory
+      List<TsFileResource> tmpSeqTsFiles = getAllFiles(
           DirectoryManager.getInstance().getAllSequenceFileFolders());
-      List<TsFileResource> unseqTsFiles =
+      List<TsFileResource> tmpUnseqTsFiles =
           getAllFiles(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
 
-      recoverSeqFiles(seqTsFiles);
-      recoverUnseqFiles(unseqTsFiles);
+      recoverSeqFiles(tmpSeqTsFiles);
+      recoverUnseqFiles(tmpUnseqTsFiles);
 
-      for (TsFileResource resource : seqTsFiles) {
-        //After recover, case the TsFile's length is equal to 0, delete both the TsFileResource and the file itself
-        if (resource.getFile().length() == 0) {
-          deleteTsfile(resource.getFile());
-        }
+      for (TsFileResource resource : sequenceFileTreeSet) {
         long partitionNum = resource.getTimePartition();
         partitionDirectFileVersions.computeIfAbsent(partitionNum, p -> new HashSet<>()).addAll(resource.getHistoricalVersions());
       }
-      for (TsFileResource resource : unseqTsFiles) {
-        //After recover, case the TsFile's length is equal to 0, delete both the TsFileResource and the file itself
-        if (resource.getFile().length() == 0) {
-          deleteTsfile(resource.getFile());
-        }
+      for (TsFileResource resource : unSequenceFileList) {
         long partitionNum = resource.getTimePartition();
         partitionDirectFileVersions.computeIfAbsent(partitionNum, p -> new HashSet<>()).addAll(resource.getHistoricalVersions());
       }
@@ -277,8 +269,8 @@ public class StorageGroupProcessor {
       if (mergingMods.exists()) {
         mergingModification = new ModificationFile(mergingMods.getPath());
       }
-      RecoverMergeTask recoverMergeTask = new RecoverMergeTask(seqTsFiles, unseqTsFiles,
-          storageGroupSysDir.getPath(), this::mergeEndAction, taskName,
+      RecoverMergeTask recoverMergeTask = new RecoverMergeTask(new ArrayList<>(sequenceFileTreeSet),
+          unSequenceFileList, storageGroupSysDir.getPath(), this::mergeEndAction, taskName,
           IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), storageGroupName);
       logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
       recoverMergeTask
@@ -370,16 +362,22 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverSeqFiles(List<TsFileResource> tsFiles) throws StorageGroupProcessorException {
+  private void recoverSeqFiles(List<TsFileResource> tsFiles) {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
-      sequenceFileTreeSet.add(tsFileResource);
       long timePartitionId = tsFileResource.getTimePartition();
 
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
           getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, false,
           i == tsFiles.size() - 1);
-      RestorableTsFileIOWriter writer = recoverPerformer.recover();
+
+      RestorableTsFileIOWriter writer;
+      try {
+        writer = recoverPerformer.recover();
+      } catch (StorageGroupProcessorException e) {
+        logger.warn("skip InCompatible TsFile: {}", tsFileResource.getPath());
+        continue;
+      }
       if (i != tsFiles.size() - 1 || !writer.canWrite()) {
         // not the last file or cannot write, just close it
         tsFileResource.setClosed(true);
@@ -395,20 +393,25 @@ public class StorageGroupProcessor {
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
       }
+      sequenceFileTreeSet.add(tsFileResource);
     }
   }
 
-  private void recoverUnseqFiles(List<TsFileResource> tsFiles)
-      throws StorageGroupProcessorException {
+  private void recoverUnseqFiles(List<TsFileResource> tsFiles) {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
-      unSequenceFileList.add(tsFileResource);
       long timePartitionId = tsFileResource.getTimePartition();
 
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
           getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, true,
           i == tsFiles.size() - 1);
-      RestorableTsFileIOWriter writer = recoverPerformer.recover();
+      RestorableTsFileIOWriter writer;
+      try {
+        writer = recoverPerformer.recover();
+      } catch (StorageGroupProcessorException e) {
+        logger.warn("skip InCompatible TsFile: {}", tsFileResource.getPath());
+        continue;
+      }
       if (i != tsFiles.size() - 1 || !writer.canWrite()) {
         // not the last file or cannot write, just close it
         tsFileResource.setClosed(true);
@@ -424,6 +427,7 @@ public class StorageGroupProcessor {
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
       }
+      unSequenceFileList.add(tsFileResource);
     }
   }
 
