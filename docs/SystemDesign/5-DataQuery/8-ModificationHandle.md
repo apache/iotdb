@@ -21,25 +21,35 @@
 
 # Modification handling in query
 
+Background:
+
 Data deletion only record a mods file for disk data, the data is not really deleted. Therefore, we need to consider the modifications in query.
 
-Each timeseries is treated independently in query process. For each timeseries, there are 5 levels: TsFileResource -> TimeseriesMetadata -> ChunkMetadata -> IPageReader -> BatchData
+If a TsFile is influenced by deletion, a deletion operation will be recorded in its mods file. The log contains 3 parts: path, deleted time, version
 
-Query resource: TsFileResource and possibly exist mods file. If a TsFile is influenced by deletion, a modification log will be recorded in its mods file. The log contains 3 parts: path, deleted time, version
+## Related class
+
+mods file: org.apache.iotdb.db.engine.modification.ModificationFile
+
+deletion operation: org.apache.iotdb.db.engine.modification.Modification
+
+## Query process
 
 ![](https://user-images.githubusercontent.com/7240743/78339324-deca5d80-75c6-11ea-8fa8-dbd94232b756.png)
+
+Each timeseries is treated independently in query process. For each timeseries, there are 5 levels: TsFileResource -> TimeseriesMetadata -> ChunkMetadata -> IPageReader -> BatchData
 
 * TsFileResource -> TimeseriesMetadata
 
 ```
-// Set the statistics in TimeseriesMetadata unusable if the timeseries contains modifications
+// Set the statistics in TimeseriesMetadata unusable if the timeseries contains deletion operations 
 FileLoaderUtils.loadTimeseriesMetadata()
 ```
 
 * TimeseriesMetadata -> List\<ChunkMetadata\>
 
 ```
-// For each ChunkMetadata, find the largest timestamp in all modifications whose version is larger than it. Set deleted time to ChunkMetadata. 
+// For each ChunkMetadata, find the largest timestamp in all deletion operations whose version is larger than it. Set deleted time to ChunkMetadata. 
 // set the statistics in ChunkMetadata is unusable if it is affected by deletion
 FileLoaderUtils.loadChunkMetadataList()
 ```

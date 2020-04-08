@@ -43,7 +43,7 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
     if (resourceLogger.isInfoEnabled()) {
       resourceLogger.info("{} writer is opened.", file.getName());
     }
-    this.out = new DefaultTsFileOutput(file, true);
+    this.out = new LocalTsFileOutput(file, true);
     this.file = file;
 
     // file doesn't exist

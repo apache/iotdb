@@ -30,10 +30,13 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
+import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorServer;
 import javax.management.remote.JMXConnectorServerFactory;
 import javax.management.remote.JMXServiceURL;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,6 +89,10 @@ public class JMXService implements IService {
 
   private JMXConnectorServer createJMXServer(boolean local) throws IOException {
     Map<String, Object> env = new HashMap<>();
+    if (Boolean.getBoolean(System.getProperty(IoTDBConstant.JMX_REMOTE_AUTHENTICATE))) {
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+      env.put(JMXConnector.CREDENTIALS, new String[]{config.getJmxUser(), config.getJmxPassword()});
+    }
 
     InetAddress serverAddress;
     if (local) {
