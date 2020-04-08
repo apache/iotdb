@@ -105,19 +105,19 @@ var config = {
 				  {
 					text: 'ASF',
 					items: [
-					  { text: 'Foundation', link: 'http://www.apache.org/foundation/',rel:''},
-					  { text: 'License', link: 'http://www.apache.org/licenses/',rel:''},
-					  { text: 'Security', link: 'http://www.apache.org/security/',rel:''},
-					  { text: 'Sponsorship', link: 'http://www.apache.org/foundation/sponsorship.html',rel:''},
-					  { text: 'Thanks', link: 'http://www.apache.org/foundation/thanks.html',rel:''},
-					  { text: 'Current Events', link: 'http://www.apache.org/events/current-event',rel:''},
+					  { text: 'Foundation', link: 'http://www.apache.org/',target:'_self', rel:''},
+					  { text: 'License', link: 'http://www.apache.org/licenses/',target:'_self', rel:''},
+					  { text: 'Security', link: 'http://www.apache.org/security/',target:'_self', rel:''},
+					  { text: 'Sponsorship', link: 'http://www.apache.org/foundation/sponsorship.html',target:'_self', rel:''},
+					  { text: 'Thanks', link: 'http://www.apache.org/foundation/thanks.html',target:'_self', rel:''},
+					  { text: 'Current Events', link: 'http://www.apache.org/events/current-event',target:'_self', rel:''},
 					]
 				  },
 				  {
-					text: 'wiki',
+					text: 'Resources',
 					items: [
-						{ text: 'github documents', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation',rel:''},
-						{ text: 'confluence', link: 'https://cwiki.apache.org/confluence/display/iotdb',rel:''},
+						{ text: 'github documents', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation',target:'_self', rel:''},
+						{ text: 'wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb',target:'_self', rel:''},
 					  ]
 				  },
 			],
@@ -520,19 +520,19 @@ var config = {
 				  {
 					text: 'ASF',
 					items: [
-					  { text: '基础', link: 'http://www.apache.org/foundation/',rel:''},
-					  { text: '执照', link: 'http://www.apache.org/licenses/',rel:''},
-					  { text: '安全', link: 'http://www.apache.org/security/',rel:''},
-					  { text: '赞助', link: 'http://www.apache.org/foundation/sponsorship.html',rel:''},
-					  { text: '致谢', link: 'http://www.apache.org/foundation/thanks.html',rel:''},
-					  { text: '现在发生的事', link: 'http://www.apache.org/events/current-event',rel:''},
+					  { text: '基础', link: 'http://www.apache.org/',target:'_self', rel:''},
+					  { text: '执照', link: 'http://www.apache.org/licenses/',target:'_self', rel:''},
+					  { text: '安全', link: 'http://www.apache.org/security/',target:'_self', rel:''},
+					  { text: '赞助', link: 'http://www.apache.org/foundation/sponsorship.html',target:'_self', rel:''},
+					  { text: '致谢', link: 'http://www.apache.org/foundation/thanks.html',target:'_self', rel:''},
+					  { text: '现在发生的事', link: 'http://www.apache.org/events/current-event',target:'_self', rel:''},
 					]
 				  },
 				  {
-					text: 'wiki',
+					text: '资源',
 					items: [
-						{ text: 'github文档', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation',rel:''},
-						{ text: 'confluence', link: 'https://cwiki.apache.org/confluence/display/iotdb',rel:''},
+						{ text: 'github文档', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation',target:'_self', rel:''},
+						{ text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb',target:'_self', rel:''},
 					  ]
 				  },
 			],
