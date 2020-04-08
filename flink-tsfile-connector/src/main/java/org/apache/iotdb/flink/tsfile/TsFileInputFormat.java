@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
+import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 import javax.annotation.Nullable;
@@ -102,7 +102,7 @@ public class TsFileInputFormat<T> extends FileInputFormat<T> implements ResultTy
 					hadoopConf);
 			} else {
 				// Local File System
-				in = new DefaultTsFileInput(Paths.get(currentSplit.getPath().toUri()));
+				in = new LocalTsFileInput(Paths.get(currentSplit.getPath().toUri()));
 			}
 		} catch (URISyntaxException e) {
 			throw new FlinkRuntimeException(e);
