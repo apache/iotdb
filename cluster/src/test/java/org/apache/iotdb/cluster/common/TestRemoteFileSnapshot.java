@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.common;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
@@ -56,7 +57,7 @@ public class TestRemoteFileSnapshot extends FileSnapshot implements RemoteSnapsh
     int startTime = 12345;
     for (RemoteTsFileResource tsFileResource : remoteDataFiles) {
       // fake a file for each resource
-      String[] splits = tsFileResource.getFile().getPath().split("\\\\");
+      String[] splits = tsFileResource.getFile().getPath().split(File.separator);
       String storageGroup = splits[splits.length - 2];
       InsertPlan insertPlan = new InsertPlan();
       insertPlan.setDeviceId(storageGroup);
