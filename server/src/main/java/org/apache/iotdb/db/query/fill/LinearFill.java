@@ -105,7 +105,7 @@ public class LinearFill extends IFill {
   }
 
   @Override
-  public TimeValuePair getFillResult(QueryContext context) throws IOException, UnSupportedFillTypeException {
+  public TimeValuePair getFillResult() throws IOException, UnSupportedFillTypeException {
     TimeValuePair beforePair = null;
     TimeValuePair afterPair = null;
     while (batchData.hasCurrent() || dataReader.hasNextBatch()) {

@@ -92,7 +92,7 @@ public class FillQueryExecutor {
       fill.configureFill(path, dataType, queryTime,
           fillQueryPlan.getAllMeasurementsInDevice(path.getDevice()), context);
 
-      TimeValuePair timeValuePair = fill.getFillResult(context);
+      TimeValuePair timeValuePair = fill.getFillResult();
       if (timeValuePair == null || timeValuePair.getValue() == null) {
         record.addField(null);
       } else {

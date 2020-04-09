@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import java.io.IOException;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import sun.rmi.runtime.Log;
 
 public class PreviousFill extends IFill {
 
@@ -102,48 +103,23 @@ public class PreviousFill extends IFill {
   }
 
   @Override
-  public TimeValuePair getFillResult(QueryContext context) throws IOException {
-    UnpackOverlappedFilesToTimeseriesMetadata(context);
-    return getTimeseriesLastPoint();
-  }
+  public TimeValuePair getFillResult() throws IOException {
+    TimeValuePair lastPointResult = retrieveValidLastPointFromSeqFiles();
+    UnpackOverlappedUnseqFiles(lastPointResult.getTimestamp());
 
-  private TimeValuePair getTimeseriesLastPoint() throws IOException {
-    TimeValuePair lastPoint = new TimeValuePair(Long.MIN_VALUE, null);
     long lastVersion = 0;
-    // get the last point of sequence timeseriesMetadata
-    if (lastSeqTimeseriesMetadata != null) {
-      if (lastSeqTimeseriesMetadata.getStatistics().getEndTime() <= queryTime) {
-        lastPoint = constructLastPair(
-            lastSeqTimeseriesMetadata.getStatistics().getEndTime(),
-            lastSeqTimeseriesMetadata.getStatistics().getLastValue(), dataType);
-      } else {
-        List<ChunkMetadata> seqChunkMetadataList =
-            FileLoaderUtils.loadChunkMetadataList(lastSeqTimeseriesMetadata);
-
-        for (int i = seqChunkMetadataList.size() - 1; i >= 0; i--) {
-          lastPoint = getChunkLastPoint(seqChunkMetadataList.get(i));
-          // last point of this sequence chunk is valid, quit the loop
-          if (lastPoint.getValue() != null) {
-            lastVersion = seqChunkMetadataList.get(i).getVersion();
-            break;
-          }
-        }
-      }
-    }
-
     PriorityQueue<ChunkMetadata> sortedChunkMetatdataList = sortUnseqChunkMetadatasByEndtime();
-    TimeValuePair lastChunkPoint = lastPoint;
     while (!sortedChunkMetatdataList.isEmpty()
-        && lastChunkPoint.getTimestamp() < sortedChunkMetatdataList.peek().getEndTime()) {
+        && lastPointResult.getTimestamp() < sortedChunkMetatdataList.peek().getEndTime()) {
       ChunkMetadata chunkMetadata = sortedChunkMetatdataList.poll();
-      lastChunkPoint = getChunkLastPoint(chunkMetadata);
-      if (shouldUpdate(lastPoint.getTimestamp(), lastVersion,
+      TimeValuePair lastChunkPoint = getChunkLastPoint(chunkMetadata);
+      if (shouldUpdate(lastPointResult.getTimestamp(), lastVersion,
           lastChunkPoint.getTimestamp(), chunkMetadata.getVersion())) {
-        lastPoint = lastChunkPoint;
+        lastPointResult = lastChunkPoint;
         lastVersion = chunkMetadata.getVersion();
       }
     }
-    return lastPoint;
+    return lastPointResult;
   }
 
   private TimeValuePair getChunkLastPoint(ChunkMetadata chunkMetaData) throws IOException {
@@ -195,7 +171,7 @@ public class PreviousFill extends IFill {
 
   private PriorityQueue<ChunkMetadata> sortUnseqChunkMetadatasByEndtime() throws IOException {
     PriorityQueue<ChunkMetadata> chunkMetadataList =
-        new PriorityQueue<ChunkMetadata>(
+        new PriorityQueue<>(
             (o1, o2) -> {
               long endTime1 = o1.getEndTime();
               long endTime2 = o2.getEndTime();
@@ -215,30 +191,21 @@ public class PreviousFill extends IFill {
   /**
    * find the last TimeseriesMetadata and unpack all overlapped seq/unseq files
    */
-  private void UnpackOverlappedFilesToTimeseriesMetadata(QueryContext context) throws IOException {
-    List<TsFileResource> seqFileResource = dataSource.getSeqResources();
+  private void UnpackOverlappedUnseqFiles(long lBoundTime) throws IOException {
     PriorityQueue<TsFileResource> unseqFileResource =
         sortUnSeqFileResourcesInDecendingOrder(dataSource.getUnseqResources());
 
-    TimeseriesMetadata lastTimeseriesMetadata = loadLastSeqTimeseriesMetadata(seqFileResource);
-
     while (!unseqFileResource.isEmpty()) {
-      // last sequence TimeseriesMetadata endTime satisfies queryTime and is larger than
-      // any unseq file endTimes, then skip all the rest unseq files
-      if (lastTimeseriesMetadata != null
-          && (lastTimeseriesMetadata.getStatistics().getEndTime() <= queryTime
-              && lastTimeseriesMetadata.getStatistics().getEndTime()
-                  > unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()))) {
+      // The very end time of unseq files is smaller than lBoundTime,
+      // then skip all the rest unseq files
+      if (unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()) < lBoundTime) {
         return;
       }
       TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
           unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
-      if (timeseriesMetadata != null) {
-        if (lastTimeseriesMetadata == null
-            || (lastTimeseriesMetadata.getStatistics().getEndTime()
-                < timeseriesMetadata.getStatistics().getEndTime())) {
-          lastTimeseriesMetadata = timeseriesMetadata;
-        }
+      if (timeseriesMetadata != null && lBoundTime <= timeseriesMetadata.getStatistics().getEndTime()) {
+        long startTime = timeseriesMetadata.getStatistics().getStartTime();
+        lBoundTime = Math.max(lBoundTime, startTime);
         unseqTimeseriesMetadataList.add(timeseriesMetadata);
         break;
       }
@@ -246,8 +213,7 @@ public class PreviousFill extends IFill {
 
     // unpack all overlapped unseq files and fill unseqTimeseriesMetadata list
     while (!unseqFileResource.isEmpty()
-        && (lastTimeseriesMetadata.getStatistics().getStartTime()
-        <= unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()))) {
+        && (lBoundTime <= unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()))) {
       TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
           unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
       unseqTimeseriesMetadataList.add(timeseriesMetadata);
@@ -262,19 +228,36 @@ public class PreviousFill extends IFill {
   /**
    * Pick up and cache the last sequence TimeseriesMetadata that satisfies timeFilter
    */
-  private TimeseriesMetadata loadLastSeqTimeseriesMetadata(List<TsFileResource> seqFileResource)
+  private TimeValuePair retrieveValidLastPointFromSeqFiles()
       throws IOException {
+    List<TsFileResource> seqFileResource = dataSource.getSeqResources();
+    TimeValuePair lastPoint = new TimeValuePair(Long.MIN_VALUE, null);
     for (int index = seqFileResource.size() - 1; index >= 0; index--) {
       TsFileResource resource = seqFileResource.get(index);
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
               resource, seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
-        lastSeqTimeseriesMetadata = timeseriesMetadata;
-        return timeseriesMetadata;
+        if (endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
+          return constructLastPair(
+              timeseriesMetadata.getStatistics().getEndTime(),
+              timeseriesMetadata.getStatistics().getLastValue(), dataType);
+        } else {
+          List<ChunkMetadata> seqChunkMetadataList =
+              FileLoaderUtils.loadChunkMetadataList(timeseriesMetadata);
+
+          for (int i = seqChunkMetadataList.size() - 1; i >= 0; i--) {
+            lastPoint = getChunkLastPoint(seqChunkMetadataList.get(i));
+            // last point of this sequence chunk is valid, quit the loop
+            if (lastPoint.getValue() != null) {
+              return lastPoint;
+            }
+          }
+        }
       }
     }
-    return null;
+
+    return lastPoint;
   }
 
   private boolean endtimeContainedByTimeFilter(Statistics statistics) {

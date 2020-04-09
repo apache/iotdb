@@ -54,7 +54,7 @@ public abstract class IFill {
     return constructFilter();
   }
 
-  public abstract TimeValuePair getFillResult(QueryContext context) throws IOException, UnSupportedFillTypeException;
+  public abstract TimeValuePair getFillResult() throws IOException, UnSupportedFillTypeException;
 
   public TSDataType getDataType() {
     return this.dataType;
