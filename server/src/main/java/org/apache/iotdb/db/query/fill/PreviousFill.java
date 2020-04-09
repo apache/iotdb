@@ -122,7 +122,7 @@ public class PreviousFill extends IFill {
   /** Pick up and cache the last sequence TimeseriesMetadata that satisfies timeFilter */
   private TimeValuePair retrieveValidLastPointFromSeqFiles() throws IOException {
     List<TsFileResource> seqFileResource = dataSource.getSeqResources();
-    TimeValuePair lastPoint = new TimeValuePair(0, null);
+    TimeValuePair lastPoint = new TimeValuePair(Long.MIN_VALUE, null);
     for (int index = seqFileResource.size() - 1; index >= 0; index--) {
       TsFileResource resource = seqFileResource.get(index);
       TimeseriesMetadata timeseriesMetadata =
