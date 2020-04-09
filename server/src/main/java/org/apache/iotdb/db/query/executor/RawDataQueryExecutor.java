@@ -100,7 +100,7 @@ public class RawDataQueryExecutor {
           .getQueryDataSource(path, context, timeFilter);
       timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
-      ManagedSeriesReader reader = new SeriesRawDataBatchReader(path, queryPlan.getAllSensorsInDevice(path.getDevice()), dataType, context,
+      ManagedSeriesReader reader = new SeriesRawDataBatchReader(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
           queryDataSource, timeFilter, null, null);
       readersOfSelectedSeries.add(reader);
     }
@@ -122,7 +122,7 @@ public class RawDataQueryExecutor {
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
       Path path = deduplicatedPaths.get(i);
-      IReaderByTimestamp seriesReaderByTimestamp = getReaderByTimestamp(path, queryPlan.getAllSensorsInDevice(path.getDevice()),
+      IReaderByTimestamp seriesReaderByTimestamp = getReaderByTimestamp(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()),
           deduplicatedDataTypes.get(i), context);
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }

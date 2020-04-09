@@ -51,6 +51,34 @@ public class IoTDBConfig {
 
   private boolean enableHTTPService = false;
 
+  /**
+   * whether to enable the mqtt service.
+   */
+  private boolean enableMQTTService = true;
+
+  /**
+   * the mqtt service binding host.
+   */
+  private String mqttHost = "0.0.0.0";
+
+  /**
+   * the mqtt service binding port.
+   */
+  private int mqttPort = 1883;
+
+  /**
+   * the handler pool size for handing the mqtt messages.
+   */
+  private int mqttHandlerPoolSize = 1;
+
+  /**
+   * the mqtt message payload formatter.
+   */
+  private String mqttPayloadFormatter = "json";
+
+  /**
+   * Rpc binding address.
+   */
   private String rpcAddress = "0.0.0.0";
 
   /**
@@ -67,6 +95,16 @@ public class IoTDBConfig {
    * Max concurrent client number
    */
   private int rpcMaxConcurrentClientNum = 65535;
+
+  /**
+   * JMX user name
+   */
+  private String jmxUser = "admin";
+
+  /**
+   * JMX user password
+   */
+  private String jmxPassword = "password";
 
   /**
    * Memory allocated for the read process
@@ -632,6 +670,22 @@ public class IoTDBConfig {
 
   public void setEnableHTTPService(boolean enableHTTPService) {
     this.enableHTTPService = enableHTTPService;
+  }
+
+  public String getJmxUser() {
+    return jmxUser;
+  }
+
+  public void setJmxUser(String jmxUser) {
+    this.jmxUser = jmxUser;
+  }
+
+  public String getJmxPassword() {
+    return jmxPassword;
+  }
+
+  public void setJmxPassword(String jmxPassword) {
+    this.jmxPassword = jmxPassword;
   }
 
   void setDataDirs(String[] dataDirs) {
@@ -1387,5 +1441,45 @@ public class IoTDBConfig {
 
   public void setQueryCacheSizeInMetric(int queryCacheSizeInMetric) {
     this.queryCacheSizeInMetric = queryCacheSizeInMetric;
+  }
+
+  public boolean isEnableMQTTService() {
+    return enableMQTTService;
+  }
+
+  public void setEnableMQTTService(boolean enableMQTTService) {
+    this.enableMQTTService = enableMQTTService;
+  }
+
+  public String getMqttHost() {
+    return mqttHost;
+  }
+
+  public void setMqttHost(String mqttHost) {
+    this.mqttHost = mqttHost;
+  }
+
+  public int getMqttPort() {
+    return mqttPort;
+  }
+
+  public void setMqttPort(int mqttPort) {
+    this.mqttPort = mqttPort;
+  }
+
+  public int getMqttHandlerPoolSize() {
+    return mqttHandlerPoolSize;
+  }
+
+  public void setMqttHandlerPoolSize(int mqttHandlerPoolSize) {
+    this.mqttHandlerPoolSize = mqttHandlerPoolSize;
+  }
+
+  public String getMqttPayloadFormatter() {
+    return mqttPayloadFormatter;
+  }
+
+  public void setMqttPayloadFormatter(String mqttPayloadFormatter) {
+    this.mqttPayloadFormatter = mqttPayloadFormatter;
   }
 }

@@ -57,7 +57,7 @@ public class ChunkLoaderTest {
 
     CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
     for (ChunkMetadata chunkMetaData : chunkMetadataList) {
-      Chunk chunk = seriesChunkLoader.getChunk(chunkMetaData);
+      Chunk chunk = seriesChunkLoader.loadChunk(chunkMetaData);
       ChunkHeader chunkHeader = chunk.getHeader();
       Assert.assertEquals(chunkHeader.getDataSize(), chunk.getData().remaining());
     }

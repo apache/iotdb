@@ -23,6 +23,28 @@
 
 Java VisualVM is a tool that provides a visual interface for viewing detailed information about Java applications while they are running on a Java Virtual Machine (JVM), and for troubleshooting and profiling these applications. 
 
+## Config
+
+JMX authenticate configuration is `true` by default, so you need to edit JMX user name and password in `iotdb-engine.properties`. Related configurations are:
+
+* jmx\_user
+
+|Name| jmx\_user |
+|:---:|:---|
+|Description| User name of JMX |
+|Type| String |
+|Default| admin |
+|Effective|After restart system|
+
+* jmx\_password
+
+|Name| jmx\_password |
+|:---:|:---|
+|Description| User password of JMX |
+|Type| String |
+|Default| password |
+|Effective|After restart system|
+
 ## Usage
 
 Step1: Start sever.

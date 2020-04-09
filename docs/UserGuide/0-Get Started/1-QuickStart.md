@@ -53,7 +53,7 @@ To use IoTDB, you need to have:
 IoTDB provides you three installation methods, you can refer to the following suggestions, choose one of them:
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
-* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Comming Soon...)
+* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Coming Soon...)
 * Using Docker：The path to the dockerfile is https://github.com/apache/incubator-iotdb/blob/master/docker/src/main
 
 
@@ -69,7 +69,7 @@ You can download the binary file from:
 configuration files are under "conf" folder
 
   * environment config module (`iotdb-env.bat`, `iotdb-env.sh`), 
-  * system config module (`tsfile-format.properties`, `iotdb-engine.properties`)
+  * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`). 
 
 For more, see [Chapter3: Server](../3-Server/1-Download.html) in detail.
@@ -137,7 +137,7 @@ IoTDB>
 
 Now, let us introduce the way of creating timeseries, inserting data and querying data. 
 
-The data in IoTDB is organized as timeseries, in each timeseries there are some data-time pairs, and every timeseries is owned by a storage group. Before defining a timeseries, we should difine a storage group using SET STORAGE GROUP, and here is an example: 
+The data in IoTDB is organized as timeseries, in each timeseries there are some data-time pairs, and every timeseries is owned by a storage group. Before defining a timeseries, we should define a storage group using SET STORAGE GROUP, and here is an example: 
 
 ``` 
 IoTDB> SET STORAGE GROUP TO root.ln
@@ -162,7 +162,7 @@ IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODIN
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 ```
 
-In order to query the specific timeseries, we can use SHOW TIMESERIES \<Path\>. \<Path\> represent the path of the timeseries. Its default value is null, which means quering all the timeseries in the system(the same as using "SHOW TIMESERIES root"). Here are the examples:
+In order to query the specific timeseries, we can use SHOW TIMESERIES \<Path\>. \<Path\> represent the path of the timeseries. Its default value is null, which means querying all the timeseries in the system(the same as using "SHOW TIMESERIES root"). Here are the examples:
 
 1. Querying all timeseries in the system:
 

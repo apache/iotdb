@@ -31,22 +31,17 @@ import java.nio.ByteBuffer;
  * existed, it will be created. Otherwise the file will be written from position
  * 0.
  */
-public class DefaultTsFileOutput implements TsFileOutput {
+public class LocalTsFileOutput implements TsFileOutput {
 
   private FileOutputStream outputStream;
   private BufferedOutputStream bufferedStream;
 
-  DefaultTsFileOutput(File file) throws FileNotFoundException {
-    this.outputStream = new FileOutputStream(file);
-    this.bufferedStream = new BufferedOutputStream(outputStream);
-  }
-
-  DefaultTsFileOutput(File file, boolean append) throws FileNotFoundException {
+  LocalTsFileOutput(File file, boolean append) throws FileNotFoundException {
     this.outputStream = new FileOutputStream(file, append);
     this.bufferedStream = new BufferedOutputStream(outputStream);
   }
 
-  public DefaultTsFileOutput(FileOutputStream outputStream) {
+  public LocalTsFileOutput(FileOutputStream outputStream) {
     this.outputStream = outputStream;
     this.bufferedStream = new BufferedOutputStream(outputStream);
   }
