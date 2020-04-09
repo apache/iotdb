@@ -24,12 +24,12 @@ import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
-public class JDBCServiceEventHandler implements TServerEventHandler {
+public class RPCServiceEventHandler implements TServerEventHandler {
 
   private TSServiceImpl serviceImpl;
   private CountDownLatch startLatch;
 
-  JDBCServiceEventHandler(TSServiceImpl serviceImpl, CountDownLatch startLatch) {
+  RPCServiceEventHandler(TSServiceImpl serviceImpl, CountDownLatch startLatch) {
     this.serviceImpl = serviceImpl;
     this.startLatch = startLatch;
   }
