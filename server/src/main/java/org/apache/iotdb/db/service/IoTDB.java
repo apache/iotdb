@@ -66,9 +66,7 @@ public class IoTDB implements IoTDBMBean {
       return;
     }
     try {
-      setUpServerService();
-      setUpAPIService();
-      logger.info("IoTDB is set up.");
+      setUp();
     } catch (StartupException e) {
       logger.error("meet error while starting up.", e);
       deactivate();
@@ -78,8 +76,7 @@ public class IoTDB implements IoTDBMBean {
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
   }
 
-
-  private void setUpServerService() throws StartupException {
+  private void setUp() throws StartupException {
     logger.info("Setting up IoTDB...");
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
@@ -107,19 +104,16 @@ public class IoTDB implements IoTDBMBean {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
       StatMonitor.getInstance().recovery();
     }
-  }
 
-  private void setUpAPIService() throws StartupException {
-    // start api services at last
+    registerManager.register(RPCService.getInstance());
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
       registerManager.register(MetricsService.getInstance());
     }
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
       registerManager.register(MQTTService.getInstance());
     }
-    registerManager.register(RPCService.getInstance());
+    logger.info("IoTDB is set up.");
   }
-
 
   private void deactivate() {
     logger.info("Deactivating IoTDB...");
