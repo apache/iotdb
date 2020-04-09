@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.DataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.PullFileException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
@@ -55,6 +56,7 @@ import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
 import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.partition.SlotManager;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
@@ -155,6 +157,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   private ClusterQueryManager queryManager;
 
+  /**
+   * "slotManager" tracks the status of slots during data transfers so that we can know whether
+   * the slot has non-pulled data.
+   */
+  private SlotManager slotManager;
+
   @TestOnly
   public DataGroupMember() {
     // constructor for test
@@ -170,6 +178,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
     setQueryManager(new ClusterQueryManager());
+    slotManager = new SlotManager(ClusterConstant.SLOT_NUM);
   }
 
   /**
@@ -632,6 +641,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // which may prevent the newly arrived data from being invisible to the new header.
     synchronized (logManager) {
       List<Integer> requiredSlots = request.getRequiredSlots();
+      for (Integer requiredSlot : requiredSlots) {
+        // wait if the data of the slot is in another node
+        slotManager.waitSlot(requiredSlot);
+      }
       logger.debug("{}: {} slots are requested", name, requiredSlots.size());
 
       PullSnapshotResp resp = new PullSnapshotResp();
