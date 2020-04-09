@@ -112,7 +112,6 @@ var config = {
 					},
 					{
 						title: '0-Get Started',
-						collapsable: false,
 						children: [
 							'0-Get Started/1-QuickStart',
 							'0-Get Started/2-Frequently asked questions',
@@ -121,7 +120,6 @@ var config = {
 					},
 					{
 						title: '1-Overview',
-						collapsable: false,
 						children: [
 							'1-Overview/1-What is IoTDB',
 							'1-Overview/2-Architecture',
@@ -131,7 +129,6 @@ var config = {
 					},
 					{
 						title: '2-Concept Key Concepts and Terminology',
-						collapsable: false,
 						children: [
 							'2-Concept Key Concepts and Terminology/1-Key Concepts and Terminology',
 							'2-Concept Key Concepts and Terminology/2-Data Type',
