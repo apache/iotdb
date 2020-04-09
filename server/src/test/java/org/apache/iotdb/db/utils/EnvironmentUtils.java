@@ -191,6 +191,7 @@ public class EnvironmentUtils {
     IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(0);
     //we do not start 8181 port in test.
     IoTDBDescriptor.getInstance().getConfig().setEnableMetricService(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(false);
     if (daemon == null) {
       daemon = new IoTDB();
     }
