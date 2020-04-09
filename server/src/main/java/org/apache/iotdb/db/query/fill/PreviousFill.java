@@ -192,7 +192,7 @@ public class PreviousFill extends IFill {
   }
 
   private TimeValuePair getChunkLastPoint(ChunkMetadata chunkMetaData) throws IOException {
-    TimeValuePair lastPoint = new TimeValuePair(0, null);
+    TimeValuePair lastPoint = new TimeValuePair(Long.MIN_VALUE, null);
     Statistics chunkStatistics = chunkMetaData.getStatistics();
 
     if (endtimeContainedByTimeFilter(chunkStatistics)) {
