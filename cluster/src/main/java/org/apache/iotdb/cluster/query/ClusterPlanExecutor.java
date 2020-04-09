@@ -30,9 +30,12 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -54,10 +57,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException {
+      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
+          MetadataException {
     if (queryPlan instanceof QueryPlan) {
       logger.debug("Executing a query: {}", queryPlan);
       return processDataQuery((QueryPlan) queryPlan, context);
+    } else if (queryPlan instanceof ShowPlan) {
+      return processShowQuery((ShowPlan) queryPlan);
     } else {
       //TODO-Cluster: support more queries
       throw new QueryProcessException(String.format("Unrecognized query plan %s", queryPlan));
@@ -127,5 +133,15 @@ public class ClusterPlanExecutor extends PlanExecutor {
       // some schemas does not exist in the remote side, check if we can use auto-creation
       return super.getSeriesSchemas(measurementList, deviceId, strValues);
     }
+  }
+
+  @Override
+  protected List<String> getAllStorageGroupNames() {
+    return metaGroupMember.getAllStorageGroupNames();
+  }
+
+  @Override
+  protected List<StorageGroupMNode> getAllStorageGroupNodes() {
+    return metaGroupMember.getAllStorageGroupNodes();
   }
 }
