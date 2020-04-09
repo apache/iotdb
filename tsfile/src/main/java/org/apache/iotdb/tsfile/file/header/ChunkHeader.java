@@ -78,7 +78,8 @@ public class ChunkHeader {
    *
    * @param markerRead Whether the marker of the CHUNK_HEADER has been read
    */
-  public static ChunkHeader deserializeFrom(InputStream inputStream, boolean markerRead) throws IOException {
+  public static ChunkHeader deserializeFrom(InputStream inputStream, boolean markerRead, 
+      boolean isOldVersion) throws IOException {
     if (!markerRead) {
       byte marker = (byte) inputStream.read();
       if (marker != MetaMarker.CHUNK_HEADER) {
@@ -92,6 +93,10 @@ public class ChunkHeader {
     int numOfPages = ReadWriteIOUtils.readInt(inputStream);
     CompressionType type = ReadWriteIOUtils.readCompressionType(inputStream);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(inputStream);
+    if (isOldVersion) {
+      // read maxTombstoneTime from old TsFile, has been removed in newer versions of TsFile
+      ReadWriteIOUtils.readLong(inputStream);
+    }
     return new ChunkHeader(measurementID, dataSize, dataType, type, encoding, numOfPages);
   }
 

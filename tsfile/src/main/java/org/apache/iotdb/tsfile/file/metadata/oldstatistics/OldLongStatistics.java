@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.file.metadata.oldstatistics;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -71,6 +72,15 @@ public class OldLongStatistics extends OldStatistics<Long> {
     this.first = ReadWriteIOUtils.readLong(byteBuffer);
     this.last = ReadWriteIOUtils.readLong(byteBuffer);
     this.sum = ReadWriteIOUtils.readDouble(byteBuffer);
+  }
+
+  @Override
+  void deserialize(InputStream inputStream) throws IOException {
+    this.min = ReadWriteIOUtils.readLong(inputStream);
+    this.max = ReadWriteIOUtils.readLong(inputStream);
+    this.first = ReadWriteIOUtils.readLong(inputStream);
+    this.last = ReadWriteIOUtils.readLong(inputStream);
+    this.sum = ReadWriteIOUtils.readDouble(inputStream);
   }
 
 }

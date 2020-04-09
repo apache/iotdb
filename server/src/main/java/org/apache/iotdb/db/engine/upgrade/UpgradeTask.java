@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.engine.upgrade;
 
+import java.io.IOException;
+
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.tool.upgrade.UpgradeTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +48,17 @@ public class UpgradeTask implements Runnable {
 
       UpgradeLog.writeUpgradeLogFile(
           tsfilePathBefore + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
+      try {
+        UpgradeTool.upgradeOneTsfile(tsfilePathBefore, tsfilePathAfter);
+        UpgradeLog.writeUpgradeLogFile(
+            tsfilePathBefore + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
+      } catch (IOException e) {
+        logger
+            .error("generate upgrade file failed, the file to be upgraded:{}", tsfilePathBefore, e);
+        return;
+      } finally {
+        upgradeResource.getWriteQueryLock().readLock().unlock();
+      }
       upgradeResource.getWriteQueryLock().writeLock().lock();
       try {
         FSFactoryProducer.getFSFactory().getFile(tsfilePathBefore).delete();

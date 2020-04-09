@@ -102,7 +102,7 @@ public class UpgradeTool {
    */
   public static void upgradeOneTsfile(String tsfileName, String updateFileName) throws IOException {
     TsfileUpgradeToolV0_9_0 updater = new TsfileUpgradeToolV0_9_0(tsfileName);
-    //updater.upgradeFile(updateFileName);
+    updater.upgradeFile(updateFileName);
   }
 
 }

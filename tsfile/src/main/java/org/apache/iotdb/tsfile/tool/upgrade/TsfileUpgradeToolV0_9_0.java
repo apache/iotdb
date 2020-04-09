@@ -31,13 +31,15 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.OldTsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.OldTsDeviceMetadataIndex;
+import org.apache.iotdb.tsfile.file.metadata.OldTsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
@@ -54,7 +56,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -91,8 +92,8 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
    */
   public TsfileUpgradeToolV0_9_0(String file, boolean loadMetadataSize) throws IOException {
     this.file = file;
-    final Path path = Paths.get(file);
-    tsFileInput = new DefaultTsFileInput(path);
+    final java.nio.file.Path path = Paths.get(file);
+    tsFileInput = new LocalTsFileInput(path);
     try {
       if (loadMetadataSize) {
         loadMetadataSize();
@@ -163,44 +164,8 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
   /**
    * this function does not modify the position of the file reader.
    */
-  public TsFileMetadata readFileMetadata() throws IOException {
-    ByteBuffer buffer = readData(fileMetadataPos, fileMetadataSize);
-    TsFileMetadata fileMetadata = new TsFileMetadata();
-
-    int size = ReadWriteIOUtils.readInt(buffer);
-    if (size > 0) {
-      Map<String, Pair<Long, Integer>> deviceMap = new HashMap<>();
-      String key;
-      Pair<Long, Integer> value;
-      for (int i = 0; i < size; i++) {
-        key = ReadWriteIOUtils.readString(buffer);
-        long offset = ReadWriteIOUtils.readLong(buffer);
-        int len = ReadWriteIOUtils.readInt(buffer);
-        long startTime = ReadWriteIOUtils.readLong(buffer);
-        long endTime = ReadWriteIOUtils.readLong(buffer);
-        value = new Pair<>(offset, len);
-        deviceMap.put(key, value);
-      }
-      fileMetadata.setDeviceMetadataIndex(deviceMap);
-    }
-
-    size = ReadWriteIOUtils.readInt(buffer);
-    if (size > 0) {
-      String key;
-      MeasurementSchema value;
-      for (int i = 0; i < size; i++) {
-        key = ReadWriteIOUtils.readString(buffer);
-        value = MeasurementSchema.deserializeFrom(buffer);
-      }
-    }
-    // skip the current version of file metadata
-    ReadWriteIOUtils.readInt(buffer);
-
-    if (ReadWriteIOUtils.readIsNull(buffer)) {
-      String createdBy = ReadWriteIOUtils.readString(buffer);
-    }
-
-    return fileMetadata;
+  public OldTsFileMetadata readFileMetadata() throws IOException {
+    return OldTsFileMetadata.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
   }
 
   /**
@@ -229,7 +194,7 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
    * @throws IOException io error
    */
   public ChunkHeader readChunkHeader() throws IOException {
-    return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), true);
+    return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), true, true);
   }
 
   /**
@@ -238,7 +203,7 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
    * @param type given tsfile data type
    */
   public PageHeader readPageHeader(TSDataType type) throws IOException {
-    return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type);
+    return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type, true);
   }
 
 
@@ -299,7 +264,6 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
   /**
    * upgrade file and return the boolean value whether upgrade task completes
    */
-  /*
   public boolean upgradeFile(String updateFileName) throws IOException {
     File checkFile = FSFactoryProducer.getFSFactory().getFile(this.file);
     long fileSize;
@@ -319,7 +283,7 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
     List<ChunkHeader> chunkHeaders = new ArrayList<>();
     List<List<PageHeader>> pageHeadersList = new ArrayList<>();
     List<List<ByteBuffer>> pagesList = new ArrayList<>();
-    // Schema schema = null;
+    Map<Path, MeasurementSchema> newSchema = new HashMap<>();
 
     String magic = readHeadMagic(true);
     if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
@@ -332,10 +296,9 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
       return false;
     } else if (readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
       loadMetadataSize();
-      TsFileMetadata tsFileMetaData = readFileMetadata();
-      // schema = new Schema(tsFileMetaData.getMeasurementSchema());
+      OldTsFileMetadata oldTsFileMetaData = readFileMetadata();
     } else {
-      
+      logger.error("the file cannot upgrade, file path: {}", checkFile.getPath());
     }
 
     ChunkMetadata currentChunkMetaData;
@@ -348,6 +311,7 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
 
     boolean goon = true;
     byte marker;
+    List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
     try {
       while (goon && (marker = this.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
@@ -362,30 +326,23 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
             long fileOffsetOfChunk = this.position() - 1;
             ChunkHeader header = this.readChunkHeader();
             chunkHeaders.add(header);
+            MeasurementSchema measurementSchema = new MeasurementSchema(header.getMeasurementID(),
+                header.getDataType(),
+                header.getEncodingType(), 
+                header.getCompressionType());
+            measurementSchemaList.add(measurementSchema);
             List<PageHeader> pageHeaders = new ArrayList<>();
             List<ByteBuffer> pages = new ArrayList<>();
             TSDataType dataType = header.getDataType();
             Statistics<?> chunkStatistics = Statistics.getStatsByType(dataType);
             chunkStatisticsList.add(chunkStatistics);
-            if (header.getNumOfPages() > 0) {
+            for (int j = 0; j < header.getNumOfPages(); j++) {
+              // a new Page
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
               pageHeaders.add(pageHeader);
               chunkStatistics.mergeStatistics(pageHeader.getStatistics());
               pages.add(readData(-1, pageHeader.getCompressedSize()));
             }
-            for (int j = 1; j < header.getNumOfPages() - 1; j++) {
-              PageHeader pageHeader = this.readPageHeader(header.getDataType());
-              pageHeaders.add(pageHeader);
-              chunkStatistics.mergeStatistics(pageHeader.getStatistics());
-              pages.add(readData(-1, pageHeader.getCompressedSize()));
-            }
-            if (header.getNumOfPages() > 1) {
-              PageHeader pageHeader = this.readPageHeader(header.getDataType());
-              pageHeaders.add(pageHeader);
-              chunkStatistics.mergeStatistics(pageHeader.getStatistics());
-              pages.add(readData(-1, pageHeader.getCompressedSize()));
-            }
-
             currentChunkMetaData = new ChunkMetadata(header.getMeasurementID(), dataType,
                 fileOffsetOfChunk, chunkStatistics);
             chunkMetaDataList.add(currentChunkMetaData);
@@ -395,12 +352,21 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
           case MetaMarker.CHUNK_GROUP_FOOTER:
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
             String deviceID = chunkGroupFooter.getDeviceID();
-            long endOffsetOfChunkGroup = this.position();
-            ChunkGroupMetadata currentChunkGroup = new ChunkGroupMetadata(deviceID,
-                chunkMetaDataList);
-            currentChunkGroup.setEndOffsetOfChunkGroup(endOffsetOfChunkGroup);
-            currentChunkGroup.setVersion(versionOfChunkGroup++);
-            newMetaData.add(currentChunkGroup);
+            if (newSchema != null) {
+              for (MeasurementSchema tsSchema : measurementSchemaList) {
+                newSchema.putIfAbsent(new Path(deviceID, tsSchema.getMeasurementId()), tsSchema);
+              }
+            }
+            newChunkGroup = true;
+            newMetaData.add(new ChunkGroupMetadata(deviceID, chunkMetaDataList));
+            
+            
+            
+            
+            // TODO: writer
+            
+            
+            
             tsFileIOWriter.startChunkGroup(deviceID);
             for (int i = 0; i < chunkHeaders.size(); i++) {
               TSDataType tsDataType = chunkHeaders.get(i).getDataType();
@@ -409,10 +375,10 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
               ChunkHeader chunkHeader = chunkHeaders.get(i);
               List<PageHeader> pageHeaderList = pageHeadersList.get(i);
               List<ByteBuffer> pageList = pagesList.get(i);
+              Path path = new Path(deviceID, chunkHeader.getMeasurementID());
 
-              if (schema.getMeasurementSchema(chunkHeader.getMeasurementID()) != null) {
-                ChunkWriterImpl chunkWriter = new ChunkWriterImpl(
-                    schema.getMeasurementSchema(chunkHeader.getMeasurementID()));
+              if (newSchema.get(path) != null) {
+                ChunkWriterImpl chunkWriter = new ChunkWriterImpl(newSchema.get(path));
                 for (int j = 0; j < pageHeaderList.size(); j++) {
                   if (encodingType.equals(TSEncoding.PLAIN)) {
                     pageList.set(j, rewrite(pageList.get(j), tsDataType, compressionType,
@@ -454,7 +420,6 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
       }
     }
   }
-  */
 
   static ByteBuffer rewrite(ByteBuffer page, TSDataType tsDataType,
       CompressionType compressionType, PageHeader pageHeader) {

@@ -46,10 +46,20 @@ public class PageHeader {
     return 2 * Integer.BYTES; // uncompressedSize, compressedSize
   }
 
-  public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType)
+  public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType,
+      boolean isOldVersion)
       throws IOException {
     int uncompressedSize = ReadWriteIOUtils.readInt(inputStream);
     int compressedSize = ReadWriteIOUtils.readInt(inputStream);
+    if (isOldVersion) {
+      int numOfValues = ReadWriteIOUtils.readInt(inputStream);
+      long maxTimestamp = ReadWriteIOUtils.readLong(inputStream);
+      long minTimestamp = ReadWriteIOUtils.readLong(inputStream);
+      OldStatistics oldstatistics = OldStatistics.deserialize(inputStream, dataType);
+      Statistics statistics = Statistics.upgradeOldStatistics(oldstatistics, dataType, 
+          numOfValues, maxTimestamp, minTimestamp);
+      return new PageHeader(uncompressedSize, compressedSize, statistics);
+    }
     Statistics statistics = Statistics.deserialize(inputStream, dataType);
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }

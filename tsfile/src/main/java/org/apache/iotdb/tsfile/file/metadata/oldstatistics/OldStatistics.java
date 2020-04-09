@@ -69,6 +69,14 @@ public abstract class OldStatistics<T> {
         throw new UnknownColumnTypeException(type.toString());
     }
   }
+  
+  public static OldStatistics deserialize(InputStream inputStream, TSDataType dataType)
+      throws IOException {
+    OldStatistics statistics = getStatsByType(dataType);
+    statistics.deserialize(inputStream);
+    statistics.isEmpty = false;
+    return statistics;
+  }
 
   public static OldStatistics deserialize(ByteBuffer buffer, TSDataType dataType) throws IOException {
     OldStatistics statistics = getStatsByType(dataType);
@@ -95,6 +103,11 @@ public abstract class OldStatistics<T> {
   public void setEmpty(boolean empty) {
     isEmpty = empty;
   }
+
+  /**
+   * read data from the inputStream.
+   */
+  abstract void deserialize(InputStream inputStream) throws IOException;
 
   abstract void deserialize(ByteBuffer byteBuffer) throws IOException;
 

@@ -71,6 +71,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
   private int totalChunkNum;
   private TsFileMetadata tsFileMetaData;
+  private OldTsFileMetadata oldTsFileMetaData;
   private EndianType endianType = EndianType.BIG_ENDIAN;
   // device -> measurement -> TimeseriesMetadata
   private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadata = new ConcurrentHashMap<>();
@@ -291,7 +292,9 @@ public class TsFileSequenceReader implements AutoCloseable {
         return cachedDeviceMetadata.get(device);
       }
       if (isOldVersion) {
-        OldTsFileMetadata oldTsFileMetaData = readOldFileMetadata();
+        if (oldTsFileMetaData == null) {
+          oldTsFileMetaData = readOldFileMetadata();
+        }
         if (oldTsFileMetaData.getDeviceMetadataIndex(device) == null) {
           return new HashMap<>();
         }
@@ -311,7 +314,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   private Map<String, TimeseriesMetadata> readDeviceMetadataFromDisk(String device) throws IOException {
-    if (readVersionNumber().equals(TSFileConfig.OLD_VERSION)) {
+    if (isOldVersion) {
       return constructDeviceMetadataFromOldFile(device);
     }
     readFileMetadata();
@@ -331,8 +334,9 @@ public class TsFileSequenceReader implements AutoCloseable {
   private Map<String, TimeseriesMetadata> constructDeviceMetadataFromOldFile(String device)
       throws IOException {
     Map<String, TimeseriesMetadata> newDeviceMetadata = new HashMap<>();
-    OldTsFileMetadata oldTsFileMetaData = readOldFileMetadata();
-    
+    if (oldTsFileMetaData == null) {
+      oldTsFileMetaData = readOldFileMetadata();
+    }
     OldTsDeviceMetadataIndex index = oldTsFileMetaData.getDeviceMetadataIndex(device);
     // read TsDeviceMetadata from file
     OldTsDeviceMetadata tsDeviceMetadata = readOldTsDeviceMetaData(index);
@@ -478,7 +482,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @throws IOException io error
    */
   public ChunkHeader readChunkHeader() throws IOException {
-    return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), true);
+    return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), true, false);
   }
 
   /**
@@ -528,7 +532,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param type given tsfile data type
    */
   public PageHeader readPageHeader(TSDataType type) throws IOException {
-    return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type);
+    return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type, isOldVersion);
   }
 
   public long position() throws IOException {
