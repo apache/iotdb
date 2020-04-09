@@ -1240,10 +1240,4 @@
         <!-- to enable coveralls locally, you need to get the repoToken from https://coveralls.io/github/apache/incubator-iotdb.
              use `mvn post-integration-test -Pcode-coverage -DrepoToken=TOKEN`-->
     </profiles>
-    <repositories>
-        <repository>
-            <id>spring-libs</id>
-            <url>http://repo.spring.io/libs-milestone/</url>
-        </repository>
-    </repositories>
 </project>
