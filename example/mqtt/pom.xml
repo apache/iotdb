@@ -27,24 +27,13 @@
         <version>0.10.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>flink-example</artifactId>
-    <name>IoTDB-Flink Examples</name>
+    <artifactId>mqtt-example</artifactId>
+    <name>IoTDB-MQTT Examples</name>
     <packaging>jar</packaging>
     <dependencies>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>flink-iotdb-connector</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>tsfile</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>flink-tsfile-connector</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.fusesource.mqtt-client</groupId>
+            <artifactId>mqtt-client</artifactId>
         </dependency>
     </dependencies>
 </project>

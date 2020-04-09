@@ -18,21 +18,15 @@
     under the License.
 
 -->
-# IoTDB-Flink-Connector Example
+# IoTDB-MQTT-Broker Example
 
 ## Function
 ```
-The example is to show how to send data to a IoTDB server from a Flink job.
+The example is to show how to send data to IoTDB from a mqtt client.
 ```
 
 ## Usage
 
 * Launch the IoTDB server.
-* Run `org.apache.iotdb.flink.FlinkIoTDBSink.java` to run the flink job on local mini cluster.
-
-# TsFile-Flink-Connector Example
-
-## Usage
-
-* Run `org.apache.iotdb.flink.FlinkTsFileBatchSource.java` to create a tsfile and read it via a flink DataSet job on local mini cluster.
-* Run `org.apache.iotdb.flink.FlinkTsFileStreamSource.java` to create a tsfile and read it via a flink DataStream job on local mini cluster.
+* setup storage group `SET STORAGE GROUP TO root.sg` and create time timeseries `CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN`.
+* Run `org.apache.iotdb.mqtt.MQTTClient` to run the mqtt client and send events to server.
