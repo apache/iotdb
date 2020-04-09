@@ -107,7 +107,7 @@ public class PreviousFill extends IFill {
     long lastVersion = 0;
     PriorityQueue<ChunkMetadata> sortedChunkMetatdataList = sortUnseqChunkMetadatasByEndtime();
     while (!sortedChunkMetatdataList.isEmpty()
-        && lastPointResult.getTimestamp() < sortedChunkMetatdataList.peek().getEndTime()) {
+        && lastPointResult.getTimestamp() <= sortedChunkMetatdataList.peek().getEndTime()) {
       ChunkMetadata chunkMetadata = sortedChunkMetatdataList.poll();
       TimeValuePair lastChunkPoint = getChunkLastPoint(chunkMetadata);
       if (shouldUpdate(lastPointResult.getTimestamp(), lastVersion,
