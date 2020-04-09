@@ -93,7 +93,6 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(StorageEngine.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
     registerManager.register(JMXService.getInstance());
-    registerManager.register(JDBCService.getInstance());
     registerManager.register(Monitor.getInstance());
     registerManager.register(StatMonitor.getInstance());
     registerManager.register(Measurement.INSTANCE);
@@ -106,7 +105,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(MetricsService.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
-
+    registerManager.register(JDBCService.getInstance());
     logger.info("IoTDB is set up.");
   }
 
