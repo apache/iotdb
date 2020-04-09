@@ -79,7 +79,7 @@ public class SessionPool {
   private boolean enableCompression = false;
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false);
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, true);
   }
 
   public SessionPool(String ip, int port, String user, String password, int maxSize,
