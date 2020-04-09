@@ -88,10 +88,10 @@ var config = {
 				  {
 					text: 'Community',
 					items: [
+					  { text: 'ASF', link: '/Community/ASF'},
+					  { text: 'Wiki', link: '/Community/Wiki'},
 					  { text: 'People', link: '/Community/Community-Project Committers'},
 					  { text: 'Powered By', link: '/Community/Community-Powered By'},
-					  { text: 'github documents', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation'},
-					  { text: 'wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb',target:'_self', rel:''},
 					]
 				  },
 				  {
@@ -103,17 +103,6 @@ var config = {
 					  { text: 'Changelist of RPC', link: '/Development/rpc-changelist'},
 					]
 				  },
-				  {
-					text: 'ASF',
-					items: [
-					  { text: 'Foundation', link: 'http://www.apache.org/',target:'_self', rel:''},
-					  { text: 'License', link: 'http://www.apache.org/licenses/',target:'_self', rel:''},
-					  { text: 'Security', link: 'http://www.apache.org/security/',target:'_self', rel:''},
-					  { text: 'Sponsorship', link: 'http://www.apache.org/foundation/sponsorship.html',target:'_self', rel:''},
-					  { text: 'Thanks', link: 'http://www.apache.org/foundation/thanks.html',target:'_self', rel:''},
-					  { text: 'Current Events', link: 'http://www.apache.org/events/current-event',target:'_self', rel:''},
-					]
-				  },
 			],
 			sidebar: {
 				'/UserGuide/V0.8.x/': [
@@ -123,6 +112,7 @@ var config = {
 					},
 					{
 						title: '0-Get Started',
+						collapsable: false,
 						children: [
 							'0-Get Started/1-QuickStart',
 							'0-Get Started/2-Frequently asked questions',
@@ -131,6 +121,7 @@ var config = {
 					},
 					{
 						title: '1-Overview',
+						collapsable: false,
 						children: [
 							'1-Overview/1-What is IoTDB',
 							'1-Overview/2-Architecture',
@@ -140,6 +131,7 @@ var config = {
 					},
 					{
 						title: '2-Concept Key Concepts and Terminology',
+						collapsable: false,
 						children: [
 							'2-Concept Key Concepts and Terminology/1-Key Concepts and Terminology',
 							'2-Concept Key Concepts and Terminology/2-Data Type',
@@ -497,10 +489,10 @@ var config = {
 				  {
 					text: '社区',
 					items: [
+						{ text: 'ASF', link: '/zh/Community/ASF'},
+						{ text: 'Wiki', link: '/zh/Community/Wiki'},
 					    { text: '开发人员', link: '/zh/Community/Community-Project Committers'},
 					    { text: '技术支持', link: '/zh/Community/Community-Powered By'},
-						{ text: 'github文档', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation'},
-						{ text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb',target:'_self', rel:''},
 					]
 				  },
 				  {
@@ -510,17 +502,6 @@ var config = {
 					  { text: '开发指南', link: '/zh/Development/ContributeGuide'},
 					  { text: 'TsFile的更改列表', link: '/zh/Development/format-changelist'},
 					  { text: 'RPC变更清单', link: '/zh/Development/rpc-changelist'},
-					]
-				  },
-				  {
-					text: 'ASF',
-					items: [
-					  { text: '基础', link: 'http://www.apache.org/',target:'_self', rel:''},
-					  { text: '执照', link: 'http://www.apache.org/licenses/',target:'_self', rel:''},
-					  { text: '安全', link: 'http://www.apache.org/security/',target:'_self', rel:''},
-					  { text: '赞助', link: 'http://www.apache.org/foundation/sponsorship.html',target:'_self', rel:''},
-					  { text: '致谢', link: 'http://www.apache.org/foundation/thanks.html',target:'_self', rel:''},
-					  { text: '活动', link: 'http://www.apache.org/events/current-event',target:'_self', rel:''},
 					]
 				  },
 			],
@@ -873,7 +854,7 @@ var config = {
       },
 	locales: {
 		'/': {
-		  lang: 'en-US', // 将会被设置为 <html> 的 lang 属性
+		  lang: 'en-US', 
 		  title: ' ',
 		  description: ' '
 		},
