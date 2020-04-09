@@ -34,6 +34,8 @@
         <cluster.ut.skip>${cluster.test.skip}</cluster.ut.skip>
     </properties>
     <dependencies>
+        <!-- The version of thrift is overridden because using 0.13.0 in the cluster module
+        will cause unclear bugs -->
         <dependency>
             <groupId>org.apache.thrift</groupId>
             <artifactId>libthrift</artifactId>
