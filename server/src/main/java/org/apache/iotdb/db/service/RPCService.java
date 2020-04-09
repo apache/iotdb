@@ -68,18 +68,16 @@ public class RPCService implements RPCServiceMBean, IService {
 
   @Override
   public String getRPCServiceStatus() {
-    // TODO debug log, will be deleted in production env
     if(startLatch == null) {
-      logger.info("Start latch is null when getting status");
+      logger.debug("Start latch is null when getting status");
     } else {
-      logger.info("Start latch is {} when getting status", startLatch.getCount());
+      logger.debug("Start latch is {} when getting status", startLatch.getCount());
     }
     if(stopLatch == null) {
-      logger.info("Stop latch is null when getting status");
+      logger.debug("Stop latch is null when getting status");
     } else {
-      logger.info("Stop latch is {} when getting status", stopLatch.getCount());
+      logger.debug("Stop latch is {} when getting status", stopLatch.getCount());
     }	
-    // debug log, will be deleted in production env
 
     if(startLatch != null && startLatch.getCount() == 0) {
       return STATUS_UP;
@@ -96,13 +94,8 @@ public class RPCService implements RPCServiceMBean, IService {
 
   @Override
   public void start() throws StartupException {
-    try {
       JMXService.registerMBean(getInstance(), mbeanName);
       startService();
-    } catch (Exception e) {
-      logger.error("Failed to start {} because: ", this.getID().getName(), e);
-      throw new StartupException(e);
-    }
   }
 
   @Override
@@ -167,7 +160,7 @@ public class RPCService implements RPCServiceMBean, IService {
       reset();
       logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     } catch (InterruptedException e) {
-      logger.error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
+      logger.error("{}: close {} failed because: ", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
       Thread.currentThread().interrupt();
     }
   }
@@ -227,20 +220,17 @@ public class RPCService implements RPCServiceMBean, IService {
         throw new RPCServiceException(String.format("%s: %s exit, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName()), e);
       } finally {
         close();
-        // TODO debug log, will be deleted in production env
         if (threadStopLatch == null) {
-          logger.info("Stop Count Down latch is null");
+          logger.debug("Stop Count Down latch is null");
         } else {
-          logger.info("Stop Count Down latch is {}", threadStopLatch.getCount());
+          logger.debug("Stop Count Down latch is {}", threadStopLatch.getCount());
         }
-        // debug log, will be deleted in production env
 
         if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
           threadStopLatch.countDown();
         }
-        logger.info("{}: close TThreadPoolServer and TServerSocket for {}",
-            IoTDBConstant.GLOBAL_DB_NAME,
-            getID().getName());
+        logger.debug("{}: close TThreadPoolServer and TServerSocket for {}",
+            IoTDBConstant.GLOBAL_DB_NAME, getID().getName());
       }
     }
 

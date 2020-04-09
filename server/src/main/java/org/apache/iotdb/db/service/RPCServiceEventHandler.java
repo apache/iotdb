@@ -36,7 +36,6 @@ public class RPCServiceEventHandler implements TServerEventHandler {
 
   @Override
   public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
-    // TODO Auto-generated method stub
     return null;
   }
 
@@ -52,8 +51,6 @@ public class RPCServiceEventHandler implements TServerEventHandler {
 
   @Override
   public void processContext(ServerContext arg0, TTransport arg1, TTransport arg2) {
-    // TODO Auto-generated method stub
-
   }
 
 }
