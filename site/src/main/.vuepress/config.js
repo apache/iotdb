@@ -520,7 +520,7 @@ var config = {
 					  { text: '安全', link: 'http://www.apache.org/security/',target:'_self', rel:''},
 					  { text: '赞助', link: 'http://www.apache.org/foundation/sponsorship.html',target:'_self', rel:''},
 					  { text: '致谢', link: 'http://www.apache.org/foundation/thanks.html',target:'_self', rel:''},
-					  { text: '现在发生的事', link: 'http://www.apache.org/events/current-event',target:'_self', rel:''},
+					  { text: '活动', link: 'http://www.apache.org/events/current-event',target:'_self', rel:''},
 					]
 				  },
 			],
