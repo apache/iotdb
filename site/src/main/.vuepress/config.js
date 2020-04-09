@@ -347,7 +347,8 @@ var config = {
 							'4-Client/3-Programming - JDBC',
 							'4-Client/4-Programming - Other Languages',
 							'4-Client/5-Programming - TsFile API',
-							'4-Client/6-Status Codes',
+							'4-Client/6-Programming - MQTT',
+							'4-Client/7-Status Codes',
 						]
 					},
 					{
