@@ -339,6 +339,23 @@ public class IoTDBDescriptor {
           Integer.parseInt(properties.getProperty("default_fill_interval",
               String.valueOf(conf.getDefaultFillInterval()))));
 
+      // mqtt
+      if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
+        conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
+      }
+      if (properties.getProperty(IoTDBConstant.MQTT_PORT_NAME) != null) {
+        conf.setMqttPort(Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_PORT_NAME)));
+      }
+      if (properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME) != null) {
+        conf.setMqttHandlerPoolSize(Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME)));
+      }
+      if (properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME) != null) {
+        conf.setMqttPayloadFormatter(properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME));
+      }
+      if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
+        conf.setEnableMQTTService(Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
+      }
+      
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
           .setTSFileStorageFs(FSType.valueOf(
