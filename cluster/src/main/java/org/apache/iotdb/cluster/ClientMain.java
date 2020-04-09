@@ -67,7 +67,7 @@ public class ClientMain {
     TSOpenSessionResp openResp = client.openSession(openReq);
     long sessionId = openResp.getSessionId();
 
-    //testInsertion(client, sessionId);
+    testInsertion(client, sessionId);
 
     testQuery(client, sessionId);
 
