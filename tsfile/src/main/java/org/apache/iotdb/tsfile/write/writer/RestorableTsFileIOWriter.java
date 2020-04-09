@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -47,9 +48,7 @@ import org.slf4j.LoggerFactory;
  */
 public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
-  private static final Logger logger = LoggerFactory
-      .getLogger(RestorableTsFileIOWriter.class);
-  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
+  private static final Logger logger = LoggerFactory.getLogger("FileMonitor");
   private long truncatedPosition = -1;
   private Map<Path, MeasurementSchema> knownSchemas = new HashMap<>();
 
@@ -67,8 +66,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @throws IOException if write failed, or the file is broken but autoRepair==false.
    */
   public RestorableTsFileIOWriter(File file) throws IOException {
-    if (resourceLogger.isDebugEnabled()) {
-      resourceLogger.debug("{} is opened.", file.getName());
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} is opened.", file.getName());
     }
     this.file = file;
     this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
@@ -95,7 +94,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         totalChunkNum = reader.getTotalChunkNum();
         if (truncatedPosition == TsFileCheckStatus.INCOMPATIBLE_FILE) {
           out.close();
-          throw new IOException(
+          throw new NotCompatibleTsFileException(
               String.format("%s is not in TsFile format.", file.getAbsolutePath()));
         } else if (truncatedPosition == TsFileCheckStatus.ONLY_MAGIC_HEAD) {
           crashed = true;
@@ -161,7 +160,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * get chunks' metadata from memory.
    *
    * @param deviceId      the device id
-   * @param measurementId the sensor id
+   * @param measurementId the measurement id
    * @param dataType      the value type
    * @return chunks' metadata
    */
@@ -171,7 +170,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
     if (metadatasForQuery.containsKey(deviceId) && metadatasForQuery.get(deviceId).containsKey(measurementId)) {
       for (ChunkMetadata chunkMetaData : metadatasForQuery.get(deviceId).get(measurementId)) {
-        // filter: if adevice'sensor is defined as float type, and data has been persistent.
+        // filter: if a device'measurement is defined as float type, and data has been persistent.
         // Then someone deletes the timeseries and recreate it with Int type. We have to ignore
         // all the stale data.
         if (dataType == null || dataType.equals(chunkMetaData.getDataType())) {

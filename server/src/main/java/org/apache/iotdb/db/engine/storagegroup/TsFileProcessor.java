@@ -668,7 +668,7 @@ public class TsFileProcessor {
    * ChunkMetadata of data on disk.
    *
    * @param deviceId device id
-   * @param measurementId sensor id
+   * @param measurementId measurements id
    * @param dataType data type
    * @param encoding encoding
    * @return left: the chunk data in memory; right: the chunkMetadatas of data on disk

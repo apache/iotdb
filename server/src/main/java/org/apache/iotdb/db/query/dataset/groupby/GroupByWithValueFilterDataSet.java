@@ -102,7 +102,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   protected IReaderByTimestamp getReaderByTime(Path path, RawDataQueryPlan queryPlan,
       TSDataType dataType, QueryContext context, TsFileFilter fileFilter)
       throws StorageEngineException, QueryProcessException {
-    return new SeriesReaderByTimestamp(path, queryPlan.getAllSensorsInDevice(path.getDevice()), dataType, context,
+    return new SeriesReaderByTimestamp(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
         QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter);
   }
 

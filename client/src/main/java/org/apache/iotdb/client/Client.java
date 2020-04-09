@@ -34,7 +34,7 @@ import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.thrift.TException;
 
 /**
- * usage: -h 127.0.0.1 -p 6667 -u root -pw root
+ * args[]: -h 127.0.0.1 -p 6667 -u root -pw root
  */
 public class Client extends AbstractClient {
 

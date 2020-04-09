@@ -48,7 +48,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
   }
 
   @Override
-  public List<ChunkMetadata> getChunkMetadataList() throws IOException {
+  public List<ChunkMetadata> loadChunkMetadataList() throws IOException {
     List<ChunkMetadata> chunkMetadataList = ChunkMetadataCache
         .getInstance().get(resource.getPath(), seriesPath);
 

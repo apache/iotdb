@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.common.conf;
 
+import java.io.Serializable;
 import java.nio.charset.Charset;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -27,7 +28,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSType;
  * TSFileConfig is a configure class. Every variables is public and has default
  * value.
  */
-public class TSFileConfig {
+public class TSFileConfig implements Serializable {
 
   // Memory configuration
   public static final int RLE_MIN_REPEATED_NUM = 8;
@@ -383,8 +384,8 @@ public class TSFileConfig {
     return this.TSFileStorageFs;
   }
 
-  public void setTSFileStorageFs(String TSFileStorageFs) {
-    this.TSFileStorageFs = FSType.valueOf(TSFileStorageFs);
+  public void setTSFileStorageFs(FSType fileStorageFs) {
+    this.TSFileStorageFs = fileStorageFs;
   }
 
   public String getCoreSitePath() {

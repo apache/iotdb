@@ -117,12 +117,13 @@ public class TimeseriesMetadata {
     this.chunkMetadataLoader = chunkMetadataLoader;
   }
 
-  public List<ChunkMetadata> getChunkMetadataList() throws IOException {
+
+  public List<ChunkMetadata> loadChunkMetadataList() throws IOException {
     if (chunkMetadataList != null) {
       chunkMetadataLoader.setDiskChunkLoader(chunkMetadataList);
       return chunkMetadataList;
     }
-    return chunkMetadataLoader.getChunkMetadataList();
+    return chunkMetadataLoader.loadChunkMetadataList();
   }
 
   // this function is only for old TsFile

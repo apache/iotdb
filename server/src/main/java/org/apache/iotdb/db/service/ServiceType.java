@@ -26,6 +26,7 @@ public enum ServiceType {
   JMX_SERVICE("JMX ServerService", "JMX ServerService"),
   METRICS_SERVICE("Metrics ServerService","MetricsService"),
   JDBC_SERVICE("JDBC ServerService", "JDBCService"),
+  MQTT_SERVICE("MQTTService", ""),
   MONITOR_SERVICE("Monitor ServerService", "Monitor"),
   STAT_MONITOR_SERVICE("Statistics ServerService", ""),
   WAL_SERVICE("WAL ServerService", ""),

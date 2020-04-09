@@ -146,7 +146,7 @@ public class TsFileWriter implements AutoCloseable {
     }
     this.pageSize = conf.getPageSizeInByte();
     this.chunkGroupSizeThreshold = conf.getGroupSizeInByte();
-    config.setTSFileStorageFs(conf.getTSFileStorageFs().name());
+    config.setTSFileStorageFs(conf.getTSFileStorageFs());
     if (this.pageSize >= chunkGroupSizeThreshold) {
       LOG.warn(
           "TsFile's page size {} is greater than chunk group size {}, please enlarge the chunk group"

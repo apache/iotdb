@@ -33,6 +33,7 @@ public class IoTDBConstant {
   public static final String SERVER_RMI_ID = "java.rmi.server.randomIDs";
   public static final String RMI_SERVER_HOST_NAME = "java.rmi.server.hostname";
   public static final String JMX_REMOTE_RMI_PORT = "com.sun.management.jmxremote.rmi.port";
+  public static final String JMX_REMOTE_AUTHENTICATE = "com.sun.management.jmxremote.authenticate";
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
   public static final String JMX_TYPE = "type";
 
@@ -88,4 +89,11 @@ public class IoTDBConstant {
   public static final String SCHEMA_FOLDER_NAME = "schema";
   public static final String SYNC_FOLDER_NAME = "sync";
   public static final String QUERY_FOLDER_NAME = "query";
+
+  // mqtt  
+  public static final String ENABLE_MQTT = "enable_mqtt_service";
+  public static final String MQTT_HOST_NAME = "mqtt_host";
+  public static final String MQTT_PORT_NAME = "mqtt_port";
+  public static final String MQTT_HANDLER_POOL_SIZE_NAME = "mqtt_handler_pool_size";
+  public static final String MQTT_PAYLOAD_FORMATTER_NAME = "mqtt_payload_formatter";
 }

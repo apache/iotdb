@@ -36,7 +36,7 @@
         management engine designed for timeseries data. It provides users with services for
         data collection, storage and analysis. Due to its light-weight architecture, high
         performance and rich feature set together with its deep integration with Apache
-        Hadoop and Spark, Apache IoTDB (incubating) can meet the requirements of massive
+        Hadoop, Spark and Flink, Apache IoTDB (incubating) can meet the requirements of massive
         data storage, high-speed data ingestion and complex data analysis in the IoT
         industrial fields.
       </p>
@@ -64,8 +64,8 @@
 
     <div class="block">
         <el-carousel trigger="click" height="700px">
-          <el-carousel-item v-for="item in imgBlock" :key="item">
-            <img :src="item.src" alt="">
+          <el-carousel-item v-for="item in imgBlock" :key="item" style="text-align:center;">
+            <img :src="item.src" height="500px">
             <h3 style="font-size: 30px;color: #fcac45;text-align: center;line-height: 0px;">{{item.des}}</h3>
             <p style="font-size: 18px;padding:10px;line-height: 22px;text-align:justify!important;font-weight:bold;">{{item.detail}}</p>
           </el-carousel-item>
@@ -150,7 +150,7 @@
             title="Intense integration with Open Source Ecosystem"
             width="400"
             trigger="hover"
-            content="Apache IoTDB (incubating) can support analysis ecosystems, for example, Hadoop, Spark, and Grafana as visualization tool."
+            content="Apache IoTDB (incubating) can support analysis ecosystems, for example, Hadoop, Spark, Flink and Grafana as visualization tool."
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
              <img src="/img/home-icon6.png" style="width:40px;height:40px;">
@@ -190,19 +190,6 @@ export default {
     };
   },
   methods: {
-    hover: function(e) {
-      e.currentTarget.style.boxShadow = "2px 2px 10px #909090";
-      e.currentTarget.firstElementChild.style.marginTop = "0px";
-      e.currentTarget.firstElementChild.nextElementSibling.style.display =
-        "block";
-    },
-    unhover: function(e) {
-      e.currentTarget.style.boxShadow = "";
-      e.currentTarget.firstElementChild.style.marginTop = "60px";
-      e.currentTarget.firstElementChild.nextElementSibling.style.display =
-        "none";
-    },
-
     addRoutes1() {
       this.$router.push("/Download/");
     },

@@ -35,7 +35,9 @@ When you config to store TSFile on HDFS, your data files will be in distributed 
 
 If you want to store TSFile and related data files in HDFS, here are the steps:
 
-First, build server and Hadoop module by: `mvn clean package -pl server,hadoop -am -Dmaven.test.skip=true`
+First, download the source release from website or git clone the repository, the tag of a released version is release/x.x.x
+
+Build server and Hadoop module by: `mvn clean package -pl server,hadoop -am -Dmaven.test.skip=true`
 
 Then, copy the target jar of Hadoop module `hadoop-tsfile-0.10.0-jar-with-dependencies.jar` into server target lib folder `.../server/target/iotdb-server-0.10.0/lib`.
 

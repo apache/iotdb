@@ -21,8 +21,8 @@ package org.apache.iotdb.db.writelog.recover;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -67,7 +67,7 @@ public class UnseqTsFileRecoverTest {
   private File tsF;
   private TsFileWriter writer;
   private WriteLogNode node;
-  private String logNodePrefix = "testNode/0";
+  private String logNodePrefix = TestConstant.OUTPUT_DATA_DIR.concat("testNode/0");
   private Schema schema;
   private TsFileResource resource;
   private VersionController versionController = new VersionController() {
@@ -188,7 +188,7 @@ public class UnseqTsFileRecoverTest {
     PriorityMergeReader unSeqMergeReader = new PriorityMergeReader();
     int priorityValue = 1;
     for (ChunkMetadata chunkMetaData : metadataQuerier.getChunkMetaDataList(path)) {
-      Chunk chunk = chunkLoader.getChunk(chunkMetaData);
+      Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
       ChunkReader chunkReader = new ChunkReader(chunk, null);
       unSeqMergeReader
           .addReader(new ChunkDataIterator(chunkReader), priorityValue);
