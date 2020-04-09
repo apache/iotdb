@@ -20,9 +20,9 @@ package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.db.exception.StartupException;
 
-public interface JDBCServiceMBean {
+public interface RPCServiceMBean {
 
-  String getJDBCServiceStatus();
+  String getRPCServiceStatus();
 
   int getRPCPort();
 

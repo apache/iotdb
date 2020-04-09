@@ -66,7 +66,9 @@ public class IoTDB implements IoTDBMBean {
       return;
     }
     try {
-      setUp();
+      setUpServerService();
+      setUpAPIService();
+      logger.info("IoTDB is set up.");
     } catch (StartupException e) {
       logger.error("meet error while starting up.", e);
       deactivate();
@@ -76,17 +78,18 @@ public class IoTDB implements IoTDBMBean {
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
   }
 
-  private void setUp() throws StartupException {
+
+  private void setUpServerService() throws StartupException {
     logger.info("Setting up IoTDB...");
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
 
     initMManager();
+    registerManager.register(StorageEngine.getInstance());
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
-    registerManager.register(JDBCService.getInstance());
     registerManager.register(Monitor.getInstance());
     registerManager.register(StatMonitor.getInstance());
     registerManager.register(Measurement.INSTANCE);
@@ -96,14 +99,8 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(MergeManager.getINSTANCE());
     registerManager.register(CacheHitRatioMonitor.getInstance());
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
-      registerManager.register(MetricsService.getInstance());
-    }
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
-      registerManager.register(MQTTService.getInstance());
-    }
     JMXService.registerMBean(getInstance(), mbeanName);
-    registerManager.register(StorageEngine.getInstance());
+
 
     // When registering statMonitor, we should start recovering some statistics
     // with latest values stored
@@ -111,9 +108,19 @@ public class IoTDB implements IoTDBMBean {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
       StatMonitor.getInstance().recovery();
     }
-
-    logger.info("IoTDB is set up.");
   }
+
+  private void setUpAPIService() throws StartupException {
+    // start api services at last
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
+      registerManager.register(MetricsService.getInstance());
+    }
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
+      registerManager.register(MQTTService.getInstance());
+    }
+    registerManager.register(RPCService.getInstance());
+  }
+
 
   private void deactivate() {
     logger.info("Deactivating IoTDB...");

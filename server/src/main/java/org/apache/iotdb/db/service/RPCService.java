@@ -43,15 +43,15 @@ import org.slf4j.LoggerFactory;
 /**
  * A service to handle jdbc request from client.
  */
-public class JDBCService implements JDBCServiceMBean, IService {
+public class RPCService implements RPCServiceMBean, IService {
 
-  private static final Logger logger = LoggerFactory.getLogger(JDBCService.class);
+  private static final Logger logger = LoggerFactory.getLogger(RPCService.class);
   private static final String STATUS_UP = "UP";
   private static final String STATUS_DOWN = "DOWN";
   private final String mbeanName = String
       .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
           getID().getJmxName());
-  private Thread jdbcServiceThread;
+  private Thread rpcServiceThread;
   private TProtocolFactory protocolFactory;
   private Processor<TSIService.Iface> processor;
   private TThreadPoolServer.Args poolArgs;
@@ -59,15 +59,15 @@ public class JDBCService implements JDBCServiceMBean, IService {
   private CountDownLatch startLatch;
   private CountDownLatch stopLatch;
 
-  private JDBCService() {
+  private RPCService() {
   }
 
-  public static final JDBCService getInstance() {
-    return JDBCServiceHolder.INSTANCE;
+  public static final RPCService getInstance() {
+    return RPCServiceHolder.INSTANCE;
   }
 
   @Override
-  public String getJDBCServiceStatus() {
+  public String getRPCServiceStatus() {
     // TODO debug log, will be deleted in production env
     if(startLatch == null) {
       logger.info("Start latch is null when getting status");
@@ -113,12 +113,12 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
   @Override
   public ServiceType getID() {
-    return ServiceType.JDBC_SERVICE;
+    return ServiceType.RPC_SERVICE;
   }
 
   @Override
   public synchronized void startService() throws StartupException {
-    if (STATUS_UP.equals(getJDBCServiceStatus())) {
+    if (STATUS_UP.equals(getRPCServiceStatus())) {
       logger.info("{}: {} has been already running now", IoTDBConstant.GLOBAL_DB_NAME,
           this.getID().getName());
       return;
@@ -126,9 +126,9 @@ public class JDBCService implements JDBCServiceMBean, IService {
     logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     try {
       reset();
-      jdbcServiceThread = new JDBCServiceThread(startLatch, stopLatch);
-      jdbcServiceThread.setName(ThreadName.JDBC_SERVICE.getName());
-      jdbcServiceThread.start();
+      rpcServiceThread = new RPCServiceThread(startLatch, stopLatch);
+      rpcServiceThread.setName(ThreadName.RPC_SERVICE.getName());
+      rpcServiceThread.start();
       startLatch.await();
     } catch (InterruptedException | ClassNotFoundException |
         IllegalAccessException | InstantiationException e) {
@@ -154,13 +154,13 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
   @Override
   public synchronized void stopService() {
-    if (STATUS_DOWN.equals(getJDBCServiceStatus())) {
+    if (STATUS_DOWN.equals(getRPCServiceStatus())) {
       logger.info("{}: {} isn't running now", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
       return;
     }
     logger.info("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
-    if (jdbcServiceThread != null) {
-      ((JDBCServiceThread) jdbcServiceThread).close();
+    if (rpcServiceThread != null) {
+      ((RPCServiceThread) rpcServiceThread).close();
     }
     try {
       stopLatch.await();
@@ -172,22 +172,22 @@ public class JDBCService implements JDBCServiceMBean, IService {
     }
   }
 
-  private static class JDBCServiceHolder {
+  private static class RPCServiceHolder {
 
-    private static final JDBCService INSTANCE = new JDBCService();
+    private static final RPCService INSTANCE = new RPCService();
 
-    private JDBCServiceHolder() {
+    private RPCServiceHolder() {
     }
   }
 
-  private class JDBCServiceThread extends Thread {
+  private class RPCServiceThread extends Thread {
 
     private TServerSocket serverTransport;
     private TServer poolServer;
     private CountDownLatch threadStartLatch;
     private CountDownLatch threadStopLatch;
 
-    public JDBCServiceThread(CountDownLatch threadStartLatch, CountDownLatch threadStopLatch)
+    public RPCServiceThread(CountDownLatch threadStartLatch, CountDownLatch threadStopLatch)
         throws ClassNotFoundException, IllegalAccessException, InstantiationException {
       if(IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
         protocolFactory = new TCompactProtocol.Factory();
@@ -214,7 +214,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
             .stopTimeoutVal(
                 IoTDBDescriptor.getInstance().getConfig().getThriftServerAwaitTimeForStopService());
         poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,
-            ThreadName.JDBC_CLIENT.getName());
+            ThreadName.RPC_CLIENT.getName());
         poolArgs.processor(processor);
         poolArgs.protocolFactory(protocolFactory);
         poolServer = new TThreadPoolServer(poolArgs);
