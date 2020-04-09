@@ -239,6 +239,7 @@ public class StorageGroupProcessor {
     }
 
     recover();
+
   }
 
   private void recover() throws StorageGroupProcessorException {
