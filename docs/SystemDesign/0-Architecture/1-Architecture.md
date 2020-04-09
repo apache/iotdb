@@ -35,20 +35,20 @@ The server mainly includes a query engine that processes all user requests and d
 
 * [TsFile](../1-TsFile/1-TsFile.html)
 * [QueryEngine](../2-QueryEngine/1-QueryEngine.html)
-* [SchemaManager](/document/master/SystemDesign/3-SchemaManager/1-SchemaManager.html)
-* [StorageEngine](/document/master/SystemDesign/4-StorageEngine/1-StorageEngine.html)
-* [DataQuery](/document/master/SystemDesign/5-DataQuery/1-DataQuery.html)
+* [SchemaManager](/SystemDesign/3-SchemaManager/1-SchemaManager.html)
+* [StorageEngine](/SystemDesign/4-StorageEngine/1-StorageEngine.html)
+* [DataQuery](/SystemDesign/5-DataQuery/1-DataQuery.html)
 
 ## System Tools
 
-* [Data synchronization tool](/document/master/SystemDesign/6-Tools/1-Sync.html)
+* [Data synchronization tool](/SystemDesign/6-Tools/1-Sync.html)
 
 ## Connector
 
 IoTDB is connected with big data systems.
 
 * [Hadoop-TsFile](/#/SystemDesign/progress/chap7/sec1)
-* [Hive-TsFile](/document/master/SystemDesign/7-Connector/2-Hive-TsFile.html)
-* [Spark-TsFile](/document/master/SystemDesign/7-Connector/3-Spark-TsFile.html)
-* [Spark-IoTDB](/document/master/SystemDesign/7-Connector/4-Spark-IOTDB.html)
+* [Hive-TsFile](/SystemDesign/7-Connector/2-Hive-TsFile.html)
+* [Spark-TsFile](/SystemDesign/7-Connector/3-Spark-TsFile.html)
+* [Spark-IoTDB](/SystemDesign/7-Connector/4-Spark-IOTDB.html)
 * [Grafana](/#/SystemDesign/progress/chap7/sec5)

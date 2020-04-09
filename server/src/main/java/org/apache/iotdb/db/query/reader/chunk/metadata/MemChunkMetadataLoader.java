@@ -65,4 +65,9 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
             || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
     return chunkMetadataList;
   }
+
+  @Override
+  public void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList) throws IOException {
+    // DO NOTHING
+  }
 }

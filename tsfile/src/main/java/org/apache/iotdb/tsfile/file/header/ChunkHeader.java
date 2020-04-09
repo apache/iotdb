@@ -40,16 +40,18 @@ public class ChunkHeader {
   private TSEncoding encodingType;
   private int numOfPages;
 
+  private boolean isOldVersion = false; 
+
   // this field does not need to be serialized.
   private int serializedSize;
 
   public ChunkHeader(String measurementID, int dataSize, TSDataType dataType, CompressionType compressionType,
       TSEncoding encoding, int numOfPages) {
-    this(measurementID, dataSize, getSerializedSize(measurementID), dataType, compressionType, encoding, numOfPages);
+    this(measurementID, dataSize, getSerializedSize(measurementID), dataType, compressionType, encoding, numOfPages, false);
   }
 
   private ChunkHeader(String measurementID, int dataSize, int headerSize, TSDataType dataType,
-      CompressionType compressionType, TSEncoding encoding, int numOfPages) {
+      CompressionType compressionType, TSEncoding encoding, int numOfPages, boolean isOldVersion) {
     this.measurementID = measurementID;
     this.dataSize = dataSize;
     this.dataType = dataType;
@@ -57,6 +59,7 @@ public class ChunkHeader {
     this.numOfPages = numOfPages;
     this.encodingType = encoding;
     this.serializedSize = headerSize;
+    this.isOldVersion = isOldVersion;
   }
 
   public static int getSerializedSize(String measurementID) {
@@ -102,7 +105,8 @@ public class ChunkHeader {
    * @return CHUNK_HEADER object
    * @throws IOException IOException
    */
-  public static ChunkHeader deserializeFrom(TsFileInput input, long offset, int chunkHeaderSize, boolean markerRead)
+  public static ChunkHeader deserializeFrom(TsFileInput input, long offset,
+      int chunkHeaderSize, boolean markerRead, boolean isOldVersion)
       throws IOException {
     long offsetVar = offset;
     if (!markerRead) {
@@ -122,7 +126,13 @@ public class ChunkHeader {
     int numOfPages = ReadWriteIOUtils.readInt(buffer);
     CompressionType type = ReadWriteIOUtils.readCompressionType(buffer);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(buffer);
-    return new ChunkHeader(measurementID, dataSize, chunkHeaderSize, dataType, type, encoding, numOfPages);
+    if (isOldVersion) {
+      // read maxTombstoneTime from old TsFile, has been removed in newer versions of TsFile
+      ReadWriteIOUtils.readLong(buffer);
+    }
+    return new ChunkHeader(measurementID, dataSize, 
+        chunkHeaderSize, dataType, type, encoding,
+        numOfPages, isOldVersion);
   }
 
   public int getSerializedSize() {
@@ -188,6 +198,10 @@ public class ChunkHeader {
 
   public TSEncoding getEncodingType() {
     return encodingType;
+  }
+  
+  public boolean isOldVersion() {
+    return isOldVersion;
   }
 
   @Override

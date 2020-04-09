@@ -62,6 +62,10 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
             || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
     return chunkMetadataList;
   }
+  
+  public void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList) throws IOException {
+    setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
+  }
 
   public static void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList, TsFileResource resource, Path seriesPath, QueryContext context) throws IOException {
     List<Modification> pathModifications =

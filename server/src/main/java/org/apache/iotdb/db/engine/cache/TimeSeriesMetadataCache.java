@@ -23,6 +23,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.OldTsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -117,13 +119,20 @@ public class TimeSeriesMetadataCache {
       }
       printCacheLog(false);
       // bloom filter part
-      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(key.filePath);
-      BloomFilter bloomFilter = fileMetaData.getBloomFilter();
+      TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
+      BloomFilter bloomFilter;
+      if (reader.readVersionNumber().equals(TSFileConfig.OLD_VERSION)) {
+        OldTsFileMetadata fileMetaData = reader.readOldFileMetadata();
+        bloomFilter = fileMetaData.getBloomFilter();
+      }
+      else {
+        TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(key.filePath);
+        bloomFilter = fileMetaData.getBloomFilter();
+      }
       if (bloomFilter != null && !bloomFilter
           .contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
         return null;
       }
-      TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
       Map<String, TimeseriesMetadata> timeSeriesMetadataMap = reader.readDeviceMetadata(key.device);
       TimeseriesMetadata res = timeSeriesMetadataMap.get(key.measurement);
       lruCache.put(key, res);

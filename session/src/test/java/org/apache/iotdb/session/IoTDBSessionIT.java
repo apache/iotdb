@@ -51,8 +51,11 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBSessionIT {
+  private static Logger logger = LoggerFactory.getLogger(IoTDBSessionIT.class);
 
   private Session session;
 
@@ -222,6 +225,29 @@ public class IoTDBSessionIT {
   }
 
   @Test
+  public void testChineseCharacter() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
+      logger.error("The system does not support UTF-8, so skip Chinese test...");
+      session.close();
+      return;
+    }
+    String storageGroup = "root.存储组1";
+    String[] devices = new String[]{
+        "设备1.指标1",
+        "设备1.s2",
+        "d2.s1",
+        "d2.指标2"
+    };
+    session.setStorageGroup(storageGroup);
+    createTimeseriesInChinese(storageGroup, devices);
+    insertInChinese(storageGroup, devices);
+    session.deleteStorageGroup(storageGroup);
+    session.close();
+  }
+
+  @Test
   public void test() throws ClassNotFoundException, SQLException,
       IoTDBConnectionException, StatementExecutionException, BatchExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
@@ -294,7 +320,8 @@ public class IoTDBSessionIT {
   }
 
 
-  private void createTimeseriesForTime() throws StatementExecutionException, IoTDBConnectionException {
+  private void createTimeseriesForTime()
+      throws StatementExecutionException, IoTDBConnectionException {
     session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE,
@@ -328,6 +355,34 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d2.s3", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
+  }
+
+  private void createTimeseriesInChinese(String storageGroup, String[] devices)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (String path : devices) {
+      String fullPath = storageGroup + "." + path;
+      session.createTimeseries(fullPath, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    }
+  }
+
+  private void insertInChinese(String storageGroup, String[] devices)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (String path : devices) {
+      String fullPath = storageGroup + "." + path;
+      for (int i = 0; i < 10; i++) {
+        String[] ss = path.split("\\.");
+        String deviceId = storageGroup;
+        for (int j = 0; j < ss.length - 1; j++) {
+          deviceId += ("." + ss[j]);
+        }
+        String sensorId = ss[ss.length - 1];
+        List<String> measurements = new ArrayList<>();
+        List<String> values = new ArrayList<>();
+        measurements.add(sensorId);
+        values.add("100");
+        session.insert(deviceId, i, measurements, values);
+      }
+    }
   }
 
   private void insertInBatch() throws IoTDBConnectionException, BatchExecutionException {
@@ -462,7 +517,8 @@ public class IoTDBSessionIT {
     }
   }
 
-  private void queryForAlignByDevice() throws StatementExecutionException, IoTDBConnectionException {
+  private void queryForAlignByDevice()
+      throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet sessionDataSet = session
         .executeQueryStatement("select '11', s1, '11' from root.sg1.d1 align by device");
     sessionDataSet.setBatchSize(1024);
@@ -480,7 +536,8 @@ public class IoTDBSessionIT {
     sessionDataSet.closeOperationHandle();
   }
 
-  private void queryForAlignByDevice2() throws IoTDBConnectionException, StatementExecutionException {
+  private void queryForAlignByDevice2()
+      throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet sessionDataSet = session.executeQueryStatement(
         "select '11', s1, '11', s5, s1, s5 from root.sg1.d1 align by device");
     sessionDataSet.setBatchSize(1024);

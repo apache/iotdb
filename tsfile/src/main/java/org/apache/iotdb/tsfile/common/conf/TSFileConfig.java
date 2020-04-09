@@ -56,7 +56,6 @@ public class TSFileConfig {
   public static final String CONFIG_FILE_NAME = "iotdb-engine.properties";
   public static final String MAGIC_STRING = "TsFile";
   public static final String VERSION_NUMBER = "000002";
-  public static final String OLD_MAGIC_STRING = "TsFile";
   public static final String OLD_VERSION = "000001";
 
   /**

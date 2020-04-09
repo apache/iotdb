@@ -33,7 +33,6 @@ public class IoTDBConfigCheck {
   public static final String PROPERTIES_FILE_NAME = "system.properties";
   public static final String SCHEMA_DIR =
           IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
-  private static final IoTDBConfigCheck INSTANCE = new IoTDBConfigCheck();
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
   // this is a initial parameter.
   private static String timestampPrecision = "ms";
@@ -41,8 +40,8 @@ public class IoTDBConfigCheck {
   private static String tsfileFileSystem = "LOCAL";
   private Properties properties = new Properties();
 
-  public static final IoTDBConfigCheck getInstance() {
-    return IoTDBConfigCheck.INSTANCE;
+  public static IoTDBConfigCheck getInstance() {
+    return IoTDBConfigCheckHolder.INSTANCE;
   }
 
   public void checkConfig() {
@@ -143,6 +142,11 @@ public class IoTDBConfigCheck {
               .getProperty("tsfile_storage_fs") + " !");
       System.exit(-1);
     }
+  }
+
+  private static class IoTDBConfigCheckHolder {
+
+    private static final IoTDBConfigCheck INSTANCE = new IoTDBConfigCheck();
   }
 }
 

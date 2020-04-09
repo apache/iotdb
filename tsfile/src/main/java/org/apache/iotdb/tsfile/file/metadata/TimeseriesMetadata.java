@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class TimeseriesMetadata {
@@ -36,8 +37,11 @@ public class TimeseriesMetadata {
 
   private String measurementId;
   private TSDataType tsDataType;
-  
+
   private Statistics<?> statistics;
+
+  // for old TsFile
+  private List<ChunkMetadata> chunkMetadataList;
 
 
   private IChunkMetadataLoader chunkMetadataLoader;
@@ -114,6 +118,22 @@ public class TimeseriesMetadata {
   }
 
   public List<ChunkMetadata> getChunkMetadataList() throws IOException {
+    if (chunkMetadataList != null) {
+      chunkMetadataLoader.setDiskChunkLoader(chunkMetadataList);
+      return chunkMetadataList;
+    }
     return chunkMetadataLoader.getChunkMetadataList();
+  }
+
+  // this function is only for old TsFile
+  public void addChunkMetadata(ChunkMetadata chunkMetadata) {
+    if (chunkMetadataList == null) {
+      chunkMetadataList = new ArrayList<>();
+      measurementId = chunkMetadata.getMeasurementUid();
+      tsDataType = chunkMetadata.getDataType();
+      statistics = Statistics.getStatsByType(tsDataType);
+    }
+    chunkMetadataList.add(chunkMetadata);
+    statistics.mergeStatistics(chunkMetadata.getStatistics());
   }
 }
