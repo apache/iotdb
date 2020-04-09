@@ -185,7 +185,9 @@ public class PreviousFill extends IFill {
       unseqTimeseriesMetadataList.add(timeseriesMetadata);
       // current unseq timeseriesMetadata's last point is a valid result,
       // then skip the rest unseq files
-      if (endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
+      if (endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())
+          && timeseriesMetadata.getStatistics().getEndTime()
+              > unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice())) {
         break;
       }
     }
@@ -203,9 +205,6 @@ public class PreviousFill extends IFill {
     for (int i = pageReaders.size() - 1; i >= 0; i--) {
       IPageReader pageReader = pageReaders.get(i);
       Statistics pageStatistics = pageReader.getStatistics();
-      if (!timeFilter.satisfy(pageStatistics)) {
-        continue;
-      }
       if (endtimeContainedByTimeFilter(pageStatistics)) {
         lastPoint = constructLastPair(
             pageStatistics.getEndTime(), pageStatistics.getLastValue(), dataType);
@@ -251,8 +250,8 @@ public class PreviousFill extends IFill {
               }
               return Long.compare(o2.getVersion(), o1.getVersion());
             });
-    while (!unseqTimeseriesMetadataList.isEmpty()) {
-      chunkMetadataList.addAll(unseqTimeseriesMetadataList.remove(0).loadChunkMetadataList());
+    for (int i = 0; i < unseqTimeseriesMetadataList.size(); i++) {
+      chunkMetadataList.addAll(unseqTimeseriesMetadataList.get(i).loadChunkMetadataList());
     }
     return chunkMetadataList;
   }
