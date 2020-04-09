@@ -2281,7 +2281,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   private MetaMemberReport genMemberReport() {
     return new MetaMemberReport(character, leader, term.get(),
-        logManager.getLastLogTerm(), logManager.getLastLogIndex(), readOnly);
+        logManager.getLastLogTerm(), logManager.getLastLogIndex(), readOnly, lastHeartbeatReceivedTime);
   }
 
   /**

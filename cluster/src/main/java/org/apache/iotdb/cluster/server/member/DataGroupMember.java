@@ -1193,7 +1193,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   public DataMemberReport genReport() {
     return new DataMemberReport(character, leader, term.get(),
         logManager.getLastLogTerm(), logManager.getLastLogIndex(), getHeader(), readOnly,
-        QueryCoordinator.getINSTANCE().getLastResponseLatency(getHeader()));
+        QueryCoordinator.getINSTANCE().getLastResponseLatency(getHeader()), lastHeartbeatReceivedTime);
   }
 
   @TestOnly
