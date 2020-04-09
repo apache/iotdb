@@ -18,27 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
-import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -61,12 +40,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.MergeException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
-import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -94,6 +68,17 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
  * For sequence data, a StorageGroupProcessor has some TsFileProcessors, in which there is only one
@@ -246,10 +231,15 @@ public class StorageGroupProcessor {
 
     try {
       // collect TsFiles from sequential and unsequential data directory
-      List<TsFileResource> seqTsFiles = getAllFiles(
-          DirectoryManager.getInstance().getAllSequenceFileFolders());
-      List<TsFileResource> unseqTsFiles =
-          getAllFiles(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+      Pair<List<TsFileResource>, List<TsFileResource>> seqTsFilesPair = getAllFiles(
+              DirectoryManager.getInstance().getAllSequenceFileFolders());
+      List<TsFileResource> seqTsFiles = seqTsFilesPair.left;
+      List<TsFileResource> oldSeqTsFiles = seqTsFilesPair.right;
+
+      Pair<List<TsFileResource>, List<TsFileResource>> unseqTsFilesPair = getAllFiles(
+              DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+      List<TsFileResource> unseqTsFiles = unseqTsFilesPair.left;
+      List<TsFileResource> oldUnseqTsFiles = seqTsFilesPair.right;
 
       recoverSeqFiles(seqTsFiles);
       recoverUnseqFiles(unseqTsFiles);
@@ -320,13 +310,48 @@ public class StorageGroupProcessor {
         });
   }
 
-  private List<TsFileResource> getAllFiles(List<String> folders) {
+  private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders) {
     List<File> tsFiles = new ArrayList<>();
+    List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
       File fileFolder = fsFactory.getFile(baseDir, storageGroupName);
       if (!fileFolder.exists()) {
         continue;
       }
+
+      // old version
+      // some TsFileResource may be being persisted when the system crashed, try recovering such
+      // resources
+      continueFailedRenames(fileFolder, TEMP_SUFFIX);
+
+      // some TsFiles were going to be replaced by the merged files when the system crashed and
+      // the process was interrupted before the merged files could be named
+      continueFailedRenames(fileFolder, MERGE_SUFFIX);
+
+      // create upgrade directory if not exist
+      File upgradeFolder = fsFactory.getFile(fileFolder, IoTDBConstant.UPGRADE_FOLDER_NAME);
+      if (upgradeFolder.mkdirs()) {
+        logger.info("Upgrade Directory {} doesn't exist, create it",
+                upgradeFolder.getPath());
+      } else if (!upgradeFolder.exists()) {
+        logger.error("Create upgrade Directory {} failed",
+                upgradeFolder.getPath());
+      }
+      // move .tsfile to upgrade folder
+      for (File file : fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), TSFILE_SUFFIX)) {
+        if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
+          logger.error("Failed to move {} to upgrade folder", file);
+        }
+      }
+      // move .resource to upgrade folder
+      for (File file : fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), TsFileResource.RESOURCE_SUFFIX)) {
+        if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
+          logger.error("Failed to move {} to upgrade folder", file);
+        }
+      }
+
+      Collections.addAll(upgradeFiles,
+              fsFactory.listFilesBySuffix(upgradeFolder.getAbsolutePath(), TSFILE_SUFFIX));
 
       File[] subFiles = fileFolder.listFiles();
       if (subFiles != null) {
@@ -340,6 +365,7 @@ public class StorageGroupProcessor {
           continueFailedRenames(partitionFolder, MERGE_SUFFIX);
 
         if (!partitionFolder.isDirectory()) {
+
           logger.warn("{} is not a directory.", partitionFolder.getAbsolutePath());
           continue;
         }
@@ -353,7 +379,10 @@ public class StorageGroupProcessor {
     tsFiles.sort(this::compareFileName);
     List<TsFileResource> ret = new ArrayList<>();
     tsFiles.forEach(f -> ret.add(new TsFileResource(f)));
-    return ret;
+    upgradeFiles.sort(this::compareFileName);
+    List<TsFileResource> upgradeRet = new ArrayList<>();
+    upgradeFiles.forEach(f -> upgradeRet.add(new TsFileResource(f)));
+    return new Pair<>(ret, upgradeRet);
   }
 
   private void continueFailedRenames(File fileFolder, String suffix) {
@@ -422,6 +451,49 @@ public class StorageGroupProcessor {
             .put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
         tsFileProcessor.setTimeRangeId(timePartitionId);
+        writer.makeMetadataVisible();
+      }
+    }
+  }
+
+  private void recoverOldSeqFiles(List<TsFileResource> tsFiles) throws StorageGroupProcessorException {
+    for (int i = 0; i < tsFiles.size(); i++) {
+      TsFileResource tsFileResource = tsFiles.get(i);
+      sequenceFileList.add(tsFileResource);
+      TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
+              , versionController, tsFileResource, false, i == tsFiles.size() - 1);
+      RestorableTsFileIOWriter writer = recoverPerformer.recover();
+      if (i != tsFiles.size() - 1 || !writer.canWrite()) {
+        // not the last file or cannot write, just close it
+        tsFileResource.setClosed(true);
+      } else if (writer.canWrite()) {
+        // the last file is not closed, continue writing to in
+        workSequenceTsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
+                schema, versionController, this::closeUnsealedTsFileProcessor,
+                this::updateLatestFlushTimeCallback, true, writer);
+        tsFileResource.setProcessor(workSequenceTsFileProcessor);
+        writer.makeMetadataVisible();
+      }
+    }
+  }
+
+  private void recoverOldUnseqFiles(List<TsFileResource> tsFiles)
+          throws StorageGroupProcessorException {
+    for (int i = 0; i < tsFiles.size(); i++) {
+      TsFileResource tsFileResource = tsFiles.get(i);
+      unSequenceFileList.add(tsFileResource);
+      TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
+              , schema, versionController, tsFileResource, true, i == tsFiles.size() - 1);
+      RestorableTsFileIOWriter writer = recoverPerformer.recover();
+      if (i != tsFiles.size() - 1 || !writer.canWrite()) {
+        // not the last file or cannot write, just close it
+        tsFileResource.setClosed(true);
+      } else if (writer.canWrite()) {
+        // the last file is not closed, continue writing to in
+        workUnSequenceTsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
+                schema, versionController, this::closeUnsealedTsFileProcessor,
+                () -> true, false, writer);
+        tsFileResource.setProcessor(workUnSequenceTsFileProcessor);
         writer.makeMetadataVisible();
       }
     }
