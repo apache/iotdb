@@ -32,7 +32,7 @@
     text-align: center;"
       >物联网数据库</p>
       <p style="font-size: 20px;margin: 50px 0 10px 0;text-align:justify!important;">
-Apache IoTDB（孵化中）（物联网数据库）是一个集成数据专为时间序列数据设计的管理引擎。 它为用户提供以下服务数据收集，存储和分析。 由于其轻巧的结构，高性能和丰富的功能集，以及与Apache的深度集成Hadoop和Spark，Apache IoTDB（孵化中）可以满足海量需求物联网中的数据存储，高速数据提取和复杂数据分析工业领域。
+Apache IoTDB（孵化中）（物联网数据库）是一个集成数据专为时间序列数据设计的管理引擎。 它为用户提供以下服务数据收集，存储和分析。 由于其轻巧的结构，高性能和丰富的功能集，以及与Apache的深度集成Hadoop、Spark和Flink，Apache IoTDB（孵化中）可以满足海量需求物联网中的数据存储，高速数据提取和复杂数据分析工业领域。
       </p>
       <el-row style="margin-top:40px;text-align: center;">
         <el-button
@@ -144,7 +144,7 @@ Apache IoTDB（孵化中）（物联网数据库）是一个集成数据专为�
             title="与开源生态系统的紧密集成"
             width="400"
             trigger="hover"
-            content="Apache IoTDB（孵化中）可以支持分析生态系统，例如Hadoop，Spark和Grafana作为可视化工具。"
+            content="Apache IoTDB（孵化中）可以支持分析生态系统，例如Hadoop，Spark，Flink和Grafana作为可视化工具。"
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
              <img src="/img/home-icon6.png" style="width:40px;height:40px;">

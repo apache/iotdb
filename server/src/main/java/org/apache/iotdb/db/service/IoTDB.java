@@ -102,6 +102,9 @@ public class IoTDB implements IoTDBMBean {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
       registerManager.register(MetricsService.getInstance());
     }
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
+      registerManager.register(MQTTService.getInstance());
+    }
     JMXService.registerMBean(getInstance(), mbeanName);
     registerManager.register(StorageEngine.getInstance());
 

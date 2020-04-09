@@ -76,13 +76,20 @@ public class SessionPool {
 
   private long timeout; //ms
   private static int RETRY = 3;
+  private boolean enableCompression = false;
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000);
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false);
   }
 
+  public SessionPool(String ip, int port, String user, String password, int maxSize,
+      boolean enableCompression) {
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, enableCompression);
+  }
+
+  @SuppressWarnings("squid:S107")
   public SessionPool(String ip, int port, String user, String password, int maxSize, int fetchSize,
-      long timeout) {
+      long timeout, boolean enableCompression) {
     this.maxSize = maxSize;
     this.ip = ip;
     this.port = port;
@@ -90,6 +97,7 @@ public class SessionPool {
     this.password = password;
     this.fetchSize = fetchSize;
     this.timeout = timeout;
+    this.enableCompression = enableCompression;
   }
 
   //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
@@ -135,7 +143,7 @@ public class SessionPool {
         logger.error("Create a new Session {}, {}, {}, {}", ip, port, user, password);
       }
       session = new Session(ip, port, user, password, fetchSize);
-      session.open();
+      session.open(enableCompression);
       return session;
     }
   }
