@@ -32,7 +32,7 @@ public class PreviousFill extends IFill {
   private long beforeRange;
   private BatchData batchData;
 
-  public PreviousFill(TSDataType dataType, long queryTime, long beforeRange) {
+  public PreviousFill(TSDataType dataType, long queryTime, long beforeRangeIoTDBConfigCheck) {
     super(dataType, queryTime);
     this.beforeRange = beforeRange;
     batchData = new BatchData();
