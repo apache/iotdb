@@ -24,10 +24,12 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -48,8 +50,7 @@ public abstract class PhysicalPlan {
   protected boolean canbeSplit = true;
 
   /**
-   * whether the plan can be split into more than one Plans.
-   * Only used in the cluster mode.
+   * whether the plan can be split into more than one Plans. Only used in the cluster mode.
    */
   public boolean canbeSplit() {
     return canbeSplit;
@@ -92,6 +93,7 @@ public abstract class PhysicalPlan {
 
   /**
    * Serialize the plan into the given buffer. All necessary fields will be serialized.
+   *
    * @param stream
    * @throws IOException
    */
@@ -102,6 +104,7 @@ public abstract class PhysicalPlan {
   /**
    * Serialize the plan into the given buffer. This is provided for WAL, so fields that can be
    * recovered will not be serialized.
+   *
    * @param buffer
    */
   public void serialize(ByteBuffer buffer) {
@@ -111,6 +114,7 @@ public abstract class PhysicalPlan {
   /**
    * Deserialize the plan from the given buffer. This is provided for WAL, and must be used with
    * serializeToWAL.
+   *
    * @param buffer
    */
   public void deserialize(ByteBuffer buffer) {
@@ -180,6 +184,14 @@ public abstract class PhysicalPlan {
           plan = new SetTTLPlan();
           plan.deserialize(buffer);
           break;
+        case GRANT_WATERMARK_EMBEDDING:
+          plan = new DataAuthPlan(OperatorType.GRANT_WATERMARK_EMBEDDING);
+          plan.deserialize(buffer);
+          break;
+        case REVOKE_WATERMARK_EMBEDDING:
+          plan = new DataAuthPlan(OperatorType.REVOKE_WATERMARK_EMBEDDING);
+          plan.deserialize(buffer);
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -188,7 +200,7 @@ public abstract class PhysicalPlan {
   }
 
   public enum PhysicalPlanType {
-    INSERT, DELETE, BATCHINSERT, SET_STORAGE_GROUP, CREATE_TIMESERIES, TTL
+    INSERT, DELETE, BATCHINSERT, SET_STORAGE_GROUP, CREATE_TIMESERIES, TTL, GRANT_WATERMARK_EMBEDDING, REVOKE_WATERMARK_EMBEDDING
   }
 
 
