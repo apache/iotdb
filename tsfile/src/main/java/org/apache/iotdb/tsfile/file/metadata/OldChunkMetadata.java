@@ -19,19 +19,12 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
-
 /**
  * MetaData of one chunk.
  */
@@ -108,21 +101,6 @@ public class OldChunkMetadata {
     chunkMetaData.valuesStatistics = TsDigest.deserializeFrom(buffer);
 
     return chunkMetaData;
-  }
-
-  /**
-   * get serialized size.
-   *
-   * @return serialized size (int type)
-   */
-  public int getSerializedSize() {
-    int serializedSize = (Integer.BYTES  +
-            4 * Long.BYTES + // 4 long: offsetOfChunkHeader, numOfPoints, startTime, endTime
-            TSDataType.getSerializedSize() + // TSDataType
-            (valuesStatistics == null ? TsDigest.getNullDigestSize()
-                    : valuesStatistics.getSerializedSize()));
-    serializedSize += measurementUid.getBytes(TSFileConfig.STRING_CHARSET).length;  // measurementUid
-    return serializedSize;
   }
 
   @Override

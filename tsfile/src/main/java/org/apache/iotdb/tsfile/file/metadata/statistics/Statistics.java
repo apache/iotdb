@@ -20,6 +20,8 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
+import org.apache.iotdb.tsfile.file.metadata.OldChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsDigest;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.oldstatistics.*;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -474,6 +476,66 @@ public abstract class Statistics<T> {
             ((OldFloatStatistics) oldstatistics).getFirst(),
             ((OldFloatStatistics) oldstatistics).getLast(),
             ((OldFloatStatistics) oldstatistics).getSum());
+        break;
+      default:
+        throw new UnknownColumnTypeException(statistics.getType()
+            .toString());
+    }
+    return statistics;
+  }
+
+  public static Statistics constructStatisticsFromOldChunkMetadata(OldChunkMetadata oldChunkMetadata) {
+    Statistics statistics;
+    statistics = Statistics.getStatsByType(oldChunkMetadata.getTsDataType());
+    statistics.setStartTime(oldChunkMetadata.getStartTime());
+    statistics.setEndTime(oldChunkMetadata.getEndTime());
+    statistics.setCount(oldChunkMetadata.getNumOfPoints());
+    statistics.setEmpty(false);
+    TsDigest tsDigest = oldChunkMetadata.getDigest();
+    ByteBuffer[] buffers = tsDigest.getStatistics();
+    
+    switch (statistics.getType()) {
+      case INT32:
+        ((IntegerStatistics) statistics)
+        .initializeStats(ReadWriteIOUtils.readInt(buffers[0]), 
+            ReadWriteIOUtils.readInt(buffers[1]), 
+            ReadWriteIOUtils.readInt(buffers[2]),
+            ReadWriteIOUtils.readInt(buffers[3]),
+            ReadWriteIOUtils.readInt(buffers[4]));
+        break;
+      case INT64:
+        ((LongStatistics) statistics)
+        .initializeStats(ReadWriteIOUtils.readLong(buffers[0]), 
+            ReadWriteIOUtils.readLong(buffers[1]), 
+            ReadWriteIOUtils.readLong(buffers[2]),
+            ReadWriteIOUtils.readLong(buffers[3]),
+            ReadWriteIOUtils.readLong(buffers[4]));
+        break;
+      case TEXT:
+        ((BinaryStatistics) statistics)
+        .initializeStats(ReadWriteIOUtils.readBinary(buffers[2]),
+            ReadWriteIOUtils.readBinary(buffers[3]));
+        break;
+      case BOOLEAN:
+        ((BooleanStatistics) statistics)
+        .initializeStats(ReadWriteIOUtils.readBool(buffers[2]),
+            ReadWriteIOUtils.readBool(buffers[3]));
+        break;
+      case DOUBLE:
+        ((DoubleStatistics) statistics)
+        .initializeStats(ReadWriteIOUtils.readDouble(buffers[0]), 
+            ReadWriteIOUtils.readDouble(buffers[1]), 
+            ReadWriteIOUtils.readDouble(buffers[2]),
+            ReadWriteIOUtils.readDouble(buffers[3]),
+            ReadWriteIOUtils.readDouble(buffers[4]));
+        break;
+      case FLOAT:
+        ((FloatStatistics) statistics)
+        .initializeStats(ReadWriteIOUtils.readFloat(buffers[0]), 
+            ReadWriteIOUtils.readFloat(buffers[1]), 
+            ReadWriteIOUtils.readFloat(buffers[2]),
+            ReadWriteIOUtils.readFloat(buffers[3]),
+            ReadWriteIOUtils.readFloat(buffers[4]));
         break;
       default:
         throw new UnknownColumnTypeException(statistics.getType()

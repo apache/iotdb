@@ -18,14 +18,7 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.BinaryStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.BooleanStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.FloatStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -74,7 +67,7 @@ public class ChunkMetadata {
     this.measurementUid = oldChunkMetadata.getMeasurementUid();
     this.tsDataType = oldChunkMetadata.getTsDataType();
     this.offsetOfChunkHeader = oldChunkMetadata.getOffsetOfChunkHeader();
-    this.statistics = constructStatisticsFromOldChunkMetadata(oldChunkMetadata);
+    this.statistics = Statistics.constructStatisticsFromOldChunkMetadata(oldChunkMetadata);
   }
 
   /**
@@ -189,66 +182,6 @@ public class ChunkMetadata {
 
   public void setChunkLoader(IChunkLoader chunkLoader) {
     this.chunkLoader = chunkLoader;
-  }
-  
-  private Statistics constructStatisticsFromOldChunkMetadata(OldChunkMetadata oldChunkMetadata) {
-    Statistics statistics;
-    statistics = Statistics.getStatsByType(oldChunkMetadata.getTsDataType());
-    statistics.setStartTime(oldChunkMetadata.getStartTime());
-    statistics.setEndTime(oldChunkMetadata.getEndTime());
-    statistics.setCount(oldChunkMetadata.getNumOfPoints());
-    statistics.setEmpty(false);
-    TsDigest tsDigest = oldChunkMetadata.getDigest();
-    ByteBuffer[] buffers = tsDigest.getStatistics();
-    
-    switch (statistics.getType()) {
-      case INT32:
-        ((IntegerStatistics) statistics)
-        .initializeStats(ReadWriteIOUtils.readInt(buffers[0]), 
-            ReadWriteIOUtils.readInt(buffers[1]), 
-            ReadWriteIOUtils.readInt(buffers[2]),
-            ReadWriteIOUtils.readInt(buffers[3]),
-            ReadWriteIOUtils.readInt(buffers[4]));
-        break;
-      case INT64:
-        ((LongStatistics) statistics)
-        .initializeStats(ReadWriteIOUtils.readLong(buffers[0]), 
-            ReadWriteIOUtils.readLong(buffers[1]), 
-            ReadWriteIOUtils.readLong(buffers[2]),
-            ReadWriteIOUtils.readLong(buffers[3]),
-            ReadWriteIOUtils.readLong(buffers[4]));
-        break;
-      case TEXT:
-        ((BinaryStatistics) statistics)
-        .initializeStats(ReadWriteIOUtils.readBinary(buffers[2]),
-            ReadWriteIOUtils.readBinary(buffers[3]));
-        break;
-      case BOOLEAN:
-        ((BooleanStatistics) statistics)
-        .initializeStats(ReadWriteIOUtils.readBool(buffers[2]),
-            ReadWriteIOUtils.readBool(buffers[3]));
-        break;
-      case DOUBLE:
-        ((DoubleStatistics) statistics)
-        .initializeStats(ReadWriteIOUtils.readDouble(buffers[0]), 
-            ReadWriteIOUtils.readDouble(buffers[1]), 
-            ReadWriteIOUtils.readDouble(buffers[2]),
-            ReadWriteIOUtils.readDouble(buffers[3]),
-            ReadWriteIOUtils.readDouble(buffers[4]));
-        break;
-      case FLOAT:
-        ((FloatStatistics) statistics)
-        .initializeStats(ReadWriteIOUtils.readFloat(buffers[0]), 
-            ReadWriteIOUtils.readFloat(buffers[1]), 
-            ReadWriteIOUtils.readFloat(buffers[2]),
-            ReadWriteIOUtils.readFloat(buffers[3]),
-            ReadWriteIOUtils.readFloat(buffers[4]));
-        break;
-      default:
-        throw new UnknownColumnTypeException(statistics.getType()
-            .toString());
-    }
-    return statistics;
   }
 
   @Override

@@ -19,9 +19,7 @@
 package org.apache.iotdb.tsfile.file.metadata.oldstatistics;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
@@ -34,46 +32,6 @@ public class OldDoubleStatistics extends OldStatistics<Double> {
   private double first;
   private double last;
   private double sum;
-
-  @Override
-  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    min = BytesUtils.bytesToDouble(minBytes);
-    max = BytesUtils.bytesToDouble(maxBytes);
-  }
-
-  @Override
-  public void updateStats(double value) {
-    if (this.isEmpty) {
-      initializeStats(value, value, value, value, value);
-      isEmpty = false;
-    } else {
-      updateStats(value, value, value, value, value);
-    }
-  }
-
-  @Override
-  public void updateStats(double[] values, int batchSize) {
-    for (int i = 0; i < batchSize; i++) {
-      if (isEmpty) {
-        initializeStats(values[i], values[i], values[i], values[i], values[i]);
-        isEmpty = false;
-      } else {
-        updateStats(values[i], values[i], values[i], values[i], values[i]);
-      }
-    }
-  }
-
-  private void updateStats(double minValue, double maxValue, double firstValue, double lastValue,
-      double sumValue) {
-    if (minValue < min) {
-      min = minValue;
-    }
-    if (maxValue > max) {
-      max = maxValue;
-    }
-    sum += sumValue;
-    this.last = lastValue;
-  }
 
   @Override
   public Double getMin() {
@@ -99,106 +57,11 @@ public class OldDoubleStatistics extends OldStatistics<Double> {
   public double getSum() {
     return sum;
   }
-
-  @Override
-  protected void mergeStatisticsValue(OldStatistics<?> stats) {
-    OldDoubleStatistics doubleStats = (OldDoubleStatistics) stats;
-    if (this.isEmpty) {
-      initializeStats(doubleStats.getMin(), doubleStats.getMax(), doubleStats.getFirst(),
-          doubleStats.getLast(), doubleStats.getSum());
-      isEmpty = false;
-    } else {
-      updateStats(doubleStats.getMin(), doubleStats.getMax(), doubleStats.getFirst(),
-          doubleStats.getLast(), doubleStats.getSum());
-    }
-
-  }
-
-  /**
-   * initialize double statistics.
-   *
-   * @param min min value
-   * @param max max value
-   * @param first the first value
-   * @param last the last value
-   * @param sum sum value
-   */
-  private void initializeStats(double min, double max, double first, double last, double sum) {
-    this.min = min;
-    this.max = max;
-    this.first = first;
-    this.last = last;
-    this.sum = sum;
-  }
-
-  @Override
-  public byte[] getMinBytes() {
-    return BytesUtils.doubleToBytes(min);
-  }
-
-  @Override
-  public byte[] getMaxBytes() {
-    return BytesUtils.doubleToBytes(max);
-  }
-
-  @Override
-  public byte[] getFirstBytes() {
-    return BytesUtils.doubleToBytes(first);
-  }
-
-  @Override
-  public byte[] getLastBytes() {
-    return BytesUtils.doubleToBytes(last);
-  }
-
-  @Override
-  public byte[] getSumBytes() {
-    return BytesUtils.doubleToBytes(sum);
-  }
-
-  @Override
-  public ByteBuffer getMinBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(min);
-  }
-
-  @Override
-  public ByteBuffer getMaxBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(max);
-  }
-
-  @Override
-  public ByteBuffer getFirstBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(first);
-  }
-
-  @Override
-  public ByteBuffer getLastBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(last);
-  }
-
-  @Override
-  public ByteBuffer getSumBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sum);
-  }
-
-  @Override
-  public int sizeOfDatum() {
-    return 8;
-  }
-
+  
   @Override
   public String toString() {
     return "[min:" + min + ",max:" + max + ",first:" + first + ",last:" + last + ",sum:" + sum
         + "]";
-  }
-
-  @Override
-  void deserialize(InputStream inputStream) throws IOException {
-    this.min = ReadWriteIOUtils.readDouble(inputStream);
-    this.max = ReadWriteIOUtils.readDouble(inputStream);
-    this.first = ReadWriteIOUtils.readDouble(inputStream);
-    this.last = ReadWriteIOUtils.readDouble(inputStream);
-    this.sum = ReadWriteIOUtils.readDouble(inputStream);
   }
 
   @Override

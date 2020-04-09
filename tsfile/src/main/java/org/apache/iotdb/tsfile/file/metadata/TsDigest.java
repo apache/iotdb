@@ -21,12 +21,9 @@
 package org.apache.iotdb.tsfile.file.metadata;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
@@ -50,14 +47,6 @@ public class TsDigest {
 
   public static int getNullDigestSize() {
     return Integer.BYTES;
-  }
-
-  public static int serializeNullTo(OutputStream outputStream) throws IOException {
-    return ReadWriteIOUtils.write(0, outputStream);
-  }
-
-  public static int serializeNullTo(ByteBuffer buffer) {
-    return ReadWriteIOUtils.write(0, buffer);
   }
 
   /**
@@ -121,88 +110,6 @@ public class TsDigest {
     return statistics != null ? Arrays.toString(statistics) : "";
   }
 
-  /**
-   * use given outputStream to serialize.
-   *
-   * @param outputStream -given outputStream
-   * @return -byte length
-   */
-  public int serializeTo(OutputStream outputStream) throws IOException {
-    int byteLen = 0;
-    if (validSizeOfArray == 0) {
-      byteLen += ReadWriteIOUtils.write(0, outputStream);
-    } else {
-      byteLen += ReadWriteIOUtils.write(validSizeOfArray, outputStream);
-      for (int i = 0; i < statistics.length; i++) {
-        if (statistics[i] != null) {
-          byteLen += ReadWriteIOUtils.write((short) i, outputStream);
-          byteLen += ReadWriteIOUtils.write(statistics[i], outputStream);
-        }
-      }
-    }
-    return byteLen;
-  }
-
-  /**
-   * use given buffer to serialize.
-   *
-   * @param buffer -given buffer
-   * @return -byte length
-   */
-  public int serializeTo(ByteBuffer buffer) {
-    int byteLen = 0;
-    if (validSizeOfArray == 0) {
-      byteLen += ReadWriteIOUtils.write(0, buffer);
-    } else {
-      byteLen += ReadWriteIOUtils.write(validSizeOfArray, buffer);
-      for (int i = 0; i < statistics.length; i++) {
-        if (statistics[i] != null) {
-          byteLen += ReadWriteIOUtils.write((short) i, buffer);
-          byteLen += ReadWriteIOUtils.write(statistics[i], buffer);
-        }
-      }
-    }
-    return byteLen;
-  }
-
-  /**
-   * get the serializedSize of the current object.
-   *
-   * @return -serializedSize
-   */
-  public int getSerializedSize() {
-    return serializedSize;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    TsDigest digest = (TsDigest) o;
-    if (serializedSize != digest.serializedSize || validSizeOfArray != digest.validSizeOfArray
-        || ((statistics == null) ^ (digest.statistics == null))) {
-      return false;
-    }
-
-    if (statistics != null) {
-      for (int i = 0; i < statistics.length; i++) {
-        if ((statistics[i] == null) ^ (digest.statistics[i] == null)) {
-          // one is null and the other is not null
-          return false;
-        }
-        if (statistics[i] != null) {
-          if (!statistics[i].equals(digest.statistics[i])) {
-            return false;
-          }
-        }
-      }
-    }
-    return true;
-  }
 
   public enum StatisticType {
     min_value, max_value, first_value, last_value, sum_value;
