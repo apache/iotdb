@@ -44,7 +44,7 @@ public class SessionExample {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
 
-//    session.setStorageGroup("root.sg1");
+    session.setStorageGroup("root.sg1");
     if (session.checkTimeseriesExists("root.sg1.d1.s1")) {
       session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY);
