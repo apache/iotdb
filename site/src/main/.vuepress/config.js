@@ -431,7 +431,7 @@ var config = {
 							'5-DataQuery/6-LastQuery',
 							'5-DataQuery/7-AlignByDeviceQuery',
 							'5-DataQuery/8-ModificationHandle',
-							'5-DataQuery/8-GroupByFillQuery'
+							'5-DataQuery/9-GroupByFillQuery'
 						]
 					},
 					{
@@ -830,7 +830,7 @@ var config = {
 							'5-DataQuery/6-LastQuery',
 							'5-DataQuery/7-AlignByDeviceQuery',
 							'5-DataQuery/8-ModificationHandle',
-							'5-DataQuery/8-GroupByFillQuery'
+							'5-DataQuery/9-GroupByFillQuery'
 						]
 					},
 					{
