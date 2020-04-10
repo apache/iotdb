@@ -44,6 +44,9 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
   private Log log;
   // the number of nodes that accept the log in each group
   // to succeed, each number should reach zero
+  // for example: assuming there are 4 nodes and 3 replicas, then the initial array will be:
+  // [2, 2, 2, 2]. And if node0 accepted the log, as node0 is in group 2,3,0, the array will be
+  // [1, 2, 1, 1].
   private int[] groupReceivedCounter;
   // the index of the node which the request sends log to, if the node accepts the log, all
   // groups' counters the node is in should decrease
@@ -76,6 +79,7 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
     if (resp == RESPONSE_AGREE) {
       processAgreement();
     } else if (resp > 0) {
+      // a response > 0 is the term fo the follower
       synchronized (groupReceivedCounter) {
         // the leader ship is stale, abort and wait for the new leader's heartbeat
         long previousNewTerm = newLeaderTerm.get();
@@ -88,13 +92,17 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
     }
     // rejected because the follower's logs are stale or the follower has no cluster info, just
     // wait for the heartbeat to handle
+    // TODO-Cluster: active catch-up
   }
 
+  /**
+   * Decrease all related counters of the receiver node. See the field "groupReceivedCounter" for
+   * an example. If all counters reach 0, wake the waiting thread to welcome the success.
+   */
   private void processAgreement() {
     synchronized (groupReceivedCounter) {
       logger.debug("Node {} has accepted log {}", receiverNode, log);
       // this node is contained in REPLICATION_NUM groups, decrease the counters of these groups
-      int startIndex = receiverNodeIndex;
       for (int i = 0; i < replicationNum; i++) {
         int nodeIndex = receiverNodeIndex - i;
         if (nodeIndex < 0) {

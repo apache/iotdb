@@ -19,6 +19,7 @@
 package org.apache.iotdb.cluster;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.MetaClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
@@ -28,6 +29,7 @@ import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.thrift.TException;
@@ -59,16 +61,23 @@ public class ClusterMain {
       return;
     }
     String mode = args[0];
+    if (args.length > 1) {
+      String[] params = Arrays.copyOfRange(args, 1, args.length);
+      // replace default conf params
+      ClusterDescriptor.getINSTANCE().replaceProps(params);
+    }
 
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
     logger.info("Running mode {}", mode);
     try {
       if (MODE_START.equals(mode)) {
         metaServer = new MetaClusterServer();
-        // check the initial cluster size and refuse to start when the size < quorum
         ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
+        // check the initial cluster size and refuse to start when the size < quorum
         int quorum = config.getReplicationNum() / 2 + 1;
         if (config.getSeedNodeUrls().size() < quorum) {
-          String message = String.format("Seed number less than quorum, seed number: {}, quorum: {}.",
+          String message = String.format("Seed number less than quorum, seed number: %s, quorum: "
+                  + "%s.",
               config.getSeedNodeUrls().size(), quorum);
           throw new StartupException(metaServer.getMember().getName(), message);
         }

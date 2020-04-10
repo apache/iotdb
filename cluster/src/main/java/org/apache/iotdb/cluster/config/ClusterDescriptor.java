@@ -26,6 +26,12 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.slf4j.Logger;
@@ -37,6 +43,7 @@ public class ClusterDescriptor {
   private static final ClusterDescriptor INSTANCE = new ClusterDescriptor();
 
   private ClusterConfig config = new ClusterConfig();
+  private static CommandLine commandLine;
 
   private ClusterDescriptor() {
     loadProps();
@@ -68,6 +75,65 @@ public class ClusterDescriptor {
       url += (File.separatorChar + ClusterConfig.CONFIG_NAME);
     }
     return url;
+  }
+
+  public void replaceProps(String[] params) {
+    Options options = new Options();
+
+    Option metaPort = new Option("meta_port", "meta_port", true, "port for metadata service");
+    metaPort.setRequired(false);
+    options.addOption(metaPort);
+
+    Option dataPort = new Option("data_port", "data_port", true, "port for data service");
+    metaPort.setRequired(false);
+    options.addOption(dataPort);
+
+    Option clientPort = new Option("client_port", "client_port", true, "port for client service");
+    metaPort.setRequired(false);
+    options.addOption(clientPort);
+
+    Option seedNodes = new Option("seed_nodes", "seed_nodes", true,
+        "comma-separated {IP/DOMAIN}:meta_port:data_port pairs");
+    metaPort.setRequired(false);
+    options.addOption(seedNodes);
+
+    boolean ok = parseCommandLine(options, params);
+    if (!ok) {
+      logger.error("replaces properties failed, use default conf params");
+      return;
+    } else {
+      if (commandLine.hasOption("meta_port")) {
+        config.setLocalMetaPort(Integer.parseInt(commandLine.getOptionValue("meta_port")));
+        logger.debug("replace local meta port with={}", config.getLocalMetaPort());
+      }
+
+      if (commandLine.hasOption("data_port")) {
+        config.setLocalDataPort(Integer.parseInt(commandLine.getOptionValue("data_port")));
+        logger.debug("replace local data port with={}", config.getLocalDataPort());
+      }
+
+      if (commandLine.hasOption("client_port")) {
+        config.setLocalClientPort(Integer.parseInt(commandLine.getOptionValue("client_port")));
+        logger.debug("replace local client port with={}", config.getLocalClientPort());
+      }
+
+      if (commandLine.hasOption("seed_nodes")) {
+        String seedNodeUrls = commandLine.getOptionValue("seed_nodes");
+        config.setSeedNodeUrls(getSeedUrlList(seedNodeUrls));
+        logger.debug("replace seed nodes with={}", config.getSeedNodeUrls());
+      }
+    }
+  }
+
+  private boolean parseCommandLine(Options options, String[] params) {
+    try {
+      CommandLineParser parser = new DefaultParser();
+      commandLine = parser.parse(options, params);
+    } catch (ParseException e) {
+      logger.error("parse conf params failed, {}", e.toString());
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -111,17 +177,24 @@ public class ClusterDescriptor {
 
     String seedUrls = properties.getProperty("SEED_NODES");
     if (seedUrls != null) {
-      List<String> urlList = new ArrayList<>();
-      String[] split = seedUrls.split(",");
-      for (String nodeUrl : split) {
-        nodeUrl = nodeUrl.trim();
-        if ("".equals(nodeUrl)) {
-          continue;
-        }
-        urlList.add(nodeUrl);
-      }
+      List<String> urlList = getSeedUrlList(seedUrls);
       config.setSeedNodeUrls(urlList);
     }
   }
 
+  private List<String> getSeedUrlList(String seedUrls) {
+    if (seedUrls == null) {
+      return null;
+    }
+    List<String> urlList = new ArrayList<>();
+    String[] split = seedUrls.split(",");
+    for (String nodeUrl : split) {
+      nodeUrl = nodeUrl.trim();
+      if ("".equals(nodeUrl)) {
+        continue;
+      }
+      urlList.add(nodeUrl);
+    }
+    return urlList;
+  }
 }

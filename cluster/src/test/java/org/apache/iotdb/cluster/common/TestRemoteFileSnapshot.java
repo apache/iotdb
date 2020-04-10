@@ -31,7 +31,6 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +62,7 @@ public class TestRemoteFileSnapshot extends FileSnapshot implements RemoteSnapsh
       insertPlan.setDeviceId(storageGroup);
       insertPlan.setTime(startTime++);
       insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
-      insertPlan.setDataTypes(new TSDataType[] {TSDataType.DOUBLE});
+      insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestSchema(0, 0)});
       insertPlan.setValues(new String[] {"0.0"});
       try {
         StorageEngine.getInstance().getProcessor(storageGroup).insert(insertPlan);

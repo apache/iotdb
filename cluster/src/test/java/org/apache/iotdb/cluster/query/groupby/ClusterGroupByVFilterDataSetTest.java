@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.BaseQueryTest;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -44,7 +45,7 @@ import org.junit.Test;
 public class ClusterGroupByVFilterDataSetTest extends BaseQueryTest {
 
   @Test
-  public void test() throws IOException, StorageEngineException {
+  public void test() throws IOException, StorageEngineException, QueryProcessException {
     QueryContext queryContext =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     GroupByPlan groupByPlan = new GroupByPlan();

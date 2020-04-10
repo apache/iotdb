@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.query.groupby;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -40,6 +41,7 @@ public class MergeGroupByExecutor implements GroupByExecutor {
   private List<AggregateResult> results = new ArrayList<>();
   private List<Integer> aggregationTypes = new ArrayList<>();
   private Path path;
+  private Set<String> deviceMeasurements;
   private TSDataType dataType;
   private QueryContext context;
   private Filter timeFilter;
@@ -47,9 +49,11 @@ public class MergeGroupByExecutor implements GroupByExecutor {
 
   private List<GroupByExecutor> groupByExecutors;
 
-  MergeGroupByExecutor(Path path, TSDataType dataType, QueryContext context, Filter timeFilter,
+  MergeGroupByExecutor(Path path, Set<String> deviceMeasurements, TSDataType dataType,
+      QueryContext context, Filter timeFilter,
       MetaGroupMember metaGroupMember) {
     this.path = path;
+    this.deviceMeasurements = deviceMeasurements;
     this.dataType = dataType;
     this.context = context;
     this.timeFilter = timeFilter;
@@ -88,8 +92,8 @@ public class MergeGroupByExecutor implements GroupByExecutor {
 
   private void initExecutors() throws QueryProcessException {
     try {
-      groupByExecutors = metaGroupMember.getGroupByExecutors(path, dataType, context, timeFilter,
-          aggregationTypes);
+      groupByExecutors = metaGroupMember.getGroupByExecutors(path, deviceMeasurements, dataType,
+          context, timeFilter, aggregationTypes);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
     }

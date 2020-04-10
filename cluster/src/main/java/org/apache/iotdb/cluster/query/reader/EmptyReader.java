@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -34,7 +36,7 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
  * A placeholder when the remote node does not contain satisfying data of a series.
  */
 public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPointReader,
-    GroupByExecutor {
+    GroupByExecutor, IReaderByTimestamp {
 
   private volatile boolean managedByPool;
   private volatile boolean hasRemaining;
@@ -92,6 +94,26 @@ public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPoin
   }
 
   @Override
+  public boolean hasNextFile() throws IOException {
+    return false;
+  }
+
+  @Override
+  public boolean canUseCurrentFileStatistics() throws IOException {
+    return false;
+  }
+
+  @Override
+  public Statistics currentFileStatistics() throws IOException {
+    return null;
+  }
+
+  @Override
+  public void skipCurrentFile() {
+
+  }
+
+  @Override
   public boolean hasNextChunk() {
     return false;
   }
@@ -145,5 +167,10 @@ public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPoin
   @Override
   public List<AggregateResult> calcResult(long curStartTime, long curEndTime) {
     return aggregationResults;
+  }
+
+  @Override
+  public Object getValueInTimestamp(long timestamp) {
+    return null;
   }
 }

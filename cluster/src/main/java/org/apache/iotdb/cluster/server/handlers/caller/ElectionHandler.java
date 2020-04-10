@@ -80,7 +80,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
           terminated.set(true);
           raftMember.getTerm().notifyAll();
           raftMember.onElectionWins();
-          logger.info("{}: Election {} is wined", memberName, currTerm);
+          logger.info("{}: Election {} is won", memberName, currTerm);
         }
         // still need more votes
       } else if (voterResp != RESPONSE_LEADER_STILL_ONLINE) {
@@ -88,6 +88,8 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
         terminated.set(true);
         if (voterResp < currTerm) {
           // the rejection from a node with a smaller term means the log of this node falls behind
+          // it is possible to let the election go on, but making it terminate gives the nodes
+          // with longer logs a higher credit and may potentially reduce some redoes of the clients
           logger.info("{}: Election {} rejected: code {}", memberName, currTerm, voterResp);
         } else {
           // the election is rejected by a node with a bigger term, update current term to it

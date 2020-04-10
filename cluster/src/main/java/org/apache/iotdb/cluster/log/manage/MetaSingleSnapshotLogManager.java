@@ -45,9 +45,14 @@ public class MetaSingleSnapshotLogManager extends MemoryLogManager {
 
   @Override
   public void takeSnapshot() {
-    while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
-      snapshot.add(logBuffer.removeFirst());
+    int i = 0;
+    for (; i < logBuffer.size(); i++) {
+      if (logBuffer.get(i).getCurrLogIndex() > commitLogIndex) {
+        break;
+      }
     }
+    snapshot.addAll(logBuffer.subList(0, i));
+    logBuffer.subList(0, i).clear();
     storageGroups = MManager.getInstance().getAllStorageGroupNames();
   }
 

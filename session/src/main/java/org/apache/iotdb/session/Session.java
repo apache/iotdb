@@ -24,7 +24,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.rpc.BatchExecutionException;
@@ -213,7 +212,7 @@ public class Session {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
-    for (MeasurementSchema measurementSchema : rowBatch.measurements) {
+    for (MeasurementSchema measurementSchema : rowBatch.getSchemas()) {
       request.addToMeasurements(measurementSchema.getMeasurementId());
       request.addToTypes(measurementSchema.getType().ordinal());
     }
@@ -294,9 +293,9 @@ public class Session {
     }
     Arrays.sort(index, Comparator.comparingLong(o -> rowBatch.timestamps[o]));
     Arrays.sort(rowBatch.timestamps, 0, rowBatch.batchSize);
-    for (int i = 0; i < rowBatch.measurements.size(); i++) {
+    for (int i = 0; i < rowBatch.getSchemas().size(); i++) {
       rowBatch.values[i] =
-          sortList(rowBatch.values[i], rowBatch.measurements.get(i).getType(), index);
+          sortList(rowBatch.values[i], rowBatch.getSchemas().get(i).getType(), index);
     }
   }
 
@@ -441,7 +440,7 @@ public class Session {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
-    for (MeasurementSchema measurementSchema : rowBatch.measurements) {
+    for (MeasurementSchema measurementSchema : rowBatch.getSchemas()) {
       request.addToMeasurements(measurementSchema.getMeasurementId());
       request.addToTypes(measurementSchema.getType().ordinal());
     }

@@ -30,8 +30,8 @@ import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
 public class SerializeLogTest {
@@ -45,8 +45,9 @@ public class SerializeLogTest {
     log.setCurrLogTerm(2);
     InsertPlan plan = new InsertPlan();
     plan.setDeviceId("root.d1");
-    plan.setMeasurements(new String[]{"s1,s2,s3"});
-    plan.setDataTypes(new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT});
+    plan.setMeasurements(new String[]{"s1", "s2", "s3"});
+    plan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 1),
+        TestUtils.getTestSchema(0, 2), TestUtils.getTestSchema(0, 3)});
     plan.setValues(new String[] {"0.1", "1", "\"dd\""});
     plan.setTime(1);
     log.setPlan(plan);

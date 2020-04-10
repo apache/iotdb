@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.query.groupby;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.BaseQueryTest;
@@ -46,7 +47,8 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     Filter timeFilter = null;
 
-    MergeGroupByExecutor groupByExecutor = new MergeGroupByExecutor(path, dataType, context,
+    MergeGroupByExecutor groupByExecutor = new MergeGroupByExecutor(path,
+        Collections.singleton(path.getMeasurement()), dataType, context,
         timeFilter, testMetaMember);
     AggregationType[] types = AggregationType.values();
     for (AggregationType type : types) {
@@ -73,7 +75,8 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     Filter timeFilter = TimeFilter.gtEq(3);
 
-    MergeGroupByExecutor groupByExecutor = new MergeGroupByExecutor(path, dataType, context,
+    MergeGroupByExecutor groupByExecutor = new MergeGroupByExecutor(path,
+        Collections.singleton(path.getMeasurement()), dataType, context,
         timeFilter, testMetaMember);
     AggregationType[] types = AggregationType.values();
     for (AggregationType type : types) {

@@ -84,27 +84,28 @@ public class MTree implements Serializable {
     }
     MNode cur = root;
     boolean hasSetStorageGroup = false;
-    // e.g, path = root.sg.d1.s1,  create internal node root -> sg -> d1
+    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
     for (int i = 1; i < nodeNames.length - 1; i++) {
       String nodeName = nodeNames[i];
       if (cur instanceof StorageGroupMNode) {
         hasSetStorageGroup = true;
       }
       if (!cur.hasChild(nodeName)) {
-        if (cur instanceof LeafMNode) {
-          throw new PathAlreadyExistException(cur.getFullPath());
-        } else if (!hasSetStorageGroup) {
+        if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
         cur.addChild(new InternalMNode(cur, nodeName));
       }
       cur = cur.getChild(nodeName);
     }
-    MNode leaf = new LeafMNode(cur, nodeNames[nodeNames.length - 1], dataType, encoding,
-        compressor, props);
-    if (cur.hasChild(leaf.getName())) {
-      throw new MetadataException(String.format("The timeseries %s has already existed.", path));
+    if (cur instanceof LeafMNode) {
+      throw new PathAlreadyExistException(cur.getFullPath());
     }
+    String leafName = nodeNames[nodeNames.length - 1];
+    if (cur.hasChild(leafName)) {
+      throw new PathAlreadyExistException(path);
+    }
+    MNode leaf = new LeafMNode(cur, leafName, dataType, encoding, compressor, props);
     cur.addChild(leaf);
   }
 
@@ -179,7 +180,7 @@ public class MTree implements Serializable {
       throw new StorageGroupAlreadySetException(path);
     } else {
       StorageGroupMNode storageGroupMNode = new StorageGroupMNode(cur, nodeNames[i], path,
-          IoTDBDescriptor.getInstance().getConfig().getDefaultTTL(), new HashMap<>());
+          IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
       cur.addChild(storageGroupMNode);
     }
   }
@@ -265,10 +266,7 @@ public class MTree implements Serializable {
    * Get measurement schema for a given path. Path must be a complete Path from root to leaf node.
    */
   MeasurementSchema getSchema(String path) throws MetadataException {
-    MNode node = getNodeByPath(path);
-    if (!(node instanceof LeafMNode)) {
-      throw new PathNotExistException(path);
-    }
+    LeafMNode node = (LeafMNode) getNodeByPath(path);
     return node.getSchema();
   }
 
@@ -314,6 +312,13 @@ public class MTree implements Serializable {
     } else {
       throw new StorageGroupNotSetException(path);
     }
+  }
+
+  /**
+   * Get device node, if the give path is not a device, throw exception
+   */
+  MNode getDeviceNode(String path) throws MetadataException {
+    return getNodeByPath(path);
   }
 
   /**
@@ -459,7 +464,7 @@ public class MTree implements Serializable {
    * @param prefixPath a prefix path or a full path, may contain '*'.
    */
   List<String> getAllTimeseriesName(String prefixPath) throws MetadataException {
-    List<String[]> res = getAllTimeseriesSchema(prefixPath);
+    List<String[]> res = getAllMeasurementSchema(prefixPath);
     List<String> paths = new ArrayList<>();
     for (String[] p : res) {
       paths.add(p[0]);
@@ -470,9 +475,9 @@ public class MTree implements Serializable {
   /**
    * Get all time series schema under the given path
    *
-   * timeseriesSchema: [name, storage group, dataType, encoding, compression]
+   * MeasurementSchema: [name, storage group, dataType, encoding, compression]
    */
-  List<String[]> getAllTimeseriesSchema(String prefixPath) throws MetadataException {
+  List<String[]> getAllMeasurementSchema(String prefixPath) throws MetadataException {
     List<String[]> res = new ArrayList<>();
     String[] nodes = MetaUtils.getNodeNames(prefixPath);
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
@@ -500,7 +505,7 @@ public class MTree implements Serializable {
         String nodePath = parent + nodeName;
         String[] tsRow = new String[5];
         tsRow[0] = nodePath;
-        MeasurementSchema measurementSchema = node.getSchema();
+        MeasurementSchema measurementSchema = ((LeafMNode) node).getSchema();
         tsRow[1] = getStorageGroupName(nodePath);
         tsRow[2] = measurementSchema.getType().toString();
         tsRow[3] = measurementSchema.getEncodingType().toString();
@@ -673,27 +678,6 @@ public class MTree implements Serializable {
     }
   }
 
-  /**
-   * Get all ColumnSchemas for the storage group path.
-   *
-   * @return ArrayList<ColumnSchema> The list of the schema
-   */
-  List<MeasurementSchema> getStorageGroupSchema(String storageGroup) throws MetadataException {
-    StorageGroupMNode storageGroupMNode = getStorageGroupNode(storageGroup);
-    return new ArrayList<>(storageGroupMNode.getSchemaMap().values());
-  }
-
-  /**
-   * Get schema map for the storage group
-   *
-   * measurement -> measurementSchema
-   */
-  Map<String, MeasurementSchema> getStorageGroupSchemaMap(String storageGroup)
-      throws MetadataException {
-    StorageGroupMNode storageGroupMNode = getStorageGroupNode(storageGroup);
-    return storageGroupMNode.getSchemaMap();
-  }
-
   @Override
   public String toString() {
     JSONObject jsonObject = new JSONObject();
@@ -715,10 +699,11 @@ public class MTree implements Serializable {
         jsonObject.put(child.getName(), mNodeToJSON(child, storageGroupName));
       }
     } else if (node instanceof LeafMNode) {
-      jsonObject.put("DataType", node.getSchema().getType());
-      jsonObject.put("Encoding", node.getSchema().getEncodingType());
-      jsonObject.put("Compressor", node.getSchema().getCompressor());
-      jsonObject.put("args", node.getSchema().getProps().toString());
+      LeafMNode leafMNode = (LeafMNode) node;
+      jsonObject.put("DataType", leafMNode.getSchema().getType());
+      jsonObject.put("Encoding", leafMNode.getSchema().getEncodingType());
+      jsonObject.put("Compressor", leafMNode.getSchema().getCompressor());
+      jsonObject.put("args", leafMNode.getSchema().getProps().toString());
       jsonObject.put("StorageGroup", storageGroupName);
     }
     return jsonObject;

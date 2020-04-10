@@ -30,6 +30,24 @@ fi
 IOTDB_CONF=${IOTDB_HOME}/conf
 # IOTDB_LOGS=${IOTDB_HOME}/logs
 
+is_conf_path=false
+for arg do
+    shift
+    if [ "$arg" == "-c" ]; then
+        is_conf_path=true
+        continue
+    fi
+
+    if [ $is_conf_path == true ]; then
+        IOTDB_CONF=$arg
+        is_conf_path=false
+        continue
+    fi
+    set -- "$@" "$arg"
+done
+
+CONF_PARAMS="-s "$*
+
 if [ -f "$IOTDB_CONF/cluster-env.sh" ]; then
     . "$IOTDB_CONF/cluster-env.sh"
 else
@@ -65,8 +83,9 @@ launch_service()
 	iotdb_parms="$iotdb_parms -DIOTDB_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DIOTDB_CONF=${IOTDB_CONF}"
+	iotdb_parms="$iotdb_parms -DCLUSTER_CONF=${IOTDB_CONF}"
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
-	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS $iotdb_parms -cp "$CLASSPATH"  "$class" -s
+	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS $iotdb_parms -cp "$CLASSPATH"  "$class" $CONF_PARAMS
 	return $?
 }
 

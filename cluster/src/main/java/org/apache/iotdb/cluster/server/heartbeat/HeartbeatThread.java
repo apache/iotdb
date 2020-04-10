@@ -76,7 +76,7 @@ public class HeartbeatThread implements Runnable {
                 .getLastHeartbeatReceivedTime();
             if (heartBeatInterval >= connectionTimeoutInMS) {
               // the leader is considered dead, an election will be started in the next loop
-              logger.debug("{}: The leader {} timed out", memberName, localMember.getLeader());
+              logger.info("{}: The leader {} timed out", memberName, localMember.getLeader());
               localMember.setCharacter(NodeCharacter.ELECTOR);
               localMember.setLeader(null);
             } else {
@@ -101,6 +101,9 @@ public class HeartbeatThread implements Runnable {
     logger.info("{}: Heartbeat thread exits", memberName);
   }
 
+  /**
+   * Send each node (except the local node) in the group of the member a heartbeat.
+   */
   private void sendHeartbeats() {
     synchronized (localMember.getTerm()) {
       request.setTerm(localMember.getTerm().get());
@@ -111,23 +114,35 @@ public class HeartbeatThread implements Runnable {
     }
   }
 
+  /**
+   * Send each node (except the local node) in list a heartbeat.
+   */
   private void sendHeartbeats(Collection<Node> nodes) {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: Send heartbeat to {} followers", memberName, nodes.size() - 1);
     }
-    for (Node node : nodes) {
-      if (localMember.getCharacter() != NodeCharacter.LEADER) {
-        // if the character changes, abort the remaining heart beats
-        return;
-      }
+    synchronized (nodes) {
+      // avoid concurrent modification
+      for (Node node : nodes) {
+        if (localMember.getCharacter() != NodeCharacter.LEADER) {
+          // if the character changes, abort the remaining heartbeats
+          return;
+        }
 
-      AsyncClient client = localMember.connectNode(node);
-      if (client != null) {
-        sendHeartbeat(node, client);
+        AsyncClient client = localMember.connectNode(node);
+        if (client != null) {
+          // connecting to the local node results in a null
+          sendHeartbeat(node, client);
+        }
       }
     }
   }
 
+  /**
+   * Send a heartbeat to "node" through "client".
+   * @param node
+   * @param client
+   */
   void sendHeartbeat(Node node, AsyncClient client) {
     try {
       logger.debug("{}: Sending heartbeat to {}", memberName, node);
@@ -137,10 +152,13 @@ public class HeartbeatThread implements Runnable {
     }
   }
 
-  // start elections until this node becomes a leader or a follower
+  /**
+   * Start elections until this node becomes a leader or a follower.
+   * @throws InterruptedException
+   */
   private void startElections() throws InterruptedException {
     if (localMember.getAllNodes().size() == 1) {
-      // single node cluster, this node is always the leader
+      // single node group, this node is always the leader
       localMember.setCharacter(NodeCharacter.LEADER);
       localMember.setLeader(localMember.getThisNode());
       logger.info("{}: Winning the election because the node is the only node.", memberName);
@@ -149,35 +167,48 @@ public class HeartbeatThread implements Runnable {
     // the election goes on until this node becomes a follower or a leader
     while (localMember.getCharacter() == NodeCharacter.ELECTOR) {
       startElection();
-      long electionWait = ClusterConstant.ELECTION_LEAST_TIME_OUT_MS
-          + Math.abs(random.nextLong() % ClusterConstant.ELECTION_RANDOM_TIME_OUT_MS);
-      logger.info("{}: Sleep {}ms until next election", memberName, electionWait);
       if (localMember.getCharacter() == NodeCharacter.ELECTOR) {
+        // sleep 2s~10s to reduce election conflicts
+        long electionWait = ClusterConstant.ELECTION_LEAST_TIME_OUT_MS
+            + Math.abs(random.nextLong() % ClusterConstant.ELECTION_RANDOM_TIME_OUT_MS);
+        logger.info("{}: Sleep {}ms until next election", memberName, electionWait);
         Thread.sleep(electionWait);
       }
     }
+    // take the election request as the first heartbeat
     localMember.setLastHeartbeatReceivedTime(System.currentTimeMillis());
   }
 
-  // start one round of election
+  /**
+   * Start one round of election.
+   * Increase the local term, ask for vote from each of the nodes in the group and become the
+   * leader if at least half of them agree.
+   */
   void startElection() {
     synchronized (localMember.getTerm()) {
       long nextTerm = localMember.getTerm().incrementAndGet();
+      // the number of votes needed to become a leader
       int quorumNum = localMember.getAllNodes().size() / 2;
       logger.info("{}: Election {} starts, quorum: {}", memberName, nextTerm, quorumNum);
+      // set to true when the election has a result (rejected or succeeded)
       AtomicBoolean electionTerminated = new AtomicBoolean(false);
+      // set to true when the election is won
       AtomicBoolean electionValid = new AtomicBoolean(false);
+      // a decreasing vote counter
       AtomicInteger quorum = new AtomicInteger(quorumNum);
 
       electionRequest.setTerm(nextTerm);
       electionRequest.setElector(localMember.getThisNode());
       if (!electionRequest.isSetLastLogIndex()) {
+        // these field are overridden in DataGroupMember, they will be set to the term and index
+        // of the MetaGroupMember that manages the DataGroupMember so we cannot overwrite them
         electionRequest.setLastLogTerm(localMember.getLogManager().getLastLogTerm());
         electionRequest.setLastLogIndex(localMember.getLogManager().getLastLogIndex());
       }
 
       requestVote(localMember.getAllNodes(), electionRequest, nextTerm, quorum,
           electionTerminated, electionValid);
+      // erase the log index so it can be updated in the next heartbeat
       electionRequest.unsetLastLogIndex();
 
       try {
@@ -185,10 +216,12 @@ public class HeartbeatThread implements Runnable {
             connectionTimeoutInMS);
         localMember.getTerm().wait(connectionTimeoutInMS);
       } catch (InterruptedException e) {
-        logger.info("{}: Election {} times out", memberName, nextTerm);
+        logger.info("{}: Unexpected interruption when waiting the result of election {}",
+            memberName, nextTerm);
         Thread.currentThread().interrupt();
       }
 
+      // if the election times out, the remaining votes do not matter
       electionTerminated.set(true);
       if (electionValid.get()) {
         logger.info("{}: Election {} accepted", memberName, nextTerm);
@@ -198,19 +231,33 @@ public class HeartbeatThread implements Runnable {
     }
   }
 
-  // request votes from given nodes
+  /**
+   * Request a vote from each of the "nodes".
+   * Each for vote will decrease the counter "quorum" and when it reaches 0, the flag
+   * "electionValid" and "electionTerminated" will be set to true.
+   * Any against vote will set the flag "electionTerminated" to true and ends the election.
+   * @param nodes
+   * @param request
+   * @param nextTerm the term of the election
+   * @param quorum
+   * @param electionTerminated
+   * @param electionValid
+   */
   private void requestVote(Collection<Node> nodes, ElectionRequest request, long nextTerm,
       AtomicInteger quorum, AtomicBoolean electionTerminated, AtomicBoolean electionValid) {
-    for (Node node : nodes) {
-      AsyncClient client = localMember.connectNode(node);
-      if (client != null) {
-        logger.info("{}: Requesting a vote from {}", memberName, node);
-        ElectionHandler handler = new ElectionHandler(localMember, node, nextTerm, quorum,
-            electionTerminated, electionValid);
-        try {
-          client.startElection(request, handler);
-        } catch (Exception e) {
-          logger.error("{}: Cannot request a vote from {}", memberName, node, e);
+    synchronized (nodes) {
+      // avoid concurrent modification
+      for (Node node : nodes) {
+        AsyncClient client = localMember.connectNode(node);
+        if (client != null) {
+          logger.info("{}: Requesting a vote from {}", memberName, node);
+          ElectionHandler handler = new ElectionHandler(localMember, node, nextTerm, quorum,
+              electionTerminated, electionValid);
+          try {
+            client.startElection(request, handler);
+          } catch (Exception e) {
+            logger.error("{}: Cannot request a vote from {}", memberName, node, e);
+          }
         }
       }
     }

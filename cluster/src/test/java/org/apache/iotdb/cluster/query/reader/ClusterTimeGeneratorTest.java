@@ -24,30 +24,25 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import org.apache.iotdb.cluster.common.TestManagedSeriesReader;
-import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.BaseQueryTest;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
-import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.junit.Test;
 
 public class ClusterTimeGeneratorTest extends BaseQueryTest {
 
   @Test
   public void test() throws StorageEngineException, IOException {
+    RawDataQueryPlan dataQueryPlan = new RawDataQueryPlan();
     QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     IExpression expression =
         BinaryExpression.and(
@@ -55,8 +50,12 @@ public class ClusterTimeGeneratorTest extends BaseQueryTest {
                 ValueFilter.gtEq(3.0)),
             new SingleSeriesExpression(new Path(TestUtils.getTestSeries(1, 1)),
                 ValueFilter.ltEq(8.0)));
+    dataQueryPlan.setExpression(expression);
+    dataQueryPlan.addDeduplicatedPaths(new Path(TestUtils.getTestSeries(0, 0)));
+    dataQueryPlan.addDeduplicatedPaths(new Path(TestUtils.getTestSeries(1, 1)));
+
     ClusterTimeGenerator timeGenerator = new ClusterTimeGenerator(expression, context,
-        testMetaMember);
+        testMetaMember, dataQueryPlan);
     for (int i = 3; i <= 8; i++) {
       assertTrue(timeGenerator.hasNext());
       assertEquals(i, timeGenerator.next());

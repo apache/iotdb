@@ -28,8 +28,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.common.TestUtils;
-import org.apache.iotdb.cluster.query.groupby.ClusterGroupByNoVFilterDataSet;
-import org.apache.iotdb.cluster.query.groupby.ClusterGroupByVFilterDataSet;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -67,7 +65,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
   }
 
   @Test
-  public void test() throws StorageEngineException, IOException {
+  public void test() throws StorageEngineException, IOException, QueryProcessException {
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPaths(pathList);
     queryPlan.setDeduplicatedDataTypes(dataTypes);
@@ -169,7 +167,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
 
   @Test
   public void testVFilterGroupBy()
-      throws IOException, StorageEngineException, QueryFilterOptimizationException {
+      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException {
     QueryContext queryContext =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     GroupByPlan groupByPlan = new GroupByPlan();
@@ -214,7 +212,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
 
   @Test
   public void testNoVFilterGroupBy()
-      throws StorageEngineException, IOException, QueryFilterOptimizationException {
+      throws StorageEngineException, IOException, QueryFilterOptimizationException, QueryProcessException {
     QueryContext queryContext =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     GroupByPlan groupByPlan = new GroupByPlan();

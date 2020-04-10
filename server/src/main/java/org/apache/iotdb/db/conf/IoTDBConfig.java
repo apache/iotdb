@@ -50,6 +50,34 @@ public class IoTDBConfig {
 
   private boolean enableMetricService = false;
 
+  /**
+   * whether to enable the mqtt service.
+   */
+  private boolean enableMQTTService = true;
+
+  /**
+   * the mqtt service binding host.
+   */
+  private String mqttHost = "0.0.0.0";
+
+  /**
+   * the mqtt service binding port.
+   */
+  private int mqttPort = 1883;
+
+  /**
+   * the handler pool size for handing the mqtt messages.
+   */
+  private int mqttHandlerPoolSize = 1;
+
+  /**
+   * the mqtt message payload formatter.
+   */
+  private String mqttPayloadFormatter = "json";
+
+  /**
+   * Rpc binding address.
+   */
   private String rpcAddress = "0.0.0.0";
 
   /**
@@ -66,6 +94,16 @@ public class IoTDBConfig {
    * Max concurrent client number
    */
   private int rpcMaxConcurrentClientNum = 65535;
+
+  /**
+   * JMX user name
+   */
+  private String jmxUser = "admin";
+
+  /**
+   * JMX user password
+   */
+  private String jmxPassword = "password";
 
   /**
    * Memory allocated for the read process
@@ -191,17 +229,22 @@ public class IoTDBConfig {
   /**
    * Memory allocated for fileMetaData cache in read process
    */
-  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 3 / 39;
+  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 7 / 39;
+
+  /**
+   * Memory allocated for timeSeriesMetaData cache in read process
+   */
+  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 10 / 39;
 
   /**
    * Memory allocated for chunkMetaData cache in read process
    */
-  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead * 6 / 39;
+  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead * 5 / 39;
 
   /**
    * Memory allocated for chunk cache in read process
    */
-  private long allocateMemoryForChunkCache = allocateMemoryForRead * 10 / 39;
+  private long allocateMemoryForChunkCache = allocateMemoryForRead * 5 / 39;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
@@ -486,7 +529,7 @@ public class IoTDBConfig {
   //wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
 
-  private int queryCacheSizeInMetric = 200;
+  private int queryCacheSizeInMetric =50;
 
   public IoTDBConfig() {
     // empty constructor
@@ -626,6 +669,22 @@ public class IoTDBConfig {
 
   public void setEnableMetricService(boolean enableMetricService) {
     this.enableMetricService = enableMetricService;
+  }
+
+  public String getJmxUser() {
+    return jmxUser;
+  }
+
+  public void setJmxUser(String jmxUser) {
+    this.jmxUser = jmxUser;
+  }
+
+  public String getJmxPassword() {
+    return jmxPassword;
+  }
+
+  public void setJmxPassword(String jmxPassword) {
+    this.jmxPassword = jmxPassword;
   }
 
   void setDataDirs(String[] dataDirs) {
@@ -820,7 +879,7 @@ public class IoTDBConfig {
     return isSyncEnable;
   }
 
-  void setSyncEnable(boolean syncEnable) {
+  public void setSyncEnable(boolean syncEnable) {
     isSyncEnable = syncEnable;
   }
 
@@ -1063,6 +1122,14 @@ public class IoTDBConfig {
 
   void setAllocateMemoryForFileMetaDataCache(long allocateMemoryForFileMetaDataCache) {
     this.allocateMemoryForFileMetaDataCache = allocateMemoryForFileMetaDataCache;
+  }
+
+  public long getAllocateMemoryForTimeSeriesMetaDataCache() {
+    return allocateMemoryForTimeSeriesMetaDataCache;
+  }
+
+  public void setAllocateMemoryForTimeSeriesMetaDataCache(long allocateMemoryForTimeSeriesMetaDataCache) {
+    this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
   }
 
   public long getAllocateMemoryForChunkMetaDataCache() {
@@ -1373,5 +1440,45 @@ public class IoTDBConfig {
 
   public void setQueryCacheSizeInMetric(int queryCacheSizeInMetric) {
     this.queryCacheSizeInMetric = queryCacheSizeInMetric;
+  }
+
+  public boolean isEnableMQTTService() {
+    return enableMQTTService;
+  }
+
+  public void setEnableMQTTService(boolean enableMQTTService) {
+    this.enableMQTTService = enableMQTTService;
+  }
+
+  public String getMqttHost() {
+    return mqttHost;
+  }
+
+  public void setMqttHost(String mqttHost) {
+    this.mqttHost = mqttHost;
+  }
+
+  public int getMqttPort() {
+    return mqttPort;
+  }
+
+  public void setMqttPort(int mqttPort) {
+    this.mqttPort = mqttPort;
+  }
+
+  public int getMqttHandlerPoolSize() {
+    return mqttHandlerPoolSize;
+  }
+
+  public void setMqttHandlerPoolSize(int mqttHandlerPoolSize) {
+    this.mqttHandlerPoolSize = mqttHandlerPoolSize;
+  }
+
+  public String getMqttPayloadFormatter() {
+    return mqttPayloadFormatter;
+  }
+
+  public void setMqttPayloadFormatter(String mqttPayloadFormatter) {
+    this.mqttPayloadFormatter = mqttPayloadFormatter;
   }
 }

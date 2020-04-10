@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.log;
 
+import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 
@@ -33,23 +34,14 @@ public interface LogManager {
   long getCommitLogIndex();
 
   /**
-   * Append log to the last of logs.
+   * Append log to a proper place in the log chain.
+   * If the previous log of the appending log can be found, the new log will be appended after
+   * the log and old logs before the log will be removed and a true will be returned.
+   * Otherwise this method will return false.
    * @param log
+   * @return true if the log is successfully appended, false otherwise.
    */
-  void appendLog(Log log);
-
-  /**
-   * Remove the last log. Often it is used to remove the newly-added log when it fails to operate
-   * on the quorum.
-   */
-  void removeLastLog();
-
-  /**
-   * Replace the last log with the given log. It is used when the last log came from a stale
-   * leader and the new leader just sent a log with the same index but bigger term.
-   * @param log
-   */
-  void replaceLastLog(Log log);
+  boolean appendLog(Log log);
 
   /**
    * Commit (apply) all memory logs whose index <= maxLogIndex, also change commit log index.
@@ -79,19 +71,20 @@ public interface LogManager {
   Snapshot getSnapshot();
 
   /**
-   * Get the last log in memory.
-   * @return the last log in memory, or null if there is no log in memory.
-   */
-  Log getLastLog();
-
-  /**
    * Take a snapshot of the committed logs instantly and discard the committed logs.
    */
-  void takeSnapshot();
+  void takeSnapshot() throws IOException;
 
   LogApplier getApplier();
 
   void setLastLogId(long lastLogId);
 
   void setLastLogTerm(long lastLogTerm);
+
+  /**
+   * Wait until all remote snapshots are pulled locally.
+   */
+  default void waitRemoteSnapshots() {
+
+  };
 }

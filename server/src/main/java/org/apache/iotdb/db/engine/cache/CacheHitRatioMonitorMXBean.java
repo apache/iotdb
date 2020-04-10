@@ -25,4 +25,6 @@ public interface CacheHitRatioMonitorMXBean {
   double getTsfileMetaDataHitRatio();
 
   double getChunkHitRatio();
+
+  double getTimeSeriesMetadataHitRatio();
 }

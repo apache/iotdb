@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.cluster.query.groupby;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.BaseQueryTest;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
+import org.apache.iotdb.cluster.query.reader.EmptyReader;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -53,7 +57,9 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
     }
 
     List<GroupByExecutor> groupByExecutors = testMetaMember
-        .getGroupByExecutors(path, dataType, context, timeFilter, aggregationTypes);
+        .getGroupByExecutors(path, Collections.singleton(path.getMeasurement()), dataType,
+            context, timeFilter,
+            aggregationTypes);
 
     for (int i = 0; i < groupByExecutors.size(); i++) {
       GroupByExecutor groupByExecutor = groupByExecutors.get(i);
@@ -72,11 +78,19 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
         List<AggregateResult> aggregateResults;
         answers = new Object[]{0.0, null, 0.0, null, null, null, null, null, null};
         aggregateResults = groupByExecutor.calcResult(0, 5);
-        checkAggregations(aggregateResults, answers);
+        if (!(groupByExecutor instanceof EmptyReader)) {
+          checkAggregations(aggregateResults, answers);
+        } else {
+          assertTrue(aggregateResults.isEmpty());
+        }
 
         answers = new Object[]{0.0, null, 0.0, null, null, null, null, null, null};
         aggregateResults = groupByExecutor.calcResult(5, 10);
-        checkAggregations(aggregateResults, answers);
+        if (!(groupByExecutor instanceof EmptyReader)) {
+          checkAggregations(aggregateResults, answers);
+        } else {
+          assertTrue(aggregateResults.isEmpty());
+        }
       }
     }
   }
@@ -94,7 +108,8 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
     }
 
     List<GroupByExecutor> groupByExecutors = testMetaMember
-        .getGroupByExecutors(path, dataType, context, timeFilter, aggregationTypes);
+        .getGroupByExecutors(path, Collections.singleton(path.getMeasurement()), dataType, context
+            , timeFilter, aggregationTypes);
 
     for (int i = 0; i < groupByExecutors.size(); i++) {
       GroupByExecutor groupByExecutor = groupByExecutors.get(i);
@@ -113,11 +128,19 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
         List<AggregateResult> aggregateResults;
         answers = new Object[]{0.0, null, 0.0, null, null, null, null, null, null};
         aggregateResults = groupByExecutor.calcResult(0, 5);
-        checkAggregations(aggregateResults, answers);
+        if (!(groupByExecutor instanceof EmptyReader)) {
+          checkAggregations(aggregateResults, answers);
+        } else {
+          assertTrue(aggregateResults.isEmpty());
+        }
 
         answers = new Object[]{0.0, null, 0.0, null, null, null, null, null, null};
         aggregateResults = groupByExecutor.calcResult(5, 10);
-        checkAggregations(aggregateResults, answers);
+        if (!(groupByExecutor instanceof EmptyReader)) {
+          checkAggregations(aggregateResults, answers);
+        } else {
+          assertTrue(aggregateResults.isEmpty());
+        }
       }
     }
   }

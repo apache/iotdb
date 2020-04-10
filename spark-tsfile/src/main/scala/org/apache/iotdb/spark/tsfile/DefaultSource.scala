@@ -115,8 +115,8 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       }
 
       if (options.getOrElse(DefaultSource.isNarrowForm, "").equals("narrow_form")) {
-        val deviceNames = tsFileMetaData.getDeviceMap.keySet()
-        val measurementNames = tsFileMetaData.getMeasurementSchema.keySet()
+        val deviceNames = tsFileMetaData.getDeviceMetadataIndex.keySet()
+        val measurementNames = reader.getAllMeasurements.keySet()
 
         // construct queryExpression based on queriedSchema and filters
         val queryExpressions = NarrowConverter.toQueryExpression(dataSchema, deviceNames,
@@ -194,7 +194,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       }
       else {
         // get queriedSchema from requiredSchema
-        var queriedSchema = WideConverter.prepSchema(requiredSchema, tsFileMetaData)
+        var queriedSchema = WideConverter.prepSchema(requiredSchema, tsFileMetaData, reader)
 
         // construct queryExpression based on queriedSchema and filters
         val queryExpression = WideConverter.toQueryExpression(queriedSchema, filters)

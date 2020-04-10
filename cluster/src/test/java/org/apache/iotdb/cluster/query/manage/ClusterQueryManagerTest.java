@@ -76,17 +76,7 @@ public class ClusterQueryManagerTest {
 
   @Test
   public void testRegisterReaderByTime() {
-    IReaderByTimestamp reader = new IReaderByTimestamp() {
-      @Override
-      public Object getValueInTimestamp(long timestamp) {
-        return null;
-      }
-
-      @Override
-      public Object[] getValuesInTimestamps(long[] timestamps) {
-        return new Object[0];
-      }
-    };
+    IReaderByTimestamp reader = timestamp -> null;
     long id = queryManager.registerReaderByTime(reader);
     assertSame(reader, queryManager.getReaderByTimestamp(id));
   }
@@ -94,7 +84,27 @@ public class ClusterQueryManagerTest {
   @Test
   public void testRegisterAggregateReader() {
     IAggregateReader reader = new IAggregateReader() {
-        @Override
+      @Override
+      public boolean hasNextFile() {
+        return false;
+      }
+
+      @Override
+      public boolean canUseCurrentFileStatistics() {
+        return false;
+      }
+
+      @Override
+      public Statistics currentFileStatistics() {
+        return null;
+      }
+
+      @Override
+      public void skipCurrentFile() {
+
+      }
+
+      @Override
       public boolean hasNextChunk() {
         return false;
       }

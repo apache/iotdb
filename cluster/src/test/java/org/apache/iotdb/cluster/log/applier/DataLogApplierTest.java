@@ -44,7 +44,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -59,11 +58,11 @@ public class DataLogApplierTest extends IoTDBTest {
         throws StorageGroupNotSetException {
       List<MeasurementSchema> ret = new ArrayList<>();
       for (String prefixPath : prefixPaths) {
-        if (prefixPath.equals(TestUtils.getTestSg(4))) {
+        if (prefixPath.startsWith(TestUtils.getTestSg(4))) {
           for (int i = 0; i < 10; i++) {
             ret.add(TestUtils.getTestSchema(4, i));
           }
-        } else if (!prefixPath.equals(TestUtils.getTestSg(5))) {
+        } else if (!prefixPath.startsWith(TestUtils.getTestSg(5))) {
           throw new StorageGroupNotSetException(prefixPath);
         }
       }
@@ -83,7 +82,7 @@ public class DataLogApplierTest extends IoTDBTest {
     // this series is already created
     insertPlan.setDeviceId(TestUtils.getTestSg(1));
     insertPlan.setTime(1);
-    insertPlan.setDataTypes(new TSDataType[] {TSDataType.BOOLEAN});
+    insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestSchema(1, 0)});
     insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     insertPlan.setValues(new String[] {"1.0"});
     applier.apply(log);
@@ -121,7 +120,7 @@ public class DataLogApplierTest extends IoTDBTest {
       applier.apply(log);
       fail("exception should be thrown");
     } catch (QueryProcessException e) {
-      assertEquals("org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException: Storage group is not set for current seriesPath: [root.test6]", e.getMessage());
+      assertEquals("org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException: Storage group is not set for current seriesPath: [root.test6.s0]", e.getMessage());
     }
   }
 

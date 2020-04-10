@@ -158,12 +158,6 @@ public class MemberTest {
 
   private MetaGroupMember newMetaGroupMember(Node node) {
     MetaGroupMember ret = new TestMetaGroupMember() {
-
-      @Override
-      public LogManager getLogManager() {
-        return metaLogManager;
-      }
-
       @Override
       public List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
           throws MetadataException {
@@ -214,6 +208,7 @@ public class MemberTest {
     ret.setThisNode(node);
     ret.setPartitionTable(partitionTable);
     ret.setAllNodes(allNodes);
+    ret.setLogManager(metaLogManager);
     return ret;
   }
 }

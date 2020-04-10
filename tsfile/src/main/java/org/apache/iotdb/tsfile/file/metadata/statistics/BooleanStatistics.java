@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -46,7 +47,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
    * initialize boolean Statistics.
    *
    * @param firstValue first boolean value
-   * @param lastValue last boolean value
+   * @param lastValue  last boolean value
    */
   private void initializeStats(boolean firstValue, boolean lastValue) {
     this.firstValue = firstValue;

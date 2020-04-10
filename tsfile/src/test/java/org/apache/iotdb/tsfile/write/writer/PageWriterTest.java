@@ -28,14 +28,14 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.PageWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.junit.Assert;
-import org.junit.Test;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import org.junit.Test;
 
 public class PageWriterTest {
 
@@ -52,7 +52,7 @@ public class PageWriterTest {
       assertEquals(12, writer.estimateMaxMemSize());
       ByteBuffer buffer1 = writer.getUncompressedBytes();
       ByteBuffer buffer = ByteBuffer.wrap(buffer1.array());
-      writer.reset(new MeasurementSchema("test", TSDataType.INT32, TSEncoding.RLE));
+      writer.reset(new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.RLE));
       assertEquals(0, writer.estimateMaxMemSize());
       int timeSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
       byte[] timeBytes = new byte[timeSize];
@@ -83,7 +83,7 @@ public class PageWriterTest {
       assertEquals(16, writer.estimateMaxMemSize());
       ByteBuffer buffer1 = writer.getUncompressedBytes();
       ByteBuffer buffer = ByteBuffer.wrap(buffer1.array());
-      writer.reset(new MeasurementSchema("test", TSDataType.INT64, TSEncoding.RLE));
+      writer.reset(new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.RLE));
       assertEquals(0, writer.estimateMaxMemSize());
       int timeSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
       byte[] timeBytes = new byte[timeSize];
@@ -113,7 +113,7 @@ public class PageWriterTest {
       assertEquals(12, writer.estimateMaxMemSize());
       ByteBuffer buffer1 = writer.getUncompressedBytes();
       ByteBuffer buffer = ByteBuffer.wrap(buffer1.array());
-      writer.reset(new MeasurementSchema("test", TSDataType.INT64, TSEncoding.RLE));
+      writer.reset(new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.RLE));
       assertEquals(0, writer.estimateMaxMemSize());
       int timeSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
       byte[] timeBytes = new byte[timeSize];
@@ -123,7 +123,7 @@ public class PageWriterTest {
       for (int i = 0; i < timeCount; i++) {
         assertEquals(i, decoder.readLong(buffer2));
       }
-      Assert.assertEquals(value, decoder.readFloat(buffer), TestConstant.float_min_delta);
+      assertEquals(value, decoder.readFloat(buffer), TestConstant.float_min_delta);
 
     } catch (IOException e) {
       fail();
@@ -143,7 +143,7 @@ public class PageWriterTest {
       assertEquals(9, writer.estimateMaxMemSize());
       ByteBuffer buffer1 = writer.getUncompressedBytes();
       ByteBuffer buffer = ByteBuffer.wrap(buffer1.array());
-      writer.reset(new MeasurementSchema("test", TSDataType.INT64, TSEncoding.RLE));
+      writer.reset(new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.RLE));
       assertEquals(0, writer.estimateMaxMemSize());
       int timeSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
       byte[] timeBytes = new byte[timeSize];
@@ -172,7 +172,7 @@ public class PageWriterTest {
       assertEquals(26, writer.estimateMaxMemSize());
       ByteBuffer buffer1 = writer.getUncompressedBytes();
       ByteBuffer buffer = ByteBuffer.wrap(buffer1.array());
-      writer.reset(new MeasurementSchema("test", TSDataType.INT64, TSEncoding.RLE));
+      writer.reset(new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.RLE));
       assertEquals(0, writer.estimateMaxMemSize());
       int timeSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
       byte[] timeBytes = new byte[timeSize];
@@ -202,7 +202,7 @@ public class PageWriterTest {
       assertEquals(16, writer.estimateMaxMemSize());
       ByteBuffer buffer1 = writer.getUncompressedBytes();
       ByteBuffer buffer = ByteBuffer.wrap(buffer1.array());
-      writer.reset(new MeasurementSchema("test", TSDataType.INT64, TSEncoding.RLE));
+      writer.reset(new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.RLE));
       assertEquals(0, writer.estimateMaxMemSize());
       int timeSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
       byte[] timeBytes = new byte[timeSize];
@@ -212,7 +212,7 @@ public class PageWriterTest {
       for (int i = 0; i < timeCount; i++) {
         assertEquals(i, decoder.readLong(buffer2));
       }
-      assertEquals(value, decoder.readDouble(buffer),0);
+      assertEquals(value, decoder.readDouble(buffer), 0);
 
     } catch (IOException e) {
       fail();

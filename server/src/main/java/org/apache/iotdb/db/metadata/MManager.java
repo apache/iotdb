@@ -47,6 +47,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -59,7 +60,6 @@ import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,7 +82,7 @@ public class MManager {
   private BufferedWriter logWriter;
   private boolean writeToLog;
   private String schemaDir;
-  // path -> MNode
+  // device -> DeviceMNode
   private RandomDeleteCache<String, MNode> mNodeCache;
 
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
@@ -256,6 +256,11 @@ public class MManager {
     return logWriter;
   }
 
+  public void createTimeseries(String path, MeasurementSchema schema) throws MetadataException {
+    createTimeseries(path, schema.getType(), schema.getEncodingType(), schema.getCompressor(),
+        schema.getProps());
+  }
+
   /**
    * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
    *
@@ -266,7 +271,7 @@ public class MManager {
    * @return whether the measurement occurs for the first time in this storage group (if true, the
    * measurement should be registered to the StorageEngine too)
    */
-  public boolean createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
+  public void createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) throws MetadataException {
     lock.writeLock().lock();
     try {
@@ -285,38 +290,15 @@ public class MManager {
         setStorageGroup(storageGroupName);
       }
 
-      /*
-       * check if the measurement schema conflict in its storage group
-       */
-      Map<String, MeasurementSchema> schemaMap = mtree.getStorageGroupSchemaMap(storageGroupName);
-      String measurement = new Path(path).getMeasurement();
-      boolean isNewMeasurement = true;
-      if (schemaMap.containsKey(measurement)) {
-        isNewMeasurement = false;
-        MeasurementSchema schema = schemaMap.get(measurement);
-        if (!schema.getType().equals(dataType) || !schema.getEncodingType().equals(encoding)
-            || !schema.getCompressor().equals(compressor)) {
-          // conflict with existing
-          throw new MetadataException(String.format(
-              "The resultDataType or encoding or compression of the last node %s is conflicting "
-                  + "in the storage group %s", measurement, storageGroupName));
-        }
-      }
-
       // create time series with memory check
       createTimeseriesWithMemoryCheckAndLog(path, dataType, encoding, compressor, props);
-      // register schema in this storage group
-      if (isNewMeasurement) {
-        schemaMap.put(measurement,
-            new MeasurementSchema(measurement, dataType, encoding, compressor, props));
-      }
+
       // update statistics
       int size = seriesNumberInStorageGroups.get(storageGroupName);
       seriesNumberInStorageGroups.put(storageGroupName, size + 1);
       if (size + 1 > maxSeriesNumberAmongStorageGroup) {
         maxSeriesNumberAmongStorageGroup = size + 1;
       }
-      return isNewMeasurement;
     } finally {
       lock.writeLock().unlock();
     }
@@ -546,6 +528,23 @@ public class MManager {
     }
   }
 
+  public MeasurementSchema[] getSchemas(String deviceId, String[] measurements)
+      throws MetadataException {
+    lock.readLock().lock();
+    try {
+      MNode deviceNode = getNodeByPath(deviceId);
+      MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurements.length];
+      for (int i = 0; i < measurementSchemas.length; i++) {
+        if (!deviceNode.hasChild(measurements[i])) {
+          throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
+        }
+        measurementSchemas[i] = ((LeafMNode) deviceNode.getChild(measurements[i])).getSchema();
+      }
+      return measurementSchemas;
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
 
   /**
    * Get all devices under given prefixPath.
@@ -576,21 +575,6 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getNodesList(prefixPath, nodeLevel);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Get all ColumnSchemas for the storage group seriesPath.
-   *
-   * @param storageGroup storage group name
-   */
-  public List<MeasurementSchema> getStorageGroupSchema(String storageGroup)
-      throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return mtree.getStorageGroupSchema(storageGroup);
     } finally {
       lock.readLock().unlock();
     }
@@ -661,10 +645,20 @@ public class MManager {
    * wildcard can only match one level, otherwise it can match to the tail.
    * @return for each storage group, return a List [name, sg name, data type, encoding, compressor]
    */
-  public List<String[]> getAllTimeseriesSchema(String path) throws MetadataException {
+  public List<String[]> getAllMeasurementSchema(String path) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getAllTimeseriesSchema(path);
+      return mtree.getAllMeasurementSchema(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  public MeasurementSchema getSeriesSchema(String device, String measuremnet) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      InternalMNode node = (InternalMNode) mtree.getNodeByPath(device);
+      return ((LeafMNode) node.getChild(measuremnet)).getSchema();
     } finally {
       lock.readLock().unlock();
     }
@@ -784,7 +778,6 @@ public class MManager {
   }
 
   private static class MManagerHolder {
-
     private MManagerHolder() {
       //allowed to do nothing
     }
@@ -844,7 +837,7 @@ public class MManager {
     while (!nodeDeque.isEmpty()) {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof LeafMNode) {
-        MeasurementSchema nodeSchema = node.getSchema();
+        MeasurementSchema nodeSchema = ((LeafMNode) node).getSchema();
         timeseriesSchemas.add(new MeasurementSchema(node.getFullPath(),
             nodeSchema.getType(), nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
       } else if (!node.getChildren().isEmpty()) {
@@ -853,6 +846,12 @@ public class MManager {
     }
   }
 
+  /**
+   * Collect the timeseries schemas under "startingPath". Notice the measurements in the collected
+   * MeasurementSchemas are the full path here.
+   * @param startingPath
+   * @param timeseriesSchemas
+   */
   public void collectSeries(String startingPath, List<MeasurementSchema> timeseriesSchemas) {
     MNode mNode;
     try {

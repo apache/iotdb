@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -38,6 +35,11 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
 public class LocalGroupByExecutor implements GroupByExecutor {
 
   private IAggregateReader reader;
@@ -47,17 +49,24 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   private List<AggregateResult> results = new ArrayList<>();
   private TimeRange timeRange;
 
-  public LocalGroupByExecutor(Path path, TSDataType dataType, QueryContext context, Filter timeFilter,
-      TsFileFilter fileFilter)
-      throws StorageEngineException {
-    QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+
+  private QueryDataSource queryDataSource;
+
+  public LocalGroupByExecutor(Path path, Set<String> allSensors, TSDataType dataType, QueryContext context, Filter timeFilter,
+                              TsFileFilter fileFilter)
+      throws StorageEngineException, QueryProcessException {
+    queryDataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(path, context, timeFilter);
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
-    this.reader = new SeriesAggregateReader(path, dataType, context, queryDataSource, timeFilter,
+    this.reader = new SeriesAggregateReader(path, allSensors, dataType, context, queryDataSource, timeFilter,
         null, fileFilter);
     this.preCachedData = null;
     timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
+  }
+
+  public boolean isEmpty() {
+    return queryDataSource.getSeqResources().isEmpty() && queryDataSource.getUnseqResources().isEmpty();
   }
 
   @Override
@@ -141,23 +150,39 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       return results;
     }
 
-    //read chunk finally
-    while (reader.hasNextChunk()) {
-      Statistics chunkStatistics = reader.currentChunkStatistics();
-      if (chunkStatistics.getStartTime() >= curEndTime) {
+    // read from file first
+    while (reader.hasNextFile()) {
+      Statistics fileStatistics = reader.currentFileStatistics();
+      if (fileStatistics.getStartTime() >= curEndTime) {
         return results;
       }
-      //calc from chunkMetaData
-      if (reader.canUseCurrentChunkStatistics()
-          && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
-        calcFromStatistics(chunkStatistics);
-        reader.skipCurrentChunk();
+      // calc from fileMetaData
+      if (reader.canUseCurrentFileStatistics()
+          && timeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
+        calcFromStatistics(fileStatistics);
+        reader.skipCurrentFile();
         continue;
       }
-      if (readAndCalcFromPage(curStartTime, curEndTime)) {
-        return results;
+
+      //read chunk
+      while (reader.hasNextChunk()) {
+        Statistics chunkStatistics = reader.currentChunkStatistics();
+        if (chunkStatistics.getStartTime() >= curEndTime) {
+          return results;
+        }
+        //calc from chunkMetaData
+        if (reader.canUseCurrentChunkStatistics()
+                && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
+          calcFromStatistics(chunkStatistics);
+          reader.skipCurrentChunk();
+          continue;
+        }
+        if (readAndCalcFromPage(curStartTime, curEndTime)) {
+          return results;
+        }
       }
     }
+
     return results;
   }
 
