@@ -84,4 +84,47 @@ public class IoTDBRestartIT {
 
     EnvironmentUtils.cleanEnv();
   }
+
+
+  @Test
+  public void testRestartDelete()
+      throws SQLException, ClassNotFoundException, IOException, StorageEngineException {
+    EnvironmentUtils.envSetUp();
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()){
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(1,1)");
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,2)");
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(3,3)");
+    }
+
+    EnvironmentUtils.restartDaemon();
+
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()){
+      statement.execute("delete from root.turbine.d1.s1 where time<=1");
+      statement.execute("flush");
+      statement.execute("delete from root.turbine.d1.s1 where time<=2");
+
+      boolean hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
+      assertTrue(hasResultSet);
+      String[] exp = new String[]{
+          "3,3"
+      };
+      ResultSet resultSet = statement.getResultSet();
+      int cnt = 0;
+      while (resultSet.next()) {
+        String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+        assertEquals(exp[cnt], result);
+        cnt++;
+      }
+    }
+
+    EnvironmentUtils.cleanEnv();
+  }
 }

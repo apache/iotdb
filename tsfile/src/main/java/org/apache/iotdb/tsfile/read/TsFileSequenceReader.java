@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.VersionUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -347,20 +348,9 @@ public class TsFileSequenceReader implements AutoCloseable {
     // set version in ChunkMetadata
     List<Pair<Long, Long>> versionInfo = tsFileMetaData.getVersionInfo();
     for (Entry<String, List<ChunkMetadata>> entry : seriesMetadata.entrySet()) {
-      setVersion(entry.getValue(), versionInfo);
+      VersionUtils.applyVersion(entry.getValue(), versionInfo);
     }
     return seriesMetadata;
-  }
-
-
-  private void setVersion(List<ChunkMetadata> chunkMetadataList, List<Pair<Long, Long>> versionInfo) {
-    int versionIndex = 0;
-    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-      while (chunkMetadata.getOffsetOfChunkHeader() >= versionInfo.get(versionIndex).left) {
-        versionIndex++;
-      }
-      chunkMetadata.setVersion(versionInfo.get(versionIndex).right);
-    }
   }
 
   /**
@@ -721,7 +711,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       chunkMetadataList.add(ChunkMetadata.deserializeFrom(buffer));
     }
 
-    setVersion(chunkMetadataList, versionInfo);
+    VersionUtils.applyVersion(chunkMetadataList, versionInfo);
 
     return chunkMetadataList;
   }

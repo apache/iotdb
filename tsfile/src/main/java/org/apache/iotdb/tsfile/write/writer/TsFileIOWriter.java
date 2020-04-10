@@ -83,7 +83,7 @@ public class TsFileIOWriter {
   private long markedPosition;
   private String currentChunkGroupDeviceId;
   private long currentChunkGroupStartOffset;
-  private List<Pair<Long, Long>> versionInfo = new ArrayList<>();
+  protected List<Pair<Long, Long>> versionInfo = new ArrayList<>();
 
   /**
    * empty construct function.
