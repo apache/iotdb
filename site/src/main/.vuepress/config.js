@@ -821,14 +821,14 @@ var config = {
 					{
 						title: '5-数据查询',
 						children: [
-						  '5-DataQuery/1-DataQuery',
-              '5-DataQuery/2-SeriesReader',
-              '5-DataQuery/3-RawDataQuery',
-              '5-DataQuery/4-AggregationQuery',
-              '5-DataQuery/5-GroupByQuery',
-              '5-DataQuery/6-LastQuery',
-              '5-DataQuery/7-AlignByDeviceQuery',
-              '5-DataQuery/8-ModificationHandle',
+							'5-DataQuery/1-DataQuery',
+							'5-DataQuery/2-SeriesReader',
+							'5-DataQuery/3-RawDataQuery',
+							'5-DataQuery/4-AggregationQuery',
+							'5-DataQuery/5-GroupByQuery',
+							'5-DataQuery/6-LastQuery',
+							'5-DataQuery/7-AlignByDeviceQuery',
+							'5-DataQuery/8-ModificationHandle',
 						]
 					},
 					{
