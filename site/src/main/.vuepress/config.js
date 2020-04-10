@@ -88,9 +88,10 @@ var config = {
 				  {
 					text: 'Community',
 					items: [
+					  { text: 'ASF', link: '/Community/ASF'},
+					  { text: 'Wiki', link: '/Community/Wiki'},
 					  { text: 'People', link: '/Community/Community-Project Committers'},
 					  { text: 'Powered By', link: '/Community/Community-Powered By'},
-					  { text: 'History&Vision', link: '/Community/Community-History&Vision'},
 					]
 				  },
 				  {
@@ -101,24 +102,6 @@ var config = {
 					  { text: 'Changelist of TsFile', link: '/Development/format-changelist'},
 					  { text: 'Changelist of RPC', link: '/Development/rpc-changelist'},
 					]
-				  },
-				  {
-					text: 'ASF',
-					items: [
-					  { text: 'Foundation', link: 'http://www.apache.org/foundation/',rel:''},
-					  { text: 'License', link: 'http://www.apache.org/licenses/',rel:''},
-					  { text: 'Security', link: 'http://www.apache.org/security/',rel:''},
-					  { text: 'Sponsorship', link: 'http://www.apache.org/foundation/sponsorship.html',rel:''},
-					  { text: 'Thanks', link: 'http://www.apache.org/foundation/thanks.html',rel:''},
-					  { text: 'Current Events', link: 'http://www.apache.org/events/current-event',rel:''},
-					]
-				  },
-				  {
-					text: 'wiki',
-					items: [
-						{ text: 'github documents', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation',rel:''},
-						{ text: 'confluence', link: 'https://cwiki.apache.org/confluence/display/iotdb',rel:''},
-					  ]
 				  },
 			],
 			sidebar: {
@@ -347,7 +330,8 @@ var config = {
 							'4-Client/3-Programming - JDBC',
 							'4-Client/4-Programming - Other Languages',
 							'4-Client/5-Programming - TsFile API',
-							'4-Client/6-Status Codes',
+							'4-Client/6-Programming - MQTT',
+							'4-Client/7-Status Codes',
 						]
 					},
 					{
@@ -504,9 +488,10 @@ var config = {
 				  {
 					text: '社区',
 					items: [
-					  { text: '开发人员', link: '/zh/Community/Community-Project Committers'},
-					  { text: '技术支持', link: '/zh/Community/Community-Powered By'},
-					  { text: '历史与视角', link: '/zh/Community/Community-History&Vision'},
+						{ text: 'ASF', link: '/zh/Community/ASF'},
+						{ text: 'Wiki', link: '/zh/Community/Wiki'},
+					    { text: '开发人员', link: '/zh/Community/Community-Project Committers'},
+					    { text: '技术支持', link: '/zh/Community/Community-Powered By'},
 					]
 				  },
 				  {
@@ -517,24 +502,6 @@ var config = {
 					  { text: 'TsFile的更改列表', link: '/zh/Development/format-changelist'},
 					  { text: 'RPC变更清单', link: '/zh/Development/rpc-changelist'},
 					]
-				  },
-				  {
-					text: 'ASF',
-					items: [
-					  { text: '基础', link: 'http://www.apache.org/foundation/',rel:''},
-					  { text: '执照', link: 'http://www.apache.org/licenses/',rel:''},
-					  { text: '安全', link: 'http://www.apache.org/security/',rel:''},
-					  { text: '赞助', link: 'http://www.apache.org/foundation/sponsorship.html',rel:''},
-					  { text: '致谢', link: 'http://www.apache.org/foundation/thanks.html',rel:''},
-					  { text: '现在发生的事', link: 'http://www.apache.org/events/current-event',rel:''},
-					]
-				  },
-				  {
-					text: 'wiki',
-					items: [
-						{ text: 'github文档', link: 'https://github.com/apache/incubator-iotdb/tree/master/docs/Documentation',rel:''},
-						{ text: 'confluence', link: 'https://cwiki.apache.org/confluence/display/iotdb',rel:''},
-					  ]
 				  },
 			],
 			sidebar: {
@@ -887,7 +854,7 @@ var config = {
       },
 	locales: {
 		'/': {
-		  lang: 'en-US', // 将会被设置为 <html> 的 lang 属性
+		  lang: 'en-US', 
 		  title: ' ',
 		  description: ' '
 		},

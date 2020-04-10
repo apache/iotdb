@@ -31,7 +31,13 @@ See https://iotdb.apache.org/
 
 ## Build Setup
 
-run `mvn package -DskipTests` 
+
+run `mvn package -DskipTests` for doing the following steps automatically:
+
+- get docs from the master branch and all lagecy docs remotely.
+- download node.js and npm;
+- run `npm install` and `npm run build`
+
 
 ## How to Debug
 

@@ -23,6 +23,28 @@
 
 Java VisualVM提供了一个可视化的界面，用于查看Java应用程序在Java虚拟机（JVM）上运行的详细信息，并对这些应用程序进行故障排除和分析。
 
+## 配置
+
+JMX 访问权限认证设置默认打开，因此你需要编辑`iotdb-engine.properties`中的 JMX 用户名和密码。相关配置项包括：
+
+* jmx\_user
+
+|名字| jmx\_user |
+|:---:|:---|
+|描述| JMX配置中的用户名 |
+|类型| String |
+|默认值| admin |
+|改后生效方式|重启服务器生效|
+
+* jmx\_password
+
+|名字| jmx\_password |
+|:---:|:---|
+|描述| JMX配置中的密码 |
+|类型| String |
+|默认值| password |
+|改后生效方式|重启服务器生效|
+
 ## 使用
 
 第一步：启动IoTDB server。
