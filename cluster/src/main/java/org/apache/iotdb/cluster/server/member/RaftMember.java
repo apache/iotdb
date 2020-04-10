@@ -870,8 +870,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @return true if the node has caught up, false otherwise
    */
   public boolean syncLeader() {
-    // make sure all snapshot pulling are done, otherwise some data will remain in the old nodes
-    logManager.waitRemoteSnapshots();
 
     if (character == NodeCharacter.LEADER) {
       return true;

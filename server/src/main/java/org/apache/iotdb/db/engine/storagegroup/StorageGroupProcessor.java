@@ -1580,6 +1580,16 @@ public class StorageGroupProcessor {
   }
 
   /**
+   * Set the version in "partition" to "version" if "version" is larger than the current version.
+   * @param partition
+   * @param version
+   * @throws IOException
+   */
+  public void setPartitionVersionToMax(long partition, long version) throws IOException {
+    getVersionControllerByTimePartitionId(partition).setVersionToMax(version);
+  }
+
+  /**
    * Find the position of "newTsFileResource" in the sequence files if it can be inserted into them.
    * @param newTsFileResource
    * @param newFilePartitionId

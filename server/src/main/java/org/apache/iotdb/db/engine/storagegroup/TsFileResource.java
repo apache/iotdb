@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -217,6 +220,10 @@ public class TsFileResource {
           ReadWriteIOUtils.write(historicalVersion, outputStream);
         }
       }
+
+      if (modFile != null && modFile.exists()) {
+        ReadWriteIOUtils.write(modFile.getFilePath(), outputStream);
+      }
     }
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
     File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
@@ -254,6 +261,10 @@ public class TsFileResource {
         // use the version in file name as the historical version for files of old versions
         long version = Long.parseLong(file.getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
         historicalVersions = Collections.singleton(version);
+      }
+
+      if (inputStream.available() > 0) {
+        modFile = new ModificationFile(ReadWriteIOUtils.readString(inputStream));
       }
     }
   }
@@ -520,5 +531,60 @@ public class TsFileResource {
       throw new PartitionViolationException(this);
     }
     return partitionId;
+  }
+
+  /**
+   * Create a hardlink for the TsFile and modification file (if exists)
+   * The hardlink with have a suffix like ".{sysTime}_{randomLong}"
+   * @return a new TsFileResource with its file changed to the hardlink or null the hardlink
+   * cannot be created.
+   */
+  public TsFileResource createHardlink() {
+    if (!file.exists()) {
+      return null;
+    }
+
+    TsFileResource newResource;
+    try {
+      newResource = new TsFileResource(this);
+    } catch (IOException e) {
+      logger.error("Cannot create hardlink for {}", file, e);
+      return null;
+    }
+
+    Random random = new Random();
+    while (true) {
+      String hardlinkSuffix = "." + System.currentTimeMillis() + "_" + random.nextLong();
+      File hardlink = new File(file.getAbsolutePath() + hardlinkSuffix);
+
+      try {
+        Files.createLink(Paths.get(hardlink.getAbsolutePath()), Paths.get(file.getAbsolutePath()));
+        newResource.setFile(hardlink);
+        if (modFile != null && modFile.exists()) {
+          newResource.setModFile(modFile.createHardlink());
+        }
+        break;
+      } catch (FileAlreadyExistsException e) {
+        // retry a different name if the file is already created
+      } catch (IOException e) {
+        logger.error("Cannot create hardlink for {}", file, e);
+        return null;
+      }
+    }
+    return newResource;
+  }
+
+  public void setModFile(ModificationFile modFile) {
+    this.modFile = modFile;
+  }
+
+  public long getMaxVersion() {
+    long maxVersion = 0;
+    if (historicalVersions != null) {
+      for (Long historicalVersion : historicalVersions) {
+        maxVersion = Math.max(historicalVersion, maxVersion);
+      }
+    }
+    return maxVersion;
   }
 }

@@ -344,7 +344,7 @@ public class DataGroupMemberTest extends MemberTest {
     processor.insert(insertPlan);
     processor.asyncCloseAllWorkingTsFileProcessors();
 
-    dataGroupMember.applySnapshot(snapshot);
+    dataGroupMember.applySnapshot(snapshot, 0);
     assertEquals(3, processor.getSequenceFileTreeSet().size());
     assertEquals(0, processor.getUnSequenceFileList().size());
     Deletion deletion = new Deletion(new Path(TestUtils.getTestSg(0)), 0, 0);

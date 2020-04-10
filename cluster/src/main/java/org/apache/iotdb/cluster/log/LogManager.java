@@ -80,11 +80,4 @@ public interface LogManager {
   void setLastLogId(long lastLogId);
 
   void setLastLogTerm(long lastLogTerm);
-
-  /**
-   * Wait until all remote snapshots are pulled locally.
-   */
-  default void waitRemoteSnapshots() {
-
-  };
 }

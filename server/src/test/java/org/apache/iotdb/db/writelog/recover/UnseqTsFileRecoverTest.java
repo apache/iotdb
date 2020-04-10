@@ -82,6 +82,11 @@ public class UnseqTsFileRecoverTest {
     public long currVersion() {
       return i;
     }
+
+    @Override
+    public void setVersionToMax(long version) {
+
+    }
   };
 
   @Before

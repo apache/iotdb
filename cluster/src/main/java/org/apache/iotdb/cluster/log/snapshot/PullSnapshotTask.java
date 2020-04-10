@@ -96,7 +96,7 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
         }
         for (Entry<Integer, T> entry : result.entrySet()) {
           try {
-            newMember.applySnapshot(entry.getValue());
+            newMember.applySnapshot(entry.getValue(), entry.getKey());
           } catch (SnapshotApplicationException e) {
             logger.error("Apply snapshot failed, retry...", e);
             Thread.sleep(ClusterConstant.PULL_SNAPSHOT_RETRY_INTERVAL);

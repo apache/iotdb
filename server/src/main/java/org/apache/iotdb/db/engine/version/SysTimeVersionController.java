@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.version;
 
+import java.io.IOException;
+
 /**
  * SysTimeVersionController uses system timestamp as the version number.
  */
@@ -38,5 +40,10 @@ public class SysTimeVersionController implements VersionController {
   @Override
   public long currVersion() {
     return System.currentTimeMillis();
+  }
+
+  @Override
+  public void setVersionToMax(long version) {
+
   }
 }

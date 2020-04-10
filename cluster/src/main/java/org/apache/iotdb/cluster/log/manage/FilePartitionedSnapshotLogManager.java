@@ -20,14 +20,13 @@
 package org.apache.iotdb.cluster.log.manage;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
-import org.apache.iotdb.cluster.log.snapshot.RemoteSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
@@ -52,20 +51,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   }
 
   @Override
-  public void waitRemoteSnapshots() {
-    synchronized (slotSnapshots) {
-      for (Entry<Integer, FileSnapshot> entry : slotSnapshots.entrySet()) {
-        if (entry.getValue() instanceof RemoteSnapshot) {
-          ((RemoteSnapshot) entry.getValue()).getRemoteSnapshot();
-        }
-      }
-    }
-  }
-
-  @Override
   public void takeSnapshot() throws IOException {
-    // make sure every remote snapshot is pulled before creating local snapshot
-    waitRemoteSnapshots();
 
     logger.info("Taking snapshots, flushing IoTDB");
     StorageEngine.getInstance().syncCloseAllProcessor();
@@ -90,31 +76,48 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   }
 
   private void collectTsFiles() throws IOException {
-    slotSnapshots.clear();
     // TODO-Cluster#349: the collection is re-collected each time to prevent inconsistency when
     //  some of them are removed during two snapshots. Incremental addition or removal may be
     //  used to optimize
 
-    Map<String, Map<Long, List<TsFileResource>>> allClosedStorageGroupTsFile = StorageEngine
-        .getInstance().getAllClosedStorageGroupTsFile();
-    for (Entry<String, Map<Long, List<TsFileResource>>> entry :
-        allClosedStorageGroupTsFile.entrySet()) {
-      String storageGroupName = entry.getKey();
-      Map<Long, List<TsFileResource>> storageGroupsFiles = entry.getValue();
-      for (Entry<Long, List<TsFileResource>> storageGroupFiles : storageGroupsFiles.entrySet()) {
-        Long partitionNum = storageGroupFiles.getKey();
-        int slotNum = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName,
-            partitionNum, partitionTable.getTotalSlotNumbers());
-        FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
-            s -> new FileSnapshot());
-        if (snapshot.getTimeseriesSchemas().isEmpty()) {
-          snapshot.setTimeseriesSchemas(slotTimeseries.getOrDefault(slotNum,
-              Collections.emptySet()));
-        }
-        for (TsFileResource tsFileResource : storageGroupFiles.getValue()) {
-          snapshot.addFile(tsFileResource, header);
+    startCollect:
+    while (true) {
+      slotSnapshots.clear();
+      Map<String, Map<Long, List<TsFileResource>>> allClosedStorageGroupTsFile = StorageEngine
+          .getInstance().getAllClosedStorageGroupTsFile();
+      List<TsFileResource> createdHardlinks = new ArrayList<>();
+      // group the TsFiles by their slots
+      for (Entry<String, Map<Long, List<TsFileResource>>> entry :
+          allClosedStorageGroupTsFile.entrySet()) {
+        String storageGroupName = entry.getKey();
+        Map<Long, List<TsFileResource>> storageGroupsFiles = entry.getValue();
+        for (Entry<Long, List<TsFileResource>> storageGroupFiles : storageGroupsFiles.entrySet()) {
+          Long partitionNum = storageGroupFiles.getKey();
+          int slotNum = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName,
+              partitionNum, partitionTable.getTotalSlotNumbers());
+          FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
+              s -> new FileSnapshot());
+          if (snapshot.getTimeseriesSchemas().isEmpty()) {
+            snapshot.setTimeseriesSchemas(slotTimeseries.getOrDefault(slotNum,
+                Collections.emptySet()));
+          }
+
+          for (TsFileResource tsFileResource : storageGroupFiles.getValue()) {
+            TsFileResource hardlink = tsFileResource.createHardlink();
+            if (hardlink == null) {
+              // some file is deleted during the collecting, clean created hardlinks and restart
+              // from the beginning
+              for (TsFileResource createdHardlink : createdHardlinks) {
+                createdHardlink.remove();
+              }
+              continue startCollect;
+            }
+            createdHardlinks.add(hardlink);
+            snapshot.addFile(hardlink, header);
+          }
         }
       }
+      break;
     }
   }
 }

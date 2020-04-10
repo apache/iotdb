@@ -369,7 +369,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * supported in the future.
    * @param snapshot
    */
-  public void applySnapshot(Snapshot snapshot) throws SnapshotApplicationException {
+  public void applySnapshot(Snapshot snapshot, int slot) throws SnapshotApplicationException {
     logger.debug("{}: applying snapshot {}", name, snapshot);
     if (snapshot instanceof FileSnapshot) {
       try {
@@ -389,7 +389,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * overlap with existing files.
    * @param snapshot
    */
-  private void applyFileSnapshot(FileSnapshot snapshot) throws PullFileException {
+  private void applyFileSnapshot(FileSnapshot snapshot)
+      throws PullFileException, SnapshotApplicationException {
     synchronized (logManager) {
       // load metadata in the snapshot
       for (MeasurementSchema schema : snapshot.getTimeseriesSchemas()) {
@@ -400,6 +401,19 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       // load data in the snapshot
       // TODO-Cluster: deal with the failure of pulling a file
       List<RemoteTsFileResource> remoteTsFileResources = snapshot.getDataFiles();
+      // set partition versions
+      for (RemoteTsFileResource remoteTsFileResource : remoteTsFileResources) {
+        String[] pathSegments = FilePathUtils.splitTsFilePath(remoteTsFileResource);
+        int segSize = pathSegments.length;
+        String storageGroupName = pathSegments[segSize - 3];
+        try {
+          StorageEngine.getInstance().setPartitionVersionToMax(storageGroupName,
+              remoteTsFileResource.getTimePartition(), remoteTsFileResource.getMaxVersion());
+        } catch (StorageEngineException | IOException e) {
+          throw new SnapshotApplicationException(e);
+        }
+      }
+      // pull file
       for (RemoteTsFileResource resource : remoteTsFileResources) {
         if (!isFileAlreadyPulled(resource)) {
           loadRemoteFile(resource);
@@ -438,7 +452,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       for (Integer slot : slots) {
         Snapshot subSnapshot = snapshot.getSnapshot(slot);
         if (subSnapshot != null) {
-          applySnapshot(subSnapshot);
+          applySnapshot(subSnapshot, slot);
         }
       }
       logManager.setLastLogId(snapshot.getLastLogId());
@@ -524,12 +538,15 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     int segSize = pathSegments.length;
     // the new file is stored at:
     // remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/{fileName}
-    String tempFileName =
+    // the file in the snapshot is a hardlink, remove the hardlink suffix
+    String tempFileName = pathSegments[segSize - 1].substring(0,
+        pathSegments[segSize - 1].lastIndexOf('.'));
+    String tempFilePath =
         node.getNodeIdentifier() + File.separator + pathSegments[segSize - 3] +
-            File.separator + pathSegments[segSize - 2] + File.separator + pathSegments[segSize - 1];
-    File tempFile = new File(REMOTE_FILE_TEMP_DIR, tempFileName);
+            File.separator + pathSegments[segSize - 2] + File.separator + tempFileName;
+    File tempFile = new File(REMOTE_FILE_TEMP_DIR, tempFilePath);
     tempFile.getParentFile().mkdirs();
-    File tempModFile = new File(REMOTE_FILE_TEMP_DIR, tempFileName + ModificationFile.FILE_SUFFIX);
+    File tempModFile = new File(REMOTE_FILE_TEMP_DIR, tempFilePath + ModificationFile.FILE_SUFFIX);
     if (pullRemoteFile(resource.getFile().getAbsolutePath(), node, tempFile)) {
       if (!checkMd5(tempFile, resource.getMd5())) {
         logger.error("The downloaded file of {} does not have the right MD5", resource);

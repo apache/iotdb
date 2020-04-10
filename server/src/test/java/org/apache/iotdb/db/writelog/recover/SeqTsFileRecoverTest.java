@@ -85,6 +85,11 @@ public class SeqTsFileRecoverTest {
     public long currVersion() {
       return i;
     }
+
+    @Override
+    public void setVersionToMax(long version) {
+
+    }
   };
 
   @Before
