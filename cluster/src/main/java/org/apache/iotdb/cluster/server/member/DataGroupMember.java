@@ -457,6 +457,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       }
       logManager.setLastLogId(snapshot.getLastLogId());
       logManager.setLastLogTerm(snapshot.getLastLogTerm());
+      logManager.setCommitIndex(snapshot.getLastLogId());
     }
   }
 

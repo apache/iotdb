@@ -171,4 +171,9 @@ public abstract class MemoryLogManager implements LogManager {
   public void setLastLogTerm(long lastLogTerm) {
     this.lastLogTerm = lastLogTerm;
   }
+
+  @Override
+  public void setCommitIndex(long commitIndex) {
+    this.commitLogIndex = commitIndex;
+  }
 }

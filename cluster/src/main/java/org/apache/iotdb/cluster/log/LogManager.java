@@ -80,4 +80,6 @@ public interface LogManager {
   void setLastLogId(long lastLogId);
 
   void setLastLogTerm(long lastLogTerm);
+
+  void setCommitIndex(long commitIndex);
 }

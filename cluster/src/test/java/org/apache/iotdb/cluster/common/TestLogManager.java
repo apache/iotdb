@@ -91,7 +91,8 @@ public class TestLogManager implements LogManager {
     this.lastLogTerm = lastLogTerm;
   }
 
-  public void setCommitLogIndex(long commitLogIndex) {
+  @Override
+  public void setCommitIndex(long commitLogIndex) {
     this.commitLogIndex = commitLogIndex;
   }
 }
