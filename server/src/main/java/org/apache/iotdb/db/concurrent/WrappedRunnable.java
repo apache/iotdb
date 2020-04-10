@@ -35,7 +35,7 @@ public abstract class WrappedRunnable implements Runnable
         }
         catch (Exception e)
         {
-            LOGGER.error("error", e);
+            LOGGER.error("error",e);
             throw Throwables.propagate(e);
         }
     }
