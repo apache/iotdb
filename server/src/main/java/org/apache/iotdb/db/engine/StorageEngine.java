@@ -561,7 +561,7 @@ public class StorageEngine implements IService {
    * @param newMaxVersion
    */
   public void setPartitionVersionToMax(String storageGroup, long partitionId, long newMaxVersion)
-      throws StorageEngineException, IOException {
-    getProcessor(storageGroup).setPartitionVersionToMax(partitionId, newMaxVersion);
+      throws StorageEngineException {
+    getProcessor(storageGroup).setPartitionFileVersionToMax(partitionId, newMaxVersion);
   }
 }

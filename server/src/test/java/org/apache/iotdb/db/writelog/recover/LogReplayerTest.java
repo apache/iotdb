@@ -84,11 +84,6 @@ public class LogReplayerTest {
       public long currVersion() {
         return 5;
       }
-
-      @Override
-      public void setVersionToMax(long version) {
-
-      }
     };
     TsFileResource tsFileResource = new TsFileResource(tsFile);
     IMemTable memTable = new PrimitiveMemTable();

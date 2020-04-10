@@ -409,7 +409,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         try {
           StorageEngine.getInstance().setPartitionVersionToMax(storageGroupName,
               remoteTsFileResource.getTimePartition(), remoteTsFileResource.getMaxVersion());
-        } catch (StorageEngineException | IOException e) {
+        } catch (StorageEngineException e) {
           throw new SnapshotApplicationException(e);
         }
       }

@@ -41,9 +41,4 @@ public class SysTimeVersionController implements VersionController {
   public long currVersion() {
     return System.currentTimeMillis();
   }
-
-  @Override
-  public void setVersionToMax(long version) {
-
-  }
 }

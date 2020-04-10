@@ -92,14 +92,6 @@ public class SimpleFileVersionController implements VersionController {
     return currVersion;
   }
 
-  @Override
-  public void setVersionToMax(long version) throws IOException {
-    if (version > currVersion) {
-      currVersion = version;
-      persist();
-    }
-  }
-
   private void checkPersist() throws IOException {
     if ((currVersion - prevVersion) >= saveInterval) {
       persist();

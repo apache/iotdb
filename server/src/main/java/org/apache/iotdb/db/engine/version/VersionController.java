@@ -37,9 +37,4 @@ public interface VersionController {
    */
   long currVersion();
 
-  /**
-   * Set current version to the given number if it is larger than the current version.
-   * @param version
-   */
-  void setVersionToMax(long version) throws IOException;
 }

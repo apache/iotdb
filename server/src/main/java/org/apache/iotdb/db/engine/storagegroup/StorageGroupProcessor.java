@@ -1583,10 +1583,8 @@ public class StorageGroupProcessor {
    * Set the version in "partition" to "version" if "version" is larger than the current version.
    * @param partition
    * @param version
-   * @throws IOException
    */
-  public void setPartitionVersionToMax(long partition, long version) throws IOException {
-    getVersionControllerByTimePartitionId(partition).setVersionToMax(version);
+  public void setPartitionFileVersionToMax(long partition, long version) {
   }
 
   /**
