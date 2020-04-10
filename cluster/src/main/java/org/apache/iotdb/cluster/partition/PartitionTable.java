@@ -166,7 +166,11 @@ public interface PartitionTable {
     //the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalPlan(plan)) {
       logger.error("{} is a local plan. Please run it locally directly", plan);
+<<<<<<< HEAD
     } else if (PartitionUtils.isGlobalMetaPlan(plan)) {
+=======
+    } else if (PartitionUtils.isGlobalMetaPlan(plan) || PartitionUtils.isGlobalDataPlan(plan)) {
+>>>>>>> add DataDeletePlan
       logger.error("{} is a global plan. Please forward it to all partitionGroups", plan);
     }
     if (plan.canbeSplit()) {
@@ -215,7 +219,7 @@ public interface PartitionTable {
     //the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalPlan(plan)) {
       logger.error("{} is a local plan. Please run it locally directly", plan);
-    } else if (PartitionUtils.isGlobalMetaPlan(plan)) {
+    } else if (PartitionUtils.isGlobalMetaPlan(plan) || PartitionUtils.isGlobalDataPlan(plan)) {
       logger.error("{} is a global plan. Please forward it to all partitionGroups", plan);
     }
     if (!plan.canbeSplit()) {

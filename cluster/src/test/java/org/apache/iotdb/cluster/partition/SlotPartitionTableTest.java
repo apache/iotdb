@@ -293,7 +293,7 @@ public class SlotPartitionTableTest {
     PhysicalPlan aggregationPlan = new AggregationPlan();
     assertTrue(PartitionUtils.isLocalPlan(aggregationPlan));
     PhysicalPlan deletePlan = new DeletePlan();
-    assertTrue(PartitionUtils.isGlobalMetaPlan(deletePlan));
+    assertTrue(PartitionUtils.isGlobalDataPlan(deletePlan));
     PhysicalPlan fillQueryPlan = new FillQueryPlan();
     assertTrue(PartitionUtils.isLocalPlan(fillQueryPlan));
     PhysicalPlan groupByPlan = new GroupByPlan();

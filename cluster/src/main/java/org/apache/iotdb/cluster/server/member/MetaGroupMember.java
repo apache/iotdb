@@ -1077,7 +1077,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return null;
     } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
       return processNonPartitionedMetaPlan(plan);
-    } else if (PartitionUtils.isGlobalDataPlan(plan)) { //forward the plan to all meta group nodes
+    } else if (PartitionUtils.isGlobalDataPlan(plan)) { //forward the plan to all data group nodes
       return processNonPartitionedDataPlan(plan);
     } else { //split the plan and forward them to some PartitionGroups
       try {
