@@ -78,7 +78,7 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
       RawDataQueryPlan dataQueryPlan, TSDataType dataType,
       QueryContext context)
       throws StorageEngineException, QueryProcessException {
-    return metaMember.getReaderByTimestamp(path, dataQueryPlan.getAllSensorsInDevice(path.getDevice()),
+    return metaMember.getReaderByTimestamp(path, dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()),
         dataType, context);
   }
 }

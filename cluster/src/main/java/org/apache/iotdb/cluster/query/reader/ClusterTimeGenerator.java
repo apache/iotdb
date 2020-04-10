@@ -64,7 +64,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
           metaGroupMember.getSeriesTypesByString(Collections.singletonList(path.getFullPath()),
               null).get(0);
       return metaGroupMember.getSeriesReader(path,
-          queryPlan.getAllSensorsInDevice(path.getDevice()), dataType,
+          queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType,
           null, filter, context);
     } catch (Exception e) {
       throw new IOException(e);

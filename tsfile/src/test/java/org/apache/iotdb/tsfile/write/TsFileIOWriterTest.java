@@ -22,7 +22,6 @@ import java.io.File;
 import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.exception.NotCompatibleException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -81,7 +80,7 @@ public class TsFileIOWriterTest {
   }
 
   @Test
-  public void endFileTest() throws IOException, NotCompatibleException {
+  public void endFileTest() throws IOException {
     TsFileSequenceReader reader = new TsFileSequenceReader(tsfile);
 
     // magic_string

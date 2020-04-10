@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.server;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
@@ -70,15 +71,17 @@ public class NodeReport {
     long lastLogTerm;
     long lastLogIndex;
     boolean isReadOnly;
+    long lastHeartbeatReceivedTime;
 
     public RaftMemberReport(NodeCharacter character, Node leader, long term, long lastLogTerm,
-        long lastLogIndex, boolean isReadOnly) {
+        long lastLogIndex, boolean isReadOnly, long lastHeartbeatReceivedTime) {
       this.character = character;
       this.leader = leader;
       this.term = term;
       this.lastLogTerm = lastLogTerm;
       this.lastLogIndex = lastLogIndex;
       this.isReadOnly = isReadOnly;
+      this.lastHeartbeatReceivedTime = lastHeartbeatReceivedTime;
     }
   }
 
@@ -88,8 +91,8 @@ public class NodeReport {
   public static class MetaMemberReport extends RaftMemberReport {
 
     public MetaMemberReport(NodeCharacter character, Node leader, long term, long lastLogTerm,
-        long lastLogIndex, boolean isReadOnly) {
-      super(character, leader, term, lastLogTerm, lastLogIndex, isReadOnly);
+        long lastLogIndex, boolean isReadOnly, long lastHeartbeatReceivedTime) {
+      super(character, leader, term, lastLogTerm, lastLogIndex, isReadOnly, lastHeartbeatReceivedTime);
     }
 
     @Override
@@ -101,6 +104,7 @@ public class NodeReport {
           ", lastLogTerm=" + lastLogTerm +
           ", lastLogIndex=" + lastLogIndex +
           ", readOnly=" + isReadOnly +
+          ", lastHeartbeat=" + new Date(lastHeartbeatReceivedTime) +
           '}';
     }
   }
@@ -114,8 +118,9 @@ public class NodeReport {
     long headerLatency;
 
     public DataMemberReport(NodeCharacter character, Node leader, long term, long lastLogTerm,
-        long lastLogIndex, Node header, boolean isReadOnly, long headerLatency) {
-      super(character, leader, term, lastLogTerm, lastLogIndex, isReadOnly);
+        long lastLogIndex, Node header, boolean isReadOnly, long headerLatency,
+        long lastHeartbeatReceivedTime) {
+      super(character, leader, term, lastLogTerm, lastLogIndex, isReadOnly, lastHeartbeatReceivedTime);
       this.header = header;
       this.headerLatency = headerLatency;
     }
@@ -131,6 +136,7 @@ public class NodeReport {
           ", lastLogIndex=" + lastLogIndex +
           ", readOnly=" + isReadOnly +
           ", headerLatency=" + headerLatency +
+          ", lastHeartbeat=" + new Date(lastHeartbeatReceivedTime) +
           '}';
     }
   }

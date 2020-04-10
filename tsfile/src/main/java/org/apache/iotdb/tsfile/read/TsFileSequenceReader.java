@@ -22,7 +22,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
-import org.apache.iotdb.tsfile.exception.NotCompatibleException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -230,7 +229,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   /**
    * this function reads version number and checks compatibility of TsFile.
    */
-  public String readVersionNumber() throws IOException, NotCompatibleException {
+  public String readVersionNumber() throws IOException {
     ByteBuffer versionNumberBytes = ByteBuffer
         .allocate(TSFileConfig.VERSION_NUMBER.getBytes().length);
     tsFileInput.read(versionNumberBytes, TSFileConfig.MAGIC_STRING.getBytes().length);

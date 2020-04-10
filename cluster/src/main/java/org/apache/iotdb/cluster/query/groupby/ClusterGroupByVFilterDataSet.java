@@ -74,6 +74,6 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
       QueryContext context,
       TsFileFilter fileFilter) throws StorageEngineException, QueryProcessException {
     return metaGroupMember.getReaderByTimestamp(path,
-        dataQueryPlan.getAllSensorsInDevice(path.getDevice()), dataType, context);
+        dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context);
   }
 }

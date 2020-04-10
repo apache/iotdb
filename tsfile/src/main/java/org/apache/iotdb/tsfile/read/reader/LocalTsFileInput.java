@@ -26,11 +26,11 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-public class DefaultTsFileInput implements TsFileInput {
+public class LocalTsFileInput implements TsFileInput {
 
   private FileChannel channel;
 
-  public DefaultTsFileInput(Path file) throws IOException {
+  public LocalTsFileInput(Path file) throws IOException {
     channel = FileChannel.open(file, StandardOpenOption.READ);
   }
 

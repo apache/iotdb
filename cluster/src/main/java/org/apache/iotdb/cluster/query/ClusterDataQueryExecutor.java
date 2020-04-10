@@ -63,7 +63,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
 
       ManagedSeriesReader reader;
       reader = metaGroupMember.getSeriesReader(path,
-          dataQueryPlan.getAllSensorsInDevice(path.getDevice()), dataType, timeFilter,
+          dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, timeFilter,
           null, context);
       readersOfSelectedSeries.add(reader);
     }

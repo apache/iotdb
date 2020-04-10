@@ -19,6 +19,7 @@
 package org.apache.iotdb.cluster;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.MetaClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
@@ -60,15 +61,19 @@ public class ClusterMain {
       return;
     }
     String mode = args[0];
+    if (args.length > 1) {
+      String[] params = Arrays.copyOfRange(args, 1, args.length);
+      // replace default conf params
+      ClusterDescriptor.getINSTANCE().replaceProps(params);
+    }
 
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
-
     logger.info("Running mode {}", mode);
     try {
       if (MODE_START.equals(mode)) {
         metaServer = new MetaClusterServer();
-        // check the initial cluster size and refuse to start when the size < quorum
         ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
+        // check the initial cluster size and refuse to start when the size < quorum
         int quorum = config.getReplicationNum() / 2 + 1;
         if (config.getSeedNodeUrls().size() < quorum) {
           String message = String.format("Seed number less than quorum, seed number: %s, quorum: "
