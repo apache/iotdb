@@ -216,7 +216,9 @@ public class PreviousFill extends IFill {
         BatchData batchData = pageReader.getAllSatisfiedPageData();
         lastPoint = batchData.getLastPairBeforeOrEqualTimestamp(queryTime);
       }
-      break;
+      if (lastPoint.getValue() != null) {
+        return lastPoint;
+      }
     }
     return lastPoint;
   }
