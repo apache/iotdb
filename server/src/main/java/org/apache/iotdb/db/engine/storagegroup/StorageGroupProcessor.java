@@ -1149,7 +1149,7 @@ public class StorageGroupProcessor {
 
       // time partition to divide storage group
       long timePartitionId = StorageEngine.getTimePartition(timestamp);
-      // write log
+      // write log to impacted working TsFileProcessors
       logDeletion(timestamp, deviceId, measurementId, timePartitionId);
 
       Path fullPath = new Path(deviceId, measurementId);
