@@ -44,16 +44,21 @@ public class SessionExample {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
 
-    session.setStorageGroup("root.sg1");
-    if (session.checkTimeseriesExists("root.sg1.d1.s1")) {
+    try {
+      session.setStorageGroup("root.sg1");
+    } catch (Exception e) {
+      // ignore duplicated set
+    }
+
+    if (!session.checkTimeseriesExists("root.sg1.d1.s1")) {
       session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY);
     }
-    if (session.checkTimeseriesExists("root.sg1.d1.s2")) {
+    if (!session.checkTimeseriesExists("root.sg1.d1.s2")) {
       session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY);
     }
-    if (session.checkTimeseriesExists("root.sg1.d1.s3")) {
+    if (!session.checkTimeseriesExists("root.sg1.d1.s3")) {
       session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY);
     }
