@@ -24,20 +24,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public abstract class WrappedRunnable implements Runnable
-{
-    private static final Logger LOGGER = LoggerFactory.getLogger(WrappedRunnable.class);
-    public final void run()
-    {
-        try
-        {
-            runMayThrow();
-        }
-        catch (Exception e)
-        {
-            LOGGER.error("error",e);
-            throw Throwables.propagate(e);
-        }
+public abstract class WrappedRunnable implements Runnable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(WrappedRunnable.class);
+
+  public final void run() {
+    try {
+      runMayThrow();
+    } catch (Exception e) {
+      LOGGER.error("error", e);
+      throw Throwables.propagate(e);
     }
-    abstract public void runMayThrow() throws Exception;
+  }
+
+  abstract public void runMayThrow() throws Exception;
+
 }
