@@ -101,6 +101,10 @@ public class TsFileIOWriterTest {
     Assert.assertEquals(deviceId, footer.getDeviceID());
 
     // separator
+    Assert.assertEquals(MetaMarker.VERSION, reader.readMarker());
+
+    reader.readVersion();
+
     Assert.assertEquals(MetaMarker.SEPARATOR, reader.readMarker());
 
     // FileMetaData
