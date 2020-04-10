@@ -202,7 +202,7 @@ public class IoTDBThreadPoolFactoryTest {
     }
   }
 
-  class TestThread implements Runnable {
+  class TestThread extends WrappedRunnable {
 
     private String name;
 
@@ -211,7 +211,7 @@ public class IoTDBThreadPoolFactoryTest {
     }
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       throw new RuntimeException(name);
     }
 
