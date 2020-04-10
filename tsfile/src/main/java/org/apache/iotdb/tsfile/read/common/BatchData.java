@@ -536,6 +536,7 @@ public class BatchData implements Serializable {
 
   public TimeValuePair getLastPairBeforeOrEqualTimestamp(long queryTime) {
     TimeValuePair resultPair = new TimeValuePair(Long.MIN_VALUE, null);
+    resetBatchData();
     while (hasCurrent() && (currentTime() <= queryTime)) {
       resultPair.setTimestamp(currentTime());
       resultPair.setValue(currentTsPrimitiveType());

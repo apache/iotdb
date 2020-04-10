@@ -129,7 +129,8 @@ public class PreviousFill extends IFill {
           FileLoaderUtils.loadTimeSeriesMetadata(
               resource, seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
-        if (endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
+        if (timeseriesMetadata.getStatistics().canUseStatistics()
+            && endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
           return constructLastPair(
               timeseriesMetadata.getStatistics().getEndTime(),
               timeseriesMetadata.getStatistics().getLastValue(),
@@ -153,7 +154,7 @@ public class PreviousFill extends IFill {
   }
 
   /**
-   * find the last TimeseriesMetadata and unpack all overlapped seq/unseq files
+   * find the last TimeseriesMetadata in unseq files and unpack all overlapped unseq files
    */
   private void UnpackOverlappedUnseqFiles(long lBoundTime) throws IOException {
     PriorityQueue<TsFileResource> unseqFileResource =
@@ -168,8 +169,10 @@ public class PreviousFill extends IFill {
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
               unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
-      if (timeseriesMetadata != null
+      if (timeseriesMetadata != null && timeseriesMetadata.getStatistics().canUseStatistics()
           && lBoundTime <= timeseriesMetadata.getStatistics().getEndTime()) {
+        // The last timeseriesMetadata will be used as a pivot to filter the rest unseq files.
+        // Update lBoundTime with the last timeseriesMetadata's start time
         lBoundTime = Math.max(lBoundTime, timeseriesMetadata.getStatistics().getStartTime());
         unseqTimeseriesMetadataList.add(timeseriesMetadata);
         break;
@@ -183,21 +186,22 @@ public class PreviousFill extends IFill {
           FileLoaderUtils.loadTimeSeriesMetadata(
               unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
       unseqTimeseriesMetadataList.add(timeseriesMetadata);
-      // current unseq timeseriesMetadata's last point is a valid result,
-      // then skip the rest unseq files
-      if (endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())
-          && timeseriesMetadata.getStatistics().getEndTime()
-              > unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice())) {
-        break;
+      // update lBoundTime if current unseq timeseriesMetadata's last point is a valid result
+      if (timeseriesMetadata.getStatistics().canUseStatistics()
+          && endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
+        lBoundTime = Math.max(lBoundTime, timeseriesMetadata.getStatistics().getEndTime());
       }
     }
   }
 
   private TimeValuePair getChunkLastPoint(ChunkMetadata chunkMetaData) throws IOException {
     TimeValuePair lastPoint = new TimeValuePair(Long.MIN_VALUE, null);
+    if (chunkMetaData == null) {
+      return lastPoint;
+    }
     Statistics chunkStatistics = chunkMetaData.getStatistics();
 
-    if (endtimeContainedByTimeFilter(chunkStatistics)) {
+    if (chunkStatistics.canUseStatistics() && endtimeContainedByTimeFilter(chunkStatistics)) {
       return constructLastPair(
           chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), dataType);
     }
@@ -205,7 +209,7 @@ public class PreviousFill extends IFill {
     for (int i = pageReaders.size() - 1; i >= 0; i--) {
       IPageReader pageReader = pageReaders.get(i);
       Statistics pageStatistics = pageReader.getStatistics();
-      if (endtimeContainedByTimeFilter(pageStatistics)) {
+      if (pageStatistics.canUseStatistics() && endtimeContainedByTimeFilter(pageStatistics)) {
         lastPoint = constructLastPair(
             pageStatistics.getEndTime(), pageStatistics.getLastValue(), dataType);
       } else {
@@ -250,8 +254,8 @@ public class PreviousFill extends IFill {
               }
               return Long.compare(o2.getVersion(), o1.getVersion());
             });
-    for (int i = 0; i < unseqTimeseriesMetadataList.size(); i++) {
-      chunkMetadataList.addAll(unseqTimeseriesMetadataList.get(i).loadChunkMetadataList());
+    for (TimeseriesMetadata timeseriesMetadata : unseqTimeseriesMetadataList) {
+      chunkMetadataList.addAll(timeseriesMetadata.loadChunkMetadataList());
     }
     return chunkMetadataList;
   }

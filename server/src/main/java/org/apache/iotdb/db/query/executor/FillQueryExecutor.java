@@ -70,6 +70,7 @@ public class FillQueryExecutor {
       Path path = selectedSeries.get(i);
       TSDataType dataType = dataTypes.get(i);
       IFill fill;
+      long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
       if (!typeIFillMap.containsKey(dataType)) {
         switch (dataType) {
           case INT32:
@@ -78,7 +79,7 @@ public class FillQueryExecutor {
           case DOUBLE:
           case BOOLEAN:
           case TEXT:
-            fill = new PreviousFill(dataType, queryTime, -1);
+            fill = new PreviousFill(dataType, queryTime, defaultFillInterval);
             break;
           default:
             throw new UnsupportedDataTypeException("do not support datatype " + dataType);
